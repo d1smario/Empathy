@@ -1,0 +1,2335 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Dna,
+  Droplets,
+  Flame,
+  Heart,
+  HeartPulse,
+  Sparkles,
+  Upload,
+  Zap,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
+import { Pro2Button } from "@/components/ui/empathy";
+import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
+import {
+  analyzePanelWithAi,
+  bulkReanalyzePanelsWithAi,
+  fetchHealthPanelsTimeline,
+  fetchHealthSystemMap,
+  patchHealthStagingRun,
+  type HealthSystemMapViewModel,
+  type HealthStagingRunAction,
+  type HealthTimelineFetchDiagnostics,
+  uploadHealthDocument,
+  type HealthPanelTimelineRow,
+} from "@/modules/health/services/health-module-api";
+
+/** Build produzione: niente KPI / grafici riempiti con serie demo quando mancano referti. */
+const SHOW_HEALTH_DEMO_FALLBACK_DATA = process.env.NODE_ENV !== "production";
+
+const DEMO_INFLAMMATION_RADAR = [
+  { subject: "PCR-us", A: 78, fullMark: 100 },
+  { subject: "IL-6", A: 72, fullMark: 100 },
+  { subject: "TNF-α", A: 68, fullMark: 100 },
+  { subject: "Omocisteina", A: 74, fullMark: 100 },
+  { subject: "LDL-ox", A: 70, fullMark: 100 },
+];
+
+const DEMO_MICROBIOTA_RADAR = [
+  { subject: "Firmicutes", A: 44, fullMark: 100 },
+  { subject: "Bacteroidetes", A: 38, fullMark: 100 },
+  { subject: "Proteobacteria", A: 8, fullMark: 100 },
+  { subject: "Actinobacteria", A: 6, fullMark: 100 },
+  { subject: "Diversità", A: 72, fullMark: 100 },
+];
+
+const DEMO_HORMONES_BAR = [
+  { name: "Cortisolo AM", val: 16 },
+  { name: "Cortisolo PM", val: 11 },
+  { name: "Testosterone", val: 520 },
+  { name: "TSH", val: 1.6 },
+  { name: "T3 libera", val: 3.9 },
+  { name: "T4 libera", val: 1.2 },
+];
+
+const DEMO_BLOOD_TREND = [
+  { label: "Ott 2025", emoglobina: 15.2, ferritina: 78, vit_d: 32, b12: 380, glicemia: 88 },
+  { label: "Nov 2025", emoglobina: 15.8, ferritina: 82, vit_d: 38, b12: 400, glicemia: 86 },
+  { label: "Dic 2025", emoglobina: 16.1, ferritina: 90, vit_d: 42, b12: 430, glicemia: 85 },
+  { label: "Gen 2026", emoglobina: 16.3, ferritina: 95, vit_d: 45, b12: 450, glicemia: 84 },
+  { label: "Feb 2026", emoglobina: 16.4, ferritina: 97, vit_d: 47, b12: 465, glicemia: 83 },
+  { label: "Mar 2026", emoglobina: 16.5, ferritina: 98, vit_d: 48, b12: 470, glicemia: 83 },
+];
+
+const EPIGENETIC_RINGS = [
+  { name: "Metilazione", value: 85, fill: "#a855f7" },
+  { name: "Età biologica", value: 72, fill: "#ec4899" },
+  { name: "Stress oss.", value: 65, fill: "#f97316" },
+  { name: "Detox", value: 78, fill: "#22c55e" },
+  { name: "Riparazione", value: 88, fill: "#3b82f6" },
+];
+
+/** Radar “pathway” epigenetici (0–100, score qualitativo). */
+const DEMO_EPIGENETIC_RADAR = [
+  { subject: "Metilazione", A: 82, fullMark: 100 },
+  { subject: "Longevità", A: 76, fullMark: 100 },
+  { subject: "Infiamm. cronica", A: 71, fullMark: 100 },
+  { subject: "Detox genico", A: 79, fullMark: 100 },
+  { subject: "Riparazione DNA", A: 86, fullMark: 100 },
+];
+
+const DEMO_EPIGENETIC_TREND = [
+  { label: "Set", metilazione: 78, detox: 72, riparazione: 84 },
+  { label: "Ott", metilazione: 80, detox: 74, riparazione: 85 },
+  { label: "Nov", metilazione: 81, detox: 76, riparazione: 86 },
+  { label: "Dic", metilazione: 83, detox: 77, riparazione: 87 },
+  { label: "Gen", metilazione: 84, detox: 78, riparazione: 87 },
+  { label: "Feb", metilazione: 85, detox: 78, riparazione: 88 },
+];
+
+/** Stress ossidativo — assi da referto (d-ROMs, BAP, glutatione, …). */
+const DEMO_OXIDATIVE_RADAR = [
+  { subject: "d-ROMs ↓", A: 68, fullMark: 100 },
+  { subject: "BAP ↑", A: 74, fullMark: 100 },
+  { subject: "Glutatione", A: 70, fullMark: 100 },
+  { subject: "SOD", A: 72, fullMark: 100 },
+  { subject: "Catalasi", A: 69, fullMark: 100 },
+];
+
+/** Equilibrio endocrino (assi funzionali, 0–100). */
+const DEMO_ENDOCRINE_RADAR = [
+  { subject: "Asse HPA", A: 73, fullMark: 100 },
+  { subject: "Asse HPG", A: 78, fullMark: 100 },
+  { subject: "Tiroide", A: 81, fullMark: 100 },
+  { subject: "Surreni / DHEA", A: 75, fullMark: 100 },
+  { subject: "GH / IGF-1", A: 71, fullMark: 100 },
+];
+
+function coerceFiniteNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(String(v).replace(",", "."));
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+/**
+ * Legge un numero da `panel.values` con la stessa pipe per:
+ *  1. campi piatti canonici (es. `crp_mg_l: 1.2`) post-conferma o seed
+ *  2. fallback su `vlm_proposals[]` quando il panel ha proposte VLM
+ *     non ancora confermate (campo + valore + unità). Le card e i grafici
+ *     popolano i numeri "shadow" senza mai scrivere in DB: la conferma
+ *     resta esplicita in /health/staging/<id> e promuove la proposta a
+ *     valore canonico in `values.<field>`.
+ */
+function readNum(obj: Record<string, unknown> | null | undefined, keys: string[]): number | null {
+  if (!obj) return null;
+  for (const k of keys) {
+    const direct = coerceFiniteNumber(obj[k]);
+    if (direct != null) return direct;
+  }
+  const proposals = obj.vlm_proposals;
+  if (Array.isArray(proposals)) {
+    for (const k of keys) {
+      for (const p of proposals) {
+        if (!p || typeof p !== "object" || Array.isArray(p)) continue;
+        const rec = p as Record<string, unknown>;
+        if (rec.field === k) {
+          const n = coerceFiniteNumber(rec.value);
+          if (n != null) return n;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function sortPanelsNewestFirst(list: HealthPanelTimelineRow[]): HealthPanelTimelineRow[] {
+  return [...list].sort((a, b) => {
+    const da = `${a.sample_date ?? ""}\t${a.created_at ?? ""}`;
+    const db = `${b.sample_date ?? ""}\t${b.created_at ?? ""}`;
+    return db.localeCompare(da);
+  });
+}
+
+function humanizePayloadKey(key: string): string {
+  if (!key.trim()) return key;
+  const spaced = key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatScalarForDisplay(val: unknown): string {
+  if (val == null) return "—";
+  if (typeof val === "number" && Number.isFinite(val))
+    return String(val).includes(".") ? String(val) : String(val);
+  if (typeof val === "boolean") return val ? "Sì" : "No";
+  if (typeof val === "string") {
+    const t = val.trim();
+    return t.length ? t : "—";
+  }
+  if (typeof val === "object") {
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return "—";
+    }
+  }
+  return String(val);
+}
+
+function panelRawDisplayRows(panel: HealthPanelTimelineRow): Array<{ key: string; label: string; value: string }> {
+  const v = panel.values;
+  if (!v || typeof v !== "object") return [];
+  const rec = v as Record<string, unknown>;
+  const flat = Object.keys(rec)
+    .filter((k) => k !== "import" && k !== "vlm_proposals" && k !== "vlm_pending_validation")
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => ({
+      key,
+      label: humanizePayloadKey(key),
+      value: formatScalarForDisplay(rec[key]),
+    }));
+  const proposals = rec.vlm_proposals;
+  if (!Array.isArray(proposals) || proposals.length === 0) return flat;
+  // Append VLM proposals as virtual rows (clearly tagged) so the inline "Apri"
+  // toggle and the cards above stay coherent: same data, single panel.values.
+  const seenFields = new Set(flat.map((r) => r.key));
+  const proposed = proposals
+    .filter((p): p is Record<string, unknown> => Boolean(p) && typeof p === "object" && !Array.isArray(p))
+    .map((p) => {
+      const field = typeof p.field === "string" ? p.field : "";
+      const unit = typeof p.unit === "string" && p.unit.trim() ? ` ${p.unit}` : "";
+      return {
+        key: field || `proposal_${Math.random().toString(36).slice(2, 8)}`,
+        label: `${humanizePayloadKey(field || "—")} · proposto`,
+        value: `${formatScalarForDisplay(p.value)}${unit}`,
+      };
+    })
+    .filter((r) => !seenFields.has(r.key));
+  return [...flat, ...proposed];
+}
+
+function BloodSnapshotTable({
+  row,
+  sampleLabel,
+}: {
+  row: NonNullable<ReturnType<typeof rowFromBloodPanel>>;
+  sampleLabel?: string | null;
+}) {
+  const cells: Array<{ label: string; value: string }> = [
+    { label: "Emoglobina", value: row.emoglobina != null ? `${row.emoglobina} g/dL` : "—" },
+    { label: "Ferritina", value: row.ferritina != null ? `${row.ferritina} ng/mL` : "—" },
+    { label: "Vit. D", value: row.vit_d != null ? `${row.vit_d} ng/mL` : "—" },
+    { label: "B12", value: row.b12 != null ? `${row.b12} pg/mL` : "—" },
+    { label: "Glicemia", value: row.glicemia != null ? `${row.glicemia} mg/dL` : "—" },
+  ];
+  return (
+    <div className="rounded-xl border border-rose-500/20 bg-rose-950/15 p-4">
+      <p className="font-mono text-[0.6rem] font-bold uppercase tracking-wider text-rose-300/90">
+        Ultimo referto ematico
+        {sampleLabel ? <span className="ml-2 font-sans font-normal normal-case text-zinc-400">· {sampleLabel}</span> : null}
+      </p>
+      <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {cells.map((c) => (
+          <div key={c.label} className="rounded-lg border border-white/10 bg-black/35 px-3 py-2">
+            <dt className="text-[10px] uppercase tracking-wider text-zinc-500">{c.label}</dt>
+            <dd className="mt-1 text-sm font-semibold text-white">{c.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function RawPanelValuesCard({
+  panel,
+  title,
+  className = "border-white/10",
+}: {
+  panel: HealthPanelTimelineRow;
+  title?: string;
+  className?: string;
+}) {
+  const rows = panelRawDisplayRows(panel);
+  if (rows.length === 0) return null;
+  const when = panel.sample_date ?? panel.created_at?.slice(0, 10) ?? null;
+  return (
+    <div className={`rounded-xl border bg-black/30 p-4 ${className}`}>
+      {title ? (
+        <p className="font-mono text-[0.6rem] font-bold uppercase tracking-wider text-zinc-400">
+          {title}
+          {when ? <span className="ml-2 font-sans font-normal normal-case text-zinc-500">· {when}</span> : null}
+        </p>
+      ) : when ? (
+        <p className="font-mono text-[0.6rem] text-zinc-500">Data referto · {when}</p>
+      ) : null}
+      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((r) => (
+          <div key={r.key} className="min-w-0 rounded-lg border border-white/5 bg-black/25 px-2.5 py-1.5">
+            <dt className="truncate text-[10px] uppercase tracking-wider text-zinc-500" title={r.key}>
+              {r.label}
+            </dt>
+            <dd className="mt-0.5 break-words text-sm text-zinc-100">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** Più basso è il marker infiammatorio, più alto è lo score (0–100, euristica). */
+function inflammationAxisScore(value: number | null, refHigh: number, demo: number): number {
+  if (value == null) return demo;
+  const ratio = value / refHigh;
+  return Math.max(8, Math.min(100, 100 - ratio * 85));
+}
+
+function capPercentDisplay(value: number | null, demo: number): number {
+  if (value == null) return demo;
+  return Math.max(0, Math.min(100, value));
+}
+
+function inflammationRadarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const crp = readNum(v, ["crp_mg_l", "crp", "pcr", "pcr_us", "hs_crp", "hs-crp", "c_reactive_protein"]);
+  const il6 = readNum(v, ["il6", "il_6", "interleukin_6"]);
+  const tnf = readNum(v, ["tnf_alpha", "tnf", "tnfa"]);
+  const hcy = readNum(v, ["homocysteine", "omocisteina"]);
+  const ox = readNum(v, ["oxidized_ldl", "ldl_ox", "ldl_oxidized", "ox_ldl"]);
+  const hasAny = [crp, il6, tnf, hcy, ox].some((x) => x != null);
+  const d = DEMO_INFLAMMATION_RADAR;
+  if (!hasAny) {
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  }
+  return {
+    rows: [
+      { subject: "PCR-us", A: inflammationAxisScore(crp, 5, d[0].A), fullMark: 100 },
+      { subject: "IL-6", A: inflammationAxisScore(il6, 10, d[1].A), fullMark: 100 },
+      { subject: "TNF-α", A: inflammationAxisScore(tnf, 25, d[2].A), fullMark: 100 },
+      { subject: "Omocisteina", A: inflammationAxisScore(hcy, 20, d[3].A), fullMark: 100 },
+      { subject: "LDL-ox", A: inflammationAxisScore(ox, 80, d[4].A), fullMark: 100 },
+    ],
+    isDemo: false as const,
+  };
+}
+
+function microbiotaRadarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const f = readNum(v, ["firmicutes_pct", "firmicutes", "firmicutes_phylum", "phylum_firmicutes"]);
+  const b = readNum(v, ["bacteroidetes_pct", "bacteroidetes", "bacteroidetes_phylum", "phylum_bacteroidetes"]);
+  const p = readNum(v, ["proteobacteria_pct", "proteobacteria", "proteobacteria_phylum", "phylum_proteobacteria"]);
+  const a = readNum(v, ["actinobacteria_pct", "actinobacteria", "actinobacteria_phylum", "phylum_actinobacteria"]);
+  const div = readNum(v, [
+    "diversity_shannon",
+    "diversity",
+    "alpha_diversity",
+    "shannon",
+    "shannon_index",
+    "diversita_shannon",
+  ]);
+  const hasAny = [f, b, p, a, div].some((x) => x != null);
+  const d = DEMO_MICROBIOTA_RADAR;
+  if (!hasAny) {
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  }
+  const divScore = div != null ? Math.max(0, Math.min(100, (div / 4.5) * 100)) : d[4].A;
+  return {
+    rows: [
+      { subject: "Firmicutes", A: capPercentDisplay(f, d[0].A), fullMark: 100 },
+      { subject: "Bacteroidetes", A: capPercentDisplay(b, d[1].A), fullMark: 100 },
+      { subject: "Proteobacteria", A: capPercentDisplay(p, d[2].A), fullMark: 100 },
+      { subject: "Actinobacteria", A: capPercentDisplay(a, d[3].A), fullMark: 100 },
+      { subject: "Diversità", A: divScore, fullMark: 100 },
+    ],
+    isDemo: false as const,
+  };
+}
+
+function hormonesBarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const am = readNum(v, [
+    "cortisol_am",
+    "cortisol_morning",
+    "cortisolo_am",
+    "cortisolo_mattina",
+    "cortisol_ug_dl",
+    "cortisol",
+    "cortisolo",
+  ]);
+  const pm = readNum(v, ["cortisol_pm", "cortisol_evening", "cortisolo_pm", "cortisolo_sera"]);
+  const tt = readNum(v, ["testosterone", "testosterone_total", "testosterone_totale", "testosterone_ng_dl"]);
+  const tsh = readNum(v, ["tsh", "tsh_miu_l"]);
+  const t3 = readNum(v, ["ft3", "t3_free", "t3_libero", "t3_libera", "t3", "free_t3_pg_ml"]);
+  const t4 = readNum(v, ["ft4", "t4_free", "t4_libero", "t4_libera", "t4", "free_t4_ng_dl"]);
+  const d = DEMO_HORMONES_BAR;
+  const hasAny = [am, pm, tt, tsh, t3, t4].some((x) => x != null);
+  if (!hasAny)
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  return {
+    rows: [
+      { name: "Cortisolo AM", val: am ?? d[0].val },
+      { name: "Cortisolo PM", val: pm ?? d[1].val },
+      { name: "Testosterone", val: tt ?? d[2].val },
+      { name: "TSH", val: tsh ?? d[3].val },
+      { name: "T3 libera", val: t3 ?? d[4].val },
+      { name: "T4 libera", val: t4 ?? d[5].val },
+    ],
+    isDemo: false as const,
+  };
+}
+
+function biologicalAgeRingScore(deltaYears: number | null, demo: number): number {
+  if (deltaYears == null) return demo;
+  return Math.max(12, Math.min(100, 100 - Math.abs(deltaYears) * 9));
+}
+
+function epigeneticRingsFromPanel(panel: HealthPanelTimelineRow | undefined): Array<{ name: string; value: number; fill: string }> {
+  const missingPanel = !panel?.values || typeof panel.values !== "object";
+  if (missingPanel && !SHOW_HEALTH_DEMO_FALLBACK_DATA) {
+    return [];
+  }
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const meth = readNum(v, [
+    "methylation_score",
+    "metilazione",
+    "methylation",
+    "score_metilazione",
+    "metilazione_score",
+    "metabolic_methylation_score",
+    "inflammation_methylation_index",
+  ]);
+  const directDelta = readNum(v, [
+    "biological_age_delta",
+    "epigenetic_age_delta",
+    "eta_bio_vs_crono",
+    "age_delta_years",
+    "gap_anni",
+  ]);
+  const epiAge = readNum(v, ["epigenetic_age_years", "biological_age_years", "eta_biologica"]);
+  const chronoAge = readNum(v, ["chronological_age_years", "age_years", "eta_cronologica"]);
+  const delta = directDelta ?? (epiAge != null && chronoAge != null ? Number((epiAge - chronoAge).toFixed(2)) : null);
+  const ox = readNum(v, ["epigenetic_oxidative_stress", "stress_oss_epigenetico", "oxidative_epigenetic", "oxidative_methylation"]);
+  const detox = readNum(v, ["epigenetic_detox", "detox_score", "detox_epigenetico"]);
+  const repair = readNum(v, [
+    "epigenetic_repair",
+    "repair_score",
+    "dna_repair",
+    "dna_repair_score",
+    "mitochondrial_resilience_index",
+  ]);
+  return EPIGENETIC_RINGS.map((r) => {
+    if (r.name === "Metilazione") return { ...r, value: Math.round(capPercentDisplay(meth, r.value)) };
+    if (r.name === "Età biologica") return { ...r, value: Math.round(biologicalAgeRingScore(delta, r.value)) };
+    if (r.name === "Stress oss.") return { ...r, value: Math.round(capPercentDisplay(ox, r.value)) };
+    if (r.name === "Detox") return { ...r, value: Math.round(capPercentDisplay(detox, r.value)) };
+    if (r.name === "Riparazione") return { ...r, value: Math.round(capPercentDisplay(repair, r.value)) };
+    return r;
+  });
+}
+
+function epigeneticRadarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const rings = epigeneticRingsFromPanel(panel);
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const epiAge = readNum(v, ["epigenetic_age_years", "biological_age_years", "eta_biologica"]);
+  const chronoAge = readNum(v, ["chronological_age_years", "age_years", "eta_cronologica"]);
+  const hasNumeric = [
+    readNum(v, [
+      "methylation_score",
+      "metilazione",
+      "methylation",
+      "metilazione_score",
+      "metabolic_methylation_score",
+      "inflammation_methylation_index",
+    ]),
+    readNum(v, ["biological_age_delta", "epigenetic_age_delta", "gap_anni"]) ??
+      (epiAge != null && chronoAge != null ? epiAge - chronoAge : null),
+    readNum(v, ["epigenetic_oxidative_stress", "stress_oss_epigenetico", "oxidative_methylation"]),
+    readNum(v, ["epigenetic_detox", "detox_score"]),
+    readNum(v, ["epigenetic_repair", "repair_score", "dna_repair_score", "mitochondrial_resilience_index"]),
+  ].some((x) => x != null);
+  const d = DEMO_EPIGENETIC_RADAR;
+  if (!hasNumeric) {
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  }
+  const subjects = ["Metilazione", "Longevità", "Infiamm. cronica", "Detox genico", "Riparazione DNA"];
+  return {
+    rows: rings.map((r, i) => ({
+      subject: subjects[i] ?? r.name,
+      A: capPercentDisplay(r.value, d[i]?.A ?? 72),
+      fullMark: 100,
+    })),
+    isDemo: false as const,
+  };
+}
+
+function rowFromEpigeneticTrendPanel(panel: HealthPanelTimelineRow): {
+  label: string;
+  metilazione: number | null;
+  detox: number | null;
+  riparazione: number | null;
+} | null {
+  const v = panel.values;
+  if (!v || typeof v !== "object") return null;
+  const rec = v as Record<string, unknown>;
+  const metilazione = readNum(rec, [
+    "methylation_score",
+    "metilazione",
+    "methylation",
+    "metilazione_score",
+    "metabolic_methylation_score",
+    "inflammation_methylation_index",
+  ]);
+  const detox = readNum(rec, ["epigenetic_detox", "detox_score"]);
+  const riparazione = readNum(rec, [
+    "epigenetic_repair",
+    "repair_score",
+    "dna_repair_score",
+    "mitochondrial_resilience_index",
+  ]);
+  if (metilazione == null && detox == null && riparazione == null) return null;
+  const label = panel.sample_date
+    ? new Date(panel.sample_date).toLocaleDateString("it-IT", { month: "short", year: "2-digit" })
+    : (panel.created_at?.slice(0, 7) ?? "n/d");
+  return { label, metilazione, detox, riparazione };
+}
+
+/** d-ROMs più basso = migliore (score alto). */
+function oxidativeRomsScore(val: number | null, demo: number): number {
+  if (val == null) return demo;
+  return Math.max(10, Math.min(100, 100 - val * 2.2));
+}
+
+function oxidativeBapScore(val: number | null, demo: number): number {
+  if (val == null) return demo;
+  return Math.max(15, Math.min(100, (val / 3500) * 100));
+}
+
+function oxidativeStressRadarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const roms = readNum(v, ["d_roms", "roms_carr", "roms", "d_rom"]);
+  const bap = readNum(v, ["bap", "bap_umol", "bap_score", "bap_uM"]);
+  const gsh = readNum(v, ["glutathione", "glutatione", "gsh", "glutatione_ridotto"]);
+  const sod = readNum(v, ["sod", "superoxide_dismutase"]);
+  const cat = readNum(v, ["catalase", "catalasi"]);
+  const hasAny = [roms, bap, gsh, sod, cat].some((x) => x != null);
+  const d = DEMO_OXIDATIVE_RADAR;
+  if (!hasAny) {
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  }
+  return {
+    rows: [
+      { subject: "d-ROMs ↓", A: oxidativeRomsScore(roms, d[0].A), fullMark: 100 },
+      { subject: "BAP ↑", A: oxidativeBapScore(bap, d[1].A), fullMark: 100 },
+      { subject: "Glutatione", A: capPercentDisplay(gsh, d[2].A), fullMark: 100 },
+      { subject: "SOD", A: capPercentDisplay(sod, d[3].A), fullMark: 100 },
+      { subject: "Catalasi", A: capPercentDisplay(cat, d[4].A), fullMark: 100 },
+    ],
+    isDemo: false as const,
+  };
+}
+
+function hpaAxisScore(am: number | null, pm: number | null, demo: number): number {
+  if (am == null && pm == null) return demo;
+  const base = am ?? pm ?? 12;
+  const dist = Math.abs(base - 14);
+  return Math.max(22, Math.min(100, 100 - dist * 5));
+}
+
+function hpgAxisScore(testNgDl: number | null, demo: number): number {
+  if (testNgDl == null) return demo;
+  if (testNgDl < 200) return 38;
+  if (testNgDl > 1000) return 78;
+  return Math.min(100, 48 + (testNgDl - 200) / 25);
+}
+
+function thyroidAxisScore(tsh: number | null, demo: number): number {
+  if (tsh == null) return demo;
+  const dist = Math.abs(tsh - 1.4);
+  return Math.max(20, Math.min(100, 100 - dist * 28));
+}
+
+function dheaAxisScore(dhea: number | null, demo: number): number {
+  if (dhea == null) return demo;
+  return Math.max(18, Math.min(100, (dhea / 350) * 100));
+}
+
+function igfAxisScore(igf: number | null, demo: number): number {
+  if (igf == null) return demo;
+  return Math.max(20, Math.min(100, (igf / 280) * 100));
+}
+
+function endocrineRadarFromPanel(panel: HealthPanelTimelineRow | undefined) {
+  const v = (panel?.values as Record<string, unknown> | null) ?? null;
+  const am = readNum(v, [
+    "cortisol_am",
+    "cortisol_morning",
+    "cortisolo_am",
+    "cortisolo_mattina",
+    "cortisol_ug_dl",
+    "cortisol",
+    "cortisolo",
+  ]);
+  const pm = readNum(v, ["cortisol_pm", "cortisol_evening", "cortisolo_pm", "cortisolo_sera"]);
+  const tt = readNum(v, ["testosterone", "testosterone_total", "testosterone_totale", "testosterone_ng_dl"]);
+  const tsh = readNum(v, ["tsh", "tsh_miu_l"]);
+  const dhea = readNum(v, ["dhea_s", "dhea", "dehydroepiandrosterone", "dhea_s_ug_dl"]);
+  const igf = readNum(v, ["igf1", "igf_1", "igf-1", "insulin_like_growth_factor_1"]);
+  const hasAny = [am, pm, tt, tsh, dhea, igf].some((x) => x != null);
+  const d = DEMO_ENDOCRINE_RADAR;
+  if (!hasAny) {
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA ? { rows: d, isDemo: true as const } : { rows: [], isDemo: false as const };
+  }
+  return {
+    rows: [
+      { subject: "Asse HPA", A: hpaAxisScore(am, pm, d[0].A), fullMark: 100 },
+      { subject: "Asse HPG", A: hpgAxisScore(tt, d[1].A), fullMark: 100 },
+      { subject: "Tiroide", A: thyroidAxisScore(tsh, d[2].A), fullMark: 100 },
+      { subject: "Surreni / DHEA", A: dheaAxisScore(dhea, d[3].A), fullMark: 100 },
+      { subject: "GH / IGF-1", A: igfAxisScore(igf, d[4].A), fullMark: 100 },
+    ],
+    isDemo: false as const,
+  };
+}
+
+function isHormonePanelType(type: string | null | undefined): boolean {
+  if (!type) return false;
+  const t = type.trim().toLowerCase();
+  return t === "hormones" || t === "hormonal" || t === "hormone";
+}
+
+function structuredValuesFieldCount(values: Record<string, unknown> | null | undefined): number {
+  if (!values || typeof values !== "object") return 0;
+  const flat = Object.keys(values).filter(
+    (k) => k !== "import" && k !== "vlm_proposals" && k !== "vlm_pending_validation",
+  ).length;
+  const proposals = (values as Record<string, unknown>).vlm_proposals;
+  const proposed = Array.isArray(proposals) ? proposals.length : 0;
+  return flat + proposed;
+}
+
+function rowFromBloodPanel(panel: HealthPanelTimelineRow): {
+  label: string;
+  emoglobina: number | null;
+  ferritina: number | null;
+  vit_d: number | null;
+  b12: number | null;
+  glicemia: number | null;
+} | null {
+  const v = panel.values;
+  if (!v || typeof v !== "object") return null;
+  const rec = v as Record<string, unknown>;
+  const emoglobina = readNum(rec, ["hb", "hemoglobin", "emoglobina", "hb_g_dl"]);
+  const ferritina = readNum(rec, ["ferritin", "ferritina", "ferritina_ng_ml"]);
+  const vit_d = readNum(rec, ["vit_d", "vitamin_d", "vitamina_d", "25_oh_d", "vitamina_d_25oh", "vitamin_d_25oh"]);
+  const b12 = readNum(rec, ["b12", "vit_b12", "cobalamin", "vitamina_b12"]);
+  const glicemiaMgDl = readNum(rec, ["glucose", "glicemia", "glucosio", "fasting_glucose_mg_dl", "blood_glucose"]);
+  const glicemiaMmol = readNum(rec, ["glucose_mmol_l", "glucose_mmol", "glycemia_mmol_l"]);
+  const glicemia = glicemiaMgDl ?? (glicemiaMmol != null ? Number((glicemiaMmol * 18.0182).toFixed(1)) : null);
+  if (emoglobina == null && ferritina == null && vit_d == null && b12 == null && glicemia == null) return null;
+  const label = panel.sample_date
+    ? new Date(panel.sample_date).toLocaleDateString("it-IT", { month: "short", year: "numeric" })
+    : (panel.created_at?.slice(0, 7) ?? "n/d");
+  return { label, emoglobina, ferritina, vit_d, b12, glicemia };
+}
+
+const IMPORT_CARDS = [
+  {
+    panelType: "blood",
+    title: "Esami del Sangue",
+    desc: "Emocromo, metaboliti, vitamine, minerali",
+    tags: ["Emoglobina", "Ferritina", "Vitamina D", "B12", "Glicemia", "HbA1c"],
+    gradient: "from-rose-600 via-rose-500 to-pink-600",
+    icon: Droplets,
+  },
+  {
+    panelType: "microbiota",
+    title: "Analisi Microbiota",
+    desc: "Flora batterica intestinale, disbiosi",
+    tags: ["Firmicutes", "Bacteroidetes", "Proteobacteria", "Diversità α", "SCFA"],
+    gradient: "from-emerald-600 to-teal-500",
+    icon: HeartPulse,
+  },
+  {
+    panelType: "epigenetics",
+    title: "Test Epigenetico",
+    desc: "Metilazione DNA, espressione genica",
+    tags: ["Metilazione", "Età biologica", "Stress ossidativo", "Detox"],
+    gradient: "from-violet-600 to-fuchsia-600",
+    icon: Dna,
+  },
+  {
+    panelType: "hormones",
+    title: "Profilo Ormonale",
+    desc: "Cortisolo, testosterone, ormoni tiroidei",
+    tags: ["Cortisolo", "Testosterone", "TSH", "T3", "T4", "DHEA"],
+    gradient: "from-orange-600 to-red-600",
+    icon: Heart,
+  },
+  {
+    panelType: "inflammation",
+    title: "Markers Infiammazione",
+    desc: "PCR, citochine, omocisteina",
+    tags: ["PCR-us", "IL-6", "TNF-α", "Omocisteina", "LDL-ox"],
+    gradient: "from-amber-500 to-orange-600",
+    icon: AlertTriangle,
+  },
+  {
+    panelType: "oxidative_stress",
+    title: "Stress Ossidativo",
+    desc: "Radicali liberi, capacità antiossidante",
+    tags: ["d-ROMs", "BAP", "Glutatione", "SOD", "Catalasi"],
+    gradient: "from-sky-600 to-indigo-700",
+    icon: Zap,
+  },
+] as const;
+
+export default function HealthPageView() {
+  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const [panels, setPanels] = useState<HealthPanelTimelineRow[]>([]);
+  const [systemMap, setSystemMap] = useState<HealthSystemMapViewModel>({
+    nodes: [],
+    edges: [],
+    bioenergeticsResponses: [],
+    stagingRuns: [],
+  });
+  const [timelineErr, setTimelineErr] = useState<string | null>(null);
+  const [timelineDiag, setTimelineDiag] = useState<HealthTimelineFetchDiagnostics | null>(null);
+  const [systemMapErr, setSystemMapErr] = useState<string | null>(null);
+  const [loadingTimeline, setLoadingTimeline] = useState(true);
+  const [uploadBusy, setUploadBusy] = useState<string | null>(null);
+  const [stagingBusy, setStagingBusy] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [sampleDate, setSampleDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
+  const [analyzeBusyPanelId, setAnalyzeBusyPanelId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const loadTimeline = useCallback(async () => {
+    if (!athleteId) {
+      setPanels([]);
+      setTimelineErr(null);
+      setTimelineDiag(null);
+      setSystemMap({ nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] });
+      setSystemMapErr(null);
+      setLoadingTimeline(false);
+      return;
+    }
+    setLoadingTimeline(true);
+    const [{ panels: next, error, diagnostics }, { systemMap: nextMap, error: mapErr }] = await Promise.all([
+      fetchHealthPanelsTimeline(athleteId),
+      fetchHealthSystemMap(athleteId),
+    ]);
+    let resolvedPanels = next;
+    let resolvedErr = error;
+    let resolvedDiag = diagnostics;
+    // Production safeguard: retry direct cookie-only read if first pass returns empty without errors.
+    if (!error && next.length === 0) {
+      try {
+        const direct = await fetch(`/api/health/panels-timeline?athleteId=${encodeURIComponent(athleteId)}`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        const json = (await direct.json()) as
+          | { ok: true; panels?: HealthPanelTimelineRow[] }
+          | {
+              ok: false;
+              error?: string;
+              requestedAthleteId?: string;
+              userProfileAthleteId?: string | null;
+            };
+        if (direct.ok && json.ok) {
+          resolvedPanels = Array.isArray(json.panels) ? json.panels : [];
+        } else if (!direct.ok || !json.ok) {
+          resolvedErr = ("error" in json && json.error) || resolvedErr || "Timeline non disponibile";
+          resolvedDiag = {
+            requestedAthleteId: ("requestedAthleteId" in json ? json.requestedAthleteId : athleteId) ?? athleteId,
+            userProfileAthleteId: ("userProfileAthleteId" in json ? json.userProfileAthleteId : null) ?? null,
+            errorCode: "direct_timeline_fallback_failed",
+            httpStatus: direct.status,
+          };
+        }
+      } catch {
+        // Keep first response as-is; diagnostic banner remains available.
+      }
+    }
+    setPanels(resolvedPanels);
+    setTimelineErr(resolvedErr);
+    setTimelineDiag(resolvedDiag);
+    setSystemMap(nextMap);
+    setSystemMapErr(mapErr);
+    setLoadingTimeline(false);
+  }, [athleteId]);
+
+  useEffect(() => {
+    if (ctxLoading) return;
+    void loadTimeline();
+  }, [ctxLoading, loadTimeline]);
+
+  const panelsNewestFirst = useMemo(() => sortPanelsNewestFirst(panels), [panels]);
+
+  /**
+   * Diagnostica leggera dell'archivio: distingue i panel che effettivamente
+   * popolano i grafici (values strutturati canonici) da quelli che attendono
+   * conferma o sono solo file caricati. Le card riassuntive Health leggono
+   * `values.<chiave>` diretto, NON `vlm_proposals`: senza conferma review
+   * restano vuote anche con N referti in archivio.
+   */
+  const archiveDiagnostics = useMemo(() => {
+    let withCanonicalValues = 0;
+    let withProposalsOnly = 0;
+    let importOnly = 0;
+    let vlmPending = 0;
+    let bulkCandidates = 0;
+    let importOnlyNoStorage = 0;
+    let importOnlyUnsupported = 0;
+    for (const p of panels) {
+      const vals = (p.values ?? null) as Record<string, unknown> | null;
+      const flatFields = vals
+        ? Object.keys(vals).filter(
+            (k) => k !== "import" && k !== "vlm_proposals" && k !== "vlm_pending_validation",
+          ).length
+        : 0;
+      const proposals = vals?.vlm_proposals;
+      const proposalCount = Array.isArray(proposals) ? proposals.length : 0;
+      const importBlock =
+        vals && typeof vals.import === "object" && vals.import !== null
+          ? (vals.import as Record<string, unknown>)
+          : null;
+      const importStatus = typeof importBlock?.status === "string" ? (importBlock?.status as string) : "";
+      const isPendingVlm = Boolean(vals?.vlm_pending_validation) || importStatus === "vlm_proposed";
+      if (isPendingVlm) vlmPending++;
+      if (flatFields > 0) withCanonicalValues++;
+      else if (proposalCount > 0) withProposalsOnly++;
+      else importOnly++;
+      // Bulk candidate: file in storage, mime supportato, no canonici, no review pendente
+      const storagePath = typeof importBlock?.storage_path === "string" ? (importBlock?.storage_path as string) : null;
+      const mimeStr =
+        typeof importBlock?.mime === "string" ? (importBlock?.mime as string).toLowerCase() : "";
+      const filenameStr =
+        typeof importBlock?.filename === "string" ? (importBlock?.filename as string).toLowerCase() : "";
+      const supports = mimeStr.startsWith("image/") || mimeStr === "application/pdf" || filenameStr.endsWith(".pdf");
+      const noValues = flatFields === 0 && proposalCount === 0;
+      if (storagePath && supports && noValues) bulkCandidates++;
+      // Diagnosi extra per import-only senza candidati: spiega all'utente perché il bulk non parte
+      if (noValues && !storagePath && (supports || filenameStr || mimeStr)) importOnlyNoStorage++;
+      else if (noValues && storagePath && !supports) importOnlyUnsupported++;
+    }
+    return {
+      total: panels.length,
+      withCanonicalValues,
+      withProposalsOnly,
+      importOnly,
+      vlmPending,
+      bulkCandidates,
+      importOnlyNoStorage,
+      importOnlyUnsupported,
+    };
+  }, [panels]);
+
+  /** Map panelId → runId VLM in pending_validation, per il link "Apri review" sull'archivio. */
+  const pendingVlmRunByPanelId = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const run of systemMap.stagingRuns) {
+      const status = typeof run.status === "string" ? run.status : "";
+      const trigger = typeof run.trigger_source === "string" ? run.trigger_source : "";
+      if (status !== "pending_validation" || trigger !== "health_upload_vlm") continue;
+      const refs = Array.isArray(run.source_refs) ? run.source_refs : [];
+      for (const ref of refs) {
+        if (ref && typeof ref === "object" && !Array.isArray(ref)) {
+          const r = ref as Record<string, unknown>;
+          if (r.table === "biomarker_panels" && typeof r.id === "string" && typeof run.id === "string") {
+            out.set(r.id, run.id);
+          }
+        }
+      }
+    }
+    return out;
+  }, [systemMap.stagingRuns]);
+
+  const bloodRowsChronological = useMemo(() => {
+    const rowsDesc = panelsNewestFirst
+      .filter((p) => p.type === "blood")
+      .map(rowFromBloodPanel)
+      .filter((r): r is NonNullable<typeof r> => r != null);
+    return [...rowsDesc].reverse();
+  }, [panelsNewestFirst]);
+
+  /**
+   * Serie per il grafico: anche **1 solo punto** reale è valido.
+   * Demo fallback solo in dev e solo se non c'è alcun dato reale.
+   */
+  const bloodLineChartData = useMemo(() => {
+    if (bloodRowsChronological.length >= 1) return bloodRowsChronological;
+    if (!SHOW_HEALTH_DEMO_FALLBACK_DATA) return [];
+    return DEMO_BLOOD_TREND.map((r) => ({
+      label: r.label,
+      emoglobina: r.emoglobina,
+      ferritina: r.ferritina,
+      vit_d: r.vit_d,
+      b12: r.b12,
+      glicemia: r.glicemia,
+    }));
+  }, [bloodRowsChronological]);
+
+  /**
+   * Sceglie il panel di un dato tipo da cui le card riassuntive devono leggere.
+   *
+   * Ordering deterministico (priorità decrescente):
+   *   1. `sample_date` DESC (più recente vince)
+   *   2. **richezza** del payload: numero di chiavi flat numeriche + numero di
+   *      `vlm_proposals` (a parità di data, il panel più informativo vince —
+   *      così se due seed/upload hanno stessa `sample_date` ma uno ha solo
+   *      `glicemia` e l'altro ha tutti i marker, il selettore prende il ricco).
+   *   3. `created_at` DESC (tie-break stabile sull'ultimo ad arrivare).
+   *
+   * Fallback: se nessun panel matcha, ritorna il più recente assoluto.
+   */
+  const findLatestUsefulPanel = useCallback(
+    (matcher: (p: HealthPanelTimelineRow) => boolean): HealthPanelTimelineRow | undefined => {
+      const ofType = panelsNewestFirst.filter(matcher);
+      const fieldsCount = (p: HealthPanelTimelineRow): number => {
+        const v = (p.values ?? null) as Record<string, unknown> | null;
+        if (!v) return 0;
+        const flat = Object.keys(v).filter(
+          (k) => k !== "import" && k !== "vlm_proposals" && k !== "vlm_pending_validation",
+        ).length;
+        const proposals = v.vlm_proposals;
+        const proposalsLen = Array.isArray(proposals) ? proposals.length : 0;
+        return flat + proposalsLen;
+      };
+      const ranked = ofType
+        .filter((p) => fieldsCount(p) > 0)
+        .sort((a, b) => {
+          const da = a.sample_date ?? "";
+          const db = b.sample_date ?? "";
+          if (da !== db) return db.localeCompare(da);
+          const fa = fieldsCount(a);
+          const fb = fieldsCount(b);
+          if (fa !== fb) return fb - fa;
+          return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+        });
+      return ranked[0] ?? ofType[0];
+    },
+    [panelsNewestFirst],
+  );
+
+  const newestBloodPanel = useMemo(() => findLatestUsefulPanel((p) => p.type === "blood"), [findLatestUsefulPanel]);
+
+  const bloodLatestStructuredRow = useMemo(() => {
+    return newestBloodPanel ? rowFromBloodPanel(newestBloodPanel) : null;
+  }, [newestBloodPanel]);
+
+  /** Referti ematici in ordine cronologico (vecchio → nuovo): colonne tabella comparativa. */
+  const bloodComparisonMatrix = useMemo(() => {
+    const cols = [...panelsNewestFirst]
+      .filter((p) => p.type === "blood")
+      .map((p) => {
+        const row = rowFromBloodPanel(p);
+        if (!row) return null;
+        const label = p.sample_date ?? p.reported_at?.slice(0, 10) ?? p.created_at?.slice(0, 10) ?? row.label;
+        return { id: p.id, label, row, source: p.source ?? null };
+      })
+      .filter((c): c is NonNullable<typeof c> => c != null)
+      .reverse();
+    return { cols };
+  }, [panelsNewestFirst]);
+
+  const microComparisonMatrix = useMemo(() => {
+    const cols = [...panelsNewestFirst]
+      .filter((p) => p.type === "microbiota")
+      .map((p) => ({
+        id: p.id,
+        label: p.sample_date ?? p.reported_at?.slice(0, 10) ?? p.created_at?.slice(0, 10) ?? "—",
+        v: (p.values ?? null) as Record<string, unknown> | null,
+      }))
+      .reverse();
+    return cols.length ? { cols } : null;
+  }, [panelsNewestFirst]);
+
+  const usingDemoTrend = useMemo(() => {
+    const nReal = panels
+      .filter((p) => p.type === "blood")
+      .map(rowFromBloodPanel)
+      .filter((r): r is NonNullable<typeof r> => r != null).length;
+    return SHOW_HEALTH_DEMO_FALLBACK_DATA && nReal < 1;
+  }, [panels]);
+
+  const latestPanelsByTypeForRaw = useMemo(() => {
+    const seen = new Set<string>();
+    const out: HealthPanelTimelineRow[] = [];
+    for (const p of panelsNewestFirst) {
+      if (seen.has(p.type)) continue;
+      seen.add(p.type);
+      if (structuredValuesFieldCount(p.values as Record<string, unknown> | null) > 0) out.push(p);
+    }
+    return out;
+  }, [panelsNewestFirst]);
+
+  const latestInflammation = useMemo(
+    () => findLatestUsefulPanel((p) => p.type === "inflammation"),
+    [findLatestUsefulPanel],
+  );
+  const latestMicrobiota = useMemo(
+    () => findLatestUsefulPanel((p) => p.type === "microbiota"),
+    [findLatestUsefulPanel],
+  );
+  const latestHormones = useMemo(() => findLatestUsefulPanel((p) => isHormonePanelType(p.type)), [findLatestUsefulPanel]);
+  const latestEpigenetics = useMemo(
+    () => findLatestUsefulPanel((p) => p.type === "epigenetics"),
+    [findLatestUsefulPanel],
+  );
+  const latestOxidative = useMemo(
+    () => findLatestUsefulPanel((p) => p.type === "oxidative_stress"),
+    [findLatestUsefulPanel],
+  );
+
+  const inflammationRadar = useMemo(() => inflammationRadarFromPanel(latestInflammation), [latestInflammation]);
+  const microbiotaRadar = useMemo(() => microbiotaRadarFromPanel(latestMicrobiota), [latestMicrobiota]);
+  const hormonesBar = useMemo(() => hormonesBarFromPanel(latestHormones), [latestHormones]);
+  const epigeneticRings = useMemo(() => epigeneticRingsFromPanel(latestEpigenetics), [latestEpigenetics]);
+  const epigeneticRadar = useMemo(() => epigeneticRadarFromPanel(latestEpigenetics), [latestEpigenetics]);
+  const epigeneticTrend = useMemo(() => {
+    const fromDb = panels
+      .filter((p) => p.type === "epigenetics")
+      .map(rowFromEpigeneticTrendPanel)
+      .filter((r): r is NonNullable<typeof r> => r != null)
+      .reverse();
+    if (fromDb.length >= 1) return { rows: fromDb, isDemo: false as const };
+    if (SHOW_HEALTH_DEMO_FALLBACK_DATA) return { rows: DEMO_EPIGENETIC_TREND, isDemo: true as const };
+    return { rows: fromDb, isDemo: false as const };
+  }, [panels]);
+  const oxidativeRadar = useMemo(() => oxidativeStressRadarFromPanel(latestOxidative), [latestOxidative]);
+  const endocrineRadar = useMemo(() => endocrineRadarFromPanel(latestHormones), [latestHormones]);
+
+  const globalScores = useMemo(() => {
+    const blood = findLatestUsefulPanel((p) => p.type === "blood");
+    const micro = findLatestUsefulPanel((p) => p.type === "microbiota");
+    const epi = findLatestUsefulPanel((p) => p.type === "epigenetics");
+    const pick = (row: HealthPanelTimelineRow | undefined, keys: string[], demoFallback: number): number | null => {
+      const n = readNum((row?.values as Record<string, unknown>) ?? null, keys);
+      if (n != null) return Math.round(Math.min(100, Math.max(0, n)));
+      return SHOW_HEALTH_DEMO_FALLBACK_DATA ? demoFallback : null;
+    };
+    return {
+      ematici: pick(blood, ["health_score_ematici", "score_ematici"], 92),
+      microbiota: pick(micro, ["health_score_microbiota", "score_microbiota", "diversity_score"], 88),
+      epigenetica: pick(epi, ["health_score_epigenetica", "score_epigenetica"], 85),
+      totale: pick(blood, ["health_score_totale", "score_totale"], 90),
+    };
+  }, [findLatestUsefulPanel]);
+
+  async function onPickFile(panelType: string, file: File | null) {
+    if (!file || !athleteId) return;
+    setUploadBusy(panelType);
+    setToast(null);
+    const res = await uploadHealthDocument({
+      athleteId,
+      panelType,
+      sampleDate,
+      file,
+    });
+    setUploadBusy(null);
+    if (!res.ok) {
+      setToast(res.error ?? "Errore upload");
+      return;
+    }
+    setToast(res.message ?? "Caricamento registrato.");
+    void loadTimeline();
+    /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma. */
+    if (res.reviewUrl) {
+      setTimeout(() => {
+        window.location.assign(res.reviewUrl as string);
+      }, 600);
+    }
+  }
+
+  async function onAnalyzePanelWithAi(panelId: string) {
+    if (!athleteId || !panelId) return;
+    setAnalyzeBusyPanelId(panelId);
+    setToast(null);
+    const res = await analyzePanelWithAi({ panelId, athleteId });
+    setAnalyzeBusyPanelId(null);
+    if (!res.ok) {
+      setToast(res.error ?? "Analisi AI fallita");
+      return;
+    }
+    setToast(res.message ?? "Analisi AI avviata.");
+    void loadTimeline();
+    if (res.reviewUrl) {
+      setTimeout(() => {
+        window.location.assign(res.reviewUrl as string);
+      }, 600);
+    }
+  }
+
+  async function onBulkReanalyze() {
+    if (!athleteId) return;
+    setBulkBusy(true);
+    setToast(null);
+    const res = await bulkReanalyzePanelsWithAi({ athleteId });
+    setBulkBusy(false);
+    if (!res.ok) {
+      setToast(res.error ?? "Bulk re-analyze fallito");
+      return;
+    }
+    setToast(res.message ?? "Bulk re-analyze completato.");
+    void loadTimeline();
+  }
+
+  async function onPatchStagingRun(runId: string, status: HealthStagingRunAction) {
+    if (!runId) return;
+    setStagingBusy(`${runId}:${status}`);
+    setToast(null);
+    const res = await patchHealthStagingRun({
+      runId,
+      status,
+      reason:
+        status === "committed"
+          ? "Validato da Health System Map"
+          : status === "rejected"
+            ? "Scartato da Health System Map"
+            : "Archiviato da Health System Map",
+    });
+    setStagingBusy(null);
+    if (!res.ok) {
+      setToast(res.error ?? "Aggiornamento staging fallito");
+      return;
+    }
+    setToast(status === "committed" ? "Staging validato." : status === "rejected" ? "Staging scartato." : "Staging archiviato.");
+    void loadTimeline();
+  }
+
+  if (ctxLoading) {
+    return (
+      <div className="min-h-[40vh] px-6 py-16 text-center text-sm text-zinc-500">Caricamento contesto atleta…</div>
+    );
+  }
+
+  if (!athleteId) {
+    return (
+      <Pro2ModulePageShell
+        eyebrow="Health & Bio"
+        eyebrowClassName={moduleEyebrowClass("health")}
+        title="Diagnostica e longevità"
+        description="Seleziona un atleta attivo (Accesso / Athletes) per importare esami e vedere l’archivio."
+      >
+        <p className="text-sm text-amber-200/90">Nessun atleta attivo.</p>
+      </Pro2ModulePageShell>
+    );
+  }
+
+  return (
+    <Pro2ModulePageShell
+      eyebrow="EMPATHY PRO 2.0"
+      eyebrowClassName="bg-gradient-to-r from-fuchsia-400 to-orange-400 bg-clip-text text-transparent"
+      title="Health & Bio Analysis"
+      description={
+        <span className="flex flex-wrap items-center gap-2 text-zinc-400">
+          <Heart className="inline h-4 w-4 text-rose-400" strokeWidth={2} />
+          <span>Diagnostica avanzata · memoria atleta · trend</span>
+          <Sparkles className="inline h-4 w-4 text-violet-400" strokeWidth={2} />
+        </span>
+      }
+    >
+      <p className="text-center font-mono text-[0.6rem] font-bold uppercase tracking-[0.35em] text-fuchsia-300/90">
+        Sangue · Microbiota · Epigenetica · Ormoni · Infiammazione · Stress
+      </p>
+
+      <div id="health-import" className="scroll-mt-24">
+        <button
+          type="button"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_0_40px_rgba(168,85,247,0.35)] transition hover:brightness-110"
+          onClick={() => document.getElementById("health-import-grid")?.scrollIntoView({ behavior: "smooth" })}
+        >
+          <Upload className="h-5 w-5" strokeWidth={2.5} />
+          Importazione esami
+          <Upload className="h-5 w-5" strokeWidth={2.5} />
+        </button>
+
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-zinc-500">
+          <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-2">
+            Data campione
+            <input
+              type="date"
+              className="rounded border border-white/10 bg-zinc-900 px-2 py-1 text-white"
+              value={sampleDate}
+              onChange={(e) => setSampleDate(e.target.value)}
+            />
+          </label>
+          {timelineErr ? <span className="text-amber-400">{timelineErr}</span> : null}
+          {loadingTimeline ? <span>Sync archivio…</span> : null}
+        </div>
+      </div>
+
+      {/* Health score globale */}
+      <section
+        className="rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-950/20 to-black/80 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        aria-label="Health score globale"
+      >
+        <h2 className="text-center font-mono text-[0.7rem] font-bold uppercase tracking-[0.28em] text-fuchsia-300">
+          Health score globale
+        </h2>
+        {!SHOW_HEALTH_DEMO_FALLBACK_DATA ? (
+          <p className="mx-auto mt-3 max-w-lg text-center text-[0.7rem] text-zinc-500">
+            In produzione i punteggi sintetici compaiono solo se presenti nei referti caricati — niente valori demo.
+          </p>
+        ) : null}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {([
+            { k: "Ematici", v: globalScores.ematici, border: "border-red-500/50", bg: "bg-red-950/40", text: "text-rose-200" },
+            { k: "Microbiota", v: globalScores.microbiota, border: "border-emerald-500/50", bg: "bg-emerald-950/40", text: "text-emerald-200" },
+            { k: "Epigenetica", v: globalScores.epigenetica, border: "border-violet-500/50", bg: "bg-violet-950/40", text: "text-violet-200" },
+            { k: "Score totale", v: globalScores.totale, border: "border-orange-500/50", bg: "bg-orange-950/40", text: "text-orange-200" },
+          ] satisfies Array<{ k: string; v: number | null; border: string; bg: string; text: string }>).map((c) => (
+            <div
+              key={c.k}
+              className={`rounded-xl border ${c.border} ${c.bg} px-4 py-5 text-center shadow-inner`}
+            >
+              <div className={`text-3xl font-black ${c.text}`}>{c.v ?? "—"}</div>
+              <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{c.k}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {bloodLatestStructuredRow || latestPanelsByTypeForRaw.some((p) => p.type !== "blood") ? (
+        <section
+          className="rounded-2xl border border-fuchsia-500/25 bg-black/45 p-6"
+          aria-label="Valori ultimo referto per tipo"
+        >
+          <h2 className="text-center font-mono text-[0.68rem] font-bold uppercase tracking-[0.28em] text-fuchsia-300">
+            Ultimo referto caricato · valori estratti
+          </h2>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-[0.7rem] text-zinc-500">
+            Un solo esame basta: qui vedi i campi strutturati dell&apos;ultimo panel per ogni tipo. I grafici di trend sotto si
+            riempiono quando ci sono più punti nel tempo.
+          </p>
+          <div className="mt-5 space-y-4">
+            {bloodLatestStructuredRow ? (
+              <BloodSnapshotTable
+                row={bloodLatestStructuredRow}
+                sampleLabel={newestBloodPanel?.sample_date ?? newestBloodPanel?.created_at?.slice(0, 10) ?? null}
+              />
+            ) : newestBloodPanel && structuredValuesFieldCount(newestBloodPanel.values as Record<string, unknown> | null) > 0 ? (
+              <RawPanelValuesCard panel={newestBloodPanel} title="blood" className="border-fuchsia-500/15" />
+            ) : null}
+            {latestPanelsByTypeForRaw
+              .filter((p) => p.type !== "blood")
+              .map((p) => (
+                <RawPanelValuesCard
+                  key={p.type}
+                  panel={p}
+                  title={p.type.replace(/_/g, " ")}
+                  className="border-fuchsia-500/15"
+                />
+              ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="rounded-2xl border border-cyan-500/30 bg-cyan-950/10 p-6">
+        <h2 className="font-mono text-[0.68rem] font-bold uppercase tracking-[0.24em] text-cyan-300">
+          System map 360 · interazioni cross-area
+        </h2>
+        <p className="mt-2 text-xs text-zinc-400">
+          Nodi, archi causali e risposte bioenergetiche derivati dall&apos;estrazione normalizzata. Staging run incluse per il gate
+          di interpretazione.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { k: "Nodi", v: systemMap.nodes.length, border: "border-cyan-500/40", bg: "bg-cyan-950/35", text: "text-cyan-200" },
+            { k: "Archi", v: systemMap.edges.length, border: "border-violet-500/40", bg: "bg-violet-950/35", text: "text-violet-200" },
+            {
+              k: "Bioenergetis",
+              v: systemMap.bioenergeticsResponses.length,
+              border: "border-amber-500/40",
+              bg: "bg-amber-950/35",
+              text: "text-amber-200",
+            },
+            {
+              k: "Staging runs",
+              v: systemMap.stagingRuns.length,
+              border: "border-rose-500/40",
+              bg: "bg-rose-950/35",
+              text: "text-rose-200",
+            },
+          ].map((c) => (
+            <div key={c.k} className={`rounded-xl border ${c.border} ${c.bg} px-4 py-4 text-center`}>
+              <div className={`text-2xl font-black ${c.text}`}>{c.v}</div>
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{c.k}</div>
+            </div>
+          ))}
+        </div>
+        {systemMapErr ? <p className="mt-3 text-xs text-amber-300/90">{systemMapErr}</p> : null}
+        <details className="mt-4 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-zinc-300">
+            Dettaglio nodi e archi
+          </summary>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-cyan-300/90">Nodi attivi</p>
+              <div className="space-y-2">
+                {systemMap.nodes.slice(0, 12).map((n, i) => (
+                  <div key={`node-${i}-${String(n.id ?? n.node_key ?? i)}`} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs">
+                    <div className="font-semibold text-zinc-100">{String(n.label ?? n.node_key ?? "node")}</div>
+                    <div className="text-zinc-400">{String(n.area ?? "area")} · {String(n.observed_at ?? n.created_at ?? "n/d")}</div>
+                  </div>
+                ))}
+                {!systemMap.nodes.length ? <p className="text-xs text-zinc-500">Nessun nodo disponibile.</p> : null}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Archi causali</p>
+              <div className="space-y-2">
+                {systemMap.edges.slice(0, 12).map((e, i) => (
+                  <div key={`edge-${i}-${String(e.id ?? i)}`} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs">
+                    <div className="font-semibold text-zinc-100">
+                      {String(e.from_node_key ?? "?")} → {String(e.to_node_key ?? "?")}
+                    </div>
+                    <div className="text-zinc-400">
+                      {String(e.effect_sign ?? "modulate")} · conf {typeof e.confidence === "number" ? e.confidence.toFixed(2) : "n/d"} ·{" "}
+                      {String(e.rule_key ?? "rule-less")}
+                    </div>
+                  </div>
+                ))}
+                {!systemMap.edges.length ? <p className="text-xs text-zinc-500">Nessun arco disponibile.</p> : null}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-amber-300/90">Bioenergetis responses</p>
+              <div className="space-y-2">
+                {systemMap.bioenergeticsResponses.slice(0, 8).map((r, i) => (
+                  <div key={`bio-${i}-${String(r.id ?? i)}`} className="rounded-lg border border-amber-500/25 bg-amber-950/20 px-2.5 py-2 text-xs">
+                    <div className="font-semibold text-amber-100">{String(r.title ?? r.response_key ?? "response")}</div>
+                    <div className="text-amber-200/80">{String(r.category ?? "risk")} · {String(r.severity ?? "n/d")}</div>
+                  </div>
+                ))}
+                {!systemMap.bioenergeticsResponses.length ? <p className="text-xs text-zinc-500">Nessuna risposta bioenergetica.</p> : null}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-rose-300/90">Interpretation staging</p>
+              <div className="space-y-2">
+                {systemMap.stagingRuns.slice(0, 8).map((s, i) => {
+                  const runId = typeof s.id === "string" ? s.id : null;
+                  const triggerSource = typeof s.trigger_source === "string" ? s.trigger_source : "";
+                  const isVlmReview = triggerSource === "health_upload_vlm" && s.status === "pending_validation";
+                  return (
+                    <div
+                      key={`staging-${i}-${String(s.id ?? i)}`}
+                      className={`rounded-lg border px-2.5 py-2 text-xs ${
+                        isVlmReview
+                          ? "border-fuchsia-500/40 bg-fuchsia-950/30"
+                          : "border-rose-500/25 bg-rose-950/20"
+                      }`}
+                    >
+                      <div className={`font-semibold ${isVlmReview ? "text-fuchsia-100" : "text-rose-100"}`}>
+                        {String(s.domain ?? "domain")} · {String(s.status ?? "status")}
+                        {isVlmReview ? <span className="ml-2 text-[10px] uppercase tracking-wider text-fuchsia-300">VLM</span> : null}
+                      </div>
+                      <div className={isVlmReview ? "text-fuchsia-200/80" : "text-rose-200/80"}>
+                        conf {typeof s.confidence === "number" ? s.confidence.toFixed(2) : "n/d"} · {String(s.created_at ?? "n/d")}
+                      </div>
+                      {runId ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {isVlmReview ? (
+                            <a
+                              href={`/health/staging/${runId}`}
+                              className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
+                            >
+                              Apri review
+                            </a>
+                          ) : null}
+                          {[
+                            { status: "committed" as const, label: "Valida" },
+                            { status: "rejected" as const, label: "Scarta" },
+                            { status: "archived" as const, label: "Archivia" },
+                          ].map((action) => {
+                            const busy = stagingBusy === `${runId}:${action.status}`;
+                            return (
+                              <button
+                                key={action.status}
+                                type="button"
+                                disabled={Boolean(stagingBusy)}
+                                onClick={() => void onPatchStagingRun(runId, action.status)}
+                                className="rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-100 transition hover:border-rose-300/50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {busy ? "..." : action.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+                {!systemMap.stagingRuns.length ? <p className="text-xs text-zinc-500">Nessuna run staging recente.</p> : null}
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      {/* Griglia importazione */}
+      <div id="health-import-grid" className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 scroll-mt-24">
+        {IMPORT_CARDS.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              key={card.panelType}
+              className="flex flex-col overflow-hidden rounded-2xl border border-purple-500/25 bg-black/50 shadow-[0_0_0_1px_rgba(168,85,247,0.08)]"
+            >
+              <div
+                className={`flex items-center gap-2 bg-gradient-to-r px-4 py-3 ${card.gradient}`}
+              >
+                <Icon className="h-5 w-5 text-white" strokeWidth={2} />
+                <h3 className="text-sm font-bold uppercase tracking-wide text-white">{card.title}</h3>
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <p className="text-xs text-zinc-400">{card.desc}</p>
+                <p className="mt-3 font-mono text-[0.55rem] font-bold uppercase tracking-wider text-zinc-500">
+                  Parametri analizzati
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {card.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-md border border-purple-500/30 bg-purple-950/30 px-2 py-0.5 text-[10px] text-zinc-300"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <input
+                  ref={(el) => {
+                    fileRefs.current[card.panelType] = el;
+                  }}
+                  type="file"
+                  accept=".pdf,image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    void onPickFile(card.panelType, f ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-auto w-full justify-center border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-600/80 to-pink-600/80 text-white hover:brightness-110"
+                  disabled={uploadBusy === card.panelType}
+                  onClick={() => fileRefs.current[card.panelType]?.click()}
+                >
+                  {uploadBusy === card.panelType ? (
+                    "Invio…"
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Carica esame
+                    </>
+                  )}
+                </Pro2Button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {toast ? (
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-4 py-2 text-center text-sm text-emerald-200">
+          {toast}
+        </p>
+      ) : null}
+
+      {/* Epigenetica — anelli + radar pathway + trend */}
+      <section className="space-y-6 rounded-2xl border border-violet-500/30 bg-black/40 p-6">
+        <div>
+          <div className="mb-1 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-blue-600 bg-clip-text text-transparent">
+            <Dna className="h-5 w-5 text-violet-400" />
+            <h2 className="text-lg font-bold text-violet-200">Epigenetica · metilazione e pathway</h2>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Anelli percentuali, radar sintetico e trend temporale (da panel <code className="text-violet-300/90">epigenetics</code>).
+            {epigeneticRadar.isDemo && epigeneticTrend.isDemo ? " Dati demo finché mancano valori strutturati." : ""}
+          </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-violet-300/90">
+              Profilo a ciambelle
+            </h3>
+            <div className="h-[260px] w-full">
+              {epigeneticRings.length === 0 ? (
+                latestEpigenetics && panelRawDisplayRows(latestEpigenetics).length > 0 ? (
+                  <div className="flex h-full flex-col justify-center space-y-2 px-2 text-center">
+                    <p className="text-xs text-zinc-500">
+                      Nessun campo mappabile agli anelli standard; valori caricati nell&apos;ultimo referto:
+                    </p>
+                    <RawPanelValuesCard panel={latestEpigenetics} className="border-violet-500/20 text-left" />
+                  </div>
+                ) : (
+                  <p className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
+                    Carica un panel <code className="mx-1 text-violet-300/90">epigenetics</code> per questo profilo.
+                  </p>
+                )
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="20%"
+                    outerRadius="100%"
+                    data={epigeneticRings.map((r) => ({ ...r, fill: r.fill }))}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <RadialBar background dataKey="value" cornerRadius={6} />
+                    <Tooltip
+                      formatter={(v: number) => [`${v}%`, ""]}
+                      contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(167,139,250,0.35)" }}
+                    />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {epigeneticRings.map((r) => (
+                <div
+                  key={r.name}
+                  className="rounded-lg border border-white/10 px-2 py-2 text-center"
+                  style={{ borderColor: `${r.fill}55` }}
+                >
+                  <div className="text-[10px] uppercase text-zinc-500">{r.name}</div>
+                  <div className="text-lg font-black" style={{ color: r.fill }}>
+                    {r.value}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-violet-300/90">
+              Pathway · radar
+            </h3>
+            <div className="h-[300px] w-full overflow-y-auto">
+              {epigeneticRadar.rows.length === 0 ? (
+                latestEpigenetics && panelRawDisplayRows(latestEpigenetics).length > 0 ? (
+                  <div className="space-y-2 px-2">
+                    <p className="text-center text-xs text-zinc-500">
+                      Nessun pathway nel radar sugli indicatori previsti — campi presenti nell&apos;estratto:
+                    </p>
+                    <RawPanelValuesCard panel={latestEpigenetics} className="border-violet-500/20" />
+                  </div>
+                ) : (
+                  <p className="flex min-h-[280px] items-center justify-center px-4 text-center text-sm text-zinc-500">
+                    Nessun dato numerico epigenetico strutturato — importa un referto{' '}
+                    <code className="mx-1 text-violet-300/90">epigenetics</code>.
+                  </p>
+                )
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="78%" data={epigeneticRadar.rows}>
+                    <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: "#c4b5fd", fontSize: 9 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 9 }} />
+                    <Radar name="Score" dataKey="A" stroke="#a855f7" fill="#a855f7" fillOpacity={0.35} strokeWidth={2} />
+                    <Tooltip
+                      contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(168,85,247,0.4)" }}
+                      formatter={(v: number) => [`${Math.round(v)}`, ""]}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-fuchsia-300/90">
+            Trend metilazione / detox / riparazione
+            {epigeneticTrend.isDemo ? " (demo)" : ""}
+          </h3>
+          {!epigeneticTrend.isDemo && epigeneticTrend.rows.length === 1 ? (
+            <p className="mb-2 px-3 text-center text-xs leading-relaxed text-zinc-500">
+              Hai un solo referto con metilazione / detox / riparazione: compaia anche nell&apos;area chart sotto come singolo punto. Per
+              un confronto temporale servono più estratti; i campi grezzi sono nella sezione &quot;Ultimo referto caricato&quot; sopra.
+            </p>
+          ) : null}
+          <div className="min-h-[260px] w-full">
+            {epigeneticTrend.rows.length === 0 ? (
+              latestEpigenetics && panelRawDisplayRows(latestEpigenetics).length > 0 ? (
+                <div className="space-y-3 px-2">
+                  <p className="text-center text-xs text-zinc-500">
+                    Nessun marker metilazione / detox / riparazione mappabile per questo grafico. Valori caricati nell&apos;ultimo referto{' '}
+                    <code className="text-violet-300/90">epigenetics</code>:
+                  </p>
+                  <RawPanelValuesCard panel={latestEpigenetics} className="border-violet-500/20" />
+                </div>
+              ) : (
+                <p className="flex min-h-[220px] items-center justify-center px-4 text-center text-sm text-zinc-500">
+                  Carica almeno un panel <code className="mx-1 text-violet-300/90">epigenetics</code> con metilazione, detox e riparazione
+                  strutturati — il confronto nel tempo partirà dal secondo referto compatibile.
+                </p>
+              )
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={epigeneticTrend.rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="epiMeth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#a855f7" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="epiDetox" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="epiRep" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(217,70,239,0.35)" }}
+                />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="metilazione"
+                  name="Metilazione"
+                  stroke="#a855f7"
+                  fill="url(#epiMeth)"
+                  strokeWidth={2}
+                  connectNulls
+                />
+                <Area
+                  type="monotone"
+                  dataKey="detox"
+                  name="Detox"
+                  stroke="#22c55e"
+                  fill="url(#epiDetox)"
+                  strokeWidth={2}
+                  connectNulls
+                />
+                <Area
+                  type="monotone"
+                  dataKey="riparazione"
+                  name="Riparazione"
+                  stroke="#3b82f6"
+                  fill="url(#epiRep)"
+                  strokeWidth={2}
+                  connectNulls
+                />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Endocrino — radar equilibrio + bar referto */}
+      <section className="rounded-2xl border border-orange-500/35 bg-black/40 p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Heart className="h-5 w-5 text-orange-400" />
+          <h2 className="text-lg font-bold text-orange-200">Sistema endocrino</h2>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Radar funzionale (HPA, HPG, tiroide, DHEA, IGF-1) e barre con valori di referto dal panel{" "}
+          <code className="text-orange-300/90">hormones</code>.
+          {endocrineRadar.isDemo && hormonesBar.isDemo ? " Dati demo finché mancano numeri." : ""}
+        </p>
+        {latestHormones && panelRawDisplayRows(latestHormones).length > 0 && (endocrineRadar.rows.length === 0 || hormonesBar.rows.length === 0) ? (
+          <RawPanelValuesCard
+            panel={latestHormones}
+            title="hormones — valori dal referto caricato"
+            className="mt-6 border-orange-500/25"
+          />
+        ) : null}
+        <div className="mt-6 grid gap-8 lg:grid-cols-2">
+          <div>
+            <h3 className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-orange-300/90">
+              Equilibrio assi
+            </h3>
+            <div className="h-[300px] w-full">
+              {endocrineRadar.rows.length === 0 ? (
+                <p className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
+                  {latestHormones && panelRawDisplayRows(latestHormones).length > 0 ? (
+                    <>
+                      Dati strutturati nella scheda sopra. Il radar richiede campi mappati (cortisolo AM/PM, testosterone, TSH, DHEA,
+                      IGF-1).
+                    </>
+                  ) : (
+                    <>
+                      Carica un panel <code className="mx-1 text-orange-200/90">hormones</code> con numeri strutturati.
+                    </>
+                  )}
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="78%" data={endocrineRadar.rows}>
+                    <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: "#fdba74", fontSize: 9 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 9 }} />
+                    <Radar name="Score" dataKey="A" stroke="#fb923c" fill="#fb923c" fillOpacity={0.32} strokeWidth={2} />
+                    <Tooltip
+                      contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(251,146,60,0.4)" }}
+                      formatter={(v: number) => [`${Math.round(v)}`, ""]}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+          <div>
+            <h3 className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-orange-300/90">
+              Valori ormonali (referto)
+            </h3>
+            <div className="h-[300px] w-full">
+              {hormonesBar.rows.length === 0 ? (
+                <p className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
+                  {latestHormones && panelRawDisplayRows(latestHormones).length > 0 ? (
+                    <>
+                      Valori nella scheda sopra rispetto a questa sezione. Le barre usano gli ormoni mappati (cortisolo AM/PM, testosterone,
+                      TSH, T3/T4 libere).
+                    </>
+                  ) : (
+                    <>
+                      Nessun dato ormonale strutturato — importa un referto <code className="mx-1 text-orange-200/90">hormones</code>.
+                    </>
+                  )}
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={hormonesBar.rows} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 9 }} angle={-20} textAnchor="end" height={64} />
+                    <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(249,115,22,0.35)" }}
+                      formatter={(v: number) => [v, ""]}
+                    />
+                    <Bar dataKey="val" name="Valore" fill="#ea580c" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stress ossidativo — radar */}
+      <section className="rounded-2xl border border-sky-500/35 bg-black/40 p-6">
+        <div className="mb-2 flex items-center gap-2">
+          <Zap className="h-5 w-5 text-sky-400" />
+          <h2 className="text-lg font-bold text-sky-200">Stress ossidativo · capacità antiossidante</h2>
+        </div>
+        <p className="text-xs text-zinc-500">
+          d-ROMs, BAP, glutatione, enzimi (panel <code className="text-sky-300/90">oxidative_stress</code>).{" "}
+          {oxidativeRadar.isDemo ? "Demo finché mancano valori." : ""}
+        </p>
+        <div className="mt-4 min-h-[300px] w-full max-w-lg mx-auto">
+          {oxidativeRadar.rows.length === 0 ? (
+            latestOxidative && panelRawDisplayRows(latestOxidative).length > 0 ? (
+              <div className="space-y-2 px-2">
+                <p className="text-center text-xs text-zinc-500">
+                  Nessun marker mappato al radar sugli indicatori previsti — valori caricati nell&apos;ultimo referto:
+                </p>
+                <RawPanelValuesCard panel={latestOxidative} title="oxidative stress" className="border-sky-500/25" />
+              </div>
+            ) : (
+              <p className="flex min-h-[280px] items-center justify-center px-4 text-center text-sm text-zinc-500">
+                Carica un panel <code className="mx-1 text-sky-300">oxidative_stress</code> per vedere questo radar.
+              </p>
+            )
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="78%" data={oxidativeRadar.rows}>
+                <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: "#7dd3fc", fontSize: 10 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 9 }} />
+                <Radar name="Score" dataKey="A" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(56,189,248,0.4)" }}
+                  formatter={(v: number) => [`${Math.round(v)}`, ""]}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </section>
+
+      {/* Infiammazione — radar */}
+      <section className="rounded-2xl border border-amber-500/30 bg-black/40 p-6">
+        <div className="mb-2 flex items-center gap-2">
+          <Flame className="h-5 w-5 text-amber-400" />
+          <h2 className="text-lg font-bold text-amber-200">Markers infiammatori</h2>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Radar · score sintetico (valori bassi = migliore){" "}
+          {inflammationRadar.isDemo ? "— demo finché manca un panel `inflammation` con numeri" : ""}
+        </p>
+        <div className="mt-4 min-h-[300px] w-full max-w-lg mx-auto">
+          {inflammationRadar.rows.length === 0 ? (
+            latestInflammation && panelRawDisplayRows(latestInflammation).length > 0 ? (
+              <div className="space-y-2 px-2">
+                <p className="text-center text-xs text-zinc-500">
+                  Nessun marker mappato agli assi PCR/IL-6 ecc. — valori caricati nell&apos;ultimo referto:
+                </p>
+                <RawPanelValuesCard panel={latestInflammation} title="inflammation" className="border-amber-500/25" />
+              </div>
+            ) : (
+              <p className="flex min-h-[280px] items-center justify-center px-4 text-center text-sm text-zinc-500">
+                Carica un panel <code className="mx-1 text-amber-200/90">inflammation</code> per questo grafico.
+              </p>
+            )
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="78%" data={inflammationRadar.rows}>
+                <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: "#a1a1aa", fontSize: 10 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 9 }} />
+                <Radar name="Score" dataKey="A" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(245,158,11,0.35)" }}
+                  formatter={(v: number) => [`${Math.round(v)}`, ""]}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </section>
+
+      {/* Microbiota — radar */}
+      <section className="rounded-2xl border border-emerald-500/30 bg-black/40 p-6">
+        <div className="mb-2 flex items-center gap-2">
+          <HeartPulse className="h-5 w-5 text-emerald-400" />
+          <h2 className="text-lg font-bold text-emerald-200">Composizione microbiota</h2>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Percentuali / diversità (asse 0–100){" "}
+          {microbiotaRadar.isDemo ? "— demo finché manca un panel `microbiota` con numeri" : ""}
+        </p>
+        <div className="mt-4 min-h-[300px] w-full max-w-lg mx-auto">
+          {microbiotaRadar.rows.length === 0 ? (
+            latestMicrobiota && panelRawDisplayRows(latestMicrobiota).length > 0 ? (
+              <div className="space-y-2 px-2">
+                <p className="text-center text-xs text-zinc-500">
+                  Composizioni attese non trovate con i nomi chiave Firmicutes/Bacteroidetes ecc. — valori caricati:
+                </p>
+                <RawPanelValuesCard panel={latestMicrobiota} title="microbiota" className="border-emerald-500/25" />
+              </div>
+            ) : (
+              <p className="flex min-h-[280px] items-center justify-center px-4 text-center text-sm text-zinc-500">
+                Carica un panel <code className="mx-1 text-emerald-200/90">microbiota</code> per questo grafico.
+              </p>
+            )
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="78%" data={microbiotaRadar.rows}>
+                <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: "#a1a1aa", fontSize: 10 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 9 }} />
+                <Radar name="Valore" dataKey="A" stroke="#34d399" fill="#34d399" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip
+                  contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(52,211,153,0.35)" }}
+                  formatter={(v: number) => [`${Math.round(v)}`, ""]}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </section>
+
+      {/* Storico + andamento ematici */}
+      <section id="health-storico" className="scroll-mt-24 space-y-4">
+        <div className="rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-3 text-center shadow-lg">
+          <h2 className="flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest text-white">
+            <Activity className="h-5 w-5" />
+            Storico esami del sangue
+            <Activity className="h-5 w-5" />
+          </h2>
+        </div>
+
+        <div className="rounded-2xl border border-rose-500/25 bg-black/50 p-5">
+          <h3 className="text-base font-bold text-pink-400">Andamento parametri ematici</h3>
+          <p className="text-xs text-zinc-500">Ultimi 6 mesi · valori principali {usingDemoTrend ? "(demo finché mancano ≥2 punti reali)" : ""}</p>
+          {bloodRowsChronological.length === 1 && !usingDemoTrend ? (
+            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+              Hai un solo referto ematico strutturato: i numeri sono nella sezione{' '}
+              <span className="text-zinc-200">Ultimo referto caricato · valori estratti</span> sopra. Il grafico comparativo nel
+              tempo compare automaticamente dopo il secondo referto.
+            </p>
+          ) : null}
+          <div className="mt-4 h-[320px] w-full">
+            {bloodLineChartData.length === 0 ? (
+              <p className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
+                {!bloodLatestStructuredRow
+                  ? "Importa un panel "
+                  : "Aggiungi un secondo referto ematico strutturato per il grafico nel tempo · "}
+                <code className="mx-1 text-rose-200/90">blood</code>
+                {!bloodLatestStructuredRow ? " per iniziare." : ""}
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={bloodLineChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(244,63,94,0.35)" }}
+                    labelStyle={{ color: "#fda4af" }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="emoglobina" name="Emoglobina (g/dL)" stroke="#f87171" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="ferritina" name="Ferritina (ng/mL)" stroke="#fb923c" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="vit_d" name="Vit. D (ng/mL)" stroke="#eab308" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="b12" name="B12 (pg/mL)" stroke="#4ade80" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="glicemia" name="Glicemia (mg/dL)" stroke="#60a5fa" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Matrici longitudinali: tabella per referto + allineamento ai grafici */}
+      {bloodComparisonMatrix.cols.length > 0 || microComparisonMatrix ? (
+        <section
+          className="scroll-mt-24 space-y-6 rounded-2xl border border-white/10 bg-zinc-950/50 p-6"
+          aria-label="Tabelle comparative esami"
+        >
+          <div>
+            <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.22em] text-cyan-300">
+              Esami · matrici longitudinali
+            </h2>
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-zinc-500">
+              Ogni colonna è un referto in archivio (data campione). Le righe sono gli stessi parametri usati dai grafici sopra, così
+              confronti valori nel tempo senza dipendere solo dal line chart.
+            </p>
+          </div>
+
+          {bloodComparisonMatrix.cols.length > 0 ? (
+            <div className="rounded-xl border border-rose-500/20 bg-black/35 p-4">
+              <h3 className="text-sm font-bold text-rose-200">Sangue — parametri chiave</h3>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[520px] border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-zinc-500">
+                      <th className="py-2 pr-3">Parametro</th>
+                      {bloodComparisonMatrix.cols.map((c) => (
+                        <th key={c.id} className="px-2 py-2 font-medium text-zinc-300">
+                          <div>{c.label}</div>
+                          {c.source ? (
+                            <div
+                              className="mt-0.5 max-w-[140px] truncate font-mono text-[9px] font-normal normal-case text-zinc-600"
+                              title={c.source}
+                            >
+                              {c.source.length > 24 ? `${c.source.slice(0, 24)}…` : c.source}
+                            </div>
+                          ) : null}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-zinc-100">
+                    {(
+                      [
+                        { k: "emoglobina" as const, label: "Emoglobina", unit: "g/dL" },
+                        { k: "ferritina" as const, label: "Ferritina", unit: "ng/mL" },
+                        { k: "vit_d" as const, label: "Vit. D", unit: "ng/mL" },
+                        { k: "b12" as const, label: "B12", unit: "pg/mL" },
+                        { k: "glicemia" as const, label: "Glicemia", unit: "mg/dL" },
+                      ] as const
+                    ).map((m) => (
+                      <tr key={m.k} className="border-b border-white/5">
+                        <td className="py-2 pr-3 text-zinc-400">{m.label}</td>
+                        {bloodComparisonMatrix.cols.map((c) => {
+                          const v = c.row[m.k];
+                          return (
+                            <td key={`${c.id}-${m.k}`} className="px-2 py-2 font-mono tabular-nums">
+                              {v == null ? "—" : `${v} ${m.unit}`}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+
+          {microComparisonMatrix ? (
+            <div className="rounded-xl border border-emerald-500/20 bg-black/35 p-4">
+              <h3 className="text-sm font-bold text-emerald-200">Microbiota — abbondanze / diversità</h3>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[480px] border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-zinc-500">
+                      <th className="py-2 pr-3">Indicatore</th>
+                      {microComparisonMatrix.cols.map((c) => (
+                        <th key={c.id} className="px-2 py-2 font-medium text-zinc-300">
+                          {c.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-zinc-100">
+                    {(
+                      [
+                        { keys: ["firmicutes_pct", "firmicutes"], label: "Firmicutes", unit: "%" },
+                        { keys: ["bacteroidetes_pct", "bacteroidetes"], label: "Bacteroidetes", unit: "%" },
+                        { keys: ["proteobacteria_pct", "proteobacteria"], label: "Proteobacteria", unit: "%" },
+                        { keys: ["actinobacteria_pct", "actinobacteria"], label: "Actinobacteria", unit: "%" },
+                        {
+                          keys: ["diversity_shannon", "diversity", "shannon_index", "shannon"],
+                          label: "Diversità (Shannon)",
+                          unit: "",
+                        },
+                      ] as const
+                    ).map((m) => (
+                      <tr key={m.label} className="border-b border-white/5">
+                        <td className="py-2 pr-3 text-zinc-400">{m.label}</td>
+                        {microComparisonMatrix.cols.map((c) => {
+                          const v = readNum(c.v, [...m.keys]);
+                          return (
+                            <td key={`${c.id}-${m.label}`} className="px-2 py-2 font-mono tabular-nums">
+                              {v == null ? "—" : m.unit ? `${v} ${m.unit}` : String(v)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* Archivio referti (fine pagina) */}
+      <section className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5" aria-label="Archivio referti">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-cyan-400">Archivio referti</h3>
+          {athleteId ? (
+            <span
+              className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400"
+              title={`athleteId attivo: ${athleteId}`}
+            >
+              athlete: {athleteId.slice(0, 8)}…
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1 text-xs text-zinc-500">
+          Pannelli da <code className="text-zinc-400">biomarker_panels</code> per l&apos;atleta attivo
+          {!loadingTimeline && !timelineErr ? ` · ${panels.length} in memoria` : ""}.
+        </p>
+        {!loadingTimeline && !timelineErr && archiveDiagnostics.total > 0 ? (
+          <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-950/15 p-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tracking-wider text-zinc-300">
+              <span>
+                <span className="text-emerald-300">{archiveDiagnostics.withCanonicalValues}</span>
+                <span className="text-zinc-500"> canonici</span>
+              </span>
+              <span>
+                <span className="text-fuchsia-300">{archiveDiagnostics.withProposalsOnly}</span>
+                <span className="text-zinc-500"> con proposte VLM (shadow)</span>
+              </span>
+              <span>
+                <span className="text-amber-300">{archiveDiagnostics.importOnly}</span>
+                <span className="text-zinc-500"> solo file (vuoti)</span>
+              </span>
+              {archiveDiagnostics.vlmPending > 0 ? (
+                <span>
+                  <span className="text-violet-300">{archiveDiagnostics.vlmPending}</span>
+                  <span className="text-zinc-500"> review da confermare</span>
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
+              Le card e i grafici qui sopra leggono i numeri da <code className="text-zinc-300">values</code> del pannello più
+              recente per tipo (es. <code>crp_mg_l</code>, <code>cortisol_am</code>, <code>firmicutes_pct</code>,{" "}
+              <code>methylation_score</code>) e in fallback dalle <code>vlm_proposals</code> non ancora confermate.{" "}
+              {archiveDiagnostics.withCanonicalValues + archiveDiagnostics.withProposalsOnly === 0
+                ? "Nessun referto ha numeri leggibili: carica un esame oppure applica un seed canonico."
+                : archiveDiagnostics.vlmPending > 0
+                  ? "Le review aperte aggiornano lo stato canonico in DB; finché non le confermi, i numeri sopra restano in modalità «proposto»."
+                  : "I grafici sono allineati alla memoria dell'atleta."}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={bulkBusy || archiveDiagnostics.bulkCandidates === 0}
+                onClick={() => void onBulkReanalyze()}
+                className="rounded-md border border-violet-400/60 bg-violet-600/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition hover:bg-violet-500/60 disabled:cursor-not-allowed disabled:opacity-50"
+                title={
+                  archiveDiagnostics.bulkCandidates > 0
+                    ? "Avvia bulk re-analyze sui file in storage"
+                    : "Nessun file riusabile (nessun referto con file in Storage e formato image/pdf)"
+                }
+              >
+                {bulkBusy
+                  ? "Analizzo in corso…"
+                  : archiveDiagnostics.bulkCandidates > 0
+                    ? `Trasforma ${archiveDiagnostics.bulkCandidates} file in proposte VLM`
+                    : "Trasforma file in proposte VLM (0 candidati)"}
+              </button>
+              <span className="text-[10px] text-zinc-500">
+                {archiveDiagnostics.bulkCandidates > 0
+                  ? "Convoglia i referti senza valori sulla pipeline canonica (Claude/GPT-4o vision); i numeri arrivano nei grafici come «shadow» e restano in attesa di conferma in review."
+                  : archiveDiagnostics.importOnlyNoStorage > 0
+                    ? `${archiveDiagnostics.importOnlyNoStorage} referti non hanno il file in Storage (caricati prima che il bucket fosse configurato, o upload fallito). Per analizzarli, ri-carica il file dal modulo «Carica esame» qui sopra.`
+                    : archiveDiagnostics.importOnlyUnsupported > 0
+                      ? `${archiveDiagnostics.importOnlyUnsupported} referti hanno un formato non supportato (solo image/* o application/pdf passano dal VLM).`
+                      : archiveDiagnostics.importOnly === 0
+                        ? "Tutti i referti hanno già valori canonici o proposte VLM: niente da rielaborare."
+                        : "Nessun candidato per il bulk (verifica che i referti abbiano un file image/pdf in Storage)."}
+              </span>
+            </div>
+          </div>
+        ) : null}
+        <ul className="mt-4 divide-y divide-white/10">
+          {loadingTimeline ? (
+            <li className="py-6 text-center text-sm text-zinc-500">Caricamento archivio…</li>
+          ) : null}
+          {!loadingTimeline && timelineErr ? (
+            <li className="py-4" role="alert">
+              <p className="rounded-lg border border-amber-500/35 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+                Lettura archivio non riuscita: {timelineErr}
+              </p>
+              {timelineDiag ? (
+                <div className="mt-2 space-y-1 text-xs text-zinc-500">
+                  {timelineDiag.requestedAthleteId ? (
+                    <p>
+                      Atleta richiesto:{" "}
+                      <code className="text-zinc-300">{timelineDiag.requestedAthleteId}</code>
+                    </p>
+                  ) : null}
+                  {timelineDiag.userProfileAthleteId &&
+                  timelineDiag.userProfileAthleteId !== timelineDiag.requestedAthleteId ? (
+                    <p className="text-amber-300/90">
+                      Atleta collegato al tuo profilo:{" "}
+                      <code className="text-amber-100">{timelineDiag.userProfileAthleteId}</code>{" "}
+                      — l&apos;atleta attivo nella UI non corrisponde. Apri Athletes / Accesso e
+                      seleziona quello con i referti, oppure rilancia il seed SQL su{" "}
+                      <code className="text-amber-100">{timelineDiag.requestedAthleteId}</code>.
+                    </p>
+                  ) : null}
+                  {timelineDiag.errorCode ? (
+                    <p className="text-zinc-600">
+                      Codice: <code className="text-zinc-400">{timelineDiag.errorCode}</code>
+                      {typeof timelineDiag.httpStatus === "number"
+                        ? ` · HTTP ${timelineDiag.httpStatus}`
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-zinc-500">
+                  Se il problema persiste, esci e rientra oppure verifica che l&apos;atleta selezionato sia quello con i referti in
+                  database.
+                </p>
+              )}
+              <Pro2Button
+                type="button"
+                variant="secondary"
+                className="mt-3 border-white/15 text-xs"
+                onClick={() => void loadTimeline()}
+              >
+                Riprova
+              </Pro2Button>
+            </li>
+          ) : null}
+          {!loadingTimeline && !timelineErr && panels.length === 0 ? (
+            <li className="py-6 text-center text-sm text-zinc-500">
+              Nessun referto in archivio per questo atleta. Usa «Carica esame» sopra, oppure applica lo seed SQL sullo stesso{" "}
+              <code className="text-zinc-400">athlete_id</code> attivo
+              {athleteId ? (
+                <>
+                  {" "}(<code className="text-zinc-400">{athleteId}</code>)
+                </>
+              ) : null}
+              .
+            </li>
+          ) : null}
+          {!loadingTimeline &&
+            panels.map((p) => {
+              const vals = (p.values ?? null) as Record<string, unknown> | null;
+              const imp = vals?.import as
+                | { filename?: string; status?: string; storage_path?: string; mime?: string }
+                | undefined;
+              const nFields = structuredValuesFieldCount(vals);
+              const expanded = expandedPanelId === p.id;
+              const reviewRunId = pendingVlmRunByPanelId.get(p.id) ?? null;
+              const importStatus = imp?.status ?? "";
+              const mimeLower = (imp?.mime ?? "").toLowerCase();
+              const hasImage = mimeLower.startsWith("image/");
+              const hasPdf = mimeLower === "application/pdf" || (imp?.filename ?? "").toLowerCase().endsWith(".pdf");
+              const hasStorage = Boolean(imp?.storage_path);
+              const canAnalyzeWithAi =
+                hasStorage &&
+                (hasImage || hasPdf) &&
+                ["needs_manual_review", "failed", undefined, ""].includes(importStatus) &&
+                reviewRunId == null;
+              const isPendingVlm =
+                Boolean(vals?.vlm_pending_validation) || importStatus === "vlm_proposed" || reviewRunId != null;
+              const valueEntries =
+                vals && typeof vals === "object"
+                  ? Object.entries(vals)
+                      .filter(([k]) => k !== "import" && k !== "vlm_proposals")
+                      .filter(([, v]) => v !== null && typeof v !== "object")
+                      .slice(0, 24)
+                  : [];
+              const analyzing = analyzeBusyPanelId === p.id;
+              return (
+                <li
+                  key={p.id}
+                  className={`py-4 text-sm ${
+                    isPendingVlm ? "border-l-2 border-fuchsia-500/40 pl-3" : ""
+                  }`}
+                >
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1.25fr)_auto_minmax(0,1.5fr)] sm:items-start sm:gap-x-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold capitalize text-white">{p.type}</span>
+                        {isPendingVlm ? (
+                          <span className="rounded-md border border-fuchsia-500/40 bg-fuchsia-950/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-fuchsia-200">
+                            VLM pending
+                          </span>
+                        ) : null}
+                        {nFields > 0 ? (
+                          <span className="rounded-md border border-emerald-500/30 bg-emerald-950/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-emerald-200">
+                            {nFields} campi
+                          </span>
+                        ) : null}
+                      </div>
+                      <div
+                        className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-wider text-zinc-500"
+                        title={p.source ?? ""}
+                      >
+                        {p.source ? `Sorgente: ${p.source}` : "Sorgente: —"}
+                      </div>
+                    </div>
+                    <div className="whitespace-nowrap font-mono text-xs text-zinc-400">
+                      {p.sample_date ?? p.reported_at?.slice(0, 10) ?? p.created_at?.slice(0, 10) ?? "—"}
+                    </div>
+                    <div className="min-w-0 break-words text-xs text-zinc-400">
+                      {imp?.filename ? (
+                        <>
+                          <span className="text-zinc-200">{imp.filename}</span>
+                          <span className="text-zinc-500"> · {imp.status ?? "—"}</span>
+                          {imp.storage_path ? (
+                            <span className="block truncate text-zinc-600">{imp.storage_path}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span>
+                          Valori strutturati{nFields > 0 ? ` · ${nFields} campi` : ""}
+                          {nFields === 0 ? " (payload vuoto o solo import)" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Azioni */}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPanelId(expanded ? null : p.id)}
+                      className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-200 transition hover:border-fuchsia-500/40 hover:text-white"
+                    >
+                      {expanded ? "Chiudi" : "Apri"}
+                    </button>
+                    {reviewRunId ? (
+                      <a
+                        href={`/health/staging/${reviewRunId}`}
+                        className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
+                      >
+                        Apri review
+                      </a>
+                    ) : null}
+                    {canAnalyzeWithAi ? (
+                      <button
+                        type="button"
+                        disabled={analyzing}
+                        onClick={() => void onAnalyzePanelWithAi(p.id)}
+                        className="rounded-md border border-violet-400/50 bg-violet-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-violet-500/60 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {analyzing ? "Analizzo…" : "Analizza con AI"}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {/* Dettagli espansi */}
+                  {expanded ? (
+                    <div className="mt-3 rounded-lg border border-white/10 bg-black/40 p-3">
+                      {valueEntries.length === 0 ? (
+                        <p className="text-xs text-zinc-500">
+                          Nessun valore strutturato in questo pannello. Se hai un file in storage, prova «Analizza con AI».
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+                          {valueEntries.map(([k, v]) => (
+                            <div key={k} className="min-w-0">
+                              <div className="truncate font-mono text-[10px] uppercase tracking-wider text-zinc-500" title={k}>
+                                {k}
+                              </div>
+                              <div className="truncate text-zinc-200" title={String(v)}>
+                                {typeof v === "number" ? v.toLocaleString() : String(v)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {Array.isArray(vals?.vlm_proposals) && (vals?.vlm_proposals as unknown[]).length > 0 ? (
+                        <p className="mt-3 text-[11px] text-fuchsia-300">
+                          {(vals?.vlm_proposals as unknown[]).length} proposte VLM da confermare. Apri la review per accettarle.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+        </ul>
+      </section>
+    </Pro2ModulePageShell>
+  );
+}

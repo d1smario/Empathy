@@ -1,0 +1,557 @@
+import { NextRequest, NextResponse } from "next/server";
+import { buildAdaptationGuidance } from "@/lib/adaptation/adaptation-guidance";
+import {
+  twinExpectedAdaptationForGuidance,
+  twinObservedAdaptationForGuidance,
+} from "@/lib/twin/twin-adaptation-fallbacks";
+import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
+import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver";
+import { summarizeReadSpineCoverage } from "@/lib/platform/read-spine-coverage";
+import { resolveLatestRecoverySummary } from "@/lib/reality/recovery-summary";
+import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
+import {
+  buildCrossChannelSessionVms,
+  type CrossChannelCgmRow,
+  type CrossChannelExecutedRow,
+} from "@/lib/training/analytics/cross-channel-session";
+import {
+  rollupExecutedVolumeFromLoadRows,
+  rollupRecoveryContinuousFromLoadRows,
+} from "@/lib/training/analytics/trace-volume-rollup";
+import { buildTrainingDayOperationalContext } from "@/lib/training/day-operational-context";
+import { resolveAdaptationRegenerationLoop } from "@/lib/training/adaptation-regeneration-loop";
+import { buildBioenergeticModulation } from "@/lib/training/bioenergetic-modulation";
+import { extractDiaryAdaptiveSignals } from "@/lib/nutrition/diary-adaptive-signals";
+import { buildNutritionPerformanceIntegration } from "@/lib/nutrition/performance-integration-scaler";
+import { twinAdaptationSummaryFromTwin } from "@/lib/twin/twin-context-strip-from-memory";
+import { buildOperationalDynamicsLines } from "@/lib/platform/operational-dynamics-lines";
+import {
+  executedWorkoutSourceMatchesPreference,
+  loadDataSourcePreferenceMap,
+  pickPreferredProvider,
+} from "@/lib/integrations/data-source-preference";
+import { summarizeTrainingRealityDiagnostics } from "@/lib/training/training-reality-diagnostics";
+import { executedWorkoutsFromAnalyticsRows } from "@/lib/training/analytics/analytics-row-mappers";
+import { wellnessSignalsByDateFromLoadRows } from "@/lib/training/analytics/wellness-signals-from-load-rows";
+import {
+  extractSignalFromDeviceExportRow,
+  isSleepBearingDevicePayload,
+} from "@/lib/reality/sleep-recovery-signals";
+
+/** Ore di sonno plausibili per analytics (oltre → dati sporchi / merge errato, scartiamo). */
+const MAX_ANALYTICS_SLEEP_HOURS = 20;
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const NO_STORE = { "Cache-Control": "no-store" as const };
+
+type PlannedWorkoutAnalyticsRow = {
+  date: string | null;
+  tss_target: number | null;
+  duration_minutes: number | null;
+  kcal_target: number | null;
+  type: string | null;
+};
+
+type DeviceSyncAnalyticsRow = {
+  date: string;
+  trace_summary: Record<string, unknown>;
+};
+
+function toDateOnly(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
+}
+
+function asNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function readNumFromObject(obj: Record<string, unknown> | null, keys: string[]): number | null {
+  if (!obj) return null;
+  for (const key of keys) {
+    const n = asNumber(obj[key]);
+    if (n != null) return n;
+  }
+  return null;
+}
+
+function readDateFromPayload(payload: Record<string, unknown>, fallbackCreatedAt?: string | null): string | null {
+  const direct = payload.date ?? payload.summary_date ?? payload.source_date;
+  if (typeof direct === "string" && /^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+  if (typeof fallbackCreatedAt === "string" && fallbackCreatedAt.length >= 10) {
+    const d = fallbackCreatedAt.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  }
+  return null;
+}
+
+function mergeTrace(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  return { ...base, ...patch };
+}
+
+function normalizedTraceFromDeviceExport(payload: Record<string, unknown>, createdAt?: string | null): DeviceSyncAnalyticsRow | null {
+  const sourcePayload = asRecord(payload.sourcePayload);
+  const ingestion = asRecord(payload.realityIngestion);
+  const canonicalPreview = asRecord(ingestion?.canonicalPreview);
+  const merged = { ...(sourcePayload ?? {}), ...(canonicalPreview ?? {}) };
+  const date = readDateFromPayload(merged, createdAt ?? null);
+  if (!date) return null;
+
+  /**
+   * Stesso gate del pannello giornaliero: `sleep_duration_hours` nel preview storico
+   * o merge grezzo su dailies/respiration altrimenti gonfia sonno medio / grafico a 24h.
+   */
+  const sig = extractSignalFromDeviceExportRow({ payload });
+  const allowSleepStages =
+    sourcePayload != null
+      ? isSleepBearingDevicePayload(sourcePayload)
+      : canonicalPreview != null && isSleepBearingDevicePayload(canonicalPreview);
+
+  const normalized: Record<string, unknown> = {};
+  const sleepHours =
+    sig.sleepDurationHours != null &&
+    sig.sleepDurationHours > 0 &&
+    sig.sleepDurationHours <= MAX_ANALYTICS_SLEEP_HOURS
+      ? sig.sleepDurationHours
+      : null;
+  const restingHr = sig.restingHrBpm ?? readNumFromObject(merged, ["resting_hr_bpm", "resting_heart_rate", "night_hr_bpm"]);
+  const hrv = sig.hrvMs ?? readNumFromObject(merged, ["hrv_rmssd_ms", "hrv_ms", "rmssd"]);
+  const deepSleep = allowSleepStages ? readNumFromObject(merged, ["sleep_deep_hours", "deep_sleep_hours"]) : null;
+  const remSleep = allowSleepStages ? readNumFromObject(merged, ["sleep_rem_hours", "rem_sleep_hours"]) : null;
+  const lightSleep = allowSleepStages ? readNumFromObject(merged, ["sleep_light_hours", "light_sleep_hours"]) : null;
+  const skinTemp = readNumFromObject(merged, ["skin_temp_c", "skin_temp_celsius", "temperature_avg_c"]);
+  const glucoseMmol = readNumFromObject(merged, ["glucose_mmol_l_avg", "glucose_mmol_l", "glucose_mmol"]);
+  const glucoseTir = readNumFromObject(merged, ["time_in_range_pct", "glucose_tir_pct"]);
+  const glucoseCv = readNumFromObject(merged, ["glucose_variability_cv", "glucose_cv_pct"]);
+
+  if (sleepHours != null) normalized.sleep_hours = sleepHours;
+  if (deepSleep != null) normalized.sleep_deep_hours = deepSleep;
+  if (remSleep != null) normalized.sleep_rem_hours = remSleep;
+  if (lightSleep != null) normalized.sleep_light_hours = lightSleep;
+  if (restingHr != null) normalized.resting_hr_bpm = restingHr;
+  if (hrv != null) normalized.hrv_rmssd_ms = hrv;
+  if (skinTemp != null) normalized.skin_temp_celsius = skinTemp;
+  if (glucoseMmol != null) normalized.glucose_mmol_l = glucoseMmol;
+  if (glucoseTir != null) normalized.time_in_range_pct = glucoseTir;
+  if (glucoseCv != null) normalized.glucose_variability_cv = glucoseCv;
+
+  return { date, trace_summary: normalized };
+}
+
+function biomarkerTrace(values: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const mappings: Array<[string, string[]]> = [
+    ["vo2_l_min", ["vo2_l_min", "vo2_l_min_lab", "vo2_lpm"]],
+    ["vco2_l_min", ["vco2_l_min", "vco2_l_min_lab", "vco2_lpm"]],
+    ["glucose_mmol_l", ["glucose_mmol_l", "glucose_mmol"]],
+    ["testosterone_ng_dl", ["testosterone_ng_dl", "testosterone"]],
+    ["nitric_oxide_index", ["nitric_oxide_index", "no_index", "nitric_oxide"]],
+    ["lactate_mmol_l", ["lactate_mmol_l", "lactate_mmoll"]],
+    ["nad_index", ["nad_index", "nad", "nad_plus"]],
+    ["cortisol_ug_dl", ["cortisol_ug_dl", "cortisol"]],
+    ["dhea_s_ug_dl", ["dhea_s_ug_dl", "dhea_s", "dhea"]],
+  ];
+  for (const [target, keys] of mappings) {
+    const n = readNumFromObject(values, keys);
+    if (n != null) out[target] = n;
+  }
+  return out;
+}
+
+function summarizeWindow(series: ReturnType<typeof computeDailyLoadSeries>, windowSize: number) {
+  const window = series.slice(-windowSize);
+  const external = window.reduce((sum, day) => sum + day.external, 0);
+  const internal = window.reduce((sum, day) => sum + day.internal, 0);
+  const coupling = external > 0 ? internal / external : 0;
+  return { external, internal, coupling };
+}
+
+function summarizePlanWindow(
+  compareSeries: Array<{
+    planned: number;
+    executed: number;
+    internal: number;
+  }>,
+  windowSize: number,
+) {
+  const n = Number.isFinite(windowSize) ? Math.floor(windowSize) : 0;
+  const window =
+    compareSeries.length === 0 || n <= 0 ? [] : n >= compareSeries.length ? compareSeries : compareSeries.slice(-n);
+  const planned = window.reduce((sum, day) => sum + day.planned, 0);
+  const executed = window.reduce((sum, day) => sum + day.executed, 0);
+  const internal = window.reduce((sum, day) => sum + day.internal, 0);
+  const compliancePct = planned > 0 ? (executed / planned) * 100 : executed > 0 ? 100 : 0;
+  const internalVsExecuted = executed > 0 ? internal / executed : 0;
+  return {
+    planned,
+    executed,
+    internal,
+    delta: executed - planned,
+    compliancePct,
+    internalVsExecuted,
+  };
+}
+
+function buildCompareSeries(
+  from: string,
+  to: string,
+  plannedRows: PlannedWorkoutAnalyticsRow[],
+  loadSeries: ReturnType<typeof computeDailyLoadSeries>,
+) {
+  const plannedByDate = new Map<string, number>();
+  for (const row of plannedRows) {
+    if (!row.date) continue;
+    plannedByDate.set(row.date, (plannedByDate.get(row.date) ?? 0) + Math.max(0, Number(row.tss_target ?? 0)));
+  }
+
+  const executedByDate = new Map(loadSeries.map((day) => [day.date, day]));
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  const out: Array<{
+    date: string;
+    planned: number;
+    executed: number;
+    internal: number;
+    ctl: number;
+    atl: number;
+    tsb: number;
+    iCtl: number;
+    iAtl: number;
+    iTsb: number;
+    executionVsPlanPct: number;
+  }> = [];
+
+  for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    const date = toDateOnly(cursor);
+    const executed = executedByDate.get(date);
+    const planned = plannedByDate.get(date) ?? 0;
+    const executedExternal = executed?.external ?? 0;
+    out.push({
+      date,
+      planned,
+      executed: executedExternal,
+      internal: executed?.internal ?? 0,
+      ctl: executed?.ctl ?? 0,
+      atl: executed?.atl ?? 0,
+      tsb: executed?.tsb ?? 0,
+      iCtl: executed?.iCtl ?? 0,
+      iAtl: executed?.iAtl ?? 0,
+      iTsb: executed?.iTsb ?? 0,
+      executionVsPlanPct: planned > 0 ? (executedExternal / planned) * 100 : executedExternal > 0 ? 100 : 0,
+    });
+  }
+
+  return out;
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const athleteId = (req.nextUrl.searchParams.get("athleteId") ?? "").trim();
+    const from = (req.nextUrl.searchParams.get("from") ?? "").trim();
+    const to = (req.nextUrl.searchParams.get("to") ?? "").trim();
+    if (!athleteId || !from || !to) {
+      return NextResponse.json({ error: "Missing athleteId/from/to", rows: [] }, { status: 400, headers: NO_STORE });
+    }
+    const { db } = await requireAthleteReadContext(req, athleteId);
+
+    const [
+      { data: executedData, error: executedError },
+      { data: plannedData, error: plannedError },
+      { data: deviceExportsData, error: deviceExportsError },
+      { data: biomarkerData, error: biomarkerError },
+      athleteMemory,
+    ] = await Promise.all([
+      db
+        .from("executed_workouts")
+        .select(
+          "id, date, started_at, ended_at, tss, duration_minutes, kcal, kj, trace_summary, lactate_mmoll, glucose_mmol, smo2, source",
+        )
+        .eq("athlete_id", athleteId)
+        .gte("date", from)
+        .lte("date", to)
+        .order("date", { ascending: true }),
+      db
+        .from("planned_workouts")
+        .select("date, tss_target, duration_minutes, kcal_target, type")
+        .eq("athlete_id", athleteId)
+        .gte("date", from)
+        .lte("date", to)
+        .order("date", { ascending: true }),
+      db
+        .from("device_sync_exports")
+        .select("provider, payload, created_at")
+        .eq("athlete_id", athleteId)
+        // Provider wellness/recovery che `normalizedTraceFromDeviceExport` sa mappare
+        // (sleep_duration_hours / hrv_ms / resting_hr_bpm dal canonicalPreview).
+        // `cgm` resta perché serve anche al cross-channel intra-sessione più sotto.
+        .in("provider", ["whoop", "cgm", "garmin"])
+        .gte("created_at", `${from}T00:00:00.000Z`)
+        .lte("created_at", `${to}T23:59:59.999Z`)
+        .order("created_at", { ascending: true }),
+      db
+        .from("biomarker_panels")
+        .select("type, sample_date, created_at, values")
+        .eq("athlete_id", athleteId)
+        .gte("sample_date", from)
+        .lte("sample_date", to)
+        .order("sample_date", { ascending: true }),
+      resolveAthleteMemorySlice(athleteId, { slice: "training" }),
+    ]);
+
+    const error = executedError?.message ?? plannedError?.message ?? deviceExportsError?.message ?? biomarkerError?.message ?? null;
+    if (error) return NextResponse.json({ error, rows: [] }, { status: 500, headers: NO_STORE });
+
+    // Preferenze cliente per dominio (Settings → Devices). Se ha scelto WHOOP per
+    // recovery, gli export Garmin (anche se presenti) non contribuiscono ai trace
+    // recovery degli analytics. Se non c'è preferenza, comportamento storico.
+    const dataSourcePref = await loadDataSourcePreferenceMap(db, athleteId);
+    const preferRecovery = pickPreferredProvider(dataSourcePref, "wellness_recovery");
+    const filteredDeviceExports = preferRecovery
+      ? ((deviceExportsData ?? []) as Array<Record<string, unknown>>).filter(
+          (row) => typeof row.provider === "string" && row.provider === preferRecovery,
+        )
+      : (deviceExportsData ?? []);
+
+    const rawExecutedRows = (executedData ?? []) as Array<Record<string, unknown>>;
+    const rows = rawExecutedRows.filter((row) => {
+      const source = (row as { source?: unknown }).source;
+      return executedWorkoutSourceMatchesPreference(
+        dataSourcePref,
+        typeof source === "string" ? source : null,
+      );
+    });
+    const trainingRealityDiagnostics = summarizeTrainingRealityDiagnostics(
+      rawExecutedRows.map((row) => ({
+        date: typeof row.date === "string" ? row.date : null,
+        source: typeof row.source === "string" ? row.source : null,
+        tss: typeof row.tss === "number" ? row.tss : null,
+        duration_minutes:
+          typeof row.duration_minutes === "number" && Number.isFinite(row.duration_minutes)
+            ? row.duration_minutes
+            : null,
+        trace_summary: asRecord(row.trace_summary),
+      })),
+      dataSourcePref,
+      { endDate: to, windowDays: 7 },
+    );
+    const rowsByDate = new Map<string, Record<string, unknown>>();
+    for (const row of rows) {
+      const date = typeof row.date === "string" ? row.date : "";
+      if (!date) continue;
+      rowsByDate.set(date, row);
+    }
+
+    const deviceRows = (filteredDeviceExports as Array<Record<string, unknown>>)
+      .map((row) =>
+        normalizedTraceFromDeviceExport(
+          asRecord(row.payload) ?? {},
+          typeof row.created_at === "string" ? row.created_at : null,
+        ),
+      )
+      .filter((row): row is DeviceSyncAnalyticsRow => row != null);
+    for (const dRow of deviceRows) {
+      const existing = rowsByDate.get(dRow.date);
+      if (existing) {
+        const existingTrace = asRecord(existing.trace_summary) ?? {};
+        existing.trace_summary = mergeTrace(existingTrace, dRow.trace_summary);
+      } else {
+        rowsByDate.set(dRow.date, {
+          id: `device-${dRow.date}`,
+          date: dRow.date,
+          tss: 0,
+          duration_minutes: 0,
+          kcal: 0,
+          trace_summary: dRow.trace_summary,
+          lactate_mmoll: null,
+          glucose_mmol: null,
+          smo2: null,
+        });
+      }
+    }
+
+    const biomarkerRows = ((biomarkerData ?? []) as Array<Record<string, unknown>>)
+      .map((row) => {
+        const date =
+          (typeof row.sample_date === "string" && row.sample_date) ||
+          (typeof row.created_at === "string" ? row.created_at.slice(0, 10) : "");
+        const trace = biomarkerTrace(asRecord(row.values) ?? {});
+        return date && Object.keys(trace).length ? { date, trace } : null;
+      })
+      .filter((row): row is { date: string; trace: Record<string, unknown> } => row != null);
+    for (const bRow of biomarkerRows) {
+      const existing = rowsByDate.get(bRow.date);
+      if (existing) {
+        const existingTrace = asRecord(existing.trace_summary) ?? {};
+        existing.trace_summary = mergeTrace(existingTrace, bRow.trace);
+      } else {
+        rowsByDate.set(bRow.date, {
+          id: `biomarker-${bRow.date}`,
+          date: bRow.date,
+          tss: 0,
+          duration_minutes: 0,
+          kcal: 0,
+          trace_summary: bRow.trace,
+          lactate_mmoll: null,
+          glucose_mmol: null,
+          smo2: null,
+        });
+      }
+    }
+
+    const enrichedRows = Array.from(rowsByDate.values()).sort((a, b) => {
+      const da = typeof a.date === "string" ? a.date : "";
+      const dbb = typeof b.date === "string" ? b.date : "";
+      return da < dbb ? -1 : 1;
+    });
+
+    /** Fase 4 device→UI: cross-channel intra-sessione (power/HR ↔ glucosio CGM). */
+    const cgmRows: CrossChannelCgmRow[] = ((deviceExportsData ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => row.provider === "cgm")
+      .map((row) => ({
+        payload: asRecord(row.payload) ?? {},
+        createdAt: typeof row.created_at === "string" ? row.created_at : null,
+      }));
+    const crossChannelExecuted: CrossChannelExecutedRow[] = rows.map((r) => ({
+      id: typeof r.id === "string" ? r.id : "",
+      date: typeof r.date === "string" ? r.date : null,
+      startedAt: typeof r.started_at === "string" ? r.started_at : null,
+      endedAt: typeof r.ended_at === "string" ? r.ended_at : null,
+      durationMinutes:
+        typeof r.duration_minutes === "number" && Number.isFinite(r.duration_minutes)
+          ? r.duration_minutes
+          : null,
+      traceSummary: asRecord(r.trace_summary),
+    }));
+    const crossChannelSessions = buildCrossChannelSessionVms({
+      executed: crossChannelExecuted.filter((r) => r.id),
+      cgmExports: cgmRows,
+      maxSessions: 4,
+    });
+
+    const plannedRows = (plannedData ?? []) as PlannedWorkoutAnalyticsRow[];
+    const executedSessions = executedWorkoutsFromAnalyticsRows(rows, athleteId);
+    const wellnessByDate = wellnessSignalsByDateFromLoadRows(enrichedRows as ExecutedWorkoutLoadRow[]);
+    const series = computeDailyLoadSeries(rows as ExecutedWorkoutLoadRow[], { wellnessByDate });
+    const compareSeries = buildCompareSeries(from, to, plannedRows, series);
+    const latest = series.at(-1) ?? null;
+    const twinState = athleteMemory.twin;
+    const adaptationSummary = twinAdaptationSummaryFromTwin(twinState);
+    const readSpineCoverage = summarizeReadSpineCoverage(athleteMemory);
+    const last7 = summarizeWindow(series, 7);
+    const last28 = summarizeWindow(series, 28);
+    const planLast7 = summarizePlanWindow(compareSeries, 7);
+    const planLast28 = summarizePlanWindow(compareSeries, 28);
+    const planLast90 = summarizePlanWindow(compareSeries, Math.min(90, compareSeries.length));
+    const planFullRange = summarizePlanWindow(compareSeries, compareSeries.length);
+    const executedVolumeRollup = rollupExecutedVolumeFromLoadRows(rows as ExecutedWorkoutLoadRow[]);
+    const recoveryContinuousRollup = rollupRecoveryContinuousFromLoadRows(enrichedRows as ExecutedWorkoutLoadRow[]);
+    let recoverySummary: Awaited<ReturnType<typeof resolveLatestRecoverySummary>> = null;
+    try {
+      recoverySummary = await resolveLatestRecoverySummary(athleteId);
+    } catch {
+      recoverySummary = null;
+    }
+    const adaptationGuidance = buildAdaptationGuidance({
+      expectedAdaptation: twinExpectedAdaptationForGuidance(twinState),
+      observedAdaptation: twinObservedAdaptationForGuidance(twinState),
+      likelyDrivers: twinState?.likelyDrivers ?? [],
+    });
+    const operationalContext = buildTrainingDayOperationalContext({
+      recoveryStatus: recoverySummary?.status ?? "unknown",
+      trafficLight: adaptationGuidance.trafficLight,
+      keepProgramUnchanged: adaptationGuidance.keepProgramUnchanged,
+      reductionMinPct: adaptationGuidance.reductionMinPct,
+      reductionMaxPct: adaptationGuidance.reductionMaxPct,
+    });
+    const adaptationLoop = await resolveAdaptationRegenerationLoop({
+      athleteId,
+      twinState,
+      recoverySummary,
+      operationalContext,
+    });
+    const bioenergeticModulation =
+      athleteMemory.physiology && twinState
+        ? buildBioenergeticModulation({
+            physiologyState: athleteMemory.physiology,
+            twinState,
+            recoverySummary,
+          })
+        : null;
+
+    const diarySignals = extractDiaryAdaptiveSignals({
+      profile: athleteMemory.profile,
+      diaryEntries: athleteMemory.nutrition.diary ?? [],
+    });
+    const nutritionPerformanceIntegration = buildNutritionPerformanceIntegration({
+      bioenergeticModulation,
+      adaptationGuidance,
+      adaptationLoop: adaptationLoop ? { status: adaptationLoop.status, nextAction: adaptationLoop.nextAction } : null,
+      operationalContext,
+      diarySignals,
+    });
+    const crossModuleDynamicsLines = buildOperationalDynamicsLines({
+      adaptationGuidance,
+      operationalContext,
+      nutritionPerformanceIntegration,
+      adaptationLoop: adaptationLoop ? { status: adaptationLoop.status, nextAction: adaptationLoop.nextAction } : null,
+    });
+
+    return NextResponse.json(
+      {
+        athleteId,
+        from,
+        to,
+        rows: enrichedRows,
+        executedSessions,
+        plannedRows,
+        series,
+        compareSeries,
+        latest,
+        windows: {
+          last7,
+          last28,
+          couplingDelta: last7.coupling - last28.coupling,
+        },
+        planWindows: {
+          last7: planLast7,
+          last28: planLast28,
+          last90: planLast90,
+          fullRange: planFullRange,
+        },
+        executedVolumeRollup,
+        recoveryContinuousRollup,
+        adaptationLoop,
+        adaptationSummary,
+        twinState,
+        athleteMemory,
+        recoverySummary,
+        operationalContext,
+        bioenergeticModulation,
+        adaptationGuidance,
+        nutritionPerformanceIntegration,
+        crossModuleDynamicsLines,
+        readSpineCoverage,
+        crossChannelSessions,
+        trainingRealityDiagnostics,
+        source: "analytics_v3_planned_real_internal_external",
+      },
+      { headers: NO_STORE },
+    );
+  } catch (err) {
+    if (err instanceof AthleteReadContextError) {
+      return NextResponse.json({ error: err.message, rows: [] }, { status: err.status, headers: NO_STORE });
+    }
+    const message = err instanceof Error ? err.message : "Training analytics API error";
+    return NextResponse.json({ error: message, rows: [] }, { status: 500, headers: NO_STORE });
+  }
+}

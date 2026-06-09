@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build / Next (when added)
+.next/
+.next-dev/
+apps/.empathy-pro2-next-dev/
+out/
+dist/
+.turbo/
+
+# USDA bulk JSON (download locale; vedi docs/NUTRITION_FDC_LOCAL_CACHE.md)
+data/usda-fdc/
+
+# Env
+.env
+.env.local
+.env.*.local
+.env.local.production
+.env.vercel
+.env.vercel.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.log
+*.tsbuildinfo
+node_modules/@empathy/
+
+# OneDrive / local sync artifacts
+.next.nosync/
+.vercel
+.env*.local
+.env.local.bak*
+.env.local.backup*

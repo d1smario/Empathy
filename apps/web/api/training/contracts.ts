@@ -1,0 +1,485 @@
+import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
+import type {
+  AdaptationGuidance,
+  AthleteMemory,
+  KnowledgeModulationSnapshot,
+  PhysiologyState,
+  RealityImportJob,
+  ResearchPlan,
+  SessionKnowledgePacket,
+} from "@/lib/empathy/schemas";
+import type { AdaptationScoreMethodVersion } from "@/lib/empathy/schemas/adaptation";
+import type { RecoveryDataTier } from "@/lib/empathy/schemas/internal-load";
+import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
+import type { AdaptationTarget, SessionGoalRequest, TrainingDomain } from "@/lib/training/engine";
+import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
+import type { RecoverySummary } from "@/lib/reality/recovery-summary";
+import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
+import type { CanonicalTwinState } from "@/lib/twin/athlete-state-resolver";
+import type { DailyLoadPoint } from "@/lib/training/analytics/load-series";
+import type { NutritionPerformanceIntegrationDials } from "@/lib/nutrition/performance-integration-scaler";
+import type { ApprovedApplicationPatch } from "@/lib/dashboard/resolve-operational-signals-bundle";
+import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
+import type { ViryaRetuneProposalVm } from "@/lib/training/virya-retune-proposal";
+import type { WellnessByDateMap } from "@/lib/physiology/wellness-window-summary";
+import type { CrossChannelSessionVm } from "@/lib/training/analytics/cross-channel-session";
+
+/** Sottoinsieme AdaptationScoreV1 per strip API (senza 4 assi). */
+export type TrainingTwinAdaptationScoreV1StripViewModel = {
+  methodVersion: AdaptationScoreMethodVersion;
+  compositeScore: number;
+  confidence: number;
+};
+
+/** Strip twin per contesto operativo su calendario / giornata (senza payload twin completo). */
+export type TrainingTwinContextStripViewModel = {
+  asOf: string | null;
+  readiness: number | null;
+  fatigueAcute: number | null;
+  glycogenStatus: number | null;
+  adaptationScore: number | null;
+  recoveryDataTier: RecoveryDataTier | null;
+  adaptationScoreV1: TrainingTwinAdaptationScoreV1StripViewModel | null;
+};
+
+/** Riassunto compatto per `GET /api/training/analytics` (subset della strip twin). */
+export type TrainingAnalyticsAdaptationSummaryViewModel = {
+  asOf: string | null;
+  recoveryDataTier: RecoveryDataTier | null;
+  adaptationScoreV1: TrainingTwinAdaptationScoreV1StripViewModel | null;
+  adaptationScore: number | null;
+};
+
+/**
+ * `ok: true` da `GET /api/training/planned-window` (`apps/web/app/api/training/planned-window/route.ts`).
+ * Campi `readSpineCoverage` / `twinContextStrip` sono sempre presenti; valore `null` se `includeAthleteContext=0|skip|…`.
+ */
+export type TrainingPlannedWindowOkViewModel = {
+  ok: true;
+  from: string;
+  to: string;
+  athleteId: string;
+  planned: PlannedWorkout[];
+  executed: ExecutedWorkout[];
+  /** True when executed list was recovered through server admin fallback. */
+  executedAdminFallbackUsed?: boolean;
+  /** Righe `executed_workouts` escluse dal filtro Settings → fonte training. */
+  executedHiddenBySourcePreference?: number;
+  /** Debug aid: first executed day keys returned by API. */
+  executedSampleDates?: string[];
+  /** Conteggi per `planned[].provenance` (demo SQL / builder / …). */
+  plannedProvenanceSummary?: Partial<Record<string, number>>;
+  readSpineCoverage: ReadSpineCoverageSummary | null;
+  twinContextStrip: TrainingTwinContextStripViewModel | null;
+  /** Stato fisiologia canonico da `AthleteMemory` quando `includeAthleteContext` è attivo. */
+  physiologyState: PhysiologyState | null;
+  /**
+   * Riassunto compatto sonno/HRV/RHR per giorno della finestra (Fase 2 device→UI).
+   * Presente solo quando `includeWellness=1`; UI Calendar usa questo per il badge cella senza N+1.
+   */
+  wellnessByDate?: WellnessByDateMap;
+};
+
+export type TrainingAdaptationLoopViewModel = {
+  windowDays: number;
+  expectedLoad7d: number;
+  realLoad7d: number;
+  internalLoad7d: number;
+  executionCompliancePct: number;
+  executionDeltaTss: number;
+  divergenceScore: number;
+  interventionScore: number;
+  readinessScore: number;
+  adaptationScore: number;
+  status: "aligned" | "watch" | "regenerate";
+  nextAction: "keep_course" | "retune_next_sessions" | "regenerate_microcycle";
+  triggers: string[];
+  guidance: string;
+  /** True quando il carico eseguito 7g è insufficiente per interpretare divergenza/intervento (Reality > Plan). */
+  lowExecutionEvidence?: boolean;
+};
+
+export type TrainingBioenergeticModulationViewModel = {
+  loadScale: number;
+  loadScalePct: number;
+  state: "supported" | "watch" | "protective";
+  mitochondrialReadinessScore: number;
+  signalCoveragePct: number;
+  inputUncertaintyPct: number;
+  missingSignals: string[];
+  recommendedInputs: string[];
+  cellularHydrationScore: number | null;
+  autonomicRecoveryScore: number | null;
+  inflammatoryStressScore: number | null;
+  fuelAvailabilityScore: number | null;
+  phaseAngleNormalized: number | null;
+  signalCoverage: string[];
+  headline: string;
+  guidance: string;
+  evidenceTier: "proxy_supported";
+};
+
+export type TrainingPlannerContextViewModel = {
+  athleteId: string;
+  profile: Record<string, unknown> | null;
+  physiology: Record<string, unknown> | null;
+  physiologyState?: PhysiologyState | null;
+  health: Record<string, unknown> | null;
+  latestLab: Record<string, unknown> | null;
+  twinState?: CanonicalTwinState | null;
+  athleteMemory?: AthleteMemory | null;
+  recoverySummary?: RecoverySummary | null;
+  operationalContext?: TrainingDayOperationalContext | null;
+  adaptationLoop?: TrainingAdaptationLoopViewModel | null;
+  bioenergeticModulation?: TrainingBioenergeticModulationViewModel | null;
+  adaptationGuidance?: AdaptationGuidance | null;
+  nutritionPerformanceIntegration?: NutritionPerformanceIntegrationDials | null;
+  approvedApplicationPatches?: ApprovedApplicationPatch[];
+  viryaApprovedPatches?: ApprovedApplicationPatch[];
+  viryaRetuneDirective?: {
+    recommendedMode: string;
+    appliedCount: number;
+    pendingCount: number;
+    builderPolicy: "single_session_materialization_only";
+    calendarPolicy: "coach_validated_retune_before_replace";
+    rationale: string[];
+  };
+  /** Proposta microciclo strutturata (server): consuma patch manual_actions + memoria coach + loop adattamento. */
+  viryaRetuneProposal?: ViryaRetuneProposalVm | null;
+  crossModuleDynamicsLines?: string[];
+  knowledgeModulation?: KnowledgeModulationSnapshot | null;
+  researchPlans?: ResearchPlan[];
+  researchTraces?: KnowledgeResearchTraceSummary[];
+  flags: Record<string, boolean>;
+  strategyHints: string[];
+  connectedModules: {
+    profile: boolean;
+    physiology: boolean;
+    health: boolean;
+  };
+  /** Copertura read-spine su `AthleteMemory` (stesso schema dashboard hub). */
+  readSpineCoverage?: ReadSpineCoverageSummary | null;
+  error?: string | null;
+};
+
+export type BuilderSessionGenerationInput = {
+  athleteId: string;
+  applyOperationalScaling?: boolean;
+  request: {
+    sport: string;
+    domain?: TrainingDomain;
+    goalLabel: string;
+    adaptationTarget: AdaptationTarget;
+    sessionMinutes: number;
+    phase: SessionGoalRequest["phase"];
+    tssTargetHint?: number;
+    intensityHint?: string;
+    objectiveDetail?: string;
+  };
+};
+
+export type BuilderSessionOperationalScalingViewModel = {
+  applied: boolean;
+  operationalApplied?: boolean;
+  bioenergeticApplied?: boolean;
+  loadScale: number;
+  loadScalePct: number;
+  mode: string;
+  operationalLoadScale?: number;
+  operationalLoadScalePct?: number;
+  bioenergeticLoadScale?: number;
+  bioenergeticLoadScalePct?: number;
+  sessionMinutesRequested: number;
+  sessionMinutesEffective: number;
+  tssTargetHintRequested: number | null;
+  tssTargetHintEffective: number | null;
+  headline: string;
+  guidance: string;
+};
+
+export type BuilderSessionGenerationResponse = {
+  athleteId?: string;
+  session?: Record<string, unknown>;
+  athleteState?: Record<string, unknown>;
+  athleteMemory?: AthleteMemory | null;
+  blockExercises?: Array<Record<string, unknown>>;
+  source?: string;
+  operationalContext?: TrainingDayOperationalContext | null;
+  recoverySummary?: RecoverySummary | null;
+  operationalScaling?: BuilderSessionOperationalScalingViewModel | null;
+  adaptationLoop?: TrainingAdaptationLoopViewModel | null;
+  bioenergeticModulation?: TrainingBioenergeticModulationViewModel | null;
+  knowledgeModulation?: KnowledgeModulationSnapshot | null;
+  sessionKnowledge?: SessionKnowledgePacket | null;
+  researchPlan?: ResearchPlan | null;
+  researchTrace?: KnowledgeResearchTraceSummary | null;
+  error?: string;
+};
+
+export type TrainingPlannerCalendarRow = {
+  athlete_id: string;
+  date: string;
+  type: string;
+  duration_minutes: number;
+  tss_target: number;
+  kcal_target: number | null;
+  notes: string | null;
+};
+
+export type TrainingPlannerCalendarReplaceInput = {
+  athleteId: string;
+  replaceTag?: string;
+  rows: TrainingPlannerCalendarRow[];
+  /** Opzionale: traccia salvataggio calendario ↔ memoria coach / retune (append in `notes`). */
+  generationAudit?: {
+    source: string;
+    coachTraceIds?: string[];
+    viryaRetuneMode?: string | null;
+  };
+};
+
+export type TrainingPlannerCalendarReplaceResult = {
+  status: "ok";
+  insertedCount?: number;
+  dedupeSkippedCount?: number;
+  replacedSameTypeCount?: number;
+  athleteMemory?: AthleteMemory | null;
+};
+
+export type TrainingPlannedWorkoutViewModel = Record<string, unknown> & {
+  builderSession?: Pro2BuilderSessionContract | null;
+  canonicalPlannedWorkout?: PlannedWorkout | null;
+  plannedDiscipline?: string | null;
+  plannedFamily?: string | null;
+  plannedSessionName?: string | null;
+  plannedAdaptationTarget?: string | null;
+};
+
+export type TrainingCalendarViewModel = {
+  athleteId: string;
+  from: string;
+  to: string;
+  planned: TrainingPlannedWorkoutViewModel[];
+  executed: Array<Record<string, unknown>>;
+  twinState?: CanonicalTwinState | null;
+  recoverySummary?: RecoverySummary | null;
+  adaptationGuidance?: AdaptationGuidance | null;
+  operationalContext?: TrainingDayOperationalContext | null;
+  adaptationLoop?: TrainingAdaptationLoopViewModel | null;
+  bioenergeticModulation?: TrainingBioenergeticModulationViewModel | null;
+  nutritionPerformanceIntegration?: NutritionPerformanceIntegrationDials | null;
+  athleteMemory?: AthleteMemory | null;
+  error?: string | null;
+};
+
+export type TrainingTrendPointViewModel = {
+  date: string;
+  tss: number | null;
+  power: number | null;
+  hr: number | null;
+  cadence: number | null;
+  speed: number | null;
+  altitude: number | null;
+  temperature: number | null;
+  coreTemp: number | null;
+  lactate: number | null;
+  glucose: number | null;
+  smo2: number | null;
+};
+
+export type TrainingTrendViewModel = {
+  athleteId: string;
+  from: string;
+  to: string;
+  trend: TrainingTrendPointViewModel[];
+  error?: string | null;
+};
+
+export type TrainingImportJobsViewModel = {
+  athleteId: string;
+  jobs: RealityImportJob[];
+  error?: string | null;
+};
+
+export type TrainingSessionViewModel = {
+  athleteId?: string;
+  date?: string;
+  planned: TrainingPlannedWorkoutViewModel[];
+  executed: Array<Record<string, unknown>>;
+  history: Array<Record<string, unknown>>;
+  twinState?: CanonicalTwinState | null;
+  recoverySummary?: RecoverySummary | null;
+  adaptationGuidance?: AdaptationGuidance | null;
+  operationalContext?: TrainingDayOperationalContext | null;
+  adaptationLoop?: TrainingAdaptationLoopViewModel | null;
+  bioenergeticModulation?: TrainingBioenergeticModulationViewModel | null;
+  athleteMemory?: AthleteMemory | null;
+  error?: string | null;
+};
+
+export type TrainingAnalyticsComparePointViewModel = {
+  date: string;
+  planned: number;
+  executed: number;
+  internal: number;
+  ctl: number;
+  atl: number;
+  tsb: number;
+  iCtl: number;
+  iAtl: number;
+  iTsb: number;
+  executionVsPlanPct: number;
+};
+
+export type TrainingAnalyticsWindowViewModel = {
+  last7: { external: number; internal: number; coupling: number };
+  last28: { external: number; internal: number; coupling: number };
+  couplingDelta: number;
+};
+
+export type TrainingAnalyticsPlanWindowSliceViewModel = {
+  planned: number;
+  executed: number;
+  internal: number;
+  delta: number;
+  compliancePct: number;
+  internalVsExecuted: number;
+};
+
+export type TrainingAnalyticsPlanWindowViewModel = {
+  last7: TrainingAnalyticsPlanWindowSliceViewModel;
+  last28: TrainingAnalyticsPlanWindowSliceViewModel;
+  /** Ultimi 90 giorni (se la serie è più corta, usa tutta la serie). */
+  last90: TrainingAnalyticsPlanWindowSliceViewModel;
+  /** Intera finestra `from`–`to` richiesta all’API. */
+  fullRange: TrainingAnalyticsPlanWindowSliceViewModel;
+};
+
+/** Volume aggregato da tracce import/sync nella finestra (vedi `trace-volume-rollup.ts`). */
+export type TrainingExecutedVolumeRollupViewModel = {
+  sessionCount: number;
+  durationMinutes: number;
+  tss: number;
+  distanceKm: number;
+  elevationGainM: number;
+  kcal: number;
+  kj: number;
+};
+
+export type TrainingRecoveryContinuousRollupViewModel = {
+  avgRestingHrBpm: number | null;
+  avgHrvRmssdMs: number | null;
+  avgSleepHours: number | null;
+  avgSkinTempC: number | null;
+  sampleCount: number;
+};
+
+export type TrainingRealityDiagnosticsHint =
+  | "none"
+  | "no_executed_in_window"
+  | "preference_mismatch"
+  | "executed_no_load_signal";
+
+export type TrainingRealityDiagnosticsViewModel = {
+  windowDays: number;
+  preferredTrainingProvider: string | null;
+  executedCountRaw: number;
+  executedCountVisible: number;
+  hiddenByTrainingPreference: number;
+  sourceCounts: Array<{ source: string; count: number }>;
+  sessionsWithStructuredTss: number;
+  sessionsWithExternalImpulse: number;
+  sessionsWithNoLoadSignal: number;
+  hint: TrainingRealityDiagnosticsHint;
+};
+
+export type TrainingAnalyticsViewModel = {
+  athleteId?: string;
+  from?: string;
+  to?: string;
+  rows: Array<Record<string, unknown>>;
+  /** Tutte le sedute eseguite nel range (non una sola riga/giorno come `rows`). */
+  executedSessions?: ExecutedWorkout[];
+  plannedRows: Array<Record<string, unknown>>;
+  series: DailyLoadPoint[];
+  compareSeries: TrainingAnalyticsComparePointViewModel[];
+  latest: DailyLoadPoint | null;
+  windows: TrainingAnalyticsWindowViewModel | null;
+  planWindows: TrainingAnalyticsPlanWindowViewModel | null;
+  executedVolumeRollup?: TrainingExecutedVolumeRollupViewModel | null;
+  recoveryContinuousRollup?: TrainingRecoveryContinuousRollupViewModel | null;
+  adaptationLoop: TrainingAdaptationLoopViewModel | null;
+  /** Subset twin (tier, v1, legacy adapt) allineato alla strip; assente/`null` se nessun twin in memoria o errore parziale. */
+  adaptationSummary?: TrainingAnalyticsAdaptationSummaryViewModel | null;
+  twinState: CanonicalTwinState | null;
+  athleteMemory: AthleteMemory | null;
+  recoverySummary: RecoverySummary | null;
+  operationalContext: TrainingDayOperationalContext | null;
+  bioenergeticModulation: TrainingBioenergeticModulationViewModel | null;
+  adaptationGuidance?: AdaptationGuidance | null;
+  nutritionPerformanceIntegration?: NutritionPerformanceIntegrationDials | null;
+  crossModuleDynamicsLines?: string[];
+  readSpineCoverage?: ReadSpineCoverageSummary | null;
+  /** Fase 4 device→UI: incroci intra-sessione (power/HR vs CGM glucosio) per Analyzer. */
+  crossChannelSessions?: CrossChannelSessionVm[];
+  /** Perché CTL/TSS possono essere 0 nonostante piano o recovery popolati (7g). */
+  trainingRealityDiagnostics?: TrainingRealityDiagnosticsViewModel | null;
+  error?: string | null;
+};
+
+/** Ambiti di lettura incrociata training → fisiologia / endocrino / neuro / microbiota (interpretazione, non diagnosi). */
+export type SessionAnalysisFacetCategory =
+  | "bioenergetics"
+  | "oxygen_hypoxia"
+  | "glycolysis"
+  | "muscle_cellular"
+  | "neuro_adrenergic"
+  | "endocrine_stress"
+  | "endocrine_growth"
+  | "repair_anabolic"
+  | "genetic_regulation"
+  | "microbiota_gut";
+
+export type SessionAnalysisFacetSource =
+  | "adaptation_target"
+  | "session_family"
+  | "session_knowledge"
+  | "load_proxy"
+  | "session_structure"
+  | "chart_profile";
+
+export type SessionAnalysisFacetViewModel = {
+  id: string;
+  category: SessionAnalysisFacetCategory;
+  categoryLabelIt: string;
+  pillLabelIt: string;
+  hintIt: string;
+  source: SessionAnalysisFacetSource;
+};
+
+/**
+ * Striscia multilivello per una singola sessione builder: pillole deterministiche da contract + knowledge packet.
+ * Non sostituisce motori fisiologici né decisioni cliniche.
+ */
+/** Una casella per categoria fissa (striscia KPI), valore = driver principale per settore. */
+export type SessionMultilevelStripSlotViewModel = {
+  category: SessionAnalysisFacetCategory;
+  shortLabelIt: string;
+  valueLineIt: string;
+  detailHintIt: string;
+  facetId: string;
+};
+
+export type SessionMultilevelAnalysisStripViewModel = {
+  modelVersion: number;
+  layer: "deterministic_session_facet_template";
+  facets: SessionAnalysisFacetViewModel[];
+  /** Allineato a CATEGORY_ORDER: sempre tutte le categorie, valore “—” se assente. */
+  stripSlots: SessionMultilevelStripSlotViewModel[];
+  notes: string[];
+  /** Domande coach deterministiche (interpretazione, non prescrizione). */
+  coachPrompts: string[];
+  /** Facilitazioni / modulatori transversali (nutrizione, recovery). */
+  facilitationHints: string[];
+};
+

@@ -1,0 +1,265 @@
+import { EMPATHY_PLATFORM_VERSION, type ProductModuleId } from "@empathy/contracts";
+import { BookOpen, CalendarDays, HeartPulse, LayoutDashboard, Settings2 } from "lucide-react";
+import { getEmpathyAccountCatalog } from "@/lib/account/plan-catalog";
+import { checkoutPayReady, hostedCheckoutAvailability } from "@/lib/billing/stripe-checkout-availability";
+import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
+import { DashboardAthleteHubCard } from "@/components/dashboard/DashboardAthleteHubCard";
+import { DashboardIntroAndPricing } from "@/components/dashboard/DashboardIntroAndPricing";
+import { DashboardLoadAnalysisSummary } from "@/components/dashboard/DashboardLoadAnalysisSummary";
+import { HealthBiomarkerPanelsCard } from "@/components/health/HealthBiomarkerPanelsCard";
+import { CoachAthletesModulePanel } from "@/components/coach/CoachAthletesModulePanel";
+import { SettingsCoachAccountCard } from "@/components/settings/SettingsCoachAccountCard";
+import { SettingsAthleteContextDiagnostics } from "@/components/settings/SettingsAthleteContextDiagnostics";
+import { SettingsAuthSessionDiagnostics } from "@/components/settings/SettingsAuthSessionDiagnostics";
+import { SettingsBillingDiagnostics } from "@/components/settings/SettingsBillingDiagnostics";
+import { SettingsBuildPhasesCard } from "@/components/settings/SettingsBuildPhasesCard";
+import { SettingsDataSourcePreference } from "@/components/settings/SettingsDataSourcePreference";
+import { SettingsDeviceIngestPolicy } from "@/components/settings/SettingsDeviceIngestPolicy";
+import { SettingsDeviceManualSync } from "@/components/settings/SettingsDeviceManualSync";
+import { SettingsLocalePreference } from "@/components/settings/SettingsLocalePreference";
+import { SettingsIntegrationsDiagnostics } from "@/components/settings/SettingsIntegrationsDiagnostics";
+import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
+import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
+import { ActionBar, Pro2Link } from "@/components/ui/empathy";
+import { PlatformAdminOnly } from "@/components/auth/PlatformAdminOnly";
+import { DashboardModuleSubnav } from "@/components/navigation/DashboardModuleSubnav";
+import { StandardModuleSubnav } from "@/components/navigation/StandardModuleSubnav";
+import { getModuleDomainPanel } from "@/core/navigation/module-domain-bridge";
+import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
+import { getProductNavItemByModule } from "@/core/navigation/module-registry";
+
+/** Hub / coach / settings: shell e sezioni canone Pro 2 (`docs/PRO2_UI_PAGE_CANON.md`). */
+export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
+  const nav = getProductNavItemByModule(module);
+  const title = nav?.label ?? module;
+  const panel = getModuleDomainPanel(module);
+  const dashboardCatalog = module === "dashboard" ? getEmpathyAccountCatalog() : null;
+  const dashboardHosted = module === "dashboard" ? hostedCheckoutAvailability() : null;
+  const dashboardPayReady = module === "dashboard" ? checkoutPayReady() : false;
+  const dashboardTrialDays = module === "dashboard" ? readCheckoutTrialDays() : undefined;
+
+  return (
+    <Pro2ModulePageShell
+      eyebrow={`${title} · Modulo`}
+      eyebrowClassName={moduleEyebrowClass(module)}
+      title={title}
+      description={
+        module === "dashboard" ? (
+          <span className="leading-relaxed">
+            Solo due aree: <strong className="text-gray-300">Empathy · piani</strong> e <strong className="text-gray-300">Core</strong>.
+            Il resto dei moduli resta nella sidebar.
+          </span>
+        ) : module === "athletes" ? (
+          <span className="text-sm text-gray-400">Stato account, atleti collegati e inviti.</span>
+        ) : panel ? (
+          <span className="leading-relaxed">
+            Punto di ingresso modulo: dati e azioni restano su contratti <code className="text-gray-500">@empathy/contracts</code> e domain
+            packages.
+          </span>
+        ) : undefined
+      }
+      headerActions={
+        <>
+          <Pro2Link href="/" variant="ghost" className="justify-center border border-white/15 bg-white/5 hover:bg-white/10">
+            Home
+          </Pro2Link>
+          <Pro2Link
+            href="/dashboard"
+            variant="secondary"
+            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
+          >
+            Dashboard
+          </Pro2Link>
+        </>
+      }
+    >
+      <div className="scroll-mt-28">
+        {module === "dashboard" ? (
+          <DashboardModuleSubnav />
+        ) : module === "athletes" ? null : (
+          <StandardModuleSubnav />
+        )}
+      </div>
+
+      {module === "settings" ? (
+        <section
+          id="settings-coach-account"
+          className="scroll-mt-28 space-y-6"
+          aria-label="Account coach e ruolo"
+        >
+          <p className="text-center text-xs text-gray-500 sm:text-left">
+            <strong className="text-gray-300">Ruolo atleta / coach:</strong> si imposta in{" "}
+            <strong className="text-gray-400">/access</strong>, non qui. Sotto solo riepilogo e link utili. Le pill{" "}
+            <strong className="text-gray-400">Ambito</strong> · <strong className="text-gray-400">Collegamenti</strong> ·{" "}
+            <strong className="text-gray-400">Operatività</strong> servono a scorrere le altre sezioni.
+          </p>
+          <SettingsCoachAccountCard />
+        </section>
+      ) : null}
+
+      {module === "dashboard" && dashboardCatalog && dashboardHosted ? (
+        <div className="space-y-12">
+          <DashboardIntroAndPricing
+            hosted={dashboardHosted}
+            payReady={dashboardPayReady}
+            basePlans={dashboardCatalog.basePlans}
+            coachAddOns={dashboardCatalog.coachAddOns}
+            trialPolicy={dashboardCatalog.trialPolicy}
+            trialDaysConfigured={dashboardTrialDays}
+          />
+          <DashboardLoadAnalysisSummary />
+          <section id="dash-day-views" className="scroll-mt-28">
+            <Pro2SectionCard
+              accent="cyan"
+              title="Viste giornata"
+              subtitle="Stessa data ISO tra Training · giornata e Physiology · wellness (device + twin)"
+              icon={CalendarDays}
+            >
+              <ActionBar className="border-0 pt-0 flex-wrap justify-start gap-2" aria-label="Apri giornata operativa">
+                <Pro2Link
+                  href="/training/session"
+                  variant="secondary"
+                  className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
+                >
+                  Training · giornata
+                </Pro2Link>
+                <Pro2Link
+                  href="/physiology/daily"
+                  variant="secondary"
+                  className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
+                >
+                  <HeartPulse className="mr-1 inline h-4 w-4" aria-hidden />
+                  Wellness giornaliero
+                </Pro2Link>
+                <Pro2Link
+                  href="/training/calendar"
+                  variant="ghost"
+                  className="justify-center border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15"
+                >
+                  Calendar
+                </Pro2Link>
+              </ActionBar>
+            </Pro2SectionCard>
+          </section>
+          <section id="dash-operational" className="scroll-mt-28 grid gap-6 xl:grid-cols-2">
+            <div className="flex justify-center">
+              <DashboardAthleteHubCard />
+            </div>
+            <div className="flex justify-center">
+              <HealthBiomarkerPanelsCard />
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {module !== "dashboard" ? (
+        <>
+      {module !== "athletes" ? (
+        <>
+      <section id="std-domain" className="scroll-mt-28 space-y-10">
+        {panel ? (
+          <Pro2SectionCard accent="violet" title="Dominio contrattuale" subtitle={panel.title} icon={BookOpen}>
+            <p className="text-sm leading-relaxed text-gray-300">{panel.summary}</p>
+            <p className="mt-4 font-mono text-xs text-gray-500">
+              <span className="text-purple-400">package</span> {panel.packageId}
+            </p>
+          </Pro2SectionCard>
+        ) : (
+          <Pro2SectionCard accent="slate" title="Dominio" subtitle="Non mappato" icon={BookOpen}>
+            <p className="text-sm text-gray-400">Nessun pannello dominio mappato per questo id.</p>
+          </Pro2SectionCard>
+        )}
+      </section>
+
+      <section id="std-links" className="scroll-mt-28">
+        <Pro2SectionCard accent="cyan" title="Collegamenti" subtitle="Navigazione rapida" icon={LayoutDashboard}>
+        <ActionBar className="border-0 pt-0" aria-label="Navigazione rapida">
+          <Pro2Link href="/" variant="ghost">
+            Home
+          </Pro2Link>
+          <Pro2Link href="/dashboard" variant="secondary">
+            Dashboard
+          </Pro2Link>
+        </ActionBar>
+        {module === "settings" ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Pro2Link
+              href="/dashboard"
+              variant="secondary"
+              className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
+            >
+              Dashboard
+            </Pro2Link>
+            <Pro2Link
+              href="/training"
+              variant="secondary"
+              className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
+            >
+              Training
+            </Pro2Link>
+            <Pro2Link
+              href="/profile"
+              variant="secondary"
+              className="justify-center border border-fuchsia-500/30 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
+            >
+              Profile
+            </Pro2Link>
+          </div>
+        ) : null}
+        <p className="mt-6 font-mono text-xs text-gray-600">
+          build <span className="text-purple-300">{EMPATHY_PLATFORM_VERSION}</span>
+        </p>
+        </Pro2SectionCard>
+      </section>
+        </>
+      ) : null}
+
+      <section id="std-ops" className="scroll-mt-28 space-y-10">
+      {module === "athletes" ? <CoachAthletesModulePanel /> : null}
+
+      {module === "settings" ? (
+        <>
+          {/**
+           * Pannello "cliente": scelta provider per dominio + policy ingest.
+           * Tutto il resto (auth/athlete diagnostics, build phases, billing/integrazioni env)
+           * è interno e va dietro `PlatformAdminOnly` — no rumore tecnico, no impressione di
+           * "spegnere" Stripe. (NB: l'enforcement reale della sottoscrizione è server-side.)
+           */}
+          <Pro2SectionCard
+            accent="slate"
+            title="Mio account · device"
+            subtitle="Quale device guida sonno, recovery e training; quali stream sincronizzare"
+            icon={Settings2}
+          >
+            <div className="flex flex-col gap-10">
+              <SettingsLocalePreference />
+              <SettingsDataSourcePreference />
+              <SettingsDeviceManualSync />
+              <SettingsDeviceIngestPolicy />
+            </div>
+          </Pro2SectionCard>
+
+          <PlatformAdminOnly>
+            <Pro2SectionCard
+              accent="slate"
+              title="Diagnostica · admin"
+              subtitle="Sessione, atleta, integrazioni, billing — visibile solo a operatori piattaforma"
+              icon={Settings2}
+            >
+              <div className="flex flex-col gap-10">
+                <SettingsBuildPhasesCard />
+                <SettingsAuthSessionDiagnostics />
+                <SettingsAthleteContextDiagnostics />
+                <SettingsIntegrationsDiagnostics />
+                <SettingsBillingDiagnostics />
+              </div>
+            </Pro2SectionCard>
+          </PlatformAdminOnly>
+        </>
+      ) : null}
+      </section>
+        </>
+      ) : null}
+    </Pro2ModulePageShell>
+  );
+}

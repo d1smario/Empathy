@@ -1,0 +1,4931 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { cn } from "@/lib/cn";
+import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
+import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
+import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
+import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
+import type {
+  AdaptationGuidance,
+  AthleteMemory,
+  LifestyleActivityClass,
+  NutritionDailyEnergyModel,
+  PhysiologyState,
+} from "@/lib/empathy/schemas";
+import { buildOperationalDynamicsLines } from "@/lib/platform/operational-dynamics-lines";
+import { resolveNutritionDayModel } from "@/modules/nutrition/hooks/resolve-nutrition-day-model";
+import { useNutritionHeavyModuleEnrichment } from "@/modules/nutrition/hooks/use-nutrition-heavy-module-enrichment";
+import {
+  assignPathwayTargetsToMealSlots,
+  catalogIdsForSlot,
+  collectSearchQueriesForSlot,
+  type PathwayMealSlotKey,
+} from "@/lib/nutrition/pathway-meal-usda-slots";
+import { fetchUsdaFoodsForCatalogIds } from "@/modules/nutrition/services/pathway-meal-usda-client";
+import { buildFunctionalFoodRecommendationsViewModel } from "@/lib/nutrition/functional-food-recommendations";
+import { buildFunctionalMealSelectorViewModel } from "@/lib/nutrition/functional-meal-selector";
+import { buildEffectiveDayTrainingContext } from "@/lib/training/day-reality-context";
+import {
+  fetchNutritionModuleContext,
+  type NutritionPlannedWorkoutRow,
+} from "@/modules/nutrition/services/nutrition-module-api";
+import {
+  mergeNutritionTrainingRowsById,
+  nutritionModuleWindowKeys,
+} from "@/modules/nutrition/services/nutrition-module-window-merge";
+import {
+  fetchOperationalDayHub,
+  isOperationalDayHubEnabled,
+} from "@/modules/nutrition/services/operational-day-hub-api";
+import type {
+  ApprovedApplicationPatch,
+  FunctionalFoodRecommendationsViewModel,
+  FunctionalFoodTargetViewModel,
+  FunctionalMealSelectorViewModel,
+  NutritionApplicationDirectiveViewModel,
+  NutritionMetabolicEfficiencyGenerativeViewModel,
+  NutritionPathwayModulationViewModel,
+  NutrientInterrogationViewModel,
+  NutritionPerformanceIntegrationDials,
+  UsdaRichFoodItemViewModel,
+} from "@/api/nutrition/contracts";
+import type { CrossDomainInterpretationRoadmap, EmpathyApplicationPlaybook } from "@empathy/contracts";
+import { mergePlaybookIntoMealPlanRequest } from "@/lib/interpretation/materialize-application-playbook";
+import type {
+  TrainingAdaptationLoopViewModel,
+  TrainingBioenergeticModulationViewModel,
+} from "@/api/training/contracts";
+import {
+  buildFuelingMediaKeyCandidates,
+  FUELING_PRODUCT_CATALOG,
+  type FuelingCategory,
+  type FuelingFunctionalFocus,
+  type FuelingProduct,
+} from "@/lib/nutrition/fueling-product-catalog";
+import {
+  buildIntegrationQuantityHint,
+  FUELING_CATEGORY_IT,
+  FUELING_FORMAT_IT,
+  FOCUS_IT,
+  primaryIntegrationTimingBucket,
+  TIMING_IT,
+  type IntegrationTimingBucket,
+} from "@/lib/nutrition/integration-product-ui";
+import { resolveFuelingPro2MediaUrlFromCandidates } from "@/lib/nutrition/fueling-pro2-media-manifest";
+import {
+  fetchNutritionMediaRows,
+  saveNutritionProfileConfig,
+  saveNutritionDeviceExport,
+  saveNutritionLookupItem,
+} from "@/modules/nutrition/services/nutrition-actions-api";
+import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
+import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
+import { dedupePlannedWorkoutDbRows } from "@/lib/training/planned/planned-workout-dedupe-fingerprint";
+import {
+  effectivePlannedWorkoutNutritionMetrics,
+  resolveBuilderSessionForPlannedRow,
+} from "@/lib/training/builder/pro2-session-notes";
+import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
+import { analyzePlannedSessionsForFueling } from "@/lib/nutrition/fueling-planned-session-analysis";
+import {
+  buildFuelingProtocolSlots,
+  buildGlycogenPlotGeometry,
+  computeGlycogenDepletionForFueling,
+  type FuelingProtocolSlot,
+} from "@/lib/nutrition/fueling-session-protocol";
+import { FoodDiaryPanel } from "@/modules/nutrition/components/FoodDiaryPanel";
+import {
+  NutritionMicronutrientGrid,
+  mealPlanDayTotalsToMicroLines,
+  pathwayNutrientSummaryToMicroLines,
+} from "@/modules/nutrition/components/NutritionMicronutrientGrid";
+import { buildIntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-request-builder";
+import {
+  activeMealSlotKeysForMode,
+  buildDietMealSlotBudgets,
+  resolveSixMealSnackPercentages,
+  type CaloricDistribution,
+} from "@/lib/nutrition/diet-meal-slot-budgets";
+import { computeSnackSlotsSuppressedByTrainingWindow } from "@/lib/nutrition/nutrition-meal-times-training-coherence";
+import {
+  distributionImpliesSixMeals,
+  isUsableCaloricDistribution,
+  mergeNutritionConfigRecords,
+  parseNutritionConfigRecord,
+  resolveNutritionDietDay,
+} from "@/lib/nutrition/resolve-nutrition-diet-day";
+import { mealTimesFromRoutineWeekPlanForDate } from "@/lib/nutrition/routine-week-plan-meal-times";
+import { resolveMealTimesForNutritionPlanDate } from "@/lib/nutrition/nutrition-meal-times-training-coherence";
+import {
+  buildRacePreLunchDayContext,
+  mapPlannedSessionsForRaceDetection,
+} from "@/lib/nutrition/race-day-pre-race-lunch";
+import {
+  buildRoutineSyntheticFuelingSessionInput,
+  detectRoutineRaceDay,
+} from "@/lib/nutrition/routine-race-day-context";
+import { mergeRoutineConfigRecords } from "@/lib/nutrition/nutrition-module-profile-merge";
+import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
+import {
+  buildNutritionAdaptationSectorBoxes,
+  type NutritionAdaptationSectorPillContext,
+} from "@/lib/nutrition/nutrition-adaptation-sector-strip";
+import {
+  NutritionMealPlanDailyTargets,
+  type NutritionMealPlanEnergyLedger,
+  NutritionMealPlanLeadPanels,
+  NutritionMealPlanWorkspace,
+} from "@/modules/nutrition/views/NutritionMealPlanView";
+import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
+import { fetchIntelligentMealPlan } from "@/modules/nutrition/services/intelligent-meal-plan-api";
+import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intelligent-meal-plan-v2-api";
+import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
+import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
+import { updateProfilePayload } from "@/modules/profile/services/profile-api";
+import type { FoodDiaryComplianceRow } from "@/modules/nutrition/services/food-diary-api";
+import {
+  aggregateStapleCountsForWeek,
+  isoWeekBucketId,
+  readMealRotationWeekPayload,
+  recordPlanDayStaples,
+} from "@/lib/nutrition/meal-rotation-week-cache";
+import {
+  isIsoDateKey,
+  readPersistedNutritionPlanDate,
+  writePersistedNutritionPlanDate,
+} from "@/lib/nutrition/persisted-nutrition-plan-date";
+
+type AthleteNutritionRow = {
+  id: string;
+  birth_date: string | null;
+  sex: string | null;
+  diet_type: string | null;
+  intolerances: string[] | null;
+  allergies: string[] | null;
+  food_preferences: string[] | null;
+  food_exclusions: string[] | null;
+  supplements: string[] | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  muscle_mass_kg: number | null;
+  lifestyle_activity_class: LifestyleActivityClass | null;
+  routine_config: Record<string, unknown> | null;
+  nutrition_config: Record<string, unknown> | null;
+  supplement_config: Record<string, unknown> | null;
+  preferred_meal_count: number | null;
+};
+
+type PhysioRow = {
+  athlete_id: string;
+  ftp_watts: number | null;
+  lt1_watts: number | null;
+  lt2_watts: number | null;
+  v_lamax: number | null;
+  vo2max_ml_min_kg: number | null;
+  baseline_hrv_ms?: number | null;
+};
+
+type TwinStateRow = {
+  readiness?: number;
+  fatigueAcute?: number;
+  glycogenStatus?: number;
+  adaptationScore?: number;
+  redoxStressIndex?: number;
+  inflammationRisk?: number;
+};
+
+type RecoverySummaryRow = {
+  status: "good" | "moderate" | "poor" | "unknown";
+  guidance: string;
+  sleepScore: number | null;
+  readinessScore: number | null;
+  recoveryScore: number | null;
+  hrvMs: number | null;
+  restingHrBpm: number | null;
+  sleepDurationHours: number | null;
+  strainScore: number | null;
+  sourceDate: string | null;
+  provider: string | null;
+  importedAt: string | null;
+};
+
+type ExecutedRow = {
+  id: string;
+  date: string;
+  duration_minutes: number;
+  tss: number;
+  kcal?: number | null;
+  kj?: number | null;
+  trace_summary?: Record<string, unknown> | null;
+  lactate_mmoll: number | null;
+  glucose_mmol: number | null;
+  smo2: number | null;
+};
+
+type PlannedRow = NutritionPlannedWorkoutRow & {
+  id: string;
+  date: string;
+  type: string | null;
+  duration_minutes: number;
+  tss_target: number | null;
+  kcal_target: number | null;
+  notes: string | null;
+};
+
+/** Palette grafico fueling / glicogeno (solo tema Pro 2 dark cyber). */
+const FUELING_CHART_THEME_PRO2 = {
+  areaTop: "#38bdf8",
+  areaBottom: "#2563eb",
+  line: "#22d3ee",
+  dot: "#f472b6",
+  text: "rgba(226,232,240,0.95)",
+  axis: "rgba(148,163,184,0.7)",
+  zoneGreen: "rgba(34,197,94,0.2)",
+  zoneYellow: "rgba(250,204,21,0.2)",
+  zoneRed: "rgba(244,63,94,0.18)",
+} as const;
+
+type FoodLookupItem = {
+  source: "usda" | "brand-site";
+  lookupTier?: string;
+  fdcId?: number | null;
+  catalogId?: string | null;
+  label: string;
+  brand: string | null;
+  kcal_100: number | null;
+  carbs_100: number | null;
+  protein_100: number | null;
+  fat_100: number | null;
+  sodium_mg_100: number | null;
+};
+
+type GarminFuelingStep = {
+  phase: string;
+  minute_offset: number;
+  icon: string;
+  protocol: string;
+  cho_g: number;
+  hydration_ml: number;
+  notes: string;
+};
+
+type FuelingSlot = {
+  phase: string;
+  time: string;
+  icon: string;
+  plan: string;
+  cho: number;
+  fluid: number;
+  notes: string;
+  category: FuelingCategory;
+};
+
+type FuelingTrainingContextRow = {
+  id: string;
+  builderContract: Pro2BuilderSessionContract | null;
+  title: string;
+  family: string | null;
+  discipline: string | null;
+  target: string | null;
+  durationMin: number;
+  tss: number;
+  kcal: number;
+  structure: string | null;
+  blockLabels: string[];
+  intensityCues: string[];
+  substrate: {
+    estimatedIntensityPctFtp: number;
+    lactateProducedG: number;
+    glucoseFromCoriG: number;
+    glucoseNetFromCoriG: number;
+    exogenousOxidizedG: number;
+    choAvailableG: number;
+    glycolyticSharePct: number;
+    gutPathwayRisk: string;
+    bloodDeliveryPctOfIngested: number;
+    glycogenCombustedNetG: number;
+    glucoseRequiredForStrategyG: number;
+  } | null;
+  physiologicalIntent: string[];
+  nutritionSupports: string[];
+  inhibitorsAndRisks: string[];
+  choEnergyWeight: number;
+};
+
+type MediaAssetRow = {
+  entity_type?: "meal" | "fueling" | "exercise";
+  entity_key: string;
+  media_kind: "image" | "video" | "gif";
+  url: string;
+  active: boolean;
+  sort_order: number;
+};
+
+function mapAthleteMemoryToNutritionProfile(memory: AthleteMemory | null | undefined): AthleteNutritionRow | null {
+  const profile = memory?.profile;
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    birth_date: profile.birthDate ?? null,
+    sex: profile.sex ?? null,
+    diet_type: profile.dietType ?? null,
+    intolerances: profile.intolerances ?? null,
+    allergies: profile.allergies ?? null,
+    food_preferences: profile.foodPreferences ?? null,
+    food_exclusions: profile.foodExclusions ?? null,
+    supplements: profile.supplements ?? null,
+    height_cm: profile.heightCm ?? null,
+    weight_kg: profile.weightKg ?? null,
+    body_fat_pct: profile.bodyFatPct ?? null,
+    muscle_mass_kg: profile.muscleMassKg ?? null,
+    lifestyle_activity_class: profile.lifestyleActivityClass ?? null,
+    routine_config: profile.routineConfig ?? null,
+    nutrition_config: profile.nutritionConfig ?? null,
+    supplement_config: profile.supplementConfig ?? null,
+    preferred_meal_count: profile.preferredMealCount ?? null,
+  };
+}
+
+function mapAthleteMemoryToPhysio(memory: AthleteMemory | null | undefined): PhysioRow | null {
+  const physiology = memory?.physiology;
+  if (!physiology) return null;
+  return {
+    athlete_id: physiology.athleteId,
+    ftp_watts: physiology.physiologicalProfile.ftpWatts ?? null,
+    lt1_watts: physiology.physiologicalProfile.lt1Watts ?? null,
+    lt2_watts: physiology.physiologicalProfile.lt2Watts ?? null,
+    v_lamax: physiology.physiologicalProfile.vLamax ?? null,
+    vo2max_ml_min_kg: physiology.physiologicalProfile.vo2maxMlMinKg ?? null,
+    baseline_hrv_ms: physiology.physiologicalProfile.baselineHrvMs ?? null,
+  };
+}
+
+/** Memory profile can omit anthropometry while the module row still has DB values; do not let nulls shadow. */
+function mergeNutritionProfileForSolver(mem: AthleteNutritionRow | null, mod: AthleteNutritionRow | null): AthleteNutritionRow | null {
+  if (!mem && !mod) return null;
+  if (!mem) return mod;
+  if (!mod) return mem;
+  const memNc = parseNutritionConfigRecord(mem.nutrition_config);
+  const modNc = parseNutritionConfigRecord(mod.nutrition_config);
+  const nutrition_config =
+    Object.keys(memNc).length > 0 && Object.keys(modNc).length > 0
+      ? mergeNutritionConfigRecords(memNc, modNc)
+      : Object.keys(modNc).length > 0
+        ? modNc
+        : memNc;
+  return {
+    ...mod,
+    ...mem,
+    id: mem.id || mod.id,
+    birth_date: mem.birth_date ?? mod.birth_date,
+    sex: mem.sex ?? mod.sex,
+    diet_type: mem.diet_type ?? mod.diet_type,
+    intolerances: mem.intolerances ?? mod.intolerances,
+    allergies: mem.allergies ?? mod.allergies,
+    food_preferences: mem.food_preferences ?? mod.food_preferences,
+    food_exclusions: mem.food_exclusions ?? mod.food_exclusions,
+    supplements: mem.supplements ?? mod.supplements,
+    height_cm: mem.height_cm ?? mod.height_cm,
+    weight_kg: mem.weight_kg ?? mod.weight_kg,
+    body_fat_pct: mem.body_fat_pct ?? mod.body_fat_pct,
+    muscle_mass_kg: mem.muscle_mass_kg ?? mod.muscle_mass_kg,
+    lifestyle_activity_class: mem.lifestyle_activity_class ?? mod.lifestyle_activity_class,
+    routine_config: mergeRoutineConfigRecords(mem.routine_config, mod.routine_config),
+    nutrition_config,
+    supplement_config: mem.supplement_config ?? mod.supplement_config,
+  };
+}
+
+function mergePhysioForSolver(mem: PhysioRow | null, mod: PhysioRow | null): PhysioRow | null {
+  if (!mem && !mod) return null;
+  if (!mem) return mod;
+  if (!mod) return mem;
+  return {
+    ...mod,
+    ...mem,
+    athlete_id: mem.athlete_id || mod.athlete_id,
+    ftp_watts: mem.ftp_watts ?? mod.ftp_watts,
+    lt1_watts: mem.lt1_watts ?? mod.lt1_watts,
+    lt2_watts: mem.lt2_watts ?? mod.lt2_watts,
+    v_lamax: mem.v_lamax ?? mod.v_lamax,
+    vo2max_ml_min_kg: mem.vo2max_ml_min_kg ?? mod.vo2max_ml_min_kg,
+    baseline_hrv_ms: mem.baseline_hrv_ms ?? mod.baseline_hrv_ms,
+  };
+}
+
+const SPORTS = ["Running", "Ciclismo", "Nuoto", "XC Ski", "Triathlon", "Canoa", "MTB"];
+
+/** Voce unica nel gate fueling quando manca la seduta pianificata quel giorno (solo piano, non eseguito retroattivo). */
+const FUELING_MISSING_DAY_TRAINING = "seduta pianificata nel calendario per il giorno scelto";
+
+export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary";
+
+const BRAND_ALIASES: Array<{ label: string; aliases: string[] }> = [
+  { label: "Enervit", aliases: ["enervit"] },
+  { label: "Maurten", aliases: ["maurten"] },
+  { label: "SiS", aliases: ["sis", "science in sport", "scienceinsport"] },
+  { label: "+Watt", aliases: ["+watt", "watt", "plus watt"] },
+  { label: "Powerbar", aliases: ["powerbar", "power bar"] },
+];
+
+function isTrustedFuelingImage(url: string | undefined | null): boolean {
+  if (!url) return false;
+  const value = url.toLowerCase();
+  if (value.includes("unsplash.com") || value.includes("pexels.com") || value.includes("pixabay.com")) return false;
+  return (
+    value.includes("enervit") ||
+    value.includes("maurten") ||
+    value.includes("scienceinsport") ||
+    value.includes("precisionhydration") ||
+    value.includes("namedsport") ||
+    value.includes("neversecond") ||
+    value.includes("watt.it") ||
+    value.includes("powerbar")
+  );
+}
+
+function buildFuelingPackshot(
+  brand: string,
+  product: string,
+  category: string,
+  format?: string,
+): string {
+  const palette: Record<string, { bg: string; fg: string; accent: string; accentSoft: string }> = {
+    Enervit: { bg: "#12090c", fg: "#fff7fa", accent: "#ff355e", accentSoft: "#ffd400" },
+    Maurten: { bg: "#0d1014", fg: "#f8fafc", accent: "#c7d2fe", accentSoft: "#60a5fa" },
+    SiS: { bg: "#09101d", fg: "#f8fafc", accent: "#38bdf8", accentSoft: "#8b5cf6" },
+    "+Watt": { bg: "#14100c", fg: "#fffaf0", accent: "#f59e0b", accentSoft: "#fb7185" },
+    Powerbar: { bg: "#140b10", fg: "#fff7ed", accent: "#ef4444", accentSoft: "#fbbf24" },
+    "Precision Fuel & Hydration": { bg: "#0d1117", fg: "#f8fafc", accent: "#f97316", accentSoft: "#facc15" },
+    "Named Sport": { bg: "#0b1215", fg: "#f1f5f9", accent: "#22c55e", accentSoft: "#38bdf8" },
+    Neversecond: { bg: "#111318", fg: "#f8fafc", accent: "#e2e8f0", accentSoft: "#a855f7" },
+  };
+  const tone = palette[brand] ?? { bg: "#111827", fg: "#f9fafb", accent: "#fb923c", accentSoft: "#60a5fa" };
+  const title = product.length > 28 ? `${product.slice(0, 28)}...` : product;
+  const formatLabel = (format ?? category).toUpperCase();
+  const pack =
+    format === "gel"
+      ? `<path d='M770 176 h138 l40 86 v290 l-40 78 h-138 l-40 -78 v-290 z' fill='#101317' stroke='${tone.accent}' stroke-width='8' />
+         <rect x='760' y='232' width='158' height='236' rx='20' fill='${tone.accent}' />
+         <rect x='760' y='468' width='158' height='54' rx='12' fill='${tone.accentSoft}' />`
+      : format === "bar"
+        ? `<rect x='684' y='270' width='298' height='168' rx='28' fill='#12161d' stroke='${tone.accent}' stroke-width='8' />
+           <rect x='712' y='294' width='242' height='64' rx='14' fill='${tone.accent}' />
+           <rect x='712' y='370' width='162' height='34' rx='10' fill='${tone.accentSoft}' />`
+        : `<rect x='734' y='156' width='182' height='472' rx='36' fill='#0c1016' stroke='${tone.accent}' stroke-width='8' />
+           <rect x='758' y='214' width='134' height='244' rx='24' fill='${tone.accent}' />
+           <rect x='758' y='476' width='134' height='72' rx='18' fill='${tone.accentSoft}' />
+           <ellipse cx='825' cy='156' rx='76' ry='20' fill='#20252d' />`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='800' viewBox='0 0 1200 800'>
+  <defs>
+    <linearGradient id='bg' x1='0' x2='1' y1='0' y2='1'>
+      <stop offset='0%' stop-color='${tone.bg}'/>
+      <stop offset='100%' stop-color='#111827'/>
+    </linearGradient>
+    <linearGradient id='glow' x1='0' x2='1'>
+      <stop offset='0%' stop-color='${tone.accent}' stop-opacity='0.95'/>
+      <stop offset='100%' stop-color='${tone.accentSoft}' stop-opacity='0.95'/>
+    </linearGradient>
+  </defs>
+  <rect width='1200' height='800' rx='48' fill='url(#bg)'/>
+  <circle cx='930' cy='160' r='180' fill='${tone.accent}' opacity='0.12'/>
+  <circle cx='250' cy='640' r='220' fill='${tone.accentSoft}' opacity='0.08'/>
+  <rect x='58' y='58' width='1084' height='684' rx='34' fill='none' stroke='${tone.accent}' stroke-opacity='0.45' stroke-width='3'/>
+  <text x='108' y='170' fill='${tone.fg}' font-family='Arial, Helvetica, sans-serif' font-size='56' font-weight='700'>${brand}</text>
+  <text x='108' y='228' fill='url(#glow)' font-family='Arial, Helvetica, sans-serif' font-size='28' font-weight='700'>${category.toUpperCase()} · ${formatLabel}</text>
+  <text x='108' y='304' fill='${tone.fg}' font-family='Arial, Helvetica, sans-serif' font-size='42' font-weight='700'>${title}</text>
+  <text x='108' y='364' fill='#d6dde7' font-family='Arial, Helvetica, sans-serif' font-size='22'>Fueling visual fallback · official click-through preserved</text>
+  <rect x='108' y='426' width='262' height='44' rx='999' fill='${tone.accent}' opacity='0.16' stroke='${tone.accent}' stroke-opacity='0.45'/>
+  <text x='136' y='455' fill='${tone.fg}' font-family='Arial, Helvetica, sans-serif' font-size='20' font-weight='700'>EMPATHY FUELING ASSET</text>
+  ${pack}
+  <rect x='666' y='648' width='318' height='28' rx='14' fill='#000000' opacity='0.28'/>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function resolveFuelingProductImage(
+  product: FuelingProduct | undefined,
+  category: FuelingCategory,
+  fuelingMediaByKey: Record<string, string>,
+) {
+  const keyCandidates = buildFuelingMediaKeyCandidates(product, category);
+  const pro2Local = resolveFuelingPro2MediaUrlFromCandidates(keyCandidates);
+  const mediaCandidate =
+    keyCandidates.map((key) => fuelingMediaByKey[key]).find(Boolean)
+    ?? pro2Local
+    ?? product?.imageUrl;
+  const trustedImage = isTrustedFuelingImage(mediaCandidate) ? mediaCandidate : null;
+  const logoFallback = product?.logoDomain ? `https://logo.clearbit.com/${product.logoDomain}` : null;
+  const brandedPackshotFallback = buildFuelingPackshot(
+    product?.brand ?? "Fuel Brand",
+    product?.product ?? "Fuel Product",
+    category,
+    product?.format,
+  );
+  const displayImage = trustedImage ?? logoFallback ?? brandedPackshotFallback;
+  return {
+    displayImage,
+    isLogoFallback: !trustedImage && displayImage === logoFallback,
+  };
+}
+
+function parseFuelingMinuteOffset(timeLabel: string): number {
+  const match = timeLabel.match(/([+-]?\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function n(v: unknown, fallback = 0): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : fallback;
+  }
+  return fallback;
+}
+
+function hasPositiveNumber(v: unknown): boolean {
+  return n(v, 0) > 0;
+}
+
+function record(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
+/** `meal_count_mode` nel diet week → `meal_strategy` usato in Nutrizione. */
+function mapMealCountModeToMealStrategy(mode: unknown): string | null {
+  const m = String(mode ?? "").trim();
+  if (!m || m === "4") return null;
+  if (m === "1") return "1-meal";
+  if (m === "2") return "2-meals";
+  if (m === "3") return "3-meals";
+  if (m === "5") return "5-meals";
+  if (m === "6") return "6-meals";
+  if (m === "fasting" || m.startsWith("semi-")) return m;
+  return null;
+}
+
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function round(v: number, digits = 0) {
+  const m = 10 ** digits;
+  return Math.round(v * m) / m;
+}
+
+function fuelingPhaseColor(phase: string): string {
+  const p = phase.toLowerCase();
+  if (p.includes("pre")) return "#e879f9";
+  if (p.includes("post")) return "#4ade80";
+  return "#fb923c";
+}
+
+function portionHintForMealKcal(mealKcal: number, refKcal = 750): string {
+  if (!Number.isFinite(mealKcal) || mealKcal <= 0) return "";
+  const f = mealKcal / refKcal;
+  if (f > 1.12) return "Porzioni orientate al surplus kcal del giorno.";
+  if (f < 0.88) return "Porzioni orientate a giornata più leggera.";
+  return "Allinea porzioni al target kcal del pasto.";
+}
+
+function nutritionToneForLabel(label: string): "amber" | "cyan" | "green" | "rose" | "slate" {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("cho") || normalized.includes("glycogen") || normalized.includes("tier")) return "amber";
+  if (normalized.includes("fluid") || normalized.includes("hydration") || normalized.includes("power")) return "cyan";
+  if (normalized.includes("score") || normalized.includes("coverage") || normalized.includes("protein")) return "green";
+  if (normalized.includes("risk") || normalized.includes("esaur") || normalized.includes("redox")) return "rose";
+  return "slate";
+}
+
+/** Vie metaboliche — colori fase (allineati palette Pro 2). */
+function pathwayOperationalPhaseRowClass(phase: string): string {
+  switch (phase) {
+    case "pre_acute":
+      return "border-l-4 border-l-violet-400 bg-violet-500/10 pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+    case "peri_workout":
+      return "border-l-4 border-l-fuchsia-400 bg-fuchsia-500/10 pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+    case "early_recovery":
+      return "border-l-4 border-l-orange-400 bg-orange-500/[0.12] pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+    case "late_recovery":
+      return "border-l-4 border-l-sky-400 bg-sky-500/10 pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+    default:
+      return "border-l-4 border-l-zinc-500 bg-white/[0.04] pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+  }
+}
+
+const FUNCTIONAL_EXAMPLE_CELL_CLASSES = [
+  "rounded-lg border border-fuchsia-500/35 bg-fuchsia-500/10 px-3 py-2.5",
+  "rounded-lg border border-violet-500/35 bg-violet-500/10 px-3 py-2.5",
+  "rounded-lg border border-orange-500/35 bg-orange-500/[0.11] px-3 py-2.5",
+] as const;
+
+function metabolicPhaseSlotCardClass(
+  phase: FunctionalMealSelectorViewModel["slots"][number]["metabolicPhase"],
+): string {
+  switch (phase) {
+    case "pre_load":
+      return "border-violet-400/45 bg-gradient-to-br from-violet-500/[0.14] to-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+    case "during_load":
+      return "border-fuchsia-400/45 bg-gradient-to-br from-fuchsia-500/[0.14] to-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+    case "early_recovery":
+      return "border-orange-400/45 bg-gradient-to-br from-orange-500/[0.14] to-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+    case "late_recovery":
+      return "border-sky-400/45 bg-gradient-to-br from-sky-500/[0.12] to-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
+    default:
+      return "border-white/15 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]";
+  }
+}
+
+function functionalCandidateRowClass(
+  timing: FunctionalMealSelectorViewModel["slots"][number]["candidates"][number]["timing"],
+): string {
+  switch (timing) {
+    case "pre":
+      return "border-l-[3px] border-l-violet-400 bg-violet-500/[0.07]";
+    case "peri":
+      return "border-l-[3px] border-l-fuchsia-400 bg-fuchsia-500/[0.07]";
+    case "early_recovery":
+      return "border-l-[3px] border-l-orange-400 bg-orange-500/[0.09]";
+    case "late_recovery":
+      return "border-l-[3px] border-l-sky-400 bg-sky-500/[0.07]";
+    default:
+      return "border-l-[3px] border-l-zinc-500 bg-white/[0.03]";
+  }
+}
+
+type IntegrationProductCardProduct = FuelingProduct & { displayImage: string; isLogoFallback: boolean };
+
+function IntegrationProductCard({
+  product,
+  qtyHint,
+  accent,
+}: {
+  product: IntegrationProductCardProduct;
+  qtyHint: string;
+  accent: IntegrationTimingBucket;
+}) {
+  const metaChips = [
+    FUELING_FORMAT_IT[product.format],
+    FUELING_CATEGORY_IT[product.category],
+    ...product.functionalFocus.map((f) => FOCUS_IT[f] ?? f),
+  ];
+  const accentBorder =
+    accent === "pre"
+      ? "rgba(167,139,250,0.55)"
+      : accent === "intra"
+        ? "rgba(232,121,249,0.5)"
+        : "rgba(251,146,60,0.5)";
+  return (
+    <article
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        minHeight: 168,
+        overflow: "hidden",
+        borderRadius: 12,
+        border: `1px solid ${accentBorder}`,
+        background: "linear-gradient(135deg, rgba(76,29,149,0.18), rgba(0,0,0,0.55))",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          padding: "12px 14px",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <div>
+          <div className="nutrition-product-brand" style={{ fontSize: "0.65rem", letterSpacing: "0.08em" }}>
+            {product.brand}
+          </div>
+          <strong style={{ display: "block", marginTop: 6, fontSize: "1rem", lineHeight: 1.25 }}>{product.product}</strong>
+          <p className="nutrition-muted" style={{ margin: "10px 0 0", fontSize: "0.72rem", lineHeight: 1.45 }}>
+            {qtyHint}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {metaChips.map((chip) => (
+              <span
+                key={`${product.brand}-${product.product}-m-${chip}`}
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.06)",
+                  padding: "2px 8px",
+                  fontSize: "0.62rem",
+                  color: "var(--empathy-text-muted, #cbd5e1)",
+                }}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+            {product.timing.map((timing) => (
+              <span
+                key={`${product.brand}-${product.product}-t-${timing}`}
+                style={{
+                  borderRadius: 999,
+                  border: "1px solid rgba(34,211,238,0.35)",
+                  background: "rgba(6,78,95,0.35)",
+                  padding: "2px 8px",
+                  fontSize: "0.62rem",
+                  color: "#a5f3fc",
+                }}
+              >
+                {TIMING_IT[timing] ?? timing}
+              </span>
+            ))}
+          </div>
+        </div>
+        <a
+          href={product.productUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nutrition-product-link"
+          style={{ marginTop: 12, fontSize: "0.68rem", fontWeight: 600 }}
+        >
+          Scheda produttore
+        </a>
+      </div>
+      <a
+        href={product.productUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="nutrition-product-media-link"
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 140,
+          background: "rgba(0,0,0,0.35)",
+          padding: 12,
+        }}
+        title={product.isLogoFallback ? "Fallback logo marchio" : "Immagine catalogo / archivio"}
+      >
+        <img
+          src={product.displayImage}
+          alt={product.product}
+          className={`nutrition-product-image ${product.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
+          style={{ maxHeight: 132, width: "100%", objectFit: "contain" }}
+          loading="lazy"
+        />
+        {product.isLogoFallback ? (
+          <span
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              borderRadius: 4,
+              background: "rgba(0,0,0,0.55)",
+              padding: "2px 6px",
+              fontSize: "0.58rem",
+              color: "#94a3b8",
+            }}
+          >
+            Logo
+          </span>
+        ) : null}
+      </a>
+    </article>
+  );
+}
+
+export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
+  const [profile, setProfile] = useState<AthleteNutritionRow | null>(null);
+  const [physio, setPhysio] = useState<PhysioRow | null>(null);
+  const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
+  const [twinState, setTwinState] = useState<TwinStateRow | null>(null);
+  const [recoverySummary, setRecoverySummary] = useState<RecoverySummaryRow | null>(null);
+  const [operationalContext, setOperationalContext] = useState<TrainingDayOperationalContext | null>(null);
+  const [adaptationLoop, setAdaptationLoop] = useState<TrainingAdaptationLoopViewModel | null>(null);
+  const [bioenergeticModulation, setBioenergeticModulation] = useState<TrainingBioenergeticModulationViewModel | null>(null);
+  const [researchTraceSummaries, setResearchTraceSummaries] = useState<KnowledgeResearchTraceSummary[]>([]);
+  const [metabolicEfficiencyGenerativeModel, setMetabolicEfficiencyGenerativeModel] =
+    useState<NutritionMetabolicEfficiencyGenerativeViewModel | null>(null);
+  const [crossDomainInterpretationRoadmap, setCrossDomainInterpretationRoadmap] =
+    useState<CrossDomainInterpretationRoadmap | null>(null);
+  const [applicationPlaybook, setApplicationPlaybook] = useState<EmpathyApplicationPlaybook | null>(null);
+  const [nutrientInterrogation, setNutrientInterrogation] = useState<NutrientInterrogationViewModel | null>(null);
+  const [functionalMealSelector, setFunctionalMealSelector] = useState<FunctionalMealSelectorViewModel | null>(null);
+  const [pathwayModulation, setPathwayModulation] = useState<NutritionPathwayModulationViewModel | null>(null);
+  const [nutritionApplicationDirective, setNutritionApplicationDirective] = useState<NutritionApplicationDirectiveViewModel | null>(
+    null,
+  );
+  const [nutritionApprovedPatches, setNutritionApprovedPatches] = useState<ApprovedApplicationPatch[]>([]);
+  const [nutritionPerformanceIntegration, setNutritionPerformanceIntegration] =
+    useState<NutritionPerformanceIntegrationDials | null>(null);
+  /** Solver energia canonico da GET /api/nutrition/module (pathwayDate). */
+  const [serverDailyEnergyModel, setServerDailyEnergyModel] = useState<NutritionDailyEnergyModel | null>(null);
+  const serverDailyEnergyDateRef = useRef<string | null>(null);
+  const [executed, setExecuted] = useState<ExecutedRow[]>([]);
+  const [planned, setPlanned] = useState<PlannedRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [adherenceOptIn, setAdherenceOptIn] = useState(false);
+  const [adherenceConfigLoading, setAdherenceConfigLoading] = useState(false);
+  const [selectedPlanDate, setSelectedPlanDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const lastNutritionHydrationKey = useRef<string>("");
+  /** Finestra `from`…`to` dell’ultimo `fetchNutritionModuleContext` completo (per pathwayDate incrementale). */
+  const nutritionModuleWindowRef = useRef<{ from: string; to: string } | null>(null);
+  const nutritionModuleFullWindowRef = useRef<{ from: string; to: string } | null>(null);
+  const nutritionModuleExpandInFlightRef = useRef(false);
+  /** Ultima data per cui `functionalMealSelector` è stato allineato al server (evita fetch doppi). */
+  const serverSelectorPathwayDateRef = useRef<string | null>(null);
+  /** Incrementato al ritorno sul tab: ricarica profilo/fisiologia se aggiornati altrove (altra scheda / profilo). */
+  const [nutritionContextVersion, setNutritionContextVersion] = useState(0);
+
+  const [dailyEnergyKcal, setDailyEnergyKcal] = useState(3000);
+  /** Split % pasti (hydrate da Diet / meal_plan — fallback UI se resolver giorno vuoto). */
+  const [caloricSplit, setCaloricSplit] = useState<CaloricDistribution>({
+    breakfast: 25,
+    lunch: 35,
+    dinner: 30,
+    snacks: 10,
+  });
+  const [macroSplit, setMacroSplit] = useState({ carbs: 50, protein: 25, fat: 25 });
+  const [mealTimes, setMealTimes] = useState({
+    breakfast: "07:30",
+    lunch: "13:00",
+    dinner: "20:00",
+    snack_am: "10:30",
+    snack_pm: "16:30",
+    snack_evening: "22:30",
+  });
+
+  /** Diet del giorno selezionato (Profile → week_plan[weekday]); unica fonte per pasti e % kcal. */
+  const resolvedDietDay = useMemo(
+    () =>
+      resolveNutritionDietDay(profile?.nutrition_config, selectedPlanDate, {
+        preferredMealCount: profile?.preferred_meal_count ?? null,
+      }),
+    [profile?.nutrition_config, profile?.preferred_meal_count, selectedPlanDate],
+  );
+
+  const [mealStrategy, setMealStrategy] = useState("3-meals");
+
+  const effectiveMealCountMode = useMemo(() => {
+    let m = String(resolvedDietDay.mealCountMode ?? "").trim();
+    const dist = resolvedDietDay.caloricDistribution;
+    if (
+      m === "4" &&
+      dist &&
+      (profile?.preferred_meal_count === 6 || mealStrategy === "6-meals") &&
+      distributionImpliesSixMeals(dist)
+    ) {
+      m = "6";
+    }
+    if (m && m !== "fasting") return m;
+    if (mealStrategy === "6-meals") return "6";
+    if (mealStrategy === "5-meals") return "5";
+    if (mealStrategy === "3-meals") return "3";
+    if (profile?.preferred_meal_count === 6 && dist && distributionImpliesSixMeals(dist)) return "6";
+    return m || "5";
+  }, [
+    resolvedDietDay.mealCountMode,
+    resolvedDietDay.caloricDistribution,
+    mealStrategy,
+    profile?.preferred_meal_count,
+  ]);
+
+  const activeDietMealSlotKeys = useMemo(
+    () => activeMealSlotKeysForMode(effectiveMealCountMode),
+    [effectiveMealCountMode],
+  );
+
+  const [sessionDurationMin, setSessionDurationMin] = useState(120);
+  const [sessionIntensityPctFtp, setSessionIntensityPctFtp] = useState(78);
+  const [fuelingChoGPerHour, setFuelingChoGPerHour] = useState(75);
+  const [fluidMlPerHour, setFluidMlPerHour] = useState(650);
+  const [sodiumMgPerHour, setSodiumMgPerHour] = useState(700);
+  const [cofactor, setCofactor] = useState("Bicarbonato + Caffeina");
+
+  const [predictorSport, setPredictorSport] = useState("Running");
+  const [predictorDistanceKm, setPredictorDistanceKm] = useState(21);
+  const [predictorTimeMin, setPredictorTimeMin] = useState(95);
+  const [predictorIntensityPctFtp, setPredictorIntensityPctFtp] = useState(84);
+  const [predictorUsePlanDay, setPredictorUsePlanDay] = useState(true);
+  const [diaryMacroRows, setDiaryMacroRows] = useState<FoodDiaryComplianceRow[]>([]);
+  const [foodQuery, setFoodQuery] = useState("");
+  const [foodLookupResults, setFoodLookupResults] = useState<FoodLookupItem[]>([]);
+  const [foodLookupLoading, setFoodLookupLoading] = useState(false);
+  const [foodLookupError, setFoodLookupError] = useState<string | null>(null);
+  const [usdaRichByCatalogId, setUsdaRichByCatalogId] = useState<
+    Record<string, { loading: boolean; error?: string; foods?: UsdaRichFoodItemViewModel[] }>
+  >({});
+  const [savingCatalogKey, setSavingCatalogKey] = useState<string | null>(null);
+  const [garminExporting, setGarminExporting] = useState(false);
+  const [garminMessage, setGarminMessage] = useState<string | null>(null);
+  const [fuelingMediaByKey, setFuelingMediaByKey] = useState<Record<string, string>>({});
+  const [mealPathwayBySlot, setMealPathwayBySlot] = useState<Partial<Record<string, MealPathwaySlotBundle>>>({});
+  const [intelligentMealPlan, setIntelligentMealPlan] = useState<IntelligentMealPlanResponseBody | null>(null);
+  const [intelligentMealLoading, setIntelligentMealLoading] = useState(false);
+  const [intelligentMealError, setIntelligentMealError] = useState<string | null>(null);
+  /** Indici voce originali nascosti nel piano corrente (non persistono nel DB). */
+  const [coachMealRemovalKeys, setCoachMealRemovalKeys] = useState<Set<string>>(() => new Set());
+  /** Etichette aggiunte per la prossima rigenerazione (vincolo deterministico sul request). */
+  const [coachSessionFoodExclusions, setCoachSessionFoodExclusions] = useState<string[]>([]);
+  const [profileFoodExcludeBusy, setProfileFoodExcludeBusy] = useState<string | null>(null);
+  const [fuelingConfirmBusy, setFuelingConfirmBusy] = useState(false);
+
+  useEffect(() => {
+    if (!athleteId) return;
+    let cancelled = false;
+    setAdherenceConfigLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/nutrition/adherence-config?athleteId=${encodeURIComponent(athleteId)}`);
+        const payload = (await res.json().catch(() => ({}))) as {
+          adaptationAdherenceOptIn?: boolean;
+        };
+        if (cancelled) return;
+        if (res.ok) {
+          setAdherenceOptIn(payload.adaptationAdherenceOptIn === true);
+        }
+      } finally {
+        if (!cancelled) setAdherenceConfigLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId]);
+
+  useEffect(() => {
+    if (!athleteId || loading) return;
+    writePersistedNutritionPlanDate(athleteId, selectedPlanDate);
+  }, [athleteId, selectedPlanDate, loading]);
+
+  useEffect(() => {
+    setIntelligentMealPlan(null);
+    setIntelligentMealError(null);
+    setCoachMealRemovalKeys(new Set());
+    setCoachSessionFoodExclusions([]);
+    setServerDailyEnergyModel(null);
+    serverDailyEnergyDateRef.current = null;
+    serverSelectorPathwayDateRef.current = null;
+  }, [selectedPlanDate]);
+
+  /** Allinea `functionalMealSelector` server al giorno scelto (senza ricaricare tutto il modulo). */
+  useEffect(() => {
+    if (!athleteId || loading) return;
+    const w = nutritionModuleWindowRef.current;
+    if (!w) return;
+    if (selectedPlanDate < w.from || selectedPlanDate > w.to) return;
+    if (serverSelectorPathwayDateRef.current === selectedPlanDate && serverDailyEnergyDateRef.current === selectedPlanDate) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        let hubEnergyApplied = false;
+        if (isOperationalDayHubEnabled()) {
+          const hub = await fetchOperationalDayHub({ athleteId, date: selectedPlanDate });
+          if (cancelled) return;
+          if (hub.ok) {
+            if (hub.dailyEnergyModel) {
+              setServerDailyEnergyModel(hub.dailyEnergyModel);
+              serverDailyEnergyDateRef.current = selectedPlanDate;
+              hubEnergyApplied = true;
+            }
+            if (hub.planned.length > 0) {
+              setPlanned((prev) =>
+                mergeNutritionTrainingRowsById(prev, hub.planned as PlannedRow[]),
+              );
+            }
+            if (Array.isArray(hub.executed) && hub.executed.length > 0) {
+              setExecuted((prev) =>
+                mergeNutritionTrainingRowsById(prev, hub.executed as ExecutedRow[]),
+              );
+            }
+          }
+        }
+
+        const snap = await fetchNutritionModuleContext({
+          athleteId,
+          from: selectedPlanDate,
+          to: selectedPlanDate,
+          pathwayDate: selectedPlanDate,
+          mode: "pathway",
+        });
+        if (cancelled || snap.error) return;
+        serverSelectorPathwayDateRef.current = selectedPlanDate;
+        setFunctionalMealSelector(snap.functionalMealSelector ?? null);
+        setPathwayModulation(snap.pathwayModulation ?? null);
+        setApplicationPlaybook(snap.applicationPlaybook ?? null);
+        if (!hubEnergyApplied) {
+          setServerDailyEnergyModel(snap.dailyEnergyModel ?? null);
+          serverDailyEnergyDateRef.current = snap.dailyEnergyModel ? selectedPlanDate : null;
+        }
+      } catch {
+        /* rete: mantieni selettore client-side */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPlanDate, athleteId, loading]);
+
+  /** Se l'utente sceglie una data fuori dalla finestra caricata, espandi a ±30 (on-demand). */
+  useEffect(() => {
+    if (!athleteId || loading) return;
+    const w = nutritionModuleWindowRef.current;
+    const full = nutritionModuleFullWindowRef.current;
+    if (!w || !full) return;
+    if (selectedPlanDate >= w.from && selectedPlanDate <= w.to) return;
+    if (w.from === full.from && w.to === full.to) return;
+
+    let cancelled = false;
+    void (async () => {
+      if (nutritionModuleExpandInFlightRef.current) return;
+      nutritionModuleExpandInFlightRef.current = true;
+      try {
+        const expanded = await fetchNutritionModuleContext({
+          athleteId,
+          from: full.from,
+          to: full.to,
+          mode: "light",
+        });
+        if (cancelled || expanded.error) return;
+        setPlanned((prev) =>
+          mergeNutritionTrainingRowsById(prev, (expanded.planned as PlannedRow[]) ?? []),
+        );
+        setExecuted((prev) =>
+          mergeNutritionTrainingRowsById(prev, (expanded.executed as ExecutedRow[]) ?? []),
+        );
+        nutritionModuleWindowRef.current = { from: full.from, to: full.to };
+      } finally {
+        nutritionModuleExpandInFlightRef.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPlanDate, athleteId, loading]);
+
+  /** Sezioni pesanti (research traces, metabolic model) — dopo first paint. */
+  useNutritionHeavyModuleEnrichment({
+    athleteId,
+    loading,
+    selectedPlanDate,
+    nutritionModuleWindow: nutritionModuleWindowRef.current,
+    nutritionContextVersion,
+    enabled: pathname?.includes("/nutrition/predictor") || pathname?.includes("/nutrition/integration"),
+    onResearchTraces: setResearchTraceSummaries,
+    onMetabolicModel: setMetabolicEfficiencyGenerativeModel,
+    onCrossDomainRoadmap: setCrossDomainInterpretationRoadmap,
+    onNutrientInterrogation: setNutrientInterrogation,
+    onApplicationPlaybook: setApplicationPlaybook,
+    onPathwayRefresh: (payload) => {
+      if (payload.pathwayModulation) setPathwayModulation(payload.pathwayModulation);
+      if (payload.functionalMealSelector) setFunctionalMealSelector(payload.functionalMealSelector);
+    },
+  });
+
+  const onDiaryComplianceRows = useCallback((rows: FoodDiaryComplianceRow[]) => {
+    setDiaryMacroRows(rows);
+  }, []);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        setNutritionContextVersion((v) => v + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    async function loadData() {
+      if (!athleteId) {
+        setProfile(null);
+        setPhysio(null);
+        setPhysiologyState(null);
+        setRecoverySummary(null);
+        setOperationalContext(null);
+        setAdaptationLoop(null);
+        setBioenergeticModulation(null);
+        setResearchTraceSummaries([]);
+        setMetabolicEfficiencyGenerativeModel(null);
+        setFunctionalMealSelector(null);
+        setPathwayModulation(null);
+        setApplicationPlaybook(null);
+        setNutritionApplicationDirective(null);
+        setNutritionApprovedPatches([]);
+        setNutritionPerformanceIntegration(null);
+        setExecuted([]);
+        setPlanned([]);
+        nutritionModuleWindowRef.current = null;
+        nutritionModuleFullWindowRef.current = null;
+        nutritionModuleExpandInFlightRef.current = false;
+        serverSelectorPathwayDateRef.current = null;
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      const today = new Date();
+      const fullWindow = nutritionModuleWindowKeys(30, 30, today);
+      const initialWindow = nutritionModuleWindowKeys(7, 7, today);
+      const { from: fullStartKey, to: fullEndKey } = fullWindow;
+      const { from: initialStartKey, to: initialEndKey } = initialWindow;
+      nutritionModuleFullWindowRef.current = fullWindow;
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const clampIsoDay = (d: string) => {
+        if (d < fullStartKey) return fullStartKey;
+        if (d > fullEndKey) return fullEndKey;
+        return d;
+      };
+
+      let moduleData = await fetchNutritionModuleContext({
+        athleteId,
+        from: initialStartKey,
+        to: initialEndKey,
+        mode: "light",
+      });
+      if (moduleData.error) {
+        setError(moduleData.error || "Errore caricamento");
+        setResearchTraceSummaries([]);
+        setMetabolicEfficiencyGenerativeModel(null);
+        setFunctionalMealSelector(null);
+        setPathwayModulation(null);
+        setApplicationPlaybook(null);
+        setNutritionApplicationDirective(null);
+        setNutritionApprovedPatches([]);
+        setNutritionPerformanceIntegration(null);
+        nutritionModuleWindowRef.current = null;
+        nutritionModuleFullWindowRef.current = null;
+        nutritionModuleExpandInFlightRef.current = false;
+        serverSelectorPathwayDateRef.current = null;
+        setLoading(false);
+        return;
+      }
+
+      const memory = null;
+      const p = mergeNutritionProfileForSolver(
+        null,
+        (moduleData.profile as AthleteNutritionRow | null) ?? null,
+      );
+      const ph = mergePhysioForSolver(null, (moduleData.physio as PhysioRow | null) ?? null);
+      const physiology = (moduleData.physiologyState as PhysiologyState | null) ?? null;
+      const twin = (moduleData.twinState as TwinStateRow | null) ?? null;
+      const recovery = (moduleData.recoverySummary as RecoverySummaryRow | null) ?? null;
+      const operational = (moduleData.operationalContext as TrainingDayOperationalContext | null) ?? null;
+      const loop = (moduleData.adaptationLoop as TrainingAdaptationLoopViewModel | null) ?? null;
+      const bio = (moduleData.bioenergeticModulation as TrainingBioenergeticModulationViewModel | null) ?? null;
+      const ex = (moduleData.executed as ExecutedRow[]) ?? [];
+      const pl = (moduleData.planned as PlannedRow[]) ?? [];
+
+      setProfile(p);
+      setPhysio(ph);
+      setPhysiologyState(physiology);
+      setTwinState(twin);
+      setRecoverySummary(recovery);
+      setOperationalContext(operational);
+      setAdaptationLoop(loop);
+      setBioenergeticModulation(bio);
+      setResearchTraceSummaries(moduleData.researchTraceSummaries ?? []);
+      setMetabolicEfficiencyGenerativeModel(moduleData.metabolicEfficiencyGenerativeModel ?? null);
+      setNutritionApplicationDirective(moduleData.nutritionApplicationDirective ?? null);
+      setNutritionApprovedPatches(moduleData.nutritionApprovedPatches ?? []);
+      setNutritionPerformanceIntegration(moduleData.nutritionPerformanceIntegration ?? null);
+      setExecuted(ex);
+      setPlanned(pl);
+      /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
+      setIntelligentMealPlan(null);
+      setIntelligentMealError(null);
+      setCoachMealRemovalKeys(new Set());
+      setCoachSessionFoodExclusions([]);
+      const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
+      const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
+      const persisted = readPersistedNutritionPlanDate(athleteId);
+      const finalPlanDate = clampIsoDay(persisted ?? nextDate);
+      setFunctionalMealSelector(null);
+      setPathwayModulation(null);
+      setApplicationPlaybook(null);
+      setServerDailyEnergyModel(null);
+      serverDailyEnergyDateRef.current = null;
+      serverSelectorPathwayDateRef.current = null;
+      nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
+      setSelectedPlanDate(finalPlanDate);
+      setLoading(false);
+
+      const expandToFullWindow = async () => {
+        if (nutritionModuleExpandInFlightRef.current) return;
+        const w = nutritionModuleWindowRef.current;
+        const full = nutritionModuleFullWindowRef.current;
+        if (!w || !full || (w.from === full.from && w.to === full.to)) return;
+        nutritionModuleExpandInFlightRef.current = true;
+        try {
+          const expanded = await fetchNutritionModuleContext({
+            athleteId,
+            from: full.from,
+            to: full.to,
+            mode: "light",
+          });
+          if (expanded.error) return;
+          setPlanned((prev) =>
+            mergeNutritionTrainingRowsById(prev, (expanded.planned as PlannedRow[]) ?? []),
+          );
+          setExecuted((prev) =>
+            mergeNutritionTrainingRowsById(prev, (expanded.executed as ExecutedRow[]) ?? []),
+          );
+          nutritionModuleWindowRef.current = { from: full.from, to: full.to };
+        } finally {
+          nutritionModuleExpandInFlightRef.current = false;
+        }
+      };
+
+      void expandToFullWindow();
+    }
+    loadData();
+  }, [athleteId, pathname, nutritionContextVersion]);
+
+  const selectedPlanSessions = useMemo(() => {
+    const dayRows = planned.filter((p) => String(p.date ?? "").slice(0, 10) === selectedPlanDate);
+    return dedupePlannedWorkoutDbRows(
+      dayRows.map((session) => ({
+        ...session,
+        type: session.type ?? "session",
+        duration_minutes: session.duration_minutes,
+        tss_target: session.tss_target ?? 0,
+        kcal_target: session.kcal_target,
+        notes: session.notes,
+        created_at: (session as { created_at?: string | null }).created_at ?? null,
+      })),
+    );
+  }, [planned, selectedPlanDate]);
+  const selectedExecutedSessions = useMemo(
+    () => executed.filter((session) => session.date.slice(0, 10) === selectedPlanDate),
+    [executed, selectedPlanDate],
+  );
+
+  const selectedPlanDateLabel = useMemo(
+    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }),
+    [selectedPlanDate],
+  );
+  const selectedPlanDateShort = useMemo(
+    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "2-digit" }),
+    [selectedPlanDate],
+  );
+  const effectiveDayContext = useMemo(
+    () =>
+      buildEffectiveDayTrainingContext({
+        planned: selectedPlanSessions.map((session) => {
+          const bs = resolveBuilderSessionForPlannedRow({
+            builderSession: session.builderSession as Pro2BuilderSessionContract | null | undefined,
+            notes: typeof session.notes === "string" ? session.notes : null,
+          });
+          const m = effectivePlannedWorkoutNutritionMetrics({
+            durationMinutesDb: session.duration_minutes as number | null | undefined,
+            tssTargetDb: session.tss_target as number | null | undefined,
+            kcalTargetDb: session.kcal_target as number | null | undefined,
+            builderSession: bs,
+            athleteFtpWatts: physio?.ftp_watts ?? null,
+          });
+          return {
+            id: String(session.id),
+            title: session.plannedSessionName ?? session.plannedDiscipline ?? session.type ?? "Sessione",
+            duration_minutes: m.durationMinutes,
+            tss_target: m.tss,
+            kcal_target: m.kcal,
+          };
+        }),
+        executed: selectedExecutedSessions,
+      }),
+    [selectedPlanSessions, selectedExecutedSessions, physio?.ftp_watts],
+  );
+
+  const nutritionDayModel = useMemo<NutritionDailyEnergyModel | null>(
+    () =>
+      resolveNutritionDayModel({
+        athleteId: athleteId ?? "",
+        selectedPlanDate,
+        serverDailyEnergyModel,
+        serverDailyEnergyDate: serverDailyEnergyDateRef.current,
+        profile,
+        physio,
+        plannedTraining: effectiveDayContext.sessions.map((session) => ({
+          durationMinutes: session.durationMin,
+          kcal: session.kcal,
+          tss: session.tss,
+          avgPowerW: session.avgPowerW,
+        })),
+        recoverySummary,
+        nutritionPerformanceIntegration,
+        dietDayMealsScalePct: resolvedDietDay.dayTypePct,
+      }),
+    [
+      serverDailyEnergyModel,
+      selectedPlanDate,
+      athleteId,
+      profile,
+      physio,
+      effectiveDayContext,
+      recoverySummary,
+      nutritionPerformanceIntegration,
+      resolvedDietDay.dayTypePct,
+    ],
+  );
+
+  /** BMR assente o peso non letto → pasti solver ~solo quota training; evita silenzio in UI. */
+  const lowMealsBudgetWarning = useMemo(() => {
+    if (!nutritionDayModel) return null;
+    const meals = nutritionDayModel.totals.mealsKcal;
+    const train = nutritionDayModel.training.kcal;
+    if (meals >= 900) return null;
+    if (train < 220) return null;
+    if (meals > train * 0.55) return null;
+    return { meals, train };
+  }, [nutritionDayModel]);
+
+
+  const nutritionStimulusLine = useMemo(() => {
+    if (!selectedPlanSessions.length) return null;
+    return selectedPlanSessions
+      .map((s) => {
+        const name = String(s.plannedSessionName ?? s.plannedDiscipline ?? s.type ?? "Sessione");
+        const tgt = s.plannedAdaptationTarget ? ` · ${s.plannedAdaptationTarget}` : "";
+        return `${name}${tgt}`;
+      })
+      .join(" + ");
+  }, [selectedPlanSessions]);
+
+  const nutritionSectorPillContext = useMemo((): NutritionAdaptationSectorPillContext | null => {
+    if (!athleteId) return null;
+    return {
+      physiology: physiologyState,
+      twin: twinState,
+      recoverySummary,
+      intolerances: profile?.intolerances ?? null,
+      allergies: profile?.allergies ?? null,
+      researchTraceSummaries,
+    };
+  }, [
+    athleteId,
+    physiologyState,
+    twinState,
+    recoverySummary,
+    profile?.intolerances,
+    profile?.allergies,
+    researchTraceSummaries,
+  ]);
+
+  const nutritionSectorBoxes = useMemo(
+    () => buildNutritionAdaptationSectorBoxes(pathwayModulation, nutritionStimulusLine, nutritionSectorPillContext),
+    [pathwayModulation, nutritionStimulusLine, nutritionSectorPillContext],
+  );
+
+  /** Tab Integrazione: KPI da pathway + leve operative (allineati ai blocchi condivisi). */
+  const integrationDynamicsSummary = useMemo(() => {
+    const cards: { label: string; value: string }[] = [];
+    if (pathwayModulation) {
+      cards.push({ label: "Vie modulate", value: String(pathwayModulation.pathways.length) });
+      cards.push({
+        label: "Inibitori aggregati",
+        value: pathwayModulation.aggregateInhibitors.length ? String(pathwayModulation.aggregateInhibitors.length) : "0",
+      });
+      const levelHits = (["biochemical", "hormonal", "neurologic", "microbiota", "genetic"] as const).filter(
+        (k) => pathwayModulation.multiLevelSummary[k].length > 0,
+      ).length;
+      cards.push({ label: "Livelli attivi", value: `${levelHits}/5` });
+    }
+    if (nutritionPerformanceIntegration) {
+      cards.push({
+        label: "Recovery/bio (indicatore)",
+        value: `×${nutritionPerformanceIntegration.trainingEnergyScale.toFixed(2)}`,
+      });
+      cards.push({
+        label: "CHO fueling",
+        value: `×${nutritionPerformanceIntegration.fuelingChoScale.toFixed(2)}`,
+      });
+      cards.push({
+        label: "Bias proteico",
+        value: `+${nutritionPerformanceIntegration.proteinBiasPctPoints}%`,
+      });
+      cards.push({
+        label: "Idratazione floor",
+        value: `×${nutritionPerformanceIntegration.hydrationFloorMultiplier.toFixed(2)}`,
+      });
+    }
+    if (!cards.length) {
+      return [{ label: "Modello integrativo", value: "—" }];
+    }
+    return cards;
+  }, [pathwayModulation, nutritionPerformanceIntegration]);
+
+  const functionalFoodRecommendations = useMemo((): FunctionalFoodRecommendationsViewModel =>
+    buildFunctionalFoodRecommendationsViewModel(pathwayModulation?.pathways ?? null), [pathwayModulation]);
+
+  const effectiveFunctionalMealSelector = useMemo(
+    (): FunctionalMealSelectorViewModel | null =>
+      buildFunctionalMealSelectorViewModel({
+        date: selectedPlanDate,
+        pathwayModulation,
+        foodRecommendations: functionalFoodRecommendations,
+        nutritionPerformanceIntegration,
+        approvedNutritionPatches: nutritionApprovedPatches,
+        applicationDirective: nutritionApplicationDirective
+          ? {
+              focus: nutritionApplicationDirective.focus,
+              coachValidatedMemoryCount: nutritionApplicationDirective.coachValidatedMemoryCount,
+              coachValidatedMemoryLines: nutritionApplicationDirective.coachValidatedMemoryLines,
+            }
+          : null,
+        adaptationLoop,
+        recoverySummary,
+        twin: twinState,
+      }) ?? functionalMealSelector,
+    [
+      selectedPlanDate,
+      pathwayModulation,
+      functionalFoodRecommendations,
+      nutritionPerformanceIntegration,
+      nutritionApprovedPatches,
+      nutritionApplicationDirective,
+      adaptationLoop,
+      recoverySummary,
+      twinState,
+      functionalMealSelector,
+    ],
+  );
+
+  const pathwayTargetsByMealSlot = useMemo(
+    () =>
+      assignPathwayTargetsToMealSlots({
+        targets: functionalFoodRecommendations.targets,
+        planDate: selectedPlanDate,
+        athleteId: athleteId ?? "",
+        maxPerSlot: 3,
+        selectorSlots: functionalMealSelector?.slots,
+        pathwayModulation,
+      }),
+    [functionalFoodRecommendations.targets, selectedPlanDate, athleteId, functionalMealSelector?.slots, pathwayModulation],
+  );
+
+  useEffect(() => {
+    const isMealPlanRoute =
+      (pathname ?? "").replace(/\/$/, "") === "/nutrition" ||
+      (pathname ?? "").replace(/\/$/, "") === "/nutrition/meal-plan";
+    if (!isMealPlanRoute) return;
+    if (!athleteId) return;
+    const slots = pathwayTargetsByMealSlot;
+    const keys: PathwayMealSlotKey[] = activeDietMealSlotKeys;
+    setMealPathwayBySlot((prev) => {
+      const next = { ...prev };
+      for (const k of keys) {
+        next[k] = {
+          loading: true,
+          error: null,
+          foods: [],
+          pathwayTargets: slots[k],
+          usdaConfigured: true,
+          lookupQueries: collectSearchQueriesForSlot(slots[k]),
+        };
+      }
+      return next;
+    });
+    let cancelled = false;
+    void (async () => {
+      const results = await Promise.all(
+        keys.map(async (k) => {
+          const t = slots[k];
+          const ids = catalogIdsForSlot(t);
+          const res = await fetchUsdaFoodsForCatalogIds(ids);
+          return { k, t, res };
+        }),
+      );
+      if (cancelled) return;
+      setMealPathwayBySlot((prev) => {
+        const next = { ...prev };
+        for (const { k, t, res } of results) {
+          next[k] = {
+            loading: false,
+            error: res.error,
+            foods: res.foods,
+            pathwayTargets: t,
+            usdaConfigured: res.usdaConfigured,
+            lookupQueries: collectSearchQueriesForSlot(t),
+          };
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, pathwayTargetsByMealSlot, activeDietMealSlotKeys, pathname]);
+
+  /** Giorno gara: pasta/riso pre-gara è deterministico — non bloccare su catalogo pathway USDA. */
+  const raceDayPreRaceContext = useMemo(
+    () =>
+      buildRacePreLunchDayContext({
+        weightKg: profile?.weight_kg,
+        planDate: selectedPlanDate,
+        routineConfig: profile?.routine_config ?? null,
+        plannedSessions: mapPlannedSessionsForRaceDetection(selectedPlanSessions),
+        activeMealSlots: activeDietMealSlotKeys,
+      }),
+    [profile?.weight_kg, profile?.routine_config, selectedPlanDate, selectedPlanSessions, activeDietMealSlotKeys],
+  );
+
+  const mealPlanGenerationReady = true;
+
+  const resolvedMealDailyEnergyKcal = nutritionDayModel?.totals.mealsKcal ?? dailyEnergyKcal;
+  const resolvedFuelingChoGPerHour =
+    (nutritionDayModel?.fueling.adjustedChoGPerHour ?? 0) > 0
+      ? (nutritionDayModel?.fueling.adjustedChoGPerHour ?? fuelingChoGPerHour)
+      : fuelingChoGPerHour;
+  const effectiveSessionDurationMin =
+    effectiveDayContext.mode === "none" ? sessionDurationMin : effectiveDayContext.summary.totalDurationMin;
+  const effectiveSessionIntensityPctFtp =
+    effectiveDayContext.mode === "none"
+      ? sessionIntensityPctFtp
+      : effectiveDayContext.summary.estimatedIntensityPctFtp;
+  const resolvedFuelingTier = nutritionDayModel?.fueling.capabilityTier ?? "base";
+  const resolvedFuelingTierBand =
+    resolvedFuelingTier === "elite"
+      ? "120-130 g/h"
+      : resolvedFuelingTier === "high"
+        ? "90-110 g/h"
+        : "60-90 g/h";
+  const routineRaceDay = useMemo(
+    () =>
+      detectRoutineRaceDay({
+        routineConfig: profile?.routine_config ?? null,
+        planDate: selectedPlanDate,
+      }),
+    [profile?.routine_config, selectedPlanDate],
+  );
+
+  const fuelingReadiness = useMemo(() => {
+    const missing: string[] = [];
+    if (!profile) {
+      missing.push("profilo atleta");
+    } else {
+      if (!profile.birth_date) missing.push("data nascita");
+      if (!profile.sex) missing.push("genere");
+      if (!hasPositiveNumber(profile.height_cm)) missing.push("altezza");
+      if (!hasPositiveNumber(profile.weight_kg)) missing.push("peso");
+    }
+    if (!physio) {
+      missing.push("profilo fisiologico");
+    } else {
+      if (!hasPositiveNumber(physio.ftp_watts)) missing.push("FTP");
+      if (!hasPositiveNumber(physio.lt1_watts)) missing.push("LT1");
+      if (!hasPositiveNumber(physio.lt2_watts)) missing.push("LT2");
+      if (!hasPositiveNumber(physio.v_lamax)) missing.push("VLaMax");
+      if (!hasPositiveNumber(physio.vo2max_ml_min_kg)) missing.push("VO2max");
+    }
+    /** Fueling: seduta in calendario oppure giorno gara in routine (start + durata). */
+    if (!selectedPlanSessions.length && !routineRaceDay) {
+      missing.push(FUELING_MISSING_DAY_TRAINING);
+    }
+    const onlyDayTrainingMissing = missing.length === 1 && missing[0] === FUELING_MISSING_DAY_TRAINING;
+    const hasProfileOrPhysiologyGap = missing.some((m) => m !== FUELING_MISSING_DAY_TRAINING);
+    const dayTrainingAlsoMissing = missing.includes(FUELING_MISSING_DAY_TRAINING);
+    return {
+      ready: missing.length === 0,
+      missing,
+      onlyDayTrainingMissing,
+      hasProfileOrPhysiologyGap,
+      dayTrainingAlsoMissing,
+    };
+  }, [profile, physio, selectedPlanSessions.length, routineRaceDay]);
+
+  const fuelingExecutionConfirmations = useMemo(() => {
+    const raw = record(profile?.nutrition_config).fueling_execution_confirmations;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return {} as Record<string, { confirmed?: boolean; at?: string }>;
+    }
+    const out: Record<string, { confirmed?: boolean; at?: string }> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const vr = record(v);
+      out[k] = {
+        confirmed: Boolean(vr.confirmed),
+        at: typeof vr.at === "string" ? vr.at : undefined,
+      };
+    }
+    return out;
+  }, [profile?.nutrition_config]);
+
+  const fuelingConfirmedForSelectedDate = Boolean(fuelingExecutionConfirmations[selectedPlanDate]?.confirmed);
+
+  const predictorEffectiveTimeMin = predictorUsePlanDay ? effectiveSessionDurationMin : predictorTimeMin;
+  const predictorEffectiveIntensityPctFtp = predictorUsePlanDay ? effectiveSessionIntensityPctFtp : predictorIntensityPctFtp;
+  const fuelingTrainingContext = useMemo<FuelingTrainingContextRow[]>(() => {
+    if (!fuelingReadiness.ready) return [];
+    const ftp = n(physio?.ftp_watts, 0);
+    const weightKg = n(profile?.weight_kg, 0);
+    const choGh = Math.max(0, resolvedFuelingChoGPerHour);
+
+    type PlannedFuelSrc = {
+      kind: "planned";
+      session: NutritionPlannedWorkoutRow;
+      input: {
+        id: string;
+        title: string;
+        durationMinutesDb: number | null | undefined;
+        tssTargetDb: number | null | undefined;
+        kcalTargetDb: number | null | undefined;
+        builderSession: Pro2BuilderSessionContract | null;
+      };
+    };
+    const plannedSources: PlannedFuelSrc[] = selectedPlanSessions.map((session) => {
+      const builder = resolveBuilderSessionForPlannedRow({
+        builderSession: session.builderSession as Pro2BuilderSessionContract | null | undefined,
+        notes: typeof session.notes === "string" ? session.notes : null,
+      });
+      return {
+        kind: "planned",
+        session,
+        input: {
+          id: String(session.id),
+          title: String(session.plannedSessionName ?? builder?.sessionName ?? session.plannedDiscipline ?? session.type ?? "Sessione"),
+          durationMinutesDb: session.duration_minutes as number | null | undefined,
+          tssTargetDb: session.tss_target as number | null | undefined,
+          kcalTargetDb: session.kcal_target as number | null | undefined,
+          builderSession: builder,
+        },
+      };
+    });
+
+    const routineSynthetic = buildRoutineSyntheticFuelingSessionInput({
+      routineConfig: profile?.routine_config ?? null,
+      planDate: selectedPlanDate,
+    });
+    const sources = plannedSources;
+    if (!sources.length && !routineSynthetic) return [];
+
+    const inputs = sources.length
+      ? sources.map((s) => s.input)
+      : routineSynthetic
+        ? [routineSynthetic]
+        : [];
+
+    const analyzed = analyzePlannedSessionsForFueling({
+      sessions: inputs,
+      weightKg,
+      ftpWatts: ftp,
+      physiology: physiologyState,
+      choIngestedGH: choGh,
+    });
+    const byId = new Map(analyzed.map((a) => [a.id, a]));
+
+    if (!sources.length && routineSynthetic) {
+      const analysis = byId.get(routineSynthetic.id);
+      return [
+        {
+          id: routineSynthetic.id,
+          builderContract: null,
+          title: routineSynthetic.title,
+          family: "endurance",
+          discipline: "cycling",
+          target: "race",
+          durationMin: routineSynthetic.durationMinutesDb,
+          tss: routineSynthetic.tssTargetDb,
+          kcal: 0,
+          structure: "Gara (routine)",
+          blockLabels: [],
+          intensityCues: [],
+          substrate: analysis
+            ? {
+                estimatedIntensityPctFtp: analysis.substrate.estimatedIntensityPctFtp,
+                lactateProducedG: round(analysis.substrate.lactateProducedG, 1),
+                glucoseFromCoriG: round(analysis.substrate.glucoseFromCoriG, 1),
+                glucoseNetFromCoriG: round(analysis.substrate.glucoseNetFromCoriG, 1),
+                exogenousOxidizedG: round(analysis.substrate.exogenousOxidizedG, 1),
+                choAvailableG: round(analysis.substrate.choAvailableG, 1),
+                glycolyticSharePct: round(analysis.substrate.glycolyticSharePct, 1),
+                gutPathwayRisk: analysis.substrate.gutPathwayRisk,
+                bloodDeliveryPctOfIngested: round(analysis.substrate.bloodDeliveryPctOfIngested, 1),
+                glycogenCombustedNetG: round(analysis.substrate.glycogenCombustedNetG, 1),
+                glucoseRequiredForStrategyG: round(analysis.substrate.glucoseRequiredForStrategyG, 1),
+              }
+            : null,
+          physiologicalIntent: analysis?.physiologicalIntent ?? ["Giornata gara da routine — supporto intra da Fueling."],
+          nutritionSupports: analysis?.nutritionSupports ?? [],
+          inhibitorsAndRisks: analysis?.inhibitorsAndRisks ?? [],
+          choEnergyWeight: analysis?.dayChoEnergyWeight ?? Math.max(1, routineSynthetic.tssTargetDb),
+        },
+      ];
+    }
+
+    return sources.map((src) => {
+      const session = src.session;
+        const builder = resolveBuilderSessionForPlannedRow({
+          builderSession: session.builderSession as Pro2BuilderSessionContract | null | undefined,
+          notes: typeof session.notes === "string" ? session.notes : null,
+        });
+        const blocks = builder?.blocks ?? [];
+        const blockLabels = blocks
+          .slice(0, 3)
+          .map((block) => block.label)
+          .filter(Boolean);
+        const intensityCues = Array.from(
+          new Set(
+            blocks
+              .map((block) => (typeof block.intensityCue === "string" ? block.intensityCue.trim() : ""))
+              .filter(Boolean),
+          ),
+        ).slice(0, 2);
+        const target = session.plannedAdaptationTarget ?? builder?.adaptationTarget ?? null;
+        const m = effectivePlannedWorkoutNutritionMetrics({
+          durationMinutesDb: session.duration_minutes as number | null | undefined,
+          tssTargetDb: session.tss_target as number | null | undefined,
+          kcalTargetDb: session.kcal_target as number | null | undefined,
+          builderSession: builder,
+          athleteFtpWatts: physio?.ftp_watts ?? null,
+        });
+        const analysis = byId.get(String(session.id));
+        return {
+          id: String(session.id),
+          builderContract: builder,
+          title: String(session.plannedSessionName ?? builder?.sessionName ?? session.plannedDiscipline ?? session.type ?? "Sessione"),
+          family: session.plannedFamily ? String(session.plannedFamily) : builder?.family ?? null,
+          discipline: session.plannedDiscipline ? String(session.plannedDiscipline) : builder?.discipline ?? (session.type ? String(session.type) : null),
+          target: target ? String(target) : null,
+          durationMin: m.durationMinutes,
+          tss: m.tss,
+          kcal: m.kcal,
+          structure: blockLabels[0] ?? builder?.sessionName ?? null,
+          blockLabels,
+          intensityCues,
+          substrate: analysis
+            ? {
+                estimatedIntensityPctFtp: analysis.substrate.estimatedIntensityPctFtp,
+                lactateProducedG: round(analysis.substrate.lactateProducedG, 1),
+                glucoseFromCoriG: round(analysis.substrate.glucoseFromCoriG, 1),
+                glucoseNetFromCoriG: round(analysis.substrate.glucoseNetFromCoriG, 1),
+                exogenousOxidizedG: round(analysis.substrate.exogenousOxidizedG, 1),
+                choAvailableG: round(analysis.substrate.choAvailableG, 1),
+                glycolyticSharePct: round(analysis.substrate.glycolyticSharePct, 1),
+                gutPathwayRisk: analysis.substrate.gutPathwayRisk,
+                bloodDeliveryPctOfIngested: round(analysis.substrate.bloodDeliveryPctOfIngested, 1),
+                glycogenCombustedNetG: round(analysis.substrate.glycogenCombustedNetG, 1),
+                glucoseRequiredForStrategyG: round(analysis.substrate.glucoseRequiredForStrategyG, 1),
+              }
+            : null,
+          physiologicalIntent: analysis?.physiologicalIntent ?? [],
+          nutritionSupports: analysis?.nutritionSupports ?? [],
+          inhibitorsAndRisks: analysis?.inhibitorsAndRisks ?? [],
+          choEnergyWeight: analysis?.dayChoEnergyWeight ?? Math.max(1, m.tss),
+        };
+    });
+  }, [
+    fuelingReadiness.ready,
+    selectedPlanSessions,
+    profile?.weight_kg,
+    physio?.ftp_watts,
+    physiologyState,
+    resolvedFuelingChoGPerHour,
+    profile?.routine_config,
+    selectedPlanDate,
+  ]);
+
+  const fuelingEngineDaySummary = useMemo(() => {
+    const subs = fuelingTrainingContext.map((s) => s.substrate).filter(Boolean);
+    if (!subs.length) return null;
+    return {
+      lactateG: subs.reduce((acc, s) => acc + (s?.lactateProducedG ?? 0), 0),
+      coriG: subs.reduce((acc, s) => acc + (s?.glucoseFromCoriG ?? 0), 0),
+      coriNetG: subs.reduce((acc, s) => acc + (s?.glucoseNetFromCoriG ?? 0), 0),
+      exoG: subs.reduce((acc, s) => acc + (s?.exogenousOxidizedG ?? 0), 0),
+    };
+  }, [fuelingTrainingContext]);
+
+  const fuelingPlannedSummary = useMemo(() => {
+    const totalDurationMin = fuelingTrainingContext.reduce((sum, session) => sum + Math.max(0, n(session.durationMin, 0)), 0);
+    const totalTss = fuelingTrainingContext.reduce((sum, session) => sum + Math.max(0, n(session.tss, 0)), 0);
+    const weightedIntensityNum = fuelingTrainingContext.reduce((sum, session) => {
+      const duration = Math.max(1, n(session.durationMin, 0));
+      return sum + n(session.substrate?.estimatedIntensityPctFtp, 0) * duration;
+    }, 0);
+    const weightedIntensityDen = fuelingTrainingContext.reduce((sum, session) => sum + Math.max(1, n(session.durationMin, 0)), 0);
+    return {
+      totalDurationMin: totalDurationMin > 0 ? totalDurationMin : sessionDurationMin,
+      totalTss,
+      estimatedIntensityPctFtp:
+        weightedIntensityNum > 0 && weightedIntensityDen > 0
+          ? weightedIntensityNum / weightedIntensityDen
+          : sessionIntensityPctFtp,
+    };
+  }, [fuelingTrainingContext, sessionDurationMin, sessionIntensityPctFtp]);
+  const fuelingPlannedEstimatedAvgPowerW =
+    physio?.ftp_watts != null ? round(physio.ftp_watts * (fuelingPlannedSummary.estimatedIntensityPctFtp / 100)) : null;
+
+  /** Con due o più sessioni pianificate, stima ripartizione g CHO intra in base al peso glicolitico (cho kcal) per sessione. */
+  const fuelingIntraChoSplitBySession = useMemo(() => {
+    const rows = fuelingTrainingContext.filter((s) => s.durationMin > 0);
+    if (rows.length < 2) return null;
+    const weights = rows.map((s) => Math.max(0.01, n(s.choEnergyWeight, s.tss || 1)));
+    const sumW = weights.reduce((a, b) => a + b, 0);
+    if (sumW <= 0) return null;
+    const h = Math.max(0.5, fuelingPlannedSummary.totalDurationMin / 60);
+    const intraTotal = Math.max(
+      round(nutritionDayModel?.fueling.intraChoG ?? 0, 1),
+      round(resolvedFuelingChoGPerHour * h, 1),
+    );
+    return rows.map((s, i) => ({
+      id: s.id,
+      label: String(s.title),
+      choG: round(intraTotal * (weights[i] / sumW), 1),
+    }));
+  }, [fuelingTrainingContext, fuelingPlannedSummary.totalDurationMin, nutritionDayModel, resolvedFuelingChoGPerHour]);
+
+  const knowledgeFuelingHints = useMemo(() => {
+    const supports = Array.from(
+      new Set(fuelingTrainingContext.flatMap((session) => session.nutritionSupports).filter(Boolean)),
+    );
+    const risks = Array.from(
+      new Set(fuelingTrainingContext.flatMap((session) => session.inhibitorsAndRisks).filter(Boolean)),
+    );
+    const intents = Array.from(
+      new Set(fuelingTrainingContext.flatMap((session) => session.physiologicalIntent).filter(Boolean)),
+    );
+    return { supports, risks, intents };
+  }, [fuelingTrainingContext]);
+
+  useEffect(() => {
+    async function loadFuelingMedia() {
+      const payload = await fetchNutritionMediaRows();
+      if (payload.error) return;
+      const rows = (payload.rows as MediaAssetRow[]) ?? [];
+      const fuelingPrimary: Record<string, string> = {};
+      for (const row of rows) {
+        if (row.media_kind !== "image") continue;
+        if (row.entity_type === "fueling" && !fuelingPrimary[row.entity_key]) {
+          fuelingPrimary[row.entity_key] = row.url;
+        }
+      }
+      setFuelingMediaByKey(fuelingPrimary);
+    }
+
+    void loadFuelingMedia();
+  }, []);
+
+  useEffect(() => {
+    if (!profile) {
+      lastNutritionHydrationKey.current = "";
+      return;
+    }
+    const dayPlannedSig = planned
+      .filter((p) => String(p.date ?? "").slice(0, 10) === selectedPlanDate)
+      .map((p) => `${String(p.id)}:${String(p.duration_minutes ?? "")}`)
+      .sort()
+      .join(";");
+    const hydrationKey = `${athleteId ?? ""}|${selectedPlanDate}|${JSON.stringify(profile.nutrition_config ?? null)}|${JSON.stringify(profile.routine_config ?? null)}|${dayPlannedSig}`;
+    if (hydrationKey === lastNutritionHydrationKey.current) return;
+    lastNutritionHydrationKey.current = hydrationKey;
+
+    const nc = record(profile.nutrition_config);
+    const rc = record(profile.routine_config);
+    const mealPlan = record(nc.meal_plan);
+    const macroFromMealPlan = record(mealPlan.macro_split);
+    const macroRoot = record(nc.macro_split);
+
+    const dietForDay = resolveNutritionDietDay(nc, selectedPlanDate);
+    if (dietForDay.caloricDistribution) {
+      setCaloricSplit(dietForDay.caloricDistribution);
+    } else {
+      const splitFromMealPlan = record(mealPlan.caloric_split);
+      const splitRoot = record(nc.caloric_split);
+      const useMealPlanSplit =
+        splitFromMealPlan.breakfast_pct != null ||
+        splitFromMealPlan.lunch_pct != null ||
+        splitFromMealPlan.dinner_pct != null ||
+        splitFromMealPlan.snacks_pct != null;
+      const split = useMealPlanSplit ? splitFromMealPlan : splitRoot;
+      setCaloricSplit({
+        breakfast: n(split.breakfast_pct, 25),
+        lunch: n(split.lunch_pct, 35),
+        dinner: n(split.dinner_pct, 30),
+        snacks: n(split.snacks_pct, 10),
+      });
+    }
+    if (dietForDay.dailyMacros) {
+      setMacroSplit(dietForDay.dailyMacros);
+    } else {
+      const useMealPlanMacro = macroFromMealPlan.carbs_pct != null || macroFromMealPlan.protein_pct != null;
+      const macro = useMealPlanMacro ? macroFromMealPlan : macroRoot;
+      setMacroSplit({
+        carbs: n(macro.carbs_pct, 50),
+        protein: n(macro.protein_pct, 25),
+        fat: n(macro.fat_pct, 25),
+      });
+    }
+
+    const fromCountMode = mapMealCountModeToMealStrategy(dietForDay.mealCountMode);
+    setMealStrategy(fromCountMode ?? String(mealPlan.meal_strategy ?? nc.meal_strategy ?? "3-meals"));
+
+    setDailyEnergyKcal(n(mealPlan.daily_kcal, 3000));
+
+    const times = record(record(rc.meal_times));
+    const flatMealTimes = {
+      breakfast: String(times.breakfast ?? "07:30"),
+      lunch: String(times.lunch ?? "13:00"),
+      dinner: String(times.dinner ?? "20:00"),
+      snack_am: String(times.snack_am ?? "10:30"),
+      snack_pm: String(times.snack_pm ?? times.snacks ?? "16:30"),
+    };
+    const sessionsThisDay = planned.filter((p) => p.date === selectedPlanDate);
+    const racePlannedSessions = mapPlannedSessionsForRaceDetection(sessionsThisDay);
+    const resolvedTimes = resolveMealTimesForNutritionPlanDate({
+      routineConfig: rc,
+      planDate: selectedPlanDate,
+      mealTimesFlatFromRoot: flatMealTimes,
+      plannedSessions: racePlannedSessions,
+      weightKg: profile?.weight_kg,
+    });
+    const weekTimes = mealTimesFromRoutineWeekPlanForDate(rc, selectedPlanDate, {
+      ...flatMealTimes,
+      snack_evening: String(times.snack_evening ?? "22:30"),
+    });
+    setMealTimes({
+      ...resolvedTimes,
+      snack_evening: weekTimes.snack_evening ?? String(times.snack_evening ?? "22:30"),
+    });
+
+    const fuelingCfg = record(nc.fueling);
+    const predictorCfg = record(nc.performance_predictor);
+    setSessionDurationMin(n(fuelingCfg.session_duration_min, 120));
+    setSessionIntensityPctFtp(n(fuelingCfg.session_intensity_pct_ftp, 78));
+    setFuelingChoGPerHour(n(fuelingCfg.cho_g_h, 75));
+    setFluidMlPerHour(n(fuelingCfg.fluid_ml_h, 650));
+    setSodiumMgPerHour(n(fuelingCfg.sodium_mg_h, 700));
+    setCofactor(String(fuelingCfg.cofactor ?? "Bicarbonato + Caffeina"));
+
+    setPredictorSport(String(predictorCfg.sport ?? "Running"));
+    setPredictorDistanceKm(n(predictorCfg.distance_km, 21));
+    setPredictorTimeMin(n(predictorCfg.event_time_min, 95));
+    setPredictorIntensityPctFtp(n(predictorCfg.intensity_pct_ftp, 84));
+  }, [profile, athleteId, selectedPlanDate, planned]);
+
+  const profileSupplements = useMemo(() => {
+    const fromSupp = profile?.supplements ?? [];
+    const brands = record(profile?.supplement_config).selected_brands;
+    const fromBrands = Array.isArray(brands) ? brands.map((x) => String(x)) : [];
+    return Array.from(new Set([...fromSupp, ...fromBrands]));
+  }, [profile]);
+
+  const preferredBrands = useMemo(() => profileSupplements.slice(0, 6), [profileSupplements]);
+
+  const normalizedPreferredBrands = useMemo(() => {
+    const fromProfile = preferredBrands
+      .map((raw) => {
+        const lower = raw.toLowerCase();
+        const found = BRAND_ALIASES.find((b) => b.aliases.some((a) => lower.includes(a)));
+        return found?.label ?? null;
+      })
+      .filter((v): v is string => !!v);
+    if (fromProfile.length) return Array.from(new Set(fromProfile));
+    return ["Enervit", "SiS", "Maurten", "+Watt", "Powerbar"];
+  }, [preferredBrands]);
+
+  const restrictedTokens = useMemo(() => {
+    const tokens = [
+      ...(profile?.allergies ?? []),
+      ...(profile?.intolerances ?? []),
+      ...(profile?.food_exclusions ?? []),
+    ]
+      .map((x) => String(x).toLowerCase().trim())
+      .filter(Boolean);
+    return Array.from(new Set(tokens));
+  }, [profile]);
+
+  const filteredLookupResults = useMemo(() => {
+    if (!restrictedTokens.length) return foodLookupResults;
+    return foodLookupResults.filter((item) => {
+      const hay = `${item.label} ${item.brand ?? ""}`.toLowerCase();
+      return !restrictedTokens.some((t) => hay.includes(t));
+    });
+  }, [foodLookupResults, restrictedTokens]);
+
+  /** Eseguiti ordinati per data desc (la finestra API è come il calendario: asc); per medie serve “ultimi 7”. */
+  const recent7 = useMemo(() => {
+    const sorted = [...executed].sort((a, b) => String(b.date).slice(0, 10).localeCompare(String(a.date).slice(0, 10)));
+    return sorted.slice(0, 7);
+  }, [executed]);
+  const avgTss7 = useMemo(() => (recent7.length ? recent7.reduce((s, x) => s + n(x.tss), 0) / recent7.length : 0), [recent7]);
+  const lactateAvg = useMemo(() => (recent7.length ? recent7.reduce((s, x) => s + n(x.lactate_mmoll), 0) / recent7.length : 0), [recent7]);
+  const glucoseAvg = useMemo(() => (recent7.length ? recent7.reduce((s, x) => s + n(x.glucose_mmol, 5.1), 0) / recent7.length : 0), [recent7]);
+  const smo2Avg = useMemo(() => (recent7.length ? recent7.reduce((s, x) => s + n(x.smo2, 56), 0) / recent7.length : 0), [recent7]);
+
+  const dominantStimulus = useMemo(() => {
+    const ftp = n(physio?.ftp_watts, 260);
+    if (avgTss7 > 95 || lactateAvg > 4.8) return "High-intensity glycolytic";
+    if (n(twinState?.redoxStressIndex, 0) > 55) return "Redox / recovery constrained";
+    if (n(twinState?.glycogenStatus, 100) < 35) return "Low glycogen availability";
+    if (avgTss7 > 70 || ftp > 290) return "Threshold endurance";
+    if (smo2Avg < 52) return "Oxygen extraction stress";
+    return "Aerobic base / recovery";
+  }, [avgTss7, lactateAvg, smo2Avg, physio, twinState]);
+
+  const fuelingPhysiology = useMemo(() => {
+    const metabolic = physiologyState?.metabolicProfile;
+    const lactate = physiologyState?.lactateProfile;
+    const performance = physiologyState?.performanceProfile;
+    const gutDeliveryPct = clamp(n(lactate?.bloodDeliveryPctOfIngested, 88), 45, 100);
+    const sequestrationPct = clamp(n(lactate?.effectiveSequestrationPct, 0), 0, 35);
+    const gutStressPct = clamp(n(lactate?.gutStressScore, 0) * 100, 0, 100);
+    const dysbiosisPct = clamp(n(lactate?.microbiotaDysbiosisScore, 0) * 100, 0, 100);
+    const coriFromPlannedSessions = fuelingTrainingContext.reduce((acc, s) => acc + (s.substrate?.glucoseFromCoriG ?? 0), 0);
+    const coriReturnG =
+      coriFromPlannedSessions > 0.05 ? coriFromPlannedSessions : Math.max(0, n(lactate?.glucoseFromCoriG, 0));
+    const exoFromPlannedSessions = fuelingTrainingContext.reduce((acc, s) => acc + (s.substrate?.exogenousOxidizedG ?? 0), 0);
+    const exogenousOxidizedG =
+      exoFromPlannedSessions > 0.05 ? exoFromPlannedSessions : Math.max(0, n(lactate?.exogenousOxidizedG, 0));
+    let choWeightedNum = 0;
+    let choWeightedDen = 0;
+    for (const s of fuelingTrainingContext) {
+      const sub = s.substrate;
+      if (!sub) continue;
+      const w = Math.max(1, s.durationMin);
+      choWeightedNum += sub.glycolyticSharePct * w;
+      choWeightedDen += w;
+    }
+    const choShareFromSessions = choWeightedDen > 0 ? choWeightedNum / choWeightedDen : null;
+    const choSharePct = clamp(
+      choShareFromSessions != null ? choShareFromSessions : n(lactate?.glycolyticSharePct, 65),
+      45,
+      96,
+    );
+    const oxidativeCeilingKcalMin = Math.max(0, n(performance?.oxidativeCapacityKcalMin, 0));
+    const redoxPct = clamp(n(performance?.redoxStressIndex, twinState?.redoxStressIndex ?? 0), 0, 100);
+    const gutPathwayRisk = String(lactate?.gutPathwayRisk ?? "stable");
+    const pcrCapacityJ = Math.max(0, n(metabolic?.pcrCapacityJ, 0));
+    const vLamax = n(metabolic?.vLamax, physio?.v_lamax ?? 0);
+    return {
+      gutDeliveryPct,
+      sequestrationPct,
+      gutStressPct,
+      dysbiosisPct,
+      coriReturnG,
+      exogenousOxidizedG,
+      choSharePct,
+      oxidativeCeilingKcalMin,
+      redoxPct,
+      gutPathwayRisk,
+      pcrCapacityJ,
+      vLamax,
+    };
+  }, [physiologyState, twinState, physio, fuelingTrainingContext]);
+
+  const effectiveMacroSplit = useMemo(() => {
+    const base = resolvedDietDay.dailyMacros ?? macroSplit;
+    const bump = nutritionPerformanceIntegration?.proteinBiasPctPoints ?? 0;
+    if (!bump) return base;
+    const protein = Math.min(45, base.protein + bump);
+    const fat = Math.max(15, base.fat - bump);
+    return { ...base, protein, fat };
+  }, [macroSplit, nutritionPerformanceIntegration, resolvedDietDay.dailyMacros]);
+
+  const effectiveCaloricDistribution = useMemo((): CaloricDistribution | null => {
+    if (isUsableCaloricDistribution(resolvedDietDay.caloricDistribution)) {
+      return resolvedDietDay.caloricDistribution;
+    }
+    if (isUsableCaloricDistribution(caloricSplit)) return caloricSplit;
+    return null;
+  }, [resolvedDietDay.caloricDistribution, caloricSplit]);
+
+  const distributionForMealRows = useMemo((): CaloricDistribution | null => {
+    if (!effectiveCaloricDistribution) return null;
+    if (effectiveMealCountMode === "6") {
+      const r = resolveSixMealSnackPercentages(effectiveCaloricDistribution);
+      return {
+        ...effectiveCaloricDistribution,
+        snack_am: r.snack_am,
+        snack_pm: r.snack_pm,
+        snack_evening: r.snack_evening,
+        snacks: r.snacksTotal,
+      };
+    }
+    return effectiveCaloricDistribution;
+  }, [effectiveCaloricDistribution, effectiveMealCountMode]);
+
+  const suppressedSnackSlots = useMemo(
+    () =>
+      computeSnackSlotsSuppressedByTrainingWindow({
+        routineConfig: profile?.routine_config ?? null,
+        planDate: selectedPlanDate,
+        mealTimesFlatFromRoot: mealTimes,
+        plannedSessions: selectedPlanSessions,
+      }),
+    [profile?.routine_config, selectedPlanDate, mealTimes, selectedPlanSessions],
+  );
+
+  const mealRows = useMemo(() => {
+    if (!distributionForMealRows) return [];
+    return buildDietMealSlotBudgets({
+      mealCountMode: effectiveMealCountMode,
+      caloricDistribution: distributionForMealRows,
+      dailyKcal: resolvedMealDailyEnergyKcal,
+      macroSplit: effectiveMacroSplit,
+      mealTimes,
+      round,
+    });
+  }, [
+    distributionForMealRows,
+    effectiveMealCountMode,
+    resolvedMealDailyEnergyKcal,
+    effectiveMacroSplit,
+    mealTimes,
+  ]);
+
+  const dietPlanHint = useMemo(() => {
+    if (!distributionForMealRows || mealRows.length === 0) return null;
+    const wd = resolvedDietDay.weekDayKey;
+    if (effectiveMealCountMode === "6") {
+      const r = resolveSixMealSnackPercentages(distributionForMealRows);
+      return `Diet ${wd}: 6 pasti — Colazione ${Math.round(distributionForMealRows.breakfast)}% · Pranzo ${Math.round(distributionForMealRows.lunch)}% · Cena ${Math.round(distributionForMealRows.dinner)}% · Spuntini ${Math.round(r.snack_am)}% + ${Math.round(r.snack_pm)}% + ${Math.round(r.snack_evening)}% (= ${Math.round(r.snacksTotal)}% totale spuntini).`;
+    }
+    return `Diet ${wd}: ${mealRows.length} pasti — Σ slot ${Math.round(mealRows.reduce((s, m) => s + m.pct, 0))}% del budget pasti.`;
+  }, [distributionForMealRows, effectiveMealCountMode, mealRows, resolvedDietDay.weekDayKey]);
+
+  const diaryDayMacroTargets = useMemo(
+    () => ({
+      carbs: mealRows.reduce((s, m) => s + m.carbs, 0),
+      protein: mealRows.reduce((s, m) => s + m.protein, 0),
+      fat: mealRows.reduce((s, m) => s + m.fat, 0),
+    }),
+    [mealRows],
+  );
+
+  const mealPlanCards = useMemo(() => {
+    return mealRows.map((row) => {
+      const icon =
+        row.key === "breakfast"
+          ? "🌅"
+          : row.key === "lunch"
+            ? "🥗"
+            : row.key === "dinner"
+              ? "🌙"
+              : row.key === "snack_evening"
+                ? "🌙"
+                : row.key === "snack_am"
+                  ? "☕"
+                  : "🥤";
+      return {
+        ...row,
+        icon,
+        portionHint: portionHintForMealKcal(row.kcal),
+      };
+    });
+  }, [mealRows]);
+
+  /** Kcal/macro per pasto: solo Diet (mai rollup USDA). USDA = composizione alimenti post-generazione. */
+  const mealPlanCardsDisplay = mealPlanCards;
+
+  /**
+   * Righe esposte in Meal plan: dopo la generazione allinea alla base solver (6 slot)
+   * anche se la griglia Diet locale era ancora a 4 pasti.
+   */
+  const mealPlanWorkspaceRows = useMemo(() => {
+    const basis = intelligentMealPlan?.solverBasis?.slots;
+    if (!basis?.length) return mealPlanCards;
+    const byKey = new Map(mealPlanCards.map((r) => [r.key as MealSlotKey, r]));
+    return basis.map((s) => {
+      const existing = byKey.get(s.slot);
+      if (existing) return existing;
+      const icon =
+        s.slot === "breakfast"
+          ? "🌅"
+          : s.slot === "lunch"
+            ? "🥗"
+            : s.slot === "dinner"
+              ? "🌙"
+              : s.slot === "snack_evening"
+                ? "🌙"
+                : s.slot === "snack_am"
+                  ? "☕"
+                  : "🥤";
+      return {
+        key: s.slot,
+        label: s.labelIt,
+        pct: 0,
+        time: s.scheduledTimeLocal,
+        kcal: s.targetKcal,
+        carbs: s.targetCarbsG,
+        protein: s.targetProteinG,
+        fat: s.targetFatG,
+        icon,
+        portionHint: portionHintForMealKcal(s.targetKcal),
+      };
+    });
+  }, [intelligentMealPlan, mealPlanCards]);
+
+  const mealDisplayByKey = useMemo(() => {
+    const m = new Map<MealSlotKey, (typeof mealPlanWorkspaceRows)[number]>();
+    for (const row of mealPlanWorkspaceRows) {
+      m.set(row.key as MealSlotKey, row);
+    }
+    return m;
+  }, [mealPlanWorkspaceRows]);
+
+  const trainingDayLinesForMealPlan = useMemo(
+    () =>
+      effectiveDayContext.sessions.map((s) =>
+        [
+          `${s.title}: ${Math.round(s.durationMin)} min`,
+          `TSS ~${Math.round(s.tss)}`,
+          s.kcal ? `kcal stim. ${Math.round(s.kcal)}` : null,
+          s.source === "executed" ? "eseguito" : "pianificato",
+        ]
+          .filter(Boolean)
+          .join(", "),
+      ),
+    [effectiveDayContext],
+  );
+
+  const mealPlanIntegrationSolverLines = useMemo(() => {
+    const p = nutritionDayModel?.performanceIntegration;
+    if (!p) return [];
+    return [
+      `Recovery/bio (indicatore, non riduce fabbisogno) ×${p.trainingEnergyScale.toFixed(2)}`,
+      `Quota pasti/training ${Math.round(p.mealTrainingFraction * 100)}%`,
+      `CHO intra ×${p.fuelingChoScale.toFixed(2)}`,
+      `Proteine pasti +${p.proteinBiasPctPoints}%`,
+      `Fluido seduta ×${p.sessionFluidMultiplier.toFixed(2)}`,
+      ...p.rationale.slice(0, 8),
+    ];
+  }, [nutritionDayModel?.performanceIntegration]);
+
+  /** Reality (diario) + twin snapshot: contesto L2 per il composer, senza sostituire il solver. */
+  const diaryTwinContextLinesForMealPlan = useMemo(() => {
+    const lines: string[] = [];
+    const insight = nutritionPerformanceIntegration?.diaryInsight;
+    if (insight && insight.windowDays != null && insight.loggedDays != null) {
+      lines.push(`Diario: ${insight.loggedDays}/${insight.windowDays} giorni con voci registrate (ingest).`);
+      if (insight.energyAdequacyRatio != null && Number.isFinite(insight.energyAdequacyRatio)) {
+        lines.push(`Adeguatezza energetica diario vs target ~${Math.round(insight.energyAdequacyRatio * 100)}%.`);
+      }
+      if (insight.avgDailyKcal != null) {
+        lines.push(`Media diario recente ~${Math.round(insight.avgDailyKcal)} kcal.`);
+      }
+    }
+    const dayRows = diaryMacroRows.filter((d) => d.date === selectedPlanDate);
+    if (dayRows.length) {
+      const kcalSum = dayRows.reduce((s, r) => s + r.kcal, 0);
+      if (kcalSum >= 30) {
+        lines.push(
+          `${selectedPlanDate}: voci diario ~${Math.round(kcalSum)} kcal (${dayRows.length} record) · confronto con piano deterministico.`,
+        );
+      }
+    }
+    const g = twinState?.glycogenStatus;
+    const read = twinState?.readiness;
+    if (typeof g === "number" && Number.isFinite(g) && typeof read === "number" && Number.isFinite(read)) {
+      lines.push(
+        `Twin: glicogeno ~${Math.round(g)}%, readiness ~${Math.round(read)}% (solo interpretazione — numeri piano da solver).`,
+      );
+    }
+    return lines;
+  }, [
+    diaryMacroRows,
+    nutritionPerformanceIntegration?.diaryInsight,
+    selectedPlanDate,
+    twinState?.glycogenStatus,
+    twinState?.readiness,
+  ]);
+
+  const intelligentMealPlanRequest = useMemo(() => {
+    if (!athleteId || !profile) return null;
+    const mergedFoodExclusions = [
+      ...new Set(
+        [...(profile.food_exclusions ?? []).map((x) => String(x).trim()), ...coachSessionFoodExclusions.map((x) => x.trim())].filter(
+          Boolean,
+        ),
+      ),
+    ];
+    const base = buildIntelligentMealPlanRequest({
+      athleteId,
+      planDate: selectedPlanDate,
+      plannedSessionsForDay: mapPlannedSessionsForRaceDetection(selectedPlanSessions),
+      profile: {
+        diet_type: profile.diet_type,
+        intolerances: profile.intolerances,
+        allergies: profile.allergies,
+        food_exclusions: mergedFoodExclusions.length ? mergedFoodExclusions : profile.food_exclusions,
+        food_preferences: profile.food_preferences,
+        supplements: profile.supplements,
+        routine_config: profile.routine_config,
+        weight_kg: profile.weight_kg,
+      },
+      mealRows: mealPlanCards.map((m) => ({
+        key: m.key,
+        label: m.label,
+        kcal: m.kcal,
+        carbs: m.carbs,
+        protein: m.protein,
+        fat: m.fat,
+        timeLocal: m.time,
+      })),
+      mealPathwayBySlot,
+      contextLines: [
+        ...diaryTwinContextLinesForMealPlan,
+        recoverySummary?.guidance,
+        ...(pathwayModulation?.notes ?? []).slice(0, 5),
+        ...(nutritionPerformanceIntegration?.rationale ?? []).slice(0, 6),
+        metabolicEfficiencyGenerativeModel?.headline,
+        ...(nutritionApplicationDirective?.rationale ?? []).slice(0, 4),
+        ...(nutritionApplicationDirective?.coachValidatedMemoryLines ?? [])
+          .slice(0, 3)
+          .map((line) => (line.trim() ? `Memoria coach validate: ${line.trim().slice(0, 200)}` : ""))
+          .filter(Boolean),
+        ...(nutritionApplicationDirective?.focus?.length
+          ? [`Directive focus: ${nutritionApplicationDirective.focus.join(", ")}`]
+          : []),
+      ].filter((s): s is string => Boolean(s && String(s).trim())),
+      pathwayModulation,
+      trainingDayLines: trainingDayLinesForMealPlan,
+      integrationLeverLines: mealPlanIntegrationSolverLines,
+    });
+    const withPlaybook = mergePlaybookIntoMealPlanRequest(base, applicationPlaybook);
+    const weekId = isoWeekBucketId(selectedPlanDate);
+    const payload = readMealRotationWeekPayload(athleteId, weekId);
+    const weeklyStapleCounts = aggregateStapleCountsForWeek(payload, selectedPlanDate);
+    return {
+      ...withPlaybook,
+      ...(Object.keys(weeklyStapleCounts).length ? { weeklyStapleCounts } : {}),
+      ...(nutritionPerformanceIntegration ? { performanceIntegration: nutritionPerformanceIntegration } : {}),
+    };
+  }, [
+    athleteId,
+    profile,
+    selectedPlanDate,
+    mealPlanCards,
+    mealPathwayBySlot,
+    recoverySummary?.guidance,
+    pathwayModulation,
+    nutritionPerformanceIntegration?.rationale,
+    metabolicEfficiencyGenerativeModel?.headline,
+    trainingDayLinesForMealPlan,
+    mealPlanIntegrationSolverLines,
+    coachSessionFoodExclusions,
+    selectedPlanSessions,
+    nutritionApplicationDirective,
+    applicationPlaybook,
+    diaryTwinContextLinesForMealPlan,
+  ]);
+
+  const removeCoachMealPlanItem = useCallback((slot: MealSlotKey, index: number, foodLabel: string) => {
+    const label = foodLabel.trim();
+    const key = `${slot}:${index}`;
+    setCoachMealRemovalKeys((prev) => new Set(prev).add(key));
+    if (label) {
+      setCoachSessionFoodExclusions((prev) => (prev.includes(label) ? prev : [...prev, label]));
+    }
+  }, []);
+
+  const persistFoodExclusionToProfile = useCallback(
+    async (slot: MealSlotKey, index: number, foodLabel: string) => {
+      const label = foodLabel.trim();
+      if (!athleteId || !profile || !label) return;
+      const key = `${slot}:${index}`;
+      setProfileFoodExcludeBusy(label);
+      setError(null);
+      try {
+        const next = [...new Set([...(profile.food_exclusions ?? []).map(String), label])];
+        await updateProfilePayload(athleteId, { food_exclusions: next });
+        setProfile({ ...profile, food_exclusions: next });
+        setCoachMealRemovalKeys((prev) => new Set(prev).add(key));
+        setCoachSessionFoodExclusions((prev) => (prev.includes(label) ? prev : [...prev, label]));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Esclusione profilo non salvata");
+      }
+      setProfileFoodExcludeBusy(null);
+    },
+    [athleteId, profile],
+  );
+
+  const handleGenerateIntelligentMealPlan = useCallback(async () => {
+    if (!athleteId || !intelligentMealPlanRequest) return;
+    setIntelligentMealLoading(true);
+    setIntelligentMealError(null);
+    const result = await fetchIntelligentMealPlan(athleteId, intelligentMealPlanRequest);
+    setIntelligentMealLoading(false);
+    if (!result.ok) {
+      setIntelligentMealError(result.error);
+      return;
+    }
+    setIntelligentMealPlan(result.body);
+    setCoachMealRemovalKeys(new Set());
+    const rot = result.body.mealRotationStaples;
+    const planD = result.body.solverBasis?.planDate;
+    if (rot?.length && planD) {
+      recordPlanDayStaples(athleteId, isoWeekBucketId(planD), planD, rot);
+    }
+  }, [athleteId, intelligentMealPlanRequest]);
+
+  /**
+   * Auto-genera il piano allineato al profilo (deterministico, USDA-backed)
+   * appena i prerequisiti sono pronti. Evita la doppia interazione "piano base
+   * placeholder -> click Genera": niente "piano base" con kcal distribuite
+   * uniformemente fra righe (che produceva numeri non realistici tipo
+   * 1 banana = target/n_righe kcal).
+   *
+   * Non riprova in loop se la generazione fallisce: l'utente puo' usare il
+   * bottone "Genera il mio piano pasti" per ritentare.
+   */
+  useEffect(() => {
+    if (!athleteId) return;
+    if (!intelligentMealPlanRequest) return;
+    if (!mealPlanGenerationReady) return;
+    if (intelligentMealPlan) return;
+    if (intelligentMealLoading) return;
+    if (intelligentMealError) return;
+    void handleGenerateIntelligentMealPlan();
+  }, [
+    athleteId,
+    intelligentMealPlanRequest,
+    mealPlanGenerationReady,
+    intelligentMealPlan,
+    intelligentMealLoading,
+    intelligentMealError,
+    handleGenerateIntelligentMealPlan,
+  ]);
+
+  const mealPlanEnergyLedger = useMemo((): NutritionMealPlanEnergyLedger | null => {
+    let assembled: number | null = null;
+    if (intelligentMealPlan?.slots?.length) {
+      let t = 0;
+      for (const sl of intelligentMealPlan.slots) {
+        const sk = sl.slot as MealSlotKey;
+        for (let ii = 0; ii < sl.items.length; ii++) {
+          if (coachMealRemovalKeys.has(`${sk}:${ii}`)) continue;
+          t += sl.items[ii]?.approxKcal ?? 0;
+        }
+      }
+      assembled = Math.round(t);
+    }
+    if (!nutritionDayModel && assembled == null) return null;
+    return {
+      mealsKcalSolver: nutritionDayModel?.totals.mealsKcal ?? null,
+      dailyKcalSolver: nutritionDayModel?.totals.dailyKcal ?? null,
+      fuelingKcalSolver: nutritionDayModel?.totals.fuelingKcal ?? null,
+      trainingKcalSolver: nutritionDayModel?.training.kcal ?? null,
+      assembledUsdaKcalSum: assembled,
+    };
+  }, [nutritionDayModel, intelligentMealPlan, coachMealRemovalKeys]);
+
+  const complianceOverview = useMemo(() => {
+    const targetKcal = mealRows.reduce((s, m) => s + m.kcal, 0);
+    const targetCarbs = mealRows.reduce((s, m) => s + m.carbs, 0);
+    const targetProtein = mealRows.reduce((s, m) => s + m.protein, 0);
+    const targetFat = mealRows.reduce((s, m) => s + m.fat, 0);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEntries = diaryMacroRows.filter((d) => d.date === today);
+    const weekEntries = diaryMacroRows.filter((d) => {
+      const stamp = new Date(`${d.date}T00:00:00`).getTime();
+      const now = Date.now();
+      return now - stamp <= 7 * 24 * 60 * 60 * 1000;
+    });
+
+    const sum = (rows: FoodDiaryComplianceRow[]) =>
+      rows.reduce(
+        (acc, r) => ({
+          kcal: acc.kcal + n(r.kcal),
+          carbs: acc.carbs + n(r.carbs),
+          protein: acc.protein + n(r.protein),
+          fat: acc.fat + n(r.fat),
+        }),
+        { kcal: 0, carbs: 0, protein: 0, fat: 0 },
+      );
+
+    const todayTotals = sum(todayEntries);
+    const weekTotals = sum(weekEntries);
+    const daysCovered = Math.max(1, new Set(weekEntries.map((e) => e.date)).size);
+    const weekAvg = {
+      kcal: weekTotals.kcal / daysCovered,
+      carbs: weekTotals.carbs / daysCovered,
+      protein: weekTotals.protein / daysCovered,
+      fat: weekTotals.fat / daysCovered,
+    };
+
+    const scoreFor = (actual: number, target: number) => {
+      if (target <= 0) return 0;
+      const dev = Math.abs((actual - target) / target) * 100;
+      return Math.max(0, 100 - dev);
+    };
+
+    const todayScore = Math.round(
+      (scoreFor(todayTotals.kcal, targetKcal) +
+        scoreFor(todayTotals.carbs, targetCarbs) +
+        scoreFor(todayTotals.protein, targetProtein) +
+        scoreFor(todayTotals.fat, targetFat)) /
+        4,
+    );
+    const weekScore = Math.round(
+      (scoreFor(weekAvg.kcal, targetKcal) +
+        scoreFor(weekAvg.carbs, targetCarbs) +
+        scoreFor(weekAvg.protein, targetProtein) +
+        scoreFor(weekAvg.fat, targetFat)) /
+        4,
+    );
+
+    return {
+      target: { kcal: targetKcal, carbs: targetCarbs, protein: targetProtein, fat: targetFat },
+      today: { ...todayTotals, score: todayScore, entries: todayEntries.length },
+      week: { ...weekAvg, score: weekScore, entries: weekEntries.length, daysCovered },
+    };
+  }, [mealRows, diaryMacroRows]);
+
+  const nutrientSummary = useMemo(() => {
+    const foodDb: Record<
+      string,
+      {
+        kcal: number;
+        cho: number;
+        pro: number;
+        fat: number;
+        vitC?: number;
+        vitD?: number;
+        b2?: number;
+        b3?: number;
+        mg?: number;
+        fe?: number;
+        omega3?: number;
+        leucine?: number;
+        carbType?: string;
+      }
+    > = {
+      omelette: { kcal: 290, cho: 3, pro: 24, fat: 20, vitD: 2.2, b2: 0.52, b3: 0.2, mg: 22, fe: 2.7, leucine: 1.9 },
+      mela: { kcal: 62, cho: 16, pro: 0.3, fat: 0.2, vitC: 5, b2: 0.03, b3: 0.1, mg: 6, fe: 0.2, carbType: "Fruttosio/Fibra" },
+      yogurt: { kcal: 88, cho: 8, pro: 7, fat: 3, vitD: 1.3, b2: 0.34, b3: 0.2, mg: 18, fe: 0.1, leucine: 0.7 },
+      cereali: { kcal: 150, cho: 29, pro: 4, fat: 2, b2: 0.09, b3: 1.6, mg: 36, fe: 2.2, carbType: "Amido" },
+      riso: { kcal: 430, cho: 94, pro: 8, fat: 1, b2: 0.1, b3: 2, mg: 38, fe: 1.2, carbType: "Amido" },
+      salmone: { kcal: 330, cho: 0, pro: 33, fat: 21, vitD: 9, b2: 0.5, b3: 12, mg: 40, fe: 0.9, omega3: 3.2, leucine: 2.7 },
+      verdure: { kcal: 70, cho: 13, pro: 4, fat: 1, vitC: 40, b2: 0.15, b3: 1, mg: 48, fe: 1.5, carbType: "Fibra" },
+      evo: { kcal: 108, cho: 0, pro: 0, fat: 12, omega3: 0.8 },
+      patate: { kcal: 245, cho: 56, pro: 4, fat: 0.3, vitC: 22, b3: 2.2, mg: 40, fe: 0.8, carbType: "Amido" },
+      frutta: { kcal: 95, cho: 22, pro: 1, fat: 0.4, vitC: 25, b2: 0.08, b3: 0.4, mg: 18, fe: 0.4, carbType: "Fruttosio/Fibra" },
+      proteica: { kcal: 110, cho: 3, pro: 23, fat: 1.5, b2: 0.18, b3: 0.6, mg: 38, fe: 0.5, leucine: 2.2 },
+      frutta_secca: { kcal: 120, cho: 4, pro: 4, fat: 10, vitC: 0, b2: 0.13, b3: 1.1, mg: 52, fe: 1.1, omega3: 0.6, carbType: "Fibra" },
+    };
+
+    const totals = {
+      kcal: 0,
+      cho: 0,
+      pro: 0,
+      fat: 0,
+      vitC: 0,
+      vitD: 0,
+      b2: 0,
+      b3: 0,
+      mg: 0,
+      fe: 0,
+      omega3: 0,
+      leucine: 0,
+      carbTypes: new Set<string>(),
+    };
+
+    const mapToken = (item: string) => {
+      const lower = item.toLowerCase();
+      if (lower.includes("omelette") || lower.includes("egg")) return "omelette";
+      if (lower.includes("mela") || lower.includes("apple")) return "mela";
+      if (lower.includes("yogurt")) return "yogurt";
+      if (lower.includes("cereali") || lower.includes("cereal") || lower.includes("oat")) return "cereali";
+      if (lower.includes("riso") || lower.includes("rice")) return "riso";
+      if (lower.includes("salmone") || lower.includes("salmon") || lower.includes("pesce") || lower.includes("fish")) return "salmone";
+      if (lower.includes("verdure") || lower.includes("salad") || lower.includes("spinach") || lower.includes("broccoli"))
+        return "verdure";
+      if (lower.includes("olio") || lower.includes("olive oil")) return "evo";
+      if (lower.includes("patate") || lower.includes("potato")) return "patate";
+      if (lower.includes("frutta secca") || lower.includes("nut") || lower.includes("almond") || lower.includes("walnut"))
+        return "frutta_secca";
+      if (lower.includes("frutta") || lower.includes("fruit") || lower.includes("banana")) return "frutta";
+      if (lower.includes("proteica") || lower.includes("whey") || lower.includes("yogurt greco") || lower.includes("cottage"))
+        return "proteica";
+      return null;
+    };
+
+    const slotKeys: PathwayMealSlotKey[] = activeDietMealSlotKeys;
+    for (const slot of slotKeys) {
+      const bundle = mealPathwayBySlot[slot];
+      if (!bundle) continue;
+      for (const food of (bundle.foods ?? []).slice(0, 6)) {
+        const kcal = food.energyKcal100;
+        if (kcal != null && Number.isFinite(kcal)) totals.kcal += kcal;
+        const p = food.proteinG100;
+        const c = food.carbsG100;
+        const fa = food.fatG100;
+        if (p != null && Number.isFinite(p)) totals.pro += p;
+        if (c != null && Number.isFinite(c)) totals.cho += c;
+        if (fa != null && Number.isFinite(fa)) totals.fat += fa;
+      }
+      const microKeys = new Set<string>();
+      const textSeeds: string[] = [];
+      for (const t of bundle.pathwayTargets ?? []) {
+        textSeeds.push(t.displayNameIt, ...t.searchQueries);
+      }
+      for (const food of bundle.foods ?? []) textSeeds.push(food.description);
+      for (const raw of textSeeds) {
+        const key = mapToken(raw);
+        if (!key || microKeys.has(key)) continue;
+        microKeys.add(key);
+        const f = foodDb[key];
+        totals.vitC += f.vitC ?? 0;
+        totals.vitD += f.vitD ?? 0;
+        totals.b2 += f.b2 ?? 0;
+        totals.b3 += f.b3 ?? 0;
+        totals.mg += f.mg ?? 0;
+        totals.fe += f.fe ?? 0;
+        totals.omega3 += f.omega3 ?? 0;
+        totals.leucine += f.leucine ?? 0;
+        if (f.carbType) totals.carbTypes.add(f.carbType);
+      }
+    }
+
+    return {
+      kcal: round(totals.kcal),
+      cho: round(totals.cho),
+      pro: round(totals.pro),
+      fat: round(totals.fat),
+      vitC: round(totals.vitC, 1),
+      vitD: round(totals.vitD, 1),
+      b2: round(totals.b2, 2),
+      b3: round(totals.b3, 2),
+      mg: round(totals.mg),
+      fe: round(totals.fe, 2),
+      omega3: round(totals.omega3, 2),
+      leucine: round(totals.leucine, 2),
+      carbTypes: Array.from(totals.carbTypes).join(", "),
+    };
+  }, [mealPathwayBySlot]);
+
+  const effectiveFluidMlPerHour = useMemo(
+    () => round(fluidMlPerHour * (nutritionPerformanceIntegration?.sessionFluidMultiplier ?? 1)),
+    [fluidMlPerHour, nutritionPerformanceIntegration],
+  );
+
+  const hydrationPlan = useMemo(() => {
+    const floorMul = nutritionPerformanceIntegration?.hydrationFloorMultiplier ?? 1;
+    const minDailyMl = Math.max(2200, n(profile?.weight_kg, 0) * 33) * floorMul;
+    const fluidRate = effectiveFluidMlPerHour > 0 ? effectiveFluidMlPerHour : 650;
+    const trainingMl = Math.max(600, Math.round((effectiveSessionDurationMin / 60) * fluidRate));
+    return {
+      minDailyMl: round(minDailyMl),
+      trainingMl,
+      sodiumMinMg: Math.round((trainingMl / 500) * 400),
+    };
+  }, [effectiveSessionDurationMin, profile, nutritionPerformanceIntegration, effectiveFluidMlPerHour]);
+
+  const mealTabMicronutrientProps = useMemo(() => {
+    const dayTotals = intelligentMealPlan?.nutrientRollup?.dayTotals;
+    if (dayTotals) {
+      return mealPlanDayTotalsToMicroLines(dayTotals, { stripZero: true });
+    }
+    return pathwayNutrientSummaryToMicroLines(nutrientSummary, hydrationPlan.minDailyMl);
+  }, [intelligentMealPlan?.nutrientRollup?.dayTotals, nutrientSummary, hydrationPlan.minDailyMl]);
+
+  /** Un protocollo pre/intra/post per seduta pianificata (≥2 sessioni); altrimenti un solo blocco “giornata”. */
+  const fuelingSessionPackages = useMemo(() => {
+    if (!fuelingReadiness.ready) return [];
+
+    type TimelineStep = FuelingSlot & {
+      product: FuelingProduct | undefined;
+      displayImage: string;
+      isLogoFallback: boolean;
+      minuteOffset: number;
+    };
+
+    const fpGly = {
+      choSharePct: fuelingPhysiology.choSharePct,
+      vLamax: fuelingPhysiology.vLamax,
+      oxidativeCeilingKcalMin: fuelingPhysiology.oxidativeCeilingKcalMin,
+      redoxPct: fuelingPhysiology.redoxPct,
+      gutDeliveryPct: fuelingPhysiology.gutDeliveryPct,
+      coriReturnG: fuelingPhysiology.coriReturnG,
+    };
+
+    const supplements = profileSupplements;
+
+    function enrichSlots(slots: FuelingProtocolSlot[]): TimelineStep[] {
+      const products = slots.map((slot) => {
+        if (slot.catalogProduct) return slot.catalogProduct;
+        for (const brand of normalizedPreferredBrands) {
+          const product = FUELING_PRODUCT_CATALOG.find((p) => p.brand === brand && p.category === slot.category);
+          if (product) return product;
+        }
+        return FUELING_PRODUCT_CATALOG.find((p) => p.category === slot.category) ?? FUELING_PRODUCT_CATALOG[0];
+      });
+      return slots.map((slot, idx) => {
+        const product = products[idx];
+        const { displayImage, isLogoFallback } = resolveFuelingProductImage(product, slot.category, fuelingMediaByKey);
+        return {
+          ...slot,
+          product,
+          displayImage,
+          isLogoFallback,
+          minuteOffset: parseFuelingMinuteOffset(slot.time),
+        };
+      });
+    }
+
+    function timelineFromSteps(steps: TimelineStep[]) {
+      const byPhase: Record<"pre" | "intra" | "post", TimelineStep[]> = { pre: [], intra: [], post: [] };
+      for (const step of steps) {
+        const key = step.phase.toLowerCase().includes("pre")
+          ? "pre"
+          : step.phase.toLowerCase().includes("post")
+            ? "post"
+            : "intra";
+        byPhase[key].push(step);
+      }
+      byPhase.pre.sort((a, b) => a.minuteOffset - b.minuteOffset);
+      byPhase.intra.sort((a, b) => a.minuteOffset - b.minuteOffset);
+      byPhase.post.sort((a, b) => a.minuteOffset - b.minuteOffset);
+      return [...byPhase.pre, ...byPhase.intra, ...byPhase.post];
+    }
+
+    const dayHours = Math.max(0.5, fuelingPlannedSummary.totalDurationMin / 60);
+    const dayPre = Math.max(15, round(nutritionDayModel?.fueling.preChoG ?? 20));
+    const dayPost = Math.max(25, round(nutritionDayModel?.fueling.postChoG ?? 30));
+    const dayIntraTotal = Math.max(
+      round(nutritionDayModel?.fueling.intraChoG ?? 0, 1),
+      round(resolvedFuelingChoGPerHour * dayHours, 1),
+    );
+    const engineSuffixDay =
+      fuelingEngineDaySummary != null
+        ? ` · motore: lact ~${round(fuelingEngineDaySummary.lactateG, 1)} g · Cori ~${round(fuelingEngineDaySummary.coriG, 1)} g · CHOexo ~${round(fuelingEngineDaySummary.exoG, 1)} g`
+        : "";
+    const intraSplitFull =
+      fuelingIntraChoSplitBySession != null && fuelingIntraChoSplitBySession.length > 0
+        ? ` · ripartizione intra stimata: ${fuelingIntraChoSplitBySession
+            .map((x) => {
+              const short = x.label.length > 24 ? `${x.label.slice(0, 24)}…` : x.label;
+              return `${short} ${x.choG}g`;
+            })
+            .join(" · ")}`
+        : "";
+
+    const buildPackage = (args: {
+      id: string | number;
+      title: string;
+      durationMin: number;
+      intensityPctFtp: number;
+      preCho: number;
+      postCho: number;
+      intraTotalCho: number;
+      engineSuffix: string;
+      intraSplitNote: string;
+    }) => {
+      const slots = buildFuelingProtocolSlots({
+        durationMin: args.durationMin,
+        preCho: args.preCho,
+        postCho: args.postCho,
+        intraTotalCho: args.intraTotalCho,
+        effectiveFluidMlPerHour,
+        resolvedFuelingTierBand,
+        engineSuffix: args.engineSuffix,
+        intraSplitNote: args.intraSplitNote,
+        profileSupplements: supplements,
+        preferredBrands: normalizedPreferredBrands,
+      });
+      const steps = enrichSlots(slots);
+      const timelineSteps = timelineFromSteps(steps);
+      const durationH = Math.max(0.25, args.durationMin / 60);
+      const choPerHourSession = Math.min(150, args.intraTotalCho / durationH);
+      const glyc = computeGlycogenDepletionForFueling({
+        weightKg: n(profile?.weight_kg, 0),
+        muscleMassKg: profile?.muscle_mass_kg,
+        durationMin: args.durationMin,
+        intensityPctFtp: args.intensityPctFtp,
+        fuelingPhysiology: fpGly,
+        resolvedFuelingChoGPerHour: choPerHourSession,
+      });
+      const glyPlot = buildGlycogenPlotGeometry(glyc);
+      const hydrationTimeline = Array.from({ length: Math.max(1, Math.ceil(args.durationMin / 20)) }, (_, i) => {
+        const minute = i * 20;
+        return { minuteLabel: minute === 0 ? "0'" : `+${minute}'`, note: "500ml + sali minerali" };
+      });
+      const totalHydration = steps.reduce((s, st) => s + st.fluid, 0);
+      const totalCho = steps.reduce((s, st) => s + st.cho, 0);
+      const visualMetrics = [
+        {
+          label: "CHO/h",
+          value: round(choPerHourSession),
+          unit: "g/h",
+          pct: clamp((choPerHourSession / 130) * 100, 8, 100),
+          color: "#ff6b00",
+        },
+        {
+          label: "Idratazione totale",
+          value: round(totalHydration),
+          unit: "ml",
+          pct: clamp((totalHydration / 3000) * 100, 8, 100),
+          color: "#0ea5e9",
+        },
+        {
+          label: "Sodio/h",
+          value: round(sodiumMgPerHour),
+          unit: "mg/h",
+          pct: clamp((sodiumMgPerHour / 1200) * 100, 8, 100),
+          color: "#8b5cf6",
+        },
+        {
+          label: "kcal protocollo",
+          value: round(totalCho * 4),
+          unit: "kcal",
+          pct: clamp(((totalCho * 4) / 1000) * 100, 8, 100),
+          color: "#10b981",
+        },
+      ];
+      const opsCards = [
+        { label: "CHO seduta", value: `${round(totalCho)} g` },
+        { label: "Fluid seduta", value: `${round(totalHydration)} ml` },
+        { label: "Steps", value: `${timelineSteps.length}` },
+      ];
+      return {
+        id: args.id,
+        title: args.title,
+        durationMin: args.durationMin,
+        intensityPctFtp: args.intensityPctFtp,
+        choPerHourSession: round(choPerHourSession, 1),
+        steps,
+        timelineSteps,
+        hydrationTimeline,
+        visualMetrics,
+        opsCards,
+        glycogenDepletion: glyc,
+        glycogenPlot: glyPlot,
+      };
+    };
+
+    const sessions = fuelingTrainingContext;
+
+    if (sessions.length <= 1) {
+      const s0 = sessions[0];
+      const duration = s0?.durationMin ?? fuelingPlannedSummary.totalDurationMin;
+      const intensity = s0?.substrate?.estimatedIntensityPctFtp ?? fuelingPlannedSummary.estimatedIntensityPctFtp;
+      const engineOne =
+        s0?.substrate != null
+          ? ` · motore: lact ~${s0.substrate.lactateProducedG} g · Cori ~${s0.substrate.glucoseFromCoriG} g · CHOexo ~${s0.substrate.exogenousOxidizedG} g`
+          : engineSuffixDay;
+      return [
+        buildPackage({
+          id: s0?.id ?? "day",
+          title: s0?.title ?? "Contesto giornata training",
+          durationMin: duration,
+          intensityPctFtp: intensity,
+          preCho: dayPre,
+          postCho: dayPost,
+          intraTotalCho: dayIntraTotal,
+          engineSuffix: engineOne,
+          intraSplitNote: "",
+        }),
+      ];
+    }
+
+    const weights = sessions.map((s) => Math.max(0.01, n(s.choEnergyWeight, s.tss || 1)));
+    const sumW = weights.reduce((a, b) => a + b, 0);
+
+    return sessions.map((s, i) => {
+      const wShare = weights[i] / sumW;
+      const preS = Math.max(12, round(dayPre * wShare));
+      const postS = Math.max(18, round(dayPost * wShare));
+      const intraS =
+        fuelingIntraChoSplitBySession?.find((x) => String(x.id) === String(s.id))?.choG ?? round(dayIntraTotal * wShare, 1);
+      const dur = Math.max(1, s.durationMin);
+      const intens = s.substrate?.estimatedIntensityPctFtp ?? fuelingPlannedSummary.estimatedIntensityPctFtp;
+      const eng =
+        s.substrate != null
+          ? ` · motore: lact ~${s.substrate.lactateProducedG} g · Cori ~${s.substrate.glucoseFromCoriG} g · CHOexo ~${s.substrate.exogenousOxidizedG} g`
+          : "";
+      return buildPackage({
+        id: s.id,
+        title: String(s.title),
+        durationMin: dur,
+        intensityPctFtp: intens,
+        preCho: preS,
+        postCho: postS,
+        intraTotalCho: intraS,
+        engineSuffix: eng,
+        intraSplitNote: i === 0 ? intraSplitFull : "",
+      });
+    });
+  }, [
+    profileSupplements,
+    profile,
+    fuelingReadiness.ready,
+    fuelingPlannedSummary,
+    effectiveFluidMlPerHour,
+    nutritionDayModel,
+    resolvedFuelingChoGPerHour,
+    resolvedFuelingTierBand,
+    fuelingEngineDaySummary,
+    fuelingIntraChoSplitBySession,
+    fuelingTrainingContext,
+    fuelingPhysiology,
+    fuelingMediaByKey,
+    normalizedPreferredBrands,
+    sodiumMgPerHour,
+  ]);
+
+  const integrationProductCards = useMemo(() => {
+    const focusPriority: FuelingFunctionalFocus[] = [
+      "preworkout",
+      "carbo",
+      "electrolyte",
+      "protein",
+      "recovery",
+      "eaa",
+      "bcaa",
+      "caffeine",
+      "creatine",
+    ];
+    const preferred = normalizedPreferredBrands.length
+      ? normalizedPreferredBrands
+      : Array.from(new Set(FUELING_PRODUCT_CATALOG.map((item) => item.brand))).slice(0, 6);
+    const picked: FuelingProduct[] = [];
+    for (const focus of focusPriority) {
+      for (const brand of preferred) {
+        const product = FUELING_PRODUCT_CATALOG.find(
+          (item) => item.brand === brand && item.functionalFocus.includes(focus),
+        );
+        if (product && !picked.some((entry) => entry.brand === product.brand && entry.product === product.product)) {
+          picked.push(product);
+          break;
+        }
+      }
+    }
+    return picked.slice(0, 9).map((product) => ({
+      ...product,
+      ...resolveFuelingProductImage(product, product.category, fuelingMediaByKey),
+    }));
+  }, [fuelingMediaByKey, normalizedPreferredBrands]);
+
+  const integrationProductsByTiming = useMemo(() => {
+    const buckets: Record<IntegrationTimingBucket, IntegrationProductCardProduct[]> = {
+      pre: [],
+      intra: [],
+      post: [],
+    };
+    for (const product of integrationProductCards) {
+      buckets[primaryIntegrationTimingBucket(product)].push(product);
+    }
+    return buckets;
+  }, [integrationProductCards]);
+
+  const integrationStackSummary = useMemo(() => {
+    const brandCount = new Set(integrationProductCards.map((product) => product.brand)).size;
+    const focusCount = new Set(integrationProductCards.flatMap((product) => product.functionalFocus)).size;
+    const directImages = integrationProductCards.filter((product) => !product.isLogoFallback).length;
+    return [
+      { label: "Products", value: `${integrationProductCards.length}` },
+      { label: "Brands", value: `${brandCount}` },
+      { label: "Focus", value: `${focusCount}` },
+      { label: "Official images", value: `${directImages}/${integrationProductCards.length}` },
+    ];
+  }, [integrationProductCards]);
+
+  /** Proiezione glicogeno aggregata sulla giornata (predictor e riepilogo). */
+  const glycogenDepletion = useMemo(
+    () =>
+      computeGlycogenDepletionForFueling({
+        weightKg: n(profile?.weight_kg, 72),
+        muscleMassKg: profile?.muscle_mass_kg,
+        durationMin: effectiveSessionDurationMin,
+        intensityPctFtp: effectiveSessionIntensityPctFtp,
+        fuelingPhysiology: {
+          choSharePct: fuelingPhysiology.choSharePct,
+          vLamax: fuelingPhysiology.vLamax,
+          oxidativeCeilingKcalMin: fuelingPhysiology.oxidativeCeilingKcalMin,
+          redoxPct: fuelingPhysiology.redoxPct,
+          gutDeliveryPct: fuelingPhysiology.gutDeliveryPct,
+          coriReturnG: fuelingPhysiology.coriReturnG,
+        },
+        resolvedFuelingChoGPerHour,
+      }),
+    [
+      effectiveSessionDurationMin,
+      effectiveSessionIntensityPctFtp,
+      profile,
+      resolvedFuelingChoGPerHour,
+      fuelingPhysiology,
+    ],
+  );
+  const fuelingPlanGlycogenDepletion = useMemo(
+    () =>
+      computeGlycogenDepletionForFueling({
+        weightKg: n(profile?.weight_kg, 0),
+        muscleMassKg: profile?.muscle_mass_kg,
+        durationMin: fuelingPlannedSummary.totalDurationMin,
+        intensityPctFtp: fuelingPlannedSummary.estimatedIntensityPctFtp,
+        fuelingPhysiology: {
+          choSharePct: fuelingPhysiology.choSharePct,
+          vLamax: fuelingPhysiology.vLamax,
+          oxidativeCeilingKcalMin: fuelingPhysiology.oxidativeCeilingKcalMin,
+          redoxPct: fuelingPhysiology.redoxPct,
+          gutDeliveryPct: fuelingPhysiology.gutDeliveryPct,
+          coriReturnG: fuelingPhysiology.coriReturnG,
+        },
+        resolvedFuelingChoGPerHour,
+      }),
+    [profile, fuelingPlannedSummary, fuelingPhysiology, resolvedFuelingChoGPerHour],
+  );
+
+  const fuelingOpsCards = useMemo(() => {
+    const totalCho = fuelingSessionPackages.reduce((s, p) => s + p.steps.reduce((x, st) => x + st.cho, 0), 0);
+    const totalFluid = fuelingSessionPackages.reduce((s, p) => s + p.steps.reduce((x, st) => x + st.fluid, 0), 0);
+    const totalSteps = fuelingSessionPackages.reduce((s, p) => s + p.timelineSteps.length, 0);
+    return [
+      { label: "CHO total", value: `${round(totalCho)}`, unit: "g", tone: "amber", sub: "Pre + intra + post" },
+      { label: "Fluid total", value: `${round(totalFluid)}`, unit: "ml", tone: "cyan", sub: "Totale seduta" },
+      { label: "Sodium", value: `${round(sodiumMgPerHour)}`, unit: "mg/h", tone: "violet", sub: "Target orario" },
+      { label: "Gut delivery", value: `${round(fuelingPhysiology.gutDeliveryPct)}`, unit: "%", tone: "green", sub: "Assorbimento stimato" },
+      { label: "Glycogen end", value: `${round(fuelingPlanGlycogenDepletion.finalRemaining)}`, unit: "g", tone: "rose", sub: "Fine piano" },
+      { label: "Steps", value: `${totalSteps}`, unit: "", tone: "slate", sub: "Azioni apribili" },
+    ];
+  }, [fuelingSessionPackages, sodiumMgPerHour, fuelingPhysiology.gutDeliveryPct, fuelingPlanGlycogenDepletion.finalRemaining]);
+
+  const selectedExecutedKj = useMemo(
+    () => selectedExecutedSessions.reduce((sum, session) => sum + n(session.kj, 0), 0),
+    [selectedExecutedSessions],
+  );
+
+  const nutritionStateCards = useMemo<
+    Array<{ label: string; value: string; tone: "amber" | "cyan" | "green" | "rose" | "slate" }>
+  >(
+    () => [
+      {
+        label: "Bioenergetic",
+        value: `${round(bioenergeticModulation?.mitochondrialReadinessScore ?? 55)}/100`,
+        tone:
+          bioenergeticModulation?.state === "protective"
+            ? "rose"
+            : bioenergeticModulation?.state === "watch"
+              ? "amber"
+              : "cyan",
+      },
+      {
+        label: "Adaptation loop",
+        value: `${round(adaptationLoop?.adaptationScore ?? 55)}/100`,
+        tone:
+          adaptationLoop?.status === "regenerate"
+            ? "rose"
+            : adaptationLoop?.status === "watch"
+              ? "amber"
+              : "green",
+      },
+    ],
+    [adaptationLoop, bioenergeticModulation],
+  );
+
+  const garminPayload = useMemo(() => {
+    const ftp = n(physio?.ftp_watts, 0);
+    const steps: GarminFuelingStep[] = fuelingSessionPackages.flatMap((pkg) =>
+      pkg.steps.map((slot) => {
+        const raw = slot.time.replace("'", "").trim();
+        const minute_offset = raw.startsWith("+")
+          ? Number(raw.slice(1))
+          : raw.startsWith("-")
+            ? -Number(raw.slice(1))
+            : Number(raw);
+        const shortTitle = pkg.title.length > 28 ? `${pkg.title.slice(0, 28)}…` : pkg.title;
+        return {
+          phase: `[${shortTitle}] ${slot.phase}`,
+          minute_offset: Number.isFinite(minute_offset) ? minute_offset : 0,
+          icon: slot.icon,
+          protocol: slot.plan,
+          cho_g: slot.cho,
+          hydration_ml: slot.fluid,
+          notes: slot.notes,
+        };
+      }),
+    );
+
+    const totalCho = steps.reduce((s, x) => s + x.cho_g, 0);
+    const totalHydration = steps.reduce((s, x) => s + x.hydration_ml, 0);
+
+    return {
+      schema: "empathy.garmin.fueling.v1",
+      generated_at: new Date().toISOString(),
+      athlete_id: athleteId,
+      sport: predictorSport,
+      estimated_intensity_pct_ftp: fuelingPlannedSummary.estimatedIntensityPctFtp,
+      ftp_watts: ftp,
+      estimated_event_duration_min: fuelingPlannedSummary.totalDurationMin,
+      fueling_targets: {
+        cho_g_h: resolvedFuelingChoGPerHour,
+        fluid_ml_h: fluidMlPerHour,
+        sodium_mg_h: sodiumMgPerHour,
+      },
+      fueling_tier: resolvedFuelingTier,
+      fueling_band: resolvedFuelingTierBand,
+      glycogen_projection: {
+        total_g: fuelingPlanGlycogenDepletion.totalGlycogen,
+        consume_total_g: fuelingPlanGlycogenDepletion.totalConsume,
+        fueling_total_g: fuelingPlanGlycogenDepletion.totalIntake,
+        absorbed_total_g: fuelingPlanGlycogenDepletion.totalAbsorbed,
+        cori_total_g: fuelingPlanGlycogenDepletion.totalCori,
+        net_total_g: fuelingPlanGlycogenDepletion.totalNet,
+        remaining_g: fuelingPlanGlycogenDepletion.finalRemaining,
+        remaining_pct: fuelingPlanGlycogenDepletion.finalPct,
+        zone: fuelingPlanGlycogenDepletion.finalZone,
+      },
+      protocol_summary: {
+        sessions_count: fuelingSessionPackages.length,
+        steps_count: steps.length,
+        cho_total_g: totalCho,
+        hydration_total_ml: totalHydration,
+      },
+      steps,
+    };
+  }, [
+    athleteId,
+    fluidMlPerHour,
+    resolvedFuelingChoGPerHour,
+    fuelingSessionPackages,
+    fuelingPlanGlycogenDepletion,
+    physio,
+    predictorSport,
+    fuelingPlannedSummary,
+    resolvedFuelingTier,
+    resolvedFuelingTierBand,
+    sodiumMgPerHour,
+  ]);
+
+  const predictor = useMemo(() => {
+    const ftp = n(physio?.ftp_watts, 260);
+    const intensity = clamp(predictorEffectiveIntensityPctFtp / 100, 0.45, 1.1);
+    const powerW = ftp * intensity;
+    const metabolicKcalH = powerW * 3.587;
+    const choFrac = clamp(
+      intensity >= 0.9 ? 0.92 : intensity >= 0.82 ? 0.82 : intensity >= 0.72 ? 0.68 : intensity >= 0.62 ? 0.55 : 0.45,
+      0.4,
+      0.96,
+    );
+    const physiologyChoFrac = clamp(fuelingPhysiology.choSharePct / 100, 0.45, 0.96);
+    const choGH = (metabolicKcalH * choFrac) / 4;
+    const muscleKg = n(profile?.muscle_mass_kg, n(profile?.weight_kg, 72) * 0.45);
+    const involvedFractionMap: Record<string, number> = {
+      Running: 0.78,
+      Ciclismo: 0.66,
+      Nuoto: 0.72,
+      "XC Ski": 0.82,
+      Triathlon: 0.8,
+      Canoa: 0.58,
+      MTB: 0.7,
+    };
+    const involved = involvedFractionMap[predictorSport] ?? 0.68;
+    const muscleGlycogen = muscleKg * 12.5 * involved;
+    const liverGlycogen = 95;
+    const totalGlycogen = muscleGlycogen + liverGlycogen;
+    const eventHours = predictorEffectiveTimeMin / 60;
+    const fuelingTotal = resolvedFuelingChoGPerHour * eventHours;
+    const absorbedFuelingTotal = fuelingTotal * (fuelingPhysiology.gutDeliveryPct / 100);
+    const coriTotal = fuelingPhysiology.coriReturnG > 0 ? round(fuelingPhysiology.coriReturnG * Math.max(1, eventHours / glycogenDepletion.totalHours), 1) : 0;
+    const modelChoGH = round((metabolicKcalH * physiologyChoFrac) / 4, 1);
+    const netDrainPerHour = Math.max(0, modelChoGH - absorbedFuelingTotal / Math.max(1, eventHours) - coriTotal / Math.max(1, eventHours));
+    const exhaustionHours = netDrainPerHour > 0 ? totalGlycogen / netDrainPerHour : 999;
+    const totalEnergy = metabolicKcalH * eventHours;
+    const maxSustainablePct =
+      exhaustionHours >= eventHours ? predictorEffectiveIntensityPctFtp : round(Math.max(55, predictorEffectiveIntensityPctFtp * (exhaustionHours / eventHours)));
+
+    return {
+      ftp,
+      intensity,
+      powerW,
+      metabolicKcalH,
+      choGH: modelChoGH,
+      totalGlycogen,
+      eventHours,
+      totalEnergy,
+      fuelingTotal,
+      absorbedFuelingTotal,
+      coriTotal,
+      exhaustionHours,
+      maxSustainablePct,
+    };
+  }, [physio, profile, predictorEffectiveIntensityPctFtp, predictorSport, predictorEffectiveTimeMin, resolvedFuelingChoGPerHour, fuelingPhysiology, glycogenDepletion.totalHours]);
+  const predictorOpsCards = useMemo(
+    () => [
+      { label: "Power stimata", value: `${round(predictor.powerW)}`, unit: "W", sub: "Potenza evento", tone: nutritionToneForLabel("Power stimata") },
+      {
+        label: "Consumo energetico",
+        value: `${round(predictor.metabolicKcalH)}`,
+        unit: "kcal/h",
+        sub: "Costo metabolico",
+        tone: nutritionToneForLabel("Consumo energetico"),
+      },
+      { label: "CHO richiesta", value: `${round(predictor.choGH)}`, unit: "g/h", sub: "Richiesta ossidativa", tone: nutritionToneForLabel("CHO richiesta") },
+      {
+        label: "Serbatoio glicogeno",
+        value: `${round(predictor.totalGlycogen)}`,
+        unit: "g",
+        sub: "Stima totale disponibile",
+        tone: nutritionToneForLabel("Serbatoio glicogeno"),
+      },
+      {
+        label: "Esaurimento stimato",
+        value: predictor.exhaustionHours > 100 ? "No risk" : `${round(predictor.exhaustionHours, 1)}`,
+        unit: predictor.exhaustionHours > 100 ? "" : "h",
+        sub: "Orizzonte di rischio",
+        tone: nutritionToneForLabel("Esaurimento stimato"),
+      },
+      {
+        label: "% FTP sostenibile",
+        value: `${predictor.maxSustainablePct}`,
+        unit: "%",
+        sub: "Con fueling corrente",
+        tone: nutritionToneForLabel("% FTP sostenibile"),
+      },
+    ],
+    [predictor],
+  );
+
+  async function handleSaveNutrition() {
+    if (!athleteId) return;
+    setSaving(true);
+    setError(null);
+
+    const existingRoutine = record(profile?.routine_config);
+    const existingNutrition = record(profile?.nutrition_config);
+    const splitForSave = effectiveCaloricDistribution ?? caloricSplit;
+
+    const payloadNutrition = {
+      ...existingNutrition,
+      /** Diet (% pasti, n° pasti) si modifica solo in Profile → Diet; qui non si riscrive `week_plan`. */
+      meal_strategy: mealStrategy,
+      caloric_split: {
+        breakfast_pct: splitForSave.breakfast,
+        lunch_pct: splitForSave.lunch,
+        dinner_pct: splitForSave.dinner,
+        snacks_pct: splitForSave.snacks,
+      },
+      meal_plan: {
+        daily_kcal: round(resolvedMealDailyEnergyKcal),
+        meal_strategy: mealStrategy,
+        caloric_split: {
+          breakfast_pct: splitForSave.breakfast,
+          lunch_pct: splitForSave.lunch,
+          dinner_pct: splitForSave.dinner,
+          snacks_pct: splitForSave.snacks,
+        },
+      },
+      fueling: {
+        session_duration_min: sessionDurationMin,
+        session_intensity_pct_ftp: sessionIntensityPctFtp,
+        cho_g_h: resolvedFuelingChoGPerHour,
+        fluid_ml_h: fluidMlPerHour,
+        sodium_mg_h: sodiumMgPerHour,
+        cofactor,
+      },
+      performance_predictor: {
+        sport: predictorSport,
+        distance_km: predictorDistanceKm,
+        event_time_min: predictorTimeMin,
+        intensity_pct_ftp: predictorIntensityPctFtp,
+      },
+      nutriomics_engine: {
+        dominant_stimulus: dominantStimulus,
+        omics_inputs: ["epigenetica", "microbiota", "blood panels", "intolleranze", "ritmi circadiani", "training analyzer"],
+      },
+      updated_at: new Date().toISOString(),
+    };
+
+    const payloadRoutine = {
+      ...existingRoutine,
+      meal_times: {
+        breakfast: mealTimes.breakfast,
+        lunch: mealTimes.lunch,
+        dinner: mealTimes.dinner,
+        snack_am: mealTimes.snack_am,
+        snack_pm: mealTimes.snack_pm,
+        snacks: mealTimes.snack_pm,
+      },
+    };
+
+    try {
+      await saveNutritionProfileConfig({
+        athleteId,
+        nutrition_config: payloadNutrition,
+        routine_config: payloadRoutine,
+      });
+      const adherenceRes = await fetch("/api/nutrition/adherence-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          athleteId,
+          adaptationAdherenceOptIn: adherenceOptIn,
+        }),
+      });
+      if (!adherenceRes.ok) {
+        const payload = (await adherenceRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? "Errore salvataggio toggle aderenza nutrizione");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore salvataggio configurazione nutrizione");
+    }
+    setSaving(false);
+  }
+
+  async function persistFuelingExecutionConfirmation(nextConfirmed: boolean) {
+    if (!athleteId || !profile) return;
+    setFuelingConfirmBusy(true);
+    setError(null);
+    try {
+      const existingNutrition = record(profile.nutrition_config);
+      const prev = record(existingNutrition.fueling_execution_confirmations);
+      const merged: Record<string, unknown> = { ...prev };
+      if (nextConfirmed) {
+        merged[selectedPlanDate] = { confirmed: true, at: new Date().toISOString() };
+      } else {
+        delete merged[selectedPlanDate];
+      }
+      await saveNutritionProfileConfig({
+        athleteId,
+        nutrition_config: {
+          ...existingNutrition,
+          fueling_execution_confirmations: merged,
+        },
+        routine_config: record(profile.routine_config),
+      });
+      setNutritionContextVersion((v) => v + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Salvataggio conferma fueling fallito");
+    }
+    setFuelingConfirmBusy(false);
+  }
+
+  async function runFoodLookupForQuery(rawQuery: string) {
+    const q = rawQuery.trim();
+    if (!q) return;
+    setFoodLookupLoading(true);
+    setFoodLookupError(null);
+    try {
+      const url = `/api/nutrition/food-lookup?q=${encodeURIComponent(q)}&brands=${encodeURIComponent(preferredBrands.join(","))}`;
+      const res = await fetch(url, { method: "GET" });
+      const payload = (await res.json()) as { items?: FoodLookupItem[]; error?: string };
+      if (!res.ok) throw new Error(payload.error || "Lookup error");
+      setFoodLookupResults(Array.isArray(payload.items) ? payload.items : []);
+      setFoodQuery(q);
+    } catch (e) {
+      setFoodLookupError(e instanceof Error ? e.message : "Errore lookup alimenti");
+      setFoodLookupResults([]);
+    } finally {
+      setFoodLookupLoading(false);
+    }
+  }
+
+  async function runFoodLookup() {
+    await runFoodLookupForQuery(foodQuery);
+  }
+
+  async function runFoodLookupFromPathway(query: string) {
+    await runFoodLookupForQuery(query);
+    router.push("/nutrition/integration");
+  }
+
+  async function fetchUsdaRichForCatalog(catalogId: string) {
+    setUsdaRichByCatalogId((prev) => ({ ...prev, [catalogId]: { loading: true } }));
+    try {
+      const res = await fetch(`/api/nutrition/usda-by-nutrient?catalogId=${encodeURIComponent(catalogId)}`);
+      const payload = (await res.json()) as { foods?: UsdaRichFoodItemViewModel[]; error?: string };
+      if (!res.ok) {
+        setUsdaRichByCatalogId((prev) => ({
+          ...prev,
+          [catalogId]: {
+            loading: false,
+            error: payload.error || `Errore USDA (${res.status})`,
+            foods: [],
+          },
+        }));
+        return;
+      }
+      setUsdaRichByCatalogId((prev) => ({
+        ...prev,
+        [catalogId]: {
+          loading: false,
+          foods: Array.isArray(payload.foods) ? payload.foods : [],
+          error: undefined,
+        },
+      }));
+    } catch (e) {
+      setUsdaRichByCatalogId((prev) => ({
+        ...prev,
+        [catalogId]: {
+          loading: false,
+          error: e instanceof Error ? e.message : "Errore rete",
+          foods: [],
+        },
+      }));
+    }
+  }
+
+  async function saveLookupItemToCatalog(item: FoodLookupItem) {
+    const key = `${item.source}-${item.brand ?? "na"}-${item.label}`;
+    setSavingCatalogKey(key);
+    setFoodLookupError(null);
+    try {
+      await saveNutritionLookupItem({
+        source: item.source,
+        brand: item.brand,
+        product_name: item.label,
+        category: "fueling",
+        kcal_100g: item.kcal_100,
+        cho_100g: item.carbs_100,
+        protein_100g: item.protein_100,
+        fat_100g: item.fat_100,
+        sodium_mg_100g: item.sodium_mg_100,
+        metadata: {
+          saved_from: "nutrition_fueling_lookup",
+          query: foodQuery.trim(),
+          saved_at: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      setFoodLookupError(err instanceof Error ? err.message : "Errore salvataggio catalogo");
+    }
+    setSavingCatalogKey(null);
+  }
+
+  async function exportGarminFuelingPayload() {
+    if (!athleteId) return;
+    if (!fuelingReadiness.ready) {
+      setGarminMessage(`Completa prima i dati fueling: ${fuelingReadiness.missing.join(", ")}.`);
+      return;
+    }
+    setGarminExporting(true);
+    setGarminMessage(null);
+    try {
+      await saveNutritionDeviceExport({
+        athlete_id: athleteId,
+        provider: "garmin_connectiq",
+        payload: garminPayload,
+      });
+      setGarminMessage("Payload Garmin creato e salvato nello storico sync.");
+
+      const blob = new Blob([JSON.stringify(garminPayload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `empathy-garmin-fueling-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setGarminMessage(
+        `Export JSON creato, ma salvataggio DB non disponibile: ${err instanceof Error ? err.message : "errore sconosciuto"}`,
+      );
+    } finally {
+      setGarminExporting(false);
+    }
+  }
+
+  return (
+    <Pro2ModulePageShell
+      eyebrow="Metabolic Fuel Console"
+      eyebrowClassName="text-pink-400"
+      title="Nutrition · Nutriomics Engine"
+      description={
+        <span className="text-slate-400">{role === "coach" ? "Coach mode" : "Private mode"}</span>
+      }
+    >
+      {error && <div className="alert-error">{error}</div>}
+
+      {athleteLoading || loading ? (
+        <p className="text-slate-500">Caricamento...</p>
+      ) : !athleteId ? (
+        <p className="text-slate-500">Nessun atleta attivo. Se sei coach, imposta l&apos;atleta in Athletes.</p>
+      ) : (
+        <>
+          <section className="viz-card builder-panel space-y-4" style={{ marginBottom: "12px" }}>
+            <div className="flex flex-col gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Aree nutrition</p>
+                <NutritionSubnav />
+              </div>
+            </div>
+            {subRoute === "meal-plan" && lowMealsBudgetWarning ? (
+              <div
+                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
+                role="status"
+              >
+                <strong className="font-semibold">Attenzione — budget pasti solver molto basso.</strong>{" "}
+                Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
+                {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
+                (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
+                controlla <span className="font-medium">Profilo</span> e rigenera il piano dopo il salvataggio.
+              </div>
+            ) : null}
+            {subRoute === "meal-plan" ? (
+              <NutritionMealPlanDailyTargets
+                complianceTargets={{
+                  kcal: complianceOverview.target.kcal,
+                  carbs: complianceOverview.target.carbs,
+                  protein: complianceOverview.target.protein,
+                  fat: complianceOverview.target.fat,
+                }}
+                dateLabel={selectedPlanDateLabel}
+                hydrationMinDailyMl={hydrationPlan.minDailyMl}
+                selectedExecutedKj={selectedExecutedKj}
+                sessionLoadKcalEstimate={Math.max(
+                  nutritionDayModel?.training.kcal ?? 0,
+                  effectiveDayContext.summary.totalKcal,
+                )}
+                round={round}
+                energyLedger={mealPlanEnergyLedger}
+              />
+            ) : null}
+          </section>
+          {subRoute === "meal-plan" && athleteId ? (
+            <NutritionMealPlanLeadPanels
+              researchTraceSummaries={researchTraceSummaries}
+              nutritionSectorBoxes={nutritionSectorBoxes}
+              pathwayModulation={pathwayModulation}
+              functionalFoodRecommendations={functionalFoodRecommendations}
+            />
+          ) : null}
+
+          {subRoute === "meal-plan" && athleteId && isMealPlanV2PreviewUiEnabled() ? (
+            <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
+          ) : null}
+
+          {(subRoute === "meal-plan" ||
+            subRoute === "fueling" ||
+            subRoute === "diary" ||
+            subRoute === "predictor") ? (
+            <section className="viz-card builder-panel border border-emerald-500/25 bg-black/20 px-4 py-3 sm:px-5">
+              <div className="flex flex-col gap-3">
+                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Giorno da visualizzare</span>
+                <NutritionPlanDatePicker
+                  value={selectedPlanDate}
+                  onChange={setSelectedPlanDate}
+                  minOffsetDays={-400}
+                  maxOffsetDays={400}
+                  className="w-full"
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {subRoute === "meal-plan" && athleteId ? (
+            <section className="viz-card builder-panel border border-fuchsia-500/20 bg-black/20 px-4 py-3 sm:px-5">
+              <div className="flex flex-col gap-2">
+                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+                  Adattamento da aderenza nutrizione
+                </span>
+                <label className="inline-flex items-center gap-2 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={adherenceOptIn}
+                    disabled={saving || adherenceConfigLoading}
+                    onChange={(event) => setAdherenceOptIn(event.target.checked)}
+                  />
+                  Usa confronto piano vs assunto nel calcolo dell&apos;adattamento.
+                </label>
+                <p className="m-0 text-[0.75rem] leading-relaxed text-slate-400">
+                  Attivalo solo se diario e piano sono compilati in modo preciso: i gap di aderenza influenzano i dial nutrizione.
+                </p>
+              </div>
+            </section>
+          ) : null}
+
+          {subRoute === "meal-plan" && athleteId ? (
+            <NutritionMealPlanWorkspace
+              athleteId={athleteId}
+              role={role}
+              mealPlanDisplayRows={mealPlanWorkspaceRows}
+              mealDisplayByKey={mealDisplayByKey}
+              mealPathwayBySlot={mealPathwayBySlot}
+              pathwayModulation={pathwayModulation}
+              nutritionApplicationDirective={nutritionApplicationDirective}
+              functionalMealSelectorNotes={effectiveFunctionalMealSelector?.notes ?? null}
+              intelligentMealPlan={intelligentMealPlan}
+              intelligentMealLoading={intelligentMealLoading}
+              intelligentMealError={intelligentMealError}
+              canRequestIntelligentPlan={
+                mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady
+              }
+              mealPathwayCatalogPending={
+                Boolean(intelligentMealPlanRequest) && !mealPlanGenerationReady
+              }
+              raceDayPreRaceNotice={
+                raceDayPreRaceContext
+                  ? `Giornata gara: pasto pre-gara (${raceDayPreRaceContext.mealSlot === "breakfast" ? "colazione" : "pranzo"}) alle ${raceDayPreRaceContext.lunchTimeLocal} — pasta/riso ${raceDayPreRaceContext.rule.carbsPerKgG} g CHO/kg, grana, olio 15 g. Pasti prima/durante gara → Fueling; solidi nel pomeriggio/post gara.`
+                  : null
+              }
+              dietDayNotice={
+                mealRows.length > 0
+                  ? [
+                      dietPlanHint,
+                      suppressedSnackSlots.length > 0
+                        ? `Spuntini in finestra allenamento (${suppressedSnackSlots.join(", ")}) → carbo in seduta nel modulo Fueling, non come pasto solido extra.`
+                        : null,
+                      mealRows.length < 6 && effectiveMealCountMode === "6"
+                        ? "Attesi 6 pasti: salva Profile → Diet (martedì) con tre % spuntino e rigenera il piano."
+                        : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
+                          ? "Piano generato con meno slot del Diet: usa «Rigenera piano» per ricalcolare."
+                          : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : `Nessuna ripartizione % leggibile per ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) con 6 pasti e tre % spuntino, poi Salva profilo.`
+              }
+              onGenerateIntelligentMealPlan={handleGenerateIntelligentMealPlan}
+              onResetIntelligentMealPlan={() => {
+                setIntelligentMealPlan(null);
+                setCoachMealRemovalKeys(new Set());
+                setCoachSessionFoodExclusions([]);
+              }}
+              coachMealRemovalKeys={coachMealRemovalKeys}
+              coachSessionFoodExclusions={coachSessionFoodExclusions}
+              onCoachShowAllItems={() => setCoachMealRemovalKeys(new Set())}
+              onCoachClearSessionExclusions={() => setCoachSessionFoodExclusions([])}
+              removeCoachMealPlanItem={removeCoachMealPlanItem}
+              persistFoodExclusionToProfile={persistFoodExclusionToProfile}
+              profileFoodExcludeBusy={profileFoodExcludeBusy}
+              mealTabMicronutrientProps={mealTabMicronutrientProps}
+              nutritionStateCards={nutritionStateCards}
+              saving={saving}
+              onSaveNutrition={handleSaveNutrition}
+            />
+          ) : null}
+
+          {subRoute === "fueling" ? (
+          <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
+            <header className="nutrition-fueling-hero px-4 py-3">
+              <h2 className="text-lg font-bold text-white drop-shadow-[0_0_12px_rgba(217,70,239,0.35)]">Fueling</h2>
+              <p className="mt-1 text-sm text-slate-300">
+                Piano pre, intra e post per la seduta del giorno (priorità pianificato Builder; se manca, usa durata/TSS
+                dell&apos;eseguito importato). Numeri sintetici prima, dettagli apribili quando servono.
+              </p>
+            </header>
+            {athleteId ? (
+              <section
+                className="viz-card builder-panel border border-lime-500/20 bg-black/25 px-4 py-3 sm:px-5"
+                style={{ marginBottom: 12 }}
+              >
+                <h3 className="viz-title text-base">Assunzione fueling</h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Conferma che hai seguito il piano (pre / intra / post) per{" "}
+                  <strong className="text-white">{selectedPlanDate}</strong>. La conferma resta in memoria atleta (
+                  <span className="font-mono text-[0.65rem] text-slate-500">nutrition_config.fueling_execution_confirmations</span>
+                  ) e può supportare il confronto piano vs reale se attivi l&apos;aderenza nutrizione sul meal plan.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    className="btn-nutrition-cta"
+                    disabled={fuelingConfirmBusy || saving}
+                    onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
+                  >
+                    {fuelingConfirmBusy
+                      ? "Salvataggio…"
+                      : fuelingConfirmedForSelectedDate
+                        ? "Annulla conferma questo giorno"
+                        : "Confermo assunzione fueling questo giorno"}
+                  </button>
+                  {fuelingConfirmedForSelectedDate ? (
+                    <span className="text-xs text-lime-200">
+                      Confermato
+                      {fuelingExecutionConfirmations[selectedPlanDate]?.at
+                        ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("it-IT")}`
+                        : null}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-500">Nessuna conferma per questa data.</span>
+                  )}
+                </div>
+              </section>
+            ) : null}
+            <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
+              <div className="nutrition-section-head">
+                <h3 className="viz-title">Fueling Plan · pre / intra / post</h3>
+              </div>
+              {!fuelingReadiness.ready ? (
+                <div className="alert-warning" style={{ marginBottom: 0 }}>
+                  <p className="m-0 mb-2">
+                    <strong>Manca ancora:</strong> {fuelingReadiness.missing.join(", ")}.
+                  </p>
+                  {fuelingReadiness.onlyDayTrainingMissing ? (
+                    <p className="m-0 text-sm leading-relaxed opacity-95">
+                      Per la data in alto il modulo non trova allenamento nel periodo caricato: niente riga in{" "}
+                      <strong>Training → Calendario</strong> e nessun <strong>eseguito</strong> con quella data.
+                      Il fueling è legato al <strong>giorno</strong>: sposta la data o aggiungi/importa la sessione —
+                      qui non è un problema di Physiology.
+                    </p>
+                  ) : (
+                    <>
+                      {fuelingReadiness.hasProfileOrPhysiologyGap ? (
+                        <p className="m-0 text-sm leading-relaxed opacity-95">
+                          Senza gli elementi sopra (profilo e fisiologia per il fueling) non stimiamo CHO/h e il motore
+                          lattato con numeri inventati. Compila in <strong>Profilo</strong> e <strong>Physiology</strong>.
+                        </p>
+                      ) : null}
+                      {fuelingReadiness.dayTrainingAlsoMissing ? (
+                        <p
+                          className={`m-0 text-sm leading-relaxed opacity-95 ${fuelingReadiness.hasProfileOrPhysiologyGap ? "mt-2" : ""}`}
+                        >
+                          In più serve un <strong>allenamento per quel giorno</strong> (pianificato nel calendario o
+                          importato come eseguito), altrimenti non c’è seduta su cui calcolare pre/intra/post.
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                <summary>Dettagli contesto e motore</summary>
+              <div className="nutrition-detail-rail" style={{ marginTop: "10px", marginBottom: 0 }}>
+                <span><strong>Giorno:</strong> {selectedPlanDateShort}</span>
+                <span><strong>Durata pianificata:</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
+                <span><strong>Intensita pianificata:</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
+                <span><strong>Tier fueling:</strong> {resolvedFuelingTierBand}</span>
+                {fuelingPlannedEstimatedAvgPowerW != null && <span><strong>Potenza media stimata:</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>}
+                <span><strong>CHO delivery:</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
+                <span><strong>Cori return:</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
+                <span><strong>Redox:</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
+                {fuelingTrainingContext.length ? (
+                  <span>
+                    <strong>TSS seduta:</strong> {round(fuelingPlannedSummary.totalTss)}
+                  </span>
+                ) : null}
+                {fuelingIntraChoSplitBySession?.length ? (
+                  <span>
+                    <strong>CHO intra (split sessioni):</strong>{" "}
+                    {fuelingIntraChoSplitBySession.map((x) => `${x.label}: ${x.choG}g`).join(" · ")}
+                  </span>
+                ) : null}
+              </div>
+              </details>
+              <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
+                {fuelingOpsCards.map((card) => (
+                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${card.tone}`}>
+                    <div className="fueling-main-kpi-label">
+                      {card.label}
+                    </div>
+                    <div className="fueling-main-kpi-value">
+                      {card.value}
+                      {card.unit ? <span>{card.unit}</span> : null}
+                    </div>
+                    <div className="fueling-main-kpi-sub">{card.sub}</div>
+                  </div>
+                ))}
+              </div>
+              {fuelingSessionPackages.length ? (
+                <section className="fueling-visible-plan-strip" aria-label="Piano di integrazione visibile">
+                  {fuelingSessionPackages.map((pkg) => (
+                    <article key={`fueling-visible-plan-${pkg.id}`} className="fueling-visible-plan-card">
+                      <span className="fueling-visible-plan-kicker">Piano integrazione</span>
+                      <strong>{pkg.title}</strong>
+                      <small>
+                        ~{pkg.durationMin} min · {round(pkg.intensityPctFtp)}% FTP · CHO/h ~{pkg.choPerHourSession} g/h
+                      </small>
+                    </article>
+                  ))}
+                </section>
+              ) : null}
+              {recoverySummary?.status === "poor" || recoverySummary?.status === "moderate" ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>Recovery notes</summary>
+                  <div className="alert-warning" style={{ marginBottom: 0 }}>
+                    {recoverySummary.status === "poor"
+                      ? "Recovery bassa: privilegia fueling piu' semplice e progressivo, controlla tolleranza GI e evita aggressivita' inutile nella giornata."
+                      : "Recovery intermedia: mantieni attenzione a densita' del fueling, idratazione e finestra post-workout."}
+                  </div>
+                </details>
+              ) : null}
+              {fuelingTrainingContext.length ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>Analisi seduta e substrati</summary>
+                  <section
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gap: 10,
+                      marginTop: 10,
+                    }}
+                  >
+                  {fuelingTrainingContext.map((session) => {
+                    const intraSplitRow = fuelingIntraChoSplitBySession?.find((x) => String(x.id) === String(session.id));
+                    return (
+                    <article
+                      key={session.id}
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 10,
+                        padding: 12,
+                        background: "rgba(9, 11, 16, 0.72)",
+                        display: "grid",
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                        <strong>{session.title}</strong>
+                        <span style={{ opacity: 0.72, fontSize: 12 }}>{session.family ?? "session"}</span>
+                      </div>
+                      <div style={{ color: "var(--empathy-text-muted)", fontSize: 12 }}>
+                        {session.discipline ?? "training"} · {session.durationMin} min · {session.tss} TSS
+                        {session.kcal ? ` · ~${Math.round(session.kcal)} kcal` : null}
+                      </div>
+                      {session.substrate ? (
+                        <div style={{ color: "var(--empathy-text-muted)", fontSize: 11, lineHeight: 1.45 }}>
+                          <strong>Substrati (stima motore):</strong> intensità indotta ~{session.substrate.estimatedIntensityPctFtp}% FTP · lact
+                          ~{session.substrate.lactateProducedG} g · glucosio Cori ~{session.substrate.glucoseFromCoriG} g (net{" "}
+                          ~{session.substrate.glucoseNetFromCoriG} g) · CHO esogena ossidata ~{session.substrate.exogenousOxidizedG} g · CHO
+                          disponibile ~{session.substrate.choAvailableG} g · quota energetica CHO ~{session.substrate.glycolyticSharePct}% ·
+                          rischio via intestinale: {session.substrate.gutPathwayRisk} · delivery ematico ~{session.substrate.bloodDeliveryPctOfIngested}%
+                        </div>
+                      ) : null}
+                      {intraSplitRow ? (
+                        <div style={{ color: "var(--empathy-text-muted)", fontSize: 11 }}>
+                          <strong>Quota intra CHO (split giorno):</strong> ~{intraSplitRow.choG} g
+                        </div>
+                      ) : null}
+                      {session.target ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Target:</strong> {session.target}
+                        </div>
+                      ) : null}
+                      {session.intensityCues.length ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Intensity:</strong> {session.intensityCues.join(" · ")}
+                        </div>
+                      ) : null}
+                      {session.blockLabels.length ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Blocks:</strong> {session.blockLabels.join(" · ")}
+                        </div>
+                      ) : null}
+                      {session.family === "strength" && session.builderContract ? (
+                        <details className="mt-2" open>
+                          <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            Scheda palestra (Builder) · intra workout
+                          </summary>
+                          <div style={{ marginTop: 8 }}>
+                            <Pro2GymSchedaBlockList contract={session.builderContract} compact />
+                          </div>
+                        </details>
+                      ) : null}
+                      {session.physiologicalIntent.length ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Intent:</strong> {session.physiologicalIntent.join(" · ")}
+                        </div>
+                      ) : null}
+                      {session.nutritionSupports.length ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Supports:</strong> {session.nutritionSupports.join(" · ")}
+                        </div>
+                      ) : null}
+                      {session.inhibitorsAndRisks.length ? (
+                        <div style={{ fontSize: 12 }}>
+                          <strong>Risks:</strong> {session.inhibitorsAndRisks.join(" · ")}
+                        </div>
+                      ) : null}
+                      <SessionKnowledgeSummary contract={session.builderContract} compact />
+                    </article>
+                    );
+                  })}
+                  </section>
+                </details>
+              ) : null}
+              {knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>Knowledge-driven fueling context</summary>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {knowledgeFuelingHints.intents.length ? (
+                      <div className="session-sub-copy">
+                        Intento fisiologico · {knowledgeFuelingHints.intents.join(" · ")}
+                      </div>
+                    ) : null}
+                    {knowledgeFuelingHints.supports.length ? (
+                      <div className="session-sub-copy">
+                        Supporti prioritari · {knowledgeFuelingHints.supports.join(" · ")}
+                      </div>
+                    ) : null}
+                    {knowledgeFuelingHints.risks.length ? (
+                      <div className="muted-copy">
+                        Vincoli e rischi · {knowledgeFuelingHints.risks.join(" · ")}
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
+              {fuelingSessionPackages.map((pkg) => {
+                const glyId = `glycoArea-${String(pkg.id).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+                const gPlot = pkg.glycogenPlot;
+                const gDep = pkg.glycogenDepletion;
+                return (
+                  <details
+                    key={`fuel-pkg-${pkg.id}`}
+                    className="collapsible-card"
+                    style={{
+                      marginBottom: 20,
+                      paddingBottom: 16,
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <summary>{pkg.title}</summary>
+                    <p className="nutrition-muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                      ~{pkg.durationMin} min · intensità stimata ~{round(pkg.intensityPctFtp)}% FTP · CHO/h seduta ~{pkg.choPerHourSession} g/h
+                    </p>
+                    <div className="fueling-vertical-timeline">
+                      {pkg.timelineSteps.map((step, idx) => (
+                        <article key={`step-${pkg.id}-${step.phase}-${step.time}-${idx}`} className="fueling-vstep">
+                          {(() => {
+                            const phaseColor = fuelingPhaseColor(step.phase);
+                            return (
+                              <>
+                                <div className="fueling-vrail">
+                                  <span
+                                    className="fueling-vdot"
+                                    style={{
+                                      background: `${phaseColor}22`,
+                                      border: `1px solid ${phaseColor}`,
+                                      color: phaseColor,
+                                    }}
+                                  >
+                                    {idx + 1}
+                                  </span>
+                                  {idx < pkg.timelineSteps.length - 1 && (
+                                    <span className="fueling-vline" style={{ background: `${phaseColor}66` }} />
+                                  )}
+                                </div>
+                                <div
+                                  className="fueling-vcard"
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    overflow: "hidden",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(167,139,250,0.28)",
+                                    background: "linear-gradient(135deg, rgba(76,29,149,0.2), rgba(0,0,0,0.45))",
+                                  }}
+                                >
+                                  <div
+                                    className="fueling-step-body"
+                                    style={{
+                                      borderRight: "1px solid rgba(255,255,255,0.08)",
+                                      paddingRight: 10,
+                                      marginRight: 0,
+                                    }}
+                                  >
+                                    <span
+                                      className="fueling-step-time"
+                                      style={{
+                                        color: phaseColor,
+                                        border: `1px solid ${phaseColor}`,
+                                        background: `${phaseColor}22`,
+                                        borderRadius: "999px",
+                                        padding: "2px 8px",
+                                        display: "inline-block",
+                                      }}
+                                    >
+                                      {step.phase} · {step.time}
+                                    </span>
+                                    <strong>{step.product?.product ?? "Fuel product"}</strong>
+                                    <small>{step.product?.brand ?? "Brand"}</small>
+                                    <div className="fueling-step-chip-row">
+                                      <span>CHO {step.cho}g</span>
+                                      <span>Fluid {step.fluid}ml</span>
+                                      {step.product?.format ? <span>{FUELING_FORMAT_IT[step.product.format]}</span> : null}
+                                      {step.product?.category ? <span>{FUELING_CATEGORY_IT[step.product.category]}</span> : null}
+                                      {step.product?.functionalFocus?.[0] ? <span>{FOCUS_IT[step.product.functionalFocus[0]] ?? step.product.functionalFocus[0]}</span> : null}
+                                      {step.product?.timing?.[0] ? <span>{TIMING_IT[step.product.timing[0]] ?? step.product.timing[0]}</span> : null}
+                                    </div>
+                                    <p className="muted-copy" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.4 }}>
+                                      {buildIntegrationQuantityHint(step.product ?? FUELING_PRODUCT_CATALOG[0], {
+                                        choGHour: pkg.choPerHourSession,
+                                        energyAdequacyRatio: nutritionPerformanceIntegration?.diaryInsight?.energyAdequacyRatio,
+                                        proteinBiasPctPoints: nutritionPerformanceIntegration?.proteinBiasPctPoints ?? 0,
+                                        fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
+                                      })}
+                                    </p>
+                                    <div className="fueling-step-actions">
+                                      <a
+                                        href={step.product?.productUrl ?? "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="fueling-step-link"
+                                      >
+                                        Scheda produttore
+                                      </a>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={step.product?.productUrl ?? "#"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="fueling-step-media-link flex items-center justify-center"
+                                    aria-label={step.product?.product ?? "Prodotto fueling"}
+                                    title={step.isLogoFallback ? "Fallback logo marchio" : "Immagine catalogo / archivio"}
+                                    style={{ minHeight: 132, background: "rgba(0,0,0,0.28)", padding: 10, position: "relative" }}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={step.displayImage}
+                                      alt={step.product?.product ?? "Fuel product"}
+                                      className={`nutrition-product-image ${step.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
+                                      style={{ maxHeight: 112, width: "100%", objectFit: "contain" }}
+                                      loading="lazy"
+                                    />
+                                    {step.isLogoFallback ? (
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          bottom: 8,
+                                          right: 8,
+                                          borderRadius: 4,
+                                          background: "rgba(0,0,0,0.55)",
+                                          padding: "2px 6px",
+                                          fontSize: "0.58rem",
+                                          color: "#94a3b8",
+                                        }}
+                                      >
+                                        Logo
+                                      </span>
+                                    ) : null}
+                                  </a>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </article>
+                      ))}
+                    </div>
+
+                    <details className="collapsible-card">
+                      <summary>Hydration protocol · {pkg.title}</summary>
+                      <section className="fueling-hydration-strip" style={{ marginBottom: 0 }}>
+                        <div className="fueling-hydration-grid">
+                          {pkg.hydrationTimeline.map((h) => (
+                            <div key={`hydration-${pkg.id}-${h.minuteLabel}`} className="fueling-hydration-chip">
+                              <strong>{h.minuteLabel}</strong>
+                              <span>{h.note}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </details>
+
+                    <section className="fueling-visual-report">
+                      <h4>Fueling Visual Report · {pkg.title}</h4>
+                      <div className="fueling-metric-grid">
+                        {pkg.visualMetrics.map((metric) => (
+                          <article key={`${pkg.id}-${metric.label}`} className="fueling-metric-card">
+                            <div className="fueling-metric-head">
+                              <label>{metric.label}</label>
+                              <strong>
+                                {metric.value} {metric.unit}
+                              </strong>
+                            </div>
+                            <div className="fueling-metric-bar">
+                              <div className="fueling-metric-fill" style={{ width: `${metric.pct}%`, background: metric.color }} />
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="fueling-glyco-future">
+                        <h5>Glycogen depletion (seduta)</h5>
+                        <div className="nutrition-detail-rail" style={{ marginBottom: "8px" }}>
+                          <span>
+                            <strong>Intake raw:</strong> {gDep.totalIntake} g
+                          </span>
+                          <span>
+                            <strong>Assorbiti:</strong> {gDep.totalAbsorbed} g
+                          </span>
+                          <span>
+                            <strong>Cori:</strong> {gDep.totalCori} g
+                          </span>
+                          <span>
+                            <strong>Gut risk:</strong> {fuelingPhysiology.gutPathwayRisk}
+                          </span>
+                        </div>
+                        <svg viewBox={`0 0 ${gPlot.w} ${gPlot.h}`} className="fueling-glyco-svg">
+                          <defs>
+                            <linearGradient id={glyId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={FUELING_CHART_THEME_PRO2.areaTop} stopOpacity="0.45" />
+                              <stop offset="100%" stopColor={FUELING_CHART_THEME_PRO2.areaBottom} stopOpacity="0.04" />
+                            </linearGradient>
+                          </defs>
+                          <rect
+                            x={gPlot.padL}
+                            y={gPlot.padT}
+                            width={gPlot.chartW}
+                            height={gPlot.chartH}
+                            fill="rgba(255,255,255,0.02)"
+                            rx="8"
+                          />
+                          <rect
+                            x={gPlot.padL}
+                            y={gPlot.toY(100)}
+                            width={gPlot.chartW}
+                            height={gPlot.toY(60) - gPlot.toY(100)}
+                            fill={FUELING_CHART_THEME_PRO2.zoneGreen}
+                          />
+                          <rect
+                            x={gPlot.padL}
+                            y={gPlot.toY(60)}
+                            width={gPlot.chartW}
+                            height={gPlot.toY(30) - gPlot.toY(60)}
+                            fill={FUELING_CHART_THEME_PRO2.zoneYellow}
+                          />
+                          <rect
+                            x={gPlot.padL}
+                            y={gPlot.toY(30)}
+                            width={gPlot.chartW}
+                            height={gPlot.toY(0) - gPlot.toY(30)}
+                            fill={FUELING_CHART_THEME_PRO2.zoneRed}
+                          />
+                          <path d={gPlot.areaPath} fill={`url(#${glyId})`} />
+                          <path fill="none" stroke={FUELING_CHART_THEME_PRO2.line} strokeWidth="3" d={gPlot.smoothPath} />
+                          {gDep.points.map((p) => (
+                            <circle
+                              key={`g-${pkg.id}-${p.xHour}-${p.pct}`}
+                              cx={gPlot.toX(p.xHour)}
+                              cy={gPlot.toY(p.pct)}
+                              r="4"
+                              fill={FUELING_CHART_THEME_PRO2.dot}
+                            />
+                          ))}
+                          <line
+                            x1={gPlot.padL}
+                            y1={gPlot.toY(60)}
+                            x2={gPlot.w - gPlot.padR}
+                            y2={gPlot.toY(60)}
+                            stroke="rgba(103,232,249,0.5)"
+                            strokeDasharray="4 6"
+                          />
+                          <line
+                            x1={gPlot.padL}
+                            y1={gPlot.toY(30)}
+                            x2={gPlot.w - gPlot.padR}
+                            y2={gPlot.toY(30)}
+                            stroke="rgba(248,113,113,0.55)"
+                            strokeDasharray="4 6"
+                          />
+                          <line
+                            x1={gPlot.padL}
+                            y1={gPlot.padT}
+                            x2={gPlot.padL}
+                            y2={gPlot.h - gPlot.padB}
+                            stroke={FUELING_CHART_THEME_PRO2.axis}
+                          />
+                          <line
+                            x1={gPlot.padL}
+                            y1={gPlot.h - gPlot.padB}
+                            x2={gPlot.w - gPlot.padR}
+                            y2={gPlot.h - gPlot.padB}
+                            stroke={FUELING_CHART_THEME_PRO2.axis}
+                          />
+                          {[100, 80, 60, 40, 30, 20, 0].map((pct) => (
+                            <text key={`y-${pkg.id}-${pct}`} x={8} y={gPlot.toY(pct) + 4} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
+                              {pct}% · {round((gDep.totalGlycogen * pct) / 100)}g
+                            </text>
+                          ))}
+                          {Array.from({ length: Math.floor(gDep.totalHours) + 1 }, (_, i) => i).map((hTick) => (
+                            <text key={`x-${pkg.id}-${hTick}`} x={gPlot.toX(hTick) - 8} y={gPlot.h - 8} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
+                              {hTick}h
+                            </text>
+                          ))}
+                          <text x={gPlot.w - 188} y={16} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
+                            Y: glicogeno disponibile (g / %)
+                          </text>
+                          <text x={gPlot.w - 118} y={gPlot.h - 8} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
+                            X: tempo
+                          </text>
+                        </svg>
+                      </div>
+                    </section>
+                  </details>
+                );
+              })}
+                </>
+              )}
+            </section>
+          </section>
+          ) : null}
+
+          {subRoute === "integration" ? (
+          <section id="nutrition-integration" className="scroll-mt-28 mb-10 space-y-4">
+            <header className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3">
+              <h2 className="text-lg font-bold text-white">Integrazione</h2>
+              <p className="mt-1 text-sm text-gray-400">Modello pathway, KPI, USDA e prodotti — stessi segnali del modulo.</p>
+            </header>
+            <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
+              <h3 className="viz-title">Integration Stack</h3>
+              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                <summary>Overview integrazione · modello pathway + solver</summary>
+                <p className="nutrition-muted" style={{ fontSize: "0.82rem", marginTop: "8px", marginBottom: 0 }}>
+                  I numeri sotto derivano dalle stesse leve del fueling: pathway attive, segnali del giorno, diary insight e
+                  vincoli operativi. Timing espresso come classi qualitative di emivita.
+                </p>
+              </details>
+              <div className="fueling-main-kpi-grid" style={{ marginBottom: "14px" }}>
+                {integrationDynamicsSummary.map((card) => (
+                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${nutritionToneForLabel(card.label)}`}>
+                    <div className="fueling-main-kpi-label">
+                      {card.label}
+                    </div>
+                    <div className="fueling-main-kpi-value">{card.value}</div>
+                    <div className="fueling-main-kpi-sub">Pathway + solver</div>
+                  </div>
+                ))}
+              </div>
+              <div className="nutrition-section-band" style={{ fontSize: "0.9rem", marginBottom: "8px" }}>
+                Catalogo integratori · sintesi numerica
+              </div>
+              <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
+                {integrationStackSummary.map((card) => (
+                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${nutritionToneForLabel(card.label)}`}>
+                    <div className="fueling-main-kpi-label">
+                      {card.label}
+                    </div>
+                    <div className="fueling-main-kpi-value">{card.value}</div>
+                    <div className="fueling-main-kpi-sub">Catalogo integrazione</div>
+                  </div>
+                ))}
+              </div>
+              {nutritionPerformanceIntegration?.rationale.length ? (
+                <details
+                  className="collapsible-card"
+                  style={{ marginBottom: "10px", padding: "10px 12px", borderColor: "rgba(56,189,248,0.35)" }}
+                >
+                  <summary className="text-[0.7rem] font-bold uppercase tracking-wider text-cyan-200/90">
+                    Integrazione performance · leve solver ({nutritionPerformanceIntegration.rationale.length})
+                  </summary>
+                  <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.85rem", lineHeight: 1.45 }}>
+                    {nutritionPerformanceIntegration.rationale.map((line) => (
+                      <li key={line} style={{ marginBottom: "4px" }}>
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+              {nutritionPerformanceIntegration?.diaryInsight ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>
+                    Diario reale · {nutritionPerformanceIntegration.diaryInsight.loggedDays}/
+                    {nutritionPerformanceIntegration.diaryInsight.windowDays} giorni
+                    {nutritionPerformanceIntegration.diaryInsight.energyAdequacyRatio != null
+                      ? ` · ${Math.round(nutritionPerformanceIntegration.diaryInsight.energyAdequacyRatio * 100)}% target`
+                      : ""}
+                  </summary>
+                  <p className="muted-copy" style={{ fontSize: 12, marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
+                    Energia media ~{nutritionPerformanceIntegration.diaryInsight.avgDailyKcal ?? "—"} kcal
+                    {nutritionPerformanceIntegration.diaryInsight.estimatedMaintenanceKcal != null
+                      ? ` vs fabbisogno stimato ~${nutritionPerformanceIntegration.diaryInsight.estimatedMaintenanceKcal} kcal`
+                      : ""}
+                    . Questo segnale modula le leve training-nutrizione ma non sostituisce i motori fisiologici.
+                  </p>
+                </details>
+              ) : null}
+              {applicationPlaybook ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>+ Playbook applicazione · EMPATHY</summary>
+                  <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
+                    {applicationPlaybook.playbookHeadlineIt}
+                  </p>
+                  {applicationPlaybook.directives.length ? (
+                    <ul className="mb-3 list-none space-y-2 pl-0 text-[0.78rem]">
+                      {applicationPlaybook.directives.slice(0, 3).map((d) => (
+                        <li
+                          key={d.id}
+                          className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-950/10 px-3 py-2"
+                        >
+                          <strong className="text-white">{d.headlineIt}</strong>
+                          <p className="nutrition-muted mt-1 mb-0 text-[0.74rem]">{d.actionIt}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {applicationPlaybook.nutritionAdvice.length ? (
+                    <ul className="mb-3 flex flex-wrap gap-2 list-none pl-0 text-[0.72rem]">
+                      {applicationPlaybook.nutritionAdvice.slice(0, 4).map((n) => (
+                        <li
+                          key={n.id}
+                          className="nutrition-ui-chip max-w-full border border-white/10 bg-white/[0.03] px-2 py-1"
+                          title={n.actionIt}
+                        >
+                          {n.headlineIt}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {applicationPlaybook.timingProtocols.length ? (
+                    <ul className="mb-3 list-none space-y-1 pl-0 text-[0.72rem] text-gray-400">
+                      {applicationPlaybook.timingProtocols.slice(0, 4).map((tp) => (
+                        <li key={tp.id}>
+                          [{tp.pathwayLabel ?? "Protocollo"}] {tp.windowLabelIt}: {tp.actionsIt.join(" · ")}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {applicationPlaybook.fuelingAdvice ? (
+                    <p className="nutrition-muted mb-0 text-[0.72rem] leading-snug">
+                      Fueling · {applicationPlaybook.fuelingAdvice.sessionLabel}:{" "}
+                      {applicationPlaybook.fuelingAdvice.protocolNotes.join(" · ")}
+                    </p>
+                  ) : null}
+                  <p className="nutrition-muted mt-2 mb-0 text-[0.68rem] opacity-80">{applicationPlaybook.disclaimerIt}</p>
+                </details>
+              ) : null}
+              {crossDomainInterpretationRoadmap ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>+ Roadmap cross-domain · domini cablati vs backlog</summary>
+                  <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
+                    {crossDomainInterpretationRoadmap.roadmapHeadlineIt}
+                  </p>
+                  <ul className="mb-3 list-none space-y-2 pl-0 text-[0.78rem]">
+                    {crossDomainInterpretationRoadmap.nodes.slice(0, 8).map((node) => (
+                      <li
+                        key={node.domainId}
+                        className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong className="text-white">{node.domainId.replace(/_/g, " ")}</strong>
+                          <span className="nutrition-ui-chip text-[0.65rem]">{node.probeStatus}</span>
+                        </div>
+                        <p className="nutrition-muted mt-1 mb-0 text-[0.74rem]">{node.summaryLineIt}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  {crossDomainInterpretationRoadmap.edges.length ? (
+                    <p className="nutrition-muted mb-0 text-[0.72rem]">
+                      {crossDomainInterpretationRoadmap.edges.length} collegamenti attivi tra domini (interpretazione qualitativa).
+                    </p>
+                  ) : null}
+                </details>
+              ) : null}
+              {nutrientInterrogation?.items.length ? (
+                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                  <summary>+ Interrogazione nutrienti · ontology multiscala</summary>
+                  <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
+                    Collo dominante: {nutrientInterrogation.dominantBottleneckLevelIt} · ontology{" "}
+                    {nutrientInterrogation.ontologyVersion}
+                  </p>
+                  <ul className="mb-0 list-none space-y-2 pl-0 text-[0.78rem]">
+                    {nutrientInterrogation.items.slice(0, 6).map((item) => (
+                      <li
+                        key={item.nutrientId}
+                        className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong className="text-white">{item.labelIt}</strong>
+                          {item.subDomains.slice(0, 3).map((sd) => (
+                            <span key={sd} className="nutrition-ui-chip text-[0.65rem]">
+                              {sd.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                        {item.geneSymbols.length ? (
+                          <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
+                            Geni: {item.geneSymbols.join(", ")}
+                          </p>
+                        ) : null}
+                        {item.activatedNodes.length ? (
+                          <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
+                            Nodi: {item.activatedNodes.map((n) => n.labelIt).slice(0, 3).join(" · ")}
+                          </p>
+                        ) : null}
+                        {item.preferredSlotsIt?.length ? (
+                          <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
+                            Pasti preferiti: {item.preferredSlotsIt.join(", ")}
+                          </p>
+                        ) : null}
+                        <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">{item.rationaleIt}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                <summary>+ Vie metaboliche · substrati, cofattori, inibitori, timing</summary>
+                <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
+                  Quattro colonne codificate colore: via/stimolo · fonte segnale · strategia substrati · supporto integrativo e attenuazioni.
+                </p>
+                <div className="table-shell mt-2 overflow-hidden rounded-xl border border-white/10">
+                  <table className="w-full border-collapse text-left text-[0.8rem]">
+                    <thead>
+                      <tr className="text-[0.65rem] font-bold uppercase tracking-[0.06em]">
+                        <th className="border border-white/10 bg-violet-500/25 px-3 py-2.5 text-violet-100">Via / stimolo</th>
+                        <th className="border border-white/10 bg-fuchsia-500/22 px-3 py-2.5 text-fuchsia-100">Fonte segnale</th>
+                        <th className="border border-white/10 bg-orange-500/20 px-3 py-2.5 text-orange-100">
+                          Strategia (substrati)
+                        </th>
+                        <th className="border border-white/10 bg-sky-500/18 px-3 py-2.5 text-sky-100">
+                          Supporto integrativo &amp; attenuazioni
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pathwayModulation?.pathways.length ? (
+                        pathwayModulation.pathways.map((pw) => (
+                          <tr key={pw.id} className="align-top">
+                            <td className="border border-white/10 bg-violet-500/[0.07] px-3 py-2 text-[0.8rem] text-white">
+                              <strong>{pw.pathwayLabel}</strong>
+                              <div className="nutrition-muted mt-1 text-[0.74rem]">
+                                {pw.stimulatedBy.length ? pw.stimulatedBy.join(", ") : "—"}
+                              </div>
+                            </td>
+                            <td className="border border-white/10 bg-fuchsia-500/[0.06] px-3 py-2 text-[0.78rem] text-zinc-200">
+                              {pw.confidence}
+                            </td>
+                            <td className="border border-white/10 bg-orange-500/[0.08] px-3 py-2 text-[0.78rem] text-zinc-100">
+                              {pw.substrates.join("; ")}
+                            </td>
+                            <td className="border border-white/10 bg-sky-500/[0.07] px-3 py-2 text-[0.78rem] text-zinc-100">
+                              <span className="mb-1 block">
+                                <strong>Cofattori:</strong> {pw.cofactors.join("; ") || "—"}
+                              </span>
+                              {pw.inhibitorsToAvoid.length ? (
+                                <span className="text-[0.8rem]">
+                                  <strong>Attenuare:</strong> {pw.inhibitorsToAvoid.join("; ")}
+                                </span>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="border border-white/10 bg-white/[0.03] px-3 py-3 text-[0.82rem] text-zinc-300" colSpan={4}>
+                            Nessuna via calcolata per <strong className="text-white">{selectedPlanDateLabel}</strong>: aggiungi una seduta pianificata
+                            o verifica twin/fisiologia. I template engine (glicogeno, redox, gut) compaiono quando ci sono
+                            stimoli o segnali.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {pathwayModulation?.pathways.length ? (
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div className="nutrition-muted text-[0.78rem]">
+                      Timing operativo — colore per fase (pre acuto · peri-seduta · recovery precoce · recovery tardiva)
+                    </div>
+                    {pathwayModulation.pathways.map((pw) => (
+                      <div
+                        key={`${pw.id}-timing`}
+                        className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[0.82rem]"
+                      >
+                        <strong className="text-white">{pw.pathwayLabel}</strong>
+                        <ul className="mt-2 list-none space-y-2 pl-0">
+                          {pw.phases.map((ph) => (
+                            <li key={`${pw.id}-${ph.phase}-${ph.windowLabel}`} className={cn(pathwayOperationalPhaseRowClass(ph.phase))}>
+                              <strong className="text-white">
+                                {ph.phase === "pre_acute"
+                                  ? "Pre acuto"
+                                  : ph.phase === "peri_workout"
+                                    ? "Peri-seduta"
+                                    : ph.phase === "early_recovery"
+                                      ? "Recovery precoce"
+                                      : ph.phase === "late_recovery"
+                                        ? "Recovery tardiva"
+                                        : "Supporto giornaliero"}
+                              </strong>
+                              {" · "}
+                              {ph.windowLabel}{" "}
+                              <span className="nutrition-muted text-[0.74rem]">({ph.halfLifeClass})</span>
+                              {" — "}
+                              {ph.actions.join(" ")}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </details>
+              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
+                <summary>Alimenti funzionali (vitamine, aminoacidi, cofattori) → OFF / USDA branded / FDC per nutriente</summary>
+                <p className="nutrition-muted" style={{ fontSize: "0.8rem", marginTop: "8px", marginBottom: "10px" }}>
+                  Per ogni <strong>molecola / nutriente</strong> collegato alle vie attive: esempi curati, ricerca prodotti nel tab Pasti
+                  (OpenFoodFacts + USDA branded + interni), e — con variabile server <span className="nutrition-muted">USDA_API_KEY</span> — elenco{" "}
+                  <strong>Foundation / SR Legacy</strong> dalla FoodData Central filtrato per nutriente FDC e ordinato per densità (poi scegli e
+                  incrocia con il profilo).
+                </p>
+                {functionalFoodRecommendations.targets.length ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {functionalFoodRecommendations.targets.map((t) => (
+                      <div
+                        key={t.nutrientId}
+                        style={{
+                          border: "1px solid rgba(148,163,184,0.25)",
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          fontSize: "0.84rem",
+                        }}
+                      >
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
+                          <strong>{t.displayNameIt}</strong>
+                          <span className="nutrition-ui-chip">
+                            {t.kind === "vitamin"
+                              ? "Vitamina"
+                              : t.kind === "mineral"
+                                ? "Minerale"
+                                : t.kind === "amino_acid"
+                                  ? "Aminoacido"
+                                  : t.kind === "fatty_acid"
+                                    ? "Acido grasso"
+                                    : "Altro"}
+                          </span>
+                        </div>
+                        <p className="nutrition-muted" style={{ margin: "0 0 8px", fontSize: "0.8rem" }}>
+                          {t.rationaleIt}
+                        </p>
+                        <div className="nutrition-muted" style={{ fontSize: "0.75rem", marginBottom: "8px" }}>
+                          Vie: {t.pathwayLabel}
+                        </div>
+                        <div className="mb-2">
+                          <strong className="text-[0.8rem] text-white">Esempi alimentari</strong>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                            {t.curatedExamples.slice(0, 3).map((ex, idx) => (
+                              <div key={`${t.nutrientId}-${ex.name}`} className={FUNCTIONAL_EXAMPLE_CELL_CLASSES[idx % 3]}>
+                                <div className="text-[0.78rem] font-semibold leading-snug text-white">{ex.name}</div>
+                                <div className="mt-1 text-[0.72rem] leading-snug text-zinc-300">{ex.why}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {t.curatedExamples.length > 3 ? (
+                            <ul className="nutrition-muted mb-0 mt-2 list-disc pl-[1.1rem] text-[0.74rem]">
+                              {t.curatedExamples.slice(3).map((ex) => (
+                                <li key={`${t.nutrientId}-${ex.name}-more`} className="mb-1">
+                                  <strong className="text-zinc-200">{ex.name}</strong> — {ex.why}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {t.searchQueries.map((sq) => (
+                            <button
+                              key={`${t.nutrientId}-${sq}`}
+                              type="button"
+                              className="nutrition-ui-chip"
+                              style={{ cursor: "pointer" }}
+                              disabled={foodLookupLoading}
+                              onClick={() => void runFoodLookupFromPathway(sq)}
+                            >
+                              Cerca: {sq}
+                            </button>
+                          ))}
+                        </div>
+                        {t.usdaRichSearch ? (
+                          <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed rgba(148,163,184,0.35)" }}>
+                            <button
+                              type="button"
+                              className="nutrition-ui-chip"
+                              style={{ cursor: "pointer", fontWeight: 600 }}
+                              disabled={usdaRichByCatalogId[t.nutrientId]?.loading === true}
+                              onClick={() => void fetchUsdaRichForCatalog(t.nutrientId)}
+                            >
+                              {usdaRichByCatalogId[t.nutrientId]?.loading
+                                ? "USDA: caricamento…"
+                                : `USDA (Foundation/SR): ricchi in ${t.usdaRichSearch.nutrientShortLabel}`}
+                            </button>
+                            {usdaRichByCatalogId[t.nutrientId]?.error ? (
+                              <p className="nutrition-muted" style={{ fontSize: "0.78rem", marginTop: "8px", marginBottom: 0 }}>
+                                {usdaRichByCatalogId[t.nutrientId]?.error}
+                              </p>
+                            ) : null}
+                            {usdaRichByCatalogId[t.nutrientId]?.foods?.length ? (
+                              <div style={{ marginTop: "10px", overflowX: "auto" }}>
+                                <table className="nutrition-muted" style={{ fontSize: "0.75rem", width: "100%", borderCollapse: "collapse" }}>
+                                  <thead>
+                                    <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(148,163,184,0.3)" }}>
+                                      <th style={{ padding: "4px 6px" }}>Alimento (USDA)</th>
+                                      <th style={{ padding: "4px 6px" }}>Target /100 g</th>
+                                      <th style={{ padding: "4px 6px" }}>P/C/F</th>
+                                      <th style={{ padding: "4px 6px" }} />
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {usdaRichByCatalogId[t.nutrientId]!.foods!.map((row) => (
+                                      <tr key={row.fdcId} style={{ borderBottom: "1px solid rgba(148,163,184,0.12)" }}>
+                                        <td style={{ padding: "6px", verticalAlign: "top" }}>
+                                          <span style={{ color: "var(--foreground, inherit)" }}>{row.description}</span>
+                                          <div style={{ fontSize: "0.68rem", opacity: 0.85 }}>{row.dataType}</div>
+                                        </td>
+                                        <td style={{ padding: "6px", whiteSpace: "nowrap" }}>
+                                          {row.targetAmountPer100g != null
+                                            ? `${row.targetAmountPer100g} ${row.targetUnitName ?? ""}`.trim()
+                                            : "—"}
+                                        </td>
+                                        <td style={{ padding: "6px", whiteSpace: "nowrap", fontSize: "0.7rem" }}>
+                                          {row.proteinG100 != null || row.carbsG100 != null || row.fatG100 != null
+                                            ? `${row.proteinG100 ?? "—"}P / ${row.carbsG100 ?? "—"}C / ${row.fatG100 ?? "—"}F`
+                                            : "—"}
+                                        </td>
+                                        <td style={{ padding: "6px" }}>
+                                          <a
+                                            href={`https://fdc.nal.usda.gov/fdc-app.html#/food-details/${row.fdcId}/nutrients`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ fontSize: "0.72rem" }}
+                                          >
+                                            FDC
+                                          </a>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="nutrition-muted" style={{ fontSize: "0.85rem" }}>
+                    Nessun target alimentare ancora: servono vie metaboliche attive (seduta + segnali). Le query compariranno qui.
+                  </p>
+                )}
+                {effectiveFunctionalMealSelector ? (
+                  <div
+                    style={{
+                      marginTop: "14px",
+                      borderTop: "1px dashed rgba(148,163,184,0.28)",
+                      paddingTop: "12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
+                      <strong>Selettore pasti funzionale</strong>
+                      <span className="nutrition-ui-chip">{effectiveFunctionalMealSelector.status}</span>
+                      <span className="nutrition-muted" style={{ fontSize: "0.75rem" }}>
+                        {effectiveFunctionalMealSelector.date}
+                      </span>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {effectiveFunctionalMealSelector.slots.map((slot) => (
+                        <div
+                          key={`${slot.slot}-${slot.focus}`}
+                          className={cn(
+                            "rounded-xl border-2 p-3",
+                            metabolicPhaseSlotCardClass(slot.metabolicPhase),
+                          )}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong className="capitalize text-white">{slot.slot.replace("_", " ")}</strong>
+                            <span className="nutrition-ui-chip">{slot.focus}</span>
+                            <span className="rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[0.62rem] uppercase tracking-wide text-zinc-300">
+                              {slot.metabolicPhase.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <p className="nutrition-muted my-2 text-[0.78rem] leading-snug">{slot.rationale}</p>
+                          <div className="flex flex-col gap-2">
+                            {slot.candidates.map((candidate) => (
+                              <div
+                                key={`${slot.slot}-${candidate.name}`}
+                                className={cn(
+                                  "rounded-lg border border-white/10 py-2 pl-3 pr-2 text-[0.76rem] leading-snug text-zinc-100",
+                                  functionalCandidateRowClass(candidate.timing),
+                                )}
+                              >
+                                <strong className="text-white">{candidate.name}</strong>
+                                <span className="text-zinc-300"> — {candidate.reason}</span>
+                                <div className="nutrition-muted mt-1 text-[0.68rem] leading-snug">
+                                  Elementi: {candidate.functionalElements.join(", ")} · timing {candidate.timing}
+                                  {candidate.caution ? ` · cautela: ${candidate.caution}` : ""}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <ul className="nutrition-muted" style={{ fontSize: "0.72rem", marginTop: "10px", marginBottom: 0 }}>
+                      {effectiveFunctionalMealSelector.notes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <ul className="nutrition-muted" style={{ fontSize: "0.72rem", marginTop: "10px", marginBottom: 0 }}>
+                  {functionalFoodRecommendations.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </details>
+              <details className="collapsible-card" style={{ marginTop: "10px", marginBottom: "10px" }}>
+                <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                  Brand e token catalogo ({profileSupplements.length ? `${profileSupplements.length} voci` : "set predefinito"})
+                </summary>
+                <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
+                  Integratori e marchi dal profilo (CSV + supplement_config). Usati per matching deterministico al catalogo fueling.
+                </p>
+                {profileSupplements.length ? (
+                  <ul
+                    className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
+                    style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
+                  >
+                    {profileSupplements.map((token) => (
+                      <li
+                        key={token}
+                        style={{
+                          borderRadius: 6,
+                          border: "1px solid rgba(167,139,250,0.35)",
+                          background: "rgba(76,29,149,0.2)",
+                          padding: "2px 8px",
+                          fontFamily: "var(--empathy-mono, monospace)",
+                          fontSize: "0.65rem",
+                          color: "var(--empathy-text-muted, #cbd5e1)",
+                        }}
+                      >
+                        {token}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
+                    Nessun token profilo: catalogo con marchi predefiniti (Enervit, SiS, Maurten, +Watt, Powerbar).
+                  </p>
+                )}
+              </details>
+              {integrationProductCards.length ? (
+                <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                  {(
+                    [
+                      {
+                        key: "pre" as const,
+                        title: "Pre workout",
+                        subtitle: "Pre-hydration, caffeina, carichi moderati prima dello stimolo",
+                      },
+                      {
+                        key: "intra" as const,
+                        title: "Intra workout",
+                        subtitle: "Gel, barrette e drink durante seduta (tolleranza + solver)",
+                      },
+                      {
+                        key: "post" as const,
+                        title: "Post workout",
+                        subtitle: "Recovery, proteine, creatina — dopo lo stimolo",
+                      },
+                    ] as const
+                  ).map((col) => (
+                    <div
+                      key={col.key}
+                      className={cn(
+                        "flex min-h-[120px] flex-col gap-3 rounded-2xl border bg-black/30 p-3",
+                        col.key === "pre" && "border-violet-500/40",
+                        col.key === "intra" && "border-fuchsia-500/40",
+                        col.key === "post" && "border-orange-500/45",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "rounded-lg border border-white/10 bg-gradient-to-r px-3 py-2 to-transparent",
+                          col.key === "pre" && "from-violet-600/28",
+                          col.key === "intra" && "from-fuchsia-600/28",
+                          col.key === "post" && "from-orange-600/28",
+                        )}
+                      >
+                        <div className="text-[0.68rem] font-bold uppercase tracking-wider text-white">{col.title}</div>
+                        <div className="nutrition-muted mt-0.5 text-[0.66rem] leading-snug">{col.subtitle}</div>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        {integrationProductsByTiming[col.key].length ? (
+                          integrationProductsByTiming[col.key].map((product) => {
+                            const qtyHint = buildIntegrationQuantityHint(product, {
+                              choGHour: resolvedFuelingChoGPerHour,
+                              energyAdequacyRatio: nutritionPerformanceIntegration?.diaryInsight?.energyAdequacyRatio,
+                              proteinBiasPctPoints: nutritionPerformanceIntegration?.proteinBiasPctPoints ?? 0,
+                              fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
+                            });
+                            return (
+                              <IntegrationProductCard
+                                key={`${col.key}-${product.brand}-${product.product}`}
+                                product={product}
+                                qtyHint={qtyHint}
+                                accent={col.key}
+                              />
+                            );
+                          })
+                        ) : (
+                          <p className="nutrition-muted m-0 rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
+                            Nessun integratore classificato qui dalla selezione corrente (bucket primario da timing catalogo).
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          </section>
+          ) : null}
+
+          {subRoute === "predictor" ? (
+          <section id="nutrition-predictor" className="scroll-mt-28 mb-10 space-y-4">
+            <header className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3">
+              <h2 className="text-lg font-bold text-white">Predictor</h2>
+              <p className="mt-1 text-sm text-gray-400">Stima consumo energetico, CHO e rischio deplezione glicogeno.</p>
+            </header>
+            <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
+              <h3 className="viz-title">Performance Predictor · consumo e rischio esaurimento energetico</h3>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className={`nutrition-ui-chip ${predictorUsePlanDay ? "active" : ""}`}
+                  onClick={() => setPredictorUsePlanDay((v) => !v)}
+                >
+                  {predictorUsePlanDay ? "Contesto giorno attivo" : "Modalita manuale"}
+                </button>
+                {predictorUsePlanDay && (
+                  <span className="nutrition-ui-chip active">
+                    {selectedPlanDateShort} · {round(effectiveSessionDurationMin)} min · {round(effectiveSessionIntensityPctFtp)}% FTP
+                  </span>
+                )}
+              </div>
+              <div className="form-grid-two">
+                <div className="form-group">
+                  <label className="form-label">Sport</label>
+                  <select className="form-select" value={predictorSport} onChange={(e) => setPredictorSport(e.target.value)}>
+                    {SPORTS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group"><label className="form-label">Distanza (km)</label><input className="form-input" type="number" value={predictorDistanceKm} onChange={(e) => setPredictorDistanceKm(n(e.target.value, 0))} /></div>
+                <div className="form-group">
+                  <label className="form-label">Tempo previsto (min)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={predictorUsePlanDay ? round(effectiveSessionDurationMin) : predictorTimeMin}
+                    disabled={predictorUsePlanDay}
+                    onChange={(e) => setPredictorTimeMin(n(e.target.value, 0))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Intensita % FTP</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    value={predictorUsePlanDay ? round(effectiveSessionIntensityPctFtp) : predictorIntensityPctFtp}
+                    disabled={predictorUsePlanDay}
+                    onChange={(e) => setPredictorIntensityPctFtp(n(e.target.value, 0))}
+                  />
+                </div>
+              </div>
+              <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
+                {predictorOpsCards.map((card) => (
+                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${card.tone}`}>
+                    <div className="fueling-main-kpi-label">{card.label}</div>
+                    <div className="fueling-main-kpi-value">
+                      {card.value}
+                      {card.unit ? <span>{card.unit}</span> : null}
+                    </div>
+                    <div className="fueling-main-kpi-sub">{card.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <details className="collapsible-card">
+                <summary>Predictor notes</summary>
+                <div className="alert-warning" style={{ marginBottom: 0 }}>
+                  Energia evento: {round(predictor.totalEnergy)} kcal · Fueling totale suggerito: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
+                  {predictor.exhaustionHours < predictor.eventHours
+                    ? ` Rischio esaurimento prima del termine: riduci ritmo verso ${predictor.maxSustainablePct}% FTP o aumenta fueling.`
+                    : " Ritmo sostenibile con il fueling impostato."}
+                </div>
+              </details>
+            </section>
+          </section>
+          ) : null}
+
+          {subRoute === "diary" ? (
+          <section id="nutrition-diary" className="scroll-mt-28 mb-10 space-y-4">
+            <header className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+              <h2 className="text-lg font-bold text-white">Diario alimentare</h2>
+              <p className="mt-1 text-sm text-gray-400">Ingesta reale vs target — catalogo USDA e aderenza.</p>
+            </header>
+            <FoodDiaryPanel
+              athleteId={athleteId}
+              onComplianceRowsChange={onDiaryComplianceRows}
+              planDateForSolverTargets={selectedPlanDate}
+              planDateAnchor={selectedPlanDate}
+              diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
+              diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
+              diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
+              diaryMacroTargetFatG={diaryDayMacroTargets.fat}
+              fallbackDailyEnergyKcal={dailyEnergyKcal}
+              weightKg={profile?.weight_kg ?? null}
+              metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
+            />
+          </section>
+          ) : null}
+        </>
+      )}
+    </Pro2ModulePageShell>
+  );
+}
+

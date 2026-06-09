@@ -1,0 +1,6389 @@
+@import "../styles/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  max-width: 100vw;
+  color: var(--empathy-text);
+  background-color: #000000;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fallback se una pagina non usa ancora BrutalistAppBackdrop */
+.empathy-tech-bg {
+  position: relative;
+  isolation: isolate;
+  background: #000;
+}
+
+.empathy-tech-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 55% at 15% -10%, rgba(168, 85, 247, 0.22), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 95% 5%, rgba(236, 72, 153, 0.18), transparent 50%),
+    radial-gradient(ellipse 55% 50% at 50% 105%, rgba(249, 115, 22, 0.14), transparent 45%);
+}
+
+.empathy-tech-grid {
+  background-image:
+    linear-gradient(rgba(168, 85, 247, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 85, 247, 0.08) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center top;
+}
+
+.empathy-tech-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+.empathy-btn-gradient {
+  background: linear-gradient(120deg, #9333ea, #ec4899, #f97316);
+  background-size: 200% 100%;
+  box-shadow: var(--empathy-shadow-glow);
+  transition: background-position 0.35s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.empathy-btn-gradient:hover {
+  background-position: 100% 0;
+  box-shadow: 0 0 48px rgba(168, 85, 247, 0.45), 0 0 80px rgba(236, 72, 153, 0.25);
+}
+
+.empathy-text-gradient {
+  background: linear-gradient(105deg, #c084fc, #f472b6, #fb923c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empathy-btn-gradient {
+    transition: none;
+  }
+}
+
+/* ─── Training Calendar (Pro 2) — griglia mensile come V1: celle ampie + chip PLAN/EXEC ─── */
+.tc2-calendar-shell {
+  padding: 10px 4px 14px;
+}
+
+.tc2-calendar-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tc2-calendar-frame {
+  min-width: 1280px;
+}
+
+@media (min-width: 1536px) {
+  .tc2-calendar-frame {
+    min-width: 1440px;
+  }
+}
+
+.tc2-calendar-weekdays,
+.tc2-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tc2-calendar-weekdays {
+  margin-bottom: 8px;
+}
+
+.tc2-calendar-weekday-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.tc2-calendar-grid-pad {
+  min-height: 190px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tc2-calendar-day {
+  min-height: 190px;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 120, 120, 0.4);
+  background: linear-gradient(180deg, rgba(18, 18, 22, 0.98), rgba(8, 10, 14, 0.98));
+  color: #f3f4f6;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+}
+
+.tc2-calendar-day:hover {
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18) inset;
+  transform: translateY(-1px);
+}
+
+.tc2-calendar-day--active {
+  border: 2px solid rgb(56, 189, 248);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.28) inset,
+    0 0 20px rgba(34, 211, 238, 0.2);
+}
+
+.tc2-calendar-day--drop-target {
+  border-color: rgba(217, 70, 239, 0.75);
+  box-shadow:
+    0 0 0 2px rgba(217, 70, 239, 0.35) inset,
+    0 0 24px rgba(217, 70, 239, 0.25);
+}
+
+.tc2-calendar-day-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.tc2-calendar-exec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
+  flex-shrink: 0;
+}
+
+.tc2-calendar-chip {
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.tc2-calendar-chip--draggable {
+  cursor: grab;
+}
+
+.tc2-calendar-chip--draggable:active {
+  cursor: grabbing;
+}
+
+.tc2-calendar-chip--dragging {
+  opacity: 0.55;
+  outline: 1px dashed rgba(217, 70, 239, 0.65);
+}
+
+.tc2-calendar-chip > div {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* PLAN: accento viola/indigo (allineato a Pro2 builder), EXEC: cyan/sky + barra amber */
+.tc2-calendar-chip-plan {
+  border-color: rgba(167, 139, 250, 0.5);
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.18), rgba(59, 130, 246, 0.1));
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.12);
+}
+
+.tc2-calendar-chip-plan--gym {
+  border-color: rgba(217, 70, 239, 0.55);
+  background: linear-gradient(135deg, rgba(134, 25, 143, 0.28), rgba(76, 29, 149, 0.12));
+}
+
+.tc2-calendar-chip-plan--bike {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.22), rgba(59, 130, 246, 0.1));
+}
+
+.tc2-calendar-chip-plan--tech {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: linear-gradient(135deg, rgba(91, 33, 182, 0.22), rgba(30, 27, 75, 0.35));
+}
+
+.tc2-calendar-chip-plan--life {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: linear-gradient(135deg, rgba(6, 95, 70, 0.22), rgba(20, 83, 45, 0.12));
+}
+
+.tc2-calendar-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.tc2-calendar-chip-icon--strength {
+  background: rgba(217, 70, 239, 0.25);
+  color: #f5d0fe;
+}
+
+.tc2-calendar-chip-icon--aerobic {
+  background: rgba(34, 211, 238, 0.2);
+  color: #a5f3fc;
+}
+
+.tc2-calendar-chip-icon--technical {
+  background: rgba(167, 139, 250, 0.22);
+  color: #ddd6fe;
+}
+
+.tc2-calendar-chip-icon--lifestyle {
+  background: rgba(52, 211, 153, 0.2);
+  color: #a7f3d0;
+}
+
+.tc2-calendar-chip-icon--unknown {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.tc2-calendar-chip-sport-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 2px;
+}
+
+.tc2-calendar-chip-exec {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(99, 102, 241, 0.08));
+  box-shadow: inset 3px 0 0 rgba(251, 191, 36, 0.85);
+}
+
+.tc2-sport-glyph {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 4px;
+  opacity: 0.95;
+}
+
+/* Badge wellness compatto sopra le chip plan/exec di una cella giorno (Fase 2 device→UI). */
+.tc2-calendar-wellness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  color: rgba(165, 243, 252, 0.85);
+}
+.tc2-calendar-wellness > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+
+/* Contenitore griglia pasti + legenda (piano generato o piano base) */
+.empathy-meal-plan-expo-shell {
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 63, 174, 0.28);
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.08), rgba(255, 138, 28, 0.055), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.008)),
+    rgba(0, 0, 0, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 42px rgba(0, 0, 0, 0.44);
+  padding: 1rem;
+}
+
+/* ——— Nutrition meal exposition (grid 2×3 + detailed food cards) ——— */
+.empathy-meal-expo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1024px) {
+  .empathy-meal-expo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .empathy-meal-expo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.empathy-meal-expo-card {
+  position: relative;
+  isolation: isolate;
+  border-radius: 18px;
+  border: 1px solid var(--nutri-expo-border);
+  background: var(--nutri-expo-card);
+  box-shadow: var(--nutri-expo-glow), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  overflow: hidden;
+}
+
+.empathy-meal-expo-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--nutri-expo-pink), var(--nutri-expo-pro));
+  opacity: 0.95;
+  z-index: 1;
+}
+
+.empathy-meal-expo-card--placeholder {
+  border-style: dashed;
+  opacity: 0.92;
+}
+
+.empathy-meal-expo-placeholder-note {
+  margin: 0;
+  padding: 14px 16px 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--empathy-text-muted);
+}
+
+.empathy-meal-expo-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.empathy-meal-expo-banner {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 14px 14px 14px 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.18), rgba(255, 138, 28, 0.12) 46%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+  border-bottom: 1px solid rgba(255, 63, 174, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.empathy-meal-expo-card--slot-breakfast .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 138, 28, 0.18), rgba(255, 63, 174, 0.13) 52%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-lunch .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.18), rgba(255, 138, 28, 0.12) 52%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-dinner .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.15), rgba(255, 138, 28, 0.18) 56%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-snack_am .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.2), rgba(255, 138, 28, 0.1) 52%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-snack_pm .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 138, 28, 0.18), rgba(255, 63, 174, 0.14) 52%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-pre_sleep .empathy-meal-expo-banner {
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.12), rgba(255, 138, 28, 0.08) 52%, rgba(255, 255, 255, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(6, 7, 12, 0.92);
+}
+
+.empathy-meal-expo-card--slot-breakfast {
+  border-color: rgba(255, 138, 28, 0.34);
+}
+
+.empathy-meal-expo-card--slot-lunch {
+  border-color: rgba(255, 63, 174, 0.32);
+}
+
+.empathy-meal-expo-card--slot-dinner {
+  border-color: rgba(255, 138, 28, 0.32);
+}
+
+.empathy-meal-expo-card--slot-snack_am {
+  border-color: rgba(255, 63, 174, 0.34);
+}
+
+.empathy-meal-expo-card--slot-snack_pm {
+  border-color: rgba(255, 138, 28, 0.34);
+}
+
+.empathy-meal-expo-card--slot-pre_sleep {
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.empathy-meal-expo-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(255, 63, 174, 0.42), rgba(255, 138, 28, 0.32)),
+    rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 63, 174, 0.34);
+  box-shadow: 0 0 18px rgba(255, 63, 174, 0.18), 0 0 16px rgba(255, 138, 28, 0.1);
+  flex-shrink: 0;
+}
+
+.empathy-meal-expo-icon-wrap--banner {
+  align-self: center;
+}
+
+.empathy-meal-expo-icon {
+  width: 24px;
+  height: 24px;
+  color: #fff;
+}
+
+.empathy-meal-expo-head-text {
+  min-width: 0;
+}
+
+.empathy-meal-expo-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.empathy-meal-expo-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.empathy-meal-expo-banner-center {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+}
+
+.empathy-meal-expo-title-banner {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.empathy-meal-expo-sub-banner {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.empathy-meal-expo-kcal-tile {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 72px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 63, 174, 0.18), rgba(255, 138, 28, 0.11)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+    rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 63, 174, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.empathy-meal-expo-kcal-num {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.empathy-meal-expo-kcal-unit {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.empathy-meal-expo-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.empathy-meal-expo-macro {
+  position: relative;
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(8, 10, 16, 0.72);
+  overflow: hidden;
+}
+
+.empathy-meal-expo-macro::after {
+  content: none;
+}
+
+.empathy-meal-expo-macro--cho {
+  border-color: rgba(255, 63, 174, 0.34);
+  background: var(--nutri-expo-cho-bg);
+}
+.empathy-meal-expo-macro--cho::after {
+  content: none;
+}
+
+.empathy-meal-expo-macro--pro {
+  border-color: rgba(255, 138, 28, 0.34);
+  background: var(--nutri-expo-pro-bg);
+}
+.empathy-meal-expo-macro--pro::after {
+  content: none;
+}
+
+.empathy-meal-expo-macro--fat {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: var(--nutri-expo-fat-bg);
+}
+.empathy-meal-expo-macro--fat::after {
+  content: none;
+}
+
+.empathy-meal-expo-macro-ic {
+  width: 18px;
+  height: 18px;
+  margin: 0 auto 6px;
+  opacity: 0.95;
+}
+
+.empathy-meal-expo-macro--cho .empathy-meal-expo-macro-ic {
+  color: var(--nutri-expo-cho);
+}
+.empathy-meal-expo-macro--pro .empathy-meal-expo-macro-ic {
+  color: var(--nutri-expo-pro);
+}
+.empathy-meal-expo-macro--fat .empathy-meal-expo-macro-ic {
+  color: var(--nutri-expo-fat);
+}
+
+.empathy-meal-expo-macro-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(226, 232, 240, 0.65);
+  margin-bottom: 4px;
+}
+
+.empathy-meal-expo-macro-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.empathy-meal-expo-igbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 12px 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.08), rgba(255, 138, 28, 0.055), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.006)),
+    rgba(2, 6, 23, 0.46);
+  border: 1px solid rgba(255, 63, 174, 0.2);
+}
+
+.empathy-meal-expo-igbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.empathy-meal-expo-ig-ic {
+  width: 22px;
+  height: 22px;
+  color: var(--nutri-expo-pink);
+  flex-shrink: 0;
+}
+
+.empathy-meal-expo-ig-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.empathy-meal-expo-ig-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.empathy-meal-expo-igbar-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.empathy-meal-expo-igpill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.empathy-meal-expo-igpill--low {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.empathy-meal-expo-igpill--med {
+  background: rgba(255, 63, 174, 0.14);
+  color: #fbcfe8;
+  border-color: rgba(255, 63, 174, 0.34);
+}
+
+.empathy-meal-expo-igpill--high {
+  background: rgba(255, 138, 28, 0.13);
+  color: #ffedd5;
+  border-color: rgba(255, 138, 28, 0.34);
+}
+
+.empathy-meal-expo-igpill--vhigh {
+  background: rgba(255, 45, 146, 0.16);
+  color: #ffe4e6;
+  border-color: rgba(255, 63, 174, 0.38);
+}
+
+.empathy-meal-expo-stimpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.empathy-meal-expo-stimpill--high {
+  background: rgba(255, 138, 28, 0.14);
+  color: #fed7aa;
+  border-color: rgba(255, 138, 28, 0.34);
+}
+.empathy-meal-expo-stimpill--med {
+  background: rgba(255, 63, 174, 0.14);
+  color: #fbcfe8;
+  border-color: rgba(255, 63, 174, 0.34);
+}
+.empathy-meal-expo-stimpill--low {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.empathy-meal-expo-macro-bar {
+  display: flex;
+  margin: 0 12px 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.empathy-meal-expo-macro-seg {
+  flex: 1;
+  text-align: center;
+  padding: 8px 6px;
+}
+
+.empathy-meal-expo-macro-seg--cho {
+  background: rgba(255, 63, 174, 0.16);
+  color: #fbcfe8;
+}
+.empathy-meal-expo-macro-seg--pro {
+  background: rgba(255, 138, 28, 0.15);
+  color: #ffedd5;
+}
+.empathy-meal-expo-macro-seg--fat {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+}
+
+.empathy-meal-expo-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 8px;
+}
+
+.empathy-meal-expo-detail-head--legend {
+  padding-top: 8px;
+}
+
+.empathy-meal-expo-detail-bar {
+  width: 4px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--nutri-expo-pink), var(--nutri-expo-pro));
+  flex-shrink: 0;
+}
+
+.empathy-meal-expo-detail-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ff8acb;
+}
+
+.empathy-meal-expo-food-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empathy-meal-expo-food-empty {
+  padding: 12px;
+  font-size: 13px;
+}
+
+.empathy-meal-expo-food-card {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 63, 174, 0.2);
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.11), rgba(255, 138, 28, 0.07), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.006)),
+    rgba(7, 9, 14, 0.94);
+  padding: 12px;
+}
+
+.empathy-meal-expo-food-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.empathy-meal-expo-food-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.empathy-meal-expo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--nutri-expo-pink), var(--nutri-expo-pro));
+  box-shadow: 0 0 12px rgba(255, 63, 174, 0.32);
+  flex-shrink: 0;
+}
+
+.empathy-meal-expo-food-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.empathy-meal-expo-food-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.empathy-meal-expo-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.empathy-meal-expo-pill--wt {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.empathy-meal-expo-pill--kcal {
+  background: rgba(255, 138, 28, 0.15);
+  color: #fed7aa;
+  border: 1px solid rgba(255, 138, 28, 0.34);
+}
+
+.empathy-meal-expo-food-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 520px) {
+  .empathy-meal-expo-food-macros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.empathy-meal-expo-pod {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 8px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.36);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.empathy-meal-expo-pod-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.empathy-meal-expo-pod--cho {
+  background: var(--nutri-expo-cho-bg);
+  border: 1px solid rgba(255, 63, 174, 0.34);
+  color: #fbcfe8;
+}
+.empathy-meal-expo-pod--cho .empathy-meal-expo-pod-dot {
+  background: var(--nutri-expo-cho);
+}
+
+.empathy-meal-expo-pod--pro {
+  background: var(--nutri-expo-pro-bg);
+  border: 1px solid rgba(255, 138, 28, 0.34);
+  color: #fed7aa;
+}
+.empathy-meal-expo-pod--pro .empathy-meal-expo-pod-dot {
+  background: var(--nutri-expo-pro);
+}
+
+.empathy-meal-expo-pod--fat {
+  background: var(--nutri-expo-fat-bg);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+}
+.empathy-meal-expo-pod--fat .empathy-meal-expo-pod-dot {
+  background: var(--nutri-expo-fat);
+}
+
+.empathy-meal-expo-pod--kcal {
+  background: var(--nutri-expo-kcal-bg);
+  border: 1px solid rgba(251, 113, 133, 0.45);
+  color: #fda4af;
+  grid-column: span 1;
+}
+.empathy-meal-expo-pod--kcal .empathy-meal-expo-pod-lab {
+  color: #fda4af;
+}
+
+.empathy-meal-expo-pod-lab {
+  opacity: 0.88;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.empathy-meal-expo-pod-val {
+  margin-left: auto;
+  font-weight: 800;
+}
+
+.empathy-meal-expo-coach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.empathy-meal-expo-legend {
+  margin-top: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--nutri-expo-border);
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.08), rgba(255, 138, 28, 0.055), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.008)),
+    rgba(5, 6, 10, 0.96);
+}
+
+.nutrition-report-shell {
+  margin-top: 1rem;
+}
+
+.nutrition-meal-plan-micro {
+  margin-top: 0.75rem;
+}
+
+.empathy-micro-daily-board {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 63, 174, 0.28);
+  background:
+    linear-gradient(90deg, rgba(255, 63, 174, 0.09), rgba(255, 138, 28, 0.06), transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    rgba(3, 4, 8, 0.96);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.5),
+    0 0 26px rgba(255, 63, 174, 0.12);
+  padding: 16px;
+}
+
+.empathy-micro-daily-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 14px;
+}
+
+.empathy-micro-daily-eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--nutri-expo-pink);
+}
+
+.empathy-micro-daily-head h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 850;
+  color: #fff;
+}
+
+.empathy-micro-daily-head > span {
+  max-width: 24rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(203, 213, 225, 0.72);
+  text-align: right;
+}
+
+.empathy-micro-radar-grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1180px) {
+  .empathy-micro-radar-grid-wrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .empathy-micro-daily-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .empathy-micro-daily-head > span {
+    text-align: left;
+  }
+
+  .empathy-micro-radar-grid-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.empathy-micro-radar-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(6, 7, 12, 0.94);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.empathy-micro-radar-card--vitamins,
+.empathy-micro-radar-card--amino {
+  border-color: rgba(255, 63, 174, 0.3);
+}
+
+.empathy-micro-radar-card--minerals,
+.empathy-micro-radar-card--lipids {
+  border-color: rgba(255, 138, 28, 0.28);
+}
+
+.empathy-micro-radar-copy h5 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 850;
+  color: #fff;
+}
+
+.empathy-micro-radar-copy p {
+  margin: 3px 0 10px;
+  font-size: 0.68rem;
+  color: rgba(203, 213, 225, 0.7);
+}
+
+.empathy-micro-radar-layout {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.empathy-micro-radar-svg {
+  width: 112px;
+  height: 112px;
+  overflow: visible;
+}
+
+.empathy-micro-radar-grid {
+  fill: rgba(255, 255, 255, 0.025);
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 0.8;
+}
+
+.empathy-micro-radar-grid--mid {
+  fill: transparent;
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.empathy-micro-radar-axis {
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 0.65;
+}
+
+.empathy-micro-radar-fill {
+  fill: rgba(255, 63, 174, 0.26);
+  stroke: var(--nutri-expo-pink);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 5px rgba(255, 63, 174, 0.32));
+}
+
+.empathy-micro-radar-card--minerals .empathy-micro-radar-fill,
+.empathy-micro-radar-card--lipids .empathy-micro-radar-fill {
+  fill: rgba(255, 138, 28, 0.24);
+  stroke: var(--nutri-expo-pro);
+  filter: drop-shadow(0 0 5px rgba(255, 138, 28, 0.28));
+}
+
+.empathy-micro-radar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.empathy-micro-radar-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.34);
+  padding: 4px 7px;
+  font-size: 0.68rem;
+  color: rgba(226, 232, 240, 0.86);
+}
+
+.empathy-micro-radar-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empathy-micro-radar-list strong {
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.empathy-micro-radar-list small {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: rgba(203, 213, 225, 0.62);
+}
+
+.empathy-micro-table-outer {
+  margin-top: 10px;
+}
+
+.empathy-micro-table-stack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 1180px) {
+  .empathy-micro-table-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .empathy-micro-table-stack {
+    grid-template-columns: 1fr;
+  }
+}
+
+.empathy-micro-table-section {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(2, 4, 9, 0.88);
+}
+
+.empathy-micro-table-section--vitamins,
+.empathy-micro-table-section--amino {
+  border-color: rgba(255, 63, 174, 0.24);
+}
+
+.empathy-micro-table-section--minerals,
+.empathy-micro-table-section--lipids {
+  border-color: rgba(255, 138, 28, 0.22);
+}
+
+.empathy-micro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.empathy-micro-table th {
+  padding: 8px 10px;
+  text-align: left;
+  color: #fff;
+  background: linear-gradient(90deg, rgba(255, 63, 174, 0.18), rgba(255, 138, 28, 0.1));
+}
+
+.empathy-micro-table-subhead th {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(203, 213, 225, 0.72);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.empathy-micro-table td {
+  padding: 7px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(226, 232, 240, 0.86);
+}
+
+.empathy-micro-table-val {
+  text-align: right;
+  font-weight: 800;
+  color: #fff !important;
+  white-space: nowrap;
+}
+
+.empathy-meal-expo-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+
+@media (max-width: 720px) {
+  .empathy-meal-expo-legend-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.empathy-meal-expo-legend-card {
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  font-size: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.empathy-meal-expo-legend-card strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #fff;
+}
+
+.empathy-meal-expo-legend-card--low {
+  background: rgba(148, 163, 184, 0.08);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: none;
+}
+.empathy-meal-expo-legend-card--med {
+  background: rgba(244, 114, 182, 0.08);
+  color: #fbcfe8;
+  border-color: rgba(244, 114, 182, 0.24);
+  box-shadow: none;
+}
+.empathy-meal-expo-legend-card--high {
+  background: rgba(249, 115, 22, 0.09);
+  color: #ffedd5;
+  border-color: rgba(251, 146, 60, 0.26);
+  box-shadow: none;
+}
+.empathy-meal-expo-legend-card--vhigh {
+  background: rgba(236, 72, 153, 0.1);
+  color: #ffe4e6;
+  border-color: rgba(244, 114, 182, 0.28);
+  box-shadow: none;
+}
+
+.empathy-meal-expo-legend-note {
+  margin: 0;
+}
+
+/* ═══ Pro 2 · pannelli modulo (viz-card/builder-panel: prima privi di regole) ═══ */
+.viz-card.builder-panel {
+  position: relative;
+  border-radius: var(--empathy-radius);
+  border: 1px solid rgba(232, 121, 249, 0.24);
+  background: linear-gradient(165deg, rgba(22, 14, 32, 0.94), rgba(6, 4, 10, 0.9));
+  box-shadow: var(--nutri-expo-glow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  padding: 1rem 1.25rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.nutrition-ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(226, 232, 240, 0.92);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.nutrition-ui-chip:hover {
+  border-color: rgba(232, 121, 249, 0.45);
+  box-shadow: 0 0 18px rgba(192, 38, 211, 0.14);
+}
+
+.nutrition-ui-chip.active {
+  border-color: rgba(244, 114, 182, 0.55);
+  background: rgba(192, 38, 211, 0.18);
+  box-shadow: 0 0 22px rgba(236, 72, 153, 0.18);
+  color: #fff;
+}
+
+.nutrition-ui-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn-nutrition-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: var(--empathy-radius-sm);
+  padding: 0.65rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(120deg, #9333ea, #ec4899, #f97316);
+  background-size: 200% 100%;
+  box-shadow:
+    0 0 24px rgba(168, 85, 247, 0.35),
+    0 0 40px rgba(236, 72, 153, 0.12);
+  transition:
+    background-position 0.35s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn-nutrition-cta:hover:not(:disabled) {
+  background-position: 100% 0;
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px rgba(168, 85, 247, 0.45);
+}
+
+.btn-nutrition-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-nutrition-cta {
+    transition: none;
+  }
+  .btn-nutrition-cta:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ═══ Diario alimentare · registro giornata (Pro 2) ═══ */
+.nutrition-diary-log-column {
+  min-width: 0;
+}
+
+.nutrition-diary-expo-shell {
+  padding-top: 0.5rem;
+}
+
+.nutrition-diary-expo-heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+.nutrition-diary-expo-lede {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.nutrition-diary-expo-grid {
+  margin-bottom: 0;
+}
+
+.nutrition-diary-expo-card--target-slot {
+  box-shadow:
+    0 0 0 1px rgba(232, 121, 249, 0.38),
+    var(--nutri-expo-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.nutrition-diary-expo-src-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.4rem;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.nutrition-diary-expo-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.45rem;
+}
+
+.nutrition-diary-expo-foot {
+  margin-bottom: 0;
+}
+
+/* Diario · riepilogo giornata + input (celle allineate a KPI Pro 2 / fueling) */
+.nutrition-diary-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+@media (min-width: 900px) {
+  .nutrition-diary-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.nutrition-diary-tile {
+  position: relative;
+  overflow: hidden;
+  min-height: 118px;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(circle at top right, var(--nutrition-diary-tile-glow, rgba(244, 114, 182, 0.12)), transparent 52%),
+    rgba(0, 0, 0, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nutrition-diary-tile--efficiency {
+  --nutrition-diary-tile-glow: rgba(251, 191, 36, 0.22);
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.nutrition-diary-tile--target {
+  --nutrition-diary-tile-glow: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.nutrition-diary-tile--actual {
+  --nutrition-diary-tile-glow: rgba(244, 114, 182, 0.2);
+  border-color: rgba(236, 72, 153, 0.28);
+}
+
+.nutrition-diary-tile--delta {
+  --nutrition-diary-tile-glow: rgba(249, 115, 22, 0.18);
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.nutrition-diary-tile-kicker {
+  margin-bottom: 0.15rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.nutrition-diary-tile-metric {
+  font-size: clamp(1.65rem, 3.6vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: rgba(248, 250, 252, 0.98);
+}
+
+.nutrition-diary-tile-unit {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(148, 163, 184, 0.95);
+  margin-top: -0.1rem;
+}
+
+.nutrition-diary-tile-foot {
+  margin-top: auto;
+  padding-top: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: rgba(148, 163, 184, 0.88);
+}
+
+.nutrition-diary-tile-macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.92);
+}
+
+.nutrition-diary-tile-macros abbr {
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(148, 163, 184, 0.45);
+  cursor: help;
+}
+
+.nutrition-diary-meal-destination-card {
+  margin-bottom: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(165deg, rgba(18, 12, 28, 0.92), rgba(6, 4, 10, 0.88));
+  box-shadow:
+    0 0 0 1px rgba(232, 121, 249, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.nutrition-diary-section-label {
+  margin: 0 0 0.35rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 245, 0.88);
+}
+
+.nutrition-diary-meal-destination-lede {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(203, 213, 225, 0.82);
+}
+
+.nutrition-diary-meal-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.nutrition-diary-meal-picker--primary .nutrition-diary-meal-chip {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.78rem;
+}
+
+.nutrition-diary-meal-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.38rem 0.75rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.nutrition-diary-meal-chip:hover {
+  border-color: rgba(232, 121, 249, 0.45);
+  box-shadow: 0 0 18px rgba(192, 38, 211, 0.14);
+}
+
+.nutrition-diary-meal-chip--active {
+  border-color: rgba(244, 114, 182, 0.55);
+  background: rgba(168, 85, 247, 0.16);
+  box-shadow: 0 0 22px rgba(236, 72, 153, 0.16);
+  color: #fff;
+}
+
+.nutrition-diary-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: stretch;
+  margin-bottom: 0.65rem;
+}
+
+.nutrition-diary-photo-cta {
+  flex: 1 1 160px;
+  min-height: 2.75rem;
+}
+
+.nutrition-diary-big-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  flex: 1 1 160px;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--empathy-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(248, 250, 252, 0.95);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.nutrition-diary-big-btn:hover:not(:disabled) {
+  border-color: rgba(232, 121, 249, 0.42);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.12);
+}
+
+.nutrition-diary-big-btn--ghost {
+  background: rgba(9, 9, 12, 0.65);
+}
+
+.nutrition-diary-input-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.nutrition-diary-mini-tile {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.nutrition-diary-mini-tile-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.nutrition-diary-mini-tile-hint {
+  font-size: 0.65rem;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+.nutrition-fueling-hero {
+  border-radius: var(--empathy-radius);
+  border: 1px solid rgba(217, 70, 239, 0.38);
+  background: linear-gradient(105deg, rgba(217, 70, 239, 0.32) 0%, rgba(244, 114, 182, 0.14) 42%, rgba(251, 146, 60, 0.2) 100%);
+  box-shadow: 0 0 36px rgba(217, 70, 239, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.fueling-main-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.fueling-main-kpi-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(circle at top right, var(--fueling-kpi-glow, rgba(244, 114, 182, 0.2)), transparent 48%),
+    rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.fueling-main-kpi-label {
+  margin-bottom: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.fueling-main-kpi-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: clamp(1.85rem, 4vw, 2.45rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--fueling-kpi-color, #f9a8d4);
+  text-shadow: 0 0 24px var(--fueling-kpi-glow, rgba(244, 114, 182, 0.32));
+}
+
+.fueling-main-kpi-value span {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.fueling-main-kpi-sub {
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(180, 180, 195, 0.76);
+}
+
+.fueling-main-kpi-card--amber {
+  --fueling-kpi-color: #fbbf24;
+  --fueling-kpi-glow: rgba(251, 191, 36, 0.28);
+}
+
+.fueling-main-kpi-card--cyan {
+  --fueling-kpi-color: #67e8f9;
+  --fueling-kpi-glow: rgba(103, 232, 249, 0.26);
+}
+
+.fueling-main-kpi-card--violet {
+  --fueling-kpi-color: #c4b5fd;
+  --fueling-kpi-glow: rgba(196, 181, 253, 0.28);
+}
+
+.fueling-main-kpi-card--green {
+  --fueling-kpi-color: #86efac;
+  --fueling-kpi-glow: rgba(134, 239, 172, 0.24);
+}
+
+.fueling-main-kpi-card--rose {
+  --fueling-kpi-color: #fb7185;
+  --fueling-kpi-glow: rgba(251, 113, 133, 0.28);
+}
+
+.fueling-main-kpi-card--slate {
+  --fueling-kpi-color: #e2e8f0;
+  --fueling-kpi-glow: rgba(148, 163, 184, 0.22);
+}
+
+.fueling-visible-plan-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.fueling-visible-plan-card {
+  display: grid;
+  gap: 5px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(244, 114, 182, 0.28);
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.14), rgba(251, 146, 60, 0.08), rgba(0, 0, 0, 0.34));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 22px rgba(217, 70, 239, 0.08);
+}
+
+.fueling-visible-plan-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(251, 207, 232, 0.78);
+}
+
+.fueling-visible-plan-card strong {
+  color: #fff7ed;
+  font-size: clamp(1rem, 2.2vw, 1.22rem);
+  line-height: 1.25;
+}
+
+.fueling-visible-plan-card small {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 12px;
+}
+
+.fueling-vertical-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.fueling-vstep {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.fueling-vrail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fueling-vdot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fueling-vline {
+  width: 2px;
+  flex: 1;
+  min-height: 20px;
+  margin: 4px 0;
+  border-radius: 2px;
+}
+
+.fueling-vcard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-radius: 14px;
+  border: 1px solid rgba(217, 70, 239, 0.28);
+  background: linear-gradient(165deg, rgba(20, 12, 32, 0.96), rgba(6, 4, 12, 0.92));
+  padding: 12px;
+  box-shadow: 0 0 28px rgba(168, 85, 247, 0.08);
+}
+
+.fueling-vcard .fueling-step-body > strong {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(105deg, #fbcfe8, #f472b6, #fb923c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.fueling-vcard .fueling-step-body > small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(203, 213, 225, 0.85);
+  font-size: 12px;
+}
+
+.fueling-step-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fueling-step-chip-row > span {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.fueling-step-chip-row > span:first-child {
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.35), rgba(15, 23, 42, 0.85));
+}
+
+.fueling-visual-report h4,
+.fueling-glyco-future h5 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(105deg, #f472b6, #c084fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.fueling-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.fueling-metric-card {
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  background: rgba(10, 8, 18, 0.88);
+  padding: 10px 12px;
+}
+
+.fueling-metric-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.fueling-metric-head label {
+  color: rgba(203, 213, 225, 0.75);
+}
+
+.fueling-metric-head strong {
+  color: #f9a8d4;
+  font-size: 14px;
+}
+
+.fueling-metric-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.fueling-metric-fill {
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(244, 114, 182, 0.25);
+}
+
+.fueling-hydration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.fueling-hydration-chip {
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.9));
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
+.fueling-hydration-chip strong {
+  display: block;
+  color: #7dd3fc;
+  margin-bottom: 2px;
+}
+
+/* ═══ V1 builder viz / KPI parity (Training session + calendar detail) ═══ */
+.viz-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.kpi-card-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.85);
+  margin-bottom: 6px;
+}
+
+.session-sub-copy {
+  font-size: 0.8rem;
+  color: rgba(203, 213, 225, 0.82);
+  line-height: 1.45;
+}
+
+.muted-copy {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.9);
+  line-height: 1.4;
+}
+
+.builder-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.builder-kpi-card {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 72px;
+  background:
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.06), transparent 46%),
+    linear-gradient(180deg, rgba(16, 21, 31, 0.92), rgba(8, 10, 16, 0.94));
+}
+
+.builder-kpi-card .kpi-card-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f4f7ff;
+}
+
+.builder-chart-shell {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 70% 10%, rgba(255, 106, 0, 0.12), transparent 46%),
+    linear-gradient(180deg, rgba(19, 23, 31, 0.96), rgba(11, 14, 20, 0.98));
+  width: 100%;
+  max-width: 1180px;
+}
+
+.builder-chart-title {
+  font-size: 11px;
+  margin-bottom: 8px;
+  color: rgba(148, 163, 184, 0.95);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.builder-chart-svg {
+  width: 100%;
+  height: 260px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(41, 47, 58, 0.85), rgba(23, 28, 36, 0.94));
+}
+
+.builder-zone-legend {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.builder-zone-chip {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #f1f5f9;
+  background: rgba(13, 14, 18, 0.9);
+}
+
+@media (max-width: 640px) {
+  .builder-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* === Profile module (V1 extract for Pro2 ProfilePageView) === */
+
+/* ----- KPI cards e sezioni (riferimento screenshot) ----- */
+.kpi-card {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--empathy-divider);
+  border-radius: 0;
+  padding: 10px 0 12px 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.kpi-card-label {
+  font-size: 12px;
+  color: var(--empathy-text-muted);
+  margin-bottom: 4px;
+}
+
+.kpi-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--empathy-text);
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.kpi-card-value-primary { color: var(--empathy-primary); }
+.kpi-card-value-accent { color: var(--empathy-accent); }
+
+.kpi-card-link {
+  font-size: 13px;
+  color: var(--empathy-primary);
+  text-decoration: none;
+  margin-top: 10px;
+  display: inline-block;
+}
+
+.kpi-card-link:hover {
+  text-decoration: underline;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, #ff944a 0%, var(--empathy-primary) 100%);
+  color: #170900;
+  border: 1px solid rgba(255, 168, 118, 0.35);
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s, box-shadow 0.18s;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 -2px 0 rgba(121, 50, 0, 0.7) inset,
+    0 8px 18px rgba(255, 106, 0, 0.14);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.btn-primary:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--empathy-text);
+  margin: 0 0 12px 0;
+}
+
+/* Alert (error / warning) ----- */
+.alert-error {
+  padding: 12px 16px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: var(--empathy-radius);
+  color: #f87171;
+  margin-bottom: 16px;
+}
+
+.alert-warning {
+  padding: 12px 16px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--empathy-radius);
+  color: #fbbf24;
+  margin-bottom: 16px;
+}
+
+.alert-success {
+  padding: 12px 16px;
+  background: rgba(255, 106, 0, 0.08);
+  border: 1px solid rgba(255, 106, 0, 0.3);
+  border-radius: var(--empathy-radius);
+  color: #ffb37e;
+  margin-bottom: 16px;
+}
+/* Form (input, select, label) ----- */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  color: var(--empathy-text-muted);
+  margin-bottom: 4px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(24, 24, 28, 0.96), rgba(14, 14, 17, 0.96));
+  border: 1px solid rgba(122, 122, 122, 0.35);
+  border-radius: 3px;
+  color: var(--empathy-text);
+  font-size: 14px;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--empathy-primary);
+  box-shadow: 0 0 0 1px rgba(255, 106, 0, 0.42), 0 0 16px rgba(255, 106, 0, 0.2);
+}
+
+.form-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Unified dropdown readability: black surface + high-contrast text */
+.form-select {
+  background-color: #0b0c10;
+  color: #f5f5f5;
+  border-color: rgba(255, 76, 76, 0.42);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #ff4c4c 50%),
+    linear-gradient(135deg, #ff4c4c 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 2px),
+    calc(100% - 10px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+.form-select option,
+.form-select optgroup {
+  background: #0b0c10;
+  color: #f5f5f5;
+}
+
+.collapsible-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px 12px;
+}
+
+.collapsible-card summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #dbe2ea;
+}
+
+.collapsible-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-card summary::after {
+  content: "+";
+  font-size: 14px;
+  line-height: 1;
+  color: #67e8f9;
+}
+
+.collapsible-card[open] summary {
+  margin-bottom: 10px;
+}
+
+.collapsible-card[open] summary::after {
+  content: "-";
+}
+
+/* Tab bar (sottotab come negli screenshot) ----- */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--empathy-border);
+}
+
+.page-tab {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--empathy-text-muted);
+  text-decoration: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+  border-radius: 0;
+  background: transparent;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.page-tab:hover {
+  color: var(--empathy-text);
+}
+
+.page-tab-active {
+  color: var(--empathy-primary);
+  border-color: transparent;
+  border-bottom-color: var(--empathy-primary);
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 14px rgba(255, 106, 0, 0.55);
+}
+
+/* ----- Profile page premium style ----- */
+.profile-page .page-title {
+  margin-bottom: 20px;
+}
+
+.monitor-header {
+  position: relative;
+  overflow: hidden;
+  background: #141417;
+}
+
+.monitor-header-strip {
+  height: 8px;
+  margin: -14px -16px 12px -16px;
+  background: linear-gradient(90deg, rgba(255, 106, 0, 0.96), rgba(255, 146, 74, 0.9));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.profile-monitor {
+  background: #17181d;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.profile-hero {
+  position: relative;
+  overflow: hidden;
+  background: #141417;
+}
+
+.profile-hero::before {
+  display: none;
+}
+
+.profile-tab-strip {
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 4px;
+}
+
+.profile-tab-strip.profile-strip-grid {
+  overflow: visible;
+  white-space: normal;
+}
+
+.profile-tab-strip .page-tab {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  margin-bottom: 0;
+  padding: 8px 12px;
+  background: #141418;
+}
+
+.profile-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-metrics-grid .kpi-card {
+  border-radius: 2px;
+  min-height: 96px;
+}
+
+.profile-metrics-grid .kpi-card .kpi-card-value {
+  font-size: 24px;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.profile-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 8px;
+  border-bottom: none;
+  white-space: normal;
+  overflow: visible;
+}
+
+.profile-strip-grid .page-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 2px;
+}
+
+.profile-section-band {
+  margin: 0 0 12px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--empathy-text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 106, 0, 0.1) 0 90px,
+      rgba(255, 146, 74, 0.09) 90px 180px,
+      rgba(110, 110, 110, 0.09) 180px 270px,
+      rgba(251, 191, 36, 0.08) 270px 360px
+    );
+}
+
+.profile-subpanel {
+  background: linear-gradient(180deg, rgba(14, 17, 22, 0.94), rgba(8, 10, 14, 0.98));
+  border: 1px solid rgba(127, 141, 168, 0.24);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.profile-subpanel-board {
+  padding: 14px;
+}
+
+.profile-subpanel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.profile-subpanel-head h4 {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #e5e7eb;
+}
+
+.profile-subpanel-head span {
+  font-size: 11px;
+  color: #8b95a7;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-physiology-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Unified profile controls: white text, one accent border */
+.profile-page .form-select,
+.profile-page .form-input,
+.profile-page .form-textarea {
+  background: #0d0e11;
+  color: #f5f5f5;
+  border-color: rgba(255, 106, 0, 0.32);
+}
+
+.profile-page .form-label {
+  color: #d7dce4;
+}
+
+.profile-day-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.profile-day-chip {
+  border: 1px solid rgba(255, 106, 0, 0.32);
+  background: #111216;
+  color: #f2f2f2;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.profile-day-chip.active {
+  border-color: rgba(255, 106, 0, 0.78);
+  color: #ffd4b3;
+  background: rgba(255, 106, 0, 0.15);
+}
+
+.profile-dark-select {
+  background: #0d0e11;
+  color: #f5f5f5;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.profile-dark-select option {
+  background: #0d0e11;
+  color: #f5f5f5;
+}
+
+.profile-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.profile-black-chip {
+  width: 100%;
+  border: 1px solid rgba(255, 106, 0, 0.32);
+  border-radius: 6px;
+  background: #101116;
+  color: #f1f1f1;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.profile-black-chip.active {
+  border-color: rgba(255, 106, 0, 0.75);
+  background: rgba(255, 106, 0, 0.14);
+  color: #ffd3b1;
+}
+
+.profile-meal-macro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.profile-meal-macro-card {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 8px;
+  background: #111216;
+}
+
+.profile-meal-macro-card strong {
+  display: block;
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
+.option-chip {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(20, 24, 31, 0.98), rgba(14, 18, 24, 0.96));
+  color: rgba(241, 242, 244, 0.95);
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s, box-shadow 0.18s;
+}
+
+.option-chip:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+.option-chip:active {
+  transform: translateY(1px);
+}
+
+.option-chip-active-green {
+  border-color: var(--empathy-primary);
+  background: linear-gradient(180deg, rgba(255, 106, 0, 0.3), rgba(255, 106, 0, 0.14));
+  box-shadow: 0 0 0 1px rgba(255, 106, 0, 0.35) inset, 0 0 14px rgba(255, 106, 0, 0.2);
+}
+
+.option-chip-active-violet {
+  border-color: var(--empathy-accent);
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.34), rgba(255, 138, 61, 0.2));
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.35) inset, 0 0 14px rgba(255, 138, 61, 0.24);
+}
+
+.option-chip-tone-0 {
+  background: linear-gradient(180deg, rgba(255, 106, 0, 0.2), rgba(14, 18, 24, 0.96));
+}
+
+.option-chip-tone-1 {
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.2), rgba(14, 18, 24, 0.96));
+}
+
+.option-chip-tone-2 {
+  background: linear-gradient(180deg, rgba(15, 73, 76, 0.28), rgba(14, 18, 24, 0.96));
+}
+
+.option-chip-tone-3 {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.2), rgba(14, 18, 24, 0.96));
+}
+
+.option-chip-tone-4 {
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.16), rgba(14, 18, 24, 0.96));
+}
+
+.option-chip-tone-5 {
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.2), rgba(14, 18, 24, 0.96));
+}
+
+.theme-multi .page-tab {
+  border: 1px solid var(--empathy-border);
+  border-radius: 999px;
+  margin-bottom: 0;
+  background: #12161d;
+}
+
+.profile-tab-strip.theme-multi .page-tab,
+.profile-strip-grid.theme-multi .page-tab {
+  border-radius: 2px;
+  background: #141418;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.theme-multi .page-tab:nth-child(6n + 1) { border-color: rgba(255, 106, 0, 0.55); color: #ffbf8e; }
+.theme-multi .page-tab:nth-child(6n + 2) { border-color: rgba(255, 146, 74, 0.55); color: #ffd0ac; }
+.theme-multi .page-tab:nth-child(6n + 3) { border-color: rgba(122, 122, 122, 0.5); color: #dadada; }
+.theme-multi .page-tab:nth-child(6n + 4) { border-color: rgba(251, 191, 36, 0.48); color: #ffe08a; }
+.theme-multi .page-tab:nth-child(6n + 5) { border-color: rgba(249, 115, 22, 0.45); color: #ffc79b; }
+.theme-multi .page-tab:nth-child(6n + 6) { border-color: rgba(205, 205, 205, 0.35); color: #ececec; }
+
+.theme-multi .page-tab-active {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+
+/* Profile tabs: force unified visual style (no multi-color chaos) */
+.profile-page .theme-multi .page-tab,
+.profile-page .profile-tab-strip.theme-multi .page-tab,
+.profile-page .profile-strip-grid.theme-multi .page-tab {
+  color: #f3f4f6 !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: #101116 !important;
+}
+
+.profile-page .theme-multi .page-tab-active,
+.profile-page .profile-tab-strip.theme-multi .page-tab-active,
+.profile-page .profile-strip-grid.theme-multi .page-tab-active {
+  color: #ffffff !important;
+  border-color: rgba(111, 214, 255, 0.34) !important;
+  background: rgba(111, 214, 255, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(111, 214, 255, 0.18) inset !important;
+}
+
+.module-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.module-tab {
+  border: 1px solid var(--empathy-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--empathy-text-muted);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.module-tab-active {
+  color: var(--empathy-text);
+  border-color: var(--empathy-primary);
+  background: rgba(255, 106, 0, 0.18);
+}
+
+@media (max-width: 1280px) {
+  .profile-metrics-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .profile-strip-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .profile-strip-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.profile-hero {
+  display: block;
+  background:
+    radial-gradient(circle at 100% 0, rgba(39, 211, 255, 0.06), transparent 26%),
+    linear-gradient(180deg, rgba(14, 17, 22, 0.94), rgba(8, 10, 14, 0.98));
+  border: 1px solid rgba(127, 141, 168, 0.24);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.profile-header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.profile-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+  font-size: 24px;
+}
+
+.profile-avatar-board {
+  background: linear-gradient(180deg, rgba(21, 28, 38, 0.98), rgba(13, 18, 26, 0.96));
+  border: 1px solid rgba(127, 141, 168, 0.24);
+  color: #f8fafc;
+}
+
+.profile-type-pill {
+  margin-top: 8px;
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(111, 214, 255, 0.22);
+  border-radius: 999px;
+  color: #dbeafe;
+  background: linear-gradient(180deg, rgba(18, 33, 46, 0.92), rgba(11, 19, 29, 0.96));
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profile-action-button:hover {
+  background: linear-gradient(180deg, rgba(23, 41, 57, 0.96), rgba(15, 26, 38, 0.98));
+  border-color: rgba(111, 214, 255, 0.34);
+}
+
+.profile-action-button-muted {
+  color: #cbd5e1;
+  background: linear-gradient(180deg, rgba(27, 31, 39, 0.92), rgba(14, 18, 24, 0.96));
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.quick-stat {
+  border: 1px solid var(--empathy-border);
+  border-radius: var(--empathy-radius-sm);
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.quick-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.choice-item {
+  border: 1px solid var(--empathy-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--empathy-text);
+  border-radius: var(--empathy-radius-sm);
+  padding: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.choice-item-active {
+  border-color: var(--empathy-primary);
+  background: rgba(255, 106, 0, 0.18);
+}
+
+/* ----- Builder page vivid style ----- */
+.builder-page .viz-card.builder-panel {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    #07090e;
+  border-color: rgba(127, 141, 168, 0.34);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.app-shell .viz-card,
+.app-shell .empathy-card,
+.app-shell .profile-monitor {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.app-shell .kpi-card {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.profile-page .profile-metrics-grid .kpi-card {
+  border: 1px solid rgba(127, 141, 168, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(16, 20, 29, 0.9), rgba(10, 13, 18, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+  min-height: 118px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+}
+
+.profile-page .profile-kpi-card .kpi-card-label,
+.profile-page .profile-subpanel-head h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-kpi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+  background: #6fd6ff;
+  box-shadow: 0 0 10px rgba(111, 214, 255, 0.35);
+}
+
+.profile-kpi-card.tone-cyan .profile-kpi-dot,
+.profile-subpanel.tone-cyan .profile-kpi-dot {
+  background: #6fd6ff;
+  box-shadow: 0 0 10px rgba(111, 214, 255, 0.35);
+}
+
+.profile-kpi-card.tone-amber .profile-kpi-dot,
+.profile-subpanel.tone-amber .profile-kpi-dot {
+  background: #ffd247;
+  box-shadow: 0 0 10px rgba(255, 210, 71, 0.3);
+}
+
+.profile-kpi-card.tone-rose .profile-kpi-dot,
+.profile-subpanel.tone-rose .profile-kpi-dot {
+  background: #ff6f85;
+  box-shadow: 0 0 10px rgba(255, 111, 133, 0.3);
+}
+
+.profile-kpi-card.tone-green .profile-kpi-dot,
+.profile-subpanel.tone-green .profile-kpi-dot {
+  background: #7dff9b;
+  box-shadow: 0 0 10px rgba(125, 255, 155, 0.3);
+}
+
+.profile-kpi-card.tone-slate .profile-kpi-dot,
+.profile-subpanel.tone-slate .profile-kpi-dot {
+  background: #a3b0c2;
+  box-shadow: 0 0 10px rgba(163, 176, 194, 0.26);
+}
+
+.profile-page .profile-metrics-grid .kpi-card .kpi-card-label {
+  color: #8b95a7;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.profile-page .profile-metrics-grid .kpi-card .kpi-card-value {
+  align-self: center;
+  font-size: clamp(25px, 2.8vw, 36px);
+  line-height: 1.05;
+  color: #f8fafc;
+}
+
+.profile-page .profile-kpi-card.tone-cyan .kpi-card-value {
+  color: #8fe6ff;
+}
+
+.profile-page .profile-kpi-card.tone-amber .kpi-card-value {
+  color: #ffd56d;
+}
+
+.profile-page .profile-kpi-card.tone-rose .kpi-card-value {
+  color: #ff97a7;
+}
+
+.profile-page .profile-kpi-card.tone-green .kpi-card-value {
+  color: #93f5b2;
+}
+
+.profile-page .profile-kpi-card.tone-slate .kpi-card-value {
+  color: #e2e8f0;
+}
+
+.app-shell .page-tab {
+  border-radius: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.app-shell .page-tab-active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-page .profile-monitor {
+  border-top: none;
+  padding-top: 0;
+}
+
+.profile-page .profile-editor-shell {
+  --profile-accent: #6fd6ff;
+  --profile-accent-border: rgba(111, 214, 255, 0.44);
+  --profile-accent-glow: rgba(111, 214, 255, 0.14);
+  --profile-accent-text: #d9f5ff;
+  border: 1px solid rgba(127, 141, 168, 0.24);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(39, 211, 255, 0.05), transparent 24%),
+    linear-gradient(180deg, rgba(14, 17, 22, 0.94), rgba(8, 10, 14, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.profile-page .profile-editor-shell.tone-cyan {
+  --profile-accent: #6fd6ff;
+  --profile-accent-border: rgba(111, 214, 255, 0.46);
+  --profile-accent-glow: rgba(111, 214, 255, 0.16);
+  --profile-accent-text: #d9f5ff;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(111, 214, 255, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-editor-shell.tone-amber {
+  --profile-accent: #ffd247;
+  --profile-accent-border: rgba(255, 210, 71, 0.46);
+  --profile-accent-glow: rgba(255, 210, 71, 0.16);
+  --profile-accent-text: #fff0ae;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(255, 210, 71, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-editor-shell.tone-green {
+  --profile-accent: #7dff9b;
+  --profile-accent-border: rgba(125, 255, 155, 0.42);
+  --profile-accent-glow: rgba(125, 255, 155, 0.14);
+  --profile-accent-text: #d9ffe3;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(125, 255, 155, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-editor-shell.tone-slate {
+  --profile-accent: #cbd5e1;
+  --profile-accent-border: rgba(163, 176, 194, 0.36);
+  --profile-accent-glow: rgba(163, 176, 194, 0.12);
+  --profile-accent-text: #edf2f7;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(163, 176, 194, 0.06),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-editor-shell.tone-violet {
+  --profile-accent: #a78bfa;
+  --profile-accent-border: rgba(167, 139, 250, 0.48);
+  --profile-accent-glow: rgba(167, 139, 250, 0.17);
+  --profile-accent-text: #e7ddff;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(167, 139, 250, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-editor-shell.tone-rose {
+  --profile-accent: #ff5d7a;
+  --profile-accent-border: rgba(255, 93, 122, 0.48);
+  --profile-accent-glow: rgba(255, 93, 122, 0.17);
+  --profile-accent-text: #ffd9e2;
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 0 1px rgba(255, 93, 122, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.profile-page .profile-section-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(20, 25, 34, 0.96), rgba(12, 16, 22, 0.98));
+}
+
+.profile-page .profile-section-band.tone-cyan {
+  border-color: rgba(111, 214, 255, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(111, 214, 255, 0.16), 0 0 20px rgba(111, 214, 255, 0.1);
+}
+
+.profile-page .profile-section-band.tone-amber {
+  border-color: rgba(255, 210, 71, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 71, 0.16), 0 0 20px rgba(255, 210, 71, 0.1);
+}
+
+.profile-page .profile-section-band.tone-green {
+  border-color: rgba(125, 255, 155, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(125, 255, 155, 0.12), 0 0 20px rgba(125, 255, 155, 0.08);
+}
+
+.profile-page .profile-section-band.tone-slate {
+  border-color: rgba(163, 176, 194, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(163, 176, 194, 0.12), 0 0 20px rgba(163, 176, 194, 0.06);
+}
+
+.profile-page .profile-section-band.tone-violet {
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.16), 0 0 20px rgba(167, 139, 250, 0.1);
+}
+
+.profile-page .profile-section-band.tone-rose {
+  border-color: rgba(255, 93, 122, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 93, 122, 0.16), 0 0 20px rgba(255, 93, 122, 0.1);
+}
+
+.profile-page .profile-tab-strip,
+.profile-page .profile-editor-subtabs {
+  border-bottom: none;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-page .profile-tab-strip.theme-multi .page-tab,
+.profile-page .profile-strip-grid.theme-multi .page-tab,
+.profile-page .profile-editor-subtabs.theme-multi .page-tab {
+  border-radius: 14px !important;
+  min-height: 46px;
+  background: linear-gradient(180deg, rgba(16, 20, 29, 0.92), rgba(10, 13, 18, 0.96)) !important;
+  border-width: 1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.profile-page .profile-editor-tab.tone-cyan {
+  border-color: rgba(111, 214, 255, 0.44) !important;
+  color: #b8f2ff !important;
+}
+
+.profile-page .profile-editor-tab.tone-amber {
+  border-color: rgba(255, 210, 71, 0.44) !important;
+  color: #ffe69a !important;
+}
+
+.profile-page .profile-editor-tab.tone-green {
+  border-color: rgba(125, 255, 155, 0.34) !important;
+  color: #b8ffc7 !important;
+}
+
+.profile-page .profile-editor-tab.tone-slate {
+  border-color: rgba(163, 176, 194, 0.3) !important;
+  color: #e5edf7 !important;
+}
+
+.profile-page .profile-editor-tab.tone-violet {
+  border-color: rgba(167, 139, 250, 0.46) !important;
+  color: #e7ddff !important;
+}
+
+.profile-page .profile-editor-tab.tone-rose {
+  border-color: rgba(255, 93, 122, 0.46) !important;
+  color: #ffd9e2 !important;
+}
+
+.profile-page .profile-tab-strip .page-tab-active,
+.profile-page .profile-editor-subtabs .page-tab-active {
+  background: linear-gradient(180deg, rgba(20, 34, 47, 0.96), rgba(11, 20, 29, 0.98)) !important;
+  border-color: var(--profile-accent-border) !important;
+  color: var(--profile-accent-text) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 10px 22px rgba(0, 0, 0, 0.18) !important;
+}
+
+.profile-page .profile-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.profile-page .profile-editor-grid.profile-editor-grid-compact {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.profile-page .profile-editor-grid > .form-group,
+.profile-page .profile-subpanel .form-group {
+  margin-bottom: 0;
+  border: 1px solid var(--profile-accent-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(17, 21, 29, 0.92), rgba(10, 13, 18, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 0 1px var(--profile-accent-glow);
+}
+
+.profile-page .profile-editor-subtitle {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #eef2f7;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-page .profile-subpanel {
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-cyan {
+  border-color: rgba(111, 214, 255, 0.44);
+  box-shadow:
+    inset 0 0 0 1px rgba(111, 214, 255, 0.08),
+    0 0 24px rgba(111, 214, 255, 0.06),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-amber {
+  border-color: rgba(255, 210, 71, 0.42);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 210, 71, 0.08),
+    0 0 24px rgba(255, 210, 71, 0.06),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-green {
+  border-color: rgba(125, 255, 155, 0.38);
+  box-shadow:
+    inset 0 0 0 1px rgba(125, 255, 155, 0.08),
+    0 0 24px rgba(125, 255, 155, 0.05),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-slate {
+  border-color: rgba(163, 176, 194, 0.34);
+  box-shadow:
+    inset 0 0 0 1px rgba(163, 176, 194, 0.06),
+    0 0 18px rgba(163, 176, 194, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-violet {
+  border-color: rgba(167, 139, 250, 0.46);
+  box-shadow:
+    inset 0 0 0 1px rgba(167, 139, 250, 0.08),
+    0 0 24px rgba(167, 139, 250, 0.07),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-subpanel.tone-rose {
+  border-color: rgba(255, 93, 122, 0.46);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 93, 122, 0.08),
+    0 0 24px rgba(255, 93, 122, 0.07),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.profile-page .profile-black-chip {
+  border-radius: 12px;
+  border-color: rgba(111, 214, 255, 0.2);
+  background: linear-gradient(180deg, rgba(16, 20, 29, 0.92), rgba(10, 13, 18, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.profile-page .profile-black-chip.active {
+  border-color: rgba(111, 214, 255, 0.42);
+  background: rgba(111, 214, 255, 0.09);
+  color: #d9f5ff;
+}
+
+.profile-page .profile-day-chip {
+  border-radius: 12px;
+  border-color: var(--profile-accent-border);
+  color: var(--profile-accent-text);
+  background: linear-gradient(180deg, rgba(18, 21, 29, 0.96), rgba(10, 13, 18, 0.98));
+  box-shadow: inset 0 0 0 1px var(--profile-accent-glow);
+}
+
+.profile-page .profile-day-chip.active {
+  border-color: var(--profile-accent-border);
+  color: var(--profile-accent-text);
+  background: color-mix(in srgb, var(--profile-accent) 12%, rgba(10, 13, 18, 0.98));
+  box-shadow:
+    inset 0 0 0 1px var(--profile-accent-glow),
+    0 0 18px var(--profile-accent-glow);
+}
+
+.profile-page .profile-editor-shell .form-input,
+.profile-page .profile-editor-shell .form-select,
+.profile-page .profile-editor-shell .form-textarea {
+  border-radius: 12px;
+  border-color: var(--profile-accent-border);
+  box-shadow: inset 0 0 0 1px var(--profile-accent-glow);
+}
+
+.profile-page .profile-editor-shell .form-input:focus,
+.profile-page .profile-editor-shell .form-select:focus,
+.profile-page .profile-editor-shell .form-textarea:focus {
+  border-color: var(--profile-accent-border);
+  box-shadow:
+    0 0 0 3px var(--profile-accent-glow),
+    inset 0 0 0 1px var(--profile-accent-glow);
+}
+
+.profile-page .profile-meal-macro-card {
+  border-radius: 14px;
+  border-color: rgba(255, 210, 71, 0.18);
+  background: linear-gradient(180deg, rgba(17, 21, 29, 0.92), rgba(10, 13, 18, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.profile-page li.profile-monitor {
+  border: 1px solid rgba(127, 141, 168, 0.22);
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, rgba(16, 20, 29, 0.9), rgba(10, 13, 18, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* --- Physiology · generative Pro 2.0 (lactate threshold board, import V1) --- */
+.physiology-pro2-lactate-card {
+  margin-bottom: 20px;
+  padding: 18px 20px 20px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(24, 24, 28, 0.98), rgba(10, 10, 14, 0.99));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 120, 0.06),
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.physiology-pro2-lactate-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.physiology-pro2-lactate-head-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.physiology-pro2-lactate-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.physiology-pro2-lactate-caption {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(180, 180, 190, 0.88);
+  max-width: 62ch;
+}
+
+.physiology-pro2-lactate-caption strong {
+  color: rgba(220, 220, 230, 0.95);
+  font-weight: 700;
+}
+
+.physiology-pro2-lactate-footnote {
+  margin: 14px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(160, 160, 175, 0.88);
+}
+
+.physiology-pro2-lactate-footnote strong {
+  color: #c4b5fd;
+  font-weight: 700;
+}
+
+.physiology-pro2-lactate-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff6b00, #ff2d55);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 107, 0, 0.35);
+}
+
+.physiology-pro2-lactate-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.physiology-pro2-lactate-vlamax {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(200, 200, 210, 0.85);
+  white-space: nowrap;
+}
+
+.physiology-pro2-lactate-vlamax-value {
+  color: #ff8c42;
+  font-weight: 800;
+}
+
+.physiology-pro2-lactate-vlamax-unit {
+  font-weight: 500;
+  color: rgba(200, 200, 210, 0.78);
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
+.physiology-pro2-lactate-chart-wrap {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto 18px;
+}
+
+.physiology-pro2-lactate-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.physiology-pro2-lactate-grid-h,
+.physiology-pro2-lactate-grid-v {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.physiology-pro2-lactate-axis-y,
+.physiology-pro2-lactate-axis-x {
+  fill: rgba(180, 180, 190, 0.75);
+  font-size: 9px;
+  font-family: system-ui, sans-serif;
+}
+
+.physiology-pro2-lactate-ylab {
+  fill: rgba(160, 160, 175, 0.8);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: system-ui, sans-serif;
+}
+
+.physiology-pro2-lactate-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .physiology-pro2-lactate-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+.physiology-pro2-lactate-kpi {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.physiology-pro2-lactate-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(160, 160, 175, 0.88);
+  margin-bottom: 6px;
+}
+
+.physiology-pro2-lactate-kpi-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.physiology-pro2-lactate-kpi-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(180, 180, 195, 0.75);
+}
+
+.physiology-pro2-lactate-kpi--lt1 .physiology-pro2-lactate-kpi-value {
+  color: #ff8c00;
+  text-shadow: 0 0 24px rgba(255, 140, 0, 0.35);
+}
+
+.physiology-pro2-lactate-kpi--lt2 .physiology-pro2-lactate-kpi-value {
+  color: #ff4d9a;
+  text-shadow: 0 0 24px rgba(255, 77, 154, 0.35);
+}
+
+.physiology-pro2-lactate-kpi--max .physiology-pro2-lactate-kpi-value {
+  color: #c4b5fd;
+  text-shadow: 0 0 22px rgba(196, 181, 253, 0.4);
+}
+
+/* —— Physiology Pro 2 · metabolic lab dashboard (Figma-aligned) —— */
+.physiology-pro2-lab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.physiology-pro2-lab-hero {
+  text-align: center;
+}
+
+.physiology-pro2-lab-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(180, 180, 195, 0.85);
+}
+
+.physiology-pro2-lab-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(90deg, #c084fc, #f472b6, #fb923c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.physiology-pro2-lab-decode {
+  margin-top: 0.85rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  font-size: 0.8rem;
+  color: rgba(220, 252, 231, 0.95);
+}
+
+.physiology-pro2-lab-decode strong {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.physiology-pro2-lab-decode span:not(.physiology-pro2-lab-sessions) {
+  opacity: 0.9;
+}
+
+.physiology-pro2-lab-decode-ico {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #4ade80;
+  flex-shrink: 0;
+}
+
+.physiology-pro2-lab-sessions strong {
+  display: inline;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.physiology-pro2-lab-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.physiology-pro2-lab-banner-ico {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.95;
+}
+
+.physiology-pro2-lab-banner--cp {
+  background: linear-gradient(90deg, #dc2626, #ea580c, #f97316);
+}
+
+.physiology-pro2-lab-banner--derived {
+  background: linear-gradient(90deg, #9333ea, #db2777, #f97316);
+}
+
+.physiology-pro2-lab-banner--zones {
+  background: linear-gradient(90deg, #16a34a, #0ea5e9);
+}
+
+.physiology-pro2-lab-banner--report {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+
+.physiology-pro2-lab-cp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 0.65rem;
+}
+
+@media (min-width: 900px) {
+  .physiology-pro2-lab-cp-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+.physiology-pro2-lab-cp-card {
+  position: relative;
+  padding: 0.65rem 0.5rem 1.85rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(165deg, rgba(20, 20, 28, 0.98), rgba(10, 10, 14, 0.99));
+  border: 2px solid var(--cp-border, #ef4444);
+  box-shadow: 0 0 20px var(--cp-glow, rgba(239, 68, 68, 0.25));
+  text-align: center;
+}
+
+.physiology-pro2-lab-cp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.physiology-pro2-lab-cp-dur {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(200, 200, 215, 0.9);
+}
+
+.physiology-pro2-lab-cp-ico {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.physiology-pro2-lab-cp-watts {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.physiology-pro2-lab-cp-unit {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(160, 160, 175, 0.85);
+  margin-top: 0.15rem;
+}
+
+.physiology-pro2-lab-cp-edit {
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0.35rem;
+}
+
+.physiology-pro2-lab-cp-input {
+  width: 100%;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.7rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.45);
+  color: #e2e8f0;
+}
+
+.physiology-pro2-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.physiology-pro2-lab-chart-card {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(8, 8, 12, 0.92);
+  padding: 0.85rem 1rem 0.5rem;
+}
+
+.physiology-pro2-lab-chart-card--orange {
+  border-color: rgba(251, 146, 60, 0.45);
+}
+
+.physiology-pro2-lab-chart-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fb923c;
+}
+
+.physiology-pro2-lab-chart-title--orange {
+  color: #fb923c;
+}
+
+.physiology-pro2-lab-chart-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  color: rgba(160, 160, 175, 0.85);
+}
+
+.physiology-pro2-lab-chart-wrap {
+  width: 100%;
+}
+
+.physiology-pro2-lab-subsec {
+  margin: 0.25rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(200, 200, 215, 0.75);
+}
+
+.physiology-pro2-lab-subsec--with-ico {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #7dd3fc;
+}
+
+.physiology-pro2-lab-subsec--with-ico:last-of-type {
+  color: #86efac;
+}
+
+.physiology-pro2-lab-subsec-ico {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.physiology-pro2-lab-metric-row {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.physiology-pro2-lab-metric-row--3 {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.physiology-pro2-lab-metric-row--4 {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.physiology-pro2-lab-metric {
+  position: relative;
+  padding: 0.85rem 0.85rem 0.85rem 2.5rem;
+  border-radius: 0.65rem;
+  background: rgba(12, 12, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 3px solid rgba(251, 146, 60, 0.85);
+}
+
+.physiology-pro2-lab-metric--compact {
+  padding-left: 2.35rem;
+  border-top-color: rgba(56, 189, 248, 0.75);
+}
+
+.physiology-pro2-lab-metric--ftp {
+  border-top-color: rgba(249, 115, 22, 0.95);
+}
+
+.physiology-pro2-lab-metric--lt1 {
+  border-top-color: #22c55e;
+}
+
+.physiology-pro2-lab-metric--lt2 {
+  border-top-color: rgba(249, 115, 22, 0.9);
+}
+
+.physiology-pro2-lab-metric--fatmax {
+  border-top-color: #eab308;
+}
+
+.physiology-pro2-lab-metric--vla {
+  border-top-color: #ec4899;
+}
+
+.physiology-pro2-lab-metric-ico {
+  position: absolute;
+  left: 0.65rem;
+  top: 0.75rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: rgba(196, 181, 253, 0.85);
+}
+
+.physiology-pro2-lab-metric-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(160, 160, 175, 0.9);
+}
+
+.physiology-pro2-lab-metric-value {
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.physiology-pro2-lab-metric-value--ftp {
+  background: linear-gradient(90deg, #f97316, #ef4444);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.physiology-pro2-lab-metric-value--lt1 {
+  color: #4ade80;
+  text-shadow: 0 0 18px rgba(74, 222, 128, 0.35);
+}
+
+.physiology-pro2-lab-metric-value--lt2 {
+  background: linear-gradient(90deg, #fb923c, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.physiology-pro2-lab-metric-value--fatmax {
+  color: #fb923c;
+}
+
+.physiology-pro2-lab-metric-value--vla {
+  color: #f472b6;
+  text-shadow: 0 0 20px rgba(244, 114, 182, 0.35);
+}
+
+.physiology-pro2-lab-metric-value--red {
+  color: #f87171;
+}
+
+.physiology-pro2-lab-metric-value--purple {
+  color: #c084fc;
+}
+
+.physiology-pro2-lab-metric-value--cyan {
+  color: #38bdf8;
+}
+
+.physiology-pro2-lab-metric-value--pink {
+  color: #f472b6;
+}
+
+.physiology-pro2-lab-metric-value--green {
+  color: #4ade80;
+}
+
+.physiology-pro2-lab-metric-value--blue {
+  color: #38bdf8;
+  font-size: 1.05rem;
+}
+
+.physiology-pro2-lab-metric-value--violet {
+  color: #a78bfa;
+  font-size: 1.1rem;
+}
+
+.physiology-pro2-lab-table-wrap {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  overflow: hidden;
+  background: rgba(6, 8, 10, 0.95);
+}
+
+.physiology-pro2-lab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.physiology-pro2-lab-table th {
+  padding: 0.55rem 0.45rem;
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(160, 170, 185, 0.9);
+  background: rgba(15, 20, 24, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.physiology-pro2-lab-table td {
+  padding: 0.5rem 0.45rem;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(220, 225, 235, 0.92);
+}
+
+.physiology-pro2-lab-zone-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-weight: 700;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.physiology-pro2-lab-td-power {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.physiology-pro2-lab-td-hr,
+.physiology-pro2-lab-td-lac {
+  font-weight: 700;
+  color: #fca5a5;
+  font-variant-numeric: tabular-nums;
+}
+
+.physiology-pro2-lab-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+
+.physiology-pro2-lab-bar {
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.35s ease;
+}
+
+.physiology-pro2-lab-bar-label {
+  font-size: 0.62rem;
+  color: rgba(180, 185, 200, 0.88);
+}
+
+/* Lactate / MaxOx lab shells */
+.physiology-pro2-lab-title--amber {
+  background: linear-gradient(90deg, #fbbf24, #f97316, #fb7185);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.physiology-pro2-lab-title--rose {
+  background: linear-gradient(90deg, #fb7185, #f43f5e, #c026d3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.physiology-pro2-lab-decode--amber {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.physiology-pro2-lab-decode--rose {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.38);
+}
+
+.physiology-pro2-lab-banner--lactate-overview {
+  background: linear-gradient(90deg, #b45309, #ea580c, #f59e0b);
+}
+
+.physiology-pro2-lab-banner--lactate-curve {
+  background: linear-gradient(90deg, #0ea5e9, #6366f1, #a855f7);
+}
+
+.physiology-pro2-lab-banner--lactate-inputs {
+  background: linear-gradient(90deg, #78716c, #57534e, #44403c);
+}
+
+.physiology-pro2-lab-banner--maxox-cap {
+  background: linear-gradient(90deg, #be123c, #e11d48, #f43f5e);
+}
+
+.physiology-pro2-lab-banner--maxox-bottle {
+  background: linear-gradient(90deg, #7c3aed, #db2777, #f97316);
+}
+
+.physiology-pro2-lab-banner--maxox-inputs {
+  background: linear-gradient(90deg, #4c1d95, #6b21a8, #7e22ce);
+}
+
+.physiology-pro2-lab-chart-card--lactate {
+  border-color: rgba(56, 189, 248, 0.45);
+  padding: 1rem 1rem 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.physiology-pro2-lab-hint-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  font-size: 0.72rem;
+  color: rgba(220, 220, 230, 0.92);
+}
+
+.physiology-pro2-lab-hint-strip strong {
+  color: #fcd34d;
+  margin-right: 0.25rem;
+}
+
+.physiology-pro2-lab-advanced {
+  margin-top: 0.25rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 8, 12, 0.55);
+}
+
+.physiology-pro2-lab-metric--lac,
+.physiology-pro2-lab-metric--mox {
+  border-top-color: rgba(251, 191, 36, 0.75);
+}
+
+.physiology-pro2-lab-metric--mox {
+  border-top-color: rgba(244, 63, 94, 0.65);
+}
+
+.physiology-pro2-lab-metric--wide {
+  padding-left: 1rem;
+}
+
+.physiology-pro2-lab-metric-sub {
+  margin-top: 0.35rem;
+  font-size: 0.65rem;
+  color: rgba(160, 165, 180, 0.88);
+  line-height: 1.35;
+}
+
+.physiology-pro2-lab-metric-value--amber {
+  color: #fb923c;
+}
+
+.physiology-pro2-lab-metric-value--lac-acc {
+  color: #f472b6;
+}
+
+.physiology-pro2-lab-metric-value--cho-gap {
+  color: #fcd34d;
+}
+
+.physiology-pro2-lab-metric-value--cyan-soft {
+  color: #7dd3fc;
+  font-size: 0.95rem;
+}
+
+.physiology-pro2-lab-metric-value--rose {
+  color: #fb7185;
+}
+
+.physiology-pro2-lab-metric-value--rose-soft {
+  color: #fda4af;
+}
+
+.physiology-pro2-lab-metric-value--rose-lg {
+  color: #fda4af;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.physiology-pro2-lab-metric-value--red-soft {
+  color: #f87171;
+}
+
+/* Pro2 lab: full-page stack under hero (Lactate / MaxOx) */
+.physiology-pro2-lab-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.physiology-pro2-lab-page-panel {
+  padding: 1rem 1.1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 10, 16, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.physiology-pro2-lab--lactate .physiology-pro2-lab-page-panel {
+  border-color: rgba(251, 191, 36, 0.14);
+}
+
+.physiology-pro2-lab--maxox .physiology-pro2-lab-page-panel {
+  border-color: rgba(244, 63, 94, 0.14);
+}
+
+.physiology-pro2-lab-page-panel--notes {
+  padding-top: 0.7rem;
+}
+
+.physiology-pro2-lab-mini-banner {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(175, 180, 195, 0.92);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.physiology-pro2-lab-mini-banner--lac,
+.physiology-pro2-lab-mini-banner--lac-device,
+.physiology-pro2-lab-mini-banner--lac-input,
+.physiology-pro2-lab-mini-banner--lac-out,
+.physiology-pro2-lab-mini-banner--lac-out2,
+.physiology-pro2-lab-mini-banner--lac-gut,
+.physiology-pro2-lab-mini-banner--lac-strat {
+  color: rgba(252, 211, 77, 0.92);
+  border-bottom-color: rgba(251, 191, 36, 0.2);
+}
+
+.physiology-pro2-lab-mini-banner--mox,
+.physiology-pro2-lab-mini-banner--mox-device,
+.physiology-pro2-lab-mini-banner--mox-input,
+.physiology-pro2-lab-mini-banner--mox-out,
+.physiology-pro2-lab-mini-banner--mox-delivery {
+  color: rgba(251, 113, 133, 0.95);
+  border-bottom-color: rgba(244, 63, 94, 0.22);
+}
+
+.physiology-pro2-lab-device-inner {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.physiology-pro2-lab-kpi-board {
+  gap: 0.5rem;
+}
+
+.physiology-pro2-lab-kpi-board .kpi-card {
+  min-height: auto;
+}
+
+.physiology-pro2-lab-inline-vo2 {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 960px) {
+  .physiology-pro2-lab-inline-vo2 {
+    grid-column: span 2;
+  }
+}
+
+.physiology-pro2-lab-panel-btn {
+  align-self: end;
+}
+
+.physiology-pro2-lab-page-panel .collapsible-card,
+.physiology-pro2-lab-details.collapsible-card {
+  margin: 0;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.physiology-pro2-lab-compliance {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.physiology-pro2-lab-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 12, 20, 0.88);
+}
+
+.physiology-pro2-lab-footer-actions .btn-primary {
+  margin-left: auto;
+}
+
+/* —— Physiology Pro 2 · engine report viz (Lactate / MaxOx Figma-aligned) —— */
+.physiology-pro2-eng-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.physiology-pro2-lab-banner--lactate-metabolism {
+  background: linear-gradient(90deg, #f43f5e, #ec4899, #fb7185);
+}
+
+.physiology-pro2-lab-banner--lactate-engine-params {
+  background: linear-gradient(90deg, #be185d, #db2777, #f97316);
+}
+
+/* Lactate analysis · workout picker (single control) */
+.physiology-pro2-lac-pick {
+  position: relative;
+}
+
+.physiology-pro2-lac-pick-pop {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  padding: 0.75rem 0.8rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(10, 8, 6, 0.97);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.physiology-pro2-lac-pick-pop-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: rgba(200, 195, 185, 0.9);
+}
+
+.physiology-pro2-lac-pick-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: min(52vh, 320px);
+  overflow-y: auto;
+}
+
+.physiology-pro2-lac-pick-chip {
+  text-align: left;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(234, 88, 12, 0.08));
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 248, 235, 0.95);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.physiology-pro2-lac-pick-chip:hover {
+  border-color: rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+.physiology-pro2-lac-pick-chip--on {
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.2);
+}
+
+.physiology-pro2-lac-pick-pop--maxox {
+  border-color: rgba(251, 113, 133, 0.42);
+  background: rgba(12, 6, 10, 0.98);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 32px rgba(225, 29, 72, 0.12);
+}
+
+.physiology-pro2-lac-pick-chip--maxox {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.16), rgba(190, 24, 93, 0.09));
+  color: rgba(255, 241, 242, 0.96);
+}
+
+.physiology-pro2-lac-pick-chip--maxox:hover {
+  border-color: rgba(251, 113, 133, 0.48);
+  box-shadow: 0 0 22px rgba(244, 63, 94, 0.18);
+}
+
+.physiology-pro2-lab-page-panel--lac-pick {
+  padding-bottom: 0.25rem;
+}
+
+.physiology-pro2-lab-page-panel--lac-ctx {
+  padding-top: 0.35rem;
+}
+
+/* Metabolic context · 6 tiles + options row */
+.physiology-pro2-ctx-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0.45rem 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  background: rgba(6, 6, 10, 0.88);
+}
+
+.physiology-pro2-ctx-shell--maxox {
+  border-color: rgba(6, 182, 212, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 28px rgba(34, 211, 238, 0.06);
+}
+
+.physiology-pro2-lab-banner--maxox-context {
+  background: linear-gradient(90deg, #0e7490, #0891b2, #22d3ee);
+}
+
+.physiology-pro2-ctx-shell .physiology-pro2-lab-banner {
+  margin-bottom: 0;
+}
+
+.physiology-pro2-ctx-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 720px) {
+  .physiology-pro2-ctx-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .physiology-pro2-ctx-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.physiology-pro2-ctx-grid--maxox {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 1100px) {
+  .physiology-pro2-ctx-grid--maxox {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.physiology-pro2-ctx-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  padding: 0.5rem 0.55rem 0.45rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  min-height: 4.85rem;
+}
+
+.physiology-pro2-ctx-tile:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.physiology-pro2-ctx-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.physiology-pro2-ctx-tile--dim:not(:disabled) {
+  opacity: 0.5;
+}
+
+.physiology-pro2-ctx-tile--open {
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.physiology-pro2-ctx-tile--indigo {
+  background: linear-gradient(145deg, #4f46e5, #3730a3);
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.25);
+}
+
+.physiology-pro2-ctx-tile--cyan {
+  background: linear-gradient(145deg, #0891b2, #0e7490);
+  box-shadow: 0 0 20px rgba(8, 145, 178, 0.25);
+}
+
+.physiology-pro2-ctx-tile--violet {
+  background: linear-gradient(145deg, #7c3aed, #5b21b6);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
+}
+
+.physiology-pro2-ctx-tile--amber {
+  background: linear-gradient(145deg, #d97706, #b45309);
+  box-shadow: 0 0 20px rgba(217, 119, 6, 0.25);
+}
+
+.physiology-pro2-ctx-tile--rose {
+  background: linear-gradient(145deg, #e11d48, #be123c);
+  box-shadow: 0 0 20px rgba(225, 29, 72, 0.22);
+}
+
+.physiology-pro2-ctx-tile--emerald {
+  background: linear-gradient(145deg, #059669, #047857);
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.22);
+}
+
+.physiology-pro2-ctx-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+
+.physiology-pro2-ctx-tile-ico-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 0.45rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.physiology-pro2-ctx-tile-ico {
+  width: 0.95rem;
+  height: 0.95rem;
+  opacity: 0.92;
+}
+
+.physiology-pro2-ctx-tile-chev {
+  width: 0.85rem;
+  height: 0.85rem;
+  opacity: 0.75;
+}
+
+.physiology-pro2-ctx-tile-k {
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.2;
+}
+
+.physiology-pro2-ctx-tile-v {
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.physiology-pro2-ctx-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.5rem 0.35rem 0.15rem;
+}
+
+.physiology-pro2-ctx-opt {
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(245, 245, 250, 0.95);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.physiology-pro2-ctx-opt:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.physiology-pro2-ctx-opt:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.physiology-pro2-ctx-opt--on {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.14);
+}
+
+.physiology-pro2-ctx-fatox {
+  padding: 0.55rem 0.45rem 0.35rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(6, 20, 14, 0.65);
+}
+
+.physiology-pro2-ctx-fatox-lab {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: rgba(200, 230, 210, 0.88);
+}
+
+.physiology-pro2-ctx-fatox-range {
+  width: 100%;
+  accent-color: #34d399;
+}
+
+.physiology-pro2-ctx-fatox-readout {
+  margin-top: 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #a7f3d0;
+  text-align: center;
+}
+
+.physiology-pro2-ctx-vo2-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: linear-gradient(120deg, rgba(8, 47, 73, 0.9), rgba(12, 74, 110, 0.75));
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.12);
+}
+
+.physiology-pro2-ctx-vo2-ico {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  color: #7dd3fc;
+}
+
+.physiology-pro2-ctx-vo2-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.physiology-pro2-ctx-vo2-k {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(186, 230, 253, 0.85);
+}
+
+.physiology-pro2-ctx-vo2-main {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.physiology-pro2-ctx-vo2-sub {
+  font-size: 0.68rem;
+  color: rgba(224, 242, 254, 0.82);
+}
+
+.physiology-pro2-ctx-vo2-card--maxox {
+  border-color: rgba(251, 113, 133, 0.4);
+  background: linear-gradient(120deg, rgba(55, 12, 28, 0.92), rgba(24, 10, 22, 0.88));
+  box-shadow: 0 0 28px rgba(244, 63, 94, 0.14);
+}
+
+.physiology-pro2-ctx-vo2-card--maxox .physiology-pro2-ctx-vo2-ico {
+  color: #fda4af;
+}
+
+.physiology-pro2-ctx-vo2-card--maxox .physiology-pro2-ctx-vo2-k {
+  color: rgba(253, 164, 175, 0.88);
+}
+
+.physiology-pro2-ctx-vo2-card--maxox .physiology-pro2-ctx-vo2-sub {
+  color: rgba(254, 205, 211, 0.82);
+}
+
+.physiology-pro2-ctx-opt--maxox:hover:not(:disabled) {
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+/* Numeric engine params · plain value + overlay editor */
+.physiology-pro2-eng-param-tile-hit {
+  margin: 0;
+  margin-top: 0.1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: 0.35rem;
+}
+
+.physiology-pro2-eng-param-tile-hit:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+.physiology-pro2-eng-param-tile-num {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.physiology-pro2-eng-param-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.physiology-pro2-eng-param-editor {
+  width: 100%;
+  max-width: 320px;
+  padding: 1.1rem 1.15rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(14, 14, 22, 0.98);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.physiology-pro2-eng-param-editor-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fda4af;
+  letter-spacing: 0.02em;
+}
+
+.physiology-pro2-eng-param-editor-input {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.physiology-pro2-eng-param-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.physiology-pro2-eng-param-editor-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.physiology-pro2-eng-param-editor-btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(220, 220, 230, 0.9);
+}
+
+.physiology-pro2-eng-param-editor-btn--ok {
+  background: linear-gradient(135deg, #db2777, #be185d);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.physiology-pro2-eng-param-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.65rem 0.55rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  background: rgba(6, 6, 10, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 32px rgba(219, 39, 119, 0.08);
+}
+
+.physiology-pro2-eng-param-shell--maxox {
+  border-color: rgba(34, 211, 238, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 36px rgba(6, 182, 212, 0.1);
+}
+
+.physiology-pro2-lab-banner--maxox-engine-params {
+  background: linear-gradient(90deg, #0f766e, #0d9488, #14b8a6);
+}
+
+.physiology-pro2-eng-param-editor-title--maxox {
+  color: #67e8f9;
+}
+
+.physiology-pro2-eng-param-editor-btn--ok-maxox {
+  background: linear-gradient(135deg, #0e7490, #0891b2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.physiology-pro2-eng-param-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+
+@media (min-width: 1100px) {
+  .physiology-pro2-eng-param-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.physiology-pro2-eng-param-tile {
+  position: relative;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.6rem 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  min-height: 5.4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.physiology-pro2-eng-param-tile--locked {
+  opacity: 0.62;
+  filter: saturate(0.75);
+}
+
+.physiology-pro2-eng-param-tile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.physiology-pro2-eng-param-tile-label {
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.25;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.physiology-pro2-eng-param-tile-ico {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.82);
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
+}
+
+.physiology-pro2-eng-param-tile-input {
+  width: 100%;
+  margin-top: 0.2rem;
+  padding: 0.28rem 0.4rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 1.28rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #fff;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.physiology-pro2-eng-param-tile-input:focus:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.physiology-pro2-eng-param-tile-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+.physiology-pro2-eng-param-tile-input::-webkit-outer-spin-button,
+.physiology-pro2-eng-param-tile-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.physiology-pro2-eng-param-tile-input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.physiology-pro2-eng-param-tile-unit {
+  margin-top: 0.12rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Max Oxidate · card sintesi + barre (mirror V1) */
+.physiology-pro2-maxox-card {
+  margin-bottom: 1rem;
+  padding: 1.1rem 1.15rem 1.2rem;
+  border-radius: 1rem;
+  background: linear-gradient(165deg, rgba(28, 12, 20, 0.98), rgba(10, 8, 12, 0.99));
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.08),
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.physiology-pro2-maxox-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.physiology-pro2-maxox-head-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.physiology-pro2-maxox-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.physiology-pro2-maxox-caption {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(180, 180, 190, 0.88);
+  max-width: 58ch;
+}
+
+.physiology-pro2-maxox-caption strong {
+  color: rgba(255, 228, 232, 0.96);
+  font-weight: 700;
+}
+
+.physiology-pro2-maxox-footnote {
+  margin: 1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(160, 160, 175, 0.88);
+}
+
+.physiology-pro2-maxox-footnote strong {
+  color: #fda4af;
+  font-weight: 700;
+}
+
+.physiology-pro2-maxox-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fb7185, #9f1239);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.35);
+}
+
+.physiology-pro2-maxox-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.physiology-pro2-maxox-strip {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(200, 200, 210, 0.85);
+  white-space: nowrap;
+}
+
+.physiology-pro2-maxox-strip-value {
+  color: #fda4af;
+  font-weight: 800;
+}
+
+.physiology-pro2-maxox-strip-value--pink {
+  color: #fb7185;
+}
+
+.physiology-pro2-maxox-strip-unit {
+  font-weight: 500;
+}
+
+.physiology-pro2-maxox-viz-wrap {
+  margin: 0 -0.25rem;
+}
+
+.physiology-pro2-maxox-steady-note {
+  margin: 0.65rem 0 0;
+  max-width: 62ch;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(186, 200, 218, 0.9);
+}
+
+.physiology-pro2-maxox-steady-note strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+}
+
+.maxox-engine-viz {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0 0 0.25rem;
+}
+
+@media (min-width: 900px) {
+  .maxox-engine-viz {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .maxox-engine-viz-card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.maxox-engine-viz-card {
+  padding: 0.85rem 1rem 1rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(155deg, rgba(28, 14, 22, 0.94), rgba(10, 8, 12, 0.98));
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.maxox-engine-viz-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(253, 164, 175, 0.96);
+}
+
+.maxox-engine-viz-sub {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(190, 195, 210, 0.88);
+}
+
+.maxox-engine-viz-sub strong {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.maxox-engine-viz-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  color: rgba(160, 165, 180, 0.88);
+  line-height: 1.45;
+}
+
+.maxox-engine-viz-state {
+  color: #fda4af;
+  font-weight: 600;
+}
+
+.maxox-engine-viz-bar-track {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.maxox-engine-viz-bar-seg {
+  min-width: 0;
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.maxox-engine-viz-bar-seg--rose {
+  background: linear-gradient(180deg, #fb7185, #be123c);
+}
+
+.maxox-engine-viz-bar-seg--cyan {
+  background: linear-gradient(180deg, #22d3ee, #0e7490);
+}
+
+.maxox-engine-viz-bar-seg--amber {
+  background: linear-gradient(180deg, #fbbf24, #c2410c);
+}
+
+.maxox-engine-viz-bar-seg--slate {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.95), rgba(51, 65, 85, 0.98));
+}
+
+.maxox-engine-viz-legend {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.maxox-engine-viz-legend li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: rgba(200, 205, 220, 0.9);
+}
+
+.maxox-engine-viz-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.maxox-engine-viz-dot--rose {
+  background: #fb7185;
+}
+
+.maxox-engine-viz-dot--cyan {
+  background: #22d3ee;
+}
+
+.maxox-engine-viz-dot--amber {
+  background: #fbbf24;
+}
+
+.maxox-engine-viz-dot--slate {
+  background: #64748b;
+}
+
+.maxox-engine-viz-legend-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.maxox-engine-viz-legend-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.maxox-engine-viz-meter-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+@media (min-width: 640px) {
+  .maxox-engine-viz-meter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.maxox-engine-viz-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.72rem;
+  color: rgba(190, 195, 210, 0.9);
+  margin-bottom: 0.25rem;
+}
+
+.maxox-engine-viz-meter-pct {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.maxox-engine-viz-meter-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.maxox-engine-viz-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.35s ease;
+}
+
+.maxox-engine-viz-meter-fill--rose {
+  background: linear-gradient(90deg, #fb7185, #9f1239);
+}
+
+.maxox-engine-viz-meter-fill--cyan {
+  background: linear-gradient(90deg, #22d3ee, #155e75);
+}
+
+.maxox-engine-viz-meter-fill--amber {
+  background: linear-gradient(90deg, #fbbf24, #9a3412);
+}
+
+.maxox-engine-viz-meter-fill--violet {
+  background: linear-gradient(90deg, #a78bfa, #5b21b6);
+}
+
+/* Metabolic Profile — stacked aerobic / PCr / glycolytic share by duration */
+.metabolic-comp-stack-card {
+  margin-bottom: 18px;
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(18, 28, 24, 0.98), rgba(8, 14, 12, 0.99));
+  border: 1px solid rgba(52, 211, 153, 0.16);
+  max-width: 640px;
+}
+
+.metabolic-comp-stack-head {
+  margin-bottom: 12px;
+}
+
+.metabolic-comp-stack-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #d1fae5;
+}
+
+.metabolic-comp-stack-caption {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(180, 210, 200, 0.9);
+  max-width: 62ch;
+}
+
+.metabolic-comp-stack-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metabolic-comp-stack-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 56px;
+  align-items: center;
+  gap: 10px;
+}
+
+.metabolic-comp-stack-lab {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(200, 230, 210, 0.88);
+}
+
+.metabolic-comp-stack-track {
+  display: flex;
+  height: 22px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.metabolic-comp-stack-seg {
+  height: 100%;
+  min-width: 0;
+}
+
+.metabolic-comp-stack-seg--aer {
+  background: linear-gradient(180deg, #34d399, #059669);
+}
+
+.metabolic-comp-stack-seg--pcr {
+  background: linear-gradient(180deg, #7dd3fc, #0ea5e9);
+}
+
+.metabolic-comp-stack-seg--gly {
+  background: linear-gradient(180deg, #fbbf24, #d97706);
+}
+
+.metabolic-comp-stack-total {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(226, 245, 236, 0.92);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.metabolic-comp-stack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  color: rgba(190, 220, 205, 0.88);
+}
+
+.metabolic-comp-stack-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.metabolic-comp-stack-dot--aer {
+  background: #34d399;
+}
+
+.metabolic-comp-stack-dot--pcr {
+  background: #38bdf8;
+}
+
+.metabolic-comp-stack-dot--gly {
+  background: #fbbf24;
+}
+
+.physiology-pro2-lab-banner--maxox-engine {
+  background: linear-gradient(90deg, #059669, #14b8a6, #22d3ee);
+}
+
+.physiology-pro2-eng-section {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(244, 63, 94, 0.22);
+  padding: 1rem 1rem 1.15rem;
+  background: rgba(6, 6, 10, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.physiology-pro2-eng-section--energy {
+  border-color: rgba(244, 63, 94, 0.28);
+}
+
+.physiology-pro2-eng-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.physiology-pro2-eng-section-title--pink {
+  color: #fda4af;
+  text-shadow: 0 0 18px rgba(251, 113, 133, 0.35);
+}
+
+.physiology-pro2-eng-section-title--magenta {
+  color: #e879f9;
+}
+
+.physiology-pro2-eng-section-title--strat {
+  color: #d946ef;
+  margin-bottom: 0.75rem;
+}
+
+.physiology-pro2-eng-section-ico {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.physiology-pro2-eng-kpi-grid-6 {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+@media (min-width: 900px) {
+  .physiology-pro2-eng-kpi-grid-6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.physiology-pro2-eng-kpi {
+  position: relative;
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.75rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 5.5rem;
+}
+
+.physiology-pro2-eng-kpi-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.physiology-pro2-eng-kpi-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.physiology-pro2-eng-kpi-ico {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.physiology-pro2-eng-kpi-value {
+  margin-top: 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #fff;
+  line-height: 1.05;
+}
+
+.physiology-pro2-eng-kpi-unit {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.physiology-pro2-eng-donut-row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .physiology-pro2-eng-donut-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.physiology-pro2-eng-donut-card {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 8, 14, 0.92);
+  padding: 0.75rem 0.85rem 1rem;
+}
+
+.physiology-pro2-eng-donut-title {
+  margin: 0 0 0.25rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.physiology-pro2-eng-donut-svg-wrap {
+  width: 100%;
+  min-height: 160px;
+}
+
+.physiology-pro2-eng-donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+}
+
+.physiology-pro2-eng-chart-block {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  background: rgba(6, 6, 10, 0.92);
+  padding: 0.85rem 1rem 0.5rem;
+}
+
+.physiology-pro2-eng-chart-block--lac-flow {
+  box-shadow: 0 0 32px rgba(244, 63, 94, 0.08);
+}
+
+.physiology-pro2-eng-chart-h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.physiology-pro2-eng-chart-h3--pink {
+  color: #fda4af;
+}
+
+.physiology-pro2-eng-chart-h3--cyan {
+  color: #7dd3fc;
+}
+
+.physiology-pro2-eng-chart-h3--amber {
+  color: #fcd34d;
+}
+
+.physiology-pro2-eng-chart-caption {
+  margin: -0.2rem 0 0.55rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.95);
+  line-height: 1.35;
+}
+
+.physiology-pro2-eng-pipeline-footnote {
+  margin: 0.55rem 0 0;
+  font-size: 0.7rem;
+  color: rgba(148, 163, 184, 0.9);
+  line-height: 1.35;
+}
+
+.physiology-pro2-eng-chart-inner {
+  width: 100%;
+  min-height: 200px;
+}
+
+.physiology-pro2-eng-shuttle-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .physiology-pro2-eng-shuttle-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.physiology-pro2-eng-shuttle-card {
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.7rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.physiology-pro2-eng-shuttle-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.25;
+}
+
+.physiology-pro2-eng-shuttle-ico {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.physiology-pro2-eng-shuttle-value {
+  margin-top: 0.4rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.physiology-pro2-eng-shuttle-unit {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.physiology-pro2-eng-two-col {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .physiology-pro2-eng-two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.physiology-pro2-eng-pipeline-card,
+.physiology-pro2-eng-micro-card {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(6, 8, 14, 0.9);
+  padding: 0.85rem 1rem;
+}
+
+.physiology-pro2-eng-micro-card {
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+.physiology-pro2-eng-pipeline-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.physiology-pro2-eng-pipeline-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 3.25rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.physiology-pro2-eng-pipeline-label {
+  font-size: 0.65rem;
+  color: rgba(186, 200, 220, 0.9);
+}
+
+.physiology-pro2-eng-pipeline-val {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.physiology-pro2-eng-micro-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.physiology-pro2-eng-micro-list li span:first-child {
+  font-size: 0.65rem;
+  color: rgba(200, 200, 215, 0.88);
+  display: block;
+}
+
+.physiology-pro2-eng-micro-list li span:nth-child(2) {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fef3c7;
+  float: right;
+  margin-top: -1rem;
+}
+
+.physiology-pro2-eng-pathway-box {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.55rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.physiology-pro2-eng-pathway-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(167, 243, 208, 0.9);
+}
+
+.physiology-pro2-eng-pathway-pill {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.physiology-pro2-eng-pathway--low {
+  background: #22c55e;
+  color: #fff;
+}
+
+.physiology-pro2-eng-pathway--mod {
+  background: #f59e0b;
+  color: #1a1008;
+}
+
+.physiology-pro2-eng-pathway--high {
+  background: #ef4444;
+  color: #fff;
+}
+
+.physiology-pro2-eng-strategia {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  padding: 1rem 1.05rem 1.1rem;
+  background: rgba(10, 6, 18, 0.9);
+  box-shadow: 0 0 28px rgba(168, 85, 247, 0.12);
+}
+
+.physiology-pro2-eng-strategia-kpis {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .physiology-pro2-eng-strategia-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.physiology-pro2-eng-strat-kpi {
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid transparent;
+}
+
+.physiology-pro2-eng-strat-kpi--purple {
+  border-color: rgba(192, 132, 252, 0.55);
+  background: linear-gradient(165deg, rgba(88, 28, 135, 0.35), rgba(10, 10, 16, 0.95));
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.15);
+}
+
+.physiology-pro2-eng-strat-kpi--orange {
+  border-color: rgba(251, 146, 60, 0.55);
+  background: linear-gradient(165deg, rgba(154, 52, 18, 0.3), rgba(10, 10, 16, 0.95));
+  box-shadow: 0 0 24px rgba(251, 146, 60, 0.12);
+}
+
+.physiology-pro2-eng-strat-label {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(216, 180, 254, 0.9);
+  margin-bottom: 0.35rem;
+}
+
+.physiology-pro2-eng-strat-kpi--orange .physiology-pro2-eng-strat-label {
+  color: rgba(254, 215, 170, 0.95);
+}
+
+.physiology-pro2-eng-strat-kpi strong {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #fdf4ff;
+  letter-spacing: -0.03em;
+}
+
+.physiology-pro2-eng-strat-kpi--orange strong {
+  color: #fff7ed;
+}
+
+.physiology-pro2-eng-strat-unit {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+/* MaxOx report */
+.physiology-pro2-eng-vo2-trio {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(6, 12, 18, 0.92);
+  padding: 0.85rem 1rem 1rem;
+}
+
+.physiology-pro2-eng-vo2-trio-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #a5f3fc;
+}
+
+.physiology-pro2-eng-vo2-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.physiology-pro2-eng-vo2-cell {
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.physiology-pro2-eng-vo2-cell--cyan {
+  border-color: rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.12);
+}
+
+.physiology-pro2-eng-vo2-cell--blue {
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.physiology-pro2-eng-vo2-cell--violet {
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.1);
+}
+
+.physiology-pro2-eng-vo2-lab {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.75);
+  margin-bottom: 0.35rem;
+}
+
+.physiology-pro2-eng-vo2-cell strong {
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.physiology-pro2-eng-vo2-unit {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.physiology-pro2-eng-vo2-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(103, 232, 249, 0.9);
+  line-height: 1.3;
+}
+
+.physiology-pro2-eng-maxox-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.55rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.physiology-pro2-eng-maxox-sum-lab {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.physiology-pro2-eng-maxox-sum-val {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.physiology-pro2-eng-maxox-sum-val--cyan {
+  color: #22d3ee;
+}
+
+.physiology-pro2-eng-maxox-sum-val--green {
+  color: #4ade80;
+}
+
+.physiology-pro2-eng-maxox-sum-val--amber {
+  color: #fcd34d;
+}
+
+.physiology-pro2-eng-maxox-sum-sub {
+  margin: 0;
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.88);
+  line-height: 1.4;
+}
+
+.physiology-pro2-eng-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fb923c;
+}
+
+.physiology-pro2-eng-section-title-row--warn {
+  color: #fdba74;
+  text-shadow: 0 0 14px rgba(251, 146, 60, 0.25);
+}
+
+.physiology-pro2-eng-section-title-row--cyan {
+  color: #67e8f9;
+  margin-top: 0.25rem;
+}
+
+.physiology-pro2-eng-maxox-gauges {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 960px) {
+  .physiology-pro2-eng-maxox-gauges {
+    grid-template-columns: 1.4fr 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.physiology-pro2-eng-gauge {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.35rem 0.25rem;
+  background: rgba(8, 8, 12, 0.88);
+}
+
+.physiology-pro2-eng-gauge--rose {
+  border-color: rgba(244, 63, 94, 0.28);
+}
+
+.physiology-pro2-eng-gauge--amber {
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+.physiology-pro2-eng-gauge--emerald {
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.physiology-pro2-eng-gauge-label {
+  margin: 0 0 0.15rem;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fda4af;
+}
+
+.physiology-pro2-eng-gauge--amber .physiology-pro2-eng-gauge-label {
+  color: #fdba74;
+}
+
+.physiology-pro2-eng-gauge--emerald .physiology-pro2-eng-gauge-label {
+  color: #6ee7b7;
+}
+
+.physiology-pro2-eng-gauge-svg {
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+  display: block;
+}
+
+.physiology-pro2-eng-gauge-value {
+  fill: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  font-family: system-ui, sans-serif;
+}
+
+.physiology-pro2-eng-gauge-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.physiology-pro2-eng-oversat {
+  padding: 0.35rem 0.85rem;
+  border-radius: 0.45rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.physiology-pro2-eng-sat-ok {
+  font-size: 0.62rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.physiology-pro2-eng-sat-foot {
+  margin: 0.15rem 0 0;
+  max-width: 17rem;
+  text-align: center;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: rgba(148, 163, 184, 0.88);
+}
+
+.physiology-pro2-eng-sat-foot strong {
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.physiology-pro2-eng-maxox-bottom-kpis {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.physiology-pro2-eng-mbkpi {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.physiology-pro2-eng-mbkpi--violet {
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+.physiology-pro2-eng-mbkpi--green {
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.physiology-pro2-eng-mbkpi--rose {
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.physiology-pro2-eng-mbkpi-lab {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.95);
+  margin-bottom: 0.25rem;
+}
+
+.physiology-pro2-eng-mbkpi--green .physiology-pro2-eng-mbkpi-lab {
+  color: rgba(167, 243, 208, 0.95);
+}
+
+.physiology-pro2-eng-mbkpi--rose .physiology-pro2-eng-mbkpi-lab {
+  color: #fecdd3;
+}
+
+.physiology-pro2-eng-mbkpi strong {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.physiology-pro2-eng-mbkpi--green strong {
+  color: #6ee7b7;
+}
+
+.physiology-pro2-eng-mbkpi--rose strong {
+  color: #fda4af;
+}
+
+.physiology-pro2-eng-mbkpi-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.physiology-pro2-eng-maxox-delivery-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.physiology-pro2-eng-del-card {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.physiology-pro2-eng-del-card--green {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.physiology-pro2-eng-del-card--cyan {
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.physiology-pro2-eng-del-ico {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 1rem;
+  height: 1rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.physiology-pro2-eng-del-lab {
+  display: block;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(186, 230, 253, 0.88);
+  padding-right: 1.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.physiology-pro2-eng-del-card strong {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #4ade80;
+}
+
+.physiology-pro2-eng-del-card--cyan strong {
+  color: #22d3ee;
+}
+
+.physiology-pro2-eng-nadh-row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .physiology-pro2-eng-nadh-row {
+    grid-template-columns: 1fr 1.1fr;
+  }
+}
+
+.physiology-pro2-eng-nadh-card {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(12, 8, 20, 0.9);
+  padding: 0.85rem 1rem;
+}
+
+.physiology-pro2-eng-nadh-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #d8b4fe;
+}
+
+.physiology-pro2-eng-nadh-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.physiology-pro2-eng-nadh-row-h {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: rgba(226, 232, 240, 0.88);
+  margin-bottom: 0.2rem;
+}
+
+.physiology-pro2-eng-nadh-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.physiology-pro2-eng-nadh-pill {
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.physiology-pro2-eng-nadh-pill--pur {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.physiology-pro2-eng-nadh-pill--gr {
+  background: rgba(6, 20, 12, 0.95);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #4ade80;
+}
+
+.physiology-pro2-eng-del-chart-card {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  background: rgba(6, 10, 16, 0.92);
+  padding: 0.75rem 0.85rem 0.5rem;
+}
+
+.physiology-pro2-eng-maxox-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.55rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  color: rgba(203, 213, 225, 0.92);
+  line-height: 1.45;
+}
+
+/* --- Lactate engine output · Pro2 bar / meter viz (`LactateEnginePro2Viz`) --- */
+.lactate-engine-viz {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 20px;
+}
+
+@media (min-width: 900px) {
+  .lactate-engine-viz {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .lactate-engine-viz-card--gut {
+    grid-column: 1 / -1;
+  }
+}
+
+.lactate-engine-viz-card {
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(28, 22, 12, 0.92), rgba(12, 10, 8, 0.97));
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lactate-engine-viz-card--gut {
+  background: linear-gradient(155deg, rgba(24, 14, 18, 0.94), rgba(10, 8, 10, 0.98));
+  border-color: rgba(244, 63, 94, 0.2);
+}
+
+.lactate-engine-viz-title {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(252, 211, 77, 0.95);
+}
+
+.lactate-engine-viz-card--gut .lactate-engine-viz-title {
+  color: rgba(253, 164, 175, 0.95);
+}
+
+.lactate-engine-viz-sub {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(190, 195, 210, 0.88);
+}
+
+.lactate-engine-viz-sub strong {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.lactate-engine-viz-hint {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  color: rgba(160, 165, 180, 0.85);
+  line-height: 1.4;
+}
+
+.lactate-engine-viz-bar-wrap {
+  width: 100%;
+}
+
+.lactate-engine-viz-bar-track {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.lactate-engine-viz-bar-seg {
+  min-width: 0;
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.lactate-engine-viz-bar-seg--amber {
+  background: linear-gradient(180deg, #fbbf24, #d97706);
+}
+
+.lactate-engine-viz-bar-seg--cyan {
+  background: linear-gradient(180deg, #22d3ee, #0891b2);
+}
+
+.lactate-engine-viz-bar-seg--rose {
+  background: linear-gradient(180deg, #fb7185, #e11d48);
+}
+
+.lactate-engine-viz-bar-seg--violet {
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+}
+
+.lactate-engine-viz-bar-seg--slate {
+  background: linear-gradient(180deg, rgba(100, 110, 130, 0.95), rgba(55, 60, 75, 0.98));
+}
+
+.lactate-engine-viz-legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lactate-engine-viz-legend li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: rgba(200, 205, 220, 0.9);
+}
+
+.lactate-engine-viz-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.lactate-engine-viz-dot--amber {
+  background: #fbbf24;
+}
+
+.lactate-engine-viz-dot--cyan {
+  background: #22d3ee;
+}
+
+.lactate-engine-viz-dot--rose {
+  background: #fb7185;
+}
+
+.lactate-engine-viz-dot--violet {
+  background: #a78bfa;
+}
+
+.lactate-engine-viz-dot--slate {
+  background: #64748b;
+}
+
+.lactate-engine-viz-legend-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.lactate-engine-viz-legend-val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.lactate-engine-viz-risk {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lactate-engine-viz-risk--green {
+  color: #00e08d;
+}
+
+.lactate-engine-viz-risk--amber {
+  color: #ffd60a;
+}
+
+.lactate-engine-viz-risk--rose {
+  color: #ff5d5d;
+}
+
+.lactate-engine-viz-meter-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (min-width: 640px) {
+  .lactate-engine-viz-meter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.lactate-engine-viz-meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.72rem;
+  color: rgba(190, 195, 210, 0.9);
+  margin-bottom: 4px;
+}
+
+.lactate-engine-viz-meter-pct {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.lactate-engine-viz-meter-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.lactate-engine-viz-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.35s ease;
+}
+
+.lactate-engine-viz-meter-fill--rose {
+  background: linear-gradient(90deg, #fb7185, #e11d48);
+}
+
+.lactate-engine-viz-meter-fill--amber {
+  background: linear-gradient(90deg, #fbbf24, #ea580c);
+}
+
+.lactate-engine-viz-meter-fill--violet {
+  background: linear-gradient(90deg, #a78bfa, #6d28d9);
+}
+
+.lactate-engine-viz-meter-fill--green {
+  background: linear-gradient(90deg, #00e08d, #059669);
+}
+
+.lactate-engine-viz-mini-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (min-width: 720px) {
+  .lactate-engine-viz-mini-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.lactate-engine-viz-mini-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(160, 165, 180, 0.85);
+  margin-bottom: 2px;
+}
+
+.lactate-engine-viz-mini-val {
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}

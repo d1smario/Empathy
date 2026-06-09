@@ -1,0 +1,531 @@
+/**
+ * Pipeline canonica Pro 2: motore → `TrainingBlock` → `Pro2BuilderSessionContract` con `chart` pieno.
+ * VIRYA (`ViryaAnnualPlanOrchestrator`) per aerobic / technical / lifestyle deve usare solo questo
+ * (non il percorso parallelo solo-`materializePro2BlocksFromEngine` → JSON senza chart).
+ */
+import type { AdaptationTarget } from "@/lib/training/engine";
+import { metabolicKcalFromMechanicalKj, mechanicalKjFromIntensitySegments } from "@empathy/domain-physiology";
+import { estimateTssFromSegments } from "@/lib/training/builder/tss-estimate";
+import { materializeEngineSessionToSlimBlocks } from "@/lib/training/engine/materialize-engine-session-to-slim-blocks";
+import type {
+  Pro2BuilderBlockContract,
+  Pro2BuilderSessionContract,
+  Pro2SessionSummary,
+} from "@/lib/training/builder/pro2-session-contract";
+
+type MaterializeEngineInput = Parameters<typeof materializeEngineSessionToSlimBlocks>[0];
+
+export type BlockKind = "steady" | "interval2" | "interval3" | "ramp" | "pyramid";
+export type IntensityDisplayUnit = "watt" | "hr";
+export type BlockLengthMode = "time" | "distance";
+
+export type TrainingBlock = {
+  id: string;
+  name: string;
+  kind: BlockKind;
+  minutes: number;
+  seconds: number;
+  intensity: string;
+  startIntensity: string;
+  endIntensity: string;
+  intensity2: string;
+  intensity3: string;
+  repeats: number;
+  workSeconds: number;
+  recoverSeconds: number;
+  step1Seconds: number;
+  step2Seconds: number;
+  step3Seconds: number;
+  pyramidSteps: number;
+  pyramidStepSeconds: number;
+  pyramidStartTarget: number;
+  pyramidEndTarget: number;
+  distanceKm: number;
+  gradePercent: number;
+  elevationMeters: number;
+  cadence: string;
+  frequencyHint: string;
+  target: string;
+  notes: string;
+  loadFactor: number;
+  mediaUrl?: string;
+};
+
+export type TrainingBlockSegment = {
+  label: string;
+  intensity: string;
+  seconds: number;
+  sourceBlockId: string;
+  targetValue?: number;
+};
+
+export function intensityScore(intensity: string): number {
+  const map: Record<string, number> = {
+    Z1: 1,
+    Z2: 2,
+    Z3: 3,
+    Z4: 4,
+    Z5: 5,
+    Z6: 6,
+    Z7: 7,
+    LT1: 3,
+    LT2: 4,
+    FatMax: 2,
+  };
+  return map[intensity] ?? 3;
+}
+
+export function intensityToRelativeLoad(intensity: string): number {
+  const map: Record<string, number> = {
+    Z1: 0.55,
+    Z2: 0.68,
+    Z3: 0.8,
+    Z4: 0.92,
+    Z5: 1.02,
+    Z6: 1.1,
+    Z7: 1.18,
+    LT1: 0.78,
+    LT2: 0.94,
+    FatMax: 0.64,
+  };
+  return map[intensity] ?? 0.8;
+}
+
+export function zoneForTargetValue(value: number, unit: IntensityDisplayUnit, ftpW: number, hrMax: number): string {
+  const rel = unit === "watt" ? value / Math.max(1, ftpW) : value / Math.max(1, hrMax);
+  if (rel < 0.6) return "Z1";
+  if (rel < 0.74) return "Z2";
+  if (rel < 0.86) return "Z3";
+  if (rel < 0.98) return "Z4";
+  if (rel < 1.08) return "Z5";
+  if (rel < 1.15) return "Z6";
+  return "Z7";
+}
+
+export function defaultBlock(kind: BlockKind = "steady", name = "Nuovo blocco"): TrainingBlock {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    kind,
+    minutes: 10,
+    seconds: 0,
+    intensity: "Z2",
+    startIntensity: "Z2",
+    endIntensity: "Z4",
+    intensity2: "Z1",
+    intensity3: "Z5",
+    repeats: 6,
+    workSeconds: 180,
+    recoverSeconds: 90,
+    step1Seconds: 120,
+    step2Seconds: 90,
+    step3Seconds: 60,
+    pyramidSteps: 5,
+    pyramidStepSeconds: 180,
+    pyramidStartTarget: 100,
+    pyramidEndTarget: 200,
+    distanceKm: 5,
+    gradePercent: 0,
+    elevationMeters: 0,
+    cadence: "",
+    frequencyHint: "",
+    target: "Performance",
+    notes: "",
+    loadFactor: 1,
+  };
+}
+
+/**
+ * Estrae la **prima** zona canonica nel testo (word-boundary), così frasi tipo
+ * «Z2 distesi … evitare Z4» non finiscono su Z4 per un `.includes("Z4")` accidentale.
+ */
+function zoneFromIntensityCue(cue: string, fallback: string = "Z2"): string {
+  const raw = cue.trim();
+  if (!raw) return fallback;
+  const lower = raw.toLowerCase();
+  if (/recovery|low intensity|breathing-led|autonomic/i.test(lower)) return "Z1";
+  if (/explosive|power output/i.test(lower)) return "Z5";
+  if (/\bthreshold\b|\bsoglia\b/i.test(lower)) return "LT2";
+  const re = /\b(Z[1-7]|LT1|LT2|FatMax)\b/gi;
+  const m = re.exec(raw);
+  if (m?.[1]) {
+    const tok = m[1];
+    if (/^fatmax$/i.test(tok)) return "FatMax";
+    const u = tok.toUpperCase();
+    return u === "LT1" || u === "LT2" ? u : u;
+  }
+  return fallback;
+}
+
+function formatTaxonomyLabel(input: string): string {
+  const value = input.replace(/_/g, " ").trim();
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function targetFromAdaptation(adaptation: string): string {
+  const label = formatTaxonomyLabel(adaptation);
+  return label || "Performance";
+}
+
+function blockKindFromEngineMethod(method: string, label: string): BlockKind {
+  if (/warm-up|riscaldamento/i.test(label)) return "ramp";
+  if (/cool-down|defaticamento/i.test(label)) return "ramp";
+  if (method === "interval" || method === "repeated_sprint") return "interval2";
+  return "steady";
+}
+
+/**
+ * Preset Virya / motore in `intensityCue` → work/recovery/repeats per blocchi interval
+ * (solo blocco serie principali / legacy "Main block" — non riscaldamento / defaticamento).
+ */
+function intervalShapeFromViryaPreset(
+  label: string,
+  method: string,
+  intensityCue: string,
+  durationMinutes: number,
+): { workSeconds: number; recoverSeconds: number; repeats: number } | null {
+  const isMainSeries = /main block|serie principali|blocco principale/i.test(label);
+  if (!isMainSeries) return null;
+  if (method !== "interval" && method !== "repeated_sprint") return null;
+  const c = intensityCue;
+  const totalSec = Math.max(600, Math.round(durationMinutes * 60 * 0.72));
+
+  if (/PRESET_NORWEGIAN/i.test(c)) {
+    const work = 8 * 60;
+    const recover = 2 * 60;
+    const reps = Math.max(3, Math.min(10, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_VO2_Z6/i.test(c)) {
+    const work = 45;
+    const recover = 60;
+    const reps = Math.max(8, Math.min(18, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_VO2_Z5/i.test(c)) {
+    const work = 90;
+    const recover = 90;
+    const reps = Math.max(5, Math.min(14, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_LACTATE_MAX/i.test(c)) {
+    const work = 40;
+    const recover = 80;
+    const reps = Math.max(10, Math.min(24, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_ON_OFF/i.test(c)) {
+    const work = 3 * 60;
+    const recover = 90;
+    const reps = Math.max(6, Math.min(16, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_LADDER/i.test(c)) {
+    const work = 5 * 60;
+    const recover = 2 * 60;
+    const reps = Math.max(4, Math.min(12, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  if (/PRESET_SPRINT/i.test(c)) {
+    const work = 22;
+    const recover = 100;
+    const reps = Math.max(10, Math.min(28, Math.round(totalSec / (work + recover))));
+    return { workSeconds: work, recoverSeconds: recover, repeats: reps };
+  }
+  return null;
+}
+
+function loadFactorFromEngineMethod(method: string): number {
+  if (method === "flow_recovery") return 0.55;
+  if (method === "technical_drill") return 0.8;
+  if (method === "mixed_circuit") return 1.05;
+  if (method === "strength_sets") return 1.2;
+  if (method === "power_sets") return 1.15;
+  if (method === "repeated_sprint") return 1.3;
+  if (method === "interval") return 1.18;
+  return 0.95;
+}
+
+function blockMediaUrl(block: Pro2BuilderBlockContract): string | undefined {
+  return block.mediaUrl ?? block.lifestyleRx?.mediaUrl;
+}
+
+export function mapEngineSessionToTrainingBlocks(input: MaterializeEngineInput): TrainingBlock[] {
+  const builderBlocks = materializeEngineSessionToSlimBlocks(input);
+  return builderBlocks.map((block, index) => {
+    const method = String(block.kind ?? "steady");
+    const intensityCue = String(block.intensityCue ?? "");
+    const labelStr = String(block.label ?? `Block ${index + 1}`);
+    const blockKind = blockKindFromEngineMethod(method, labelStr);
+    const isWarm = /warm-up|riscaldamento/i.test(labelStr);
+    const isCool = /cool-down|defaticamento/i.test(labelStr);
+    const primaryZone = isWarm
+      ? "Z1"
+      : isCool
+        ? "Z2"
+        : zoneFromIntensityCue(intensityCue, method === "flow_recovery" ? "Z1" : "Z2");
+    const secondaryZone = method === "interval" || method === "repeated_sprint" ? "Z1" : "Z2";
+    const durationMinutes = Math.max(4, Math.round(Number(block.durationMinutes ?? 10) || 10));
+    const presetShape = intervalShapeFromViryaPreset(labelStr, method, intensityCue, durationMinutes);
+    const intervalWork = presetShape
+      ? presetShape.workSeconds
+      : Math.max(30, Math.round((durationMinutes * 60) / 6));
+    const intervalRecover = presetShape
+      ? presetShape.recoverSeconds
+      : Math.max(20, Math.round(intervalWork / 2));
+    const intervalRepeats = presetShape
+      ? presetShape.repeats
+      : Math.max(3, Math.round(durationMinutes / 4));
+
+    return {
+      ...defaultBlock(blockKind, labelStr),
+      minutes: durationMinutes,
+      seconds: 0,
+      intensity: primaryZone,
+      startIntensity: isWarm ? "Z1" : isCool ? "Z2" : method === "flow_recovery" ? "Z1" : primaryZone,
+      endIntensity: isWarm ? "Z2" : isCool ? "Z1" : primaryZone,
+      intensity2: secondaryZone,
+      intensity3: "Z5",
+      repeats: intervalRepeats,
+      workSeconds: intervalWork,
+      recoverSeconds: intervalRecover,
+      target: targetFromAdaptation(String(block.target ?? "")),
+      notes: [intensityCue, block.notes ?? ""].filter(Boolean).join(" | "),
+      loadFactor: loadFactorFromEngineMethod(method),
+      mediaUrl: blockMediaUrl(block),
+    };
+  });
+}
+
+export function mapEngineBlocksToBuilderBlocks(
+  session: Record<string, unknown>,
+  blockExercises?: Array<Record<string, unknown>>,
+): TrainingBlock[] {
+  return mapEngineSessionToTrainingBlocks({
+    session,
+    blockExercises,
+    fallbackDurationMinutes: 10,
+  });
+}
+
+function resolveBlockDurationSeconds(block: TrainingBlock, lengthMode: BlockLengthMode, speedRefKmh: number): number {
+  if (lengthMode === "distance" && (block.kind === "steady" || block.kind === "ramp" || block.kind === "pyramid")) {
+    const km = Math.max(0.1, block.distanceKm || 0);
+    return Math.max(30, Math.round((km / Math.max(1, speedRefKmh)) * 3600));
+  }
+  return Math.max(30, block.minutes * 60 + block.seconds);
+}
+
+export function expandBlockSegments(
+  block: TrainingBlock,
+  opts: {
+    unit: IntensityDisplayUnit;
+    ftpW: number;
+    hrMax: number;
+    lengthMode: BlockLengthMode;
+    speedRefKmh: number;
+  },
+): TrainingBlockSegment[] {
+  if (block.kind === "steady") {
+    return [
+      {
+        label: block.name,
+        intensity: block.intensity,
+        seconds: resolveBlockDurationSeconds(block, opts.lengthMode, opts.speedRefKmh),
+        sourceBlockId: block.id,
+      },
+    ];
+  }
+  if (block.kind === "ramp") {
+    return [
+      {
+        label: `${block.name} ${block.startIntensity}->${block.endIntensity}`,
+        intensity: block.endIntensity,
+        seconds: resolveBlockDurationSeconds(block, opts.lengthMode, opts.speedRefKmh),
+        sourceBlockId: block.id,
+      },
+    ];
+  }
+  if (block.kind === "pyramid") {
+    const steps = Math.max(1, block.pyramidSteps || 1);
+    const stepSeconds = Math.max(20, block.pyramidStepSeconds || 20);
+    const start = block.pyramidStartTarget;
+    const end = block.pyramidEndTarget;
+    const stepDelta = (end - start) / steps;
+    const out: TrainingBlockSegment[] = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const targetValue = Math.round((start + stepDelta * i) * 10) / 10;
+      out.push({
+        label: `${block.name} step ${i + 1}/${steps + 1}`,
+        intensity: zoneForTargetValue(targetValue, opts.unit, opts.ftpW, opts.hrMax),
+        seconds: stepSeconds,
+        sourceBlockId: block.id,
+        targetValue,
+      });
+    }
+    return out;
+  }
+  if (block.kind === "interval2") {
+    const reps = Math.max(1, block.repeats);
+    const work = Math.max(10, block.workSeconds);
+    const rec = Math.max(10, block.recoverSeconds);
+    const out: TrainingBlockSegment[] = [];
+    for (let i = 0; i < reps; i += 1) {
+      out.push({ label: `${block.name} work`, intensity: block.intensity, seconds: work, sourceBlockId: block.id });
+      out.push({ label: `${block.name} rec`, intensity: block.intensity2, seconds: rec, sourceBlockId: block.id });
+    }
+    return out;
+  }
+  const reps = Math.max(1, block.repeats);
+  const a = Math.max(10, block.step1Seconds);
+  const b = Math.max(10, block.step2Seconds);
+  const c = Math.max(10, block.step3Seconds);
+  const out: TrainingBlockSegment[] = [];
+  for (let i = 0; i < reps; i += 1) {
+    out.push({ label: `${block.name} A`, intensity: block.intensity, seconds: a, sourceBlockId: block.id });
+    out.push({ label: `${block.name} B`, intensity: block.intensity2, seconds: b, sourceBlockId: block.id });
+    out.push({ label: `${block.name} C`, intensity: block.intensity3, seconds: c, sourceBlockId: block.id });
+  }
+  return out;
+}
+
+export function summarizeTrainingBlocks(
+  blocks: TrainingBlock[],
+  opts: { unit: IntensityDisplayUnit; ftpW: number; hrMax: number; lengthMode: BlockLengthMode; speedRefKmh: number },
+): Pro2SessionSummary {
+  const flatSegs = blocks.flatMap((b) => expandBlockSegments(b, opts));
+  const durationSec = flatSegs.reduce((sum, s) => sum + s.seconds, 0);
+  const tss = estimateTssFromSegments(
+    flatSegs.map((s) => ({ durationSeconds: s.seconds, intensityLabel: s.intensity })),
+  );
+  const kj = mechanicalKjFromIntensitySegments(
+    flatSegs.map((s) => ({ durationSeconds: s.seconds, intensityLabel: s.intensity })),
+    opts.ftpW,
+  );
+  const totalWorkJ = kj * 1000;
+  const avgPowerW = durationSec > 0 ? Math.round(totalWorkJ / durationSec) : 0;
+  const kcal = metabolicKcalFromMechanicalKj(kj);
+  return { durationSec, tss, kcal, kj, avgPowerW };
+}
+
+export const summarizeBlocks = summarizeTrainingBlocks;
+
+function scaleRounded(value: number, scale: number, minimum = 0) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.max(minimum, Math.round(value * scale));
+}
+
+function scaleDecimal(value: number, scale: number, digits = 1) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const factor = 10 ** digits;
+  return Math.round(value * scale * factor) / factor;
+}
+
+export function scaleTrainingBlock(block: TrainingBlock, scale: number): TrainingBlock {
+  return {
+    ...block,
+    minutes: block.minutes > 0 ? scaleRounded(block.minutes, scale, 1) : 0,
+    seconds: block.seconds > 0 ? scaleRounded(block.seconds, scale, 1) : 0,
+    workSeconds: block.workSeconds > 0 ? scaleRounded(block.workSeconds, scale, 1) : 0,
+    recoverSeconds: block.recoverSeconds > 0 ? scaleRounded(block.recoverSeconds, scale, 1) : 0,
+    step1Seconds: block.step1Seconds > 0 ? scaleRounded(block.step1Seconds, scale, 1) : 0,
+    step2Seconds: block.step2Seconds > 0 ? scaleRounded(block.step2Seconds, scale, 1) : 0,
+    step3Seconds: block.step3Seconds > 0 ? scaleRounded(block.step3Seconds, scale, 1) : 0,
+    pyramidStepSeconds: block.pyramidStepSeconds > 0 ? scaleRounded(block.pyramidStepSeconds, scale, 1) : 0,
+    distanceKm: block.distanceKm > 0 ? scaleDecimal(block.distanceKm, scale, 2) : 0,
+    elevationMeters: block.elevationMeters > 0 ? scaleRounded(block.elevationMeters, scale, 1) : 0,
+  };
+}
+
+export function buildPro2BlockSessionContract(input: {
+  discipline: string;
+  family: "aerobic" | "technical" | "lifestyle";
+  sessionName: string;
+  adaptationTarget?: AdaptationTarget;
+  phase?: string;
+  summary: Pro2SessionSummary;
+  plannedSessionDurationMinutes?: number;
+  blocks: TrainingBlock[];
+  unit: IntensityDisplayUnit;
+  ftpW: number;
+  hrMax: number;
+  lengthMode: BlockLengthMode;
+  speedRefKmh: number;
+}): Pro2BuilderSessionContract {
+  const segOpts = {
+    unit: input.unit,
+    ftpW: input.ftpW,
+    hrMax: input.hrMax,
+    lengthMode: input.lengthMode,
+    speedRefKmh: input.speedRefKmh,
+  };
+  const blocksOut: Pro2BuilderBlockContract[] = input.blocks.map((block) => {
+    const expandedSecs = expandBlockSegments(block, segOpts).reduce((sum, segment) => sum + segment.seconds, 0);
+    const durationMinutes = Math.round((expandedSecs / 60) * 10) / 10;
+    const chartMinutes = Math.floor(expandedSecs / 60);
+    const chartSeconds = Math.max(0, Math.round(expandedSecs - chartMinutes * 60));
+    return {
+    id: block.id,
+    label: block.name,
+    kind: block.kind,
+    durationMinutes,
+    intensityCue:
+      block.kind === "ramp"
+        ? `${block.startIntensity}->${block.endIntensity}`
+        : block.kind === "interval2"
+          ? `${block.intensity}/${block.intensity2}`
+          : block.kind === "interval3"
+            ? `${block.intensity}/${block.intensity2}/${block.intensity3}`
+            : block.intensity,
+    target: block.target,
+    notes: block.notes,
+    mediaUrl: block.mediaUrl,
+    chart: {
+      minutes: chartMinutes,
+      seconds: chartSeconds,
+      intensity: block.intensity,
+      startIntensity: block.startIntensity,
+      endIntensity: block.endIntensity,
+      intensity2: block.intensity2,
+      intensity3: block.intensity3,
+      repeats: block.repeats,
+      workSeconds: block.workSeconds,
+      recoverSeconds: block.recoverSeconds,
+      step1Seconds: block.step1Seconds,
+      step2Seconds: block.step2Seconds,
+      step3Seconds: block.step3Seconds,
+      pyramidSteps: block.pyramidSteps,
+      pyramidStepSeconds: block.pyramidStepSeconds,
+      pyramidStartTarget: block.pyramidStartTarget,
+      pyramidEndTarget: block.pyramidEndTarget,
+      distanceKm: block.distanceKm,
+      gradePercent: block.gradePercent,
+      elevationMeters: block.elevationMeters,
+      cadence: block.cadence,
+      frequencyHint: block.frequencyHint,
+      loadFactor: block.loadFactor,
+    },
+  };
+  });
+
+  return {
+    version: 1,
+    source: "builder",
+    family: input.family,
+    discipline: input.discipline,
+    sessionName: input.sessionName || input.discipline,
+    adaptationTarget: input.adaptationTarget,
+    phase: input.phase,
+    plannedSessionDurationMinutes: input.plannedSessionDurationMinutes,
+    summary: input.summary,
+    renderProfile: {
+      intensityUnit: input.unit,
+      ftpW: input.ftpW,
+      hrMax: input.hrMax,
+      lengthMode: input.lengthMode,
+      speedRefKmh: input.speedRefKmh,
+    },
+    blocks: blocksOut,
+  };
+}
