@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
@@ -14,14 +13,15 @@ import {
   type LucideIcon,
   Move,
   Settings,
-  Shield,
   User,
   Users,
   Utensils,
+  Wallet,
   Wind,
 } from "lucide-react";
 import { PRODUCT_MODULE_NAV, type ProductModuleNavItem, type ProductNavIconKey } from "@/core/navigation/module-registry";
 import { SidebarSessionActions } from "@/components/navigation/SidebarSessionActions";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   chart: LayoutDashboard,
@@ -30,6 +30,7 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
+  wallet: Wallet,
   utensils: Utensils,
   pulse: Cpu,
   motion: Move,
@@ -77,61 +78,25 @@ function NavLink({ item }: { item: ProductModuleNavItem }) {
   );
 }
 
-function AdminConsoleSidebarLink() {
-  const pathname = usePathname();
-  const t = useTranslations("Nav");
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    let c = false;
-    void fetch("/api/admin/me", { cache: "no-store" })
-      .then((r) => r.json() as Promise<{ isAdmin?: boolean }>)
-      .then((j) => {
-        if (!c) setVisible(j.isAdmin === true);
-      })
-      .catch(() => {
-        if (!c) setVisible(false);
-      });
-    return () => {
-      c = true;
-    };
-  }, []);
-  if (!visible) return null;
-  const normalized = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
-  const isActive = normalized === "/admin" || normalized.startsWith("/admin/");
-  return (
-    <Link
-      href="/admin"
-      aria-current={isActive ? "page" : undefined}
-      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-        isActive
-          ? "border border-transparent bg-gradient-to-r from-orange-600 to-rose-600 text-white shadow-lg shadow-orange-500/25"
-          : "border border-white/10 bg-white/5 text-gray-300 backdrop-blur-sm hover:border-orange-500/40"
-      }`}
-    >
-      {isActive ? (
-        <span
-          className="absolute inset-y-0 left-0 w-1 rounded-full bg-gradient-to-b from-orange-300 via-rose-400 to-amber-400"
-          aria-hidden
-        />
-      ) : null}
-      <span
-        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${
-          isActive
-            ? "border-white/20 bg-black/20 text-white"
-            : "border-white/10 bg-black/20 text-gray-400 group-hover:text-orange-200"
-        }`}
-      >
-        <Shield className="h-4 w-4" aria-hidden strokeWidth={2} />
-      </span>
-      <span className="relative truncate">{t("admin")}</span>
-    </Link>
-  );
-}
-
 export function ProductSidebar() {
   const t = useTranslations("Nav");
-  const main = PRODUCT_MODULE_NAV.filter((i) => i.area === "main");
-  const footer = PRODUCT_MODULE_NAV.filter((i) => i.area === "footer");
+  const { athleteId, role, loading, athletes } = useActiveAthlete();
+
+  const visibleForRole = (item: ProductModuleNavItem) => !item.roles || item.roles.includes(role);
+  const mainItems = PRODUCT_MODULE_NAV.filter((i) => i.area === "main" && visibleForRole(i));
+  const accountItems = mainItems.filter((i) => i.scope === "account");
+  const athleteItems = mainItems.filter((i) => i.scope === "athlete");
+  const footer = PRODUCT_MODULE_NAV.filter((i) => i.area === "footer" && visibleForRole(i));
+
+  /**
+   * Un atleta è "in scope" solo dopo una selezione risolta: per il coach `athleteId`
+   * resta `null` finché non sceglie un assistito (vedi use-active-athlete), per il privato
+   * è il proprio profilo. Le colonne atleta non si montano finché non c'è scope.
+   */
+  const athleteInScope = !loading && Boolean(athleteId);
+  const selectedAthlete = athleteId ? athletes.find((a) => a.id === athleteId) : undefined;
+  const selectedAthleteName =
+    [selectedAthlete?.first_name, selectedAthlete?.last_name].filter(Boolean).join(" ").trim() || null;
 
   return (
     <aside className="relative flex w-[16.5rem] shrink-0 flex-col border-r border-white/10 bg-black/40 shadow-[inset_-1px_0_0_rgba(168,85,247,0.12)] backdrop-blur-xl">
@@ -151,15 +116,25 @@ export function ProductSidebar() {
         <p className="mt-1 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label={t("ariaModules")}>
-        {main.map((item) => (
+        {accountItems.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
+
+        {athleteInScope && athleteItems.length > 0 ? (
+          <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
+            <p className="px-2 font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-gray-500">
+              {selectedAthleteName ? `${t("athleteGroup")} · ${selectedAthleteName}` : t("athleteGroup")}
+            </p>
+            {athleteItems.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
+        ) : null}
       </nav>
       <div className="space-y-1.5 border-t border-white/10 bg-black/30 p-3">
         {footer.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
-        <AdminConsoleSidebarLink />
         <SidebarSessionActions />
         <Link
           href="/pricing"

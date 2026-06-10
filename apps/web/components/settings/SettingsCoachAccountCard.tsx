@@ -70,7 +70,7 @@ export function SettingsCoachAccountCard() {
         <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-4 text-xs text-gray-500">
           <p className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-600">Operatività coach</p>
           <ul className="mt-2 list-inside list-disc space-y-1">
-            <li>Roster e inviti: modulo <strong className="text-gray-400">Coach · Atleti</strong> (<code className="text-gray-500">/athletes</code>).</li>
+            <li>Roster e inviti: modulo <strong className="text-gray-400">Atleti</strong> (<code className="text-gray-500">/athletes</code>).</li>
             <li>Abilitazione da <strong className="text-gray-400">Admin · Piattaforma</strong> (stato <code className="text-gray-400">approved</code>).</li>
             <li>
               Server: <code className="text-pink-300">SUPABASE_SERVICE_ROLE_KEY</code>, tabelle{" "}
@@ -85,7 +85,7 @@ export function SettingsCoachAccountCard() {
             variant="secondary"
             className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
           >
-            Coach · Atleti
+            Atleti
           </Pro2Link>
           <Pro2Link href="/access" variant="ghost" className="justify-center border border-white/15 text-gray-300">
             Pagina accesso (cambio account)

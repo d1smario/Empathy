@@ -86,7 +86,7 @@ export const MOBILE_MODULE_MENU_SECTIONS: MobileMenuSection[] = [
     title: "Sistema",
     items: [
       { key: "settings", module: "settings", href: "/m/settings", label: "Impostazioni", icon: "settings" },
-      { key: "athletes", module: "athletes", href: "/athletes", label: "Coach · Atleti", icon: "users", desktopOnly: true },
+      { key: "athletes", module: "athletes", href: "/athletes", label: "Atleti", icon: "users", desktopOnly: true },
       { key: "desktop", href: "/dashboard", label: "Versione desktop", icon: "chart", desktopOnly: true },
     ],
   },

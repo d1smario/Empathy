@@ -5,8 +5,12 @@ export function moduleEyebrowClass(module: ProductModuleId): string {
   switch (module) {
     case "dashboard":
       return "text-cyan-400";
+    case "calendario":
+      return "text-sky-400";
     case "athletes":
       return "text-violet-400";
+    case "commissioni":
+      return "text-amber-400";
     case "profile":
       return "text-fuchsia-400";
     case "health":

@@ -15,6 +15,7 @@ import {
   User,
   Users,
   Utensils,
+  Wallet,
   Wind,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
+  wallet: Wallet,
   utensils: Utensils,
   pulse: Cpu,
   motion: Move,

@@ -23,7 +23,7 @@ export function CoachAthletesModulePanel() {
   const showStatus = !loading && signedIn;
 
   return (
-    <Pro2SectionCard accent="violet" title="Coach · Atleti" subtitle="Stato, roster e inviti" icon={Users}>
+    <Pro2SectionCard accent="violet" title="Atleti" subtitle="Stato, roster e inviti" icon={Users}>
       <div className="flex flex-col gap-8">
         {showStatus ? (
           <div className="flex flex-wrap items-center gap-3 border-b border-white/10 pb-6">

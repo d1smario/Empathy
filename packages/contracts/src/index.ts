@@ -23,6 +23,8 @@ export type ProductModuleId =
   | "aerodynamics"
   | "longevity"
   | "athletes"
+  | "calendario"
+  | "commissioni"
   | "settings";
 
 /** Chiavi esaustive: se manca un id del union, TypeScript segnala errore. */
@@ -38,6 +40,8 @@ export const PRODUCT_MODULE_ROUTE_MAP = {
   aerodynamics: true,
   longevity: true,
   athletes: true,
+  calendario: true,
+  commissioni: true,
   settings: true,
 } as const satisfies Record<ProductModuleId, unknown>;
 

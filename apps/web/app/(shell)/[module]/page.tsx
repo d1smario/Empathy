@@ -16,7 +16,9 @@ export function generateStaticParams(): { module: string }[] {
       p.module !== "aerodynamics" &&
       p.module !== "profile" &&
       p.module !== "physiology" &&
-      p.module !== "health",
+      p.module !== "health" &&
+      p.module !== "calendario" &&
+      p.module !== "commissioni",
   );
 }
 

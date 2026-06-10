@@ -37,7 +37,9 @@ function domainAccent(module: ProductModuleId): Pro2SectionAccent {
     case "longevity":
       return "fuchsia";
     case "dashboard":
+    case "calendario":
     case "athletes":
+    case "commissioni":
     case "settings":
       return "slate";
   }

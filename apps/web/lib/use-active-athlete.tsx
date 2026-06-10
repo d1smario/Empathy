@@ -234,10 +234,14 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
           const coachList = dedupeAthletesByEmail((coachProfiles as AthleteOption[]) ?? []);
           setAthletes(coachList);
           const profileAthleteId = typeof profile?.athlete_id === "string" ? profile.athlete_id : null;
+          /**
+           * Niente auto-pick del primo assistito: il coach parte SENZA atleta in scope
+           * (vista account pulita) e le colonne atleta si abilitano solo dopo una scelta
+           * esplicita, ripristinata da localStorage/profilo al reload (vedi ProductSidebar).
+           */
           const resolvedCoachAthleteId =
             (activeId && linkedAthleteIds.includes(activeId) ? activeId : null) ??
             (profileAthleteId && linkedAthleteIds.includes(profileAthleteId) ? profileAthleteId : null) ??
-            linkedAthleteIds[0] ??
             null;
           if (resolvedCoachAthleteId) {
             writeActiveAthleteId(resolvedCoachAthleteId);

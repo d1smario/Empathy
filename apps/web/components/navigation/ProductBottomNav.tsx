@@ -15,6 +15,7 @@ import {
   Settings,
   User,
   Utensils,
+  Wallet,
   Wind,
 } from "lucide-react";
 import { MOBILE_BOTTOM_NAV } from "@/core/navigation/mobile-module-registry";
@@ -27,6 +28,7 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
+  wallet: Wallet,
   utensils: Utensils,
   pulse: Cpu,
   motion: Move,

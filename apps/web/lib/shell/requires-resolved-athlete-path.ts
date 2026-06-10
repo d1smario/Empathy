@@ -15,6 +15,8 @@ export function requiresResolvedAthleteForPath(pathname: string): boolean {
   if (normalized === "/pricing" || normalized.startsWith("/pricing/")) return false;
   if (normalized === "/privacy" || normalized.startsWith("/privacy/")) return false;
   if (normalized === "/" || normalized === "/dashboard" || normalized.startsWith("/dashboard/")) return false;
+  if (normalized === "/calendario" || normalized.startsWith("/calendario/")) return false;
+  if (normalized === "/commissioni" || normalized.startsWith("/commissioni/")) return false;
   const seg = normalized.split("/").filter(Boolean)[0] ?? "";
   return (
     seg === "training" ||
