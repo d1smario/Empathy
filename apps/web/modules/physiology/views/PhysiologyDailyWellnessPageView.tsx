@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Link } from "@/components/ui/empathy";
+import { AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
@@ -239,9 +239,9 @@ export default function PhysiologyDailyWellnessPageView() {
         title="Wellness giornaliero"
         description="Seleziona un atleta attivo per vedere il pannello."
         headerActions={
-          <Pro2Link href="/access" variant="secondary" className="border border-emerald-500/35 bg-emerald-500/10">
+          <AdminScopedPro2Link href="/access" variant="secondary" className="border border-emerald-500/35 bg-emerald-500/10">
             Accesso
-          </Pro2Link>
+          </AdminScopedPro2Link>
         }
       >
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
@@ -257,14 +257,14 @@ export default function PhysiologyDailyWellnessPageView() {
         eyebrow="Physiology · Giornata"
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Data non valida"
-        description="Usa una chiave ISO YYYY-MM-DD nel path."
+        description="Seleziona un giorno valido per vedere il pannello."
         headerActions={
-          <Pro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
+          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
             Metabolic Lab
-          </Pro2Link>
+          </AdminScopedPro2Link>
         }
       >
-        <p className="text-sm text-amber-200/90">Path attuale non è una data ISO.</p>
+        <p className="text-sm text-amber-200/90">Il giorno indicato non è valido.</p>
       </Pro2ModulePageShell>
     );
   }
@@ -284,25 +284,25 @@ export default function PhysiologyDailyWellnessPageView() {
       }
       headerActions={
         <>
-          <Pro2Link
+          <AdminScopedPro2Link
             href={`/training/calendar?date=${encodeURIComponent(date)}`}
             variant="secondary"
             className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
           >
             <CalendarDays className="mr-1 inline h-4 w-4" aria-hidden />
             Calendar
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href={`/training/session/${encodeURIComponent(date)}`}
             variant="secondary"
             className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
           >
             <LineChart className="mr-1 inline h-4 w-4" aria-hidden />
             Training giornata
-          </Pro2Link>
-          <Pro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
             Metabolic Lab
-          </Pro2Link>
+          </AdminScopedPro2Link>
         </>
       }
     >

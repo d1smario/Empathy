@@ -5,7 +5,7 @@ import { ACCESS_PLAN_PATH } from "@/lib/billing/paywall-config";
 import { EmpathyPublicHome } from "@/components/marketing/EmpathyPublicHome";
 
 export const metadata: Metadata = {
-  title: "Pricing — Empathy Pro 2.0",
+  title: "Pricing — Empathy",
   robots: { index: true, follow: true },
 };
 

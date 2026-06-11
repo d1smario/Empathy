@@ -45,7 +45,7 @@ const ITEMS: ModulePillLinkItem[] = [
   {
     key: "bio-hub",
     href: "/physiology/bioenergetics",
-    label: "Bioenergetis",
+    label: "Bioenergetica",
     icon: Network,
     style: MODULE_PILL_ORANGE,
   },
@@ -66,7 +66,7 @@ const ITEMS: ModulePillLinkItem[] = [
 ];
 
 /**
- * Nav secondaria training: Hub, Builder, Calendar, Virya, Bioenergetis, Analyzer, Dashboard.
+ * Nav secondaria training: Hub, Builder, Calendar, Virya, Bioenergetica, Analyzer, Dashboard.
  */
 export function TrainingSubnav() {
   const pathname = usePathname();

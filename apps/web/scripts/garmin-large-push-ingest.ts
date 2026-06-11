@@ -77,7 +77,7 @@ async function triggerPullOnVercel(pullJobsQueued: number): Promise<{ ok: boolea
 
   const rawUrl =
     process.env.GARMIN_PULL_TRIGGER_URL?.trim() ||
-    "https://empathy-pro-2-web.vercel.app/api/integrations/garmin/pull/run";
+    "https://d1s-empathy.com/api/integrations/garmin/pull/run";
   const secret = process.env.GARMIN_PULL_RUN_SECRET?.trim();
   if (!secret) {
     return {

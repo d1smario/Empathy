@@ -35,7 +35,8 @@ import { PhysiologyPro2MetabolicDashboard } from "@/components/physiology/Physio
 import { MultiscaleBottleneckPanelPro2 } from "@/components/knowledge/MultiscaleBottleneckPanelPro2";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2Button } from "@/components/ui/empathy";
+import { AdminScopedInlineLink, AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { cn } from "@/lib/cn";
 import {
@@ -43,7 +44,6 @@ import {
   savePhysiologySnapshot,
 } from "@/modules/physiology/services/physiology-snapshot-api";
 import { clearVo2maxLab, saveVo2maxLab } from "@/modules/physiology/services/vo2max-lab-api";
-import Link from "next/link";
 import { Activity, BookOpen, Layers, Network } from "lucide-react";
 
 function clamp(v: number, min: number, max: number) {
@@ -369,7 +369,8 @@ function estimateUncertaintyPct(sources: PrecedenceSource[]) {
 }
 
 export default function MetabolicLabPage() {
-  const { athleteId, role, loading, userId } = useAthleteContext();
+  const { athleteId, role, loading, userId, adminScoped } = useAthleteContext();
+  const showTech = role === "coach" || adminScoped;
   const [section, setSection] = useState<"profile" | "lactate" | "maxox">("profile");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -1694,7 +1695,7 @@ export default function MetabolicLabPage() {
 
   const alignedRows = proCheckRows.filter((row) => row.aligned);
   const blockedRows = proCheckRows.filter((row) => !row.aligned);
-  const canAccessValidationConsole = role === "coach";
+  const canAccessValidationConsole = showTech;
 
   const runProfileRecalc = useCallback(() => {
     setProfileCalcTick((n) => n + 1);
@@ -1735,13 +1736,13 @@ export default function MetabolicLabPage() {
         title="Metabolic Lab"
         description="CP, Lactate e Max Oxidate richiedono un atleta attivo nel contesto."
         headerActions={
-          <Pro2Link
+          <AdminScopedPro2Link
             href="/access"
             variant="secondary"
             className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
           >
             Accesso
-          </Pro2Link>
+          </AdminScopedPro2Link>
         }
       >
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
@@ -1778,34 +1779,34 @@ export default function MetabolicLabPage() {
       }
       headerActions={
         <>
-          <Pro2Link
+          <AdminScopedPro2Link
             href="/physiology/daily"
             variant="secondary"
             className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
           >
             Wellness giornaliero
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/profile"
             variant="secondary"
             className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
           >
             Profile
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/training/builder"
             variant="secondary"
             className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
           >
             Builder
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/physiology/bioenergetics"
             variant="secondary"
             className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
           >
-            Bioenergetis
-          </Pro2Link>
+            Bioenergetica
+          </AdminScopedPro2Link>
         </>
       }
     >
@@ -1939,6 +1940,7 @@ export default function MetabolicLabPage() {
       </div>
       ) : null}
 
+      {showTech ? (
       <Pro2SectionCard accent="slate" icon={BookOpen} title="Ruolo Metabolic Lab nella piattaforma" subtitle="Cosa salviamo, cosa vedi al rientro, dove fluiscono i dati">
         <details className="group">
           <summary className="cursor-pointer text-sm font-semibold text-slate-200 marker:text-cyan-400/80">
@@ -1950,17 +1952,17 @@ export default function MetabolicLabPage() {
               <strong>l&apos;ultimo snapshot salvato</strong> su Supabase. Il profilo canonico (stesso schema usato da Virya/Builder) include FTP, CP, LT e i punti CP (
               <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">cpCurveInputsW</code>
               ) per allineare le zone: oggi le zone in{" "}
-              <Link href="/training" className="text-cyan-300 underline-offset-2 hover:underline">
+              <AdminScopedInlineLink href="/training" className="text-cyan-300 underline-offset-2 hover:underline">
                 Training
-              </Link>{" "}
+              </AdminScopedInlineLink>{" "}
               seguono il <strong>profilo fisiologico</strong> (FTP/LT); il collegamento puntuale di ogni durata CP al calendario è il passo successivo esplicito in product.
             </p>
             <p>
               <strong className="text-slate-200">Lactate analysis</strong> — Ripristino dell&apos;<strong>ultimo test salvato</strong> (input + motore). Serve a quantificare uso CHO, assorbimento intestinale, ossidazione e{" "}
               <strong>ciclo di Cori</strong> (riconversione lattato → glucosio): segnali strutturati consumabili da{" "}
-              <Link href="/nutrition" className="text-cyan-300 underline-offset-2 hover:underline">
+              <AdminScopedInlineLink href="/nutrition" className="text-cyan-300 underline-offset-2 hover:underline">
                 Nutrition
-              </Link>{" "}
+              </AdminScopedInlineLink>{" "}
               per fueling e aderenza (non sostituisce il solver pasti: arricchisce i vincoli metabolici).
             </p>
             <p>
@@ -1970,6 +1972,7 @@ export default function MetabolicLabPage() {
           </div>
         </details>
       </Pro2SectionCard>
+      ) : null}
 
       <div
         id="physiology-live-metabolic-summary"
@@ -1987,11 +1990,12 @@ export default function MetabolicLabPage() {
               <span className="text-sm text-slate-500">
                 · CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W
               </span>
-              <span className="font-mono text-[0.65rem] text-slate-600">{METABOLIC_CP_ENGINE_REVISION}</span>
+              {showTech ? (
+                <span className="font-mono text-[0.65rem] text-slate-600">{METABOLIC_CP_ENGINE_REVISION}</span>
+              ) : null}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              Valori sempre calcolati dai punti CP (scheda Metabolic profile). La colonna Preview nello storico è lo snapshot salvato; i numeri qui sono dal motore attuale. Se non vedi la revisione motore sopra, riavvia{" "}
-              <code className="rounded bg-black/40 px-1">npm run dev</code> e hard refresh.
+              Valori sempre calcolati dai punti potenza (scheda Profilo metabolico). Nello storico vedi lo snapshot salvato; i numeri qui sono quelli aggiornati.
             </p>
           </>
         ) : (
@@ -2435,7 +2439,7 @@ export default function MetabolicLabPage() {
                     <span>Durata media: {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
                     <span>TSS medio: {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
                     <span>P media: {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
-                    <span>Velocita': {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
+                    <span>Velocita&#39;: {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
                     <span>RER medio: {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
                     <span>VO₂ medio: {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
                   </div>
@@ -2954,8 +2958,8 @@ export default function MetabolicLabPage() {
       <Pro2SectionCard
         accent="cyan"
         icon={Network}
-        title="Multiscala biologica · bottleneck (interpretazione)"
-        subtitle="Twin + lab → @empathy/domain-knowledge — solo narrativa e tag, non sovrascrive il twin"
+        title="Multiscala biologica · collo di bottiglia (interpretazione)"
+        subtitle="Solo narrativa e tag interpretativi: non modifica i dati del tuo profilo"
       >
         <p className="mb-3 text-xs leading-relaxed text-slate-500">
           Priorità L1–L6 e nodi ontologia attivati in modo <strong>deterministico</strong>. I numeri canonici restano nei motori
@@ -2964,11 +2968,12 @@ export default function MetabolicLabPage() {
         <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
       </Pro2SectionCard>
 
+      {showTech ? (
       <Pro2SectionCard
         accent="slate"
         icon={Layers}
-        title="Metabolic Lab history"
-        subtitle="Tendina snapshot + import negli input — dettaglio JSON sotto"
+        title="Storico Metabolic Lab"
+        subtitle="Elenco snapshot + import negli input — dettaglio tecnico sotto"
       >
         <p className="mb-3 text-xs leading-relaxed text-slate-500">
           I KPI nella pagina usano il <strong>motore attuale</strong> (
@@ -3053,10 +3058,13 @@ export default function MetabolicLabPage() {
           </>
         )}
       </Pro2SectionCard>
+      ) : null}
 
-      <p className="text-xs text-slate-600">
-        Contesto: {role === "coach" ? "Coach" : "Privato"} · Atleta {athleteId.slice(0, 8)}…
-      </p>
+      {showTech ? (
+        <p className="text-xs text-slate-600">
+          Contesto: {role === "coach" ? "Coach" : "Privato"} · Atleta {athleteId.slice(0, 8)}…
+        </p>
+      ) : null}
       </div>
     </Pro2ModulePageShell>
   );

@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Empathy Pro 2.0",
+    name: "Empathy",
     short_name: "Empathy",
     description: "Performance & metabolic adaptation platform",
     start_url: "/m/dashboard",

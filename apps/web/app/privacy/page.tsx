@@ -4,7 +4,7 @@ import { Pro2Link } from "@/components/ui/empathy";
 import { empathyPrivacySections, empathyPrivacyUserRights } from "@/lib/legal/empathy-privacy-sections";
 
 export const metadata: Metadata = {
-  title: "Privacy — Empathy Pro 2.0",
+  title: "Privacy — Empathy",
   description:
     "Informativa sulla privacy e trattamento dei dati personali, sanitari e fisiologici nella piattaforma EMPATHY (Day One Sagl).",
   robots: { index: true, follow: true },

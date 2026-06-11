@@ -1,0 +1,651 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+
+type Vec2 = { x: number; y: number };
+type Sport = "cyclist" | "runner" | "soccer" | "skier" | "lifter";
+
+const SPORTS: Sport[] = ["cyclist", "runner", "soccer", "skier", "lifter"];
+const SPORT_LABELS: Record<Sport, string> = {
+  cyclist: "Ciclismo",
+  runner: "Running",
+  soccer: "Calcio",
+  skier: "Sci",
+  lifter: "Pesistica",
+};
+const POINT_COUNT = 320;
+const SPORT_DURATION = 6000;
+const TRANSITION_SPEED = 0.04;
+
+/* ------------------------------------------------------------------ */
+/*  Color helpers                                                      */
+/* ------------------------------------------------------------------ */
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function hexToRgb(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+const C1 = hexToRgb("#a855f7");
+const C2 = hexToRgb("#ec4899");
+const C3 = hexToRgb("#f97316");
+
+function pointColor(x: number, width: number) {
+  const t = Math.max(0, Math.min(1, x / width));
+  let r: number, g: number, b: number;
+  if (t < 0.5) {
+    const k = t * 2;
+    r = lerp(C1.r, C2.r, k);
+    g = lerp(C1.g, C2.g, k);
+    b = lerp(C1.b, C2.b, k);
+  } else {
+    const k = (t - 0.5) * 2;
+    r = lerp(C2.r, C3.r, k);
+    g = lerp(C2.g, C3.g, k);
+    b = lerp(C2.b, C3.b, k);
+  }
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Geometry helpers (original technique)                              */
+/* ------------------------------------------------------------------ */
+
+function circlePoints(cx: number, cy: number, r: number, n: number): Vec2[] {
+  const pts: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+  }
+  return pts;
+}
+
+function linePoints(a: Vec2, b: Vec2, n: number): Vec2[] {
+  const pts: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / Math.max(1, n - 1);
+    pts.push({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) });
+  }
+  return pts;
+}
+
+/** Thick line: multiple parallel offsets for volume */
+function thickLine(a: Vec2, b: Vec2, n: number, thickness: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  for (let i = 0; i < n; i++) {
+    const t = i / Math.max(1, n - 1);
+    const cx = lerp(a.x, b.x, t);
+    const cy = lerp(a.y, b.y, t);
+    const layers = Math.max(2, Math.floor(thickness / 2.5));
+    for (let li = -layers; li <= layers; li++) {
+      const off = (li / layers) * (thickness / 2);
+      pts.push({ x: cx + nx * off, y: cy + ny * off });
+    }
+  }
+  return pts;
+}
+
+/** Filled circle: concentric rings of points */
+function discPoints(cx: number, cy: number, r: number, rings: number, ptsPerRing: number): Vec2[] {
+  const pts: Vec2[] = [];
+  for (let ri = 1; ri <= rings; ri++) {
+    const rr = (r * ri) / rings;
+    const n = Math.floor(ptsPerRing * (ri / rings));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + (ri * 0.7);
+      pts.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr });
+    }
+  }
+  return pts;
+}
+
+/** Ellipse filled with points */
+function ellipsePoints(cx: number, cy: number, rx: number, ry: number, n: number): Vec2[] {
+  const pts: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = Math.sqrt(Math.random());
+    pts.push({ x: cx + Math.cos(ang) * rx * rad, y: cy + Math.sin(ang) * ry * rad });
+  }
+  return pts;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sport generators (always return POINT_COUNT points)                */
+/* ------------------------------------------------------------------ */
+
+function generateCyclist(t: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const pedalPhase = t * 3;
+  const crankR = 16;
+  const bb: Vec2 = { x: 0, y: 32 };
+  const rear = { x: -55, y: 32 };
+  const front = { x: 55, y: 32 };
+  const seat = { x: -22, y: 2 };
+  const handle = { x: 48, y: 6 };
+  const shoulder = { x: 28, y: -12 };
+  const headC = { x: 38, y: -32 };
+  const hip = { x: -8, y: 2 };
+
+  // rear wheel (disc)
+  pts.push(...discPoints(rear.x, rear.y, 24, 4, 14));
+  pts.push(...discPoints(rear.x, rear.y, 18, 3, 10));
+  // front wheel (disc)
+  pts.push(...discPoints(front.x, front.y, 24, 4, 14));
+  pts.push(...discPoints(front.x, front.y, 18, 3, 10));
+  // frame thick
+  pts.push(...thickLine(seat, bb, 8, 4));
+  pts.push(...thickLine(bb, handle, 8, 4));
+  pts.push(...thickLine(handle, seat, 8, 4));
+  pts.push(...thickLine(bb, { x: (bb.x + rear.x) / 2, y: bb.y - 2 }, 4, 3));
+  // head
+  pts.push(...discPoints(headC.x, headC.y, 12, 3, 10));
+  // torso (thick ellipse)
+  pts.push(...ellipsePoints((shoulder.x + hip.x) / 2, (shoulder.y + hip.y) / 2, 10, 22, 22));
+  // neck
+  pts.push(...thickLine(headC, shoulder, 5, 5));
+  // arms
+  const elbowR = { x: lerp(shoulder.x, handle.x, 0.55), y: lerp(shoulder.y, handle.y, 0.55) - 4 };
+  pts.push(...thickLine(shoulder, elbowR, 6, 5));
+  pts.push(...thickLine(elbowR, handle, 6, 5));
+  // legs (pedaling)
+  const lp = { x: bb.x + Math.cos(pedalPhase) * crankR, y: bb.y + Math.sin(pedalPhase) * crankR };
+  const rp = { x: bb.x + Math.cos(pedalPhase + Math.PI) * crankR, y: bb.y + Math.sin(pedalPhase + Math.PI) * crankR };
+  const lk: Vec2 = { x: (hip.x + lp.x) / 2 + 6, y: (hip.y + lp.y) / 2 - 4 };
+  const rk: Vec2 = { x: (hip.x + rp.x) / 2 + 6, y: (hip.y + rp.y) / 2 - 4 };
+  pts.push(...thickLine(hip, lk, 7, 7));
+  pts.push(...thickLine(lk, lp, 7, 6));
+  pts.push(...thickLine(hip, rk, 7, 7));
+  pts.push(...thickLine(rk, rp, 7, 6));
+
+  while (pts.length < POINT_COUNT) pts.push({ ...handle });
+  return pts.slice(0, POINT_COUNT);
+}
+
+function generateRunner(t: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const phase = t * 4;
+  const bob = Math.sin(phase * 2) * 3;
+
+  const headC: Vec2 = { x: 0, y: -58 + bob };
+  const shoulder: Vec2 = { x: 0, y: -32 + bob * 0.5 };
+  const hip: Vec2 = { x: 0, y: -2 + bob * 0.3 };
+
+  // realistic leg motion
+  const legSwing = (p: number) => {
+    const s = Math.sin(p);
+    const thighAng = s > 0 ? s * 0.55 : s * 0.35;
+    const thighLen = 26;
+    const knee: Vec2 = { x: hip.x + Math.sin(thighAng) * thighLen, y: hip.y + Math.cos(thighAng) * thighLen };
+    const shankAng = s > 0 ? -0.9 - Math.cos(p) * 0.4 : -0.2 + Math.sin(p) * 0.3;
+    const shankLen = 26;
+    const foot: Vec2 = { x: knee.x + Math.sin(shankAng) * shankLen, y: knee.y + Math.cos(shankAng) * shankLen };
+    return { knee, foot };
+  };
+
+  const lLeg = legSwing(phase);
+  const rLeg = legSwing(phase + Math.PI);
+
+  const armSwing = (p: number) => {
+    const s = Math.sin(p);
+    const elbow: Vec2 = { x: shoulder.x + s * 10, y: shoulder.y + 14 };
+    const hand: Vec2 = { x: shoulder.x + s * 20, y: shoulder.y + 30 };
+    return { elbow, hand };
+  };
+  const lArm = armSwing(phase + Math.PI);
+  const rArm = armSwing(phase);
+
+  // head
+  pts.push(...discPoints(headC.x, headC.y, 12, 3, 10));
+  // neck
+  pts.push(...thickLine(headC, shoulder, 5, 5));
+  // torso
+  pts.push(...ellipsePoints((shoulder.x + hip.x) / 2, (shoulder.y + hip.y) / 2, 11, 24, 20));
+  // arms
+  pts.push(...thickLine(shoulder, lArm.elbow, 6, 5));
+  pts.push(...thickLine(lArm.elbow, lArm.hand, 6, 4));
+  pts.push(...thickLine(shoulder, rArm.elbow, 6, 5));
+  pts.push(...thickLine(rArm.elbow, rArm.hand, 6, 4));
+  // legs
+  pts.push(...thickLine(hip, lLeg.knee, 7, 7));
+  pts.push(...thickLine(lLeg.knee, lLeg.foot, 7, 6));
+  pts.push(...thickLine(hip, rLeg.knee, 7, 7));
+  pts.push(...thickLine(rLeg.knee, rLeg.foot, 7, 6));
+  // shoes
+  pts.push(...ellipsePoints(lLeg.foot.x, lLeg.foot.y + 4, 6, 3, 7));
+  pts.push(...ellipsePoints(rLeg.foot.x, rLeg.foot.y + 4, 6, 3, 7));
+
+  while (pts.length < POINT_COUNT) pts.push({ ...hip });
+  return pts.slice(0, POINT_COUNT);
+}
+
+function generateSoccer(t: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const phase = t * 2.5;
+  const headC: Vec2 = { x: 0, y: -56 };
+  const shoulder: Vec2 = { x: 0, y: -30 };
+  const hip: Vec2 = { x: 0, y: 0 };
+
+  // planted foot
+  const lFoot: Vec2 = { x: 10, y: 54 };
+  const lKnee: Vec2 = { x: 8, y: 26 };
+
+  // kicking foot (swing)
+  const kickT = Math.sin(phase);
+  const rFoot: Vec2 = { x: -18 + kickT * 8, y: 48 - Math.max(0, kickT) * 10 };
+  const rKnee: Vec2 = { x: -10 + kickT * 4, y: 22 };
+
+  // arms balance
+  const lHand: Vec2 = { x: 18, y: -20 + Math.sin(phase) * 3 };
+  const rHand: Vec2 = { x: -14, y: -22 - Math.sin(phase) * 3 };
+  const lElbow: Vec2 = { x: (shoulder.x + lHand.x) / 2, y: (shoulder.y + lHand.y) / 2 + 6 };
+  const rElbow: Vec2 = { x: (shoulder.x + rHand.x) / 2, y: (shoulder.y + rHand.y) / 2 + 6 };
+
+  // ball
+  const ball: Vec2 = { x: -28, y: 56 };
+
+  // head
+  pts.push(...discPoints(headC.x, headC.y, 12, 3, 10));
+  // neck
+  pts.push(...thickLine(headC, shoulder, 5, 5));
+  // torso
+  pts.push(...ellipsePoints((shoulder.x + hip.x) / 2, (shoulder.y + hip.y) / 2, 11, 24, 18));
+  // arms
+  pts.push(...thickLine(shoulder, lElbow, 6, 5));
+  pts.push(...thickLine(lElbow, lHand, 6, 4));
+  pts.push(...thickLine(shoulder, rElbow, 6, 5));
+  pts.push(...thickLine(rElbow, rHand, 6, 4));
+  // legs
+  pts.push(...thickLine(hip, lKnee, 7, 7));
+  pts.push(...thickLine(lKnee, lFoot, 7, 6));
+  pts.push(...thickLine(hip, rKnee, 7, 7));
+  pts.push(...thickLine(rKnee, rFoot, 7, 6));
+  // ball
+  pts.push(...discPoints(ball.x, ball.y, 9, 3, 12));
+  // motion lines when kicked
+  if (kickT > 0.3) {
+    pts.push(...linePoints({ x: ball.x - 10, y: ball.y }, { x: ball.x - 22, y: ball.y }, 5));
+    pts.push(...linePoints({ x: ball.x - 8, y: ball.y - 4 }, { x: ball.x - 18, y: ball.y - 6 }, 5));
+  }
+
+  while (pts.length < POINT_COUNT) pts.push({ ...hip });
+  return pts.slice(0, POINT_COUNT);
+}
+
+function generateSkier(t: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const phase = t * 2.2;
+  const sway = Math.sin(phase) * 8;
+  const bob = Math.abs(Math.sin(phase)) * 3;
+
+  const headC: Vec2 = { x: sway * 0.3, y: -42 + bob };
+  const shoulder: Vec2 = { x: sway * 0.5, y: -20 + bob * 0.6 };
+  const hip: Vec2 = { x: sway * 0.7, y: 2 + bob * 0.3 };
+
+  // legs bent forward
+  const kneeL: Vec2 = { x: hip.x - 6, y: 22 };
+  const kneeR: Vec2 = { x: hip.x + 6, y: 22 };
+  const footL: Vec2 = { x: hip.x - 10, y: 48 };
+  const footR: Vec2 = { x: hip.x + 10, y: 48 };
+
+  // skis (long thick lines)
+  pts.push(...thickLine({ x: hip.x - 35, y: 50 }, { x: hip.x + 45, y: 48 }, 4, 10));
+  pts.push(...thickLine({ x: hip.x - 35, y: 54 }, { x: hip.x + 45, y: 52 }, 4, 10));
+
+  // poles
+  const handL: Vec2 = { x: shoulder.x - 20, y: -10 };
+  const handR: Vec2 = { x: shoulder.x + 20, y: -10 };
+  pts.push(...thickLine(handL, { x: handL.x - 8, y: 46 }, 2.5, 6));
+  pts.push(...thickLine(handR, { x: handR.x + 8, y: 46 }, 2.5, 6));
+
+  // head
+  pts.push(...discPoints(headC.x, headC.y, 11, 3, 10));
+  // torso (forward lean)
+  pts.push(...ellipsePoints((shoulder.x + hip.x) / 2, (shoulder.y + hip.y) / 2, 11, 20, 18));
+  // arms
+  pts.push(...thickLine(shoulder, handL, 6, 5));
+  pts.push(...thickLine(shoulder, handR, 6, 5));
+  // legs
+  pts.push(...thickLine(hip, kneeL, 7, 7));
+  pts.push(...thickLine(kneeL, footL, 7, 7));
+  pts.push(...thickLine(hip, kneeR, 7, 7));
+  pts.push(...thickLine(kneeR, footR, 7, 7));
+
+  while (pts.length < POINT_COUNT) pts.push({ ...hip });
+  return pts.slice(0, POINT_COUNT);
+}
+
+function generateLifter(t: number): Vec2[] {
+  const pts: Vec2[] = [];
+  const phase = t * 2;
+  const lift = (Math.sin(phase) + 1) / 2;
+
+  const headC: Vec2 = { x: 0, y: -56 - lift * 6 };
+  const shoulder: Vec2 = { x: 0, y: -30 - lift * 4 };
+  const hip: Vec2 = { x: 0, y: 0 };
+
+  // feet planted
+  const footL: Vec2 = { x: -14, y: 52 };
+  const footR: Vec2 = { x: 14, y: 52 };
+  const kneeL: Vec2 = { x: -12, y: 28 };
+  const kneeR: Vec2 = { x: 12, y: 28 };
+
+  // arms lifting barbell overhead
+  const elbowL: Vec2 = { x: -28 - lift * 4, y: -20 - lift * 22 };
+  const elbowR: Vec2 = { x: 28 + lift * 4, y: -20 - lift * 22 };
+  const handL: Vec2 = { x: -36, y: -48 - lift * 12 };
+  const handR: Vec2 = { x: 36, y: -48 - lift * 12 };
+
+  // barbell
+  const barY = -50 - lift * 14;
+  pts.push(...thickLine({ x: -42, y: barY }, { x: 42, y: barY }, 5, 8));
+  // discs
+  pts.push(...discPoints(-40, barY, 9, 2, 8));
+  pts.push(...discPoints(40, barY, 9, 2, 8));
+  pts.push(...discPoints(-40, barY, 5, 2, 6));
+  pts.push(...discPoints(40, barY, 5, 2, 6));
+
+  // head
+  pts.push(...discPoints(headC.x, headC.y, 12, 3, 10));
+  // neck
+  pts.push(...thickLine(headC, shoulder, 5, 5));
+  // torso
+  pts.push(...ellipsePoints((shoulder.x + hip.x) / 2, (shoulder.y + hip.y) / 2, 13, 24, 22));
+  // arms
+  pts.push(...thickLine(shoulder, elbowL, 7, 6));
+  pts.push(...thickLine(elbowL, handL, 7, 5));
+  pts.push(...thickLine(shoulder, elbowR, 7, 6));
+  pts.push(...thickLine(elbowR, handR, 7, 5));
+  // legs
+  pts.push(...thickLine(hip, kneeL, 7, 8));
+  pts.push(...thickLine(kneeL, footL, 7, 7));
+  pts.push(...thickLine(hip, kneeR, 7, 8));
+  pts.push(...thickLine(kneeR, footR, 7, 7));
+
+  while (pts.length < POINT_COUNT) pts.push({ ...hip });
+  return pts.slice(0, POINT_COUNT);
+}
+
+function generatePoints(sport: Sport, time: number): Vec2[] {
+  switch (sport) {
+    case "cyclist":
+      return generateCyclist(time);
+    case "runner":
+      return generateRunner(time);
+    case "soccer":
+      return generateSoccer(time);
+    case "skier":
+      return generateSkier(time);
+    case "lifter":
+      return generateLifter(time);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stream segments                                                    */
+/* ------------------------------------------------------------------ */
+
+interface Stream {
+  x: number;
+  y: number;
+  length: number;
+  speed: number;
+}
+
+function initStreams(height: number): Stream[] {
+  const streams: Stream[] = [];
+  for (let i = 0; i < 10; i++) {
+    streams.push({
+      x: Math.random() * 600 - 200,
+      y: 30 + (i / 10) * (height - 60),
+      length: 40 + Math.random() * 80,
+      speed: 0.8 + Math.random() * 1.5,
+    });
+  }
+  return streams;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
+export function AthleteCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [sportIndex, setSportIndex] = useState(0);
+  const [metrics, setMetrics] = useState({ hr: 142, pwr: 312, cad: 89, spd: 38.2 });
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const cvs = canvas;
+    const context = ctx;
+
+    let animId = 0;
+    let lastT = performance.now();
+    let idx = 0;
+    let sportTimer = 0;
+    let time = 0;
+    const currentPts: Vec2[] = Array.from({ length: POINT_COUNT }, () => ({ x: 0, y: 0 }));
+    let targetPts: Vec2[] = generatePoints(SPORTS[idx], 0);
+    let streams: Stream[] = [];
+    let scanY = 0;
+
+    function centre(w: number, h: number) {
+      return { x: w / 2, y: h / 2 - 10 };
+    }
+
+    function resize() {
+      const rect = cvs.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      cvs.width = rect.width * dpr;
+      cvs.height = rect.height * dpr;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (streams.length === 0) {
+        streams = initStreams(rect.height);
+      }
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    for (let i = 0; i < POINT_COUNT; i++) currentPts[i] = { ...targetPts[i] };
+
+    function step(now: number) {
+      const dt = Math.min((now - lastT) / 1000, 0.05);
+      lastT = now;
+      time += dt;
+      sportTimer += dt * 1000;
+
+      if (sportTimer > SPORT_DURATION) {
+        sportTimer = 0;
+        idx = (idx + 1) % SPORTS.length;
+        targetPts = generatePoints(SPORTS[idx], time);
+        setSportIndex(idx);
+      }
+
+      const liveTarget = generatePoints(SPORTS[idx], time);
+
+      const w = cvs.clientWidth;
+      const h = cvs.clientHeight;
+      const c = centre(w, h);
+      const scale = Math.min(w, h) / 220;
+
+      // fade trail
+      context.fillStyle = "rgba(0, 0, 0, 0.22)";
+      context.fillRect(0, 0, w, h);
+
+      // update points (lerp towards live target)
+      for (let i = 0; i < POINT_COUNT; i++) {
+        const tx = c.x + liveTarget[i].x * scale;
+        const ty = c.y + liveTarget[i].y * scale;
+        if (reduceMotion) {
+          currentPts[i].x = tx;
+          currentPts[i].y = ty;
+        } else {
+          currentPts[i].x += (tx - currentPts[i].x) * TRANSITION_SPEED;
+          currentPts[i].y += (ty - currentPts[i].y) * TRANSITION_SPEED;
+        }
+      }
+
+      // connections (mesh)
+      context.lineWidth = 0.8;
+      for (let i = 0; i < POINT_COUNT; i++) {
+        for (let j = i + 1; j < POINT_COUNT; j++) {
+          const dx = currentPts[i].x - currentPts[j].x;
+          const dy = currentPts[i].y - currentPts[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 28) {
+            const alpha = 1 - dist / 28;
+            context.strokeStyle = `rgba(160, 160, 180, ${alpha * 0.15})`;
+            context.beginPath();
+            context.moveTo(currentPts[i].x, currentPts[i].y);
+            context.lineTo(currentPts[j].x, currentPts[j].y);
+            context.stroke();
+          }
+        }
+      }
+
+      // scanline
+      scanY += 0.5;
+      if (scanY > h) scanY = 0;
+      context.strokeStyle = "rgba(168, 85, 247, 0.06)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(0, scanY);
+      context.lineTo(w, scanY);
+      context.stroke();
+
+      // data streams
+      for (const s of streams) {
+        s.x += s.speed;
+        if (s.x > w + 20) s.x = -s.length;
+
+        let active = false;
+        for (let i = 0; i < POINT_COUNT; i++) {
+          const py = currentPts[i].y;
+          const px = currentPts[i].x;
+          if (Math.abs(py - s.y) < 22 && px >= s.x - 10 && px <= s.x + s.length + 10) {
+            active = true;
+            break;
+          }
+        }
+
+        if (active) {
+          const grad = context.createLinearGradient(s.x, s.y, s.x + s.length, s.y);
+          grad.addColorStop(0, "rgba(168,85,247,0.35)");
+          grad.addColorStop(0.5, "rgba(236,72,153,0.45)");
+          grad.addColorStop(1, "rgba(249,115,22,0.35)");
+          context.strokeStyle = grad;
+          context.lineWidth = 1.5;
+          context.shadowBlur = 6;
+          context.shadowColor = "rgba(168,85,247,0.3)";
+        } else {
+          context.strokeStyle = "rgba(255,255,255,0.04)";
+          context.lineWidth = 0.6;
+          context.shadowBlur = 0;
+        }
+        context.beginPath();
+        context.moveTo(s.x, s.y);
+        context.lineTo(s.x + s.length, s.y);
+        context.stroke();
+        context.shadowBlur = 0;
+      }
+
+      // draw points with glow
+      for (let i = 0; i < POINT_COUNT; i++) {
+        const p = currentPts[i];
+        const col = pointColor(p.x, w);
+        context.fillStyle = col;
+        context.shadowBlur = 10;
+        context.shadowColor = col;
+        context.beginPath();
+        context.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+        context.fill();
+        context.shadowBlur = 0;
+
+        context.fillStyle = "rgba(255,255,255,0.85)";
+        context.beginPath();
+        context.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      animId = requestAnimationFrame(step);
+    }
+
+    animId = requestAnimationFrame(step);
+
+    const metricInterval = setInterval(() => {
+      setMetrics({
+        hr: 128 + Math.floor(Math.random() * 45),
+        pwr: 180 + Math.floor(Math.random() * 240),
+        cad: 70 + Math.floor(Math.random() * 35),
+        spd: +(25 + Math.random() * 22).toFixed(1),
+      });
+    }, 1200);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      clearInterval(metricInterval);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <div className="relative w-full aspect-[4/3] max-w-3xl mx-auto">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full"
+        aria-label="Animazione atleta costruito da flussi di dati"
+      />
+
+      {/* Sport label */}
+      <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
+        <span className="rounded-full border border-white/10 bg-black/50 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-white backdrop-blur-md">
+          {SPORT_LABELS[SPORTS[sportIndex]]}
+        </span>
+      </div>
+
+      {/* HUD overlays */}
+      <div className="absolute top-4 left-4 rounded-lg border border-purple-500/20 bg-black/50 px-3 py-2 backdrop-blur-md">
+        <p className="font-mono text-[0.6rem] uppercase tracking-wider text-purple-300">HR</p>
+        <p className="font-mono text-sm font-bold text-white">{metrics.hr} <span className="text-[0.6rem] font-normal text-gray-400">bpm</span></p>
+      </div>
+      <div className="absolute top-4 right-4 rounded-lg border border-pink-500/20 bg-black/50 px-3 py-2 backdrop-blur-md">
+        <p className="font-mono text-[0.6rem] uppercase tracking-wider text-pink-300">PWR</p>
+        <p className="font-mono text-sm font-bold text-white">{metrics.pwr} <span className="text-[0.6rem] font-normal text-gray-400">W</span></p>
+      </div>
+      <div className="absolute bottom-4 left-4 rounded-lg border border-cyan-500/20 bg-black/50 px-3 py-2 backdrop-blur-md">
+        <p className="font-mono text-[0.6rem] uppercase tracking-wider text-cyan-300">CAD</p>
+        <p className="font-mono text-sm font-bold text-white">{metrics.cad} <span className="text-[0.6rem] font-normal text-gray-400">rpm</span></p>
+      </div>
+      <div className="absolute bottom-4 right-4 rounded-lg border border-orange-500/20 bg-black/50 px-3 py-2 backdrop-blur-md">
+        <p className="font-mono text-[0.6rem] uppercase tracking-wider text-orange-300">SPD</p>
+        <p className="font-mono text-sm font-bold text-white">{metrics.spd} <span className="text-[0.6rem] font-normal text-gray-400">km/h</span></p>
+      </div>
+
+      {/* Dots indicator */}
+      <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-2">
+        {SPORTS.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              i === sportIndex ? "w-6 bg-gradient-to-r from-purple-400 to-pink-400" : "w-1.5 bg-white/20"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

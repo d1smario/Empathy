@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { EmpathyPublicHome } from "@/components/marketing/EmpathyPublicHome";
 
 export const metadata: Metadata = {
-  title: "Empathy Pro 2.0 — Piattaforma atleta",
+  title: "Empathy — Piattaforma atleta",
   description:
-    "Performance e physiology adaptation: timing, stimoli, nutrizione. Piani, prova gratuita e accesso all'app Pro 2.0.",
+    "Performance e physiology adaptation: timing, stimoli, nutrizione. Piani, prova gratuita e accesso all'app.",
   robots: { index: true, follow: true },
 };
 
@@ -39,7 +39,7 @@ function garminOAuthMisroutedToHome(sp: PageProps["searchParams"]): string | nul
   return `/api/integrations/garmin/callback?${q.toString()}`;
 }
 
-/** Home pubblica: pitch Empathy, piani, prova gratuita, ingresso all'app Pro 2.0. */
+/** Home pubblica: pitch Empathy, piani, prova gratuita, ingresso all'app. */
 export default function HomePage({ searchParams }: PageProps) {
   const forward = garminOAuthMisroutedToHome(searchParams);
   if (forward) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AthleteReadContextError, requireAthleteWriteContext } from "@/lib/auth/athlete-read-context";
 import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver";
 import { persistRealityDeviceExport } from "@/lib/reality/provider-adapters";
 import { buildCoverageQualityNote } from "@/lib/reality/coverage-quality";
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest) {
     if (!body.athlete_id || !body.provider || !body.payload) {
       return NextResponse.json({ error: "Missing export payload fields" }, { status: 400 });
     }
+    // Gate canonico atleta (owner / coach / platform admin): prima era scrivibile da chiunque.
+    await requireAthleteWriteContext(req, body.athlete_id);
     const coverage = buildNutritionDeviceCoverage(body.payload);
     const quality = buildCoverageQualityNote({
       coveragePct: coverage.coveragePct,
@@ -51,6 +54,9 @@ export async function POST(req: NextRequest) {
       athleteMemory: await resolveAthleteMemorySlice(body.athlete_id, { slice: "nutrition" }),
     });
   } catch (err) {
+    if (err instanceof AthleteReadContextError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : "Nutrition device export failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

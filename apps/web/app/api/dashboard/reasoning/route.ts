@@ -401,7 +401,7 @@ function cardsFromOperationalBundle(bundle: OperationalSignalsBundle | null): Re
     cards.push({
       id: "compute-bioenergetis-redox",
       domain: "bioenergetics",
-      title: "Ragionamento Redox/Bioenergetis",
+      title: "Ragionamento Redox/Bioenergetica",
       value: `${bio.loadScale.toFixed(2)}x`,
       subtitle: `${bio.state} · copertura ${Math.round(bio.signalCoveragePct)}%`,
       tone: bio.state === "protective" ? "rose" : bio.state === "watch" ? "amber" : "green",

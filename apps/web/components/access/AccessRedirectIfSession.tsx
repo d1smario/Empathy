@@ -24,6 +24,7 @@ export function AccessRedirectIfSession({ nextPath }: { nextPath: string }) {
       if (!data.session) return;
 
       let appRole: PendingAppRole = "private";
+      let isPlatformAdmin = false;
       let hasAthleteAccess = false;
       let hasOperatorAccess = false;
 
@@ -31,22 +32,28 @@ export function AccessRedirectIfSession({ nextPath }: { nextPath: string }) {
         const uid = data.session.user.id;
         const { data: prof } = await supabase
           .from("app_user_profiles")
-          .select("role")
+          .select("role, is_platform_admin")
           .eq("user_id", uid)
           .maybeSingle();
-        if ((prof as { role?: string } | null)?.role === "coach") {
+        const p = prof as { role?: string; is_platform_admin?: boolean } | null;
+        if (p?.role === "coach") {
           appRole = "coach";
         }
+        if (p?.is_platform_admin === true) {
+          isPlatformAdmin = true;
+        }
 
-        const entRes = await fetch("/api/billing/entitlement?repair=1", { cache: "no-store" });
-        const ent = (await entRes.json()) as {
-          ok?: boolean;
-          hasAthleteAccess?: boolean;
-          hasOperatorAccess?: boolean;
-        };
-        if (entRes.ok && ent.ok) {
-          hasAthleteAccess = Boolean(ent.hasAthleteAccess);
-          hasOperatorAccess = Boolean(ent.hasOperatorAccess);
+        if (!isPlatformAdmin) {
+          const entRes = await fetch("/api/billing/entitlement?repair=1", { cache: "no-store" });
+          const ent = (await entRes.json()) as {
+            ok?: boolean;
+            hasAthleteAccess?: boolean;
+            hasOperatorAccess?: boolean;
+          };
+          if (entRes.ok && ent.ok) {
+            hasAthleteAccess = Boolean(ent.hasAthleteAccess);
+            hasOperatorAccess = Boolean(ent.hasOperatorAccess);
+          }
         }
       } catch {
         /* entitlement / profilo: il gate server sulla shell applicherà il paywall */
@@ -59,6 +66,7 @@ export function AccessRedirectIfSession({ nextPath }: { nextPath: string }) {
         appRole,
         hasAthleteAccess,
         hasOperatorAccess,
+        isPlatformAdmin,
         preferMobile: isMobileBrowserClient(),
       });
       window.location.assign(dest);

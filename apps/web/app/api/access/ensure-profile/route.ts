@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
   const { data: existing, error: existingErr } = await supabase
     .from("app_user_profiles")
-    .select("role, athlete_id, platform_coach_status")
+    .select("role, athlete_id, platform_coach_status, is_platform_admin")
     .eq("user_id", userId)
     .maybeSingle();
   if (existingErr) {
@@ -58,7 +58,20 @@ export async function POST(req: Request) {
     role: "private" | "coach";
     athlete_id: string | null;
     platform_coach_status?: string | null;
+    is_platform_admin?: boolean | null;
   } | null;
+
+  // Platform admin: nessun bootstrap atleta — l'account admin non è un atleta.
+  if (current?.is_platform_admin === true) {
+    return NextResponse.json({
+      status: "admin",
+      role: current.role === "coach" ? "coach" : "private",
+      requestedRole,
+      roleLockedFromDowngrade: false,
+      athleteId: null,
+      platformCoachStatus: current.platform_coach_status ?? null,
+    });
+  }
 
   const role = resolveBootstrapRole(requestedRole, current);
 

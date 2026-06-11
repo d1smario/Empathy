@@ -154,9 +154,6 @@ export function HomeStripePricing({
       {showTitle ? (
         <>
           <p className="text-xl font-black tracking-[0.14em] text-white sm:text-3xl lg:text-4xl">EMPATHY</p>
-          <h2 className="mt-1 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-2xl font-black tracking-tight text-transparent sm:text-4xl">
-            Pro 2.0
-          </h2>
           <div className="mx-auto mt-4 h-px w-20 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </>
       ) : null}

@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import {
   approxMacrosForPlanItem,
@@ -166,6 +167,7 @@ export function EmpathyMealPlanExpositionCard({
   boostNote,
   integrationHref,
 }: EmpathyMealPlanExpositionCardProps) {
+  const { adminScoped } = useActiveAthlete();
   const Icon = slotHeaderIcon(slot);
   const kcalDenom = Math.max(1, totalKcal);
   const choPct = Math.round(((carbsG * 4) / kcalDenom) * 100);
@@ -192,7 +194,7 @@ export function EmpathyMealPlanExpositionCard({
           </div>
         </header>
         <p className="empathy-meal-expo-placeholder-note">
-          Segnaposto visivo · il solver opera su cinque slot pasto; pre-sonno è opzionale fuori pipeline.
+          Segnaposto visivo · il piano lavora sui cinque pasti principali; lo spuntino pre-sonno è opzionale.
         </p>
       </article>
     );
@@ -285,12 +287,22 @@ export function EmpathyMealPlanExpositionCard({
                 {integrationHref ? (
                   <>
                     {" "}
-                    <Link
-                      href={integrationHref}
-                      className="font-semibold text-fuchsia-200 underline decoration-fuchsia-300/60 underline-offset-2 hover:text-fuchsia-100"
-                    >
-                      Apri Integrazione →
-                    </Link>
+                    {adminScoped ? (
+                      /* Nelle schede admin il link cross-shell è inerte (v2). */
+                      <span
+                        className="font-semibold text-fuchsia-200 underline decoration-fuchsia-300/60 underline-offset-2 hover:text-fuchsia-100 cursor-default opacity-50"
+                        title="Disponibile nella scheda dedicata (v2)"
+                      >
+                        Apri Integrazione →
+                      </span>
+                    ) : (
+                      <Link
+                        href={integrationHref}
+                        className="font-semibold text-fuchsia-200 underline decoration-fuchsia-300/60 underline-offset-2 hover:text-fuchsia-100"
+                      >
+                        Apri Integrazione →
+                      </Link>
+                    )}
                   </>
                 ) : null}
               </p>

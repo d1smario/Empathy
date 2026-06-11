@@ -46,6 +46,7 @@ type UserProfileRow = {
   role: AppRole;
   athlete_id: string | null;
   platform_coach_status?: string | null;
+  is_platform_admin?: boolean | null;
 };
 
 const ATHLETE_SELECT =
@@ -65,6 +66,8 @@ export type ActiveAthleteContextValue = {
   userId: string | null;
   setActiveAthleteId: (id: string | null) => void;
   refresh: () => void;
+  /** true nelle schede admin (/admin/utenti/[id]/...): scope imposto dall'URL — le viste riusate disattivano i link verso la shell coach. */
+  adminScoped: boolean;
 };
 
 const ActiveAthleteContext = createContext<ActiveAthleteContextValue | null>(null);
@@ -86,6 +89,83 @@ export function useActiveAthlete(): ActiveAthleteContextValue {
     );
   }
   return ctx;
+}
+
+/**
+ * Scope atleta IMPOSTO (schede admin /admin/utenti/[id]/...): stesso context del
+ * provider globale, ma con athleteId fissato dall'URL — le viste modulo del coach
+ * si riusano identiche ("fotocopia") senza saperne nulla. La lettura del profilo
+ * atleta avviene diretta dal browser: la policy `platform_admin_all` autorizza.
+ * Montato DENTRO il provider globale: il context più vicino vince.
+ */
+export function ActiveAthleteScopeProvider({
+  athleteId,
+  children,
+}: {
+  athleteId: string;
+  children: ReactNode;
+}) {
+  const [athletes, setAthletes] = useState<AthleteOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const refresh = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  useEffect(() => {
+    let active = true;
+    const supabase = createEmpathyBrowserSupabase();
+    if (!supabase) {
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+    void (async () => {
+      setLoading(true);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!active) return;
+        setSignedIn(Boolean(session?.user));
+        setUserId(session?.user?.id ?? null);
+        const { data } = await supabase
+          .from("athlete_profiles")
+          .select(ATHLETE_SELECT)
+          .eq("id", athleteId)
+          .maybeSingle();
+        if (!active) return;
+        setAthletes(data ? [data as AthleteOption] : []);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [athleteId, reloadToken]);
+
+  /** La selezione è l'URL: i tentativi di cambio da UI riusata sono no-op. */
+  const setActiveAthleteId = useCallback((_id: string | null) => {}, []);
+
+  const value: ActiveAthleteContextValue = {
+    athleteId,
+    activeAthleteId: athleteId,
+    // Vista "da coach" per le viste riusate: rami coach abilitati.
+    role: "coach",
+    platformCoachStatus: "approved",
+    coachOperationalApproved: true,
+    athletes,
+    loading,
+    signedIn,
+    userId,
+    setActiveAthleteId,
+    refresh,
+    adminScoped: true,
+  };
+
+  return <ActiveAthleteContext.Provider value={value}>{children}</ActiveAthleteContext.Provider>;
 }
 
 /**
@@ -187,7 +267,7 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
 
         const { data: profileData } = await supabase
           .from("app_user_profiles")
-          .select("role, athlete_id, platform_coach_status")
+          .select("role, athlete_id, platform_coach_status, is_platform_admin")
           .eq("user_id", user.id)
           .maybeSingle();
         if (!active) return;
@@ -198,6 +278,19 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
         const coachStatusRow = profileRole === "coach" ? (profile?.platform_coach_status ?? null) : null;
         setPlatformCoachStatus(coachStatusRow);
 
+        /**
+         * Platform admin: NESSUN bootstrap atleta (non è un atleta — è la piattaforma).
+         * Senza questo skip il provider riproverebbe `ensure-profile` a ogni mount,
+         * tentando di creare un athlete_profile per l'account admin.
+         */
+        if (profile?.is_platform_admin === true) {
+          setAthletes([]);
+          setAthleteId(null);
+          writeAuditUserId(user.id);
+          setLoading(false);
+          return;
+        }
+
         if (profileRole === "coach") {
           if (!coachOperationalApproved("coach", coachStatusRow)) {
             setAthletes([]);
@@ -207,7 +300,6 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
             setLoading(false);
             return;
           }
-          const activeId = readActiveAthleteId();
           const { data: linked } = await supabase
             .from("coach_athletes")
             .select("athlete_id")
@@ -233,22 +325,14 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
           if (!active) return;
           const coachList = dedupeAthletesByEmail((coachProfiles as AthleteOption[]) ?? []);
           setAthletes(coachList);
-          const profileAthleteId = typeof profile?.athlete_id === "string" ? profile.athlete_id : null;
           /**
-           * Niente auto-pick del primo assistito: il coach parte SENZA atleta in scope
-           * (vista account pulita) e le colonne atleta si abilitano solo dopo una scelta
-           * esplicita, ripristinata da localStorage/profilo al reload (vedi ProductSidebar).
+           * Coach: la selezione atleta vive NELL'URL (/athletes/[id]/[module],
+           * stesso pattern dell'admin — vedi ActiveAthleteScopeProvider).
+           * Il context globale del coach resta senza atleta: niente localStorage,
+           * niente gruppo atleta in sidebar.
            */
-          const resolvedCoachAthleteId =
-            (activeId && linkedAthleteIds.includes(activeId) ? activeId : null) ??
-            (profileAthleteId && linkedAthleteIds.includes(profileAthleteId) ? profileAthleteId : null) ??
-            null;
-          if (resolvedCoachAthleteId) {
-            writeActiveAthleteId(resolvedCoachAthleteId);
-          } else {
-            clearActiveAthleteId();
-          }
-          setAthleteId(resolvedCoachAthleteId);
+          clearActiveAthleteId();
+          setAthleteId(null);
           writeAuditUserId(user.id);
           setLoading(false);
           return;
@@ -388,5 +472,6 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
     userId,
     setActiveAthleteId,
     refresh,
+    adminScoped: false,
   };
 }

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AthleteReadContextError, requireAuthenticatedTrainingUser } from "@/lib/auth/athlete-read-context";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    // Catalogo globale: basta utente autenticato (prima era scrivibile da chiunque via service role).
+    await requireAuthenticatedTrainingUser(req);
     const body = (await req.json()) as {
       source: string;
       brand: string | null;
@@ -22,6 +25,9 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ status: "ok" });
   } catch (err) {
+    if (err instanceof AthleteReadContextError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : "Nutrition catalog insert failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

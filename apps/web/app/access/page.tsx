@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
-import { AccessAuthPanel } from "@/components/access/AccessAuthPanel";
+import { AccessPasswordForm } from "@/components/access/AccessPasswordForm";
 import { AccessRedirectIfSession } from "@/components/access/AccessRedirectIfSession";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { safeAppInternalPath } from "@/core/routing/guards";
@@ -45,12 +46,15 @@ export default async function AccessPage({
         const admin = createSupabaseAdminClient();
         const { data: prof } = await sb
           .from("app_user_profiles")
-          .select("role")
+          .select("role, is_platform_admin")
           .eq("user_id", user.id)
           .maybeSingle();
-        const role = (prof as { role?: string } | null)?.role;
-        const appRole = role === "coach" ? "coach" : "private";
-        const ent = await loadUserAccessEntitlement(admin ?? sb, user.id);
+        const profileRow = prof as { role?: string; is_platform_admin?: boolean } | null;
+        const appRole = profileRow?.role === "coach" ? "coach" : "private";
+        const isPlatformAdmin = profileRow?.is_platform_admin === true;
+        const ent = isPlatformAdmin
+          ? { hasAthleteAccess: false, hasOperatorAccess: false }
+          : await loadUserAccessEntitlement(admin ?? sb, user.id);
         const hdrs = headers();
         const cookieStore = cookies();
         const preferMobile = isMobilePreferred({
@@ -65,6 +69,7 @@ export default async function AccessPage({
             appRole,
             hasAthleteAccess: ent.hasAthleteAccess,
             hasOperatorAccess: ent.hasOperatorAccess,
+            isPlatformAdmin,
             preferMobile,
           }),
         );
@@ -82,10 +87,12 @@ export default async function AccessPage({
       >
         <div className="text-center">
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">{t("eyebrow")}</p>
-          <p className="mt-4 text-2xl font-black tracking-[0.12em] text-white sm:text-3xl">EMPATHY</p>
-          <h1 className="mt-2 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl">
-            Pro 2.0
-          </h1>
+          <Link
+            href="/"
+            className="mt-4 inline-block text-2xl font-black tracking-[0.12em] text-white transition-opacity hover:opacity-80 sm:text-3xl"
+          >
+            EMPATHY
+          </Link>
           <div className="mx-auto mt-4 h-px w-16 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </div>
         {err === "auth" ? (
@@ -98,11 +105,8 @@ export default async function AccessPage({
             {t("errSupabaseServer")}
           </p>
         ) : null}
-        <AccessAuthPanel redirectAfterLogin={safeNext} />
+        <AccessPasswordForm redirectAfterLogin={safeNext} />
         <div className="flex w-full max-w-xs flex-col gap-3">
-          <Pro2Link href="/#piani" variant="secondary" className="justify-center">
-            {t("goToPlans")}
-          </Pro2Link>
           <Pro2Link href="/" variant="ghost" className="justify-center">
             {t("goToHome")}
           </Pro2Link>

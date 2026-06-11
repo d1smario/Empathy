@@ -73,8 +73,10 @@ export function BrutalistAppBackdrop({ children, matrix = true }: BrutalistAppBa
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // overflow-x-CLIP (non hidden): hidden renderebbe questo div un secondo
+  // contenitore di scroll verticale → doppia scrollbar a destra.
   return (
-    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-black text-white">
+    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-clip bg-black text-white">
       {matrix ? (
         <canvas
           ref={canvasRef}

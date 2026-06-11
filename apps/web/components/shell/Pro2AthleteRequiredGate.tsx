@@ -40,9 +40,15 @@ export function Pro2AthleteRequiredGate({
           {role === "coach" ? t("noActiveCoach") : t("noActiveAthlete")}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Pro2Link href="/profile" variant="primary" className="justify-center">
-            {t("goToProfile")}
-          </Pro2Link>
+          {role === "coach" ? (
+            <Pro2Link href="/athletes" variant="primary" className="justify-center">
+              Vai ad Atleti
+            </Pro2Link>
+          ) : (
+            <Pro2Link href="/profile" variant="primary" className="justify-center">
+              {t("goToProfile")}
+            </Pro2Link>
+          )}
           <Pro2Link href="/dashboard" variant="secondary" className="justify-center border border-white/15">
             {t("goToDashboard")}
           </Pro2Link>

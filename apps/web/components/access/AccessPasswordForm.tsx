@@ -1,19 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { accessAppOriginFromWindow } from "@/lib/auth/access-app-origin";
-import { clearPendingAppRoleCookieClient, setPendingAppRoleCookieClient } from "@/lib/auth/pending-app-role-client";
+import { clearPendingAppRoleCookieClient } from "@/lib/auth/pending-app-role-client";
 import type { PendingAppRole } from "@/lib/auth/pending-role-cookie";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { isMobileBrowserClient } from "@/lib/shell/mobile-detect";
-import { ACCESS_POST_SIGNUP_PLAN_PATH, postSignupRegistrationPath } from "@/lib/auth/post-registration-redirects";
 import { Pro2Button } from "@/components/ui/empathy";
 
 type Props = {
   redirectAfterLogin: string;
-  appRole: PendingAppRole;
 };
 
 type MsgTone = "info" | "success" | "warning";
@@ -34,65 +33,91 @@ function formatAuthErrorMessage(t: AccessFormTranslator, message: string): strin
   if (m.includes("email not confirmed")) {
     return t("errEmailNotConfirmed");
   }
-  if (
-    m.includes("already registered") ||
-    m.includes("already been registered") ||
-    m.includes("user already exists")
-  ) {
-    return t("errAlreadyRegistered");
-  }
   return message;
 }
 
-/**
- * Accesso Supabase con email + password (`signInWithPassword`).
- * Richiede che in Dashboard → Authentication → Providers → Email sia abilitato “Email” con password (non solo magic link).
- *
- * Dopo il login usiamo `window.location.assign` (navigazione completa) così i cookie impostati da `@supabase/ssr`
- * sono inclusi nella richiesta successiva: `router.replace` da solo può far vedere al middleware una sessione
- * ancora assente su Vercel.
- */
+type PostLoginIdentity = {
+  /** false = sessione assente dopo il login (errore reale, blocca). */
+  sessionOk: boolean;
+  role: PendingAppRole;
+  isPlatformAdmin: boolean;
+};
 
-async function bootstrapProfileAfterSession(appRole: PendingAppRole): Promise<boolean> {
+/**
+ * Identità post-login + bootstrap profilo in un solo passaggio.
+ * - Platform admin: NESSUN bootstrap atleta (non è un atleta) → ingresso immediato.
+ * - Altri: `ensure-profile` allinea profilo/atleta, ma un suo fallimento NON blocca
+ *   il login (la shell lo ritenta al mount via ActiveAthleteProvider).
+ */
+async function resolvePostLoginIdentity(): Promise<PostLoginIdentity> {
+  const fallback: PostLoginIdentity = { sessionOk: false, role: "private", isPlatformAdmin: false };
   const supabase = createEmpathyBrowserSupabase();
-  if (!supabase) return false;
+  if (!supabase) return fallback;
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const u = session?.user;
-  if (!u?.id) return false;
+  if (!u?.id) return fallback;
+
   const { data: existingProfile } = await supabase
     .from("app_user_profiles")
-    .select("role")
+    .select("role, is_platform_admin")
     .eq("user_id", u.id)
     .maybeSingle();
-  const storedRole = (existingProfile as { role?: PendingAppRole } | null)?.role;
-  const roleForBootstrap: PendingAppRole = storedRole === "coach" ? "coach" : appRole;
+  const profile = existingProfile as { role?: PendingAppRole; is_platform_admin?: boolean } | null;
+  const storedRole: PendingAppRole = profile?.role === "coach" ? "coach" : "private";
+
+  if (profile?.is_platform_admin === true) {
+    return { sessionOk: true, role: storedRole, isPlatformAdmin: true };
+  }
+
   const meta = u.user_metadata as Record<string, unknown>;
-  const res = await fetch("/api/access/ensure-profile", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({
-      userId: u.id,
-      role: roleForBootstrap,
-      email: u.email ?? null,
-      firstName: typeof meta?.first_name === "string" ? meta.first_name : null,
-      lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
-    }),
-  });
-  return res.ok;
+  try {
+    const res = await fetch("/api/access/ensure-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        userId: u.id,
+        role: storedRole,
+        email: u.email ?? null,
+        firstName: typeof meta?.first_name === "string" ? meta.first_name : null,
+        lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
+      }),
+    });
+    if (res.ok) {
+      const j = (await res.json()) as { role?: PendingAppRole };
+      return { sessionOk: true, role: j.role === "coach" ? "coach" : storedRole, isPlatformAdmin: false };
+    }
+    console.warn("[access] ensure-profile non riuscito (status", res.status, ") — la shell ritenterà.");
+  } catch {
+    console.warn("[access] ensure-profile non raggiungibile — la shell ritenterà.");
+  }
+  return { sessionOk: true, role: storedRole, isPlatformAdmin: false };
 }
 
-export function AccessPasswordForm({ redirectAfterLogin, appRole }: Props) {
+/**
+ * Login Supabase con email + password (`signInWithPassword`).
+ * Porta unica: il routing post-login è deciso solo dall'identità nel DB
+ * (admin → /admin, coach → /athletes, cliente → /dashboard, utente → gate piano).
+ */
+export function AccessPasswordForm({ redirectAfterLogin }: Props) {
   const t = useTranslations("AccessForm");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [msgTone, setMsgTone] = useState<MsgTone>("warning");
   const [busy, setBusy] = useState(false);
-  const [showSignup, setShowSignup] = useState(false);
-  const [password2, setPassword2] = useState("");
+  /** "signin" = login; "reset" = modulo dedicato per ricevere il link di reset. */
+  const [view, setView] = useState<"signin" | "reset">("signin");
+  /** Countdown anti-spam: segue il rate-limit Supabase (60s tra un invio e l'altro). */
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
   function notify(text: string, tone: MsgTone = "warning") {
     setMsg(text);
@@ -119,33 +144,26 @@ export function AccessPasswordForm({ redirectAfterLogin, appRole }: Props) {
       notify(formatAuthErrorMessage(t, error.message));
       return;
     }
-    const bootOk = await bootstrapProfileAfterSession(appRole);
-    if (!bootOk) {
+
+    // Identità + bootstrap in un passaggio: admin salta il bootstrap atleta,
+    // e un bootstrap fallito non blocca l'ingresso (la shell ritenta).
+    const identity = await resolvePostLoginIdentity();
+    if (!identity.sessionOk) {
       setBusy(false);
-      notify(t("msgProfileBootstrapFailed"));
+      notify(t("msgSessionNotReady"));
       return;
     }
     clearPendingAppRoleCookieClient();
-    setBusy(false);
-    const supabaseAfter = createEmpathyBrowserSupabase();
-    let redirectRole: PendingAppRole = appRole;
-    if (supabaseAfter) {
-      const {
-        data: { session },
-      } = await supabaseAfter.auth.getSession();
-      const uid = session?.user?.id;
-      if (uid) {
-        const { data: prof } = await supabaseAfter
-          .from("app_user_profiles")
-          .select("role")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if ((prof as { role?: PendingAppRole } | null)?.role === "coach") redirectRole = "coach";
-      }
-    }
+    const redirectRole = identity.role;
+    const isPlatformAdmin = identity.isPlatformAdmin;
+
     let hasAthleteAccess = false;
     let hasOperatorAccess = false;
-    if (redirectRole !== "coach") {
+    if (isPlatformAdmin) {
+      // admin → /admin: nessun entitlement da leggere.
+    } else if (redirectRole === "coach") {
+      hasOperatorAccess = true;
+    } else {
       try {
         const entRes = await fetch("/api/billing/entitlement?repair=1", { cache: "no-store" });
         const ent = (await entRes.json()) as {
@@ -160,62 +178,20 @@ export function AccessPasswordForm({ redirectAfterLogin, appRole }: Props) {
       } catch {
         /* gate piano se entitlement non leggibile */
       }
-    } else {
-      hasOperatorAccess = true;
     }
     const target = resolvePostLoginDestination({
       next: redirectAfterLogin,
       appRole: redirectRole,
       hasAthleteAccess,
       hasOperatorAccess,
+      isPlatformAdmin,
       preferMobile: isMobileBrowserClient(),
     });
     window.location.assign(target);
   }
 
-  async function onSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-    const supabase = createEmpathyBrowserSupabase();
-    if (!supabase) {
-      notify(t("msgSupabaseMissing"));
-      return;
-    }
-    const em = email.trim();
-    if (!em || !password || password.length < 8) {
-      notify(t("msgEmailPasswordMin8"));
-      return;
-    }
-    if (password !== password2) {
-      notify(t("msgPasswordsMismatch"));
-      return;
-    }
-    setBusy(true);
-    setPendingAppRoleCookieClient(appRole);
-    const origin = accessAppOriginFromWindow();
-    const signupNext = postSignupRegistrationPath(appRole);
-    const { data, error } = await supabase.auth.signUp({
-      email: em,
-      password,
-      options: {
-        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(signupNext)}`,
-      },
-    });
-    setBusy(false);
-    if (error) {
-      notify(formatAuthErrorMessage(t, error.message));
-      return;
-    }
-    if (data.session) {
-      await bootstrapProfileAfterSession(appRole);
-      clearPendingAppRoleCookieClient();
-      window.location.assign(postSignupRegistrationPath(appRole));
-      return;
-    }
-    notify(t("msgConfirmEmailSent"), "success");
-  }
-
-  async function onResetPassword() {
+  async function onResetPassword(e?: React.FormEvent) {
+    e?.preventDefault();
     setMsg(null);
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
@@ -234,14 +210,84 @@ export function AccessPasswordForm({ redirectAfterLogin, appRole }: Props) {
       redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/auth/set-password")}`,
     });
     setBusy(false);
-    if (error) notify(error.message);
-    else notify(t("msgResetSent"), "success");
+    if (error) {
+      // Rate-limit Supabase: "...you can only request this after N seconds."
+      const waitMatch = error.message.match(/after (\d+) second/i);
+      if (waitMatch) {
+        const wait = Number(waitMatch[1]) || 60;
+        setCooldown(wait);
+        notify(`Attendi ${wait} secondi prima di richiedere un nuovo link.`);
+        return;
+      }
+      notify(error.message);
+      return;
+    }
+    notify(t("msgResetSent"), "success");
+    setCooldown(60);
   }
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-md">
-      {!showSignup ? (
-        <form onSubmit={onSignIn} className="flex flex-col gap-3" aria-label={t("ariaSignIn")}>
+      {view === "signin" ? (
+        <>
+          <form onSubmit={onSignIn} className="flex flex-col gap-3" aria-label={t("ariaSignIn")}>
+            <label className="text-left">
+              <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldEmail")}</span>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={busy}
+                className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
+                placeholder={t("emailPlaceholder")}
+              />
+            </label>
+            <label className="text-left">
+              <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldPassword")}</span>
+              <input
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+                className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
+                placeholder={t("passwordPlaceholder")}
+              />
+            </label>
+            <Pro2Button type="submit" disabled={busy} className="w-full justify-center">
+              {busy ? t("btnSignInBusy") : t("btnSignIn")}
+            </Pro2Button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                setView("reset");
+              }}
+              className="text-center text-xs font-medium text-cyan-300/90 underline-offset-2 hover:underline"
+            >
+              {t("forgotPassword")}
+            </button>
+          </form>
+
+          <Link
+            href="/registrati"
+            className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
+          >
+            Prima volta? <span className="text-gray-300">Registrati</span>
+          </Link>
+        </>
+      ) : (
+        <form onSubmit={(e) => void onResetPassword(e)} className="flex flex-col gap-3" aria-label="Reimposta password">
+          <div className="text-left">
+            <h2 className="text-sm font-bold text-white">Reimposta la password</h2>
+            <p className="mt-1 text-xs leading-relaxed text-gray-400">
+              Scrivi l&apos;email del tuo account: ti inviamo un link per impostare una nuova password.
+            </p>
+          </div>
           <label className="text-left">
             <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldEmail")}</span>
             <input
@@ -255,84 +301,22 @@ export function AccessPasswordForm({ redirectAfterLogin, appRole }: Props) {
               placeholder={t("emailPlaceholder")}
             />
           </label>
-          <label className="text-left">
-            <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldPassword")}</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-              className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
-              placeholder={t("passwordPlaceholder")}
-            />
-          </label>
-          <Pro2Button type="submit" disabled={busy} className="w-full justify-center">
-            {busy ? t("btnSignInBusy") : t("btnSignIn")}
+          <Pro2Button type="submit" disabled={busy || cooldown > 0} className="w-full justify-center">
+            {busy ? "Invio…" : cooldown > 0 ? `Riprova tra ${cooldown}s` : "Invia link di reset"}
           </Pro2Button>
           <button
             type="button"
             disabled={busy}
-            onClick={() => void onResetPassword()}
-            className="text-center text-xs font-medium text-cyan-300/90 underline-offset-2 hover:underline"
+            onClick={() => {
+              setMsg(null);
+              setView("signin");
+            }}
+            className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
           >
-            {t("forgotPassword")}
+            ← Torna al login
           </button>
         </form>
-      ) : (
-        <form onSubmit={onSignUp} className="flex flex-col gap-3" aria-label={t("ariaSignUp")}>
-          <p className="text-center text-xs text-gray-400">{t("signUpIntro")}</p>
-          <label className="text-left">
-            <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldEmail")}</span>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-              className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-purple-500/50 focus:outline-none"
-            />
-          </label>
-          <label className="text-left">
-            <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldPassword")}</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-              className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-purple-500/50 focus:outline-none"
-            />
-          </label>
-          <label className="text-left">
-            <span className="mb-1.5 block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("fieldRepeatPassword")}</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={password2}
-              onChange={(e) => setPassword2(e.target.value)}
-              disabled={busy}
-              className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-purple-500/50 focus:outline-none"
-            />
-          </label>
-          <Pro2Button type="submit" disabled={busy} className="w-full justify-center">
-            {busy ? t("btnSignUpBusy") : t("btnSignUp")}
-          </Pro2Button>
-        </form>
       )}
-
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          setShowSignup((v) => !v);
-          setMsg(null);
-        }}
-        className="text-center text-xs text-gray-500 hover:text-gray-300"
-      >
-        {showSignup ? t("switchToSignIn") : t("switchToSignUp")}
-      </button>
 
       {msg ? (
         <p

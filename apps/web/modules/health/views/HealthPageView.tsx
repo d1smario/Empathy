@@ -712,7 +712,8 @@ const IMPORT_CARDS = [
 ] as const;
 
 export default function HealthPageView() {
-  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, loading: ctxLoading, adminScoped, role } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const [panels, setPanels] = useState<HealthPanelTimelineRow[]>([]);
   const [systemMap, setSystemMap] = useState<HealthSystemMapViewModel>({
     nodes: [],
@@ -1171,7 +1172,7 @@ export default function HealthPageView() {
           onClick={() => document.getElementById("health-import-grid")?.scrollIntoView({ behavior: "smooth" })}
         >
           <Upload className="h-5 w-5" strokeWidth={2.5} />
-          Importazione esami
+          Vai alle importazioni
           <Upload className="h-5 w-5" strokeWidth={2.5} />
         </button>
 
@@ -1256,20 +1257,21 @@ export default function HealthPageView() {
         </section>
       ) : null}
 
+      {showTech ? (
       <section className="rounded-2xl border border-cyan-500/30 bg-cyan-950/10 p-6">
         <h2 className="font-mono text-[0.68rem] font-bold uppercase tracking-[0.24em] text-cyan-300">
-          System map 360 · interazioni cross-area
+          Mappa interazioni · panoramica cross-area
         </h2>
         <p className="mt-2 text-xs text-zinc-400">
-          Nodi, archi causali e risposte bioenergetiche derivati dall&apos;estrazione normalizzata. Staging run incluse per il gate
-          di interpretazione.
+          Nodi, collegamenti causali e risposte bioenergetiche derivati dai referti. Include le revisioni in attesa di
+          interpretazione.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { k: "Nodi", v: systemMap.nodes.length, border: "border-cyan-500/40", bg: "bg-cyan-950/35", text: "text-cyan-200" },
             { k: "Archi", v: systemMap.edges.length, border: "border-violet-500/40", bg: "bg-violet-950/35", text: "text-violet-200" },
             {
-              k: "Bioenergetis",
+              k: "Bioenergetica",
               v: systemMap.bioenergeticsResponses.length,
               border: "border-amber-500/40",
               bg: "bg-amber-950/35",
@@ -1327,7 +1329,7 @@ export default function HealthPageView() {
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-amber-300/90">Bioenergetis responses</p>
+              <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-amber-300/90">Risposte bioenergetiche</p>
               <div className="space-y-2">
                 {systemMap.bioenergeticsResponses.slice(0, 8).map((r, i) => (
                   <div key={`bio-${i}-${String(r.id ?? i)}`} className="rounded-lg border border-amber-500/25 bg-amber-950/20 px-2.5 py-2 text-xs">
@@ -1364,12 +1366,22 @@ export default function HealthPageView() {
                       {runId ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {isVlmReview ? (
-                            <a
-                              href={`/health/staging/${runId}`}
-                              className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
-                            >
-                              Apri review
-                            </a>
+                            adminScoped ? (
+                              // Link cross-shell inerte nelle schede admin
+                              <span
+                                title="Disponibile nella scheda dedicata (v2)"
+                                className="cursor-default rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white opacity-50 transition"
+                              >
+                                Apri review
+                              </span>
+                            ) : (
+                              <a
+                                href={`/health/staging/${runId}`}
+                                className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
+                              >
+                                Apri review
+                              </a>
+                            )
                           ) : null}
                           {[
                             { status: "committed" as const, label: "Valida" },
@@ -1394,12 +1406,13 @@ export default function HealthPageView() {
                     </div>
                   );
                 })}
-                {!systemMap.stagingRuns.length ? <p className="text-xs text-zinc-500">Nessuna run staging recente.</p> : null}
+                {!systemMap.stagingRuns.length ? <p className="text-xs text-zinc-500">Nessuna revisione recente.</p> : null}
               </div>
             </div>
           </div>
         </details>
       </section>
+      ) : null}
 
       {/* Griglia importazione */}
       <div id="health-import-grid" className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 scroll-mt-24">
@@ -2045,6 +2058,7 @@ export default function HealthPageView() {
       ) : null}
 
       {/* Archivio referti (fine pagina) */}
+      {showTech ? (
       <section className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5" aria-label="Archivio referti">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-cyan-400">Archivio referti</h3>
@@ -2278,12 +2292,22 @@ export default function HealthPageView() {
                       {expanded ? "Chiudi" : "Apri"}
                     </button>
                     {reviewRunId ? (
-                      <a
-                        href={`/health/staging/${reviewRunId}`}
-                        className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
-                      >
-                        Apri review
-                      </a>
+                      adminScoped ? (
+                        // Link cross-shell inerte nelle schede admin
+                        <span
+                          title="Disponibile nella scheda dedicata (v2)"
+                          className="cursor-default rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white opacity-50 transition"
+                        >
+                          Apri review
+                        </span>
+                      ) : (
+                        <a
+                          href={`/health/staging/${reviewRunId}`}
+                          className="rounded-md border border-fuchsia-400/50 bg-fuchsia-600/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition hover:bg-fuchsia-500/60"
+                        >
+                          Apri review
+                        </a>
+                      )
                     ) : null}
                     {canAnalyzeWithAi ? (
                       <button
@@ -2330,6 +2354,7 @@ export default function HealthPageView() {
             })}
         </ul>
       </section>
+      ) : null}
     </Pro2ModulePageShell>
   );
 }

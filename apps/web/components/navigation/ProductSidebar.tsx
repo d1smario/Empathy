@@ -89,11 +89,11 @@ export function ProductSidebar() {
   const footer = PRODUCT_MODULE_NAV.filter((i) => i.area === "footer" && visibleForRole(i));
 
   /**
-   * Un atleta è "in scope" solo dopo una selezione risolta: per il coach `athleteId`
-   * resta `null` finché non sceglie un assistito (vedi use-active-athlete), per il privato
-   * è il proprio profilo. Le colonne atleta non si montano finché non c'è scope.
+   * Gruppo atleta in sidebar SOLO per l'utente privato (sono i suoi moduli).
+   * Il coach naviga gli assistiti via /athletes/[id]/... con la barra a tab
+   * (stesso pattern admin): in sidebar gli restano solo le voci account.
    */
-  const athleteInScope = !loading && Boolean(athleteId);
+  const athleteInScope = !loading && Boolean(athleteId) && role !== "coach";
   const selectedAthlete = athleteId ? athletes.find((a) => a.id === athleteId) : undefined;
   const selectedAthleteName =
     [selectedAthlete?.first_name, selectedAthlete?.last_name].filter(Boolean).join(" ").trim() || null;
@@ -110,9 +110,6 @@ export function ProductSidebar() {
             EMPATHY
           </Link>
         </div>
-        <p className="mt-1 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-base font-black tracking-tight text-transparent sm:text-lg">
-          Pro 2.0
-        </p>
         <p className="mt-1 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label={t("ariaModules")}>
@@ -135,21 +132,8 @@ export function ProductSidebar() {
         {footer.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
+        {/* Niente link marketing/demo nella shell di prodotto: solo sessione. */}
         <SidebarSessionActions />
-        <Link
-          href="/pricing"
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-gray-400 transition hover:border-purple-500/35 hover:text-purple-200"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-purple-500/60" aria-hidden />
-          {t("pricing")}
-        </Link>
-        <Link
-          href="/preview"
-          className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs font-medium text-orange-200/90 transition hover:border-pink-500/40 hover:text-pink-200"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-pink-400 to-orange-400 shadow-[0_0_8px_#f472b6]" aria-hidden />
-          {t("marketingDemo")}
-        </Link>
       </div>
     </aside>
   );

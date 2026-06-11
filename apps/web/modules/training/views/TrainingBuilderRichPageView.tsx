@@ -394,7 +394,9 @@ type EngineGenerateOverrides = Partial<{
 export default function TrainingBuilderRichPageView() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  /** Contenuti tecnici (diagnostica, sorgenti motore) visibili solo a coach/admin. */
+  const showTech = role === "coach" || adminScoped;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [planned, setPlanned] = useState<PlannedWorkout[]>([]);
@@ -1345,8 +1347,8 @@ export default function TrainingBuilderRichPageView() {
             <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.25em] text-orange-400">Training · Builder</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">Crea sessione</h1>
             <p className="mt-2 max-w-xl text-sm text-gray-400">
-              KPI da calendario reale; generazione sessione tramite <code className="text-orange-200/90">/api/training/engine/generate</code>{" "}
-              (motore deterministico). Vyria annuale resta downstream e riusa questo stesso punto.
+              KPI dal calendario reale; la sessione è generata dal motore deterministico del Builder. Il piano annuale
+              Virya riusa lo stesso motore.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1380,7 +1382,7 @@ export default function TrainingBuilderRichPageView() {
               <p className="max-w-3xl leading-relaxed">
                 Percorso da <strong className="text-pink-200">VIRYA</strong>: qui materializzi la{" "}
                 <strong className="text-pink-200">singola sessione</strong> col motore builder. Il calendario si aggiorna solo dopo
-                salvataggio esplicito (audit in notes).
+                salvataggio esplicito.
               </p>
               <button
                 type="button"
@@ -1671,28 +1673,25 @@ export default function TrainingBuilderRichPageView() {
           <h2 className="text-lg font-bold text-white">Genera sessione</h2>
           {activeMacroId === "strength" ? (
             <p className="mt-1 text-sm text-gray-400">
-              Stesso flusso efficace di V1: il motore propone la struttura (nomi esercizio), poi si materializza la{" "}
-              <span className="text-fuchsia-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini. Dominio da palette (
-              <code className="text-orange-200/90">gym / hyrox / crossfit</code>). Disciplina:{" "}
-              <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
+              Il motore propone la struttura (nomi esercizio), poi si materializza la{" "}
+              <span className="text-fuchsia-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini.
+              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
             </p>
           ) : activeMacroId === "technical" ? (
             <p className="mt-1 text-sm text-gray-400">
-              Concentrati su tecnica, tattica, schemi e moduli (come V1 Virya): la parte aerobico-pura resta in A · Aerobico.
-              Il builder stima un <span className="text-violet-200/95">TSS</span> da confrontare con RPE / carico interno. Dominio{" "}
-              <code className="text-violet-300/80">team_sport / combat</code>. Disciplina:{" "}
-              <span className="font-semibold text-violet-200">{currentSportLabel}</span>.
+              Concentrati su tecnica, tattica, schemi e moduli: la parte aerobico-pura resta in A · Aerobico.
+              Il builder stima un <span className="text-violet-200/95">TSS</span> da confrontare con RPE / carico interno.
+              Disciplina: <span className="font-semibold text-violet-200">{currentSportLabel}</span>.
             </p>
           ) : activeMacroId === "lifestyle" ? (
             <p className="mt-1 text-sm text-gray-400">
-              Preset per mobilità, recovery, qualità movimento e lavoro aerobico leggero (mind-body). Dominio{" "}
-              <code className="text-emerald-300/80">mind_body</code>. Disciplina:{" "}
-              <span className="font-semibold text-emerald-200">{currentSportLabel}</span>.
+              Preset per mobilità, recovery, qualità movimento e lavoro aerobico leggero (mind-body).
+              Disciplina: <span className="font-semibold text-emerald-200">{currentSportLabel}</span>.
             </p>
           ) : (
             <p className="mt-1 text-sm text-gray-400">
-              Macro aerobica: input compatti (regole Pro 2). Output: blocchi + esercizi da libreria deterministica. Profilo da{" "}
-              <code className="text-cyan-400/70">physiological_profiles</code>, twin da <code className="text-gray-500">twin_states</code> se presente.
+              Macro aerobica: input compatti. Output: blocchi + esercizi dalla libreria, calibrati su profilo
+              fisiologico e digital twin dell&apos;atleta quando disponibili.
             </p>
           )}
 
@@ -1716,7 +1715,7 @@ export default function TrainingBuilderRichPageView() {
               <div className="rounded-xl border border-orange-500/20 bg-black/25 p-3">
                 <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-200/90">Attrezzi · filtro libreria</p>
                 <p className="mt-1 text-xs text-gray-500">
-                  Allineato a V1 (pesi, corpo libero, cavi, elastici, macchinari). Nessun chip = nessun filtro stretto.
+                  Pesi, corpo libero, cavi, elastici, macchinari. Nessun chip = nessun filtro stretto.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {GYM_EQUIPMENT_CHIPS.map((ch) => {
@@ -1742,7 +1741,7 @@ export default function TrainingBuilderRichPageView() {
                   })}
                 </div>
                 <p className="mt-3 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200/90">
-                  Contrazione / stile (letteratura + V1)
+                  Contrazione / stile
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {GYM_CONTRACTION_CHIPS.map((ch) => {
@@ -1764,7 +1763,7 @@ export default function TrainingBuilderRichPageView() {
                   })}
                 </div>
                 <label className="mt-3 flex max-w-lg flex-col gap-1 text-[0.65rem] text-gray-400">
-                  Stile esecuzione nella scheda generata (come V1 <code className="text-gray-500">executionStyle</code>)
+                  Stile esecuzione nella scheda generata
                   <select
                     className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
                     value={gymAutoExecutionStyle}
@@ -2203,7 +2202,7 @@ export default function TrainingBuilderRichPageView() {
                     Scheda generata ({gymManualRows.length} esercizi) · TSS stimato ~{manualTssPreview}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Stessa logica V1: nomi dal motore, abbinamento deterministico al catalogo EMPATHY. Affina serie e carichi nel composer sotto.
+                    Nomi proposti dal motore, abbinati al catalogo EMPATHY. Affina serie e carichi nel composer sotto.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {gymManualRows.map((row) => (
@@ -2305,7 +2304,7 @@ export default function TrainingBuilderRichPageView() {
               {saveOkId ? (
                 <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={saveOkId} />
               ) : null}
-              <p className="font-mono text-[0.65rem] text-gray-500">{genResult.source}</p>
+              {showTech ? <p className="font-mono text-[0.65rem] text-gray-500">{genResult.source}</p> : null}
               <p className="text-gray-300">
                 Profilo fisiologico: {genResult.physiologyPresent ? "sì" : "no"} · Twin: {genResult.twinPresent ? "sì" : "no"}
               </p>

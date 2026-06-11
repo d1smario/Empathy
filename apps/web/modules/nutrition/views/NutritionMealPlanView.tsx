@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Zap } from "lucide-react";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import { NutritionDayKpiStrip } from "@/components/nutrition/NutritionDayKpiStrip";
@@ -184,11 +185,14 @@ export function NutritionMealPlanLeadPanels({
   functionalFoodRecommendations,
 }: NutritionMealPlanLeadPanelsProps) {
   const router = useRouter();
+  const { role, adminScoped } = useActiveAthlete();
+  /** Research trace è diagnostica tecnica: solo coach/admin. */
+  const showTech = role === "coach" || adminScoped;
   return (
     <>
-      {!!researchTraceSummaries.length ? (
+      {showTech && !!researchTraceSummaries.length ? (
         <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-          <ResearchTraceStatusSummary traces={researchTraceSummaries} label="Research trace nutrizione" />
+          <ResearchTraceStatusSummary traces={researchTraceSummaries} label="Stato approfondimenti nutrizione" />
         </section>
       ) : null}
 
@@ -199,7 +203,7 @@ export function NutritionMealPlanLeadPanels({
       {functionalFoodRecommendations.targets.length ? (
         <section className="viz-card builder-panel" style={{ marginBottom: "12px", padding: "10px 14px", fontSize: "0.8rem" }}>
           <strong>Pillole nutrizionali adattive</strong>
-          <span className="nutrition-muted"> — suggerimenti funzionali su segnali del giorno (L2, non override solver): </span>
+          <span className="nutrition-muted"> — suggerimenti funzionali sui segnali del giorno: </span>
           <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px", verticalAlign: "middle" }}>
             {functionalFoodRecommendations.targets.slice(0, 8).map((t) => (
               <span
@@ -216,9 +220,12 @@ export function NutritionMealPlanLeadPanels({
             type="button"
             className="nutrition-ui-chip"
             style={{ marginLeft: "8px", cursor: "pointer" }}
-            onClick={() => router.push("/nutrition/integration")}
+            onClick={() => {
+              if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
+              router.push("/nutrition/integration");
+            }}
           >
-            Integrazione → OFF/USDA + FDC
+            Vai a Integrazione
           </button>
         </section>
       ) : null}
@@ -294,6 +301,7 @@ export function NutritionMealPlanWorkspace({
   onSaveNutrition,
 }: NutritionMealPlanWorkspaceProps) {
   const router = useRouter();
+  const { adminScoped } = useActiveAthlete();
   const hasApplicativeContext = Boolean(nutritionApplicationDirective) || Boolean(functionalMealSelectorNotes?.length);
   const mealPlanMicroBoardProps = intelligentMealPlan?.nutrientRollup?.dayTotals
     ? mealPlanDayTotalsToMicroLines(intelligentMealPlan.nutrientRollup.dayTotals)
@@ -518,7 +526,10 @@ export function NutritionMealPlanWorkspace({
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => router.push("/nutrition/integration")}
+                    onClick={() => {
+                      if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
+                      router.push("/nutrition/integration");
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-400/40 bg-fuchsia-500/10 px-3 py-1.5 text-[11px] font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20 hover:text-fuchsia-50"
                   >
                     <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
@@ -667,7 +678,10 @@ export function NutritionMealPlanWorkspace({
                 <button
                   type="button"
                   className="nutrition-ui-chip align-middle text-[11px]"
-                  onClick={() => router.push("/nutrition/integration")}
+                  onClick={() => {
+                    if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
+                    router.push("/nutrition/integration");
+                  }}
                 >
                   Apri Integrazione
                 </button>

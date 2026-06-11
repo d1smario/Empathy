@@ -78,15 +78,15 @@ function entitlementDescription(t: (key: string) => string, source: string): str
 function entitlementBadgeClass(source: string): string {
   switch (source) {
     case "admin":
-      return "bg-violet-500/15 text-violet-200";
+      return "bg-violet-400/10 text-violet-300 border-violet-400/30";
     case "stripe_paid":
-      return "bg-emerald-500/15 text-emerald-200";
+      return "bg-emerald-400/10 text-emerald-300 border-emerald-400/30";
     case "grant_active":
-      return "bg-cyan-500/15 text-cyan-200";
+      return "bg-cyan-400/10 text-cyan-300 border-cyan-400/30";
     case "coach_operator":
-      return "bg-amber-500/15 text-amber-200";
+      return "bg-amber-400/10 text-amber-300 border-amber-400/30";
     default:
-      return "bg-rose-500/15 text-rose-200";
+      return "bg-zinc-400/10 text-zinc-300 border-zinc-400/30";
   }
 }
 
@@ -286,7 +286,7 @@ export function AdminGrantsSection({
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <label className="flex-1 text-xs uppercase tracking-wider text-gray-400">
+        <label className="flex-1 text-[11px] uppercase tracking-wider text-zinc-400">
           {t("emailLabel")}
           <input
             type="search"
@@ -298,7 +298,7 @@ export function AdminGrantsSection({
             onKeyDown={(e) => {
               if (e.key === "Enter") void runSearch();
             }}
-            className="mt-1 w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/60"
+            className="mt-1 w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/60"
           />
         </label>
         <Pro2Button type="button" disabled={searching || query.trim().length < 2} onClick={() => void runSearch()}>
@@ -309,7 +309,7 @@ export function AdminGrantsSection({
       {users.length > 0 ? (
         <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/25">
           <table className="min-w-full text-left text-sm text-gray-300">
-            <thead className="border-b border-white/10 bg-white/5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <thead className="border-b border-white/10 bg-white/5 text-[11px] uppercase tracking-wider text-zinc-500">
               <tr>
                 <th className="px-4 py-3">{t("thEmail")}</th>
                 <th className="px-4 py-3">{t("thRole")}</th>
@@ -335,20 +335,20 @@ export function AdminGrantsSection({
                 return (
                   <tr
                     key={u.userId}
-                    className={`border-b border-white/5 last:border-0 ${selected?.userId === u.userId ? "bg-cyan-500/5" : ""}`}
+                    className={`border-b border-white/5 transition-colors even:bg-white/[0.015] hover:bg-white/[0.04] last:border-0 ${selected?.userId === u.userId ? "bg-sky-500/10" : ""}`}
                   >
-                    <td className="px-4 py-3 text-sm text-gray-200">{u.email}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">
+                    <td className="px-4 py-3 text-sm font-medium text-white">{u.email}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">
                       {u.role ?? "—"}
                       {u.role === "coach" ? (
-                        <span className="ml-1 text-[0.65rem] uppercase text-gray-500">{u.platformCoachStatus ?? "pending"}</span>
+                        <span className="ml-1 text-[0.65rem] uppercase text-zinc-500">{u.platformCoachStatus ?? "pending"}</span>
                       ) : null}
                       {u.isPlatformAdmin ? <span className="ml-1 text-violet-300">· admin</span> : null}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>{shortBadge}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}>{shortBadge}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{formatDate(u.entitlement.validUntil, locale)}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">{formatDate(u.entitlement.validUntil, locale)}</td>
                     <td className="px-4 py-3">
                       <Pro2Button
                         type="button"
@@ -368,11 +368,11 @@ export function AdminGrantsSection({
       ) : null}
 
       {selected ? (
-        <div className="space-y-4 rounded-2xl border border-cyan-400/30 bg-cyan-500/[0.04] p-5">
+        <div className="space-y-4 rounded-2xl border border-sky-400/30 bg-sky-500/[0.04] p-5">
           <div>
-            <p className="text-xs uppercase tracking-wider text-cyan-300">{t("selectedUser")}</p>
+            <p className="text-[11px] uppercase tracking-wider text-sky-300">{t("selectedUser")}</p>
             <p className="mt-1 text-sm font-semibold text-white">{selected.email}</p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-zinc-400">
               {entitlementDescription(t, selected.entitlement.source)}
               {selected.entitlement.validUntil
                 ? t("expiresWithDate", { date: formatDate(selected.entitlement.validUntil, locale) })
@@ -380,7 +380,7 @@ export function AdminGrantsSection({
             </p>
           </div>
 
-          <label className="block text-xs uppercase tracking-wider text-gray-400">
+          <label className="block text-[11px] uppercase tracking-wider text-zinc-400">
             {t("noteLabel")}
             <input
               type="text"
@@ -388,7 +388,7 @@ export function AdminGrantsSection({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t("notePlaceholder")}
-              className="mt-1 w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/60"
+              className="mt-1 w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/60"
             />
           </label>
 
@@ -401,7 +401,7 @@ export function AdminGrantsSection({
           </div>
 
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wider text-gray-400">{t("history")}</p>
+            <p className="mb-2 text-[11px] uppercase tracking-wider text-zinc-400">{t("history")}</p>
             {loadingGrants ? (
               <p className="text-sm text-gray-400">{t("loadingGrants")}</p>
             ) : grants.length === 0 ? (
@@ -417,18 +417,20 @@ export function AdminGrantsSection({
                     >
                       <div>
                         <span
-                          className={`mr-2 rounded-full px-2 py-0.5 text-[0.65rem] uppercase ${
-                            active ? "bg-emerald-500/15 text-emerald-200" : "bg-gray-700/40 text-gray-400"
+                          className={`mr-2 rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase ${
+                            active
+                              ? "bg-emerald-400/10 text-emerald-300 border-emerald-400/30"
+                              : "bg-zinc-400/10 text-zinc-400 border-zinc-400/30"
                           }`}
                         >
                           {active ? g.kind : g.revoked_at ? t("grantKindRevoked") : t("grantKindExpired")}
                         </span>
-                        <span className="text-gray-300">
+                        <span className="text-zinc-400">
                           {formatDate(g.starts_at, locale)} → {formatDate(g.ends_at, locale)}
                         </span>
-                        {g.note ? <span className="ml-2 text-gray-500">— {g.note}</span> : null}
+                        {g.note ? <span className="ml-2 text-zinc-500">— {g.note}</span> : null}
                         {g.granted_by_email ? (
-                          <span className="ml-2 text-[0.65rem] text-gray-600">by {g.granted_by_email}</span>
+                          <span className="ml-2 text-[11px] font-mono text-zinc-500">by {g.granted_by_email}</span>
                         ) : null}
                       </div>
                       {active ? (

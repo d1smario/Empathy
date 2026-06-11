@@ -39,7 +39,9 @@ function traceStatusClass(status: KnowledgeResearchTraceSummary["status"]): stri
  * La materializzazione sedute resta sul builder (`/api/training/engine/generate`) e sul calendario.
  */
 export default function TrainingViryaPageView() {
-  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  /** Contenuti tecnici (diagnostica, trace, pipeline) visibili solo a coach/admin. */
+  const showTech = role === "coach" || adminScoped;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [ctx, setCtx] = useState<Awaited<ReturnType<typeof fetchTrainingPlannerContext>> | null>(null);
@@ -144,7 +146,7 @@ export default function TrainingViryaPageView() {
         <TrainingSubnav />
       </div>
 
-      {ctx?.readSpineCoverage && !err ? (
+      {showTech && ctx?.readSpineCoverage && !err ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-violet-300/90">
             Spina lettura (athlete-memory) · {ctx.readSpineCoverage.spineScore}%
@@ -196,8 +198,8 @@ export default function TrainingViryaPageView() {
               </div>
               {!ctx.twinState ? (
                 <p className="text-xs text-amber-200/80">
-                  Digital twin non ancora risolto in memoria: contesto fisiologia da resolver canonico; modulazione
-                  bioenergetica disattivata finché non c&apos;è uno stato twin.
+                  Digital twin non ancora disponibile: la modulazione bioenergetica si attiva quando c&apos;è uno stato
+                  twin per l&apos;atleta.
                 </p>
               ) : null}
               {ctx.operationalContext ? (
@@ -224,18 +226,20 @@ export default function TrainingViryaPageView() {
                 </span>
               ))}
             </div>
-            {flagsList.length ? (
-              <div className="mt-4">
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Flags attivi</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-rose-200/90">
-                  {flagsList.map(([k]) => (
-                    <li key={k}>{k}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="mt-3 text-xs text-slate-500">Nessun flag di vincolo attivo.</p>
-            )}
+            {showTech ? (
+              flagsList.length ? (
+                <div className="mt-4">
+                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Flags attivi</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-rose-200/90">
+                    {flagsList.map(([k]) => (
+                      <li key={k}>{k}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">Nessun flag di vincolo attivo.</p>
+              )
+            ) : null}
           </Pro2SectionCard>
 
           {ctx.adaptationLoop ? (
@@ -255,7 +259,7 @@ export default function TrainingViryaPageView() {
           ) : null}
 
           {ctx.bioenergeticModulation ? (
-            <Pro2SectionCard accent="fuchsia" title="Bioenergetis" subtitle="Modulazione carico" icon={CalendarRange}>
+            <Pro2SectionCard accent="fuchsia" title="Bioenergetica" subtitle="Modulazione carico" icon={CalendarRange}>
               <p className="text-sm text-slate-300">{ctx.bioenergeticModulation.headline}</p>
               <p className="mt-2 text-xs text-slate-500">{ctx.bioenergeticModulation.guidance}</p>
               <p className="mt-2 font-mono text-[0.65rem] text-slate-500">
@@ -306,7 +310,7 @@ export default function TrainingViryaPageView() {
             </Pro2SectionCard>
           ) : null}
 
-          {(ctx.researchPlans?.length ?? 0) > 0 ? (
+          {showTech && (ctx.researchPlans?.length ?? 0) > 0 ? (
             <Pro2SectionCard accent="cyan" title="Research plans (Virya)" subtitle="Generati dagli hint · persistenza knowledge canonica" icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchPlans ?? []).map((p) => (
@@ -327,7 +331,7 @@ export default function TrainingViryaPageView() {
             </Pro2SectionCard>
           ) : null}
 
-          {(ctx.researchPlans?.length ?? 0) > 0 && (ctx.researchTraces?.length ?? 0) === 0 ? (
+          {showTech && (ctx.researchPlans?.length ?? 0) > 0 && (ctx.researchTraces?.length ?? 0) === 0 ? (
             <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-100/90">
               <p className="mb-2">
                 Nessun trace in risposta (es. contesto letto con <code className="rounded bg-black/40 px-1">persistResearchTraces=0</code> o
@@ -339,7 +343,7 @@ export default function TrainingViryaPageView() {
             </div>
           ) : null}
 
-          {(ctx.researchTraces?.length ?? 0) > 0 ? (
+          {showTech && (ctx.researchTraces?.length ?? 0) > 0 ? (
             <Pro2SectionCard accent="orange" title="Trace salvati (canonical)" subtitle="Stato hop / link documenti dopo persistenza" icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchTraces ?? []).map((t: KnowledgeResearchTraceSummary) => (
@@ -363,17 +367,19 @@ export default function TrainingViryaPageView() {
         </div>
       ) : null}
 
-      <Pro2SectionCard accent="orange" title="Pipeline" subtitle="Riepilogo" icon={Sparkles} className="mt-8">
-        <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
-          <li>Builder = generazione singola sessione; Virya = batch annuale che chiama lo stesso endpoint engine.</li>
-          <li>Research plans/trace restano knowledge — non sostituiscono il motore deterministico.</li>
-          <li>
-            Persistenza trace: <code className="text-slate-300">GET …/virya-context?persistResearchTraces=1</code> (default) e
-            <code className="text-slate-300"> POST /api/knowledge/research-traces</code> con <code className="text-slate-300">plans[]</code> usano lo stesso
-            <code className="text-slate-300"> syncResearchTracePlans</code> in <code className="text-slate-300">lib/knowledge/virya-research-trace-sync.ts</code>.
-          </li>
-        </ol>
-      </Pro2SectionCard>
+      {showTech ? (
+        <Pro2SectionCard accent="orange" title="Pipeline" subtitle="Riepilogo" icon={Sparkles} className="mt-8">
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
+            <li>Builder = generazione singola sessione; Virya = batch annuale che chiama lo stesso endpoint engine.</li>
+            <li>Research plans/trace restano knowledge — non sostituiscono il motore deterministico.</li>
+            <li>
+              Persistenza trace: <code className="text-slate-300">GET …/virya-context?persistResearchTraces=1</code> (default) e
+              <code className="text-slate-300"> POST /api/knowledge/research-traces</code> con <code className="text-slate-300">plans[]</code> usano lo stesso
+              <code className="text-slate-300"> syncResearchTracePlans</code> in <code className="text-slate-300">lib/knowledge/virya-research-trace-sync.ts</code>.
+            </li>
+          </ol>
+        </Pro2SectionCard>
+      ) : null}
     </Pro2ModulePageShell>
   );
 }

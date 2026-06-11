@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CalendarDays } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
+import { redirectIfShellRoleNotAllowed } from "@/lib/auth/redirect-role-gate";
 
 export const metadata: Metadata = { title: "Calendario" };
 
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Calendario" };
  * Voce account-fissa del coach. Calendario operativo del coach (contenuto in definizione).
  * Placeholder volutamente neutro finché non è specificato il modello dati.
  */
-export default function CalendarioPage() {
+export default async function CalendarioPage() {
+  await redirectIfShellRoleNotAllowed(["coach"]);
   return (
     <Pro2ModulePageShell
       eyebrow="Calendario · Coach"

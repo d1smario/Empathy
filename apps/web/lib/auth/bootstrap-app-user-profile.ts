@@ -78,6 +78,24 @@ export async function bootstrapAppUserProfile(
 
   const role = resolveBootstrapRole(input.role, current);
 
+  /**
+   * ORDINE CRITICO: la riga `app_user_profiles` va creata PRIMA del profilo atleta.
+   * La policy RLS `athlete_profiles_insert_private_onboarding` richiede una riga
+   * `app_user_profiles` con role='private' per auth.uid(): senza questa riga,
+   * l'insert atleta del primo onboarding viola la RLS (403) per ogni nuovo utente.
+   */
+  if (!current) {
+    const { error: seedErr } = await supabase.from("app_user_profiles").insert({
+      user_id: input.userId,
+      role,
+      athlete_id: null,
+      platform_coach_status: role === "coach" ? "pending" : null,
+    });
+    if (seedErr && seedErr.code !== "23505") {
+      return { error: seedErr.message };
+    }
+  }
+
   let resolvedAthleteId: string | null;
   if (role === "coach") {
     resolvedAthleteId = athleteId ? await resolveExistingAthleteId(supabase, athleteId, null) : null;

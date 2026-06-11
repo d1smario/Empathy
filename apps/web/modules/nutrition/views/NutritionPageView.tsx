@@ -801,7 +801,9 @@ function IntegrationProductCard({
 export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, role, loading: athleteLoading, adminScoped } = useActiveAthlete();
+  /** Diagnostica tecnica (research trace, roadmap, ontology, dump motore): solo coach/admin. */
+  const showTech = role === "coach" || adminScoped;
   const [profile, setProfile] = useState<AthleteNutritionRow | null>(null);
   const [physio, setPhysio] = useState<PhysioRow | null>(null);
   const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
@@ -3389,6 +3391,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
   async function runFoodLookupFromPathway(query: string) {
     await runFoodLookupForQuery(query);
+    if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
     router.push("/nutrition/integration");
   }
 
@@ -3489,11 +3492,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Metabolic Fuel Console"
+      eyebrow="Nutrizione"
       eyebrowClassName="text-pink-400"
-      title="Nutrition · Nutriomics Engine"
+      title="Nutrizione"
       description={
-        <span className="text-slate-400">{role === "coach" ? "Coach mode" : "Private mode"}</span>
+        <span className="text-slate-400">{role === "coach" ? "Vista coach" : "La tua nutrizione"}</span>
       }
     >
       {error && <div className="alert-error">{error}</div>}
@@ -3508,7 +3511,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             <div className="flex flex-col gap-3">
               <div className="min-w-0 flex-1">
                 <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Aree nutrition</p>
-                <NutritionSubnav />
+                {adminScoped ? (
+                  /* Subnav fuori modulo: nelle schede admin tab visibili ma inerti (v2). */
+                  <div
+                    className="pointer-events-none cursor-default opacity-50"
+                    title="Disponibile nella scheda dedicata (v2)"
+                    aria-disabled="true"
+                  >
+                    <NutritionSubnav />
+                  </div>
+                ) : (
+                  <NutritionSubnav />
+                )}
               </div>
             </div>
             {subRoute === "meal-plan" && lowMealsBudgetWarning ? (
@@ -3552,7 +3566,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {subRoute === "meal-plan" && athleteId && isMealPlanV2PreviewUiEnabled() ? (
+          {subRoute === "meal-plan" && athleteId && showTech && isMealPlanV2PreviewUiEnabled() ? (
             <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
           ) : null}
 
@@ -3674,9 +3688,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 <h3 className="viz-title text-base">Assunzione fueling</h3>
                 <p className="mt-1 text-sm text-slate-400">
                   Conferma che hai seguito il piano (pre / intra / post) per{" "}
-                  <strong className="text-white">{selectedPlanDate}</strong>. La conferma resta in memoria atleta (
-                  <span className="font-mono text-[0.65rem] text-slate-500">nutrition_config.fueling_execution_confirmations</span>
-                  ) e può supportare il confronto piano vs reale se attivi l&apos;aderenza nutrizione sul meal plan.
+                  <strong className="text-white">{selectedPlanDate}</strong>. La conferma viene salvata e può supportare
+                  il confronto piano vs reale se attivi l&apos;aderenza nutrizione sul meal plan.
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
@@ -3741,6 +3754,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 </div>
               ) : (
                 <>
+              {showTech ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                 <summary>Dettagli contesto e motore</summary>
               <div className="nutrition-detail-rail" style={{ marginTop: "10px", marginBottom: 0 }}>
@@ -3765,6 +3779,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 ) : null}
               </div>
               </details>
+              ) : null}
               <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
                 {fuelingOpsCards.map((card) => (
                   <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${card.tone}`}>
@@ -3802,7 +3817,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </div>
                 </details>
               ) : null}
-              {fuelingTrainingContext.length ? (
+              {showTech && fuelingTrainingContext.length ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                   <summary>Analisi seduta e substrati</summary>
                   <section
@@ -4338,7 +4353,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   <p className="nutrition-muted mt-2 mb-0 text-[0.68rem] opacity-80">{applicationPlaybook.disclaimerIt}</p>
                 </details>
               ) : null}
-              {crossDomainInterpretationRoadmap ? (
+              {showTech && crossDomainInterpretationRoadmap ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                   <summary>+ Roadmap cross-domain · domini cablati vs backlog</summary>
                   <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
@@ -4365,7 +4380,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   ) : null}
                 </details>
               ) : null}
-              {nutrientInterrogation?.items.length ? (
+              {showTech && nutrientInterrogation?.items.length ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                   <summary>+ Interrogazione nutrienti · ontology multiscala</summary>
                   <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
@@ -4505,12 +4520,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 ) : null}
               </details>
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Alimenti funzionali (vitamine, aminoacidi, cofattori) → OFF / USDA branded / FDC per nutriente</summary>
+                <summary>Alimenti funzionali (vitamine, aminoacidi, cofattori) per nutriente</summary>
                 <p className="nutrition-muted" style={{ fontSize: "0.8rem", marginTop: "8px", marginBottom: "10px" }}>
-                  Per ogni <strong>molecola / nutriente</strong> collegato alle vie attive: esempi curati, ricerca prodotti nel tab Pasti
-                  (OpenFoodFacts + USDA branded + interni), e — con variabile server <span className="nutrition-muted">USDA_API_KEY</span> — elenco{" "}
-                  <strong>Foundation / SR Legacy</strong> dalla FoodData Central filtrato per nutriente FDC e ordinato per densità (poi scegli e
-                  incrocia con il profilo).
+                  Per ogni <strong>nutriente</strong> collegato alle vie attive trovi esempi curati e la ricerca prodotti nel tab Pasti, con un
+                  elenco di alimenti ordinati per densità del nutriente: scegli e incrocia con il tuo profilo.
                 </p>
                 {functionalFoodRecommendations.targets.length ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>

@@ -5,10 +5,10 @@ import { useEffect, useState, type ReactNode } from "react";
 /**
  * Wrapper client che mostra `children` solo se `/api/admin/me` ritorna `isAdmin: true`.
  *
- * Lo stato server-side di "platform admin" richiede sia email allowlist (env `PLATFORM_ADMIN_EMAILS`)
- * **sia** `app_user_profiles.is_platform_admin = true` — vedi `lib/platform-admin.ts` →
- * `resolvePlatformAdminAccess`. Quindi nessun cliente finale può vedere queste sezioni
- * solo "manomettendo" il client.
+ * Lo stato server-side di "platform admin" è deciso SOLO dal DB:
+ * `app_user_profiles.is_platform_admin = true` (modificabile solo via service_role,
+ * trigger migration 024) — vedi `lib/platform-admin.ts` → `resolvePlatformAdminAccess`.
+ * Quindi nessun cliente finale può vedere queste sezioni "manomettendo" il client.
  *
  * Il rendering è **null** durante il loading (no flash di contenuto admin).
  * Per il pannello "Diagnostica" è il comportamento desiderato.

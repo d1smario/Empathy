@@ -8,7 +8,7 @@ import type { OperationalSignalsBundle } from "@/lib/dashboard/resolve-operation
 import type { ReasoningCardVm, ReasoningDashboardErr, ReasoningDashboardOk, ReasoningTone } from "@/lib/dashboard/reasoning-dashboard-contract";
 import { reasoningDashboardUrl } from "@/lib/dashboard/reasoning-dashboard-contract";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { Pro2Link } from "@/components/ui/empathy";
+import { AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 
@@ -70,7 +70,7 @@ function toneForLoop(status: string): BioTone {
   return "green";
 }
 
-function buildBioenergetisCells(sig: OperationalSignalsBundle): BioCellVm[] {
+function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
   const g = sig.adaptationGuidance;
   const loop = sig.adaptationLoop;
   const bio = sig.bioenergeticModulation;
@@ -630,7 +630,7 @@ export default function BioenergeticTransparencyHubPageView() {
   );
 
   const sig = hub?.operationalSignals;
-  const cells = useMemo(() => (sig ? buildBioenergetisCells(sig) : []), [sig]);
+  const cells = useMemo(() => (sig ? buildBioenergeticaCells(sig) : []), [sig]);
   const recommendations = useMemo(
     () => buildOperationalRecommendations({ sig, reasoning, manualActions }),
     [manualActions, reasoning, sig],
@@ -728,7 +728,7 @@ export default function BioenergeticTransparencyHubPageView() {
         method: "PATCH",
         cache: "no-store",
         headers,
-        body: JSON.stringify({ status, reason: `Bioenergetis Application Queue · ${status}` }),
+        body: JSON.stringify({ status, reason: `Bioenergetica Application Queue · ${status}` }),
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -754,61 +754,57 @@ export default function BioenergeticTransparencyHubPageView() {
     <Pro2ModulePageShell
       eyebrow="Physiology · Trasparenza operativa"
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Bioenergetis"
+      title="Bioenergetica"
       description={
         <>
-          Vista <strong className="text-emerald-200/90">solo lettura</strong> sullo stesso bundle di Compute usato da dashboard e nutrizione
-          (`resolveOperationalSignalsBundle`). Ordine causale: realtà del giorno → segnali → VIRYA (ritune piano) → builder (sessione). Dettaglio
-          normativo:{" "}
-          <span className="font-mono text-[0.7rem] text-slate-500">
-            docs/EMPATHY_PRO2_BIOENERGETIC_TRANSPARENCY_HUB_AND_VIRYA_LOOP.md
-          </span>
+          Vista <strong className="text-emerald-200/90">solo lettura</strong> sugli stessi segnali usati da dashboard e nutrizione.
+          Ordine: realtà del giorno → segnali → adattamento del piano → sessione.
         </>
       }
       headerActions={
         <>
-          <Pro2Link
+          <AdminScopedPro2Link
             href="/bioenergetics"
             variant="secondary"
             className="justify-center border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25"
           >
             Report giornaliero
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/dashboard"
             variant="secondary"
             className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
           >
             Dashboard
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/physiology"
             variant="secondary"
             className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
           >
             Metabolic Lab
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/training/vyria"
             variant="secondary"
             className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
           >
             VIRYA
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/training/builder"
             variant="secondary"
             className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
           >
             Builder
-          </Pro2Link>
-          <Pro2Link
+          </AdminScopedPro2Link>
+          <AdminScopedPro2Link
             href="/nutrition"
             variant="secondary"
             className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
           >
             Nutrition
-          </Pro2Link>
+          </AdminScopedPro2Link>
         </>
       }
     >
@@ -846,7 +842,7 @@ export default function BioenergeticTransparencyHubPageView() {
             {sig ? (
               <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
                 <header>
-                  <h2 className="viz-title">Bioenergetis Stack</h2>
+                  <h2 className="viz-title">Bioenergetica Stack</h2>
                   <p className="mt-1 text-sm text-gray-400">
                     Celle operative dal bundle Compute: twin, loop, scala carico e dial nutrizione. Ogni numero apre la spiegazione.
                   </p>
@@ -876,7 +872,7 @@ export default function BioenergeticTransparencyHubPageView() {
               </section>
             ) : (
               <p className="text-sm text-gray-500">
-                Bioenergetis non disponibile (memoria atleta assente o errore nel bundle). Verifica dati twin/fisiologia e riprova.
+                Bioenergetica non disponibile al momento. Aggiungi i tuoi dati di fisiologia e riprova.
               </p>
             )}
 

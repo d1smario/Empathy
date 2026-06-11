@@ -128,7 +128,7 @@ function defaultDiaryEntryDate(anchor: string | null | undefined, plan: string |
 }
 
 function provenanceLabel(p: FoodDiaryEntryViewModel["provenance"]): string {
-  return p === "usda_fdc" ? "USDA FDC" : "Scala da ref. /100g";
+  return p === "usda_fdc" ? "Database alimenti" : "Scala da rif. /100g";
 }
 
 type Props = {
@@ -925,10 +925,9 @@ export function FoodDiaryPanel({
             </button>
           </div>
           <p className="muted-copy nutrition-diary-photo-hint" style={{ fontSize: "0.72rem", margin: "0 0 12px", lineHeight: 1.45 }}>
-            Su telefono puoi scattare o scegliere dalla galleria. L’immagine viene analizzata sul server con{" "}
-            <strong>OpenAI Vision</strong> (<code className="font-mono text-[0.7rem] text-white/70">OPENAI_VISION_MODEL</code>
-            , default gpt-4o-mini): ricevi una proposta di nome, porzione e macro. I numeri persistiti nel diario restano da{" "}
-            <strong>USDA FDC</strong> (ricerca) o <strong>scala manuale</strong> dopo che verifichi la porzione.
+            Su telefono puoi scattare o scegliere dalla galleria. L’immagine viene analizzata e ricevi una proposta di nome,
+            porzione e macro. I valori salvati nel diario restano quelli del database alimenti (o la scala manuale) dopo che
+            verifichi la porzione.
           </p>
           {visionNote ? (
             <p className="muted-copy" style={{ fontSize: "0.78rem", marginBottom: 14, lineHeight: 1.45 }}>
@@ -1071,10 +1070,9 @@ export function FoodDiaryPanel({
               <div className="muted-copy" style={{ fontSize: "0.82rem", marginTop: 6, lineHeight: 1.5 }}>
                 {selectedHit.source === "usda"
                   ? selectedHit.lookupTier === "usda_fdc_cache"
-                    ? "USDA FDC (cache locale)"
-                    : "USDA FDC (discovery — nutrienti confermati al salvataggio)"
-                  : "Catalogo fornitore / fueling (dichiarazione + metadata)"}
-                {selectedHit.fdcId != null ? ` · codice ${selectedHit.fdcId}` : null}
+                    ? "Database alimenti"
+                    : "Database alimenti (valori confermati al salvataggio)"
+                  : "Catalogo prodotti (valori da etichetta)"}
               </div>
               {(() => {
                 const qg = parseDecimalInput(quantityG);
@@ -1176,10 +1174,9 @@ export function FoodDiaryPanel({
                     <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{h.label}</div>
                     <div className="muted-copy" style={{ fontSize: "0.78rem", marginTop: 2 }}>
                       {h.brand ? `${h.brand} · ` : ""}
-                      {h.source === "brand-site" ? "CATALOGO" : "USDA FDC"}
-                      {h.fdcId != null ? ` · FDC ${h.fdcId}` : ""}
+                      {h.source === "brand-site" ? "Catalogo" : "Database alimenti"}
                       {h.kcal_100 != null ? ` · ${h.kcal_100} kcal/100g` : ""}
-                      {usdaNoPreview ? " · nutrienti da FDC al salvataggio" : ""}
+                      {usdaNoPreview ? " · valori confermati al salvataggio" : ""}
                     </div>
                   </button>
                 </li>

@@ -233,7 +233,7 @@ export function DashboardAthleteHubCard() {
       </div>
       <p className="mt-1 text-xs text-gray-500">
         Sintesi da Supabase per l&apos;atleta attivo; training con finestra calendario (default −7 / +28 giorni). Stesso payload della
-        pagina Physiology Bioenergetis.
+        pagina Physiology Bioenergetica.
       </p>
 
       {showLoading ? (
@@ -251,7 +251,7 @@ export function DashboardAthleteHubCard() {
           {hub.operationalSignals ? (
             <div className="mb-4 rounded-xl border border-orange-400/25 bg-orange-950/20 px-4 py-3 text-sm text-gray-200">
               <p className="font-mono text-[0.65rem] uppercase tracking-wider text-orange-300/90">
-                Bioenergetis · twin → loop adattamento → dial nutrizione
+                Bioenergetica · twin → loop adattamento → dial nutrizione
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 <HubOpCell

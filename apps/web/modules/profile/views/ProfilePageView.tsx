@@ -6,6 +6,7 @@ import {
   profileMetricLabelToAccent,
   profileSectionTitleToAccent,
 } from "@/components/profile/ProfilePro2KpiCard";
+import { InviteCoachCard } from "@/components/profile/InviteCoachCard";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { ManualIntegrationPullButton } from "@/components/integrations/ManualIntegrationPullButton";
@@ -1535,7 +1536,7 @@ export default function ProfilePage() {
         ],
       },
       {
-        title: "Bioenergetis",
+        title: "Bioenergetica",
         cards: [
           {
             label: "Phase angle",
@@ -1641,6 +1642,8 @@ export default function ProfilePage() {
       ]
     : [];
 
+  const isCoachWithoutAthlete = role === "coach" && !activeAthleteId;
+
   return (
     <Pro2ModulePageShell
       eyebrow="Athlete · Profile"
@@ -1666,20 +1669,24 @@ export default function ProfilePage() {
               Modifica profilo
             </Pro2Button>
           ) : null}
-          <Pro2Link
-            href="/physiology"
-            variant="secondary"
-            className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-          >
-            Physiology
-          </Pro2Link>
-          <Pro2Link
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
-          >
-            Builder
-          </Pro2Link>
+          {!isCoachWithoutAthlete ? (
+            <>
+              <Pro2Link
+                href="/physiology"
+                variant="secondary"
+                className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
+              >
+                Physiology
+              </Pro2Link>
+              <Pro2Link
+                href="/training/builder"
+                variant="secondary"
+                className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
+              >
+                Builder
+              </Pro2Link>
+            </>
+          ) : null}
         </>
       }
     >
@@ -1718,6 +1725,8 @@ export default function ProfilePage() {
                 </div>
               </div>
             </Pro2SectionCard>
+
+            {role === "private" ? <InviteCoachCard /> : null}
 
             <Pro2SectionCard
               accent="orange"
@@ -1852,21 +1861,35 @@ export default function ProfilePage() {
           </>
         ) : null}
 
-      <div>
-        <Pro2Button
-          type="button"
-          variant="secondary"
-          className="border border-white/20 bg-white/5 hover:bg-white/10"
-          onClick={() => {
-            setShowForm(!showForm);
-            if (showForm) setEditingProfileId(null);
-          }}
-        >
-          {showForm ? "Annulla editor" : "Nuovo profilo"}
-        </Pro2Button>
-      </div>
+      {isCoachWithoutAthlete ? (
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 px-5 py-4 text-sm text-slate-200">
+          <p className="font-semibold text-violet-100">Account coach</p>
+          <p className="mt-1 leading-relaxed text-slate-400">
+            Il profilo atleta non si gestisce da qui. I tuoi atleti sono in Atleti.
+          </p>
+          <div className="mt-3">
+            <Pro2Link href="/athletes" variant="secondary" className="justify-center border border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15">
+              Vai ad Atleti
+            </Pro2Link>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Pro2Button
+            type="button"
+            variant="secondary"
+            className="border border-white/20 bg-white/5 hover:bg-white/10"
+            onClick={() => {
+              setShowForm(!showForm);
+              if (showForm) setEditingProfileId(null);
+            }}
+          >
+            {showForm ? "Annulla editor" : "Nuovo profilo"}
+          </Pro2Button>
+        </div>
+      )}
 
-      {showForm && (
+      {!isCoachWithoutAthlete && showForm && (
         <Pro2SectionCard
           accent="slate"
           icon={PencilLine}

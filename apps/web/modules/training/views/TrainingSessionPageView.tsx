@@ -410,10 +410,10 @@ export default function TrainingSessionPageView() {
       description={
         dateValid ? (
           <span>
-            Riferimento ISO <code className="text-orange-200/80">{date}</code> — stessi dati del calendario operativo.
+            Giornata <code className="text-orange-200/80">{date}</code> — stessi dati del calendario.
           </span>
         ) : (
-          "Usa un path del tipo /training/session/2025-04-02 (YYYY-MM-DD)."
+          "Indirizzo non valido: la data deve avere il formato YYYY-MM-DD (es. 2025-04-02)."
         )
       }
       headerActions={
@@ -478,7 +478,7 @@ export default function TrainingSessionPageView() {
       ) : null}
 
       {!dateValid ? (
-        <Pro2SectionCard accent="slate" title="Path non valido" subtitle="Formato data" icon={CalendarDays}>
+        <Pro2SectionCard accent="slate" title="Data non valida" subtitle="Formato data" icon={CalendarDays}>
           <p className="text-sm text-gray-400">
             La data nell&apos;URL deve essere <strong className="text-gray-200">YYYY-MM-DD</strong>.
           </p>
@@ -489,7 +489,7 @@ export default function TrainingSessionPageView() {
         <>
           <Pro2SectionCard
             accent="orange"
-            title="Bioenergetis sessione"
+            title="Bioenergetica sessione"
             subtitle="Celle operative: piano, realtà, twin e adattamento"
             icon={Activity}
           >
@@ -568,12 +568,12 @@ export default function TrainingSessionPageView() {
           <Pro2SectionCard
             accent="violet"
             title="Twin e recovery"
-            subtitle="Stesso athlete memory usato da builder e nutrizione"
+            subtitle="Stessi dati usati da Builder e Nutrizione"
             icon={Heart}
           >
             <p className="text-sm text-gray-400">
-              Readiness, carico interno e recovery debt vivono nel <strong className="text-gray-200">digital twin</strong> in memoria
-              atleta. Apri Profile per lo snapshot; Physiology per le ancore deterministiche.
+              Readiness, carico interno e recupero vivono nel <strong className="text-gray-200">digital twin</strong> dell&apos;atleta.
+              Apri Profile per lo snapshot; Physiology per il dettaglio dei segnali.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pro2Link
@@ -593,10 +593,10 @@ export default function TrainingSessionPageView() {
             </div>
           </Pro2SectionCard>
 
-          <Pro2SectionCard accent="amber" title="Prossimi passi" subtitle="API Pro 2" icon={Wrench}>
+          <Pro2SectionCard accent="amber" title="Prossimi passi" subtitle="In arrivo" icon={Wrench}>
             <p className="text-sm text-gray-400">
               Registrazione <strong className="text-gray-200">completa sessione</strong>, modifica carico coach e note builder strutturate
-              saranno collegate agli stessi endpoint previsti in V1, senza motore parallelo.
+              arriveranno nelle prossime versioni.
             </p>
           </Pro2SectionCard>
         </>

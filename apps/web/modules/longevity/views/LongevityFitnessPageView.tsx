@@ -120,7 +120,7 @@ function ScaleRow({
 }
 
 export default function LongevityFitnessPageView() {
-  const { athleteId, signedIn } = useActiveAthlete();
+  const { athleteId, signedIn, adminScoped } = useActiveAthlete();
   const [data, setData] = useState<LongevityFitnessPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -147,7 +147,11 @@ export default function LongevityFitnessPageView() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/longevity/index?athleteId=${encodeURIComponent(id)}`, { cache: "no-store" });
+        // In scheda admin niente persistenza snapshot/coin: la sola apertura non muta lo storico
+        const persistParam = adminScoped ? "&persist=false" : "";
+        const res = await fetch(`/api/longevity/index?athleteId=${encodeURIComponent(id)}${persistParam}`, {
+          cache: "no-store",
+        });
         const json = (await res.json()) as LongevityFitnessPayload & { error?: string };
         if (!res.ok) throw new Error(json.error ?? "Errore caricamento");
         setData(json);
@@ -158,7 +162,7 @@ export default function LongevityFitnessPageView() {
         setLoading(false);
       }
     },
-    [hydrateFromCheckin],
+    [hydrateFromCheckin, adminScoped],
   );
 
   useEffect(() => {
@@ -199,14 +203,14 @@ export default function LongevityFitnessPageView() {
       eyebrow="Health-to-Earn · indice fisiologico"
       eyebrowClassName="text-fuchsia-400"
       title="Longevity & Fitness"
-      description="Longevity & Fitness Index deterministico dai tuoi dati reali + check-in giornaliero. Ogni giorno efficiente vale Empathy Coin verso Bronze, Silver, Gold."
+      description="Il tuo indice di Longevity & Fitness calcolato dai dati reali + check-in giornaliero. Ogni giorno efficiente vale Empathy Coin verso Bronze, Silver, Gold."
     >
       <Pro2AthleteRequiredGate enabled={signedIn}>
         {error ? (
           <div className="rounded-xl border border-rose-500/35 bg-rose-950/20 px-4 py-3 text-sm text-rose-200">{error}</div>
         ) : null}
 
-        <Pro2SectionCard accent="fuchsia" title="Longevity & Fitness Index" subtitle="EPI · motore deterministico (AI solo interpretazione)" icon={HeartPulse}>
+        <Pro2SectionCard accent="fuchsia" title="Longevity & Fitness Index" subtitle="Calcolato dai tuoi dati reali; l'AI aiuta solo a interpretarli" icon={HeartPulse}>
           {loading && !epi ? (
             <p className="text-sm text-gray-400">Calcolo in corso…</p>
           ) : epi ? (
@@ -257,12 +261,22 @@ export default function LongevityFitnessPageView() {
                   </p>
                 ) : null}
               </div>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="#longevity-checkin"
+                  className="inline-flex items-center justify-center rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-100 transition hover:border-fuchsia-400/60 hover:bg-fuchsia-500/15"
+                >
+                  Fai il check-in di oggi
+                </a>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-400">Indice non disponibile.</p>
           )}
         </Pro2SectionCard>
 
+        <div id="longevity-checkin" className="scroll-mt-28">
         <Pro2SectionCard accent="violet" title="Check-in di oggi" subtitle="Come ti senti · segnala eventuali malesseri" icon={Activity}>
           <div className="grid gap-4 sm:grid-cols-2">
             {SCALES.map((s) => (
@@ -318,6 +332,7 @@ export default function LongevityFitnessPageView() {
             </Pro2Button>
           </div>
         </Pro2SectionCard>
+        </div>
 
         <Pro2SectionCard accent="amber" title="Empathy Coin" subtitle="Certificazione Bronze · Silver · Gold" icon={Award}>
           {balance ? (

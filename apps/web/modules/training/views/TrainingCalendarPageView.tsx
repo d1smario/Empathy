@@ -226,7 +226,9 @@ function SportGlyph({ type }: { type: string }) {
 
 export default function TrainingCalendarPageView() {
   const searchParams = useSearchParams();
-  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  /** Contenuti tecnici (diagnostica, dump) visibili solo a coach/admin, mai allo spettatore atleta. */
+  const showTech = role === "coach" || adminScoped;
   const [calendarReady, setCalendarReady] = useState(false);
   const athleteFtpWatts = useAthleteFtpWatts(calendarReady ? athleteId : null);
 
@@ -861,15 +863,15 @@ export default function TrainingCalendarPageView() {
               : null;
           const ladderHint =
             nRows != null
-              ? ` Scala intervalli: ${nRows} righe (durata + watt per blocco); nella risposta JSON trovi anche "intervalLadderCsv" (formato CSV per Excel).`
+              ? ` Scala intervalli: ${nRows} righe (durata + watt per blocco).`
               : "";
           setSuccess(
-            `Seduta pianificata importata (${sf}). In notes è stato salvato il contratto Builder (BUILDER_SESSION_JSON) per il grafico a blocchi; apri la seduta su quel giorno per rivederla.${ladderHint}${companionHint}`,
+            `Seduta pianificata importata (${sf}) con grafico a blocchi come nel Builder; apri la seduta su quel giorno per rivederla.${ladderHint}${companionHint}`,
           );
         } else {
           const n = typeof json.importedCount === "number" ? json.importedCount : 0;
           setSuccess(
-            `Programmazione importata: ${n} sedute. Compaiono come chip PLAN (tipo, durata, TSS). Per curve ZWO/ERG/MRC o FIT workout usa un file dedicato: viene creata una seduta con struttura Builder in notes.`,
+            `Programmazione importata: ${n} sedute. Compaiono come chip PLAN (tipo, durata, TSS). Per curve ZWO/ERG/MRC o FIT workout usa un file dedicato: viene creata una seduta con struttura Builder.`,
           );
         }
         const fd = json.firstDate;
@@ -1141,7 +1143,7 @@ export default function TrainingCalendarPageView() {
             {showFileImport ? "Chiudi import" : "Importa file"}
           </button>
         </div>
-        <p className="max-w-md text-xs text-slate-500" title={`API: ${fetchFrom} → ${fetchTo}`}>
+        <p className="max-w-md text-xs text-slate-500" title={showTech ? `API: ${fetchFrom} → ${fetchTo}` : undefined}>
           I dati caricati includono alcuni giorni prima e dopo il mese visibile, così le sedute ai bordi non spariscono dalla griglia.
         </p>
       </div>
@@ -1183,7 +1185,7 @@ export default function TrainingCalendarPageView() {
         </p>
       ) : null}
 
-      {athleteId && fetchDiag ? (
+      {showTech && athleteId && fetchDiag ? (
         <p className="mb-4 rounded-lg border border-white/10 bg-black/40 px-3 py-2 font-mono text-[0.65rem] leading-relaxed text-slate-400">
           <span className="text-slate-500">diag calendario · </span>
           athleteId={athleteId} · HTTP {fetchDiag.status} · planned={fetchDiag.plannedN} · executed={fetchDiag.executedN}
@@ -1221,7 +1223,7 @@ export default function TrainingCalendarPageView() {
         </p>
       ) : null}
 
-      {executedCalendarGap ? (
+      {showTech && executedCalendarGap ? (
         <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           <p className="font-mono text-[0.65rem] uppercase tracking-wide text-amber-300">
             warning · executed presenti ma non renderizzati in griglia
@@ -1468,27 +1470,10 @@ export default function TrainingCalendarPageView() {
                     Sostituisci seduta esistente
                   </Pro2Link>
                 ) : null}
-                <button
-                  type="button"
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-gray-400 hover:border-violet-400/30 hover:text-violet-200"
-                  onClick={() => {
-                    setShowFileImport(true);
-                    setFileImportForm((f) => ({ ...f, date: selectedDate }));
-                    window.setTimeout(() => {
-                      document.getElementById("training-calendar-file-import")?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }, 80);
-                  }}
-                >
-                  Oppure importa file esterno
-                </button>
               </div>
               {dayPlanned.length === 0 ? (
                 <p className="mt-3 text-sm text-gray-500">
-                  Nessuna seduta pianificata: il Builder è il percorso canonico Pro 2 (motore deterministico + salvataggio su{" "}
-                  <code className="text-fuchsia-200/90">planned_workouts</code>).
+                  Nessuna seduta pianificata: il Builder è il percorso consigliato per creare la seduta di questo giorno.
                 </p>
               ) : null}
             </Pro2SectionCard>
@@ -1505,9 +1490,8 @@ export default function TrainingCalendarPageView() {
                 {dayPlanned.length >= 2 && athleteId ? (
                   <div className="mb-4 rounded-xl border border-amber-400/35 bg-amber-950/30 px-3 py-3">
                     <p className="text-xs leading-relaxed text-amber-100/95">
-                      Su questo giorno ci sono <strong>{dayPlanned.length}</strong> righe distinte in{" "}
-                      <code className="rounded bg-black/40 px-1">planned_workouts</code>. Elimina una sola seduta
-                      lascia le altre visibili (non è un ripristino automatico).
+                      Su questo giorno ci sono <strong>{dayPlanned.length}</strong> sedute pianificate distinte.
+                      Eliminarne una sola lascia le altre visibili (non è un ripristino automatico).
                     </p>
                     {dayDeleteAllConfirm ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1764,7 +1748,7 @@ export default function TrainingCalendarPageView() {
                 </label>
                 <p className="text-xs text-slate-500">
                   {fileImportForm.mode === "planned"
-                    ? "Tabellare: CSV/JSON export calendario (più sedute). Strutturato: ZWO, ERG, MRC o FIT workout — una seduta nel giorno scelto, con `BUILDER_SESSION_JSON` in notes (stesso formato del Builder) per il grafico a blocchi."
+                    ? "Tabellare: CSV/JSON export calendario (più sedute). Strutturato: ZWO, ERG, MRC o FIT workout — una seduta nel giorno scelto, con grafico a blocchi come nel Builder."
                     : "Eseguito: FIT/FIT.GZ, CSV, JSON, TCX, GPX. Il salvataggio usa il giorno indicato sopra (cella corrente se non modifichi la data). Device: auto o manuale."}
                 </p>
                 {fileImportForm.mode === "planned" ? (
@@ -1806,34 +1790,6 @@ export default function TrainingCalendarPageView() {
                 </div>
               ) : null}
 
-              {!showFileImport ? (
-                <button
-                  type="button"
-                  className="group w-full rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/25 via-black/50 to-black/70 p-5 text-left shadow-inner transition hover:border-cyan-400/45 hover:bg-cyan-950/30"
-                  onClick={() => {
-                    setFileImportForm((f) => ({ ...f, date: selectedDate }));
-                    setShowFileImport(true);
-                    window.setTimeout(() => {
-                      document.getElementById("training-calendar-file-import")?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }, 80);
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-cyan-400/45 bg-cyan-500/35 text-cyan-50 shadow-[0_0_16px_rgba(34,211,238,0.3)]">
-                      <FileUp className="h-5 w-5" strokeWidth={2.35} aria-hidden />
-                    </span>
-                    <div className="min-w-0">
-                      <h2 className="text-lg font-bold text-white group-hover:text-cyan-50">Import veloce</h2>
-                      <p className="mt-1 text-sm text-slate-400">
-                        Apre il pannello <strong className="text-slate-200">Import da file</strong> qui sotto e scorre al form (stesso flusso del pulsante &quot;Importa file&quot; in alto).
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ) : null}
             </div>
 
             <aside className="space-y-6">

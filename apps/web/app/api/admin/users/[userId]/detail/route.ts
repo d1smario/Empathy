@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadAdminAthleteActivityRollups } from "@/lib/admin/load-activity-rollups";
+import type { AdminUserAnagraficaRow } from "@/lib/admin/user-directory-types";
 import { requirePlatformAdminSession } from "@/lib/auth/require-platform-admin";
 import { loadUserAccessEntitlement } from "@/lib/billing/access-entitlement";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -19,6 +20,7 @@ type GrantRow = {
   revoked_reason: string | null;
   created_at: string;
 };
+
 
 /**
  * GET /api/admin/users/[userId]/detail
@@ -49,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
   }
   const u = authUser.user;
 
-  const [{ data: profile }, entitlement, { data: subs }, { data: grants }] = await Promise.all([
+  const [{ data: profile }, entitlement, { data: subs }, { data: grants }, billingProfileRes] = await Promise.all([
     admin
       .from("app_user_profiles")
       .select("role, platform_coach_status, is_platform_admin, athlete_id")
@@ -65,6 +67,14 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(100),
+    // Anagrafica fatturazione: tollerante se la migration 077 non è ancora applicata (error → null).
+    admin
+      .from("user_billing_profiles")
+      .select(
+        "first_name, last_name, company_name, vat_number, address_line1, address_line2, postal_code, city, region, country_code, phone, updated_at",
+      )
+      .eq("user_id", userId)
+      .maybeSingle(),
   ]);
 
   const prof = profile as {
@@ -85,6 +95,25 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
     updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
   }));
 
+  const billing = (billingProfileRes?.data ?? null) as Record<string, unknown> | null;
+  const str = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
+  const anagrafica: AdminUserAnagraficaRow | null = billing
+    ? {
+        firstName: str(billing.first_name),
+        lastName: str(billing.last_name),
+        companyName: str(billing.company_name),
+        vatNumber: str(billing.vat_number),
+        addressLine1: str(billing.address_line1),
+        addressLine2: str(billing.address_line2),
+        postalCode: str(billing.postal_code),
+        city: str(billing.city),
+        region: str(billing.region),
+        countryCode: str(billing.country_code),
+        phone: str(billing.phone),
+        updatedAt: str(billing.updated_at),
+      }
+    : null;
+
   return NextResponse.json({
     ok: true as const,
     user: {
@@ -103,5 +132,6 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
     stripeSubscriptions,
     grants: (grants ?? []) as GrantRow[],
     activity,
+    anagrafica,
   });
 }

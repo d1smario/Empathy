@@ -13,8 +13,9 @@ import type {
 import { GenerativeModuleSubnav } from "@/components/navigation/GenerativeModuleSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Link } from "@/components/ui/empathy";
+import { Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
+import { cn } from "@/lib/cn";
 import {
   readPersistedNutritionPlanDate,
   writePersistedNutritionPlanDate,
@@ -59,9 +60,35 @@ function provenanceLabel(p: BioenergeticMetricTile["provenance"]): string {
 
 const TIMELINE_MODEL_TYPES = new Set<BioenergeticTimelineEvent["type"]>(["meal", "planned_session", "executed_session"]);
 
+// Link cross-shell (Nutrition/Training): inerte nelle viste scoped admin/coach (v2).
+function CrossShellLink({
+  adminScoped,
+  variant = "primary",
+  className,
+  children,
+  ...rest
+}: React.ComponentProps<typeof Pro2Link> & { adminScoped: boolean }) {
+  if (adminScoped) {
+    return (
+      <span
+        title="Disponibile nella scheda dedicata (v2)"
+        className={pro2ButtonClassName(variant, cn(className, "cursor-default opacity-50"))}
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Pro2Link variant={variant} className={className} {...rest}>
+      {children}
+    </Pro2Link>
+  );
+}
+
 export default function BioenergeticsPageView() {
   const searchParams = useSearchParams();
-  const { athleteId, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, loading: athleteLoading, adminScoped, role } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const [date, setDate] = useState(() => toIsoDate(new Date()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,15 +198,15 @@ export default function BioenergeticsPageView() {
       eyebrow="BioEnergetic Intelligence · Focus"
       eyebrowClassName="text-lime-400"
       title="BioEnergetic Intelligence"
-      description="Striscia 24 h: mattino predittivo da meal plan + training pianificato; pomeriggio-sera adattata a diario e sedute eseguite. Tile metriche da OpenAI sugli stessi input. Non è CGM né referto."
+      description="Striscia 24 h: al mattino una previsione dal tuo piano pasti e allenamenti; nel pomeriggio-sera si adatta a diario e sedute svolte. Le tile mostrano valori stimati sugli stessi dati. Non sostituisce un sensore continuo né un referto medico."
       headerActions={
         <>
-          <Pro2Link href="/nutrition" variant="secondary" className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15">
+          <CrossShellLink adminScoped={adminScoped} href="/nutrition" variant="secondary" className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15">
             Nutrition
-          </Pro2Link>
-          <Pro2Link href="/training/calendar" variant="ghost" className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15">
+          </CrossShellLink>
+          <CrossShellLink adminScoped={adminScoped} href="/training/calendar" variant="ghost" className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15">
             Calendar
-          </Pro2Link>
+          </CrossShellLink>
         </>
       }
     >
@@ -197,8 +224,7 @@ export default function BioenergeticsPageView() {
               className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
             />
             <p className="max-w-xl text-xs leading-relaxed text-gray-400">
-              La data di default segue il <strong className="text-gray-200">giorno piano Nutrizione</strong> (stesso valore in sessionStorage per atleta) oppure{" "}
-              <code className="text-gray-300">?date=YYYY-MM-DD</code> nell&apos;URL. Cambiando qui si aggiornano anche Nutrizione e il link condiviso.
+              Di default vedi il <strong className="text-gray-200">giorno del piano Nutrizione</strong>. Cambiando giorno qui si aggiorna anche la Nutrizione e il link da condividere.
             </p>
           </div>
         </Pro2SectionCard>
@@ -213,7 +239,7 @@ export default function BioenergeticsPageView() {
           <div className="rounded-2xl border border-fuchsia-500/25 bg-black/35 px-4 py-3">
             <p className="font-mono text-[0.6rem] uppercase tracking-wider text-fuchsia-300">Eventi timeline</p>
             <p className="mt-1 text-xl font-semibold text-white">{vm?.timeline.length ?? 0}</p>
-            <p className="mt-1 text-[0.65rem] text-gray-500">Pasti, sedute, export e lab usati come contesto per OpenAI.</p>
+            <p className="mt-1 text-[0.65rem] text-gray-500">Pasti, sedute ed esami usati come contesto della giornata.</p>
           </div>
         </div>
 
@@ -227,14 +253,14 @@ export default function BioenergeticsPageView() {
 
         {vm && vm.timeline.length === 0 ? (
           <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Per <strong className="text-white">{vm.date}</strong> la timeline è vuota: OpenAI riceve meno contesto. Aggiungi pasti in{" "}
-            <Pro2Link href="/nutrition/diary" className="text-cyan-200 underline-offset-2 hover:text-white">
+            Per <strong className="text-white">{vm.date}</strong> non ci sono ancora eventi: la stima avrà meno contesto. Aggiungi pasti in{" "}
+            <CrossShellLink adminScoped={adminScoped} href="/nutrition/diary" className="text-cyan-200 underline-offset-2 hover:text-white">
               Diario
-            </Pro2Link>{" "}
+            </CrossShellLink>{" "}
             e sedute in{" "}
-            <Pro2Link href="/training/calendar" className="text-cyan-200 underline-offset-2 hover:text-white">
+            <CrossShellLink adminScoped={adminScoped} href="/training/calendar" className="text-cyan-200 underline-offset-2 hover:text-white">
               Calendario
-            </Pro2Link>
+            </CrossShellLink>
             .
           </p>
         ) : null}
@@ -242,9 +268,60 @@ export default function BioenergeticsPageView() {
         {vm ? (
           <>
             <Pro2SectionCard
+              accent="fuchsia"
+              title="Striscia 24 h"
+              subtitle="Andamento della giornata, passo 5 min. Quando c’è una misura reale (CGM) ha sempre la priorità."
+              icon={LineChart}
+            >
+              {vm.continuousMonitoring &&
+              (vm.continuousMonitoring.channels.length > 0 || vm.continuousMonitoring.layer === "ai_from_inputs_v1") ? (
+                <div className="space-y-4">
+                  {vm.continuousMonitoring.channels.length === 0 &&
+                  vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
+                    <p className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-fuchsia-100/95">
+                      {showTech
+                        ? "Nessuna curva generata: verifica configurazione OpenAI e risposta JSON (vedi disclaimer)."
+                        : "Curve non disponibili per questa giornata: prova ad aggiornare più tardi."}
+                    </p>
+                  ) : null}
+                  {showTech && timelineModelStimuli.length ? (
+                    <div className="rounded-xl border border-fuchsia-500/20 bg-black/35 p-3">
+                      <p className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-fuchsia-200/90">
+                        Contesto inviato (estratto timeline)
+                      </p>
+                      <ul className="max-h-36 space-y-1.5 overflow-y-auto text-[0.7rem] text-gray-200">
+                        {timelineModelStimuli.map((e) => (
+                          <li
+                            key={e.id}
+                            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
+                          >
+                            <span className="shrink-0 font-mono text-[0.65rem] text-fuchsia-200/90">{e.ts}</span>
+                            <span className="shrink-0 text-gray-500">
+                              {e.type === "meal"
+                                ? "Pasto"
+                                : e.type === "executed_session"
+                                  ? "Seduta eseguita"
+                                  : "Seduta pianificata"}
+                            </span>
+                            <span className="min-w-0 flex-1 text-gray-100">{e.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {vm.continuousMonitoring.channels.length > 0 ? (
+                    <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} />
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Nessun dato striscia per questa giornata.</p>
+              )}
+            </Pro2SectionCard>
+
+            <Pro2SectionCard
               accent="amber"
               title="Metabolismo, infiammazione, ormoni e neuromodulatori"
-              subtitle="Valori «Stimato» da un’unica generazione OpenAI sulla memoria del giorno (diario, training, timeline)."
+              subtitle="Valori stimati a partire dalla giornata: diario, allenamenti e timeline."
               icon={LineChart}
             >
               {(() => {
@@ -298,56 +375,7 @@ export default function BioenergeticsPageView() {
               })()}
             </Pro2SectionCard>
 
-            <Pro2SectionCard
-              accent="fuchsia"
-              title="Striscia 24 h (curve)"
-              subtitle="Motore deterministico con fusione piano→realtà; passo 5 min. CGM misurato ha priorità assoluta."
-              icon={LineChart}
-            >
-              {vm.continuousMonitoring &&
-              (vm.continuousMonitoring.channels.length > 0 || vm.continuousMonitoring.layer === "ai_from_inputs_v1") ? (
-                <div className="space-y-4">
-                  {vm.continuousMonitoring.channels.length === 0 &&
-                  vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
-                    <p className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-fuchsia-100/95">
-                      Nessuna curva: verifica <code className="text-fuchsia-200/90">OPENAI_API_KEY</code> e la risposta JSON (vedi disclaimer).
-                    </p>
-                  ) : null}
-                  {timelineModelStimuli.length ? (
-                    <div className="rounded-xl border border-fuchsia-500/20 bg-black/35 p-3">
-                      <p className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-fuchsia-200/90">
-                        Contesto inviato (estratto timeline)
-                      </p>
-                      <ul className="max-h-36 space-y-1.5 overflow-y-auto text-[0.7rem] text-gray-200">
-                        {timelineModelStimuli.map((e) => (
-                          <li
-                            key={e.id}
-                            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
-                          >
-                            <span className="shrink-0 font-mono text-[0.65rem] text-fuchsia-200/90">{e.ts}</span>
-                            <span className="shrink-0 text-gray-500">
-                              {e.type === "meal"
-                                ? "Pasto"
-                                : e.type === "executed_session"
-                                  ? "Seduta eseguita"
-                                  : "Seduta pianificata"}
-                            </span>
-                            <span className="min-w-0 flex-1 text-gray-100">{e.title}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {vm.continuousMonitoring.channels.length > 0 ? (
-                    <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} />
-                  ) : null}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Nessun dato striscia per questa giornata.</p>
-              )}
-            </Pro2SectionCard>
-
-            {vm.planRealityFusionV1 ? (
+            {showTech && vm.planRealityFusionV1 ? (
               <p className="rounded-lg border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
                 Adattamento da ore{" "}
                 <strong className="text-white">
@@ -359,7 +387,7 @@ export default function BioenergeticsPageView() {
               </p>
             ) : null}
 
-            {vm.monitoringStripAuditV1 ? (
+            {showTech && vm.monitoringStripAuditV1 ? (
               <BioenergeticsStripAuditPanel audit={vm.monitoringStripAuditV1} />
             ) : null}
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { LayoutGrid, Search } from "lucide-react";
 import type { CanonicalAthleteRow } from "@/lib/athletes/canonical-profile";
-import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { Pro2Button } from "@/components/ui/empathy";
+import { filterRowsByQuery } from "@/lib/admin/table-search";
 
 type RosterOk = {
   ok: true;
@@ -20,16 +21,23 @@ function formatAthleteLabel(a: CanonicalAthleteRow): string {
   return a.id.slice(0, 8);
 }
 
+/**
+ * Roster coach: la selezione vive nell'URL (stesso pattern dell'admin) —
+ * "Apri schede" porta a /athletes/[id]/health con la barra contestuale sopra.
+ * Niente più selezione in context/localStorage.
+ */
 export function CoachRosterCard() {
-  const { athleteId, loading: ctxLoading, setActiveAthleteId } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"private" | "coach">("private");
   const [athletes, setAthletes] = useState<CanonicalAthleteRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [coachActivation, setCoachActivation] = useState<"pending" | "suspended" | null>(null);
+  const [query, setQuery] = useState("");
+
+  /** Direttiva piattaforma: "cerca in tutti i campi" su ogni tabella/elenco. */
+  const visibleAthletes = useMemo(() => filterRowsByQuery(athletes, query), [athletes, query]);
 
   useEffect(() => {
-    if (ctxLoading) return;
     let c = false;
     (async () => {
       setLoading(true);
@@ -56,9 +64,7 @@ export function CoachRosterCard() {
     return () => {
       c = true;
     };
-  }, [ctxLoading]);
-
-  const showLoader = ctxLoading || loading;
+  }, []);
 
   return (
     <section
@@ -67,59 +73,65 @@ export function CoachRosterCard() {
     >
       <div className="relative">
         <h2 className="text-lg font-bold text-white">Atleti</h2>
-        <p className="mt-1 text-sm text-gray-500">Scegli con chi stai lavorando.</p>
+        <p className="mt-1 text-sm text-gray-500">Apri le schede dell&apos;atleta con cui stai lavorando.</p>
 
-        {showLoader ? <div className="mt-6 h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
+        {loading ? <div className="mt-6 h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
 
-        {!showLoader && coachActivation === "suspended" ? (
+        {!loading && coachActivation === "suspended" ? (
           <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/20 px-3 py-2 text-sm text-rose-100" role="status">
             Account coach sospeso: roster non disponibile.
           </p>
         ) : null}
 
-        {!showLoader && err ? (
+        {!loading && err ? (
           <p className="mt-4 text-sm text-amber-200/90" role="alert">
             {err}
           </p>
         ) : null}
 
-        {!showLoader && !err && athletes.length === 0 ? (
+        {!loading && !err && athletes.length === 0 ? (
           <p className="mt-4 text-sm text-gray-500">
             {role === "coach" ? "Nessun atleta collegato. Usa «Invita atleta» qui sotto." : "Nessun profilo da mostrare."}
           </p>
         ) : null}
 
-        {!showLoader && !err && athletes.length > 0 ? (
-          <ul className="mt-5 space-y-2">
-            {athletes.map((a) => {
-              const active = athleteId === a.id;
-              return (
-                <li
-                  key={a.id}
-                  className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
-                    active ? "border-fuchsia-500/50 bg-fuchsia-500/10" : "border-white/10 bg-black/25"
-                  }`}
+        {!loading && !err && athletes.length > 0 ? (
+          <div className="relative mt-5 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cerca in tutti i campi…"
+              className="w-full rounded-xl border border-white/10 bg-black/30 py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
+            />
+          </div>
+        ) : null}
+
+        {!loading && !err && athletes.length > 0 && visibleAthletes.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">Nessun atleta per questa ricerca.</p>
+        ) : null}
+
+        {!loading && !err && visibleAthletes.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {visibleAthletes.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3"
+              >
+                <div>
+                  <p className="font-medium text-white">{formatAthleteLabel(a)}</p>
+                  {a.email ? <p className="text-xs text-gray-500">{a.email}</p> : null}
+                </div>
+                <Link
+                  href={`/athletes/${a.id}/health`}
+                  className="empathy-btn-gradient flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20"
                 >
-                  <div>
-                    <p className="font-medium text-white">{formatAthleteLabel(a)}</p>
-                    {a.email ? <p className="text-xs text-gray-500">{a.email}</p> : null}
-                    {active ? <p className="mt-1 text-xs font-medium text-fuchsia-200">Selezionato</p> : null}
-                  </div>
-                  {!active ? (
-                    <Pro2Button
-                      type="button"
-                      variant="secondary"
-                      className="shrink-0 text-sm"
-                      onClick={() => {
-                        setActiveAthleteId(a.id);
-                      }}
-                    >
-                      Seleziona
-                    </Pro2Button>
-                  ) : null}
-                </li>
-              );
-            })}
+                  <LayoutGrid className="h-4 w-4" aria-hidden />
+                  Apri schede
+                </Link>
+              </li>
+            ))}
           </ul>
         ) : null}
       </div>

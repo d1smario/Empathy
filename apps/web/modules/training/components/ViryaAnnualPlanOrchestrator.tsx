@@ -1020,7 +1020,7 @@ export function ViryaAnnualPlanOrchestrator({
       { label: "Sessions", value: String(totalSessions), tone: "cyan" },
       { label: "Demand", value: objectiveDemand.toFixed(2), tone: objectiveDemand >= 1.2 ? "rose" : objectiveDemand >= 0.9 ? "amber" : "green" },
       { label: "Readiness", value: physiologyDrive.readiness != null ? `${physiologyDrive.readiness.toFixed(0)}%` : "—", tone: "green" },
-      { label: "Bioenergetis", value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan" },
+      { label: "Bioenergetica", value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan" },
       { label: "Loop", value: adaptationLoop ? adaptationLoop.status : "stable", tone: adaptationLoop?.status === "regenerate" ? "rose" : adaptationLoop?.status === "watch" ? "amber" : "slate" },
     ],
     [adaptationLoop, bioenergeticModulation, goalRaceDate, objectiveDemand, physiologyDrive.readiness, totalSessions],
@@ -3181,7 +3181,7 @@ export function ViryaAnnualPlanOrchestrator({
                 </div>
                 {bioenergeticModulation ? (
                   <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2 lg:col-span-1">
-                    <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetis</div>
+                    <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetica</div>
                     <div className="mt-1 text-sm text-slate-200">
                       {bioenergeticModulation.mitochondrialReadinessScore}/100 · copertura{" "}
                       {bioenergeticModulation.signalCoveragePct}% · ±{bioenergeticModulation.inputUncertaintyPct}%
@@ -3554,7 +3554,7 @@ export function ViryaAnnualPlanOrchestrator({
           <Pro2SectionCard
             accent="cyan"
             title="Salva sul Calendar"
-            subtitle="Batch su planned_workouts — POST /api/training/planned (contratto Virya)"
+            subtitle="Salva in blocco le sedute del piano sul Calendar"
             icon={CalendarRange}
           >
             <p className="mb-3 text-sm text-slate-300">

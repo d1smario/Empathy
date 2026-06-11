@@ -13,7 +13,7 @@ import { GenerativeModuleSubnav } from "@/components/navigation/GenerativeModule
 import { Pro2AthleteRequiredGate } from "@/components/shell/Pro2AthleteRequiredGate";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2Button, Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   fetchAerodynamicsTests,
@@ -37,7 +37,7 @@ function formatDateTime(value: string | undefined): string {
 }
 
 function statusLabel(job: AerodynamicsCaptureJobV1, awaitingReview: boolean): string {
-  if (awaitingReview) return "Review geometry";
+  if (awaitingReview) return "Da validare";
   switch (job.status) {
     case "pending":
       return "In coda";
@@ -55,11 +55,9 @@ function statusLabel(job: AerodynamicsCaptureJobV1, awaitingReview: boolean): st
 function LatestAeroJobCard({
   job,
   awaitingReview,
-  stagingRunId,
 }: {
   job: AerodynamicsCaptureJobV1 | null;
   awaitingReview: boolean;
-  stagingRunId: string | null;
 }) {
   if (!job) {
     return (
@@ -80,11 +78,6 @@ function LatestAeroJobCard({
       <p className="mt-1 text-xs text-gray-400">
         {job.source} · {job.cameraMode} · {formatDateTime(job.createdAt)}
       </p>
-      {awaitingReview && stagingRunId ? (
-        <Link href={`/aerodynamics/staging/${stagingRunId}`} className="mt-3 inline-block text-xs font-semibold text-cyan-200 underline">
-          Apri validazione geometry →
-        </Link>
-      ) : null}
       {job.errorMessage ? <p className="mt-2 text-xs text-rose-200">{job.errorMessage}</p> : null}
     </div>
   );
@@ -94,7 +87,7 @@ function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
   if (!tests.length) {
     return (
       <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-        Nessun test aero confermato. Elabora un job, valida la proposta CV, poi conferma per CdA canonico.
+        Nessun test aero confermato. Elabora una cattura, valida la proposta e conferma per ottenere il CdA.
       </p>
     );
   }
@@ -115,7 +108,7 @@ function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
 }
 
 export default function AerodynamicsPageView() {
-  const { athleteId, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, loading: athleteLoading, adminScoped } = useActiveAthlete();
   const [cameraMode, setCameraMode] = useState<AerodynamicsCameraMode>("side");
   const [file, setFile] = useState<File | null>(null);
   const [tests, setTests] = useState<AerodynamicsTestSessionV1[]>([]);
@@ -193,13 +186,13 @@ export default function AerodynamicsPageView() {
         source,
         cameraMode,
       });
-      setMessage("Upload completato — elaborazione geometry...");
+      setMessage("Caricamento completato — elaborazione in corso...");
       setFile(null);
       const stagingRunId = await onProcessJob(out.job.id);
       await refresh();
       if (stagingRunId) {
         setReviewStagingRunId(stagingRunId);
-        setMessage("Proposta geometry pronta — conferma in review per CdA canonico.");
+        setMessage("Proposta pronta — conferma per ottenere il CdA.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload Aerodynamics fallito.");
@@ -214,16 +207,34 @@ export default function AerodynamicsPageView() {
         eyebrow="Aerodynamics Engine · Capture"
         eyebrowClassName="text-cyan-300"
         title="Aerodynamics"
-        description="Cattura media → CV geometry → review atleta/coach → motore deterministico → twin aero."
+        description="Carica un video o una foto, ricostruiamo la tua posizione, tu e il coach la validate e ottieni il CdA stimato."
         headerActions={
-          <>
-            <Pro2Link href="/training" variant="secondary" className="justify-center border border-orange-500/35 bg-orange-500/10">
-              Training
-            </Pro2Link>
-            <Pro2Link href="/biomechanics" variant="ghost" className="justify-center border border-emerald-500/35 bg-emerald-500/10">
-              Biomechanics
-            </Pro2Link>
-          </>
+          adminScoped ? (
+            // In scheda admin i link cross-shell sono inerti (v2)
+            <>
+              <span
+                className={pro2ButtonClassName("secondary", "justify-center border border-orange-500/35 bg-orange-500/10 cursor-default opacity-50")}
+                title="Disponibile nella scheda dedicata (v2)"
+              >
+                Training
+              </span>
+              <span
+                className={pro2ButtonClassName("ghost", "justify-center border border-emerald-500/35 bg-emerald-500/10 cursor-default opacity-50")}
+                title="Disponibile nella scheda dedicata (v2)"
+              >
+                Biomechanics
+              </span>
+            </>
+          ) : (
+            <>
+              <Pro2Link href="/training" variant="secondary" className="justify-center border border-orange-500/35 bg-orange-500/10">
+                Training
+              </Pro2Link>
+              <Pro2Link href="/biomechanics" variant="ghost" className="justify-center border border-emerald-500/35 bg-emerald-500/10">
+                Biomechanics
+              </Pro2Link>
+            </>
+          )
         }
       >
         <div className="scroll-mt-28">
@@ -232,65 +243,10 @@ export default function AerodynamicsPageView() {
 
         <section id="gen-domain" className="scroll-mt-28">
           <Pro2SectionCard
-            accent="cyan"
-            icon={Wind}
-            title="Aero capture line"
-            subtitle="Upload firmato su Storage privato, poi job canonico in aero_capture_jobs."
-          >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <LatestAeroJobCard
-                job={latestJob}
-                awaitingReview={latestJobAwaitingReview}
-                stagingRunId={latestJobStaging?.id ?? null}
-              />
-              <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-orange-200">Archivio capture</p>
-                <p className="mt-2 text-lg font-semibold text-white">{captureCountLabel}</p>
-                <p className="mt-1 text-xs text-gray-400">Job più recenti, scoped su atleta attivo.</p>
-              </div>
-              <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/[0.06] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-fuchsia-200">CdA corrente</p>
-                <p className="mt-2 text-lg font-semibold text-white">
-                  {typeof latestCda === "number" ? `${latestCda.toFixed(3)} m²` : "—"}
-                </p>
-                <p className="mt-1 text-xs text-gray-400">Solo da test session validata.</p>
-              </div>
-            </div>
-            {pendingStaging.length ? (
-              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {pendingStaging.length} review geometry in attesa —{" "}
-                <Link href={`/aerodynamics/staging/${pendingStaging[0]!.id}`} className="underline">
-                  apri validazione
-                </Link>
-              </div>
-            ) : null}
-            {latestJob?.status === "pending" && !latestJobAwaitingReview ? (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Pro2Button
-                  variant="secondary"
-                  onClick={() => void onProcessJob(latestJob.id).then(async (stagingRunId) => {
-                    await refresh();
-                    if (stagingRunId) {
-                      setReviewStagingRunId(stagingRunId);
-                      setMessage("Proposta geometry pronta — conferma in review per CdA canonico.");
-                    }
-                  })}
-                  disabled={processingJobId != null}
-                  className="justify-center"
-                >
-                  {processingJobId === latestJob.id ? "Elaborazione CV..." : "Elabora ultimo job"}
-                </Pro2Button>
-              </div>
-            ) : null}
-          </Pro2SectionCard>
-        </section>
-
-        <section id="gen-body" className="scroll-mt-28">
-          <Pro2SectionCard
             accent="orange"
             icon={UploadCloud}
             title="Nuova cattura aero"
-            subtitle="File supportati: MP4, MOV, JPEG, PNG, WEBP. La pagina crea solo il job: ricostruzione 3D e CdA sono step pipeline."
+            subtitle="File supportati: MP4, MOV, JPEG, PNG, WEBP. Qui carichi il materiale: ricostruzione 3D e CdA arrivano nei passaggi successivi."
           >
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
               <label className="space-y-2 text-sm text-gray-300">
@@ -333,9 +289,15 @@ export default function AerodynamicsPageView() {
                 {(reviewStagingRunId ?? latestJobStaging?.id) ? (
                   <>
                     {" "}
-                    <Link href={`/aerodynamics/staging/${reviewStagingRunId ?? latestJobStaging?.id}`} className="font-semibold underline">
-                      Apri review →
-                    </Link>
+                    {adminScoped ? (
+                      <span className="font-semibold underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
+                        Apri review →
+                      </span>
+                    ) : (
+                      <Link href={`/aerodynamics/staging/${reviewStagingRunId ?? latestJobStaging?.id}`} className="font-semibold underline">
+                        Apri review →
+                      </Link>
+                    )}
                   </>
                 ) : null}
               </p>
@@ -344,14 +306,74 @@ export default function AerodynamicsPageView() {
           </Pro2SectionCard>
         </section>
 
+        <section id="gen-body" className="scroll-mt-28">
+          <Pro2SectionCard
+            accent="cyan"
+            icon={Wind}
+            title="Stato catture"
+            subtitle="Le tue catture restano private; ogni caricamento avvia un'elaborazione dedicata."
+          >
+            <div className="grid gap-3 sm:grid-cols-3">
+              <LatestAeroJobCard
+                job={latestJob}
+                awaitingReview={latestJobAwaitingReview}
+              />
+              <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-orange-200">Archivio catture</p>
+                <p className="mt-2 text-lg font-semibold text-white">{captureCountLabel}</p>
+                <p className="mt-1 text-xs text-gray-400">Le catture più recenti dell&apos;atleta attivo.</p>
+              </div>
+              <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/[0.06] p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-fuchsia-200">CdA corrente</p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {typeof latestCda === "number" ? `${latestCda.toFixed(3)} m²` : "—"}
+                </p>
+                <p className="mt-1 text-xs text-gray-400">Solo da un test validato.</p>
+              </div>
+            </div>
+            {pendingStaging.length ? (
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {pendingStaging.length} proposte da validare —{" "}
+                {adminScoped ? (
+                  <span className="underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
+                    apri validazione
+                  </span>
+                ) : (
+                  <Link href={`/aerodynamics/staging/${pendingStaging[0]!.id}`} className="underline">
+                    apri validazione
+                  </Link>
+                )}
+              </div>
+            ) : null}
+            {latestJob?.status === "pending" && !latestJobAwaitingReview ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Pro2Button
+                  variant="secondary"
+                  onClick={() => void onProcessJob(latestJob.id).then(async (stagingRunId) => {
+                    await refresh();
+                    if (stagingRunId) {
+                      setReviewStagingRunId(stagingRunId);
+                      setMessage("Proposta pronta — conferma per ottenere il CdA.");
+                    }
+                  })}
+                  disabled={processingJobId != null}
+                  className="justify-center"
+                >
+                  {processingJobId === latestJob.id ? "Elaborazione..." : "Elabora ultima cattura"}
+                </Pro2Button>
+              </div>
+            ) : null}
+          </Pro2SectionCard>
+        </section>
+
         <section id="gen-cross" className="scroll-mt-28">
           <Pro2SectionCard
             accent="violet"
             icon={Gauge}
             title="Test sessions"
-            subtitle="CdA, drag e saving compaiono solo dopo test validato e domain engine."
+            subtitle="CdA, resistenza e secondi risparmiati compaiono solo dopo un test validato."
           >
-            {loading ? <p className="text-sm text-gray-400">Caricamento archivio Aerodynamics...</p> : <AeroTestList tests={tests} />}
+            {loading ? <p className="text-sm text-gray-400">Caricamento archivio...</p> : <AeroTestList tests={tests} />}
           </Pro2SectionCard>
         </section>
 
@@ -359,13 +381,12 @@ export default function AerodynamicsPageView() {
           <Pro2SectionCard
             accent="amber"
             icon={Bike}
-            title="Guardrail aero"
-            subtitle="Scenario matrix surrogate (AiRO-like) + validazione umana prima del twin."
+            title="Come leggere i numeri"
+            subtitle="Gli scenari di posizione sono sempre validati prima di diventare definitivi."
           >
             <p className="text-sm leading-relaxed text-gray-300">
-              CV propone geometry; il motore genera scenari posizione bounded. Confermi uno scenario →{" "}
-              <code className="text-gray-100">@empathy/domain-aerodynamics</code> calcola CdA, watt e time savings.
-              Badge: <span className="text-cyan-200">Surrogate model</span>.
+              Dal materiale caricato ricostruiamo la tua posizione e proponiamo alcuni scenari. Quando ne confermi uno,
+              calcoliamo CdA, watt e secondi risparmiati. I valori sono stime di modello, non misure in galleria del vento.
             </p>
           </Pro2SectionCard>
         </section>

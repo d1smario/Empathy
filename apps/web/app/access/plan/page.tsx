@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { HomeStripePricing } from "@/components/marketing/HomeStripePricing";
+import { WatchLabSection } from "@/components/marketing/WatchLabSection";
+import { BillingProfileLauncher } from "@/components/access/BillingProfileLauncher";
+import { PlanLogoutButton } from "@/components/access/PlanLogoutButton";
 import { SignupCheckoutWelcome } from "@/components/access/SignupCheckoutWelcome";
+import { SignupPlanCards } from "@/components/access/SignupPlanCards";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
-import { Pro2Link } from "@/components/ui/empathy";
-import { getEmpathyAccountCatalog } from "@/lib/account/plan-catalog";
-import { checkoutPayReady, hostedCheckoutAvailability } from "@/lib/billing/stripe-checkout-availability";
-import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
 import { ensureBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
 import { getSupabasePublicConfig } from "@/lib/integrations/integration-status";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
@@ -20,7 +19,7 @@ function firstSearchParam(value: string | string[] | undefined): string | undefi
 }
 
 export const metadata: Metadata = {
-  title: "Abbonamento — Empathy Pro 2.0",
+  title: "Abbonamento — Empathy",
   robots: { index: false, follow: false },
 };
 
@@ -69,10 +68,6 @@ export default async function AccessPlanPage({
     redirect("/dashboard");
   }
 
-  const catalog = getEmpathyAccountCatalog();
-  const hosted = hostedCheckoutAvailability();
-  const payReady = checkoutPayReady();
-  const trialDaysConfigured = readCheckoutTrialDays();
   const t = await getTranslations("AccessPlan");
   const billingFlash =
     searchParams?.billing === "success"
@@ -83,56 +78,65 @@ export default async function AccessPlanPage({
   const showRequired =
     typeof searchParams?.required === "string" && searchParams.required === "subscription";
 
+  const meta = user.user_metadata as Record<string, unknown>;
+  const firstName = typeof meta?.first_name === "string" && meta.first_name.trim() ? meta.first_name.trim() : null;
+
   return (
     <BrutalistAppBackdrop matrix>
       <main
         id="main-content"
         tabIndex={-1}
-        className="relative mx-auto max-w-4xl scroll-mt-0 px-4 py-12 outline-none sm:px-6 sm:py-16"
+        className="relative mx-auto max-w-6xl scroll-mt-0 px-4 py-12 outline-none sm:px-6 sm:py-16"
       >
-        <header className="mb-10 border-b border-white/10 pb-8 text-center sm:text-left">
+        <header className="relative text-center">
+          {/* Icona profilo: anagrafica fatturazione in un modale. */}
+          <div className="absolute right-0 top-0">
+            <BillingProfileLauncher />
+          </div>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-gray-500">
-            {isCheckoutSuccess ? t("welcomeEyebrow") : t("eyebrow")}
+            {isCheckoutSuccess
+              ? t("welcomeEyebrow")
+              : firstName
+                ? t("greetingNamed", { name: firstName })
+                : t("greeting")}
           </p>
-          <h1 className="mt-3 bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl">
+          <h1 className="mx-auto mt-4 max-w-4xl bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-4xl font-black leading-[1.05] tracking-tight text-transparent sm:text-6xl">
             {isCheckoutSuccess ? t("welcomeTitle") : t("title")}
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-400">
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-gray-400">
             {isCheckoutSuccess ? t("welcomeBody") : t("subtitle")}
           </p>
           {showRequired && !isCheckoutSuccess ? (
-            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="alert">
+            <p
+              className="mx-auto mt-5 max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+              role="alert"
+            >
               {t("requiredAlert")}
             </p>
           ) : null}
-          <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-            <Pro2Link href="/access" variant="ghost" className="justify-center border border-white/15 text-gray-300">
-              {t("backAccess")}
-            </Pro2Link>
-          </div>
         </header>
 
         {isCheckoutSuccess ? (
-          <SignupCheckoutWelcome
-            checkoutSessionId={checkoutSessionId ?? null}
-            initialReady={entitlement.hasAthleteAccess}
-            initialLabel={entitlement.hasAthleteAccess ? entitlement.label : null}
-          />
+          <div className="mt-10">
+            <SignupCheckoutWelcome
+              checkoutSessionId={checkoutSessionId ?? null}
+              initialReady={entitlement.hasAthleteAccess}
+              initialLabel={entitlement.hasAthleteAccess ? entitlement.label : null}
+            />
+          </div>
         ) : (
-          <HomeStripePricing
-            availability={hosted}
-            payReady={payReady}
-            basePlans={catalog.basePlans}
-            coachAddOns={catalog.coachAddOns}
-            trialPolicy={catalog.trialPolicy}
-            trialDaysConfigured={trialDaysConfigured}
-            compactIntro
-            hideSectionTitle
-            sectionId="access-plan-checkout"
-            prefillEmail={user.email ?? null}
-            signupCheckoutGate
-            billingFlash={billingFlash}
-          />
+          <>
+            {/* Sezione emozionale: orologio dati live + animazione (riuso home). */}
+            <WatchLabSection id="account-lab" compact />
+
+            <div className="border-t border-white/10 pt-10">
+              <SignupPlanCards billingFlash={billingFlash} />
+            </div>
+
+            <div className="mt-12 flex flex-wrap justify-center gap-3 border-t border-white/10 pt-6 sm:justify-start">
+              <PlanLogoutButton />
+            </div>
+          </>
         )}
       </main>
     </BrutalistAppBackdrop>

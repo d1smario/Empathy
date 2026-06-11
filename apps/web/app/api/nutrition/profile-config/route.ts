@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AthleteReadContextError, requireAthleteWriteContext } from "@/lib/auth/athlete-read-context";
 import { writeAthleteMemoryDomainPatch } from "@/lib/memory/athlete-memory-domain-writer";
 
 export const runtime = "nodejs";
@@ -12,6 +13,8 @@ export async function PATCH(req: NextRequest) {
     };
     const athleteId = (body.athleteId ?? "").trim();
     if (!athleteId) return NextResponse.json({ error: "Missing athleteId" }, { status: 400 });
+    // Gate canonico atleta (owner / coach / platform admin): prima era scrivibile da chiunque.
+    await requireAthleteWriteContext(req, athleteId);
     const result = await writeAthleteMemoryDomainPatch({
       domain: "nutrition",
       action: "config",
@@ -21,8 +24,10 @@ export async function PATCH(req: NextRequest) {
     });
     return NextResponse.json({ status: result.status, athleteMemory: result.athleteMemory });
   } catch (err) {
+    if (err instanceof AthleteReadContextError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     const message = err instanceof Error ? err.message : "Nutrition profile config update failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { BookOpen, LayoutGrid, Link2, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BookOpen, FileText, LayoutGrid, Link2, Sparkles } from "lucide-react";
 import {
   MODULE_PILL_AMBER,
   MODULE_PILL_CYAN,
   MODULE_PILL_FUCHSIA,
+  MODULE_PILL_ROSE,
   MODULE_PILL_SKY,
 } from "@/components/navigation/module-pill-styles";
 import { ModulePillSubnav, type ModulePillAnchorItem, scrollToModuleAnchor } from "@/components/navigation/ModulePillSubnav";
 
-export const GENERATIVE_MODULE_ANCHORS = ["gen-domain", "gen-body", "gen-cross", "gen-focus"] as const;
+export const GENERATIVE_MODULE_ANCHORS = ["gen-domain", "gen-body", "gen-cross", "biomech-report", "gen-focus"] as const;
 
 const ITEMS: ModulePillAnchorItem[] = [
   {
@@ -35,6 +36,13 @@ const ITEMS: ModulePillAnchorItem[] = [
     style: MODULE_PILL_SKY,
   },
   {
+    key: "report",
+    anchor: "biomech-report",
+    label: "Report",
+    icon: FileText,
+    style: MODULE_PILL_ROSE,
+  },
+  {
     key: "focus",
     anchor: "gen-focus",
     label: "Focus",
@@ -52,6 +60,9 @@ export function generativeModuleNavAnchors(): string[] {
  */
 export function GenerativeModuleSubnav() {
   const [activeAnchor, setActiveAnchor] = useState<string>(GENERATIVE_MODULE_ANCHORS[0]);
+  // Solo le pill le cui sezioni esistono davvero nella pagina: evita pill «morte»
+  // (es. Collegamenti) su moduli che non montano quella sezione.
+  const [presentAnchors, setPresentAnchors] = useState<readonly string[] | null>(null);
 
   const onSelect = useCallback((anchor: string) => {
     setActiveAnchor(anchor);
@@ -59,9 +70,11 @@ export function GenerativeModuleSubnav() {
   }, []);
 
   useEffect(() => {
-    const elements = GENERATIVE_MODULE_ANCHORS.map((id) => document.getElementById(id)).filter(
-      (el): el is HTMLElement => Boolean(el),
-    );
+    const present = GENERATIVE_MODULE_ANCHORS.filter((id) => document.getElementById(id));
+    setPresentAnchors(present);
+    const elements = present
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
     if (elements.length === 0) return;
     const obs = new IntersectionObserver(
       (entries) => {
@@ -77,10 +90,15 @@ export function GenerativeModuleSubnav() {
     return () => obs.disconnect();
   }, []);
 
+  const items = useMemo(
+    () => (presentAnchors ? ITEMS.filter((item) => presentAnchors.includes(item.anchor)) : ITEMS),
+    [presentAnchors],
+  );
+
   return (
     <ModulePillSubnav
       variant="anchor"
-      items={ITEMS}
+      items={items}
       activeAnchor={activeAnchor}
       onSelect={onSelect}
       ariaLabel="Sezioni modulo"

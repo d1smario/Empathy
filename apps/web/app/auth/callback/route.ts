@@ -93,21 +93,30 @@ export async function GET(request: NextRequest) {
 
   const admin = createSupabaseAdminClient();
   const db = admin ?? supabase;
+  // Routing per identità dal DB (non dal cookie `pending`, che con Strada A è sempre `private`).
   const { data: prof } = await supabase
     .from("app_user_profiles")
-    .select("role")
+    .select("role, is_platform_admin")
     .eq("user_id", user.id)
     .maybeSingle();
-  const profileRole = (prof as { role?: string } | null)?.role;
-  const appRole = pending ?? (profileRole === "coach" ? "coach" : "private");
-  let entitlement = await loadBillingEntitlementForAuthUser(user.id);
-  if (!entitlement.hasAthleteAccess && !entitlement.hasOperatorAccess) {
-    try {
-      entitlement = await ensureBillingEntitlementForUser(db, user.id, user.email ?? null, {
-        repairFromStripe: true,
-      });
-    } catch (err) {
-      console.warn("[auth/callback] billing repair skipped", err instanceof Error ? err.message : err);
+  const profileRow = prof as { role?: string; is_platform_admin?: boolean } | null;
+  const appRole = profileRow?.role === "coach" ? "coach" : "private";
+  const isPlatformAdmin = profileRow?.is_platform_admin === true;
+
+  let entitlement: { hasAthleteAccess: boolean; hasOperatorAccess: boolean } = {
+    hasAthleteAccess: false,
+    hasOperatorAccess: false,
+  };
+  if (!isPlatformAdmin) {
+    entitlement = await loadBillingEntitlementForAuthUser(user.id);
+    if (!entitlement.hasAthleteAccess && !entitlement.hasOperatorAccess) {
+      try {
+        entitlement = await ensureBillingEntitlementForUser(db, user.id, user.email ?? null, {
+          repairFromStripe: true,
+        });
+      } catch (err) {
+        console.warn("[auth/callback] billing repair skipped", err instanceof Error ? err.message : err);
+      }
     }
   }
 
@@ -116,6 +125,7 @@ export async function GET(request: NextRequest) {
     appRole,
     hasAthleteAccess: entitlement?.hasAthleteAccess ?? false,
     hasOperatorAccess: entitlement?.hasOperatorAccess ?? false,
+    isPlatformAdmin,
     preferMobile: isMobileClientRequest(request),
   });
 

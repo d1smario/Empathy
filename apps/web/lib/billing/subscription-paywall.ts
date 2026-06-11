@@ -13,6 +13,13 @@ export { isPaywallEnforced };
  * Solo lettura DB — niente Stripe qui (evita crash/timeout al login).
  */
 export async function gateAuthenticatedShellAccessOrRedirect(): Promise<UserAccessEntitlement | null> {
+  /**
+   * Flag spenta → zero query: il gate non può comunque reindirizzare e nessun
+   * caller usa il valore di ritorno. Evita getUser + entitlement (3-4 query
+   * Supabase) su OGNI render della shell quando il paywall non è attivo.
+   */
+  if (!isPaywallEnforced()) return null;
+
   const cookieClient = createSupabaseCookieClient();
   if (!cookieClient) return null;
 
@@ -22,10 +29,6 @@ export async function gateAuthenticatedShellAccessOrRedirect(): Promise<UserAcce
   if (!user) return null;
 
   const entitlement = await loadBillingEntitlementForAuthUser(user.id);
-
-  if (!isPaywallEnforced()) {
-    return entitlement;
-  }
 
   if (entitlement.hasAthleteAccess || entitlement.hasOperatorAccess) {
     return entitlement;

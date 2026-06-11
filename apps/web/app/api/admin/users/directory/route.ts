@@ -54,6 +54,26 @@ export async function GET(req: Request) {
     .filter((id): id is string => typeof id === "string" && id.length > 0);
   const activityByAthlete = await loadAdminAthleteActivityRollups(admin, athleteIds);
 
+  // Coach per atleta: UNA query batch su coach_athletes per gli athleteId della
+  // pagina; le email si risolvono dall'elenco auth già in memoria (niente N+1).
+  const coachEmailsByAthlete = new Map<string, string[]>();
+  if (athleteIds.length > 0) {
+    const { data: coachLinks } = await admin
+      .from("coach_athletes")
+      .select("athlete_id, coach_user_id")
+      .in("athlete_id", athleteIds);
+    const emailByUserId = new Map(allUsers.map((u) => [u.id, u.email ?? null] as const));
+    for (const link of (coachLinks ?? []) as { athlete_id: string | null; coach_user_id: string | null }[]) {
+      if (!link.athlete_id || !link.coach_user_id) continue;
+      const email = emailByUserId.get(link.coach_user_id) ?? null;
+      if (!email) continue;
+      const list = coachEmailsByAthlete.get(link.athlete_id) ?? [];
+      if (!list.includes(email)) list.push(email);
+      coachEmailsByAthlete.set(link.athlete_id, list);
+    }
+    for (const list of coachEmailsByAthlete.values()) list.sort((a, b) => a.localeCompare(b));
+  }
+
   const rows: AdminDirectoryUserRow[] = users.map((u) => {
     const b = batch.get(u.id);
     const fallbackEnt = {
@@ -74,6 +94,7 @@ export async function GET(req: Request) {
       platformCoachStatus: b?.platformCoachStatus ?? null,
       isPlatformAdmin: b?.isPlatformAdmin ?? false,
       athleteId,
+      coachEmails: athleteId ? coachEmailsByAthlete.get(athleteId) ?? [] : [],
       stripeSubscriptions: b?.stripeSubscriptions ?? [],
       entitlement: b?.entitlement ?? fallbackEnt,
       activity,

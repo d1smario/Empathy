@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Check, X } from "lucide-react";
 import type { AerodynamicsScenarioCompareV1 } from "@empathy/contracts";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2Button, Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   applyAerodynamicsStagingRun,
   fetchAerodynamicsStagingRunDetail,
@@ -17,6 +18,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export default function AerodynamicsStagingReviewView({ runId }: { runId: string }) {
+  const { adminScoped } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "confirm" | "reject">(null);
@@ -86,10 +88,21 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       title="Validazione proposta geometry"
       description="Scegli lo scenario posizione da promuovere. Il motore deterministico calcola CdA e score."
       headerActions={
-        <Pro2Link href="/aerodynamics" variant="secondary" className="justify-center border border-white/15">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Aerodynamics
-        </Pro2Link>
+        adminScoped ? (
+          // In scheda admin il link cross-shell è inerte (v2)
+          <span
+            className={pro2ButtonClassName("secondary", "justify-center border border-white/15 cursor-default opacity-50")}
+            title="Disponibile nella scheda dedicata (v2)"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Aerodynamics
+          </span>
+        ) : (
+          <Pro2Link href="/aerodynamics" variant="secondary" className="justify-center border border-white/15">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Aerodynamics
+          </Pro2Link>
+        )
       }
     >
       {loading ? <p className="text-sm text-gray-400">Caricamento review...</p> : null}

@@ -24,21 +24,35 @@ export type PostLoginDestinationInput = {
   appRole: PendingAppRole;
   hasAthleteAccess: boolean;
   hasOperatorAccess: boolean;
+  /** Platform admin (`is_platform_admin`): porta unica → console `/admin`, ha priorità su tutto. */
+  isPlatformAdmin?: boolean;
   /** Su telefono/tablet: hub sicuri → equivalente `/m/*`. */
   preferMobile?: boolean;
 };
 
 /**
  * Dove mandare l'utente dopo auth riuscita (password, magic link callback, sessione già attiva su `/access`).
- * Coach / operator → hub Atleti. Atleta senza entitlement → gate piano. Atleta con accesso → dashboard
- * (salvo `next` esplicitamente sicuro), non la route protetta che aveva tentato prima del login.
+ * Porta unica per identità: admin → `/admin` (→ Dashboard admin); coach / operator → Dashboard;
+ * atleta senza entitlement → gate piano; atleta con accesso → dashboard (salvo `next` sicuro).
  */
 export function resolvePostLoginDestination(input: PostLoginDestinationInput): string {
+  // Invito coach (atleta→coach): chi arriva da /coach-invite/[token] deve tornare
+  // all'invito dopo il login, qualunque sia il ruolo (la pagina è pubblica).
+  if (typeof input.next === "string" && input.next.startsWith("/coach-invite/")) {
+    return input.next;
+  }
+
   const next = safeAppInternalPath(input.next, "/dashboard");
   const preferMobile = input.preferMobile === true;
 
+  // Admin di piattaforma: console dedicata, nessun equivalente mobile.
+  if (input.isPlatformAdmin === true) {
+    return "/admin";
+  }
+
   if (input.appRole === "coach" || input.hasOperatorAccess) {
-    return "/athletes";
+    // Coach: si entra dalla Dashboard (gli atleti restano a un click in sidebar).
+    return "/dashboard";
   }
 
   if (!input.hasAthleteAccess) {

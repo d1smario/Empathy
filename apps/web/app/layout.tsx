@@ -23,24 +23,24 @@ const metadataBase = getMetadataBaseUrl();
 export const metadata: Metadata = {
   ...(metadataBase ? { metadataBase } : {}),
   title: {
-    default: "Empathy Pro 2.0",
-    template: "%s · Empathy Pro 2.0",
+    default: "Empathy",
+    template: "%s · Empathy",
   },
   description: "Performance & metabolic adaptation platform",
-  applicationName: "Empathy Pro 2.0",
+  applicationName: "Empathy",
   robots: isSiteIndexingDisabled()
     ? { index: false, follow: false, googleBot: { index: false, follow: false } }
     : { index: true, follow: true },
   openGraph: {
     type: "website",
     locale: "it_IT",
-    siteName: "Empathy Pro 2.0",
-    title: "Empathy Pro 2.0",
+    siteName: "Empathy",
+    title: "Empathy",
     description: "Performance & metabolic adaptation platform",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Empathy Pro 2.0",
+    title: "Empathy",
     description: "Performance & metabolic adaptation platform",
   },
   appleWebApp: {

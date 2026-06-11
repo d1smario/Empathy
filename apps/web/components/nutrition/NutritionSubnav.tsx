@@ -24,7 +24,7 @@ const ITEMS: ModulePillLinkItem[] = [
   {
     key: "operational-hub",
     href: "/physiology/bioenergetics",
-    label: "Bioenergetis",
+    label: "Bioenergetica",
     icon: Layers,
     style: MODULE_PILL_AMBER,
   },

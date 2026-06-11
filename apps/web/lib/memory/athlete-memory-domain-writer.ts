@@ -9,6 +9,10 @@ type ProfileUpsertPatch = {
   action: "upsert";
   athleteId?: string | null;
   payload: Record<string, unknown>;
+  /** Guardrail sul match-per-email service-role: user_id del chiamante autenticato. */
+  callerUserId?: string | null;
+  /** Guardrail sul match-per-email service-role: athlete_id già collegato al chiamante (app_user_profiles). */
+  callerLinkedAthleteId?: string | null;
 };
 
 type ProfileUpdatePatch = {
@@ -116,6 +120,27 @@ export async function writeAthleteMemoryDomainPatch(patch: AthleteMemoryDomainPa
         if (email) {
           const canonicalId = await athleteIdByNormalizedEmail(supabase, email);
           if (canonicalId) {
+            // Guardrail match-per-email (scrittura service-role): il fallback email NON deve
+            // permettere di sovrascrivere l'athlete_profiles di un altro utente.
+            const callerLinkedAthleteId = patch.callerLinkedAthleteId ?? null;
+            if (callerLinkedAthleteId && callerLinkedAthleteId !== canonicalId) {
+              throw new Error("Il profilo atleta per questa email è già collegato a un altro account: scrittura negata.");
+            }
+            if (!callerLinkedAthleteId) {
+              const { data: linkedRows, error: linkedErr } = await supabase
+                .from("app_user_profiles")
+                .select("user_id")
+                .eq("athlete_id", canonicalId)
+                .limit(5);
+              if (linkedErr) throw new Error(linkedErr.message);
+              const callerUserId = patch.callerUserId ?? null;
+              const linkedToOtherUser = ((linkedRows ?? []) as Array<{ user_id?: string | null }>).some(
+                (row) => typeof row.user_id === "string" && row.user_id !== callerUserId,
+              );
+              if (linkedToOtherUser) {
+                throw new Error("Il profilo atleta per questa email è già collegato a un altro account: scrittura negata.");
+              }
+            }
             const { error: updateError } = await supabase
               .from("athlete_profiles")
               .update(patch.payload)

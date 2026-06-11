@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AthleteReadContextError, requireAthleteReadContext, requireAthleteWriteContext } from "@/lib/auth/athlete-read-context";
-import { requireAuthenticatedTrainingUser } from "@/lib/auth/athlete-read-context";
+import { requireAuthenticatedTrainingUser, supabaseForAthleteTableRead } from "@/lib/auth/athlete-read-context";
+import { athleteIdByNormalizedEmail } from "@/lib/auth/bootstrap-app-user-profile";
 import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver";
 import { writeAthleteMemoryDomainPatch } from "@/lib/memory/athlete-memory-domain-writer";
 
@@ -175,15 +176,34 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuthenticatedTrainingUser(req);
+    const { userId, rlsClient } = await requireAuthenticatedTrainingUser(req);
     const body = (await req.json()) as { payload?: Record<string, unknown> };
     if (!body.payload) {
       return NextResponse.json({ error: "Missing payload" }, { status: 400 });
+    }
+    const db = supabaseForAthleteTableRead(rlsClient);
+    const { data: appProfile } = await db
+      .from("app_user_profiles")
+      .select("role, athlete_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const callerRole = typeof appProfile?.role === "string" ? appProfile.role : null;
+    const callerLinkedAthleteId = typeof appProfile?.athlete_id === "string" ? appProfile.athlete_id : null;
+    if (callerRole === "coach") {
+      // L'upsert matcha per email via service role: un coach potrebbe sovrascrivere l'athlete_profiles di un altro utente.
+      const payloadEmail =
+        typeof body.payload.email === "string" ? body.payload.email.trim().toLowerCase() : "";
+      const targetAthleteId = payloadEmail ? await athleteIdByNormalizedEmail(db, payloadEmail) : null;
+      if (!callerLinkedAthleteId || !targetAthleteId || targetAthleteId !== callerLinkedAthleteId) {
+        return NextResponse.json({ error: "I coach non creano profili atleta da qui" }, { status: 403 });
+      }
     }
     const result = await writeAthleteMemoryDomainPatch({
       domain: "profile",
       action: "upsert",
       payload: body.payload,
+      callerUserId: userId,
+      callerLinkedAthleteId,
     });
     return NextResponse.json({
       id: result.athleteId ?? null,

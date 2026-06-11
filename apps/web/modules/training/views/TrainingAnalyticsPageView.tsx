@@ -124,7 +124,9 @@ function radarRingPoints(values: number[], cx: number, cy: number, maxR: number)
  * Analyzer — logica V1 (carico esterno/interno, planned vs real) con shell Pro 2 / Tailwind.
  */
 export default function TrainingAnalyticsPageView() {
-  const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
+  /** Contenuti tecnici (coperture, diagnostica) visibili solo a coach/admin. */
+  const showTech = role === "coach" || adminScoped;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
   const [plannedRows, setPlannedRows] = useState<Array<Record<string, unknown>>>([]);
   const [series, setSeries] = useState<
@@ -432,7 +434,7 @@ export default function TrainingAnalyticsPageView() {
       eyebrow="Training · Analyzer"
       eyebrowClassName="text-rose-400"
       title="Load intelligence"
-      description={`External vs internal load, planned vs executed — finestra ${bounds.from} → ${bounds.to} (stesso endpoint /api/training/analytics).`}
+      description={`Carico esterno e interno, pianificato ed eseguito — finestra ${bounds.from} → ${bounds.to}.`}
       headerActions={
         <>
           <Pro2Link
@@ -499,7 +501,7 @@ export default function TrainingAnalyticsPageView() {
             </div>
           </div>
           <p className="mt-3 font-mono text-[0.7rem] text-slate-500">
-            Richiesta API: <span className="text-slate-400">{bounds.from}</span> → <span className="text-slate-400">{bounds.to}</span>
+            Periodo: <span className="text-slate-400">{bounds.from}</span> → <span className="text-slate-400">{bounds.to}</span>
             {windowDays === 1 ? " · un solo giorno (dettaglio giornaliero)" : null}
           </p>
           <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-slate-400">
@@ -537,7 +539,7 @@ export default function TrainingAnalyticsPageView() {
         </section>
       ) : null}
 
-      {readSpineCoverage && athleteId && !error ? (
+      {showTech && readSpineCoverage && athleteId && !error ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-cyan-300/90">
             Spina lettura (athlete-memory) · {readSpineCoverage.spineScore}%

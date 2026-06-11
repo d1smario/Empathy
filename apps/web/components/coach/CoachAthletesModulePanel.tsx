@@ -61,9 +61,6 @@ export function CoachAthletesModulePanel() {
           <Pro2Link href="/dashboard" variant="secondary" className="justify-center border border-white/15 text-sm">
             Dashboard
           </Pro2Link>
-          <Pro2Link href="/training" variant="secondary" className="justify-center border border-white/15 text-sm">
-            Training
-          </Pro2Link>
         </div>
       </div>
     </Pro2SectionCard>
