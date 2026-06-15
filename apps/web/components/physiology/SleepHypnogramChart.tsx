@@ -62,7 +62,7 @@ export function SleepHypnogramChart({
   const hasWindow = Boolean(sleepStartUtc && sleepEndUtc);
 
   return (
-    <div className={cn("rounded-xl border border-violet-500/25 bg-violet-950/10 p-4", className)}>
+    <div className={cn("rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-bold text-white">Sonno · fasi (linea temporale)</p>

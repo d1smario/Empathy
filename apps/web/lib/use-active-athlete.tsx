@@ -68,6 +68,8 @@ export type ActiveAthleteContextValue = {
   refresh: () => void;
   /** true nelle schede admin (/admin/utenti/[id]/...): scope imposto dall'URL — le viste riusate disattivano i link verso la shell coach. */
   adminScoped: boolean;
+  /** true SOLO in scope admin: distingue l'admin dal coach (entrambi hanno adminScoped=true). Per azioni riservate allo staff (es. generazione piano pasti). */
+  platformAdminView: boolean;
 };
 
 const ActiveAthleteContext = createContext<ActiveAthleteContextValue | null>(null);
@@ -100,9 +102,11 @@ export function useActiveAthlete(): ActiveAthleteContextValue {
  */
 export function ActiveAthleteScopeProvider({
   athleteId,
+  scope = "coach",
   children,
 }: {
   athleteId: string;
+  scope?: "admin" | "coach";
   children: ReactNode;
 }) {
   const [athletes, setAthletes] = useState<AthleteOption[]>([]);
@@ -163,6 +167,7 @@ export function ActiveAthleteScopeProvider({
     setActiveAthleteId,
     refresh,
     adminScoped: true,
+    platformAdminView: scope === "admin",
   };
 
   return <ActiveAthleteContext.Provider value={value}>{children}</ActiveAthleteContext.Provider>;
@@ -473,5 +478,6 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
     setActiveAthleteId,
     refresh,
     adminScoped: false,
+    platformAdminView: false,
   };
 }

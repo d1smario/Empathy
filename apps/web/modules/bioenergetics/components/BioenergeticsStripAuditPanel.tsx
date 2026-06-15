@@ -11,9 +11,9 @@ type Props = {
  */
 export function BioenergeticsStripAuditPanel({ audit }: Props) {
   return (
-    <div className="space-y-4 rounded-2xl border border-violet-500/30 bg-violet-950/20 p-4">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
-        <p className="font-mono text-[0.65rem] font-semibold uppercase tracking-wider text-violet-200">
+        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-lime-400">
           Controlli striscia (audit v{audit.auditContractVersion})
         </p>
         <p className="mt-1 text-xs text-gray-400">
@@ -44,30 +44,30 @@ export function BioenergeticsStripAuditPanel({ audit }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/30">
-        <table className="min-w-full text-left text-xs text-gray-300">
-          <thead className="border-b border-white/10 text-[0.65rem] uppercase tracking-wide text-gray-500">
+        <table className="w-full min-w-[560px] text-xs">
+          <thead>
             <tr>
-              <th className="px-3 py-2">Canale</th>
-              <th className="px-3 py-2">Piano</th>
-              <th className="px-3 py-2">Ore valorizzate</th>
-              <th className="px-3 py-2">Min–max</th>
-              <th className="px-3 py-2">Stream</th>
-              <th className="px-3 py-2">Fusione</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Canale</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Piano</th>
+              <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Ore valorizzate</th>
+              <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Min–max</th>
+              <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Stream</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Fusione</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/5">
             {audit.stripChannels.map((ch) => (
-              <tr key={ch.id} className="border-b border-white/5 align-top last:border-0">
-                <td className="px-3 py-2 text-gray-100">
+              <tr key={ch.id} className="align-top transition-colors hover:bg-white/[0.03]">
+                <td className="px-3 py-2 text-gray-300">
                   {ch.labelIt}
                   <span className="block text-[0.65rem] text-gray-500">{ch.unit}</span>
                 </td>
                 <td className="px-3 py-2 text-gray-400">{ch.dataPlane}</td>
-                <td className="px-3 py-2">{ch.hourlyNonNullCount}/24</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{ch.hourlyNonNullCount}/24</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
                   {ch.hourlyMin != null && ch.hourlyMax != null ? `${ch.hourlyMin} – ${ch.hourlyMax}` : "—"}
                 </td>
-                <td className="px-3 py-2">{ch.streamPointCount}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{ch.streamPointCount}</td>
                 <td className="max-w-xs px-3 py-2 text-[0.65rem] leading-snug text-gray-500">
                   {ch.curveResolutionNote ?? "—"}
                 </td>
@@ -88,9 +88,9 @@ export function BioenergeticsStripAuditPanel({ audit }: Props) {
 
 function AuditStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
-      <p className="text-[0.6rem] uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-white">{value}</p>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
+      <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-white">{value}</p>
     </div>
   );
 }

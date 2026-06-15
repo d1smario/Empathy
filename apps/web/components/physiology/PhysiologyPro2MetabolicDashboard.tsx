@@ -30,8 +30,16 @@ import {
   YAxis,
 } from "recharts";
 import type { MetabolicProfileOutput, ZoneRow } from "@/lib/engines/critical-power-engine";
-import { labelMetabolicFitModel, METABOLIC_CP_ENGINE_REVISION } from "@/lib/engines/critical-power-engine";
+import { labelMetabolicFitModel } from "@/lib/engines/critical-power-engine";
 import { estimatePeakBloodLactateMmol } from "@/lib/physiology/lactate-steady-state-curve";
+import {
+  CHART_AXIS,
+  CHART_FONT,
+  CHART_GRID,
+  CHART_SIGNAL,
+  CHART_STROKE,
+  chartTooltipStyle,
+} from "@/lib/ui/chart-theme";
 
 export type CpPointDef = { label: string; sec: number };
 
@@ -139,12 +147,6 @@ export type PhysiologyPro2MetabolicDashboardProps = {
   cpInputs: Record<string, string>;
   onCpInputChange: (label: string, value: string) => void;
   model: MetabolicProfileOutput;
-  sessionCount: number;
-  autoDecodeText: string | null;
-  /** Massa (kg) usata dal motore CP per VO₂max stimato */
-  bodyMassKg: number;
-  profileVo2maxMlMinKg: number | null;
-  profileVo2maxLMin: number | null;
 };
 
 export function PhysiologyPro2MetabolicDashboard({
@@ -152,11 +154,6 @@ export function PhysiologyPro2MetabolicDashboard({
   cpInputs,
   onCpInputChange,
   model,
-  sessionCount,
-  autoDecodeText,
-  bodyMassKg,
-  profileVo2maxMlMinKg,
-  profileVo2maxLMin,
 }: PhysiologyPro2MetabolicDashboardProps) {
   const cpCurveHasData = useMemo(
     () => cpPointDefs.some((p) => parseW(cpInputs[p.label] ?? "") > 0),
@@ -175,63 +172,6 @@ export function PhysiologyPro2MetabolicDashboard({
 
   return (
     <div className="physiology-pro2-lab">
-      <div className="physiology-pro2-lab-hero">
-        <p className="physiology-pro2-lab-kicker">Laboratorio fisiologico avanzato · Device data analysis</p>
-        <h1 className="physiology-pro2-lab-title">EMPATHY PHYSIOLOGY LAB</h1>
-        {autoDecodeText ? (
-          <div className="physiology-pro2-lab-decode">
-            <CheckCircle2 className="physiology-pro2-lab-decode-ico" aria-hidden />
-            <div>
-              <strong>Auto-decode attivo</strong>
-              <span>{autoDecodeText}</span>
-            </div>
-            <span className="physiology-pro2-lab-sessions">
-              <strong>{sessionCount}</strong> sessioni analizzate
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="rounded-2xl border border-cyan-500/35 bg-gradient-to-br from-cyan-500/10 to-black/40 p-4">
-        {cpCurveHasData ? (
-          <>
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-cyan-200/90">VO₂max stimato</span>
-              <span className="text-2xl font-extrabold text-cyan-50">
-                {model.vo2maxMlMinKg.toFixed(1)}{" "}
-                <span className="text-sm font-semibold text-cyan-200/80">ml/kg/min</span>
-              </span>
-              <span className="text-sm text-slate-400">
-                ≈ {model.vo2maxLMin.toFixed(2)} L/min @ {bodyMassKg.toFixed(0)} kg · {model.vo2maxEstimate.modelVersion}
-              </span>
-              <span className="font-mono text-[0.65rem] text-slate-500">{METABOLIC_CP_ENGINE_REVISION}</span>
-            </div>
-            {profileVo2maxMlMinKg != null && profileVo2maxMlMinKg > 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-500/35 bg-black/30 px-3 py-2">
-                <p className="text-[0.65rem] font-bold uppercase tracking-wide text-amber-200/90">VO₂max profilo / lab</p>
-                <p className="text-lg font-bold text-amber-50">
-                  {profileVo2maxMlMinKg.toFixed(1)} <span className="text-sm font-semibold">ml/kg/min</span>
-                  {profileVo2maxLMin != null ? (
-                    <span className="ml-2 text-sm font-normal text-slate-400">≈ {profileVo2maxLMin.toFixed(2)} L/min</span>
-                  ) : null}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-slate-500">
-                Nessun VO₂max da lab sul profilo: salva da Metabolic Lab o da Profile quando disponibile.
-              </p>
-            )}
-            <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-500">
-              Stima da curva CP (non spirometria). <strong>Ricalcola</strong> aggiorna solo lo schermo; <strong>Salva snapshot</strong> scrive su Supabase e aggiorna il profilo fisiologico.
-            </p>
-          </>
-        ) : (
-          <p className="text-sm leading-relaxed text-slate-400">
-            Inserisci almeno un punto potenza (W) sulla curva Critical Power qui sotto: finché la curva è vuota non mostriamo VO₂max stimato, zone o grafici derivati (evitiamo numeri da fallback motore).
-          </p>
-        )}
-      </div>
-
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--cp">
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
         <span>CRITICAL POWER INPUTS</span>
@@ -269,7 +209,7 @@ export function PhysiologyPro2MetabolicDashboard({
       </div>
 
       {!cpCurveHasData ? (
-        <p className="mt-4 rounded-xl border border-slate-600/40 bg-black/25 px-4 py-3 text-sm text-slate-400">
+        <p className="mt-4 rounded-xl border border-slate-600/40 bg-black/25 px-4 py-3 text-sm text-gray-400">
           Dopo aver compilato la CP, usa <strong>Ricalcola</strong> e <strong>Salva snapshot</strong> nella scheda principale; i dati del laboratorio restano legati all&apos;atleta attivo.
         </p>
       ) : null}
@@ -283,18 +223,18 @@ export function PhysiologyPro2MetabolicDashboard({
             <AreaChart data={curveData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="pdcFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor={CHART_SIGNAL.power} stopOpacity={0.55} />
+                  <stop offset="95%" stopColor={CHART_SIGNAL.power} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-              <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-              <YAxis domain={[0, "auto"]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+              <YAxis domain={[0, "auto"]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
               <Tooltip
-                contentStyle={{ background: "#0c0c0f", border: "1px solid rgba(239,68,68,0.4)" }}
+                contentStyle={chartTooltipStyle("physiology")}
                 formatter={(v: number) => [`${v} W`, "Potenza"]}
               />
-              <Area type="monotone" dataKey="watts" stroke="#ef4444" strokeWidth={2} fill="url(#pdcFill)" />
+              <Area type="monotone" dataKey="watts" stroke={CHART_SIGNAL.power} strokeWidth={CHART_STROKE.base} fill="url(#pdcFill)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -337,7 +277,7 @@ export function PhysiologyPro2MetabolicDashboard({
         <Zap className="physiology-pro2-lab-metric-ico" aria-hidden />
         <div className="physiology-pro2-lab-metric-label">Indice glicolitico (proxy)</div>
         <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--vla">{model.vlamax.toFixed(2)}</div>
-        <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-slate-500">
+        <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-gray-500">
           Proxy adimensionale dal motore CP (banda tipica ~0.3–0.8), non V̇La max di laboratorio. Picco lattato ematico schematico (sforzo massimo breve): ~{peakLacHint.toFixed(1)} mmol/L.
         </p>
       </div>
@@ -483,15 +423,15 @@ export function PhysiologyPro2MetabolicDashboard({
         <div className="physiology-pro2-lab-chart-wrap">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={metabolicSeries} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-              <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 11 }} label={{ value: "% Substrato", angle: -90, position: "insideLeft", fill: "#fb923c", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} label={{ value: "% Substrato", angle: -90, position: "insideLeft", fill: CHART_AXIS.label, fontSize: CHART_FONT.axisLabel }} />
               <Tooltip
-                contentStyle={{ background: "#0c0c0f", border: "1px solid rgba(251,146,60,0.4)" }}
+                contentStyle={chartTooltipStyle("physiology")}
               />
               <Legend />
-              <Line type="monotone" dataKey="fat" name="FAT %" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="cho" name="CHO %" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="fat" name="FAT %" stroke={CHART_SIGNAL.fat} strokeWidth={CHART_STROKE.base} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="cho" name="CHO %" stroke={CHART_SIGNAL.cho} strokeWidth={CHART_STROKE.base} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -165,12 +165,12 @@ export function MaxOxMetabolicContextTiles({
             stimato {maxOxVo2EstL.toFixed(2)} L/min · {maxOxVo2MlKg.toFixed(1)} ml/kg/min
           </span>
           {segmentVo2LMin != null ? (
-            <span className="mt-2 block text-[0.7rem] leading-snug text-slate-400">
-              Segmento (stima al carico): <strong className="text-rose-300">{segmentVo2LMin.toFixed(2)} L/min</strong>
+            <span className="mt-2 block text-[0.7rem] leading-snug text-gray-400">
+              Segmento (stima al carico): <strong className="font-mono tabular-nums text-white">{segmentVo2LMin.toFixed(2)} L/min</strong>
               {segmentO2TotalL != null && segmentDurationMin != null ? (
                 <>
                   {" "}
-                  · O₂ cumulativo ~<strong className="text-cyan-300">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
+                  · O₂ cumulativo ~<strong className="font-mono tabular-nums text-white">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
                 </>
               ) : null}
             </span>

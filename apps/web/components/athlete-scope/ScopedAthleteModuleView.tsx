@@ -58,5 +58,5 @@ export function ScopedAthleteModuleView({
     if (!View) return null;
     content = <View />;
   }
-  return <ActiveAthleteScopeProvider athleteId={athleteId}>{content}</ActiveAthleteScopeProvider>;
+  return <ActiveAthleteScopeProvider athleteId={athleteId} scope={scope}>{content}</ActiveAthleteScopeProvider>;
 }

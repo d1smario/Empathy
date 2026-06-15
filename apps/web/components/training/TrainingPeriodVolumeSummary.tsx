@@ -20,6 +20,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_AXIS, CHART_FONT, CHART_GRID, CHART_SIGNAL, chartTooltipStyle } from "@/lib/ui/chart-theme";
 
 type PresetId = "7" | "28" | "90" | "365";
 
@@ -258,7 +259,7 @@ export function TrainingPeriodVolumeSummary({
   return (
     <div ref={deferUntilVisible ? visibilityRef : undefined} className="w-full min-w-0">
     <Pro2SectionCard
-      accent="cyan"
+      accent="orange"
       title="Volume aggregato · Analyzer"
       subtitle={`Eseguiti nella finestra ${bounds.from} → ${bounds.to} (serie + trace_summary)`}
       icon={LineChartIcon}
@@ -273,10 +274,10 @@ export function TrainingPeriodVolumeSummary({
                 key={p.id}
                 type="button"
                 onClick={() => setPreset(p.id)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                   preset === p.id
-                    ? "border-cyan-400/55 bg-cyan-500/20 text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.18)]"
-                    : "border-white/15 bg-black/35 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                    ? "border-orange-400/55 bg-orange-500/20 text-orange-100 shadow-[0_0_14px_rgba(251,146,60,0.18)]"
+                    : "border-white/15 bg-black/35 text-gray-400 hover:border-white/25 hover:text-gray-200"
                 }`}
               >
                 {p.label}
@@ -285,8 +286,8 @@ export function TrainingPeriodVolumeSummary({
           </div>
           {fetchErr ? <p className="mb-3 text-xs text-amber-300/90">{fetchErr}</p> : null}
           {!loading && analyticsVm?.adaptationSummary ? (
-            <p className="mb-3 rounded-xl border border-violet-500/25 bg-violet-500/5 px-3 py-2 text-xs text-violet-100/90">
-              <span className="font-semibold text-violet-200/95">Twin · adattamento · </span>
+            <p className="mb-3 rounded-xl border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-100/90">
+              <span className="font-semibold text-orange-200/95">Twin · adattamento · </span>
               {analyticsVm.adaptationSummary.recoveryDataTier ? (
                 <span>
                   tier{" "}
@@ -309,12 +310,12 @@ export function TrainingPeriodVolumeSummary({
                 "metriche parziali"
               )}
               {analyticsVm.adaptationSummary.asOf ? (
-                <span className="ml-1 font-mono text-[0.65rem] text-slate-500">· asOf {analyticsVm.adaptationSummary.asOf}</span>
+                <span className="ml-1 font-mono text-[0.65rem] text-gray-500">· asOf {analyticsVm.adaptationSummary.asOf}</span>
               ) : null}
             </p>
           ) : null}
           {loading ? (
-            <div className="h-16 animate-pulse rounded-xl bg-cyan-500/10" />
+            <div className="h-16 animate-pulse rounded-xl bg-orange-500/10" />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -327,8 +328,8 @@ export function TrainingPeriodVolumeSummary({
                   { k: "kcal", v: f.kcal },
                 ].map((cell) => (
                   <div key={cell.k} className="rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-center shadow-inner">
-                    <div className="font-mono text-lg font-bold text-cyan-100">{cell.v}</div>
-                    <div className="mt-1 text-[0.62rem] font-semibold uppercase tracking-wider text-zinc-500">{cell.k}</div>
+                    <div className="font-mono text-lg font-semibold tabular-nums text-white">{cell.v}</div>
+                    <div className="mt-1 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">{cell.k}</div>
                   </div>
                 ))}
               </div>
@@ -340,44 +341,44 @@ export function TrainingPeriodVolumeSummary({
                   { k: "Skin temp", v: recoveryRollup?.avgSkinTempC != null ? `${recoveryRollup.avgSkinTempC.toFixed(2)} C` : "—" },
                   { k: "Sample rc", v: recoveryRollup != null ? String(recoveryRollup.sampleCount) : "0" },
                 ].map((cell) => (
-                  <div key={cell.k} className="rounded-xl border border-violet-500/20 bg-violet-950/15 px-3 py-3 text-center">
-                    <div className="font-mono text-sm font-semibold text-violet-100">{cell.v}</div>
-                    <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-wider text-zinc-500">{cell.k}</div>
+                  <div key={cell.k} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center">
+                    <div className="font-mono text-sm font-semibold tabular-nums text-white">{cell.v}</div>
+                    <div className="mt-1 font-mono text-[0.58rem] uppercase tracking-[0.2em] text-gray-500">{cell.k}</div>
                   </div>
                 ))}
               </div>
 
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                  <p className="mb-2 text-[0.62rem] font-semibold uppercase tracking-wider text-zinc-500">Andamento sonno (totale/deep/REM/light)</p>
+                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">Andamento sonno (totale/deep/REM/light)</p>
                   <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sleepSeries}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                        <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(34,211,238,0.35)" }} />
+                        <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} />
+                        <XAxis dataKey="date" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+                        <YAxis tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+                        <Tooltip contentStyle={chartTooltipStyle("training")} />
                         <Legend />
-                        <Line type="monotone" dataKey="sleep" name="Totale h" stroke="#22d3ee" dot={false} connectNulls />
-                        <Line type="monotone" dataKey="deep" name="Deep h" stroke="#a855f7" dot={false} connectNulls />
-                        <Line type="monotone" dataKey="rem" name="REM h" stroke="#f472b6" dot={false} connectNulls />
-                        <Line type="monotone" dataKey="light" name="Light h" stroke="#eab308" dot={false} connectNulls />
+                        <Line type="monotone" dataKey="sleep" name="Totale h" stroke={CHART_SIGNAL.sleep} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="deep" name="Deep h" stroke={CHART_SIGNAL.lactate} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="rem" name="REM h" stroke={CHART_SIGNAL.load} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="light" name="Light h" stroke="#fbbf24" dot={false} connectNulls />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                  <p className="mb-2 text-[0.62rem] font-semibold uppercase tracking-wider text-zinc-500">Andamento FC notturna / HRV notturna</p>
+                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">Andamento FC notturna / HRV notturna</p>
                   <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sleepSeries}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                        <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "#0a0a0c", border: "1px solid rgba(168,85,247,0.35)" }} />
+                        <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} />
+                        <XAxis dataKey="date" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+                        <YAxis tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+                        <Tooltip contentStyle={chartTooltipStyle("training")} />
                         <Legend />
-                        <Line type="monotone" dataKey="hr" name="FC notturna" stroke="#f97316" dot={false} connectNulls />
-                        <Line type="monotone" dataKey="hrv" name="HRV RMSSD" stroke="#34d399" dot={false} connectNulls />
+                        <Line type="monotone" dataKey="hr" name="FC notturna" stroke={CHART_SIGNAL.hr} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="hrv" name="HRV RMSSD" stroke={CHART_SIGNAL.hrv} dot={false} connectNulls />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -386,25 +387,25 @@ export function TrainingPeriodVolumeSummary({
 
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {avgCells.map((cell) => (
-                  <div key={cell.k} className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 px-3 py-3 text-center">
-                    <div className="font-mono text-sm font-semibold text-emerald-100">{cell.v}</div>
-                    <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-wider text-zinc-500">{cell.k}</div>
+                  <div key={cell.k} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center">
+                    <div className="font-mono text-sm font-semibold tabular-nums text-white">{cell.v}</div>
+                    <div className="mt-1 font-mono text-[0.58rem] uppercase tracking-[0.2em] text-gray-500">{cell.k}</div>
                   </div>
                 ))}
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {biomarkerCells.map((cell) => (
-                  <div key={cell.k} className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-950/10 px-3 py-3 text-center">
-                    <div className="font-mono text-sm font-semibold text-fuchsia-100">{cell.v}</div>
-                    <div className="mt-1 text-[0.58rem] font-semibold uppercase tracking-wider text-zinc-500">{cell.k}</div>
+                  <div key={cell.k} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center">
+                    <div className="font-mono text-sm font-semibold tabular-nums text-white">{cell.v}</div>
+                    <div className="mt-1 font-mono text-[0.58rem] uppercase tracking-[0.2em] text-gray-500">{cell.k}</div>
                   </div>
                 ))}
               </div>
             </>
           )}
-          <p className="mt-3 text-[0.65rem] leading-relaxed text-zinc-500">
-            KPI da <code className="rounded border border-white/10 bg-white/5 px-1 text-zinc-400">GET /api/training/analytics</code> su trace reali.
+          <p className="mt-3 text-[0.65rem] leading-relaxed text-gray-500">
+            KPI da <code className="rounded border border-white/10 bg-white/5 px-1 text-gray-400">GET /api/training/analytics</code> su trace reali.
             I campi non presenti nelle tracce restano non valorizzati finche non arrivano da ingest provider/lab.
           </p>
         </>

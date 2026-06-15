@@ -52,7 +52,7 @@ export function CoachLibraryContractPreview({
   if (enriched.family === "strength") {
     return (
       <div className="space-y-3">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-fuchsia-200/90">Scheda palestra</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">Scheda palestra</p>
         <Pro2GymSchedaBlockList contract={enriched} />
         {!gymScheda && segments.length > 0 ? (
           <SessionBlockIntensityChart
@@ -63,7 +63,7 @@ export function CoachLibraryContractPreview({
           />
         ) : null}
         {!gymScheda && segments.length === 0 ? (
-          <p className="text-xs text-slate-500">Nessun esercizio in scheda — apri nel Builder per completare.</p>
+          <p className="text-xs text-gray-500">Nessun esercizio in scheda — apri nel Builder per completare.</p>
         ) : null}
         <SessionMultilevelAnalysisStrip
           contract={enriched}
@@ -78,7 +78,7 @@ export function CoachLibraryContractPreview({
   if (segments.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-xs text-slate-500">
+        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-xs text-gray-500">
           Nessun blocco da visualizzare in questo template.
         </p>
         <SessionMultilevelAnalysisStrip

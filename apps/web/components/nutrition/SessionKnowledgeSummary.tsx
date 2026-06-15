@@ -21,15 +21,15 @@ export function SessionKnowledgeSummary({
 
   return (
     <div
-      className={`grid gap-2 rounded-xl border border-violet-500/25 bg-violet-500/[0.08] ${
+      className={`grid gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] ${
         compact ? "p-2.5" : "p-3.5"
       }`}
     >
-      <div className="font-semibold text-violet-100">Sessione builder</div>
-      {parts.length ? <div className="text-sm text-slate-300">{parts.join(" · ")}</div> : null}
+      <div className="font-semibold text-amber-100">Sessione builder</div>
+      {parts.length ? <div className="text-sm text-gray-300">{parts.join(" · ")}</div> : null}
       {target ? (
-        <div className="text-xs text-slate-400">
-          Target adattamento · <span className="text-slate-200">{target}</span>
+        <div className="text-xs text-gray-400">
+          Target adattamento · <span className="text-gray-200">{target}</span>
         </div>
       ) : null}
     </div>

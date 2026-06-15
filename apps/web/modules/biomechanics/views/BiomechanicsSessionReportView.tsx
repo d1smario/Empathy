@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
+import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
@@ -45,7 +46,7 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
   return (
     <Pro2ModulePageShell
       eyebrow="Biomechanics · Report"
-      eyebrowClassName="text-violet-300"
+      eyebrowClassName={moduleEyebrowClass("biomechanics")}
       title="Report sessione biomeccanica"
       description="KPI deterministici, ROM articolare e rischio per distretto — esportabile in PDF."
       headerActions={
@@ -54,15 +55,6 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
             <ArrowLeft className="mr-2 h-4 w-4" />
             Archivio
           </Pro2Link>
-          <Pro2Button
-            variant="secondary"
-            className="justify-center border border-white/15"
-            onClick={() => window.print()}
-            disabled={!reportData}
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            Salva PDF
-          </Pro2Button>
         </div>
       }
     >
@@ -77,6 +69,18 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
           </p>
         ) : null}
         {reportData ? <BiomechanicsReportPanels data={reportData} mode="confirmed" videoUrl={signedUrl} /> : null}
+        <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+          <Pro2Button
+            variant="secondary"
+            className="justify-center border border-white/15"
+            onClick={() => window.print()}
+            disabled={!reportData}
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Salva PDF
+          </Pro2Button>
+          <small className="text-xs text-gray-500">Esporta il report come PDF.</small>
+        </div>
       </div>
     </Pro2ModulePageShell>
   );

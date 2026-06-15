@@ -10,7 +10,10 @@ export type Pro2SectionAccent =
   | "emerald"
   | "amber"
   | "rose"
-  | "slate";
+  | "slate"
+  | "sky"
+  | "teal"
+  | "lime";
 
 const ACCENT: Record<
   Pro2SectionAccent,
@@ -36,7 +39,8 @@ const ACCENT: Record<
     iconClass: "text-cyan-50",
   },
   orange: {
-    section: "border-orange-500/25 bg-orange-500/5 shadow-inner",
+    section:
+      "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 shadow-inner",
     iconWrap:
       "border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]",
     iconClass: "text-orange-50",
@@ -49,7 +53,8 @@ const ACCENT: Record<
     iconClass: "text-emerald-50",
   },
   amber: {
-    section: "border-amber-500/25 bg-amber-500/[0.07] shadow-inner",
+    section:
+      "border-amber-500/25 bg-gradient-to-br from-amber-950/[0.12] via-black/60 to-black/85 shadow-inner",
     iconWrap: "border-amber-400/45 bg-amber-500/35 text-amber-50 shadow-[0_0_16px_rgba(251,191,36,0.3)]",
     iconClass: "text-amber-50",
   },
@@ -63,6 +68,24 @@ const ACCENT: Record<
     section: "border-white/15 bg-gradient-to-br from-zinc-900/50 to-black/80 shadow-inner",
     iconWrap: "border-zinc-500/50 bg-zinc-700/40 text-zinc-100 shadow-inner",
     iconClass: "text-zinc-100",
+  },
+  sky: {
+    section:
+      "border-sky-500/25 bg-gradient-to-br from-sky-950/[0.12] via-black/60 to-black/85 shadow-inner",
+    iconWrap: "border-sky-400/45 bg-sky-500/35 text-sky-50 shadow-[0_0_16px_rgba(56,189,248,0.3)]",
+    iconClass: "text-sky-50",
+  },
+  teal: {
+    section:
+      "border-teal-500/25 bg-gradient-to-br from-teal-950/[0.12] via-black/60 to-black/85 shadow-inner",
+    iconWrap: "border-teal-400/45 bg-teal-500/35 text-teal-50 shadow-[0_0_16px_rgba(45,212,191,0.3)]",
+    iconClass: "text-teal-50",
+  },
+  lime: {
+    section:
+      "border-lime-500/25 bg-gradient-to-br from-lime-950/[0.12] via-black/60 to-black/85 shadow-inner",
+    iconWrap: "border-lime-400/45 bg-lime-500/35 text-lime-50 shadow-[0_0_16px_rgba(163,230,53,0.3)]",
+    iconClass: "text-lime-50",
   },
 };
 

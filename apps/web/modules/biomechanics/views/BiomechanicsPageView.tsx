@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Activity, AlertTriangle, Camera, CheckCircle2, Clock3, UploadCloud } from "lucide-react";
 import type {
   BiomechanicsCameraPlane,
@@ -10,11 +10,19 @@ import type {
   BiomechanicsDiscipline,
   BiomechanicsSessionImportV1,
 } from "@empathy/contracts";
-import { GenerativeModuleSubnav } from "@/components/navigation/GenerativeModuleSubnav";
+import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
+import { MODULE_PILL_TEAL } from "@/components/navigation/module-pill-styles";
+import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { Pro2AthleteRequiredGate } from "@/components/shell/Pro2AthleteRequiredGate";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Button, Pro2Link, pro2ButtonClassName, type Pro2ButtonVariant } from "@/components/ui/empathy";
+import {
+  Pro2Accordion,
+  Pro2Button,
+  Pro2Link,
+  pro2ButtonClassName,
+  type Pro2ButtonVariant,
+} from "@/components/ui/empathy";
 import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
@@ -25,11 +33,11 @@ import {
 } from "@/modules/biomechanics/services/biomechanics-module-api";
 
 const DISCIPLINE_OPTIONS: Array<{ value: BiomechanicsDiscipline; label: string }> = [
-  { value: "cycling", label: "Cycling" },
-  { value: "running", label: "Running" },
-  { value: "walking", label: "Walking" },
-  { value: "gym", label: "Gym" },
-  { value: "movement_screening", label: "Movement screening" },
+  { value: "cycling", label: "Ciclismo" },
+  { value: "running", label: "Corsa" },
+  { value: "walking", label: "Camminata" },
+  { value: "gym", label: "Palestra" },
+  { value: "movement_screening", label: "Valutazione del movimento" },
 ];
 
 const CAMERA_OPTIONS: Array<{ value: BiomechanicsCameraPlane; label: string }> = [
@@ -37,8 +45,28 @@ const CAMERA_OPTIONS: Array<{ value: BiomechanicsCameraPlane; label: string }> =
   { value: "front", label: "Frontale" },
   { value: "rear", label: "Posteriore" },
   { value: "oblique", label: "Obliqua" },
-  { value: "multi_view", label: "Multi-view" },
+  { value: "multi_view", label: "Multi-vista" },
 ];
+
+const SOURCE_LABELS: Record<BiomechanicsCaptureSource, string> = {
+  smartphone_video: "Video smartphone",
+  gopro_video: "Video action cam",
+  image: "Immagine",
+  manual_import: "Import manuale",
+  external_pose_import: "Import esterno (OpenCap)",
+};
+
+function disciplineLabel(value: BiomechanicsDiscipline): string {
+  return DISCIPLINE_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+function cameraLabel(value: BiomechanicsCameraPlane): string {
+  return CAMERA_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+function sourceLabel(value: BiomechanicsSessionImportV1["source"]): string {
+  return SOURCE_LABELS[value as BiomechanicsCaptureSource] ?? value;
+}
 
 function statusLabel(job: BiomechanicsCaptureJobV1, awaitingReview: boolean): string {
   if (awaitingReview) return "Da validare";
@@ -118,22 +146,22 @@ function LatestJobCard({
 }) {
   if (!job) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-gray-500">Ultimo job</p>
-        <p className="mt-2 text-sm text-gray-300">Nessuna cattura Biomechanics ancora caricata.</p>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Ultima cattura</p>
+        <p className="mt-2 text-sm text-gray-300">Nessuna cattura ancora caricata.</p>
       </div>
     );
   }
   const Icon = job.status === "failed" ? AlertTriangle : awaitingReview || job.status === "completed" ? CheckCircle2 : Clock3;
   return (
-    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4">
+    <div className="rounded-xl border border-teal-500/25 bg-teal-500/[0.06] p-4">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-emerald-200" />
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-emerald-200">Ultimo job</p>
+        <Icon className="h-4 w-4 text-teal-300" />
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Ultima cattura</p>
       </div>
       <p className="mt-2 text-lg font-semibold text-white">{statusLabel(job, awaitingReview)}</p>
       <p className="mt-1 text-xs text-gray-400">
-        {job.discipline} · {job.cameraPlane} · {formatDateTime(job.createdAt)}
+        {disciplineLabel(job.discipline)} · {cameraLabel(job.cameraPlane)} · {formatDateTime(job.createdAt)}
       </p>
       {job.errorMessage ? <p className="mt-2 text-xs text-rose-200">{job.errorMessage}</p> : null}
     </div>
@@ -146,24 +174,20 @@ function CaptureNextSteps({
   stagingRunId,
   processingJobId,
   onAnalyze,
-  hasConfirmedReport,
-  latestSessionId,
-  actionError,
 }: {
   latestJob: BiomechanicsCaptureJobV1 | null;
   awaitingReview: boolean;
   stagingRunId: string | null;
   processingJobId: string | null;
   onAnalyze: () => void;
-  hasConfirmedReport: boolean;
-  latestSessionId: string | null;
-  actionError: string | null;
 }) {
   if (awaitingReview && stagingRunId) {
     return (
-      <div className="mt-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 p-4">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-amber-200">Prossimo passo</p>
-        <p className="mt-2 text-sm text-amber-50">Proposta pronta. Validala per generare efficienza, simmetria e rischio.</p>
+      <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-amber-300">Prossimo passo</p>
+        <p className="mt-2 text-sm text-amber-100">
+          Proposta pronta — non è ancora un report. Validala per generare efficienza, simmetria e rischio.
+        </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <ShellPro2Link href={`/biomechanics/staging/${stagingRunId}`} className="justify-center">
             Valida proposta
@@ -175,12 +199,11 @@ function CaptureNextSteps({
 
   if (latestJob?.status === "pending") {
     return (
-      <div className="mt-4 rounded-2xl border border-fuchsia-500/35 bg-fuchsia-500/10 p-4">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-fuchsia-200">Prossimo passo</p>
-        <p className="mt-2 text-sm text-fuchsia-50">
+      <div className="mt-4 rounded-xl border border-teal-500/30 bg-teal-500/10 p-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-teal-300">Prossimo passo</p>
+        <p className="mt-2 text-sm text-teal-100">
           Video in coda. Avvia l&apos;analisi per ottenere angoli e rischi proposti.
         </p>
-        {actionError ? <p className="mt-2 text-sm text-rose-200">{actionError}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3">
           <Pro2Button onClick={onAnalyze} disabled={processingJobId != null} className="justify-center">
             {processingJobId === latestJob.id ? "Analisi in corso..." : "Analizza video"}
@@ -192,8 +215,8 @@ function CaptureNextSteps({
 
   if (latestJob?.status === "processing" && !awaitingReview) {
     return (
-      <div className="mt-4 rounded-2xl border border-cyan-500/35 bg-cyan-500/10 p-4">
-        <p className="text-sm text-cyan-100">Analisi interrotta o in sospeso. Riprova l&apos;analisi.</p>
+      <div className="mt-4 rounded-xl border border-teal-500/30 bg-teal-500/10 p-4">
+        <p className="text-sm text-teal-100">Analisi interrotta o in sospeso. Riprova l&apos;analisi.</p>
         <div className="mt-3">
           <Pro2Button onClick={onAnalyze} disabled={processingJobId != null} className="justify-center">
             {processingJobId ? "Analisi in corso..." : "Riprova analisi"}
@@ -205,23 +228,10 @@ function CaptureNextSteps({
 
   if (latestJob?.status === "failed") {
     return (
-      <div className="mt-4 rounded-2xl border border-rose-500/35 bg-rose-500/10 p-4">
+      <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
         <p className="text-sm text-rose-100">
           Ultima analisi fallita{latestJob.errorMessage ? `: ${latestJob.errorMessage}` : "."} Carica di nuovo il video.
         </p>
-      </div>
-    );
-  }
-
-  if (hasConfirmedReport && latestSessionId) {
-    return (
-      <div className="mt-4 rounded-2xl border border-emerald-500/35 bg-emerald-500/10 p-4">
-        <p className="text-sm text-emerald-100">Report confermato con angoli, ROM e rischio per distretto.</p>
-        <div className="mt-3">
-          <ShellPro2Link href={`/biomechanics/sessions/${latestSessionId}`} variant="secondary" className="justify-center">
-            Apri report PDF
-          </ShellPro2Link>
-        </div>
       </div>
     );
   }
@@ -236,10 +246,14 @@ function SessionList({
 }) {
   if (!sessions.length) {
     return (
-      <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-        Nessun report confermato ancora. L&apos;analisi produce una <strong>proposta da validare</strong> — il report
-        (efficienza, simmetria, rischio) compare qui solo dopo la conferma.
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-10 text-center">
+        <Activity className="h-8 w-8 text-teal-400" />
+        <p className="text-sm font-semibold text-white">Nessun report confermato</p>
+        <p className="max-w-sm text-sm text-gray-400">
+          L&apos;analisi produce una <strong className="text-white">proposta da validare</strong> — il report
+          (efficienza, simmetria, rischio) compare qui solo dopo la conferma.
+        </p>
+      </div>
     );
   }
   return (
@@ -248,20 +262,23 @@ function SessionList({
         <ShellLink
           key={session.id}
           href={`/biomechanics/sessions/${session.id}`}
-          className="block rounded-xl border border-white/10 bg-black/30 px-4 py-3 transition hover:border-violet-500/40 hover:bg-violet-500/[0.06]"
+          className="group block rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition-colors hover:border-teal-500/40 hover:bg-white/[0.05]"
         >
-          <p className="text-sm font-semibold text-white">{session.discipline}</p>
+          <p className="text-sm font-semibold text-white">{disciplineLabel(session.discipline)}</p>
           <p className="mt-1 text-xs text-gray-400">
-            {formatDateTime(session.recordedAt)} · {session.source}
+            {formatDateTime(session.recordedAt)} · {sourceLabel(session.source)}
           </p>
           {session.efficiencyScores ? (
-            <p className="nutrition-muted mt-2 mb-0 text-[0.72rem]">
+            <p className="mt-2 text-[0.72rem] text-gray-400">
               Efficienza {Math.round(session.efficiencyScores.biomechanicalEfficiency01 * 100)}% · simmetria{" "}
               {Math.round(session.efficiencyScores.symmetry01 * 100)}% · rischio{" "}
               {Math.round(session.efficiencyScores.injuryRisk01 * 100)}%
             </p>
           ) : null}
-          <p className="mt-2 text-xs font-semibold text-violet-200">Apri report completo →</p>
+          <p className="mt-2 text-xs font-semibold text-teal-300">
+            Apri report completo{" "}
+            <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+          </p>
         </ShellLink>
       ))}
     </div>
@@ -269,7 +286,8 @@ function SessionList({
 }
 
 export default function BiomechanicsPageView() {
-  const { athleteId, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, loading: athleteLoading, role, adminScoped } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const [discipline, setDiscipline] = useState<BiomechanicsDiscipline>("cycling");
   const [cameraPlane, setCameraPlane] = useState<BiomechanicsCameraPlane>("side");
   const [file, setFile] = useState<File | null>(null);
@@ -308,7 +326,7 @@ export default function BiomechanicsPageView() {
       }
       if (result.error) setError(result.error);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Biomechanics non disponibile.");
+      setError(err instanceof Error ? err.message : "Analisi biomeccanica non disponibile.");
     } finally {
       setLoading(false);
     }
@@ -319,12 +337,14 @@ export default function BiomechanicsPageView() {
     void refresh();
   }, [athleteId, athleteLoading, refresh]);
 
-  const captureCountLabel = useMemo(() => {
-    const pending = captureJobs.filter((job) => job.status === "pending" || job.status === "processing").length;
-    return `${captureJobs.length} job · ${pending} attivi`;
-  }, [captureJobs]);
+  const activeJobsCount = captureJobs.filter((job) => job.status === "pending" || job.status === "processing").length;
 
-  const latestEfficiency = sessions[0]?.efficiencyScores ?? null;
+  // Una sola CTA primaria nel primary job: quando il prossimo passo ha già
+  // un'azione primaria (valida/analizza), l'upload scala a secondaria.
+  const nextStepHasPrimaryCta =
+    (latestJobAwaitingReview && activeStagingId != null) ||
+    latestJob?.status === "pending" ||
+    (latestJob?.status === "processing" && !latestJobAwaitingReview);
 
   async function onProcessJob(jobId: string): Promise<string | null> {
     if (!athleteId || processingJobId) return null;
@@ -372,7 +392,7 @@ export default function BiomechanicsPageView() {
         await refresh({ preserveError: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload Biomechanics fallito.");
+      setError(err instanceof Error ? err.message : "Caricamento non riuscito.");
     } finally {
       setUploading(false);
     }
@@ -420,52 +440,60 @@ export default function BiomechanicsPageView() {
   return (
     <Pro2AthleteRequiredGate enabled>
       <Pro2ModulePageShell
-        eyebrow="Biomechanics Engine · Capture"
-        eyebrowClassName="text-emerald-300"
-        title="Biomechanics"
-        description="Carica un video, lo analizziamo, tu e il coach validate la proposta e ottieni efficienza, simmetria e rischio."
+        eyebrow="Analisi del movimento"
+        eyebrowClassName={moduleEyebrowClass("biomechanics")}
+        title="Biomeccanica"
+        description="Carica un video del tuo gesto: dopo la validazione con il coach ottieni efficienza, simmetria e rischio."
         headerActions={
           <>
-            <ShellPro2Link href="/training" variant="secondary" className="justify-center border border-sky-500/35 bg-sky-500/10">
+            <ShellPro2Link
+              href="/training"
+              variant="secondary"
+              className="justify-center border border-teal-500/30 bg-teal-500/10 text-teal-100 hover:border-teal-400/50 hover:bg-teal-500/20"
+            >
               Training
             </ShellPro2Link>
-            <ShellPro2Link href="/physiology" variant="ghost" className="justify-center border border-emerald-500/35 bg-emerald-500/10">
+            <ShellPro2Link
+              href="/physiology"
+              variant="ghost"
+              className="justify-center border border-teal-500/30 bg-teal-500/10 text-teal-100 hover:border-teal-400/50 hover:bg-teal-500/20"
+            >
               Physiology
             </ShellPro2Link>
           </>
         }
       >
-        <div className="scroll-mt-28">
-          <GenerativeModuleSubnav />
-        </div>
-
-        {pendingStaging.length ? (
-          <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/15 px-4 py-4 text-sm text-amber-50">
-            <strong className="font-semibold">Proposta pronta — non è ancora un report.</strong> Validala dal riquadro
-            «Nuova cattura» per generare efficienza, simmetria e rischio.
-          </div>
-        ) : null}
+        <Pro2StickyAnchorSubnav
+          accent={MODULE_PILL_TEAL}
+          items={[
+            { id: "gen-body", label: "Nuova cattura" },
+            { id: "gen-domain", label: "Stato catture" },
+            { id: "biomech-report", label: "Report sessioni" },
+            { id: "gen-cross", label: "Importa OpenCap" },
+            { id: "gen-focus", label: "Dettagli" },
+          ]}
+        />
 
         {error ? (
-          <div className="mb-4 rounded-2xl border border-rose-500/40 bg-rose-500/15 px-4 py-3 text-sm text-rose-100">
-            <strong className="font-semibold">Biomechanics non disponibile:</strong> {error}
+          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            <strong className="font-semibold">Qualcosa non ha funzionato:</strong> {error}
           </div>
         ) : null}
 
         <section id="gen-body" className="scroll-mt-28">
           <Pro2SectionCard
-            accent="cyan"
+            accent="teal"
             icon={UploadCloud}
             title="Nuova cattura"
-            subtitle="Carica il video, avvia l'analisi, valida la proposta e ottieni il report di efficienza."
+            subtitle="Scegli disciplina e inquadratura, poi carica il video: l'analisi parte subito."
           >
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
               <label className="space-y-2 text-sm text-gray-300">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Disciplina</span>
+                <span className="text-xs font-medium text-gray-400">Disciplina</span>
                 <select
                   value={discipline}
                   onChange={(e) => setDiscipline(e.currentTarget.value as BiomechanicsDiscipline)}
-                  className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-white"
+                  className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 >
                   {DISCIPLINE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -475,11 +503,11 @@ export default function BiomechanicsPageView() {
                 </select>
               </label>
               <label className="space-y-2 text-sm text-gray-300">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Camera</span>
+                <span className="text-xs font-medium text-gray-400">Inquadratura</span>
                 <select
                   value={cameraPlane}
                   onChange={(e) => setCameraPlane(e.currentTarget.value as BiomechanicsCameraPlane)}
-                  className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-white"
+                  className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                 >
                   {CAMERA_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -489,17 +517,22 @@ export default function BiomechanicsPageView() {
                 </select>
               </label>
               <label className="space-y-2 text-sm text-gray-300 lg:min-w-72">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Media</span>
+                <span className="text-xs font-medium text-gray-400">Video o foto</span>
                 <input
                   type="file"
                   accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp"
                   onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
-                  className="block w-full text-xs text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-500/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-emerald-100"
+                  className="block w-full text-xs text-gray-300 file:mr-3 file:rounded-full file:border-0 file:bg-teal-500/15 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-teal-100"
                 />
               </label>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Pro2Button onClick={onUpload} disabled={!file || uploading || processingJobId != null || !athleteId} className="justify-center">
+              <Pro2Button
+                variant={nextStepHasPrimaryCta ? "secondary" : "primary"}
+                onClick={onUpload}
+                disabled={!file || uploading || processingJobId != null || !athleteId}
+                className="justify-center"
+              >
                 {uploading || processingJobId ? "Upload ed elaborazione..." : "Carica ed elabora"}
               </Pro2Button>
               {file ? <p className="text-xs text-gray-400">{file.name} · {(file.size / 1_000_000).toFixed(1)} MB</p> : null}
@@ -510,14 +543,11 @@ export default function BiomechanicsPageView() {
               stagingRunId={activeStagingId}
               processingJobId={processingJobId}
               onAnalyze={() => void runAnalyzeLatestJob()}
-              hasConfirmedReport={sessions.length > 0}
-              latestSessionId={sessions[0]?.id ?? null}
-              actionError={error}
             />
             {message ? (
               <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
                 {message}
-                {activeStagingId ? (
+                {activeStagingId && !latestJobAwaitingReview ? (
                   <>
                     {" "}
                     <ShellLink href={`/biomechanics/staging/${activeStagingId}`} className="font-semibold underline">
@@ -527,83 +557,44 @@ export default function BiomechanicsPageView() {
                 ) : null}
               </p>
             ) : null}
-            {error ? <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
           </Pro2SectionCard>
         </section>
 
         <section id="gen-domain" className="scroll-mt-28">
           <Pro2SectionCard
-            accent="emerald"
+            accent="teal"
             icon={Camera}
             title="Stato catture"
-            subtitle="Catture, proposte da validare e ultimo report confermato."
+            subtitle="Ultima cattura, archivio e proposte in attesa di validazione."
           >
             <div className="grid gap-3 sm:grid-cols-3">
               <LatestJobCard
                 job={latestJob}
                 awaitingReview={latestJobAwaitingReview}
               />
-              <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-cyan-200">Archivio catture</p>
-                <p className="mt-2 text-lg font-semibold text-white">{captureCountLabel}</p>
-                <p className="mt-1 text-xs text-gray-400">Le catture più recenti dell&apos;atleta attivo.</p>
-              </div>
-              <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/[0.06] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-fuchsia-200">Report confermato</p>
-                <p className="mt-2 text-lg font-semibold text-white">
-                  {latestEfficiency ? `${Math.round(latestEfficiency.biomechanicalEfficiency01 * 100)}%` : "—"}
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Archivio catture</p>
+                <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{captureJobs.length}</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  {activeJobsCount} in coda o in elaborazione per l&apos;atleta attivo.
                 </p>
-                <p className="mt-1 text-xs text-gray-400">Efficienza biomeccanica.</p>
-                {sessions[0] ? (
-                  <ShellLink
-                    href={`/biomechanics/sessions/${sessions[0].id}`}
-                    className="mt-2 inline-block text-xs font-semibold text-fuchsia-200 underline"
-                  >
-                    Report completo →
-                  </ShellLink>
-                ) : null}
               </div>
-            </div>
-            {pendingStaging.length ? (
-              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {pendingStaging.length} proposte da validare. Trovi la validazione nel riquadro «Nuova cattura».
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Da validare</p>
+                <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{pendingStaging.length}</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  {pendingStaging.length
+                    ? "La validazione si apre dal riquadro «Nuova cattura»."
+                    : "Nessuna proposta in attesa."}
+                </p>
               </div>
-            ) : null}
-          </Pro2SectionCard>
-        </section>
-
-        <section className="scroll-mt-28">
-          <Pro2SectionCard
-            accent="fuchsia"
-            icon={Camera}
-            title="Import OpenCap"
-            subtitle="Incolla l'ID sessione da app.opencap.ai: segue la stessa analisi e validazione delle altre catture."
-          >
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="min-w-[16rem] flex-1 space-y-2 text-sm text-gray-300">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Session ID</span>
-                <input
-                  value={openCapSessionId}
-                  onChange={(e) => setOpenCapSessionId(e.currentTarget.value)}
-                  placeholder="7272a71a-e70a-4794-a253-39e11cb7542c"
-                  className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-white"
-                />
-              </label>
-              <Pro2Button
-                variant="secondary"
-                onClick={onImportOpenCap}
-                disabled={!openCapSessionId.trim() || importingOpenCap || !athleteId}
-                className="justify-center"
-              >
-                {importingOpenCap ? "Import..." : "Importa OpenCap"}
-              </Pro2Button>
             </div>
           </Pro2SectionCard>
         </section>
 
         <section id="biomech-report" className="scroll-mt-28">
           <Pro2SectionCard
-            accent="violet"
+            accent="teal"
             icon={Activity}
             title="Report sessioni"
             subtitle="Efficienza, simmetria e rischio dopo la validazione."
@@ -616,19 +607,105 @@ export default function BiomechanicsPageView() {
           </Pro2SectionCard>
         </section>
 
-        <section id="gen-focus" className="scroll-mt-28">
-          <Pro2SectionCard
-            accent="amber"
-            icon={AlertTriangle}
-            title="Come leggere i numeri"
-            subtitle="Efficienza, simmetria e rischio compaiono solo dopo che la proposta è stata validata."
+        <section id="gen-cross" className="scroll-mt-28">
+          <Pro2Accordion
+            accent="teal"
+            title="Importa da OpenCap"
+            subtitle="Hai una sessione su app.opencap.ai? Importala: segue la stessa validazione delle altre catture."
           >
-            <p className="text-sm leading-relaxed text-gray-300">
-              L&apos;analisi propone punti e angoli a partire dal video. Atleta e coach li validano: solo dopo la conferma
-              compaiono i numeri ufficiali di efficienza, simmetria e rischio.
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="min-w-[16rem] flex-1 space-y-2 text-sm text-gray-300">
+                <span className="text-xs font-medium text-gray-400">ID sessione</span>
+                <input
+                  value={openCapSessionId}
+                  onChange={(e) => setOpenCapSessionId(e.currentTarget.value)}
+                  placeholder="7272a71a-e70a-4794-a253-39e11cb7542c"
+                  className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                />
+              </label>
+              <Pro2Button
+                variant="secondary"
+                onClick={onImportOpenCap}
+                disabled={!openCapSessionId.trim() || importingOpenCap || !athleteId}
+                className="justify-center"
+              >
+                {importingOpenCap ? "Import..." : "Importa OpenCap"}
+              </Pro2Button>
+            </div>
+            <p className="mt-3 text-[0.65rem] text-gray-500">
+              L&apos;import usa la disciplina selezionata nel riquadro «Nuova cattura».
             </p>
-          </Pro2SectionCard>
+          </Pro2Accordion>
         </section>
+
+        <section id="gen-focus" className="scroll-mt-28">
+          <Pro2Accordion
+            accent="teal"
+            title="Dettagli e motore"
+            subtitle="Come leggere i numeri e come funziona l'analisi."
+          >
+            <div className="space-y-4 text-sm leading-relaxed text-gray-300">
+              <div>
+                <p className="font-semibold text-white">Come leggere i numeri</p>
+                <p className="mt-1">
+                  L&apos;analisi propone punti e angoli a partire dal video. Atleta e coach li validano: solo dopo la
+                  conferma compaiono i numeri ufficiali di efficienza, simmetria e rischio.
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>
+                    <strong className="text-white">Efficienza</strong> — quanto il gesto è economico ed efficace (0–100%).
+                  </li>
+                  <li>
+                    <strong className="text-white">Simmetria</strong> — equilibrio tra lato destro e sinistro (0–100%).
+                  </li>
+                  <li>
+                    <strong className="text-white">Rischio</strong> — probabilità di sovraccarico: più è basso, meglio è.
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-semibold text-white">Il percorso di ogni cattura</p>
+                <p className="mt-1">
+                  Cattura (video, foto o sessione OpenCap) → analisi automatica → proposta da validare → report
+                  confermato con angoli, escursioni articolari (ROM) e rischio per distretto.
+                </p>
+              </div>
+              <div>
+                <p className="font-semibold text-white">Parametri della cattura</p>
+                <p className="mt-1">
+                  La disciplina orienta l&apos;analisi sul gesto giusto; l&apos;inquadratura indica da dove è ripreso il
+                  video. Una ripresa laterale stabile, con tutto il corpo visibile, dà i risultati più affidabili.
+                </p>
+              </div>
+            </div>
+          </Pro2Accordion>
+        </section>
+
+        {showTech ? (
+          <Pro2Accordion
+            accent="teal"
+            title="Diagnostica"
+            subtitle="Stato tecnico della pipeline — visibile solo a coach e staff."
+          >
+            <div className="space-y-1 font-mono text-xs text-gray-400">
+              <p>
+                Contesto: {role === "coach" ? "Coach" : adminScoped ? "Admin" : "Privato"} · atleta{" "}
+                {athleteId ? `${athleteId.slice(0, 8)}…` : "—"}
+              </p>
+              <p>
+                Capture job: {captureJobs.length} totali · {activeJobsCount} attivi ·{" "}
+                {captureJobs.filter((job) => job.status === "failed").length} falliti
+              </p>
+              <p>
+                Ultimo job: {latestJob ? `${latestJob.id} · ${latestJob.status} · ${latestJob.source}` : "—"}
+              </p>
+              <p>Staging run attivo: {activeStagingId ?? "—"}</p>
+              <p>
+                Sessioni confermate: {sessions.length} · ultima: {sessions[0]?.id ?? "—"}
+              </p>
+            </div>
+          </Pro2Accordion>
+        ) : null}
       </Pro2ModulePageShell>
     </Pro2AthleteRequiredGate>
   );

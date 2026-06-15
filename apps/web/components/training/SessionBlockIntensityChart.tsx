@@ -33,7 +33,7 @@ export function SessionBlockIntensityChart({
 
   if (segments.length === 0) {
     return (
-      <div className="rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-950/35 via-fuchsia-950/15 to-black/40 px-4 py-6 text-center text-sm text-gray-500 shadow-inner shadow-violet-950/30">
+      <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center text-sm text-gray-400">
         Nessun blocco da visualizzare.
       </div>
     );
@@ -42,7 +42,7 @@ export function SessionBlockIntensityChart({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-orange-300">
+        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
           {title}
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.65rem] text-gray-500">
@@ -50,7 +50,7 @@ export function SessionBlockIntensityChart({
             {formatSec(totalSec)} totali · {segments.length} segmenti
           </span>
           {typeof estimatedTss === "number" ? (
-            <span className="rounded-full border border-orange-400/35 bg-gradient-to-r from-violet-600/35 to-fuchsia-600/35 px-2 py-0.5 font-bold text-orange-50 shadow-sm shadow-fuchsia-500/20">
+            <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 font-semibold text-orange-300">
               {LOAD_CHIP_LABEL} ~{estimatedTss}
             </span>
           ) : null}
@@ -58,7 +58,7 @@ export function SessionBlockIntensityChart({
       </div>
 
       <div
-        className="rounded-xl border border-fuchsia-500/25 bg-gradient-to-b from-violet-950/35 via-black/60 to-black/75 p-2 shadow-inner shadow-fuchsia-950/20 ring-1 ring-violet-500/15"
+        className="rounded-xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 via-black/60 to-black/75 p-2 shadow-inner shadow-orange-950/20 ring-1 ring-orange-500/15"
         role="img"
         aria-label={`Timeline sessione, ${totalSec} secondi`}
       >
@@ -81,7 +81,7 @@ export function SessionBlockIntensityChart({
               >
                 <div className={`flex flex-1 flex-col justify-end ${compact ? "min-h-[5rem]" : "min-h-[7.5rem]"}`}>
                   <div
-                    className="mx-0.5 rounded-t-lg shadow-[inset_0_-2px_0_rgba(0,0,0,0.35)] ring-1 ring-violet-400/25 transition hover:brightness-110"
+                    className="mx-0.5 rounded-t-lg shadow-[inset_0_-2px_0_rgba(0,0,0,0.35)] ring-1 ring-white/10 transition hover:brightness-110"
                     style={{
                       height: `${h}%`,
                       minHeight: "2.25rem",
@@ -108,13 +108,13 @@ export function SessionBlockIntensityChart({
       </div>
 
       {!compact ? (
-        <p className="text-[0.6rem] leading-relaxed text-gray-600">
+        <p className="text-[0.6rem] leading-relaxed text-gray-500">
           Colori = zona; larghezza = tempo. Altezza = carico (piramide: incremento lineare su W/bpm, non solo etichetta zona).
           {typeof estimatedTss === "number" ? (
             <>
               {" "}
-              TSS stimato: modello somma <span className="text-violet-400/90">IF²</span> per segmento, calibrato su{" "}
-              <span className="text-fuchsia-400/85">60′ in Z4 ≈ 100 TSS</span>.
+              TSS stimato: modello somma <span className="text-orange-300/90">IF²</span> per segmento, calibrato su{" "}
+              <span className="text-orange-300/90">60′ in Z4 ≈ 100 TSS</span>.
             </>
           ) : null}
         </p>

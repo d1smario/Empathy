@@ -14,6 +14,7 @@ import { GenerativeModuleSubnav } from "@/components/navigation/GenerativeModule
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
+import { Pro2Accordion } from "@/components/ui/empathy/Pro2Accordion";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import { cn } from "@/lib/cn";
 import {
@@ -34,6 +35,12 @@ function toIsoDate(d: Date): string {
 function coerceIsoDate(s: string | null | undefined): string | null {
   const u = (s ?? "").trim().slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(u) ? u : null;
+}
+
+function formatDayLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" }).format(d);
 }
 
 const CATEGORY_LABEL: Record<BioenergeticMetricTileCategory, string> = {
@@ -94,7 +101,6 @@ export default function BioenergeticsPageView() {
   const [error, setError] = useState<string | null>(null);
   const [vm, setVm] = useState<BioenergeticsDayViewModel | null>(null);
   const seededFromContext = useRef(false);
-  const genBodyRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     seededFromContext.current = false;
@@ -130,11 +136,16 @@ export default function BioenergeticsPageView() {
     [athleteId],
   );
 
+  const goToStrip = useCallback(() => {
+    if (typeof document === "undefined") return;
+    document.getElementById("gen-body")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   useEffect(() => {
     if (athleteLoading) return;
     if (!athleteId) {
       setVm(null);
-      setError("Seleziona un atleta attivo per generare il report bioenergetico.");
+      setError("Seleziona un atleta attivo per vedere la sua giornata.");
       return;
     }
     let cancelled = false;
@@ -152,7 +163,7 @@ export default function BioenergeticsPageView() {
         if (cancelled) return;
         if (!res.ok) {
           setVm(null);
-          setError(json.error ?? "Lettura BioEnergetic Intelligence non riuscita.");
+          setError(json.error ?? "Non è stato possibile caricare la giornata.");
           return;
         }
         const cm = json.continuousMonitoring as BioenergeticsDayViewModel["continuousMonitoring"] | undefined;
@@ -193,56 +204,60 @@ export default function BioenergeticsPageView() {
     return [...vm.timeline].filter((e) => TIMELINE_MODEL_TYPES.has(e.type)).sort((a, b) => a.ts.localeCompare(b.ts));
   }, [vm?.timeline]);
 
+  const isToday = date === toIsoDate(new Date());
+
   return (
     <Pro2ModulePageShell
-      eyebrow="BioEnergetic Intelligence · Focus"
+      eyebrow="La tua giornata, ora per ora"
       eyebrowClassName="text-lime-400"
-      title="BioEnergetic Intelligence"
-      description="Striscia 24 h: al mattino una previsione dal tuo piano pasti e allenamenti; nel pomeriggio-sera si adatta a diario e sedute svolte. Le tile mostrano valori stimati sugli stessi dati. Non sostituisce un sensore continuo né un referto medico."
-      headerActions={
-        <>
-          <CrossShellLink adminScoped={adminScoped} href="/nutrition" variant="secondary" className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15">
-            Nutrition
-          </CrossShellLink>
-          <CrossShellLink adminScoped={adminScoped} href="/training/calendar" variant="ghost" className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15">
-            Calendar
-          </CrossShellLink>
-        </>
-      }
+      title="Bioenergetica"
+      description="Una striscia che racconta la tua giornata, dal mattino alla sera. All’inizio è una previsione dal tuo piano di pasti e allenamenti; con il passare delle ore si adatta a ciò che mangi e ti alleni davvero. È una stima orientativa, non un sensore continuo né un referto medico."
     >
-      <div className="scroll-mt-28">
-        <GenerativeModuleSubnav />
-      </div>
-
+      {/* PRIMARY JOB sopra la piega: scegli il giorno e apri la striscia. Una sola CTA primaria. */}
       <section id="gen-domain" className="scroll-mt-28">
-        <Pro2SectionCard accent="emerald" title="Range giornata" subtitle="Seleziona giorno report" icon={Timer}>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDateAndPersist(e.currentTarget.value)}
-              className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-            />
-            <p className="max-w-xl text-xs leading-relaxed text-gray-400">
-              Di default vedi il <strong className="text-gray-200">giorno del piano Nutrizione</strong>. Cambiando giorno qui si aggiorna anche la Nutrizione e il link da condividere.
-            </p>
+        <Pro2SectionCard accent="lime" title="Scegli il giorno" subtitle="Imposta il contesto prima dei numeri" icon={Timer}>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDateAndPersist(e.currentTarget.value)}
+                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                aria-label="Giorno da visualizzare"
+              />
+              {!isToday ? (
+                <button
+                  type="button"
+                  onClick={() => setDateAndPersist(toIsoDate(new Date()))}
+                  className={pro2ButtonClassName("ghost", "justify-center")}
+                >
+                  Oggi
+                </button>
+              ) : null}
+              <p className="max-w-xl text-xs leading-relaxed text-gray-400">
+                Di default vedi il <strong className="text-gray-200">giorno del piano Nutrizione</strong>. Cambiando
+                giorno qui si aggiorna anche la Nutrizione e il link da condividere.
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={goToStrip}
+                className={pro2ButtonClassName("primary", "justify-center")}
+                disabled={!vm}
+              >
+                Vedi la striscia di {formatDayLabel(date)}
+              </button>
+            </div>
           </div>
         </Pro2SectionCard>
       </section>
 
-      <section id="gen-body" ref={genBodyRef} className="scroll-mt-28 space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-cyan-500/25 bg-black/35 px-4 py-3">
-            <p className="font-mono text-[0.6rem] uppercase tracking-wider text-cyan-300">Giorno</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-white">{vm?.date ?? "—"}</p>
-          </div>
-          <div className="rounded-2xl border border-fuchsia-500/25 bg-black/35 px-4 py-3">
-            <p className="font-mono text-[0.6rem] uppercase tracking-wider text-fuchsia-300">Eventi timeline</p>
-            <p className="mt-1 text-xl font-semibold text-white">{vm?.timeline.length ?? 0}</p>
-            <p className="mt-1 text-[0.65rem] text-gray-500">Pasti, sedute ed esami usati come contesto della giornata.</p>
-          </div>
-        </div>
+      <div className="scroll-mt-28">
+        <GenerativeModuleSubnav />
+      </div>
 
+      <section id="gen-body" className="scroll-mt-28 space-y-6">
         {error ? <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">{error}</p> : null}
         {athleteLoading || loading ? (
           <div className="space-y-2">
@@ -252,13 +267,14 @@ export default function BioenergeticsPageView() {
         ) : null}
 
         {vm && vm.timeline.length === 0 ? (
-          <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Per <strong className="text-white">{vm.date}</strong> non ci sono ancora eventi: la stima avrà meno contesto. Aggiungi pasti in{" "}
-            <CrossShellLink adminScoped={adminScoped} href="/nutrition/diary" className="text-cyan-200 underline-offset-2 hover:text-white">
+          <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-4 py-3 text-sm text-lime-100">
+            Per <strong className="text-white">{formatDayLabel(vm.date)}</strong> non ci sono ancora eventi: la stima avrà
+            meno contesto. Aggiungi pasti in{" "}
+            <CrossShellLink adminScoped={adminScoped} href="/nutrition/diary" className="text-lime-200 underline-offset-2 hover:text-white">
               Diario
             </CrossShellLink>{" "}
             e sedute in{" "}
-            <CrossShellLink adminScoped={adminScoped} href="/training/calendar" className="text-cyan-200 underline-offset-2 hover:text-white">
+            <CrossShellLink adminScoped={adminScoped} href="/training/calendar" className="text-lime-200 underline-offset-2 hover:text-white">
               Calendario
             </CrossShellLink>
             .
@@ -268,9 +284,9 @@ export default function BioenergeticsPageView() {
         {vm ? (
           <>
             <Pro2SectionCard
-              accent="fuchsia"
+              accent="lime"
               title="Striscia 24 h"
-              subtitle="Andamento della giornata, passo 5 min. Quando c’è una misura reale (CGM) ha sempre la priorità."
+              subtitle="Andamento della giornata, passo 5 min. Quando c’è una misura reale ha sempre la priorità."
               icon={LineChart}
             >
               {vm.continuousMonitoring &&
@@ -278,36 +294,11 @@ export default function BioenergeticsPageView() {
                 <div className="space-y-4">
                   {vm.continuousMonitoring.channels.length === 0 &&
                   vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
-                    <p className="rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-fuchsia-100/95">
+                    <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
                       {showTech
                         ? "Nessuna curva generata: verifica configurazione OpenAI e risposta JSON (vedi disclaimer)."
                         : "Curve non disponibili per questa giornata: prova ad aggiornare più tardi."}
                     </p>
-                  ) : null}
-                  {showTech && timelineModelStimuli.length ? (
-                    <div className="rounded-xl border border-fuchsia-500/20 bg-black/35 p-3">
-                      <p className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-fuchsia-200/90">
-                        Contesto inviato (estratto timeline)
-                      </p>
-                      <ul className="max-h-36 space-y-1.5 overflow-y-auto text-[0.7rem] text-gray-200">
-                        {timelineModelStimuli.map((e) => (
-                          <li
-                            key={e.id}
-                            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
-                          >
-                            <span className="shrink-0 font-mono text-[0.65rem] text-fuchsia-200/90">{e.ts}</span>
-                            <span className="shrink-0 text-gray-500">
-                              {e.type === "meal"
-                                ? "Pasto"
-                                : e.type === "executed_session"
-                                  ? "Seduta eseguita"
-                                  : "Seduta pianificata"}
-                            </span>
-                            <span className="min-w-0 flex-1 text-gray-100">{e.title}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   ) : null}
                   {vm.continuousMonitoring.channels.length > 0 ? (
                     <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} />
@@ -318,14 +309,16 @@ export default function BioenergeticsPageView() {
               )}
             </Pro2SectionCard>
 
-            <Pro2SectionCard
-              accent="amber"
+            <Pro2Accordion
+              accent="lime"
               title="Metabolismo, infiammazione, ormoni e neuromodulatori"
-              subtitle="Valori stimati a partire dalla giornata: diario, allenamenti e timeline."
-              icon={LineChart}
+              subtitle={`Valori stimati dalla giornata · ${vm.metricTiles?.length ?? 0} indicatori`}
             >
               {(() => {
                 const tiles = vm.metricTiles ?? [];
+                if (!tiles.length) {
+                  return <p className="text-sm text-gray-500">Nessun indicatore per questa giornata.</p>;
+                }
                 const byCat = tiles.reduce<Record<string, BioenergeticMetricTile[]>>((acc, t) => {
                   const k = t.category;
                   if (!acc[k]) acc[k] = [];
@@ -347,23 +340,25 @@ export default function BioenergeticsPageView() {
                       if (!list?.length) return null;
                       return (
                         <div key={cat}>
-                          <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-wider text-amber-200/90">
+                          <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
                             {CATEGORY_LABEL[cat]}
                           </p>
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {list.map((t) => (
                               <div
                                 key={t.id}
-                                className={`rounded-2xl border px-3 py-2.5 ${impactTileClass(t.impact)}`}
+                                className={`rounded-xl border px-3 py-2.5 ${impactTileClass(t.impact)}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="text-xs font-medium leading-snug text-white">{t.labelIt}</p>
-                                  <span className="shrink-0 rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide text-gray-400">
+                                  <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-gray-300">
                                     {provenanceLabel(t.provenance)}
                                   </span>
                                 </div>
-                                <p className="mt-1 font-mono text-lg font-semibold text-white">{t.displayValue}</p>
-                                <p className="text-[0.65rem] text-gray-500">{t.unit}</p>
+                                <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
+                                  {t.displayValue}
+                                  <span className="ml-1 text-xs font-medium text-gray-500">{t.unit}</span>
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -373,36 +368,104 @@ export default function BioenergeticsPageView() {
                   </div>
                 );
               })()}
-            </Pro2SectionCard>
-
-            {showTech && vm.planRealityFusionV1 ? (
-              <p className="rounded-lg border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
-                Adattamento da ore{" "}
-                <strong className="text-white">
-                  {vm.planRealityFusionV1.adaptFromHour >= 24 ? "— (solo piano)" : vm.planRealityFusionV1.adaptFromHour}
-                </strong>
-                {" · "}
-                piano: {vm.planRealityFusionV1.planSource} ({vm.planRealityFusionV1.plannedMealCount} pasti) · diario:{" "}
-                {vm.planRealityFusionV1.diaryMealCount} · eseguite: {vm.planRealityFusionV1.executedSessionCount}
-              </p>
-            ) : null}
-
-            {showTech && vm.monitoringStripAuditV1 ? (
-              <BioenergeticsStripAuditPanel audit={vm.monitoringStripAuditV1} />
-            ) : null}
-
+            </Pro2Accordion>
           </>
         ) : null}
       </section>
 
-      <section id="gen-focus" className="scroll-mt-28">
-        <Pro2SectionCard accent="rose" title="Disclaimers" subtitle="Sicurezza interpretativa" icon={Activity}>
+      <section id="gen-focus" className="scroll-mt-28 space-y-6">
+        <Pro2SectionCard accent="lime" title="Da tenere a mente" subtitle="Come leggere questi numeri" icon={Activity}>
           <ul className="space-y-2 text-sm text-gray-300">
             {(vm?.disclaimers ?? ["Nessuna nota disponibile."]).map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
         </Pro2SectionCard>
+
+        <Pro2Accordion
+          accent="lime"
+          title="Dettagli e motore"
+          subtitle="Metodologia, contesto usato e diagnostica tecnica"
+        >
+          <div className="space-y-5 text-sm text-gray-300">
+            <div>
+              <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce la striscia</p>
+              <p className="mt-1 leading-relaxed text-gray-400">
+                La giornata è ricostruita a passo 5 minuti unendo il piano (pasti e allenamenti previsti) con quello che
+                viene registrato davvero nel Diario e nel Calendario. Dove esiste una misura reale (es. glicemia da
+                sensore) quella ha sempre la priorità sulla stima. Gli indicatori di metabolismo, ormoni e neuromodulatori
+                sono valori orientativi calcolati sugli stessi eventi della giornata.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <CrossShellLink adminScoped={adminScoped} href="/nutrition" variant="secondary" className="justify-center border-amber-500/30 bg-amber-500/10 text-amber-100 hover:border-amber-400/50 hover:bg-amber-500/20">
+                Apri Nutrizione
+              </CrossShellLink>
+              <CrossShellLink adminScoped={adminScoped} href="/training/calendar" variant="secondary" className="justify-center border-sky-500/30 bg-sky-500/10 text-sky-100 hover:border-sky-400/50 hover:bg-sky-500/20">
+                Apri Calendario
+              </CrossShellLink>
+            </div>
+
+            {vm ? (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Eventi della giornata</p>
+                <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">{vm.timeline.length}</p>
+                <p className="mt-1 text-[0.65rem] text-gray-500">
+                  Pasti, sedute ed esami usati come contesto del {formatDayLabel(vm.date)}.
+                </p>
+              </div>
+            ) : null}
+
+            {showTech && vm ? (
+              <div className="space-y-4 border-t border-white/10 pt-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+                  Diagnostica tecnica (coach/admin)
+                </p>
+
+                {timelineModelStimuli.length ? (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+                      Contesto inviato (estratto timeline)
+                    </p>
+                    <ul className="max-h-36 space-y-1.5 overflow-y-auto text-[0.7rem] text-gray-200">
+                      {timelineModelStimuli.map((e) => (
+                        <li
+                          key={e.id}
+                          className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-white/5 pb-1.5 last:border-0 last:pb-0"
+                        >
+                          <span className="shrink-0 font-mono text-[0.65rem] tabular-nums text-lime-300">{e.ts}</span>
+                          <span className="shrink-0 text-gray-500">
+                            {e.type === "meal"
+                              ? "Pasto"
+                              : e.type === "executed_session"
+                                ? "Seduta eseguita"
+                                : "Seduta pianificata"}
+                          </span>
+                          <span className="min-w-0 flex-1 text-gray-100">{e.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {vm.planRealityFusionV1 ? (
+                  <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
+                    Adattamento da ore{" "}
+                    <strong className="text-white">
+                      {vm.planRealityFusionV1.adaptFromHour >= 24 ? "— (solo piano)" : vm.planRealityFusionV1.adaptFromHour}
+                    </strong>
+                    {" · "}
+                    piano: {vm.planRealityFusionV1.planSource} ({vm.planRealityFusionV1.plannedMealCount} pasti) · diario:{" "}
+                    {vm.planRealityFusionV1.diaryMealCount} · eseguite: {vm.planRealityFusionV1.executedSessionCount}
+                  </p>
+                ) : null}
+
+                {vm.monitoringStripAuditV1 ? <BioenergeticsStripAuditPanel audit={vm.monitoringStripAuditV1} /> : null}
+              </div>
+            ) : null}
+          </div>
+        </Pro2Accordion>
       </section>
     </Pro2ModulePageShell>
   );

@@ -32,7 +32,7 @@ export function ReplicateStatusStrip() {
 
   const borderClass =
     data?.configured && data?.reachable === true
-      ? "border-sky-500/45"
+      ? "border-emerald-500/45"
       : data?.configured && data?.reachable === false
         ? "border-amber-500/45"
         : "border-white/15";

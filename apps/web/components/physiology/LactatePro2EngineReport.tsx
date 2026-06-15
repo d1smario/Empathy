@@ -14,6 +14,13 @@ import {
   YAxis,
 } from "recharts";
 import type { LactateEngineOutput } from "@/lib/engines/lactate-engine";
+import {
+  CHART_AXIS,
+  CHART_FONT,
+  CHART_GRID,
+  CHART_SIGNAL,
+  chartTooltipStyle,
+} from "@/lib/ui/chart-theme";
 
 function clampPct(n: number) {
   return Math.max(0, Math.min(100, n));
@@ -75,7 +82,7 @@ function Pro2DonutPair({
             </Pie>
             <Tooltip
               formatter={(v: number) => [`${v.toFixed(0)}`, ""]}
-              contentStyle={{ background: "#0c0c10", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8 }}
+              contentStyle={chartTooltipStyle("physiology")}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -98,8 +105,8 @@ function GradientKpiCard({ item }: { item: GradientKpi }) {
     <div
       className="physiology-pro2-eng-kpi"
       style={{
-        background: item.gradient,
-        boxShadow: item.borderGlow,
+        background: "linear-gradient(145deg, #059669, #047857)",
+        boxShadow: "0 8px 32px rgba(16,185,129,0.22)",
       }}
     >
       <div className="physiology-pro2-eng-kpi-head">
@@ -128,10 +135,10 @@ export function LactatePro2EngineReport({
   const ana = model.anaerobicKcal;
 
   const flowRows = [
-    { name: "Prodotto", g: model.lactateProducedG, fill: "#ef4444" },
-    { name: "Ossidato", g: model.lactateOxidizedG, fill: "#22c55e" },
-    { name: "Cori", g: model.lactateCoriG, fill: "#3b82f6" },
-    { name: "Accumulato", g: model.lactateAccumG, fill: "#fb923c" },
+    { name: "Prodotto", g: model.lactateProducedG, fill: CHART_SIGNAL.hr },
+    { name: "Ossidato", g: model.lactateOxidizedG, fill: CHART_SIGNAL.hrv },
+    { name: "Cori", g: model.lactateCoriG, fill: CHART_SIGNAL.fat },
+    { name: "Accumulato", g: model.lactateAccumG, fill: CHART_SIGNAL.power },
   ];
 
   const choPipeline = [
@@ -336,7 +343,7 @@ export function LactatePro2EngineReport({
       </div>
 
       <div className="physiology-pro2-eng-chart-block physiology-pro2-eng-chart-block--lac-flow">
-        <h3 className="physiology-pro2-eng-chart-h3 physiology-pro2-eng-chart-h3--pink">Lactate flow distribution</h3>
+        <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">Lactate flow distribution</h3>
         <p className="physiology-pro2-eng-chart-caption">
           Tre destini (massa): ossidazione {model.lactateFateOxidationPct.toFixed(0)}% · Cori {model.lactateFateCoriPct.toFixed(0)}% · accumulo{" "}
           {model.lactateFateAccumPct.toFixed(0)}%
@@ -344,12 +351,12 @@ export function LactatePro2EngineReport({
         <div className="physiology-pro2-eng-chart-inner">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={flowRows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} label={{ value: "g", angle: -90, position: "insideLeft", fill: "#9ca3af" }} />
+              <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
+              <YAxis tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} label={{ value: "g", angle: -90, position: "insideLeft", fill: CHART_AXIS.label, fontSize: CHART_FONT.axisLabel }} />
               <Tooltip
                 cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                contentStyle={{ background: "#0c0c10", border: "1px solid rgba(244,63,94,0.35)", borderRadius: 8 }}
+                contentStyle={chartTooltipStyle("physiology")}
                 formatter={(v: number) => [`${v.toFixed(1)} g`, ""]}
               />
               <Bar dataKey="g" radius={[8, 8, 0, 0]}>
@@ -390,7 +397,7 @@ export function LactatePro2EngineReport({
 
       <div className="physiology-pro2-eng-two-col">
         <div className="physiology-pro2-eng-pipeline-card">
-          <h3 className="physiology-pro2-eng-chart-h3 physiology-pro2-eng-chart-h3--cyan">CHO pipeline flow</h3>
+          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">CHO pipeline flow</h3>
           <div className="physiology-pro2-eng-pipeline-bars">
             {choPipeline.map((row) => (
               <div key={row.label} className="physiology-pro2-eng-pipeline-row">
@@ -413,7 +420,7 @@ export function LactatePro2EngineReport({
         </div>
 
         <div className="physiology-pro2-eng-micro-card">
-          <h3 className="physiology-pro2-eng-chart-h3 physiology-pro2-eng-chart-h3--amber">Microbiota &amp; gut metrics</h3>
+          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">Microbiota &amp; gut metrics</h3>
           <ul className="physiology-pro2-eng-micro-list">
             <li>
               <span>Assorbimento vs ingerito</span>

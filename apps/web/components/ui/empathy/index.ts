@@ -3,3 +3,4 @@ export { Pro2Button, pro2ButtonClassName, type Pro2ButtonVariant } from "./Pro2B
 export { Pro2Link } from "./Pro2Link";
 export { ModeSelect, type ModeSelectOption } from "./ModeSelect";
 export { CompactValueField } from "./CompactValueField";
+export { Pro2Accordion, type Pro2AccordionProps } from "./Pro2Accordion";

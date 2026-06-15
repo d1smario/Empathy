@@ -41,6 +41,10 @@ import {
   monthWorkoutsForDate,
   plannedWorkoutsFromAnalyticsRows,
 } from "@/lib/training/analytics/analytics-row-mappers";
+import { CHART_AXIS, CHART_GRID, CHART_SIGNAL, chartHexToRgba, chartSeriesForModule } from "@/lib/ui/chart-theme";
+
+/** Palette serie del modulo training: prima traccia = accento orange (chart-theme). */
+const TRAINING_SERIES = chartSeriesForModule("training");
 
 /** Data locale YYYY-MM-DD (evita shift UTC su `toISOString`). */
 function toLocalDateKey(d: Date): string {
@@ -86,9 +90,9 @@ function polyline(values: number[], width: number, height: number) {
 }
 
 function couplingColor(coupling: number): string {
-  if (coupling > 1.15) return "#ff5d5d";
-  if (coupling < 0.85) return "#ffd60a";
-  return "#00e08d";
+  if (coupling > 1.15) return "#fb7185";
+  if (coupling < 0.85) return "#fbbf24";
+  return "#34d399";
 }
 
 function polylineNormalized(values: number[], width: number, height: number) {
@@ -327,12 +331,12 @@ export default function TrainingAnalyticsPageView() {
 
   const adaptationStatus =
     divergenceScore > 45
-      ? "High divergence: real load is far from planned load"
+      ? "Divergenza alta: il carico reale è lontano dal pianificato"
       : coupling7 > 1.15
-        ? "Warning: internal load high vs external"
+        ? "Attenzione: carico interno alto rispetto all'esterno"
         : coupling7 < 0.85
-          ? "Low coupling: check underload/context"
-          : "Balanced coupling";
+          ? "Coupling basso: verifica sottocarico o contesto"
+          : "Coupling equilibrato";
   const adaptabilityScore = Math.max(0, Math.min(100, Math.round(100 - divergenceScore * 1.7)));
   const operationalSuggestedLoad7d = useMemo(() => {
     if (!operationalContext) return null;
@@ -424,30 +428,30 @@ export default function TrainingAnalyticsPageView() {
 
   const kpiCard = (label: string, value: ReactNode, valueClass = "text-white") => (
     <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3">
-      <div className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={`mt-1 text-lg font-bold tabular-nums ${valueClass}`}>{value}</div>
+      <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</div>
+      <div className={`mt-1 font-mono text-lg font-semibold tabular-nums ${valueClass}`}>{value}</div>
     </div>
   );
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Analyzer"
-      eyebrowClassName="text-rose-400"
-      title="Load intelligence"
-      description={`Carico esterno e interno, pianificato ed eseguito — finestra ${bounds.from} → ${bounds.to}.`}
+      eyebrow="Allenamento"
+      eyebrowClassName="text-orange-400"
+      title="Analisi del carico"
+      description="Quanto ti stai allenando davvero: carico pianificato ed eseguito, tendenze e analisi del giorno."
       headerActions={
         <>
           <Pro2Link
             href="/training/calendar"
             variant="secondary"
-            className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15"
+            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            Calendar
+            Calendario
           </Pro2Link>
           <Pro2Link
             href="/training/builder"
             variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
+            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
             Builder
           </Pro2Link>
@@ -460,15 +464,15 @@ export default function TrainingAnalyticsPageView() {
 
       {athleteId ? (
         <section
-          className="mb-6 rounded-2xl border border-cyan-500/25 bg-black/35 p-4"
+          className="mb-6 rounded-2xl border border-orange-500/25 bg-black/35 p-4"
           aria-label="Finestra temporale analisi"
         >
-          <p className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-wider text-cyan-300/90">
+          <p className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             Periodo analisi
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <label className="flex min-w-[12rem] flex-col gap-1 text-xs text-slate-400">
-              <span className="font-semibold text-slate-300">Data fine finestra (giorno incluso)</span>
+            <label className="flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
+              <span className="font-semibold text-gray-300">Data fine finestra (giorno incluso)</span>
               <input
                 type="date"
                 value={anchorDate}
@@ -477,21 +481,21 @@ export default function TrainingAnalyticsPageView() {
                   const v = e.target.value;
                   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) setAnchorDate(v);
                 }}
-                className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 font-mono text-sm text-white outline-none focus:border-cyan-500/50"
+                className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 font-mono text-sm tabular-nums text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
               />
             </label>
             <div className="flex flex-1 flex-col gap-1">
-              <span className="text-xs font-semibold text-slate-300">Ampiezza</span>
+              <span className="text-xs font-semibold text-gray-300">Ampiezza</span>
               <div className="flex flex-wrap gap-2">
                 {WINDOW_PRESETS.map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => setWindowDays(p.id)}
-                    className={`rounded-xl border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                    className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                       windowDays === p.id
-                        ? "border-cyan-400/55 bg-cyan-500/20 text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.15)]"
-                        : "border-white/15 bg-black/40 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                        ? "border-orange-400/55 bg-orange-500/20 text-orange-100 shadow-[0_0_12px_rgba(251,146,60,0.15)]"
+                        : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25 hover:text-gray-200"
                     }`}
                   >
                     {p.label}
@@ -500,12 +504,12 @@ export default function TrainingAnalyticsPageView() {
               </div>
             </div>
           </div>
-          <p className="mt-3 font-mono text-[0.7rem] text-slate-500">
-            Periodo: <span className="text-slate-400">{bounds.from}</span> → <span className="text-slate-400">{bounds.to}</span>
+          <p className="mt-3 font-mono text-[0.7rem] text-gray-500">
+            Periodo: <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
             {windowDays === 1 ? " · un solo giorno (dettaglio giornaliero)" : null}
           </p>
-          <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-slate-400">
-            <span className="font-semibold text-violet-200/90">Giorno analisi dettagliata</span>
+          <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
+            <span className="font-semibold text-gray-300">Giorno analisi dettagliata</span>
             <input
               type="date"
               value={focusDay}
@@ -515,7 +519,7 @@ export default function TrainingAnalyticsPageView() {
                 const v = e.target.value;
                 if (/^\d{4}-\d{2}-\d{2}$/.test(v)) setFocusDay(v);
               }}
-              className="rounded-xl border border-violet-500/30 bg-black/50 px-3 py-2 font-mono text-sm text-white outline-none focus:border-violet-400/50"
+              className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm tabular-nums text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
             />
           </label>
           {activeDays.length ? (
@@ -525,10 +529,10 @@ export default function TrainingAnalyticsPageView() {
                   key={d}
                   type="button"
                   onClick={() => setFocusDay(d)}
-                  className={`rounded-lg border px-2 py-1 font-mono text-[0.65rem] ${
+                  className={`rounded-full border px-2 py-1 font-mono text-[0.65rem] ${
                     focusDay === d
-                      ? "border-violet-400/50 bg-violet-500/20 text-violet-100"
-                      : "border-white/15 bg-black/40 text-slate-400 hover:text-slate-200"
+                      ? "border-orange-400/50 bg-orange-500/20 text-orange-100"
+                      : "border-white/15 bg-black/40 text-gray-400 hover:text-gray-200"
                   }`}
                 >
                   {d.slice(8, 10)}/{d.slice(5, 7)}
@@ -540,11 +544,11 @@ export default function TrainingAnalyticsPageView() {
       ) : null}
 
       {showTech && readSpineCoverage && athleteId && !error ? (
-        <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
-          <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-cyan-300/90">
+        <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-gray-300">
+          <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
             Spina lettura (athlete-memory) · {readSpineCoverage.spineScore}%
           </summary>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-gray-500">
             Stesso riepilogo della dashboard hub: copertura aggregata su profilo, fisiologia, twin, nutrizione, health,
             ingest, evidence.
           </p>
@@ -558,49 +562,53 @@ export default function TrainingAnalyticsPageView() {
       ) : null}
 
       {!athleteId && !athleteLoading ? (
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
           {role === "coach"
             ? "Imposta atleta attivo dal contesto profilo/coach per analizzare il carico."
             : "Profilo atleta non disponibile."}
         </div>
       ) : loading ? (
-        <p className="text-sm text-slate-500">Caricamento…</p>
+        <p className="text-sm text-gray-500">Caricamento…</p>
       ) : !series.length && !plannedRows.length ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-gray-500">
           Nessun dato planned/executed nel periodo {bounds.from} → {bounds.to}. Prova un intervallo più ampio o un altro giorno di finestra.
         </p>
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-rose-500/45 bg-rose-500/[0.12] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.2)]">
-              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-rose-200/80">{EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7g</div>
-              <div className="mt-1 text-xl font-bold tabular-nums text-rose-50">{refKpis7d.tss.toFixed(0)}</div>
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7g</div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{refKpis7d.tss.toFixed(0)}</div>
             </div>
-            <div className="rounded-2xl border border-amber-500/45 bg-amber-500/[0.12] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.2)]">
-              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-amber-200/80">Kcal · 7g</div>
-              <div className="mt-1 text-xl font-bold tabular-nums text-amber-50">{refKpis7d.kcal.toFixed(0)}</div>
-            </div>
-            <div className="rounded-2xl border border-sky-500/45 bg-sky-500/[0.12] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]">
-              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-sky-200/80">Watt medi</div>
-              <div className="mt-1 text-xl font-bold tabular-nums text-sky-50">
-                {refKpis7d.wattAvg != null ? `${refKpis7d.wattAvg.toFixed(0)} W` : "—"}
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · 7g</div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+                {refKpis7d.kcal.toFixed(0)}
+                <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
               </div>
             </div>
-            <div className="rounded-2xl border border-emerald-500/45 bg-emerald-500/[0.12] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.2)]">
-              <div className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-200/80">Tempo tot · 7g</div>
-              <div className="mt-1 text-xl font-bold tabular-nums text-emerald-50">
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Watt medi</div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+                {refKpis7d.wattAvg != null ? refKpis7d.wattAvg.toFixed(0) : "—"}
+                {refKpis7d.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tempo tot · 7g</div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {formatDurationTotal(refKpis7d.totalMinutes)}
               </div>
             </div>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-cyan-500/20 bg-black/30 p-4">
+          <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-3 text-sm font-bold text-white">Progressione settimanale · carico esterno (6×7g)</h2>
             <svg viewBox="0 0 400 120" width="100%" height="120" className="max-h-[28vh]">
               <defs>
                 <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f472b6" />
-                  <stop offset="100%" stopColor="#fb923c" />
+                  <stop offset="5%" stopColor={CHART_SIGNAL.load} />
+                  <stop offset="95%" stopColor={chartHexToRgba(CHART_SIGNAL.load, 0.25)} />
                 </linearGradient>
               </defs>
               {weeklyExternalLoad.map((v, i) => {
@@ -610,10 +618,10 @@ export default function TrainingAnalyticsPageView() {
                 return (
                   <g key={i}>
                     <rect x={x} y={100 - barH} width={40} height={barH} rx={4} fill="url(#wkGrad)" opacity={0.92} />
-                    <text x={x + 20} y={112} textAnchor="middle" fill="#94a3b8" fontSize={9}>
+                    <text x={x + 20} y={112} textAnchor="middle" fill={CHART_AXIS.tick} fontSize={9}>
                       S{i + 1}
                     </text>
-                    <text x={x + 20} y={Math.max(12, 94 - barH)} textAnchor="middle" fill="#f8fafc" fontSize={9}>
+                    <text x={x + 20} y={Math.max(12, 94 - barH)} textAnchor="middle" fill="#e5e7eb" fontSize={9}>
                       {Math.round(v)}
                     </text>
                   </g>
@@ -622,7 +630,7 @@ export default function TrainingAnalyticsPageView() {
             </svg>
           </div>
 
-          <section className="mb-8 rounded-2xl border border-violet-500/25 bg-gradient-to-b from-violet-950/20 to-black/40 p-4 shadow-inner shadow-violet-950/20">
+          <section className="mb-8 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 to-black/40 p-4 shadow-inner shadow-orange-950/20">
             <h2 className="mb-1 text-base font-bold text-white">
               Analisi giorno ·{" "}
               {new Date(`${focusDay}T12:00:00`).toLocaleDateString("it-IT", {
@@ -631,16 +639,16 @@ export default function TrainingAnalyticsPageView() {
                 month: "long",
               })}
             </h2>
-            <p className="mb-4 text-xs text-slate-400">
+            <p className="mb-4 text-xs text-gray-400">
               GPS, telemetria, min/max, profili esagonali potenza · FC · VAM (5s–60′). Stesso pannello del Calendario.
             </p>
             {realityDiagBanner ? (
-              <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
+              <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
                 {realityDiagBanner}
               </p>
             ) : null}
             {focusDayExecuted.length === 0 && focusDayPlanned.length === 0 ? (
-              <p className="text-sm text-slate-500">Nessuna seduta in questo giorno nel range caricato.</p>
+              <p className="text-sm text-gray-500">Nessuna seduta in questo giorno nel range caricato.</p>
             ) : (
               <div className="space-y-8">
                 {focusDayExecuted.length > 0 ? (
@@ -662,19 +670,19 @@ export default function TrainingAnalyticsPageView() {
           </section>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {kpiCard("External load 7d", external7.toFixed(0))}
-            {kpiCard("Internal load 7d", internal7.toFixed(0), "text-fuchsia-200")}
-            {kpiCard("Planned / real 7d", plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
+            {kpiCard("Carico esterno 7g", external7.toFixed(0))}
+            {kpiCard("Carico interno 7g", internal7.toFixed(0))}
+            {kpiCard("Pianificato / reale 7g", plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
             {kpiCard(
-              "Execution compliance 7d",
+              "Compliance esecuzione 7g",
               `${compliance7.toFixed(0)}%`,
               compliance7 < 70 || compliance7 > 130 ? "text-amber-200" : "text-emerald-200",
             )}
             {kpiCard(
-              "Coupling 7d",
+              "Coupling 7g",
               <>
                 <span style={{ color: couplingColor(coupling7) }}>{coupling7.toFixed(2)}</span>
-                <span className="ml-2 text-xs font-normal text-slate-500">
+                <span className="ml-2 text-xs font-normal text-gray-500">
                   Δ28d {couplingDelta >= 0 ? "+" : ""}
                   {couplingDelta.toFixed(2)}
                 </span>
@@ -690,19 +698,19 @@ export default function TrainingAnalyticsPageView() {
               latest ? `${latest.iCtl.toFixed(1)} / ${latest.iAtl.toFixed(1)}` : "—",
             )}
             {kpiCard(
-              "Readiness / fatigue",
+              "Readiness / fatica",
               twinState
                 ? `${(twinState.readiness ?? 0).toFixed(1)} / ${(twinState.fatigueAcute ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Glycogen / adaptation",
+              "Glicogeno / adattamento",
               twinState
                 ? `${(twinState.glycogenStatus ?? 0).toFixed(1)} / ${(twinState.adaptationScore ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Divergence / intervention",
+              "Divergenza / intervento",
               `${divergenceScore.toFixed(1)} / ${interventionScore.toFixed(1)}`,
               adaptationToneClass,
             )}
@@ -713,10 +721,10 @@ export default function TrainingAnalyticsPageView() {
             style={{ borderLeft: `3px solid ${couplingColor(coupling7)}` }}
           >
             <summary className={`cursor-pointer font-semibold ${couplingToneClass}`}>
-              Adattabilita {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
+              Adattabilità {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
             </summary>
             <p className={`mt-2 font-semibold ${couplingToneClass}`}>{adaptationStatus}</p>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-gray-500">
               Adaptation loop: planned {Math.round(adaptationLoop?.expectedLoad7d ?? 0)} · real{" "}
               {Math.round(adaptationLoop?.realLoad7d ?? 0)} · internal {Math.round(adaptationLoop?.internalLoad7d ?? 0)}{" "}
               · twin redox {(twinState?.redoxStressIndex ?? 0).toFixed(1)}
@@ -777,14 +785,14 @@ export default function TrainingAnalyticsPageView() {
           ) : null}
 
           {crossModuleDynamicsLines.length ? (
-            <details className="mb-6 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4 text-sm text-slate-200">
-              <summary className="cursor-pointer text-sm font-bold text-cyan-100">
+            <details className="mb-6 rounded-2xl border border-orange-500/25 bg-orange-950/20 p-4 text-sm text-gray-300">
+              <summary className="cursor-pointer text-sm font-bold text-orange-100">
                 Dinamica incrociata (Training → Nutrition / fueling) · {crossModuleDynamicsLines.length}
               </summary>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-gray-500">
                 Ponte deterministico: adattamento, carico operativo, loop calendario, dial nutrizione.
               </p>
-              <ul className="mt-2 list-inside list-disc text-xs leading-relaxed text-slate-400">
+              <ul className="mt-2 list-inside list-disc text-xs leading-relaxed text-gray-400">
                 {crossModuleDynamicsLines.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
@@ -795,13 +803,13 @@ export default function TrainingAnalyticsPageView() {
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-sm font-bold text-white">
-                <LineChart className="h-4 w-4 text-cyan-400" aria-hidden />
+                <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
                 Confronto normalizzato (metriche sovrapposte)
               </h2>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+                  className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
                   onClick={() => {
                     const o: Record<string, boolean> = {};
                     for (const def of OVERLAY_METRIC_DEFS) o[def.key] = true;
@@ -812,7 +820,7 @@ export default function TrainingAnalyticsPageView() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+                  className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
                   onClick={() => {
                     const o: Record<string, boolean> = {};
                     for (const def of OVERLAY_METRIC_DEFS) {
@@ -825,8 +833,8 @@ export default function TrainingAnalyticsPageView() {
                 </button>
               </div>
             </div>
-            <details className="mb-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
-              <summary className="cursor-pointer text-slate-300">
+            <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
+              <summary className="cursor-pointer text-gray-300">
                 Note metriche overlay · {Object.values(overlayOn).filter(Boolean).length} attive
               </summary>
               <p className="mt-2">
@@ -838,7 +846,7 @@ export default function TrainingAnalyticsPageView() {
               {OVERLAY_METRIC_DEFS.map((d) => (
                 <label
                   key={d.key}
-                  className="inline-flex cursor-pointer items-center gap-2 text-xs text-slate-400 hover:text-slate-200"
+                  className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-gray-200"
                 >
                   <input
                     type="checkbox"
@@ -870,18 +878,18 @@ export default function TrainingAnalyticsPageView() {
                 );
               })}
             </svg>
-            <div className="mt-2 text-[0.65rem] text-slate-600">
+            <div className="mt-2 text-[0.65rem] text-gray-500">
               Asse X: ultimi 42 giorni. Serie a valori nulli o costanti restano sulla linea centrale.
             </div>
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold text-white">
-              <Hexagon className="h-4 w-4 text-violet-400" aria-hidden />
+              <Hexagon className="h-4 w-4 text-orange-400" aria-hidden />
               Confronto esagonale · una metrica vs storico
             </h2>
-            <details className="mb-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
-              <summary className="cursor-pointer text-slate-300">
+            <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
+              <summary className="cursor-pointer text-gray-300">
                 Guida esagono · metrica {hexMetric}
               </summary>
               <p className="mt-2">
@@ -890,10 +898,10 @@ export default function TrainingAnalyticsPageView() {
               </p>
             </details>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <label className="text-xs text-slate-400">
+              <label className="text-xs text-gray-400">
                 Metrica
                 <select
-                  className="ml-2 rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-sm text-white"
+                  className="ml-2 rounded-xl border border-white/15 bg-black/40 px-2 py-1 text-sm text-white"
                   value={hexMetric}
                   onChange={(e) => setHexMetric(e.target.value as MetricSeriesKey)}
                 >
@@ -921,22 +929,22 @@ export default function TrainingAnalyticsPageView() {
                       y1={cy}
                       x2={x2}
                       y2={y2}
-                      stroke="rgba(148,163,184,0.25)"
+                      stroke={CHART_GRID.stroke}
                       strokeWidth={1}
                     />
                   );
                 })}
                 <polygon
                   points={radarRingPoints(hexNorm.baseline, 210, 210, 150)}
-                  fill="rgba(167,139,250,0.08)"
-                  stroke="rgba(167,139,250,0.55)"
+                  fill={chartHexToRgba(TRAINING_SERIES[2]!, 0.08)}
+                  stroke={chartHexToRgba(TRAINING_SERIES[2]!, 0.55)}
                   strokeWidth={2}
                   strokeDasharray="7 5"
                 />
                 <polygon
                   points={radarRingPoints(hexNorm.recent, 210, 210, 150)}
-                  fill="rgba(52,211,153,0.12)"
-                  stroke="#34d399"
+                  fill={chartHexToRgba(TRAINING_SERIES[0]!, 0.12)}
+                  stroke={TRAINING_SERIES[0]}
                   strokeWidth={2.5}
                 />
                 {Array.from({ length: 6 }, (_, i) => {
@@ -954,7 +962,7 @@ export default function TrainingAnalyticsPageView() {
                       y={ty}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fill="#64748b"
+                      fill={CHART_AXIS.tickMuted}
                       fontSize={11}
                     >
                       {label}
@@ -962,14 +970,14 @@ export default function TrainingAnalyticsPageView() {
                   );
                 })}
               </svg>
-              <div className="max-w-md text-xs text-slate-400">
+              <div className="max-w-md text-xs text-gray-400">
                 <p className="mb-2">
-                  <span className="inline-block h-2 w-4 rounded-sm bg-emerald-400/90" /> <strong className="text-slate-300">Ultime 6 settimane</strong> — forma del profilo
+                  <span className="inline-block h-2 w-4 rounded-sm bg-orange-400/90" /> <strong className="text-gray-300">Ultime 6 settimane</strong> — forma del profilo
                   recente per la metrica scelta.
                 </p>
                 <p>
                   <span className="inline-block h-0.5 w-4 border-t-2 border-dotted border-violet-400" />{" "}
-                  <strong className="text-slate-300">Periodo precedente</strong> — stessa granularità, da confrontare
+                  <strong className="text-gray-300">Periodo precedente</strong> — stessa granularità, da confrontare
                   a colpo d’occhio.
                 </p>
                 {compareSeries.length < 84 ? (
@@ -981,31 +989,31 @@ export default function TrainingAnalyticsPageView() {
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
-              <BarChart3 className="h-4 w-4 text-sky-400" aria-hidden />
+              <BarChart3 className="h-4 w-4 text-orange-400" aria-hidden />
               Trend 42g · Planned vs real vs internal
             </h2>
             <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[40vh]">
-              <polyline fill="none" stroke="#60a5fa" strokeWidth="2" points={plannedPolyline} />
-              <polyline fill="none" stroke="#ff7a1a" strokeWidth="2.5" points={extPolyline} />
-              <polyline fill="none" stroke="#d946ef" strokeWidth="2.5" points={intPolyline} />
-              <polyline fill="none" stroke="#ff9e4a" strokeWidth="2" points={ctlPolyline} />
-              <polyline fill="none" stroke="#f59e0b" strokeWidth="2" points={iCtlPolyline} />
+              <polyline fill="none" stroke={TRAINING_SERIES[1]} strokeWidth="2" points={plannedPolyline} />
+              <polyline fill="none" stroke={TRAINING_SERIES[0]} strokeWidth="2.5" points={extPolyline} />
+              <polyline fill="none" stroke={TRAINING_SERIES[2]} strokeWidth="2.5" points={intPolyline} />
+              <polyline fill="none" stroke={TRAINING_SERIES[3]} strokeWidth="2" points={ctlPolyline} />
+              <polyline fill="none" stroke={TRAINING_SERIES[4]} strokeWidth="2" points={iCtlPolyline} />
             </svg>
-            <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-400">
+            <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#60a5fa]" /> Planned
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[1] }} /> Pianificato
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#ff7a1a]" /> External
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[0] }} /> Esterno
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#d946ef]" /> Internal
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[2] }} /> Interno
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#ff9e4a]" /> {EMPATHY_LOAD_LABELS_IT.fitness4}
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[3] }} /> {EMPATHY_LOAD_LABELS_IT.fitness4}
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-[#f59e0b]" /> {EMPATHY_LOAD_LABELS_IT.conditioningInt4}
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[4] }} /> {EMPATHY_LOAD_LABELS_IT.conditioningInt4}
               </span>
             </div>
           </div>
@@ -1013,22 +1021,22 @@ export default function TrainingAnalyticsPageView() {
           <TrainingAnalyzerCrossChannelSection sessions={crossChannelSessions} />
 
           <div className="mb-6 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="mb-3 text-sm font-bold text-white">Planned vs real · finestre</h2>
-            <table className="w-full min-w-[520px] text-left text-sm text-slate-300">
+            <h2 className="mb-3 text-sm font-bold text-white">Pianificato vs reale · finestre</h2>
+            <table className="w-full min-w-[520px] text-sm text-gray-300">
               <thead>
-                <tr className="border-b border-white/10 text-xs uppercase text-slate-500">
-                  <th className="pb-2">Window</th>
-                  <th className="pb-2">Planned</th>
-                  <th className="pb-2">Real</th>
-                  <th className="pb-2">Internal</th>
-                  <th className="pb-2">Compliance</th>
-                  <th className="pb-2">Coupling</th>
+                <tr className="border-b border-white/10">
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Finestra</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Pianificato</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Reale</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Interno</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Compliance</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Coupling</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {[
                   {
-                    label: "Last 7d",
+                    label: "Ultimi 7g",
                     planned: plan7?.planned ?? 0,
                     ext: plan7?.executed ?? external7,
                     int: plan7?.internal ?? internal7,
@@ -1036,7 +1044,7 @@ export default function TrainingAnalyticsPageView() {
                     coupling: coupling7,
                   },
                   {
-                    label: "Last 28d",
+                    label: "Ultimi 28g",
                     planned: plan28?.planned ?? 0,
                     ext: plan28?.executed ?? external28,
                     int: plan28?.internal ?? internal28,
@@ -1046,15 +1054,15 @@ export default function TrainingAnalyticsPageView() {
                 ].map((r) => {
                   const color = couplingColor(r.coupling);
                   return (
-                    <tr key={r.label} className="border-b border-white/5" style={{ background: `${color}14` }}>
-                      <td className="py-2">{r.label}</td>
-                      <td className="py-2 tabular-nums">{r.planned.toFixed(0)}</td>
-                      <td className="py-2 tabular-nums">{r.ext.toFixed(0)}</td>
-                      <td className="py-2 tabular-nums">{r.int.toFixed(0)}</td>
-                      <td className="py-2 tabular-nums">{r.compliance.toFixed(0)}%</td>
-                      <td className="py-2">
+                    <tr key={r.label} style={{ background: `${color}14` }}>
+                      <td className="px-3 py-2 text-gray-300">{r.label}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-white">{r.planned.toFixed(0)}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-white">{r.ext.toFixed(0)}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-white">{r.int.toFixed(0)}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-white">{r.compliance.toFixed(0)}%</td>
+                      <td className="px-3 py-2">
                         <span
-                          className="rounded-full px-2 py-0.5 text-xs font-bold"
+                          className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold"
                           style={{
                             border: `1px solid ${color}`,
                             color,
@@ -1073,50 +1081,50 @@ export default function TrainingAnalyticsPageView() {
 
           <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <summary className="mb-3 flex cursor-pointer items-center gap-2 text-sm font-bold text-white">
-              <LineChart className="h-4 w-4 text-violet-400" aria-hidden />
-              Adaptation loop · adattabilita {adaptabilityScore}/100
+              <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
+              Adaptation loop · adattabilità {adaptabilityScore}/100
             </summary>
-            <table className="w-full text-left text-sm text-slate-300">
+            <table className="w-full text-sm text-gray-300">
               <tbody className="divide-y divide-white/5">
                 <tr>
-                  <td className="py-2 text-slate-500">Status / next</td>
+                  <td className="py-2 text-gray-500">Status / next</td>
                   <td className="py-2">{`${adaptationLoop?.status ?? "aligned"} / ${adaptationLoop?.nextAction ?? "keep_course"}`}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Expected 7d</td>
-                  <td className="py-2 tabular-nums">{Math.round(adaptationLoop?.expectedLoad7d ?? 0)}</td>
+                  <td className="py-2 text-gray-500">Expected 7d</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{Math.round(adaptationLoop?.expectedLoad7d ?? 0)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Real 7d</td>
-                  <td className="py-2 tabular-nums">{Math.round(adaptationLoop?.realLoad7d ?? 0)}</td>
+                  <td className="py-2 text-gray-500">Real 7d</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{Math.round(adaptationLoop?.realLoad7d ?? 0)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Internal 7d</td>
-                  <td className="py-2 tabular-nums">{Math.round(adaptationLoop?.internalLoad7d ?? 0)}</td>
+                  <td className="py-2 text-gray-500">Internal 7d</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{Math.round(adaptationLoop?.internalLoad7d ?? 0)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Compliance</td>
-                  <td className="py-2 tabular-nums">{(adaptationLoop?.executionCompliancePct ?? 0).toFixed(0)}%</td>
+                  <td className="py-2 text-gray-500">Compliance</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{(adaptationLoop?.executionCompliancePct ?? 0).toFixed(0)}%</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Readiness / adaptation</td>
-                  <td className="py-2 tabular-nums">{`${(adaptationLoop?.readinessScore ?? 0).toFixed(1)} / ${(adaptationLoop?.adaptationScore ?? 0).toFixed(1)}`}</td>
+                  <td className="py-2 text-gray-500">Readiness / adaptation</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{`${(adaptationLoop?.readinessScore ?? 0).toFixed(1)} / ${(adaptationLoop?.adaptationScore ?? 0).toFixed(1)}`}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Divergence / intervention</td>
-                  <td className="py-2 tabular-nums">{`${(adaptationLoop?.divergenceScore ?? 0).toFixed(1)} / ${(adaptationLoop?.interventionScore ?? 0).toFixed(1)}`}</td>
+                  <td className="py-2 text-gray-500">Divergence / intervention</td>
+                  <td className="py-2 font-mono tabular-nums text-white">{`${(adaptationLoop?.divergenceScore ?? 0).toFixed(1)} / ${(adaptationLoop?.interventionScore ?? 0).toFixed(1)}`}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Data points</td>
+                  <td className="py-2 text-gray-500">Data points</td>
                   <td className="py-2">{`${plannedRows.length} planned · ${rows.length} executed`}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Triggers</td>
+                  <td className="py-2 text-gray-500">Triggers</td>
                   <td className="py-2">{adaptationLoop?.triggers?.length ? adaptationLoop.triggers.join(" · ") : "—"}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 text-slate-500">Guidance</td>
-                  <td className="py-2 text-slate-400">{adaptationLoop?.guidance ?? "—"}</td>
+                  <td className="py-2 text-gray-500">Guidance</td>
+                  <td className="py-2 text-gray-400">{adaptationLoop?.guidance ?? "—"}</td>
                 </tr>
               </tbody>
             </table>

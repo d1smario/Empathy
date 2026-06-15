@@ -1,18 +1,19 @@
 /**
- * Motore meal plan canonico: v1 (Mediterranean) | v2 (FDC taggato) | shadow (entrambi, risposta V1).
+ * Motore meal plan canonico: v1 (Mediterranean) | v2 (FDC taggato) | shadow (entrambi, risposta V1) | db (generate_plan Postgres, piano persistito).
  */
 
-export type NutritionMealPlanEngine = "v1" | "v2" | "shadow";
+export type NutritionMealPlanEngine = "v1" | "v2" | "shadow" | "db";
 
 function normalizeEngine(raw: string): NutritionMealPlanEngine | null {
   const v = raw.trim().toLowerCase();
   if (v === "v1" || v === "legacy") return "v1";
   if (v === "v2" || v === "fdc") return "v2";
   if (v === "shadow" || v === "dual") return "shadow";
+  if (v === "db" || v === "database" || v === "postgres") return "db";
   return null;
 }
 
-/** Env: NUTRITION_MEAL_PLAN_ENGINE=v1|v2|shadow (default v1). */
+/** Env: NUTRITION_MEAL_PLAN_ENGINE=v1|v2|shadow|db (default v1). */
 export function resolveNutritionMealPlanEngine(
   nutritionConfig?: Record<string, unknown> | null,
 ): NutritionMealPlanEngine {

@@ -9,6 +9,7 @@ import type {
   BioenergeticMonitoringDataPlane,
 } from "@/api/bioenergetics/contracts";
 import type { BioenergeticCurveGovernanceHintV1 } from "@empathy/contracts";
+import { CHART_AXIS, CHART_GRID, CHART_SIGNAL, chartTooltipStyle } from "@/lib/ui/chart-theme";
 
 const CATEGORY_ORDER: BioenergeticMetricTileCategory[] = [
   "metabolic",
@@ -27,10 +28,11 @@ function planeLabel(plane: BioenergeticMonitoringDataPlane): string {
 }
 
 function planeBadgeClass(plane: BioenergeticMonitoringDataPlane): string {
-  if (plane === "measured_stream") return "border-emerald-400/40 text-emerald-200/90";
-  if (plane === "sparse_lab_hold") return "border-sky-400/40 text-sky-200/90";
-  if (plane === "ai_from_inputs") return "border-fuchsia-400/45 text-fuchsia-200/90";
-  return "border-amber-400/40 text-amber-200/90";
+  // Pill canonica (§7): stati semantici per piano dato.
+  if (plane === "measured_stream") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  if (plane === "sparse_lab_hold") return "border-sky-500/30 bg-sky-500/10 text-sky-300";
+  if (plane === "ai_from_inputs") return "border-lime-500/30 bg-lime-500/10 text-lime-300";
+  return "border-amber-500/30 bg-amber-500/10 text-amber-300";
 }
 
 function governanceIt(g: BioenergeticCurveGovernanceHintV1): string {
@@ -60,8 +62,8 @@ type Props = {
 const CHART_H = 92;
 
 const STROKE_BY_CHANNEL_ID: Record<string, string> = {
-  glucose: "#e879f9",
-  lactate: "#a78bfa",
+  glucose: CHART_SIGNAL.glucose,
+  lactate: CHART_SIGNAL.lactate,
   insulin_proxy: "#fb923c",
   cortisol: "#38bdf8",
   acth: "#f472b6",
@@ -72,6 +74,8 @@ const STROKE_BY_CHANNEL_ID: Record<string, string> = {
   igf1: "#c084fc",
   leptin: "#fbbf24",
 };
+
+const DEFAULT_STROKE = CHART_SIGNAL.glucose;
 
 /** Recharts con dominio [v,v] non disegna la linea: aggiunge padding simmetrico. */
 function yDomainFromHourly(hourly: (number | null)[]): [number, number] {
@@ -160,21 +164,21 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
         return (
           <div
             key={ch.id}
-            className="rounded-2xl border border-white/10 bg-black/30 p-3 shadow-inner shadow-black/40"
+            className="rounded-xl border border-white/10 bg-black/30 p-3 shadow-inner shadow-black/40"
           >
             <div className="mb-1 flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-medium leading-snug text-white">{ch.labelIt}</p>
-                <p className="text-[0.65rem] text-gray-500">{ch.unit}</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{ch.unit}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 <span
-                  className={`rounded-md border px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
                 >
                   {planeLabel(ch.dataPlane)}
                 </span>
                 {ch.replacesWithDeviceStream ? (
-                  <span className="text-[0.55rem] uppercase tracking-wide text-fuchsia-300/80">Slot stream</span>
+                  <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-lime-300/80">Slot stream</span>
                 ) : null}
               </div>
             </div>
@@ -182,10 +186,10 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
               <p className="mb-2 text-[0.58rem] leading-snug text-gray-400">
                 {fusionSummary(ch.curveResolution)}
                 <span className="text-gray-500"> · </span>
-                <span className="text-violet-200/85">{governanceIt(ch.curveResolution.governance)}</span>
+                <span className="text-gray-400">{governanceIt(ch.curveResolution.governance)}</span>
               </p>
             ) : null}
-            <p className="mb-1 text-[0.6rem] text-gray-600">
+            <p className="mb-1 text-[0.6rem] text-gray-500">
               {streamRows?.length
                 ? ch.dataPlane === "measured_stream"
                   ? "Asse: tempo reale del campione (stream misurato; tabella 055 / merge device)."
@@ -198,33 +202,28 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
               <ResponsiveContainer width="100%" height={CHART_H} debounce={50}>
                 {streamRows?.length ? (
                   <LineChart data={streamRows} margin={{ top: 6, right: 4, left: 2, bottom: 22 }}>
-                    <CartesianGrid strokeDasharray="2 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                    <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
                     <XAxis
                       type="number"
                       dataKey="tsMs"
                       domain={["dataMin", "dataMax"]}
                       scale="time"
                       tickFormatter={formatStreamAxisTick}
-                      tick={{ fill: "#94a3b8", fontSize: 8 }}
-                      axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                      tick={{ fill: CHART_AXIS.tick, fontSize: 8 }}
+                      axisLine={{ stroke: CHART_AXIS.line }}
                       tickLine={false}
                       minTickGap={32}
                       height={18}
                     />
                     <YAxis
                       width={36}
-                      tick={{ fill: "#94a3b8", fontSize: 9 }}
+                      tick={{ fill: CHART_AXIS.tick, fontSize: 9 }}
                       domain={yDomain}
                       axisLine={false}
                       tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: "rgba(15, 23, 42, 0.95)",
-                        border: "1px solid rgba(167, 139, 250, 0.3)",
-                        borderRadius: 10,
-                        fontSize: 11,
-                      }}
+                      contentStyle={chartTooltipStyle("bioenergetics")}
                       formatter={(value) => {
                         const v = typeof value === "number" ? value : Number(value);
                         return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, ch.labelIt] : ["—", ch.labelIt];
@@ -240,7 +239,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
                     <Line
                       type="linear"
                       dataKey="v"
-                      stroke={STROKE_BY_CHANNEL_ID[ch.id] ?? "#e879f9"}
+                      stroke={STROKE_BY_CHANNEL_ID[ch.id] ?? DEFAULT_STROKE}
                       strokeWidth={1.5}
                       dot={false}
                       connectNulls={false}
@@ -249,29 +248,24 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
                   </LineChart>
                 ) : (
                   <LineChart data={rows} margin={{ top: 6, right: 2, left: 2, bottom: 18 }}>
-                    <CartesianGrid strokeDasharray="2 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                    <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
                     <XAxis
                       dataKey="hourLabel"
-                      tick={{ fill: "#94a3b8", fontSize: 8 }}
-                      axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                      tick={{ fill: CHART_AXIS.tick, fontSize: 8 }}
+                      axisLine={{ stroke: CHART_AXIS.line }}
                       tickLine={false}
                       interval={3}
                       height={16}
                     />
                     <YAxis
                       width={36}
-                      tick={{ fill: "#94a3b8", fontSize: 9 }}
+                      tick={{ fill: CHART_AXIS.tick, fontSize: 9 }}
                       domain={yDomain}
                       axisLine={false}
                       tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: "rgba(15, 23, 42, 0.95)",
-                        border: "1px solid rgba(167, 139, 250, 0.3)",
-                        borderRadius: 10,
-                        fontSize: 11,
-                      }}
+                      contentStyle={chartTooltipStyle("bioenergetics")}
                       formatter={(value) => {
                         const v = typeof value === "number" ? value : Number(value);
                         return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, "Valore"] : ["—", ch.labelIt];
@@ -289,7 +283,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
                     <Line
                       type="monotone"
                       dataKey="v"
-                      stroke={STROKE_BY_CHANNEL_ID[ch.id] ?? "#e879f9"}
+                      stroke={STROKE_BY_CHANNEL_ID[ch.id] ?? DEFAULT_STROKE}
                       strokeWidth={2}
                       dot={false}
                       connectNulls

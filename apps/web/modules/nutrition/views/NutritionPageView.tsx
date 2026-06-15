@@ -6,7 +6,12 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
 import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
+import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
+import { Pro2Accordion } from "@/components/ui/empathy";
+import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
+import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
+import { CHART_AXIS, CHART_MODULE_ACCENT, CHART_SIGNAL, chartHexToRgba } from "@/lib/ui/chart-theme";
 import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
 import type {
   AdaptationGuidance,
@@ -236,17 +241,17 @@ type PlannedRow = NutritionPlannedWorkoutRow & {
   notes: string | null;
 };
 
-/** Palette grafico fueling / glicogeno (solo tema Pro 2 dark cyber). */
+/** Palette grafico fueling / glicogeno — valori convergenti su lib/ui/chart-theme.ts (Grammatica §12). */
 const FUELING_CHART_THEME_PRO2 = {
-  areaTop: "#38bdf8",
-  areaBottom: "#2563eb",
-  line: "#22d3ee",
-  dot: "#f472b6",
-  text: "rgba(226,232,240,0.95)",
-  axis: "rgba(148,163,184,0.7)",
-  zoneGreen: "rgba(34,197,94,0.2)",
-  zoneYellow: "rgba(250,204,21,0.2)",
-  zoneRed: "rgba(244,63,94,0.18)",
+  areaTop: CHART_SIGNAL.cho,
+  areaBottom: CHART_SIGNAL.cho,
+  line: CHART_SIGNAL.cho,
+  dot: CHART_MODULE_ACCENT.nutrition,
+  text: CHART_AXIS.tick,
+  axis: CHART_AXIS.line,
+  zoneGreen: chartHexToRgba(CHART_SIGNAL.hrv, 0.2),
+  zoneYellow: chartHexToRgba(CHART_MODULE_ACCENT.nutrition, 0.2),
+  zoneRed: chartHexToRgba("#fb7185", 0.18),
 } as const;
 
 type FoodLookupItem = {
@@ -613,14 +618,14 @@ function pathwayOperationalPhaseRowClass(phase: string): string {
     case "late_recovery":
       return "border-l-4 border-l-sky-400 bg-sky-500/10 pl-3 py-2 rounded-r-md border-y border-r border-white/10";
     default:
-      return "border-l-4 border-l-zinc-500 bg-white/[0.04] pl-3 py-2 rounded-r-md border-y border-r border-white/10";
+      return "border-l-4 border-l-gray-500 bg-white/[0.04] pl-3 py-2 rounded-r-md border-y border-r border-white/10";
   }
 }
 
 const FUNCTIONAL_EXAMPLE_CELL_CLASSES = [
-  "rounded-lg border border-fuchsia-500/35 bg-fuchsia-500/10 px-3 py-2.5",
-  "rounded-lg border border-violet-500/35 bg-violet-500/10 px-3 py-2.5",
-  "rounded-lg border border-orange-500/35 bg-orange-500/[0.11] px-3 py-2.5",
+  "rounded-xl border border-fuchsia-500/35 bg-fuchsia-500/10 px-3 py-2.5",
+  "rounded-xl border border-violet-500/35 bg-violet-500/10 px-3 py-2.5",
+  "rounded-xl border border-orange-500/35 bg-orange-500/[0.11] px-3 py-2.5",
 ] as const;
 
 function metabolicPhaseSlotCardClass(
@@ -653,7 +658,7 @@ function functionalCandidateRowClass(
     case "late_recovery":
       return "border-l-[3px] border-l-sky-400 bg-sky-500/[0.07]";
     default:
-      return "border-l-[3px] border-l-zinc-500 bg-white/[0.03]";
+      return "border-l-[3px] border-l-gray-500 bg-white/[0.03]";
   }
 }
 
@@ -801,7 +806,7 @@ function IntegrationProductCard({
 export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { athleteId, role, loading: athleteLoading, adminScoped } = useActiveAthlete();
+  const { athleteId, role, loading: athleteLoading, adminScoped, platformAdminView } = useActiveAthlete();
   /** Diagnostica tecnica (research trace, roadmap, ontology, dump motore): solo coach/admin. */
   const showTech = role === "coach" || adminScoped;
   const [profile, setProfile] = useState<AthleteNutritionRow | null>(null);
@@ -1100,15 +1105,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     setDiaryMacroRows(rows);
   }, []);
 
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        setNutritionContextVersion((v) => v + 1);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -2146,16 +2142,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     effectiveMacroSplit,
     mealTimes,
   ]);
-
-  const dietPlanHint = useMemo(() => {
-    if (!distributionForMealRows || mealRows.length === 0) return null;
-    const wd = resolvedDietDay.weekDayKey;
-    if (effectiveMealCountMode === "6") {
-      const r = resolveSixMealSnackPercentages(distributionForMealRows);
-      return `Diet ${wd}: 6 pasti — Colazione ${Math.round(distributionForMealRows.breakfast)}% · Pranzo ${Math.round(distributionForMealRows.lunch)}% · Cena ${Math.round(distributionForMealRows.dinner)}% · Spuntini ${Math.round(r.snack_am)}% + ${Math.round(r.snack_pm)}% + ${Math.round(r.snack_evening)}% (= ${Math.round(r.snacksTotal)}% totale spuntini).`;
-    }
-    return `Diet ${wd}: ${mealRows.length} pasti — Σ slot ${Math.round(mealRows.reduce((s, m) => s + m.pct, 0))}% del budget pasti.`;
-  }, [distributionForMealRows, effectiveMealCountMode, mealRows, resolvedDietDay.weekDayKey]);
 
   const diaryDayMacroTargets = useMemo(
     () => ({
@@ -3492,52 +3478,145 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Nutrizione"
-      eyebrowClassName="text-pink-400"
+      eyebrow="Energia, pasti e fueling"
+      eyebrowClassName="text-amber-400"
       title="Nutrizione"
       description={
-        <span className="text-slate-400">{role === "coach" ? "Vista coach" : "La tua nutrizione"}</span>
+        <span className="text-gray-400">
+          Pasti, fueling e integrazione costruiti sulla tua giornata di allenamento: scegli il giorno e genera il piano.
+        </span>
       }
     >
       {error && <div className="alert-error">{error}</div>}
 
       {athleteLoading || loading ? (
-        <p className="text-slate-500">Caricamento...</p>
+        <p className="text-gray-500">Caricamento...</p>
       ) : !athleteId ? (
-        <p className="text-slate-500">Nessun atleta attivo. Se sei coach, imposta l&apos;atleta in Athletes.</p>
+        <p className="text-gray-500">Nessun atleta attivo. Se sei coach, imposta l&apos;atleta in Athletes.</p>
       ) : (
         <>
+          {/* Aree del modulo: subnav consolidato in UN solo mount (inerte nelle schede admin, v2). */}
           <section className="viz-card builder-panel space-y-4" style={{ marginBottom: "12px" }}>
             <div className="flex flex-col gap-3">
               <div className="min-w-0 flex-1">
-                <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Aree nutrition</p>
-                {adminScoped ? (
-                  /* Subnav fuori modulo: nelle schede admin tab visibili ma inerti (v2). */
-                  <div
-                    className="pointer-events-none cursor-default opacity-50"
-                    title="Disponibile nella scheda dedicata (v2)"
-                    aria-disabled="true"
-                  >
-                    <NutritionSubnav />
-                  </div>
-                ) : (
+                <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Aree nutrition</p>
+                <div
+                  className={adminScoped ? "pointer-events-none cursor-default opacity-50" : undefined}
+                  title={adminScoped ? "Disponibile nella scheda dedicata (v2)" : undefined}
+                  aria-disabled={adminScoped || undefined}
+                >
                   <NutritionSubnav />
-                )}
+                </div>
               </div>
             </div>
-            {subRoute === "meal-plan" && lowMealsBudgetWarning ? (
-              <div
-                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
-                role="status"
-              >
-                <strong className="font-semibold">Attenzione — budget pasti solver molto basso.</strong>{" "}
-                Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
-                {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
-                (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
-                controlla <span className="font-medium">Profilo</span> e rigenera il piano dopo il salvataggio.
+          </section>
+
+          {/* PRIMARY JOB sopra la piega: scegli il giorno e genera il piano pasti — UNA sola CTA primaria. */}
+          {subRoute === "meal-plan" && athleteId ? (
+            <section
+              id="mod-azione-giorno"
+              className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
+              style={{ marginBottom: "12px" }}
+            >
+              <h2 className="viz-title text-base">Piano pasti del giorno</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Scegli il giorno e genera il piano pasti calibrato su profilo, allenamenti e segnali della giornata.
+              </p>
+              <div className="mt-3 flex flex-col gap-3">
+                <NutritionPlanDatePicker
+                  value={selectedPlanDate}
+                  onChange={setSelectedPlanDate}
+                  minOffsetDays={-400}
+                  maxOffsetDays={400}
+                  className="w-full"
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  {/* Generazione piano: azione riservata allo staff (admin). Nascosta ad atleta e coach. */}
+                  {platformAdminView ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-nutrition-cta"
+                        disabled={
+                          intelligentMealLoading ||
+                          !(mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady)
+                        }
+                        onClick={() => void handleGenerateIntelligentMealPlan()}
+                      >
+                        {intelligentMealLoading ? "Generazione piano…" : "Genera il mio piano pasti"}
+                      </button>
+                      {intelligentMealPlan ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
+                          onClick={() => {
+                            setIntelligentMealPlan(null);
+                            setCoachMealRemovalKeys(new Set());
+                            setCoachSessionFoodExclusions([]);
+                          }}
+                        >
+                          Rigenera piano
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
+                      Generato dal motore pasti
+                    </span>
+                  ) : null}
+                </div>
               </div>
-            ) : null}
-            {subRoute === "meal-plan" ? (
+              {lowMealsBudgetWarning ? (
+                <div
+                  className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
+                  role="status"
+                >
+                  <strong className="font-semibold">Attenzione — budget pasti solver molto basso.</strong>{" "}
+                  Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
+                  {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
+                  (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
+                  controlla <span className="font-medium">Profilo</span> e rigenera il piano dopo il salvataggio.
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {/* Ancore reali della pagina meal plan (le altre aree hanno una sezione sola). */}
+          {subRoute === "meal-plan" ? (
+            <Pro2StickyAnchorSubnav
+              accent={MODULE_PILL_AMBER}
+              items={[
+                { id: "mod-target-giorno", label: "Target del giorno" },
+                { id: "nutrition-meal-plan", label: "Piano pasti" },
+                { id: "mod-approfondimenti", label: "Approfondimenti" },
+                { id: "mod-dettagli-motore", label: "Dettagli e motore" },
+              ]}
+            />
+          ) : null}
+
+          {/* Selettore di contesto PRIMA dei numeri per le aree giorno-dipendenti (nel meal plan è nel primary job). */}
+          {subRoute !== "meal-plan" ? (
+            <section
+              id="mod-giorno"
+              className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-3 sm:px-5"
+            >
+              <div className="flex flex-col gap-3">
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Giorno da visualizzare</span>
+                <NutritionPlanDatePicker
+                  value={selectedPlanDate}
+                  onChange={setSelectedPlanDate}
+                  minOffsetDays={-400}
+                  maxOffsetDays={400}
+                  className="w-full"
+                />
+              </div>
+            </section>
+          ) : null}
+
+          {/* Macro/kcal del giorno: UN dato in UN solo posto. */}
+          {subRoute === "meal-plan" ? (
+            <section id="mod-target-giorno" className="viz-card builder-panel scroll-mt-28" style={{ marginBottom: "12px" }}>
               <NutritionMealPlanDailyTargets
                 complianceTargets={{
                   kcal: complianceOverview.target.kcal,
@@ -3555,58 +3634,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 round={round}
                 energyLedger={mealPlanEnergyLedger}
               />
-            ) : null}
-          </section>
-          {subRoute === "meal-plan" && athleteId ? (
-            <NutritionMealPlanLeadPanels
-              researchTraceSummaries={researchTraceSummaries}
-              nutritionSectorBoxes={nutritionSectorBoxes}
-              pathwayModulation={pathwayModulation}
-              functionalFoodRecommendations={functionalFoodRecommendations}
-            />
-          ) : null}
-
-          {subRoute === "meal-plan" && athleteId && showTech && isMealPlanV2PreviewUiEnabled() ? (
-            <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
-          ) : null}
-
-          {(subRoute === "meal-plan" ||
-            subRoute === "fueling" ||
-            subRoute === "diary" ||
-            subRoute === "predictor") ? (
-            <section className="viz-card builder-panel border border-emerald-500/25 bg-black/20 px-4 py-3 sm:px-5">
-              <div className="flex flex-col gap-3">
-                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Giorno da visualizzare</span>
-                <NutritionPlanDatePicker
-                  value={selectedPlanDate}
-                  onChange={setSelectedPlanDate}
-                  minOffsetDays={-400}
-                  maxOffsetDays={400}
-                  className="w-full"
-                />
-              </div>
-            </section>
-          ) : null}
-
-          {subRoute === "meal-plan" && athleteId ? (
-            <section className="viz-card builder-panel border border-fuchsia-500/20 bg-black/20 px-4 py-3 sm:px-5">
-              <div className="flex flex-col gap-2">
-                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
-                  Adattamento da aderenza nutrizione
-                </span>
-                <label className="inline-flex items-center gap-2 text-sm text-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={adherenceOptIn}
-                    disabled={saving || adherenceConfigLoading}
-                    onChange={(event) => setAdherenceOptIn(event.target.checked)}
-                  />
-                  Usa confronto piano vs assunto nel calcolo dell&apos;adattamento.
-                </label>
-                <p className="m-0 text-[0.75rem] leading-relaxed text-slate-400">
-                  Attivalo solo se diario e piano sono compilati in modo preciso: i gap di aderenza influenzano i dial nutrizione.
-                </p>
-              </div>
             </section>
           ) : null}
 
@@ -3637,7 +3664,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               dietDayNotice={
                 mealRows.length > 0
                   ? [
-                      dietPlanHint,
                       suppressedSnackSlots.length > 0
                         ? `Spuntini in finestra allenamento (${suppressedSnackSlots.join(", ")}) → carbo in seduta nel modulo Fueling, non come pasto solido extra.`
                         : null,
@@ -3651,12 +3677,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                       .join(" ")
                   : `Nessuna ripartizione % leggibile per ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) con 6 pasti e tre % spuntino, poi Salva profilo.`
               }
-              onGenerateIntelligentMealPlan={handleGenerateIntelligentMealPlan}
-              onResetIntelligentMealPlan={() => {
-                setIntelligentMealPlan(null);
-                setCoachMealRemovalKeys(new Set());
-                setCoachSessionFoodExclusions([]);
-              }}
               coachMealRemovalKeys={coachMealRemovalKeys}
               coachSessionFoodExclusions={coachSessionFoodExclusions}
               onCoachShowAllItems={() => setCoachMealRemovalKeys(new Set())}
@@ -3671,22 +3691,33 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
+          {/* Approfondimenti del giorno: sezioni avanzate collassate di default. */}
+          {subRoute === "meal-plan" && athleteId ? (
+            <section id="mod-approfondimenti" className="scroll-mt-28" style={{ marginBottom: "12px" }}>
+              <NutritionMealPlanLeadPanels
+                nutritionSectorBoxes={nutritionSectorBoxes}
+                pathwayModulation={pathwayModulation}
+                functionalFoodRecommendations={functionalFoodRecommendations}
+              />
+            </section>
+          ) : null}
+
           {subRoute === "fueling" ? (
           <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
-            <header className="nutrition-fueling-hero px-4 py-3">
-              <h2 className="text-lg font-bold text-white drop-shadow-[0_0_12px_rgba(217,70,239,0.35)]">Fueling</h2>
-              <p className="mt-1 text-sm text-slate-300">
+            <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+              <h2 className="text-lg font-bold text-white">Fueling</h2>
+              <p className="mt-1 text-sm text-gray-300">
                 Piano pre, intra e post per la seduta del giorno (priorità pianificato Builder; se manca, usa durata/TSS
                 dell&apos;eseguito importato). Numeri sintetici prima, dettagli apribili quando servono.
               </p>
             </header>
             {athleteId ? (
               <section
-                className="viz-card builder-panel border border-lime-500/20 bg-black/25 px-4 py-3 sm:px-5"
+                className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
                 style={{ marginBottom: 12 }}
               >
                 <h3 className="viz-title text-base">Assunzione fueling</h3>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-gray-400">
                   Conferma che hai seguito il piano (pre / intra / post) per{" "}
                   <strong className="text-white">{selectedPlanDate}</strong>. La conferma viene salvata e può supportare
                   il confronto piano vs reale se attivi l&apos;aderenza nutrizione sul meal plan.
@@ -3705,14 +3736,14 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         : "Confermo assunzione fueling questo giorno"}
                   </button>
                   {fuelingConfirmedForSelectedDate ? (
-                    <span className="text-xs text-lime-200">
+                    <span className="text-xs text-emerald-300">
                       Confermato
                       {fuelingExecutionConfirmations[selectedPlanDate]?.at
                         ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("it-IT")}`
                         : null}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-500">Nessuna conferma per questa data.</span>
+                    <span className="text-xs text-gray-500">Nessuna conferma per questa data.</span>
                   )}
                 </div>
               </section>
@@ -3754,39 +3785,14 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 </div>
               ) : (
                 <>
-              {showTech ? (
-              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Dettagli contesto e motore</summary>
-              <div className="nutrition-detail-rail" style={{ marginTop: "10px", marginBottom: 0 }}>
-                <span><strong>Giorno:</strong> {selectedPlanDateShort}</span>
-                <span><strong>Durata pianificata:</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
-                <span><strong>Intensita pianificata:</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
-                <span><strong>Tier fueling:</strong> {resolvedFuelingTierBand}</span>
-                {fuelingPlannedEstimatedAvgPowerW != null && <span><strong>Potenza media stimata:</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>}
-                <span><strong>CHO delivery:</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
-                <span><strong>Cori return:</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
-                <span><strong>Redox:</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
-                {fuelingTrainingContext.length ? (
-                  <span>
-                    <strong>TSS seduta:</strong> {round(fuelingPlannedSummary.totalTss)}
-                  </span>
-                ) : null}
-                {fuelingIntraChoSplitBySession?.length ? (
-                  <span>
-                    <strong>CHO intra (split sessioni):</strong>{" "}
-                    {fuelingIntraChoSplitBySession.map((x) => `${x.label}: ${x.choG}g`).join(" · ")}
-                  </span>
-                ) : null}
-              </div>
-              </details>
-              ) : null}
+              {/* Contesto e motore (coach/admin): spostato nell'accordion «Dettagli e motore» in fondo pagina. */}
               <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
                 {fuelingOpsCards.map((card) => (
                   <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${card.tone}`}>
                     <div className="fueling-main-kpi-label">
                       {card.label}
                     </div>
-                    <div className="fueling-main-kpi-value">
+                    <div className="fueling-main-kpi-value font-mono tabular-nums">
                       {card.value}
                       {card.unit ? <span>{card.unit}</span> : null}
                     </div>
@@ -4230,7 +4236,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
           {subRoute === "integration" ? (
           <section id="nutrition-integration" className="scroll-mt-28 mb-10 space-y-4">
-            <header className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3">
+            <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <h2 className="text-lg font-bold text-white">Integrazione</h2>
               <p className="mt-1 text-sm text-gray-400">Modello pathway, KPI, USDA e prodotti — stessi segnali del modulo.</p>
             </header>
@@ -4249,7 +4255,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     <div className="fueling-main-kpi-label">
                       {card.label}
                     </div>
-                    <div className="fueling-main-kpi-value">{card.value}</div>
+                    <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
                     <div className="fueling-main-kpi-sub">Pathway + solver</div>
                   </div>
                 ))}
@@ -4263,7 +4269,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     <div className="fueling-main-kpi-label">
                       {card.label}
                     </div>
-                    <div className="fueling-main-kpi-value">{card.value}</div>
+                    <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
                     <div className="fueling-main-kpi-sub">Catalogo integrazione</div>
                   </div>
                 ))}
@@ -4271,9 +4277,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               {nutritionPerformanceIntegration?.rationale.length ? (
                 <details
                   className="collapsible-card"
-                  style={{ marginBottom: "10px", padding: "10px 12px", borderColor: "rgba(56,189,248,0.35)" }}
+                  style={{ marginBottom: "10px", padding: "10px 12px", borderColor: "rgba(251,191,36,0.35)" }}
                 >
-                  <summary className="text-[0.7rem] font-bold uppercase tracking-wider text-cyan-200/90">
+                  <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-amber-400">
                     Integrazione performance · leve solver ({nutritionPerformanceIntegration.rationale.length})
                   </summary>
                   <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.85rem", lineHeight: 1.45 }}>
@@ -4314,7 +4320,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                       {applicationPlaybook.directives.slice(0, 3).map((d) => (
                         <li
                           key={d.id}
-                          className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-950/10 px-3 py-2"
+                          className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
                         >
                           <strong className="text-white">{d.headlineIt}</strong>
                           <p className="nutrition-muted mt-1 mb-0 text-[0.74rem]">{d.actionIt}</p>
@@ -4327,7 +4333,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                       {applicationPlaybook.nutritionAdvice.slice(0, 4).map((n) => (
                         <li
                           key={n.id}
-                          className="nutrition-ui-chip max-w-full border border-white/10 bg-white/[0.03] px-2 py-1"
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300"
                           title={n.actionIt}
                         >
                           {n.headlineIt}
@@ -4363,11 +4369,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     {crossDomainInterpretationRoadmap.nodes.slice(0, 8).map((node) => (
                       <li
                         key={node.domainId}
-                        className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <strong className="text-white">{node.domainId.replace(/_/g, " ")}</strong>
-                          <span className="nutrition-ui-chip text-[0.65rem]">{node.probeStatus}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.65rem] font-semibold text-gray-300">{node.probeStatus}</span>
                         </div>
                         <p className="nutrition-muted mt-1 mb-0 text-[0.74rem]">{node.summaryLineIt}</p>
                       </li>
@@ -4391,12 +4397,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     {nutrientInterrogation.items.slice(0, 6).map((item) => (
                       <li
                         key={item.nutrientId}
-                        className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <strong className="text-white">{item.labelIt}</strong>
                           {item.subDomains.slice(0, 3).map((sd) => (
-                            <span key={sd} className="nutrition-ui-chip text-[0.65rem]">
+                            <span key={sd} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.65rem] font-semibold text-gray-300">
                               {sd.replace(/_/g, " ")}
                             </span>
                           ))}
@@ -4451,13 +4457,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                                 {pw.stimulatedBy.length ? pw.stimulatedBy.join(", ") : "—"}
                               </div>
                             </td>
-                            <td className="border border-white/10 bg-fuchsia-500/[0.06] px-3 py-2 text-[0.78rem] text-zinc-200">
+                            <td className="border border-white/10 bg-fuchsia-500/[0.06] px-3 py-2 text-[0.78rem] text-gray-200">
                               {pw.confidence}
                             </td>
-                            <td className="border border-white/10 bg-orange-500/[0.08] px-3 py-2 text-[0.78rem] text-zinc-100">
+                            <td className="border border-white/10 bg-orange-500/[0.08] px-3 py-2 text-[0.78rem] text-gray-100">
                               {pw.substrates.join("; ")}
                             </td>
-                            <td className="border border-white/10 bg-sky-500/[0.07] px-3 py-2 text-[0.78rem] text-zinc-100">
+                            <td className="border border-white/10 bg-sky-500/[0.07] px-3 py-2 text-[0.78rem] text-gray-100">
                               <span className="mb-1 block">
                                 <strong>Cofattori:</strong> {pw.cofactors.join("; ") || "—"}
                               </span>
@@ -4471,7 +4477,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         ))
                       ) : (
                         <tr>
-                          <td className="border border-white/10 bg-white/[0.03] px-3 py-3 text-[0.82rem] text-zinc-300" colSpan={4}>
+                          <td className="border border-white/10 bg-white/[0.03] px-3 py-3 text-[0.82rem] text-gray-300" colSpan={4}>
                             Nessuna via calcolata per <strong className="text-white">{selectedPlanDateLabel}</strong>: aggiungi una seduta pianificata
                             o verifica twin/fisiologia. I template engine (glicogeno, redox, gut) compaiono quando ci sono
                             stimoli o segnali.
@@ -4489,7 +4495,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     {pathwayModulation.pathways.map((pw) => (
                       <div
                         key={`${pw.id}-timing`}
-                        className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[0.82rem]"
+                        className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[0.82rem]"
                       >
                         <strong className="text-white">{pw.pathwayLabel}</strong>
                         <ul className="mt-2 list-none space-y-2 pl-0">
@@ -4530,16 +4536,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     {functionalFoodRecommendations.targets.map((t) => (
                       <div
                         key={t.nutrientId}
-                        style={{
-                          border: "1px solid rgba(148,163,184,0.25)",
-                          borderRadius: "8px",
-                          padding: "10px 12px",
-                          fontSize: "0.84rem",
-                        }}
+                        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[0.84rem]"
                       >
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
                           <strong>{t.displayNameIt}</strong>
-                          <span className="nutrition-ui-chip">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
                             {t.kind === "vitamin"
                               ? "Vitamina"
                               : t.kind === "mineral"
@@ -4563,7 +4564,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                             {t.curatedExamples.slice(0, 3).map((ex, idx) => (
                               <div key={`${t.nutrientId}-${ex.name}`} className={FUNCTIONAL_EXAMPLE_CELL_CLASSES[idx % 3]}>
                                 <div className="text-[0.78rem] font-semibold leading-snug text-white">{ex.name}</div>
-                                <div className="mt-1 text-[0.72rem] leading-snug text-zinc-300">{ex.why}</div>
+                                <div className="mt-1 text-[0.72rem] leading-snug text-gray-300">{ex.why}</div>
                               </div>
                             ))}
                           </div>
@@ -4571,7 +4572,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                             <ul className="nutrition-muted mb-0 mt-2 list-disc pl-[1.1rem] text-[0.74rem]">
                               {t.curatedExamples.slice(3).map((ex) => (
                                 <li key={`${t.nutrientId}-${ex.name}-more`} className="mb-1">
-                                  <strong className="text-zinc-200">{ex.name}</strong> — {ex.why}
+                                  <strong className="text-gray-200">{ex.name}</strong> — {ex.why}
                                 </li>
                               ))}
                             </ul>
@@ -4582,7 +4583,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                             <button
                               key={`${t.nutrientId}-${sq}`}
                               type="button"
-                              className="nutrition-ui-chip"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                               style={{ cursor: "pointer" }}
                               disabled={foodLookupLoading}
                               onClick={() => void runFoodLookupFromPathway(sq)}
@@ -4595,7 +4596,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                           <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed rgba(148,163,184,0.35)" }}>
                             <button
                               type="button"
-                              className="nutrition-ui-chip"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                               style={{ cursor: "pointer", fontWeight: 600 }}
                               disabled={usdaRichByCatalogId[t.nutrientId]?.loading === true}
                               onClick={() => void fetchUsdaRichForCatalog(t.nutrientId)}
@@ -4610,39 +4611,39 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                               </p>
                             ) : null}
                             {usdaRichByCatalogId[t.nutrientId]?.foods?.length ? (
-                              <div style={{ marginTop: "10px", overflowX: "auto" }}>
-                                <table className="nutrition-muted" style={{ fontSize: "0.75rem", width: "100%", borderCollapse: "collapse" }}>
+                              <div className="mt-2.5 overflow-x-auto">
+                                <table className="w-full text-xs">
                                   <thead>
-                                    <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(148,163,184,0.3)" }}>
-                                      <th style={{ padding: "4px 6px" }}>Alimento (USDA)</th>
-                                      <th style={{ padding: "4px 6px" }}>Target /100 g</th>
-                                      <th style={{ padding: "4px 6px" }}>P/C/F</th>
-                                      <th style={{ padding: "4px 6px" }} />
+                                    <tr>
+                                      <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Alimento (USDA)</th>
+                                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Target /100 g</th>
+                                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">P/C/F</th>
+                                      <th className="px-3 py-2" />
                                     </tr>
                                   </thead>
-                                  <tbody>
+                                  <tbody className="divide-y divide-white/5">
                                     {usdaRichByCatalogId[t.nutrientId]!.foods!.map((row) => (
-                                      <tr key={row.fdcId} style={{ borderBottom: "1px solid rgba(148,163,184,0.12)" }}>
-                                        <td style={{ padding: "6px", verticalAlign: "top" }}>
-                                          <span style={{ color: "var(--foreground, inherit)" }}>{row.description}</span>
-                                          <div style={{ fontSize: "0.68rem", opacity: 0.85 }}>{row.dataType}</div>
+                                      <tr key={row.fdcId} className="transition-colors hover:bg-white/[0.03]">
+                                        <td className="px-3 py-2 align-top text-gray-300">
+                                          <span className="text-white">{row.description}</span>
+                                          <div className="text-[0.68rem] text-gray-500">{row.dataType}</div>
                                         </td>
-                                        <td style={{ padding: "6px", whiteSpace: "nowrap" }}>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-white">
                                           {row.targetAmountPer100g != null
                                             ? `${row.targetAmountPer100g} ${row.targetUnitName ?? ""}`.trim()
                                             : "—"}
                                         </td>
-                                        <td style={{ padding: "6px", whiteSpace: "nowrap", fontSize: "0.7rem" }}>
+                                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[0.7rem] tabular-nums text-white">
                                           {row.proteinG100 != null || row.carbsG100 != null || row.fatG100 != null
                                             ? `${row.proteinG100 ?? "—"}P / ${row.carbsG100 ?? "—"}C / ${row.fatG100 ?? "—"}F`
                                             : "—"}
                                         </td>
-                                        <td style={{ padding: "6px" }}>
+                                        <td className="px-3 py-2">
                                           <a
                                             href={`https://fdc.nal.usda.gov/fdc-app.html#/food-details/${row.fdcId}/nutrients`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            style={{ fontSize: "0.72rem" }}
+                                            className="text-[0.72rem] text-amber-300 underline decoration-amber-400/40 underline-offset-2 hover:text-amber-200"
                                           >
                                             FDC
                                           </a>
@@ -4673,7 +4674,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   >
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
                       <strong>Selettore pasti funzionale</strong>
-                      <span className="nutrition-ui-chip">{effectiveFunctionalMealSelector.status}</span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">{effectiveFunctionalMealSelector.status}</span>
                       <span className="nutrition-muted" style={{ fontSize: "0.75rem" }}>
                         {effectiveFunctionalMealSelector.date}
                       </span>
@@ -4689,8 +4690,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <strong className="capitalize text-white">{slot.slot.replace("_", " ")}</strong>
-                            <span className="nutrition-ui-chip">{slot.focus}</span>
-                            <span className="rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[0.62rem] uppercase tracking-wide text-zinc-300">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">{slot.focus}</span>
+                            <span className="rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[0.62rem] uppercase tracking-wide text-gray-300">
                               {slot.metabolicPhase.replace(/_/g, " ")}
                             </span>
                           </div>
@@ -4700,12 +4701,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                               <div
                                 key={`${slot.slot}-${candidate.name}`}
                                 className={cn(
-                                  "rounded-lg border border-white/10 py-2 pl-3 pr-2 text-[0.76rem] leading-snug text-zinc-100",
+                                  "rounded-xl border border-white/10 py-2 pl-3 pr-2 text-[0.76rem] leading-snug text-gray-100",
                                   functionalCandidateRowClass(candidate.timing),
                                 )}
                               >
                                 <strong className="text-white">{candidate.name}</strong>
-                                <span className="text-zinc-300"> — {candidate.reason}</span>
+                                <span className="text-gray-300"> — {candidate.reason}</span>
                                 <div className="nutrition-muted mt-1 text-[0.68rem] leading-snug">
                                   Elementi: {candidate.functionalElements.join(", ")} · timing {candidate.timing}
                                   {candidate.caution ? ` · cautela: ${candidate.caution}` : ""}
@@ -4729,41 +4730,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   ))}
                 </ul>
               </details>
-              <details className="collapsible-card" style={{ marginTop: "10px", marginBottom: "10px" }}>
-                <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-                  Brand e token catalogo ({profileSupplements.length ? `${profileSupplements.length} voci` : "set predefinito"})
-                </summary>
-                <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
-                  Integratori e marchi dal profilo (CSV + supplement_config). Usati per matching deterministico al catalogo fueling.
-                </p>
-                {profileSupplements.length ? (
-                  <ul
-                    className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
-                    style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
-                  >
-                    {profileSupplements.map((token) => (
-                      <li
-                        key={token}
-                        style={{
-                          borderRadius: 6,
-                          border: "1px solid rgba(167,139,250,0.35)",
-                          background: "rgba(76,29,149,0.2)",
-                          padding: "2px 8px",
-                          fontFamily: "var(--empathy-mono, monospace)",
-                          fontSize: "0.65rem",
-                          color: "var(--empathy-text-muted, #cbd5e1)",
-                        }}
-                      >
-                        {token}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
-                    Nessun token profilo: catalogo con marchi predefiniti (Enervit, SiS, Maurten, +Watt, Powerbar).
-                  </p>
-                )}
-              </details>
+              {/* Brand e token catalogo: spostati nell'accordion «Dettagli e motore» in fondo pagina. */}
               {integrationProductCards.length ? (
                 <div className="mt-3 grid gap-3 lg:grid-cols-3">
                   {(
@@ -4796,7 +4763,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     >
                       <div
                         className={cn(
-                          "rounded-lg border border-white/10 bg-gradient-to-r px-3 py-2 to-transparent",
+                          "rounded-xl border border-white/10 bg-gradient-to-r px-3 py-2 to-transparent",
                           col.key === "pre" && "from-violet-600/28",
                           col.key === "intra" && "from-fuchsia-600/28",
                           col.key === "post" && "from-orange-600/28",
@@ -4824,7 +4791,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                             );
                           })
                         ) : (
-                          <p className="nutrition-muted m-0 rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
+                          <p className="nutrition-muted m-0 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
                             Nessun integratore classificato qui dalla selezione corrente (bucket primario da timing catalogo).
                           </p>
                         )}
@@ -4839,7 +4806,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
           {subRoute === "predictor" ? (
           <section id="nutrition-predictor" className="scroll-mt-28 mb-10 space-y-4">
-            <header className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3">
+            <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <h2 className="text-lg font-bold text-white">Predictor</h2>
               <p className="mt-1 text-sm text-gray-400">Stima consumo energetico, CHO e rischio deplezione glicogeno.</p>
             </header>
@@ -4848,13 +4815,17 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
                 <button
                   type="button"
-                  className={`nutrition-ui-chip ${predictorUsePlanDay ? "active" : ""}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold transition-colors ${
+                    predictorUsePlanDay
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300 hover:border-amber-400/50 hover:bg-amber-500/20"
+                      : "border-white/15 bg-white/5 text-gray-300 hover:border-amber-400/50 hover:bg-amber-500/10"
+                  }`}
                   onClick={() => setPredictorUsePlanDay((v) => !v)}
                 >
                   {predictorUsePlanDay ? "Contesto giorno attivo" : "Modalita manuale"}
                 </button>
                 {predictorUsePlanDay && (
-                  <span className="nutrition-ui-chip active">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[0.7rem] font-semibold tabular-nums text-amber-300">
                     {selectedPlanDateShort} · {round(effectiveSessionDurationMin)} min · {round(effectiveSessionIntensityPctFtp)}% FTP
                   </span>
                 )}
@@ -4894,7 +4865,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 {predictorOpsCards.map((card) => (
                   <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${card.tone}`}>
                     <div className="fueling-main-kpi-label">{card.label}</div>
-                    <div className="fueling-main-kpi-value">
+                    <div className="fueling-main-kpi-value font-mono tabular-nums">
                       {card.value}
                       {card.unit ? <span>{card.unit}</span> : null}
                     </div>
@@ -4917,7 +4888,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
           {subRoute === "diary" ? (
           <section id="nutrition-diary" className="scroll-mt-28 mb-10 space-y-4">
-            <header className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+            <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <h2 className="text-lg font-bold text-white">Diario alimentare</h2>
               <p className="mt-1 text-sm text-gray-400">Ingesta reale vs target — catalogo USDA e aderenza.</p>
             </header>
@@ -4936,6 +4907,169 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           </section>
           ) : null}
+
+          {/* In fondo: accordion unico «Dettagli e motore» (metodologia, parametri, diagnostica coach/admin). */}
+          <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
+            <Pro2Accordion
+              accent="amber"
+              title="Dettagli e motore"
+              subtitle="Come nascono i numeri di questa pagina, parametri e diagnostica tecnica"
+            >
+              <div className="space-y-5 text-sm text-gray-300">
+                {subRoute === "meal-plan" ? (
+                  <>
+                    <div>
+                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce il piano pasti</p>
+                      <p className="mt-1 leading-relaxed text-gray-400">
+                        Il fabbisogno del giorno parte dal metabolismo basale, dallo stile di vita e dal costo degli
+                        allenamenti del giorno selezionato. La quota destinata ai pasti viene ripartita secondo le
+                        percentuali del tuo profilo (Profilo → Diet) e ogni pasto è assemblato con alimenti reali del
+                        database USDA, rispettando esclusioni, preferenze e vie metaboliche attive della giornata. La
+                        parte pre/intra/post seduta vive nell&apos;area Fueling, non nei pasti.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                      <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+                        Adattamento da aderenza nutrizione
+                      </p>
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={adherenceOptIn}
+                          disabled={saving || adherenceConfigLoading}
+                          onChange={(event) => setAdherenceOptIn(event.target.checked)}
+                        />
+                        Usa confronto piano vs assunto nel calcolo dell&apos;adattamento.
+                      </label>
+                      <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
+                        Attivalo solo se diario e piano sono compilati in modo preciso: i gap di aderenza influenzano i
+                        dial nutrizione.
+                      </p>
+                    </div>
+                  </>
+                ) : null}
+
+                {subRoute === "fueling" ? (
+                  <div>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce il piano fueling</p>
+                    <p className="mt-1 leading-relaxed text-gray-400">
+                      Il piano pre/intra/post parte dalla seduta del giorno: prima quella pianificata nel calendario, in
+                      mancanza l&apos;eseguito importato. Durata e intensità stimata determinano carboidrati orari, fluidi e
+                      sodio; il motore stima inoltre assorbimento intestinale, ritorno di Cori e deplezione del glicogeno
+                      per costruire gli step e i grafici della seduta.
+                    </p>
+                  </div>
+                ) : null}
+
+                {subRoute === "integration" ? (
+                  <>
+                    <div>
+                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce l&apos;integrazione</p>
+                      <p className="mt-1 leading-relaxed text-gray-400">
+                        I suggerimenti partono dalle vie metaboliche attive del giorno (seduta, segnali, diario) e dalle
+                        leve del solver nutrizione. Il catalogo prodotti è filtrato sui marchi e sugli integratori del tuo
+                        profilo; il timing è espresso in classi qualitative di emivita, non in dosaggi medici.
+                      </p>
+                    </div>
+                    <details className="collapsible-card" style={{ marginBottom: 0 }}>
+                      <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                        Brand e token catalogo ({profileSupplements.length ? `${profileSupplements.length} voci` : "set predefinito"})
+                      </summary>
+                      <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
+                        Integratori e marchi dal profilo (CSV + supplement_config). Usati per matching deterministico al catalogo fueling.
+                      </p>
+                      {profileSupplements.length ? (
+                        <ul
+                          className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
+                          style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
+                        >
+                          {profileSupplements.map((token) => (
+                            <li
+                              key={token}
+                              className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.65rem] font-semibold text-gray-300"
+                            >
+                              {token}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
+                          Nessun token profilo: catalogo con marchi predefiniti (Enervit, SiS, Maurten, +Watt, Powerbar).
+                        </p>
+                      )}
+                    </details>
+                  </>
+                ) : null}
+
+                {subRoute === "predictor" ? (
+                  <div>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce la stima</p>
+                    <p className="mt-1 leading-relaxed text-gray-400">
+                      Il predictor stima il consumo energetico da sport, durata e intensità (% FTP del tuo profilo
+                      fisiologico), lo confronta con il fueling impostato e calcola il rischio di esaurimento del
+                      glicogeno prima della fine dell&apos;evento, con il ritmo massimo sostenibile suggerito.
+                    </p>
+                  </div>
+                ) : null}
+
+                {subRoute === "diary" ? (
+                  <div>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come funziona il diario</p>
+                    <p className="mt-1 leading-relaxed text-gray-400">
+                      Il diario confronta ciò che registri con i target del giorno selezionato (gli stessi del piano
+                      pasti). Se nel meal plan attivi l&apos;adattamento da aderenza, il confronto piano vs assunto entra nel
+                      calcolo dell&apos;adattamento.
+                    </p>
+                  </div>
+                ) : null}
+
+                {showTech && subRoute === "meal-plan" ? (
+                  <div className="space-y-4 border-t border-white/10 pt-4">
+                    <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
+                      Diagnostica tecnica (coach/admin)
+                    </p>
+                    {researchTraceSummaries.length ? (
+                      <ResearchTraceStatusSummary traces={researchTraceSummaries} label="Stato approfondimenti nutrizione" />
+                    ) : null}
+                    {athleteId && isMealPlanV2PreviewUiEnabled() ? (
+                      <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {showTech && subRoute === "fueling" && fuelingReadiness.ready ? (
+                  <div className="space-y-3 border-t border-white/10 pt-4">
+                    <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
+                      Diagnostica tecnica (coach/admin) · contesto motore fueling
+                    </p>
+                    <div className="nutrition-detail-rail" style={{ marginBottom: 0 }}>
+                      <span><strong>Giorno:</strong> {selectedPlanDateShort}</span>
+                      <span><strong>Durata pianificata:</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
+                      <span><strong>Intensita pianificata:</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
+                      <span><strong>Tier fueling:</strong> {resolvedFuelingTierBand}</span>
+                      {fuelingPlannedEstimatedAvgPowerW != null && (
+                        <span><strong>Potenza media stimata:</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>
+                      )}
+                      <span><strong>CHO delivery:</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
+                      <span><strong>Cori return:</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
+                      <span><strong>Redox:</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
+                      {fuelingTrainingContext.length ? (
+                        <span>
+                          <strong>TSS seduta:</strong> {round(fuelingPlannedSummary.totalTss)}
+                        </span>
+                      ) : null}
+                      {fuelingIntraChoSplitBySession?.length ? (
+                        <span>
+                          <strong>CHO intra (split sessioni):</strong>{" "}
+                          {fuelingIntraChoSplitBySession.map((x) => `${x.label}: ${x.choG}g`).join(" · ")}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </Pro2Accordion>
+          </section>
         </>
       )}
     </Pro2ModulePageShell>

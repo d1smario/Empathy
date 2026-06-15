@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_AXIS, CHART_FONT, CHART_GRID, CHART_SIGNAL, CHART_STROKE, chartTooltipStyle } from "@/lib/ui/chart-theme";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type { CrossChannelSessionVm } from "@/lib/training/analytics/cross-channel-session";
 
@@ -69,7 +70,7 @@ export function TrainingAnalyzerCrossChannelSection({
   return (
     <div className="mb-6">
       <Pro2SectionCard
-        accent="cyan"
+        accent="orange"
         title="Cross-channel intra-sessione"
         subtitle="Power / FC vs glucosio CGM nello stesso intervallo della sessione"
         icon={Activity}
@@ -82,10 +83,10 @@ export function TrainingAnalyzerCrossChannelSection({
                 key={s.executedId}
                 type="button"
                 onClick={() => setActiveId(s.executedId)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                   isActive
-                    ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100"
-                    : "border-white/10 bg-black/40 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                    ? "border-orange-400/55 bg-orange-500/20 text-orange-100"
+                    : "border-white/10 bg-black/40 text-gray-400 hover:border-white/25 hover:text-gray-200"
                 }`}
               >
                 {s.date ?? s.executedId.slice(0, 6)} · {fmtTime(s.durationSeconds)}
@@ -99,37 +100,29 @@ export function TrainingAnalyzerCrossChannelSection({
             <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} />
                   <XAxis
                     dataKey="tLabel"
-                    tick={{ fill: "#94a3b8", fontSize: 10 }}
+                    tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
                     interval="preserveStartEnd"
                     minTickGap={32}
                   />
-                  <YAxis yAxisId="left" tick={{ fill: "#f0abfc", fontSize: 10 }} width={40} domain={["auto", "auto"]} />
+                  <YAxis yAxisId="left" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} width={40} domain={["auto", "auto"]} />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tick={{ fill: "#22d3ee", fontSize: 10 }}
+                    tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
                     width={40}
                     domain={["auto", "auto"]}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#0f172a",
-                      border: "1px solid rgba(148,163,184,0.35)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    labelStyle={{ color: "#e2e8f0" }}
-                  />
+                  <Tooltip contentStyle={chartTooltipStyle("training")} labelStyle={{ color: "#e5e7eb" }} />
                   {active.hasPower ? (
                     <Line
                       yAxisId="left"
                       type="monotone"
                       dataKey="power"
-                      stroke="#f0abfc"
-                      strokeWidth={2}
+                      stroke={CHART_SIGNAL.power}
+                      strokeWidth={CHART_STROKE.base}
                       dot={false}
                       isAnimationActive={false}
                       name="Power (W)"
@@ -140,8 +133,8 @@ export function TrainingAnalyzerCrossChannelSection({
                       yAxisId="left"
                       type="monotone"
                       dataKey="hr"
-                      stroke="#34d399"
-                      strokeWidth={1.6}
+                      stroke={CHART_SIGNAL.hr}
+                      strokeWidth={CHART_STROKE.thin}
                       dot={false}
                       isAnimationActive={false}
                       name="FC (bpm)"
@@ -151,7 +144,7 @@ export function TrainingAnalyzerCrossChannelSection({
                     <Scatter
                       yAxisId="right"
                       dataKey="glucose"
-                      fill="#22d3ee"
+                      fill={CHART_SIGNAL.glucose}
                       shape="circle"
                       name="Glucosio (mmol/L)"
                     />
@@ -159,20 +152,20 @@ export function TrainingAnalyzerCrossChannelSection({
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-400">
+            <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
               {active.hasPower ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-[#f0abfc]" /> Power
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.power }} /> Power
                 </span>
               ) : null}
               {active.hasHr ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-[#34d399]" /> FC
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.hr }} /> FC
                 </span>
               ) : null}
               {active.hasGlucose ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-[#22d3ee]" /> Glucosio (asse dx)
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.glucose }} /> Glucosio (asse dx)
                 </span>
               ) : null}
               {!active.hasGlucose ? (

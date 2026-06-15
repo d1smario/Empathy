@@ -275,15 +275,15 @@ export function CoachWorkoutLibraryPanel({
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="flex items-center gap-2 text-sm font-semibold text-violet-200">
+        <span className="flex items-center gap-2 text-sm font-semibold text-orange-200">
           <BookMarked className="h-4 w-4" aria-hidden />
           Libreria sedute coach
         </span>
-        {open ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+        {open ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
       </button>
       {open ? (
         <div className="space-y-3 border-t border-white/10 px-4 pb-4 pt-3">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             Template riusabili (contratto Builder). Clicca un template per modificarne intervalli, serie e durata; Apply usa le modifiche (salva il template per tenerle in libreria).
           </p>
           <div className="flex flex-wrap gap-2">
@@ -378,16 +378,16 @@ export function CoachWorkoutLibraryPanel({
             {hasActiveFilters ? (
               <button
                 type="button"
-                className="text-xs font-semibold text-slate-400 underline decoration-white/20 hover:text-violet-200"
+                className="text-xs font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
                 onClick={clearFilters}
               >
                 Reset filtri
               </button>
             ) : null}
-            <span className="text-[0.65rem] text-slate-500">
+            <span className="text-[0.65rem] text-gray-500">
               {loading ? "…" : `${resultTotal} template`}
             </span>
-            <label className="ml-auto flex items-center gap-2 text-[0.65rem] text-slate-400">
+            <label className="ml-auto flex items-center gap-2 text-[0.65rem] text-gray-400">
               <input
                 type="checkbox"
                 checked={applyScaling}
@@ -408,9 +408,9 @@ export function CoachWorkoutLibraryPanel({
           ) : null}
           <div className="max-h-[min(32rem,70vh)] overflow-y-auto rounded-xl border border-white/10">
             {loading && items.length === 0 ? (
-              <p className="p-3 text-xs text-slate-500">Caricamento…</p>
+              <p className="p-3 text-xs text-gray-500">Caricamento…</p>
             ) : items.length === 0 ? (
-              <p className="p-3 text-xs text-slate-500">Nessun template in libreria.</p>
+              <p className="p-3 text-xs text-gray-500">Nessun template in libreria.</p>
             ) : (
               <ul className="divide-y divide-white/5">
                 {items.map((item) => {
@@ -420,7 +420,7 @@ export function CoachWorkoutLibraryPanel({
                       <div
                         className={`flex items-center justify-between gap-2 px-3 py-2 transition ${
                           selected
-                            ? "border-l-2 border-fuchsia-400/80 bg-gradient-to-r from-violet-950/50 to-transparent"
+                            ? "border-l-2 border-orange-400/80 bg-gradient-to-r from-orange-950/50 to-transparent"
                             : "border-l-2 border-transparent hover:bg-white/[0.03]"
                         }`}
                       >
@@ -430,7 +430,7 @@ export function CoachWorkoutLibraryPanel({
                           onClick={() => setSelectedItemId(item.id)}
                         >
                           <div className="truncate text-xs font-semibold text-white">{item.title}</div>
-                          <div className="text-[0.65rem] text-slate-500">
+                          <div className="text-[0.65rem] text-gray-500">
                             {item.discipline} · {item.family} · {item.durationMinutes}′ · TSS {item.tssTarget}
                             {formatItemTags(item.metadata)}
                           </div>
@@ -478,9 +478,9 @@ export function CoachWorkoutLibraryPanel({
                         </div>
                       </div>
                       {selected ? (
-                        <div className="border-t border-fuchsia-500/15 bg-gradient-to-b from-violet-950/30 via-black/40 to-black/60 px-3 py-3">
+                        <div className="border-t border-orange-500/15 bg-gradient-to-b from-orange-950/30 via-black/40 to-black/60 px-3 py-3">
                           {previewLoading ? (
-                            <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-400">
+                            <div className="flex items-center justify-center gap-2 py-6 text-xs text-gray-400">
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                               Carico grafico a blocchi…
                             </div>

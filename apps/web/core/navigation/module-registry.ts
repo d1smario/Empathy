@@ -49,7 +49,7 @@ export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   { module: "calendario", href: "/calendario", label: "Calendario", icon: "calendar", area: "main", scope: "account", roles: ["coach"] },
   { module: "athletes", href: "/athletes", label: "Atleti", icon: "users", area: "main", scope: "account", roles: ["coach"] },
   { module: "commissioni", href: "/commissioni", label: "Commissioni", icon: "wallet", area: "main", scope: "account", roles: ["coach"] },
-  { module: "profile", href: "/profile", label: "Profile", icon: "user", area: "main", scope: "account" },
+  { module: "profile", href: "/profile", label: "Profilo", icon: "user", area: "main", scope: "account" },
   // — Athlete-scoped (colonne dell'atleta selezionato) —
   { module: "health", href: "/health", label: "Health & Bio", icon: "heart", area: "main", scope: "athlete" },
   { module: "physiology", href: "/physiology", label: "Physiology", icon: "activity", area: "main", scope: "athlete" },

@@ -49,23 +49,17 @@ export function PhysiologyPro2MaxOxLab({
 }: PhysiologyPro2MaxOxLabProps) {
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--maxox">
-      <div className="physiology-pro2-lab-hero">
-        <p className="physiology-pro2-lab-kicker">Delivery centrale · utilizzo periferico · collo di bottiglia ossidativo</p>
-        <h1 className="physiology-pro2-lab-title physiology-pro2-lab-title--rose">Max oxidate lab</h1>
-        <p className="physiology-pro2-maxox-steady-note">
+      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="physiology-pro2-maxox-steady-note" style={{ marginTop: 0 }}>
           Il motore lavora su <strong>un solo stato metabolico</strong>: una potenza, un VO₂, un RER, SmO₂ e lattato coerenti tra loro (quasi-stazionario). Selezionando una sessione intera, i campi si riempiono con i{" "}
           <strong>valori aggregati / snapshot</strong> che l’import espone oggi — non con un ritaglio lap-by-lap. Per una salita o un test a ritmo costante ha senso usare{" "}
           <strong>numeri di quel tratto</strong> (export dedicato o input manuale). Scatti e on/off alternati violano l’ipotesi: i numeri restano calcolabili ma la lettura fisiologica è debole.
         </p>
         {autoDecodeText ? (
-          <div className="physiology-pro2-lab-decode physiology-pro2-lab-decode--rose">
+          <div className="physiology-pro2-lab-decode physiology-pro2-lab-decode--rose shrink-0" style={{ marginTop: 0 }}>
             <CheckCircle2 className="physiology-pro2-lab-decode-ico" aria-hidden />
-            <div>
-              <strong>Auto-decode attivo</strong>
-              <span>{autoDecodeText}</span>
-            </div>
-            <span className="physiology-pro2-lab-sessions">
-              <strong>{sessionCount}</strong> sessioni analizzate
+            <span>
+              <strong>Auto-decode attivo</strong> · {sessionCount} sessioni analizzate
             </span>
           </div>
         ) : null}

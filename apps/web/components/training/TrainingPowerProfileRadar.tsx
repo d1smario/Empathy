@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { CHART_AXIS, CHART_FONT, CHART_SIGNAL, CHART_STROKE } from "@/lib/ui/chart-theme";
 
 export type RadarAxisRow = {
   subject: string;
@@ -36,9 +37,9 @@ function RadarTooltip({
   const sw = p.sessionW;
   const mp = p.monthPeakW;
   return (
-    <div className="rounded-xl border border-pink-500/30 bg-slate-950/95 px-3 py-2 text-xs text-slate-200 shadow-lg">
-      <p className="font-bold text-pink-200">{p.subject}</p>
-      <p className="mt-1 tabular-nums">
+    <div className="rounded-xl border border-orange-500/35 bg-black/95 px-3 py-2 text-xs text-gray-200 shadow-lg">
+      <p className="font-bold text-orange-200">{p.subject}</p>
+      <p className="mt-1 font-mono tabular-nums">
         Sessione: {sw != null && sw > 0 ? `${Math.round(sw)} ${p.unit ?? "W"}` : "—"}
         <br />
         Picco mese: {mp != null && mp > 0 ? `${Math.round(mp)} ${p.unit ?? "W"}` : "—"}
@@ -75,18 +76,18 @@ export function TrainingPowerProfileRadar({ rows, subtitle, valueUnit = "W" }: P
           <RadarChart data={data} cx="50%" cy="52%" outerRadius="72%">
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ec4899" stopOpacity={0.55} />
-                <stop offset="100%" stopColor="#f97316" stopOpacity={0.35} />
+                <stop offset="5%" stopColor={CHART_SIGNAL.power} stopOpacity={0.55} />
+                <stop offset="95%" stopColor={CHART_SIGNAL.power} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <PolarGrid stroke="rgba(255,255,255,0.12)" />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "#64748b", fontSize: 10 }} />
+            <PolarGrid stroke={CHART_AXIS.line} />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.axisLabel }} />
+            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: CHART_AXIS.tickMuted, fontSize: CHART_FONT.tick }} />
             <Radar
               name="% vs picco mese"
               dataKey="pct"
-              stroke="#f472b6"
-              strokeWidth={2}
+              stroke={CHART_SIGNAL.power}
+              strokeWidth={CHART_STROKE.base}
               fill={`url(#${gradId})`}
               fillOpacity={0.85}
               isAnimationActive={false}
@@ -95,7 +96,7 @@ export function TrainingPowerProfileRadar({ rows, subtitle, valueUnit = "W" }: P
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      {subtitle ? <p className="mt-2 text-center text-xs text-slate-500">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-2 text-center text-xs text-gray-500">{subtitle}</p> : null}
     </div>
   );
 }

@@ -83,11 +83,11 @@ function ZoneStrip({
 }
 
 const KIND_META: { kind: PlanBlockKind; label: string; icon: typeof Timer; color: string; iconClass: string }[] = [
-  { kind: "steady", label: "Continuo", icon: Timer, color: "from-cyan-500/90 to-teal-600/90", iconClass: "text-cyan-100 drop-shadow-[0_0_8px_rgba(34,211,238,0.45)]" },
-  { kind: "ramp", label: "Ramp", icon: TrendingUp, color: "from-amber-500/90 to-orange-600/90", iconClass: "text-amber-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" },
-  { kind: "interval2", label: "2 tempi", icon: Repeat2, color: "from-violet-500/90 to-fuchsia-600/90", iconClass: "text-violet-100 drop-shadow-[0_0_8px_rgba(196,181,253,0.45)]" },
-  { kind: "interval3", label: "3 tempi", icon: Layers, color: "from-blue-500/90 to-indigo-600/90", iconClass: "text-sky-100 drop-shadow-[0_0_8px_rgba(125,211,252,0.45)]" },
-  { kind: "pyramid", label: "Piramide", icon: Mountain, color: "from-rose-500/90 to-pink-600/90", iconClass: "text-rose-100 drop-shadow-[0_0_8px_rgba(251,113,133,0.45)]" },
+  { kind: "steady", label: "Continuo", icon: Timer, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
+  { kind: "ramp", label: "Ramp", icon: TrendingUp, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
+  { kind: "interval2", label: "2 tempi", icon: Repeat2, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
+  { kind: "interval3", label: "3 tempi", icon: Layers, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
+  { kind: "pyramid", label: "Piramide", icon: Mountain, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
 ];
 
 type KindMetaRow = (typeof KIND_META)[number];
@@ -181,7 +181,7 @@ function manualPresetLifestyleBreath(): ManualPlanBlock[] {
 }
 
 const btnPrimary =
-  "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:brightness-110 border border-white/10";
+  "empathy-btn-gradient inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110 disabled:opacity-40";
 
 const btnIcon =
   "inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white shadow-inner transition hover:bg-white/20 disabled:opacity-30";
@@ -400,10 +400,10 @@ export function BuilderManualComposer({
 
   const skin =
     macroFamily === "technical"
-      ? { border: "border-violet-500/35", bg: "from-violet-950/40 via-fuchsia-950/15 to-black/80" }
+      ? { border: "border-orange-500/25", bg: "from-orange-950/[0.18] via-black/60 to-black/80" }
       : macroFamily === "lifestyle"
-        ? { border: "border-emerald-500/35", bg: "from-emerald-950/40 via-teal-950/25 to-black/80" }
-        : { border: "border-cyan-500/30", bg: "from-cyan-950/40 via-violet-950/10 to-black/80" };
+        ? { border: "border-orange-500/25", bg: "from-orange-950/[0.18] via-black/60 to-black/80" }
+        : { border: "border-orange-500/25", bg: "from-orange-950/[0.18] via-black/60 to-black/80" };
 
   const titleCopy =
     macroFamily === "technical"
@@ -429,13 +429,7 @@ export function BuilderManualComposer({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2
-            className={`text-lg font-bold ${
-              macroFamily === "technical"
-                ? "text-transparent bg-clip-text bg-gradient-to-r from-violet-200 via-fuchsia-200 to-white"
-                : macroFamily === "lifestyle"
-                  ? "text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-teal-200 to-cyan-200"
-                  : "text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-violet-200 to-teal-200"
-            }`}
+            className="text-lg font-bold text-white"
           >
             {titleCopy.h}
           </h2>
@@ -450,13 +444,7 @@ export function BuilderManualComposer({
 
       {/* Grafico in alto */}
       <div
-        className={`mt-4 rounded-2xl border bg-black/50 p-3 shadow-inner ${
-          macroFamily === "technical"
-            ? "border-violet-500/25"
-            : macroFamily === "lifestyle"
-              ? "border-emerald-500/25"
-              : "border-cyan-500/25"
-        }`}
+        className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
       >
         <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione" estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
@@ -467,11 +455,7 @@ export function BuilderManualComposer({
               onClick={() => setActiveIndex(i)}
               className={`h-2.5 rounded-full transition-all ${
                 i === safeIndex
-                  ? macroFamily === "technical"
-                    ? "w-8 bg-gradient-to-r from-violet-400 to-fuchsia-500"
-                    : macroFamily === "lifestyle"
-                      ? "w-8 bg-gradient-to-r from-emerald-400 to-teal-400"
-                      : "w-8 bg-gradient-to-r from-cyan-400 to-teal-400"
+                  ? "w-8 bg-gradient-to-r from-orange-400 to-amber-400"
                   : "w-2.5 bg-white/25 hover:bg-white/40"
               }`}
               title={b.label}
@@ -481,17 +465,7 @@ export function BuilderManualComposer({
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span
-              className={`font-bold uppercase tracking-wider ${
-                macroFamily === "technical"
-                  ? "text-violet-200/90"
-                  : macroFamily === "lifestyle"
-                    ? "text-emerald-200/90"
-                    : "text-cyan-200/90"
-              }`}
-            >
-              Durata nel calendario
-            </span>
+            <span className="font-mono uppercase tracking-[0.2em] text-gray-500">Durata nel calendario</span>
             <select
               className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
@@ -513,15 +487,15 @@ export function BuilderManualComposer({
       </div>
 
       {macroFamily === "technical" ? (
-        <div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/[0.08] p-3">
-          <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-violet-200">
+        <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
+          <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Sedute rapide · tecnici
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-violet-400/35 bg-gradient-to-br from-violet-600/80 to-fuchsia-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetTechnicalDrills());
                 setActiveIndex(0);
@@ -531,7 +505,7 @@ export function BuilderManualComposer({
             </button>
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-violet-400/35 bg-gradient-to-br from-violet-600/80 to-fuchsia-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetTechnicalMixed());
                 setActiveIndex(0);
@@ -541,7 +515,7 @@ export function BuilderManualComposer({
             </button>
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-violet-400/35 bg-gradient-to-br from-violet-600/80 to-fuchsia-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetTechnicalGame());
                 setActiveIndex(0);
@@ -552,15 +526,15 @@ export function BuilderManualComposer({
           </div>
         </div>
       ) : macroFamily === "lifestyle" ? (
-        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] p-3">
-          <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-200">
+        <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
+          <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Sedute rapide · lifestyle
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-emerald-400/35 bg-gradient-to-br from-emerald-600/80 to-teal-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetLifestyleGentle());
                 setActiveIndex(0);
@@ -570,7 +544,7 @@ export function BuilderManualComposer({
             </button>
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-emerald-400/35 bg-gradient-to-br from-emerald-600/80 to-teal-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetLifestyleMobility());
                 setActiveIndex(0);
@@ -580,7 +554,7 @@ export function BuilderManualComposer({
             </button>
             <button
               type="button"
-              className="min-w-[8.5rem] flex-1 rounded-xl border border-emerald-400/35 bg-gradient-to-br from-emerald-600/80 to-teal-800/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
+              className="min-w-[8.5rem] flex-1 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-600/80 to-amber-700/80 px-3 py-2.5 text-left text-xs font-bold text-white shadow-inner transition hover:brightness-110"
               onClick={() => {
                 setManualPlanBlocks(manualPresetLifestyleBreath());
                 setActiveIndex(0);
@@ -660,7 +634,7 @@ export function BuilderManualComposer({
             Durata:{" "}
             <button
               type="button"
-              className={lengthMode === "time" ? "text-cyan-300 underline" : ""}
+              className={lengthMode === "time" ? "text-orange-300 underline" : ""}
               onClick={() => setLengthMode("time")}
             >
               tempo
@@ -668,7 +642,7 @@ export function BuilderManualComposer({
             {" · "}
             <button
               type="button"
-              className={lengthMode === "distance" ? "text-cyan-300 underline" : ""}
+              className={lengthMode === "distance" ? "text-orange-300 underline" : ""}
               onClick={() => setLengthMode("distance")}
             >
               distanza
@@ -697,7 +671,7 @@ export function BuilderManualComposer({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <button type="button" className={btnIcon} onClick={goPrev} disabled={safeIndex <= 0} aria-label="Blocco precedente">
-            <ChevronLeft className="h-5 w-5 text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.35)]" />
+            <ChevronLeft className="h-5 w-5 text-orange-400" />
           </button>
           <span className="min-w-[7rem] text-center text-sm font-mono text-gray-300">
             Blocco {safeIndex + 1} / {manualPlanBlocks.length}
@@ -709,7 +683,7 @@ export function BuilderManualComposer({
             disabled={safeIndex >= manualPlanBlocks.length - 1}
             aria-label="Blocco successivo"
           >
-            <ChevronRight className="h-5 w-5 text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.35)]" />
+            <ChevronRight className="h-5 w-5 text-orange-400" />
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -970,7 +944,7 @@ export function BuilderManualComposer({
             <div className="space-y-2">
               <p className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-gray-500 sm:flex-row sm:items-center sm:gap-2">
                 <span className="inline-flex items-center gap-2">
-                  <Mountain className="h-4 w-4 text-rose-300 drop-shadow-[0_0_8px_rgba(251,113,133,0.45)]" aria-hidden />
+                  <Mountain className="h-4 w-4 text-orange-300" aria-hidden />
                   Piramide
                 </span>
                 <span className="font-mono text-[0.58rem] font-normal normal-case text-gray-600">
@@ -986,9 +960,9 @@ export function BuilderManualComposer({
                   min={1}
                   max={30}
                   step={1}
-                  borderClass="border-rose-500/40"
-                  bgClass="bg-rose-500/10"
-                  iconClass="text-rose-300"
+                  borderClass="border-orange-500/40"
+                  bgClass="bg-orange-500/10"
+                  iconClass="text-orange-300"
                 />
                 <GenerativeStepperPod
                   icon={Timer}
@@ -998,9 +972,9 @@ export function BuilderManualComposer({
                   min={20}
                   max={900}
                   step={10}
-                  borderClass="border-cyan-500/40"
-                  bgClass="bg-cyan-500/10"
-                  iconClass="text-cyan-300"
+                  borderClass="border-orange-500/40"
+                  bgClass="bg-orange-500/10"
+                  iconClass="text-orange-300"
                 />
                 <GenerativeStepperPod
                   icon={intensityUnit === "watt" ? Zap : Heart}
@@ -1010,9 +984,9 @@ export function BuilderManualComposer({
                   min={intensityUnit === "watt" ? 50 : 90}
                   max={intensityUnit === "watt" ? 600 : 220}
                   step={intensityUnit === "watt" ? 5 : 1}
-                  borderClass="border-amber-500/40"
-                  bgClass="bg-amber-500/10"
-                  iconClass="text-amber-300"
+                  borderClass="border-orange-500/40"
+                  bgClass="bg-orange-500/10"
+                  iconClass="text-orange-300"
                 />
                 <GenerativeStepperPod
                   icon={TrendingUp}
@@ -1022,9 +996,9 @@ export function BuilderManualComposer({
                   min={intensityUnit === "watt" ? 50 : 90}
                   max={intensityUnit === "watt" ? 600 : 220}
                   step={intensityUnit === "watt" ? 5 : 1}
-                  borderClass="border-violet-500/40"
-                  bgClass="bg-violet-500/10"
-                  iconClass="text-violet-300"
+                  borderClass="border-orange-500/40"
+                  bgClass="bg-orange-500/10"
+                  iconClass="text-orange-300"
                 />
               </div>
             </div>

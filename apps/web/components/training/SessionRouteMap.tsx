@@ -79,7 +79,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
     return (
       <svg
         viewBox={`0 0 ${VIEW_W} ${height}`}
-        className={cn("w-full rounded-2xl border border-white/10 bg-zinc-950", className)}
+        className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
         role="img"
         aria-label="Punto di partenza GPS"
       >
@@ -114,7 +114,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${height}`}
-      className={cn("w-full rounded-2xl border border-white/10 bg-zinc-950", className)}
+      className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
       role="img"
       aria-label={`Traccia GPS — ${distinct.length} punti`}
     >

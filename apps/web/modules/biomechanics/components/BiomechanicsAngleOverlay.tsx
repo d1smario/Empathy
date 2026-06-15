@@ -216,7 +216,7 @@ export function BiomechanicsAngleOverlay({
     <div className="space-y-3">
       {title ? <p className="text-xs text-gray-400">{title}</p> : null}
       {editable ? (
-        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           <span className="font-semibold text-amber-50">{captureViewModeLabel(viewMode)}</span>
           {" · "}
           Punti ({MONOLATERAL_LANDMARK_IDS.map((id) => landmarkLabelIt(id)).join(" · ")}) — trascina sul video, un solo
@@ -226,13 +226,13 @@ export function BiomechanicsAngleOverlay({
         <p className="text-xs text-gray-500">{captureViewModeLabel(viewMode)}</p>
       )}
       {viewMode === "multiview" ? (
-        <p className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
+        <p className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-xs text-teal-100">
           Editor multi-view in fase 2. Per allineare i punti usa una cattura <strong>laterale</strong> (monolaterale).
         </p>
       ) : null}
       <div
         ref={containerRef}
-        className="relative aspect-video w-full overflow-hidden rounded-xl border border-violet-500/25 bg-black"
+        className="relative aspect-video w-full overflow-hidden rounded-xl border border-teal-500/25 bg-black"
       >
         {videoUrl ? (
           <video
@@ -245,7 +245,7 @@ export function BiomechanicsAngleOverlay({
             crossOrigin="anonymous"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-950 via-black to-violet-950/40">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-black via-black to-teal-950/40">
             <p className="text-xs text-gray-500">Anteprima scheletro · angoli CV</p>
           </div>
         )}
@@ -262,7 +262,7 @@ export function BiomechanicsAngleOverlay({
       <div className="flex flex-wrap items-center gap-3">
         {phases.length > 1 ? (
           <label className="flex min-w-[14rem] flex-1 flex-wrap items-center gap-3 text-xs text-gray-400">
-            <span className="font-mono uppercase tracking-[0.18em] text-violet-200">Fase ciclo</span>
+            <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fase ciclo</span>
             <input
               type="range"
               min={Math.min(...phases)}
@@ -270,9 +270,9 @@ export function BiomechanicsAngleOverlay({
               step={1}
               value={phasePct}
               onChange={(event) => setPhasePct(Number(event.currentTarget.value))}
-              className="min-w-[10rem] flex-1 accent-fuchsia-500"
+              className="min-w-[10rem] flex-1 accent-teal-500"
             />
-            <span className="font-mono text-white">{phasePct}%</span>
+            <span className="font-mono tabular-nums text-white">{phasePct}%</span>
           </label>
         ) : (
           <p className="text-xs text-gray-500">Fase analisi: {phasePct}% ciclo</p>

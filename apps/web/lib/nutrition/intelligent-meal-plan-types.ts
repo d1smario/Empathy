@@ -212,8 +212,8 @@ export type IntelligentMealPlanSlotOut = {
   boostNote?: string;
 };
 
-/** Unico layer attivo: piano pasti sempre da motore deterministico (nessun orchestratore LLM). */
-export type IntelligentMealPlanResponseLayer = "deterministic_meal_assembly_v1";
+/** Layer risposta: assemblaggio deterministico TS oppure motore DB (`generate_plan` Postgres, piano persistito). Nessun orchestratore LLM. */
+export type IntelligentMealPlanResponseLayer = "deterministic_meal_assembly_v1" | "db_engine_v1";
 
 /** Corpo assemblato (deterministico), prima dell’eco solver aggiunta in API. */
 export type IntelligentMealPlanAssembledCore = {

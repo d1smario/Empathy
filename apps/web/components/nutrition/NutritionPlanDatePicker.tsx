@@ -72,12 +72,12 @@ export function NutritionPlanDatePicker({
   return (
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-3", className)}>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex min-h-[2.75rem] min-w-0 items-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/50 to-black/50 px-1 py-1 shadow-inner">
+        <div className="flex min-h-[2.75rem] min-w-0 items-center gap-1 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/50 to-black/50 px-1 py-1 shadow-inner">
           <button
             type="button"
             onClick={goPrev}
             disabled={atMin}
-            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-emerald-500/30 bg-black/40 text-emerald-200 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
+            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-amber-500/30 bg-black/40 text-amber-200 transition-colors hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
             aria-label="Giorno precedente"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -92,9 +92,9 @@ export function NutritionPlanDatePicker({
               if (v) onChange(v);
             }}
             className={cn(
-              "h-11 min-h-[44px] min-w-0 flex-1 cursor-pointer rounded-lg border border-transparent bg-black/20 px-2 sm:h-10 sm:min-h-0",
-              "text-center text-sm font-semibold text-white outline-none",
-              "focus-visible:ring-2 focus-visible:ring-emerald-400/40",
+              "h-11 min-h-[44px] min-w-0 flex-1 cursor-pointer rounded-xl border border-transparent bg-black/20 px-2 sm:h-10 sm:min-h-0",
+              "text-center font-mono text-sm font-semibold tabular-nums text-white outline-none",
+              "focus-visible:ring-2 focus-visible:ring-amber-400/40",
               "[color-scheme:dark]",
             )}
             aria-label="Scegli giorno, mese e anno"
@@ -103,20 +103,20 @@ export function NutritionPlanDatePicker({
             type="button"
             onClick={goNext}
             disabled={atMax}
-            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-emerald-500/30 bg-black/40 text-emerald-200 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
+            className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-amber-500/30 bg-black/40 text-amber-200 transition-colors hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
             aria-label="Giorno successivo"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
         </div>
-        <p className="px-1 text-center text-[0.7rem] capitalize leading-snug text-emerald-200/80 sm:text-xs" aria-hidden>
+        <p className="px-1 text-center text-[0.7rem] capitalize leading-snug text-amber-200/80 sm:text-xs" aria-hidden>
           {labelIt}
         </p>
       </div>
       <button
         type="button"
         onClick={() => onChange(today)}
-        className="h-11 min-h-[44px] shrink-0 touch-manipulation rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-4 text-xs font-bold uppercase tracking-wider text-emerald-100 hover:bg-emerald-500/20 sm:h-10 sm:min-h-0 sm:self-center sm:px-5"
+        className="h-11 min-h-[44px] shrink-0 touch-manipulation rounded-full border border-amber-500/30 bg-amber-500/10 px-4 text-xs font-bold uppercase tracking-wider text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20 sm:h-10 sm:min-h-0 sm:self-center sm:px-5"
       >
         Oggi
       </button>

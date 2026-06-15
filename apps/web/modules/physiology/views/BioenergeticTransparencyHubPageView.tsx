@@ -143,7 +143,7 @@ function BioKpiGrid({ cells }: { cells: BioCellVm[] }) {
           <div className="fueling-main-kpi-sub">{cell.sub}</div>
           <details className="collapsible-card mt-3 border-white/10 bg-black/20 px-2.5 py-2">
             <summary className="text-[0.62rem]">Perché</summary>
-            <p className="m-0 text-[0.72rem] leading-relaxed text-slate-400">{cell.detail}</p>
+            <p className="m-0 text-[0.72rem] leading-relaxed text-gray-400">{cell.detail}</p>
           </details>
         </article>
       ))}
@@ -163,12 +163,12 @@ function LedgerCellStrip({ rows }: { rows: BioenergeticInfluenceLedgerRow[] }) {
             className={`collapsible-card min-w-[16rem] shrink-0 border-white/10 bg-black/30 fueling-main-kpi-card--${tone}`}
           >
             <summary className="text-[0.65rem]">{row.source}</summary>
-            <div className="space-y-2 text-xs leading-relaxed text-slate-400">
+            <div className="space-y-2 text-xs leading-relaxed text-gray-400">
               <p className="m-0">
-                <span className="font-semibold text-slate-200">Consumatore:</span> {row.consumer}
+                <span className="font-semibold text-gray-200">Consumatore:</span> {row.consumer}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-slate-200">Effetto:</span> {row.effect}
+                <span className="font-semibold text-gray-200">Effetto:</span> {row.effect}
               </p>
             </div>
           </details>
@@ -185,9 +185,9 @@ function reasoningToneClass(tone: ReasoningTone): string {
     case "amber":
       return "fueling-main-kpi-card--amber border-amber-500/25";
     case "cyan":
-      return "fueling-main-kpi-card--cyan border-cyan-500/25";
+      return "fueling-main-kpi-card--green border-emerald-500/25";
     case "violet":
-      return "fueling-main-kpi-card--violet border-violet-500/25";
+      return "fueling-main-kpi-card--green border-emerald-500/25";
     case "rose":
       return "fueling-main-kpi-card--rose border-rose-500/25";
     default:
@@ -361,28 +361,28 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
             <article key={rec.id} className={`rounded-2xl border bg-black/30 p-4 ${reasoningToneClass(rec.tone)}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-mono text-[0.62rem] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="font-mono text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gray-500">
                     {rec.domain} · priorità {rec.priority}
                   </div>
                   <h3 className="mt-1 text-sm font-bold text-white">{rec.title}</h3>
                 </div>
-                <span className="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.62rem] text-slate-300">
+                <span className="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.62rem] text-gray-300">
                   {rec.control}
                 </span>
               </div>
-              <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-100">{rec.recommendation}</p>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-200">{rec.recommendation}</p>
               <details className="collapsible-card mt-3 border-white/10 bg-black/25">
                 <summary>Perché / timing</summary>
-                <div className="space-y-2 text-xs leading-relaxed text-slate-400">
-                  <p className="m-0"><span className="font-semibold text-slate-200">Perché:</span> {rec.why}</p>
-                  <p className="m-0"><span className="font-semibold text-cyan-100">Timing:</span> {rec.timing}</p>
+                <div className="space-y-2 text-xs leading-relaxed text-gray-400">
+                  <p className="m-0"><span className="font-semibold text-gray-200">Perché:</span> {rec.why}</p>
+                  <p className="m-0"><span className="font-semibold text-emerald-200">Timing:</span> {rec.timing}</p>
                 </div>
               </details>
             </article>
           ))}
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Nessun consiglio operativo disponibile: servono bundle, reasoning o manual actions.</p>
+        <p className="text-xs text-gray-500">Nessun consiglio operativo disponibile: servono bundle, reasoning o manual actions.</p>
       )}
     </section>
   );
@@ -431,14 +431,14 @@ function ManualActionsPanel({
           const vm = manualActionVm(action);
           return (
             <article key={action.id} className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <div className="font-mono text-[0.62rem] font-bold uppercase tracking-wider text-slate-500">
+              <div className="font-mono text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gray-500">
                 {action.action_type} · {action.status} · conf {vm.confidence}
               </div>
               <h3 className="mt-1 text-sm font-bold text-white">{vm.target}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-400">{vm.action}</p>
-              {vm.reason ? <p className="mt-2 text-xs leading-relaxed text-slate-500">{vm.reason}</p> : null}
+              <p className="mt-1 text-xs leading-relaxed text-gray-400">{vm.action}</p>
+              {vm.reason ? <p className="mt-2 text-xs leading-relaxed text-gray-500">{vm.reason}</p> : null}
               {vm.stagingRunId ? (
-                <p className="mt-2 font-mono text-[0.62rem] text-slate-600">staging: {vm.stagingRunId}</p>
+                <p className="mt-2 font-mono text-[0.62rem] text-gray-600">staging: {vm.stagingRunId}</p>
               ) : null}
               {action.status === "pending" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -454,7 +454,7 @@ function ManualActionsPanel({
                         type="button"
                         disabled={Boolean(busyAction)}
                         onClick={() => onPatchAction(action.id, item.status)}
-                        className="rounded-md border border-white/10 bg-black/35 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-100 transition hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-200 transition-colors hover:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busy ? "..." : item.label}
                       </button>
@@ -466,7 +466,7 @@ function ManualActionsPanel({
           );
         })}
       </div>
-      {!loading && !error && !actions.length ? <p className="text-xs text-slate-500">Nessuna manual action pending.</p> : null}
+      {!loading && !error && !actions.length ? <p className="text-xs text-gray-500">Nessuna manual action pending.</p> : null}
     </section>
   );
 }
@@ -517,26 +517,26 @@ function ReasoningDashboardPanel({
           <article key={card.id} className={`rounded-2xl border bg-black/30 p-4 ${reasoningToneClass(card.tone)}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-mono text-[0.62rem] font-bold uppercase tracking-wider text-slate-500">
+                <div className="font-mono text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gray-500">
                   {card.domain} · {statusLabel(card.status)}
                 </div>
                 <h3 className="mt-1 text-sm font-bold text-white">{card.title}</h3>
-                <p className="mt-1 text-xs text-slate-500">{card.subtitle}</p>
+                <p className="mt-1 text-xs text-gray-500">{card.subtitle}</p>
               </div>
               <div className="shrink-0 text-right">
                 <div className="font-mono text-2xl font-black tabular-nums text-white">{card.value}</div>
-                <div className="text-[0.62rem] text-slate-500">
+                <div className="text-[0.62rem] text-gray-500">
                   conf {card.confidence != null ? `${Math.round(card.confidence * 100)}%` : "n/d"}
                 </div>
               </div>
             </div>
             <details className="collapsible-card mt-3 border-white/10 bg-black/25">
               <summary>Spiegazione</summary>
-              <div className="space-y-3 text-xs leading-relaxed text-slate-400">
+              <div className="space-y-3 text-xs leading-relaxed text-gray-400">
                 <p className="m-0">{card.explanation}</p>
                 {card.actionLines.length ? (
                   <div>
-                    <div className="font-semibold text-slate-200">Azioni</div>
+                    <div className="font-semibold text-gray-200">Azioni</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.actionLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -546,7 +546,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.evidenceLines.length ? (
                   <div>
-                    <div className="font-semibold text-slate-200">Evidenza / trace / gate</div>
+                    <div className="font-semibold text-gray-200">Evidenza / trace / gate</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.evidenceLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -566,7 +566,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.timingLines.length ? (
                   <div>
-                    <div className="font-semibold text-cyan-100">Timing</div>
+                    <div className="font-semibold text-emerald-200">Timing</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.timingLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -575,7 +575,7 @@ function ReasoningDashboardPanel({
                   </div>
                 ) : null}
                 {card.sourceRefs.length ? (
-                  <div className="font-mono text-[0.62rem] text-slate-600">
+                  <div className="font-mono text-[0.62rem] text-gray-600">
                     Source refs: {card.sourceRefs.map((ref) => [ref.table ?? ref.kind, ref.id ?? ref.label].filter(Boolean).join(":")).join(" · ")}
                   </div>
                 ) : null}
@@ -595,7 +595,7 @@ function ReasoningDashboardPanel({
                       type="button"
                       disabled={Boolean(busyRun)}
                       onClick={() => card.stagingRunId && onPatchRun(card.stagingRunId, action.status)}
-                      className="rounded-md border border-white/10 bg-black/35 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-100 transition hover:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-200 transition-colors hover:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {busy ? "..." : action.label}
                     </button>
@@ -606,7 +606,7 @@ function ReasoningDashboardPanel({
           </article>
         ))}
       </div>
-      {!loading && !error && !cards.length ? <p className="text-xs text-slate-500">Nessun ragionamento disponibile.</p> : null}
+      {!loading && !error && !cards.length ? <p className="text-xs text-gray-500">Nessun ragionamento disponibile.</p> : null}
     </section>
   );
 }
@@ -752,13 +752,13 @@ export default function BioenergeticTransparencyHubPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Physiology · Trasparenza operativa"
+      eyebrow="La tua energia, in chiaro"
       eyebrowClassName={moduleEyebrowClass("physiology")}
       title="Bioenergetica"
       description={
         <>
-          Vista <strong className="text-emerald-200/90">solo lettura</strong> sugli stessi segnali usati da dashboard e nutrizione.
-          Ordine: realtà del giorno → segnali → adattamento del piano → sessione.
+          Una vista di <strong className="text-emerald-200/90">sola lettura</strong> sugli stessi segnali usati da dashboard e nutrizione.
+          Parti dalla realtà del giorno, leggi i segnali e vedi come si adatta il piano fino alla sessione.
         </>
       }
       headerActions={
@@ -766,42 +766,42 @@ export default function BioenergeticTransparencyHubPageView() {
           <AdminScopedPro2Link
             href="/bioenergetics"
             variant="secondary"
-            className="justify-center border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             Report giornaliero
           </AdminScopedPro2Link>
           <AdminScopedPro2Link
             href="/dashboard"
             variant="secondary"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             Dashboard
           </AdminScopedPro2Link>
           <AdminScopedPro2Link
             href="/physiology"
             variant="secondary"
-            className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
-            Metabolic Lab
+            Fisiologia
           </AdminScopedPro2Link>
           <AdminScopedPro2Link
             href="/training/vyria"
             variant="secondary"
-            className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             VIRYA
           </AdminScopedPro2Link>
           <AdminScopedPro2Link
             href="/training/builder"
             variant="secondary"
-            className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             Builder
           </AdminScopedPro2Link>
           <AdminScopedPro2Link
             href="/nutrition"
             variant="secondary"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             Nutrition
           </AdminScopedPro2Link>
@@ -849,7 +849,7 @@ export default function BioenergeticTransparencyHubPageView() {
                 </header>
                 <details className="collapsible-card" style={{ marginBottom: 10 }}>
                   <summary>Pipeline canonica · Compute → Application</summary>
-                  <ol className="m-0 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-slate-400">
+                  <ol className="m-0 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                     <li>Realtà del giorno e memoria atleta alimentano il bundle operativo.</li>
                     <li>VIRYA consuma loop, divergenza e contesto per ritunare il microciclo.</li>
                     <li>Builder materializza la singola sessione; non sostituisce VIRYA sul programma macro.</li>
@@ -859,10 +859,10 @@ export default function BioenergeticTransparencyHubPageView() {
                 <BioKpiGrid cells={cells} />
                 {sig.nutritionPerformanceIntegration.rationale.length > 0 ? (
                   <details className="collapsible-card" style={{ marginBottom: 10, borderColor: "rgba(56,189,248,0.35)" }}>
-                    <summary className="text-[0.7rem] font-bold uppercase tracking-wider text-cyan-200/90">
+                    <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
                       Leve solver nutrizione ({sig.nutritionPerformanceIntegration.rationale.length})
                     </summary>
-                    <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-400">
+                    <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                       {sig.nutritionPerformanceIntegration.rationale.map((line) => (
                         <li key={line}>{line}</li>
                       ))}
@@ -889,7 +889,7 @@ export default function BioenergeticTransparencyHubPageView() {
             ) : null}
 
             {hub.crossModuleDynamicsLines.length > 0 ? (
-              <details className="collapsible-card border-cyan-500/25 bg-cyan-950/10">
+              <details className="collapsible-card border-emerald-500/25 bg-emerald-950/10">
                 <summary>Dinamica incrociata · training ↔ nutrizione ({hub.crossModuleDynamicsLines.length})</summary>
                 <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                   {hub.crossModuleDynamicsLines.slice(0, 12).map((line) => (
@@ -900,7 +900,7 @@ export default function BioenergeticTransparencyHubPageView() {
             ) : null}
 
             <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
-              <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">
+              <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-400">
                 Spina lettura · copertura {hub.readSpineCoverage.spineScore}%
               </h2>
               <div className="mt-3 flex flex-wrap gap-2">

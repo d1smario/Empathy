@@ -46,9 +46,9 @@ export function LactateWorkoutPickerPro2({
 
   const isMox = variant === "maxox";
   const btnClass = isMox
-    ? "physiology-pro2-lac-pick-btn physiology-pro2-lac-pick-btn--maxox w-full justify-between gap-3 border border-rose-500/45 bg-gradient-to-r from-rose-500/14 to-fuchsia-900/20 py-3 text-left font-semibold text-rose-50 hover:from-rose-500/20 hover:to-fuchsia-900/28"
-    : "physiology-pro2-lac-pick-btn w-full justify-between gap-3 border border-amber-500/40 bg-gradient-to-r from-amber-500/12 to-orange-500/10 py-3 text-left font-semibold text-amber-50 hover:from-amber-500/18 hover:to-orange-500/14";
-  const icoClass = isMox ? "h-5 w-5 shrink-0 text-rose-300" : "h-5 w-5 shrink-0 text-amber-300";
+    ? "physiology-pro2-lac-pick-btn physiology-pro2-lac-pick-btn--maxox w-full justify-between gap-3 border border-emerald-500/30 bg-emerald-500/10 py-3 text-left font-semibold text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+    : "physiology-pro2-lac-pick-btn w-full justify-between gap-3 border border-emerald-500/30 bg-emerald-500/10 py-3 text-left font-semibold text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20";
+  const icoClass = "h-5 w-5 shrink-0 text-emerald-300";
 
   return (
     <div className={`physiology-pro2-lac-pick${isMox ? " physiology-pro2-lac-pick--maxox" : ""}`} ref={panelRef}>

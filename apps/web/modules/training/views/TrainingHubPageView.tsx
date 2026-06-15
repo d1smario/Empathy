@@ -46,16 +46,16 @@ export default function TrainingHubPageView() {
   const { adminScoped } = useActiveAthlete();
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Hub"
+      eyebrow="Allenamento"
       eyebrowClassName="text-orange-400"
       title="Allenamento"
-      description="Hub moduli: Builder, Calendar, Analyzer e Virya condividono la stessa linea dati e un solo motore di sessione."
+      description="Il punto di partenza: crea le tue sedute, consulta il calendario, analizza i dati e segui il piano annuale."
       headerActions={
         <>
           <HubLink
             href="/dashboard"
             variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
             Dashboard
           </HubLink>
@@ -71,58 +71,54 @@ export default function TrainingHubPageView() {
       </div>
 
       <Pro2SectionCard
-        accent="fuchsia"
+        accent="orange"
         title="Percorsi"
         subtitle="Quattro viste prodotto + Virya (piano annuale)"
         icon={Sparkles}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <HubLink
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-600/25 to-violet-600/20 py-4 hover:from-fuchsia-600/35 hover:to-violet-600/30"
-          >
-            <Sparkles className="mr-2 h-4 w-4 shrink-0 text-fuchsia-300 drop-shadow-[0_0_8px_rgba(232,121,249,0.45)]" aria-hidden />
+          <HubLink href="/training/builder" variant="primary" className="justify-center py-4">
+            <Sparkles className="mr-2 h-4 w-4 shrink-0" aria-hidden />
             Builder sessione
           </HubLink>
           <HubLink
             href="/training/calendar"
             variant="secondary"
-            className="justify-center border border-sky-500/40 bg-sky-500/10 py-4 hover:bg-sky-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-sky-300 drop-shadow-[0_0_8px_rgba(56,189,248,0.45)]" aria-hidden />
+            <CalendarDays className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
             Calendar
           </HubLink>
           <HubLink
             href="/training/session"
             variant="secondary"
-            className="justify-center border border-orange-500/40 bg-orange-500/10 py-4 hover:bg-orange-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            <CalendarClock className="mr-2 h-4 w-4 shrink-0 text-orange-300 drop-shadow-[0_0_8px_rgba(251,146,60,0.45)]" aria-hidden />
+            <CalendarClock className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
             Giornata training
           </HubLink>
           <HubLink
             href="/physiology/daily"
             variant="secondary"
-            className="justify-center border border-emerald-500/40 bg-emerald-500/10 py-4 hover:bg-emerald-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            <HeartPulse className="mr-2 h-4 w-4 shrink-0 text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.45)]" aria-hidden />
+            <HeartPulse className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
             Wellness giornaliero
           </HubLink>
           <HubLink
             href="/training/analytics"
             variant="secondary"
-            className="justify-center border border-rose-500/40 bg-rose-500/10 py-4 hover:bg-rose-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            <BarChart3 className="mr-2 h-4 w-4 shrink-0 text-rose-300 drop-shadow-[0_0_8px_rgba(251,113,133,0.4)]" aria-hidden />
+            <BarChart3 className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
             Analyzer
           </HubLink>
           <HubLink
             href="/training/vyria"
             variant="secondary"
-            className="justify-center border border-amber-500/40 bg-amber-500/10 py-4 hover:bg-amber-500/15"
+            className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
-            <CalendarRange className="mr-2 h-4 w-4 shrink-0 text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]" aria-hidden />
+            <CalendarRange className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
             Virya · annual
           </HubLink>
         </div>

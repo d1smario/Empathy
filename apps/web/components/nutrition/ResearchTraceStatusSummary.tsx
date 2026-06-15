@@ -37,7 +37,7 @@ export function ResearchTraceStatusSummary({
   const latest = traces[0];
 
   return (
-    <small className={`text-slate-500 ${className ?? ""}`.trim()}>
+    <small className={`text-gray-500 ${className ?? ""}`.trim()}>
       {label}: {pluralize(traces.length, "traccia canonica", "tracce canoniche")} ·{" "}
       {totals.completeHops}/{Math.max(1, totals.totalHops)} hop completati ·{" "}
       {pluralize(totals.documents, "documento", "documenti")} ·{" "}

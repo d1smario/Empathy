@@ -32,7 +32,7 @@ function Stepper({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+      <span className="text-[0.6rem] font-bold uppercase tracking-wider text-gray-400">{label}</span>
       <div className="flex items-center gap-1">
         <button
           type="button"
@@ -93,9 +93,9 @@ export function CoachLibraryContractEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-fuchsia-500/25 bg-black/40 px-3 py-2.5">
-        <label className="flex flex-col gap-1 text-[0.65rem] text-slate-400">
-          <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-fuchsia-200/90">
+      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-orange-500/25 bg-black/40 px-3 py-2.5">
+        <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
+          <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-orange-400">
             <Timer className="h-3.5 w-3.5" aria-hidden />
             Durata calendario
           </span>
@@ -120,7 +120,7 @@ export function CoachLibraryContractEditor({
         {dirty && onReset ? (
           <button
             type="button"
-            className="text-[0.65rem] font-semibold text-slate-400 underline decoration-white/20 hover:text-violet-200"
+            className="text-[0.65rem] font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
             onClick={onReset}
           >
             Annulla modifiche
@@ -213,7 +213,7 @@ export function CoachLibraryContractEditor({
           })}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">Nessun blocco modificabile in questo template.</p>
+        <p className="text-xs text-gray-500">Nessun blocco modificabile in questo template.</p>
       )}
 
       <CoachLibraryContractPreview

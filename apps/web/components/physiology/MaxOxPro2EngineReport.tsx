@@ -11,6 +11,13 @@ import {
   YAxis,
 } from "recharts";
 import type { MaxOxidateOutput } from "@/lib/engines/max-oxidate-engine";
+import {
+  CHART_AXIS,
+  CHART_FONT,
+  CHART_GRID,
+  CHART_MODULE_ACCENT,
+  chartTooltipStyle,
+} from "@/lib/ui/chart-theme";
 
 type Vo2LabMode = "device" | "test";
 
@@ -276,18 +283,18 @@ export function MaxOxPro2EngineReport({
           </div>
         </div>
         <div className="physiology-pro2-eng-del-chart-card">
-          <p className="physiology-pro2-eng-chart-h3 physiology-pro2-eng-chart-h3--cyan">Delivery vs utilizzo</p>
+          <p className="physiology-pro2-eng-chart-h3 text-emerald-300">Delivery vs utilizzo</p>
           <div className="physiology-pro2-eng-chart-inner">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={barData} margin={{ top: 8, right: 12, left: 4, bottom: 32 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 10 }} angle={-25} textAnchor="end" height={48} />
-                <YAxis domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} angle={-25} textAnchor="end" height={48} />
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                 <Tooltip
                   formatter={(v: number) => [`${v.toFixed(0)}`, ""]}
-                  contentStyle={{ background: "#0c0c10", border: "1px solid rgba(34,211,238,0.35)", borderRadius: 8 }}
+                  contentStyle={chartTooltipStyle("physiology")}
                 />
-                <Bar dataKey="v" fill="#22d3ee" radius={[6, 6, 0, 0]} name="Indice ×100" />
+                <Bar dataKey="v" fill={CHART_MODULE_ACCENT.physiology} radius={[6, 6, 0, 0]} name="Indice ×100" />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -25,26 +25,29 @@ export function PlannedSessionKpiStrip({
 
   return (
     <div className={gridClass}>
-      <div className="rounded-2xl border border-emerald-500/45 bg-emerald-500/[0.12] px-4 py-3">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-200/80">Durata</div>
-        <div className="mt-1 text-xl font-bold tabular-nums text-emerald-50">{formatDurationMin(metrics.durationMinutes)}</div>
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata</div>
+        <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{formatDurationMin(metrics.durationMinutes)}</div>
       </div>
-      <div className="rounded-2xl border border-rose-500/45 bg-rose-500/[0.12] px-4 py-3">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wider text-rose-200/80">Carico · TSS</div>
-        <div className="mt-1 text-xl font-bold tabular-nums text-rose-50">{metrics.tss > 0 ? metrics.tss.toFixed(0) : "—"}</div>
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Carico · TSS</div>
+        <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.tss > 0 ? metrics.tss.toFixed(0) : "—"}</div>
       </div>
-      <div className="rounded-2xl border border-sky-500/45 bg-sky-500/[0.12] px-4 py-3">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wider text-sky-200/80">kJ · meccanico</div>
-        <div className="mt-1 text-xl font-bold tabular-nums text-sky-50">{metrics.kj > 0 ? metrics.kj.toFixed(0) : "—"}</div>
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">kJ · meccanico</div>
+        <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.kj > 0 ? metrics.kj.toFixed(0) : "—"}</div>
       </div>
-      <div className="rounded-2xl border border-amber-500/45 bg-amber-500/[0.12] px-4 py-3">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wider text-amber-200/80">Kcal · metabolico</div>
-        <div className="mt-1 text-xl font-bold tabular-nums text-amber-50">{metrics.kcal > 0 ? metrics.kcal.toFixed(0) : "—"}</div>
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · metabolico</div>
+        <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.kcal > 0 ? metrics.kcal.toFixed(0) : "—"}</div>
       </div>
-      <div className="rounded-2xl border border-violet-500/45 bg-violet-500/[0.12] px-4 py-3">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-200/80">Pavg</div>
-        <div className="mt-1 text-xl font-bold tabular-nums text-violet-50">
-          {metrics.avgPowerW != null && metrics.avgPowerW > 0 ? `${metrics.avgPowerW} W` : "—"}
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Pavg</div>
+        <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+          {metrics.avgPowerW != null && metrics.avgPowerW > 0 ? metrics.avgPowerW : "—"}
+          {metrics.avgPowerW != null && metrics.avgPowerW > 0 ? (
+            <span className="ml-1 text-xs font-medium text-gray-500">W</span>
+          ) : null}
         </div>
       </div>
     </div>

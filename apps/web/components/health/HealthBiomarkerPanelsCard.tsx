@@ -60,8 +60,8 @@ export function HealthBiomarkerPanelsCard() {
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
       aria-label="Panel biomarkers"
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-rose-300">Health · dati reali</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Biomarkers recenti</h2>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Salute · dati reali</p>
+      <h2 className="mt-2 text-lg font-bold text-white">Biomarcatori recenti</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-36 animate-pulse rounded-full bg-white/10" />
@@ -82,11 +82,11 @@ export function HealthBiomarkerPanelsCard() {
           {panels.map((p) => (
             <li
               key={p.id}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition-colors hover:border-rose-500/40 hover:bg-white/[0.05]"
             >
-              <span className="font-medium text-white">{p.type}</span>
+              <span className="font-medium capitalize text-white">{p.type.replace(/_/g, " ")}</span>
               <span className="mx-2 text-gray-600">·</span>
-              <span className="font-mono text-xs text-gray-500">
+              <span className="font-mono text-xs tabular-nums text-gray-500">
                 {p.sample_date ?? p.reported_at?.slice(0, 10) ?? "—"}
               </span>
             </li>

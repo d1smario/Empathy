@@ -54,22 +54,16 @@ export function PhysiologyPro2LactateLab({
   const vo2maxRefMlMinKg = Math.max(0, profileVo2maxMlMinKg ?? 0, vo2MlKg ?? 0);
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--lactate">
-      <div className="physiology-pro2-lab-hero">
-        <p className="physiology-pro2-lab-kicker">Analisi metabolica dettagliata · lactate shuttle · motore CHO</p>
-        <h1 className="physiology-pro2-lab-title physiology-pro2-lab-title--amber">Lactate &amp; oxidate analysis</h1>
-        {autoDecodeText ? (
+      {autoDecodeText ? (
+        <div className="physiology-pro2-lab-hero">
           <div className="physiology-pro2-lab-decode physiology-pro2-lab-decode--amber">
             <CheckCircle2 className="physiology-pro2-lab-decode-ico" aria-hidden />
-            <div>
-              <strong>Auto-decode attivo</strong>
-              <span>{autoDecodeText}</span>
-            </div>
-            <span className="physiology-pro2-lab-sessions">
-              <strong>{sessionCount}</strong> sessioni analizzate
+            <span>
+              <strong>Auto-decode attivo</strong> · {sessionCount} sessioni analizzate
             </span>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <LactatePro2EngineReport model={model} vo2Used={vo2Used} rerUsed={rerUsed} />
 

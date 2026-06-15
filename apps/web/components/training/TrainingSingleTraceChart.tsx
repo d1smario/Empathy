@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_AXIS, CHART_FONT, CHART_GRID, CHART_STROKE, chartTooltipStyle } from "@/lib/ui/chart-theme";
 
 type TrainingSingleTraceChartProps = {
   label: string;
@@ -38,17 +39,12 @@ export function TrainingSingleTraceChart({
     <div className="h-[260px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-          <XAxis dataKey="t" tick={{ fill: "#94a3b8", fontSize: 10 }} interval="preserveStartEnd" minTickGap={24} />
-          <YAxis tick={{ fill: "#94a3b8", fontSize: 10 }} width={44} domain={["auto", "auto"]} />
+          <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} />
+          <XAxis dataKey="t" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} interval="preserveStartEnd" minTickGap={24} />
+          <YAxis tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} width={44} domain={["auto", "auto"]} />
           <Tooltip
-            contentStyle={{
-              background: "#0f172a",
-              border: "1px solid rgba(148,163,184,0.35)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-            labelStyle={{ color: "#e2e8f0" }}
+            contentStyle={chartTooltipStyle("training")}
+            labelStyle={{ color: "#e5e7eb" }}
             formatter={(val: number) => [`${Number.isFinite(val) ? val.toFixed(2) : "0.00"}${unit ? ` ${unit}` : ""}`, label]}
           />
           <defs>
@@ -64,7 +60,7 @@ export function TrainingSingleTraceChart({
             fill={`url(#${fillId})`}
             fillOpacity={1}
           />
-          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={2.2} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={CHART_STROKE.base} dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

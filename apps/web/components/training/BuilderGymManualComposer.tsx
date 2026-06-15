@@ -43,22 +43,22 @@ const EXECUTION_QUICK_CHIPS: readonly string[] = [
 ];
 
 const panelShell =
-  "rounded-2xl border border-fuchsia-500/40 bg-gradient-to-br from-violet-950/55 via-fuchsia-950/25 to-orange-950/40 shadow-[0_0_40px_-10px_rgba(192,38,211,0.35)]";
+  "rounded-2xl border border-orange-500/40 bg-gradient-to-br from-orange-950/55 via-orange-950/25 to-orange-950/40 shadow-[0_0_40px_-10px_rgba(251,146,60,0.35)]";
 const catalogPanel =
-  "mt-4 rounded-xl border border-violet-400/35 bg-gradient-to-br from-violet-950/35 via-fuchsia-950/15 to-orange-950/25 p-3";
+  "mt-4 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-950/35 via-orange-950/15 to-orange-950/25 p-3";
 const chipOff =
   "rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[0.65rem] font-bold text-gray-300 transition hover:border-white/25 hover:bg-white/5";
 const chipOnEquip =
-  "rounded-full border border-violet-300/55 bg-gradient-to-r from-violet-600/95 to-fuchsia-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-violet-600/25";
+  "rounded-full border border-orange-300/55 bg-gradient-to-r from-orange-600/95 to-orange-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-600/25";
 const chipOnContract =
-  "rounded-full border border-fuchsia-300/55 bg-gradient-to-r from-fuchsia-600/95 to-orange-500/85 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-fuchsia-600/20";
+  "rounded-full border border-orange-300/55 bg-gradient-to-r from-orange-600/95 to-orange-500/85 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-600/20";
 const chipRxActive =
-  "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-500/90 to-pink-600/80 px-2 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/25";
+  "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-500/90 to-amber-600/80 px-2 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/25";
 const chipRxIdle =
   "rounded-full border border-white/12 bg-black/35 px-2 py-1 text-[0.65rem] font-semibold text-gray-400 transition hover:border-orange-400/30 hover:text-orange-100";
 
 const btnPrimary =
-  "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:brightness-110 border border-white/10 shadow-fuchsia-500/20";
+  "empathy-btn-gradient inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110 disabled:opacity-40";
 
 export type BuilderGymManualComposerProps = {
   athleteId: string | null;
@@ -177,12 +177,12 @@ export function BuilderGymManualComposer({
     <section aria-label="Builder manuale scheda palestra" className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="bg-gradient-to-r from-violet-200 via-fuchsia-200 to-orange-200 bg-clip-text text-lg font-bold text-transparent">
+          <h2 className="text-lg font-bold text-white">
             Manuale · Scheda palestra
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-gray-400">
             Stesso modello di V1: catalogo EMPATHY per disciplina{" "}
-            <span className="font-semibold text-fuchsia-300">{currentSportLabel}</span> (tag {pro2PaletteSportToBlock1SportTag(paletteSport)}), filtri su attrezzi e contrazione, poi prescrizione con chip
+            <span className="font-semibold text-orange-300">{currentSportLabel}</span> (tag {pro2PaletteSportToBlock1SportTag(paletteSport)}), filtri su attrezzi e contrazione, poi prescrizione con chip
             serie / %1RM / superserie — senza blocchi watt/FC da endurance.
           </p>
         </div>
@@ -193,13 +193,13 @@ export function BuilderGymManualComposer({
         ) : null}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-violet-500/30 bg-black/45 p-3 shadow-inner">
+      <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione (proxy tempo)" estimatedTss={estimatedTss} />
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-fuchsia-500/20 bg-gradient-to-r from-violet-950/40 to-orange-950/25 px-3 py-2.5">
+        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-orange-950/25 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-fuchsia-200/90">Durata nel calendario</span>
+            <span className="font-bold uppercase tracking-wider text-orange-200/90">Durata nel calendario</span>
             <select
-              className="min-w-[7.5rem] rounded-lg border border-violet-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+              className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
               onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
             >
@@ -217,13 +217,13 @@ export function BuilderGymManualComposer({
       </div>
 
       <div className={catalogPanel}>
-        <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-fuchsia-200">
+        <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200">
           <Sparkles className="h-3.5 w-3.5 text-orange-300" aria-hidden />
           Catalogo esercizi (V1 · EMPATHY)
         </p>
         <MuscleDistrictFilterPopover value={catalogMuscle} onChange={setCatalogMuscle} />
         <div className="mt-3 space-y-2">
-          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-violet-300/90">Attrezzi · filtro libreria</p>
+          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Attrezzi · filtro libreria</p>
           <div className="flex flex-wrap gap-1.5">
             {PRO2_GYM_LIBRARY_EQUIPMENT_OPTIONS.map((o) => (
               <button
@@ -274,7 +274,7 @@ export function BuilderGymManualComposer({
                         onClick={() => setSelectedCatalogId(r.id)}
                         className={`flex w-full flex-col rounded-md px-2 py-1.5 text-left text-xs transition ${
                           sel
-                            ? "bg-gradient-to-r from-violet-600/50 to-fuchsia-600/40 text-white ring-1 ring-fuchsia-300/45"
+                            ? "bg-gradient-to-r from-orange-600/50 to-orange-600/40 text-white ring-1 ring-orange-300/45"
                             : "text-gray-300 hover:bg-white/10"
                         }`}
                       >
@@ -290,7 +290,7 @@ export function BuilderGymManualComposer({
               </ul>
             )}
           </div>
-          <div className="flex flex-col justify-between rounded-lg border border-fuchsia-500/30 bg-gradient-to-br from-violet-950/40 to-orange-950/20 p-3">
+          <div className="flex flex-col justify-between rounded-lg border border-orange-500/30 bg-gradient-to-br from-orange-950/40 to-orange-950/20 p-3">
             {selectedExercise ? (
               <>
                 <div className="flex gap-3">
@@ -299,17 +299,17 @@ export function BuilderGymManualComposer({
                     alt={selectedExercise.name}
                     catalogExerciseId={selectedExercise.id}
                     fallbackLabel={selectedExercise.name}
-                    className="h-24 w-24 shrink-0 rounded-xl border border-fuchsia-400/25"
+                    className="h-24 w-24 shrink-0 rounded-xl border border-orange-400/25"
                   />
                   <div className="min-w-0">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-fuchsia-300/80">Selezionato</p>
+                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selezionato</p>
                     <p className="mt-1 text-sm font-bold text-white">{selectedExercise.name}</p>
                     <p className="mt-1 text-[0.65rem] text-gray-500">{selectedExercise.primaryDistrict || selectedExercise.muscleGroup}</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="mt-3 w-full rounded-xl border border-orange-400/45 bg-gradient-to-r from-violet-600 to-orange-500 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:brightness-110"
+                  className="mt-3 w-full rounded-xl border border-orange-400/45 bg-gradient-to-r from-orange-600 to-orange-500 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:brightness-110"
                   onClick={() => {
                     addFromCatalog(selectedExercise);
                   }}
@@ -325,12 +325,12 @@ export function BuilderGymManualComposer({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-violet-500/25 bg-black/35 p-3">
+      <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
         <label className="flex max-w-xl flex-col gap-1 text-[0.65rem] text-gray-400">
           Nome sessione
           <input
             type="text"
-            className="rounded-lg border border-violet-400/30 bg-black/50 px-2 py-2 text-sm text-white"
+            className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
             value={manualSessionName}
             onChange={(e) => setManualSessionName(e.target.value)}
           />
@@ -338,11 +338,11 @@ export function BuilderGymManualComposer({
       </div>
 
       <div className="mt-4 space-y-3">
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-orange-300">
+        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-300 to-orange-300">
           Scheda · {gymRows.length} esercizi
         </p>
         {gymRows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-fuchsia-500/30 bg-violet-950/20 px-4 py-8 text-center text-sm text-gray-500">
+          <p className="rounded-xl border border-dashed border-orange-500/30 bg-orange-950/20 px-4 py-8 text-center text-sm text-gray-500">
             Aggiungi esercizi dal catalogo. Nessun blocco “aerobico”: solo scheda strength come in V1.
           </p>
         ) : (
@@ -350,7 +350,7 @@ export function BuilderGymManualComposer({
             {gymRows.map((row) => (
               <li
                 key={row.id}
-                className="rounded-2xl border border-fuchsia-400/35 bg-gradient-to-br from-violet-950/40 via-fuchsia-950/15 to-orange-950/25 p-4 shadow-inner shadow-fuchsia-950/40"
+                className="rounded-2xl border border-orange-400/35 bg-gradient-to-br from-orange-950/40 via-orange-950/15 to-orange-950/25 p-4 shadow-inner shadow-orange-950/40"
               >
                 <div className="mb-3 flex gap-3">
                   <GymExerciseMediaThumb
@@ -358,13 +358,13 @@ export function BuilderGymManualComposer({
                     alt={row.name}
                     catalogExerciseId={row.exerciseId}
                     fallbackLabel={row.name}
-                    className="h-28 w-28 shrink-0 rounded-xl border border-fuchsia-500/25 object-cover"
+                    className="h-28 w-28 shrink-0 rounded-xl border border-orange-500/25 object-cover"
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <input
                         type="text"
-                        className="min-w-[10rem] flex-1 rounded-lg border border-violet-400/35 bg-black/45 px-3 py-2 text-base font-semibold text-white"
+                        className="min-w-[10rem] flex-1 rounded-lg border border-orange-400/35 bg-black/45 px-3 py-2 text-base font-semibold text-white"
                         value={row.name}
                         onChange={(e) => updateRow(row.id, { name: e.target.value })}
                       />
@@ -392,7 +392,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-violet-300/90">Serie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Serie</p>
                   <div className="flex flex-wrap gap-1">
                     {SET_CHIP_PRESETS.map((n) => (
                       <button
@@ -416,7 +416,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-fuchsia-300/90">Ripetute</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Ripetute</p>
                   <div className="flex flex-wrap gap-1">
                     {REP_CHIP_PRESETS.map((r) => (
                       <button
@@ -467,7 +467,7 @@ export function BuilderGymManualComposer({
                     />
                   </div>
                   <div className="min-w-[8rem] flex-1 space-y-2">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-pink-200/90">Recupero (s)</p>
+                    <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Recupero (s)</p>
                     <div className="flex flex-wrap gap-1">
                       {REST_CHIP_PRESETS.map((s) => (
                         <button
@@ -506,7 +506,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-violet-200/90">Contrazione (prescrizione)</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Contrazione (prescrizione)</p>
                   <div className="flex flex-wrap gap-1">
                     {PRO2_GYM_CONTRACTION_OPTIONS.filter((o) => o.value !== "").map((o) => (
                       <button
@@ -526,7 +526,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-fuchsia-200/90">Tipo di esecuzione · scorciatoie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Tipo di esecuzione · scorciatoie</p>
                   <div className="flex flex-wrap gap-1">
                     {EXECUTION_QUICK_CHIPS.map((label) => (
                       <button
@@ -542,7 +542,7 @@ export function BuilderGymManualComposer({
                   <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-gray-500">
                     Elenco completo
                     <select
-                      className="rounded-lg border border-violet-400/30 bg-black/50 px-2 py-2 text-sm text-white"
+                      className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
                       value={row.executionStyle}
                       onChange={(e) => updateRow(row.id, { executionStyle: e.target.value })}
                     >
@@ -594,8 +594,8 @@ export function BuilderGymManualComposer({
                     type="button"
                     className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[0.7rem] font-bold transition ${
                       extraNotesOpen[row.id]
-                        ? "border-pink-400/50 bg-pink-500/20 text-pink-100"
-                        : "border-white/15 bg-black/40 text-gray-300 hover:border-pink-400/35"
+                        ? "border-orange-400/50 bg-orange-500/20 text-orange-100"
+                        : "border-white/15 bg-black/40 text-gray-300 hover:border-orange-400/35"
                     }`}
                     onClick={() =>
                       setExtraNotesOpen((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
@@ -607,7 +607,7 @@ export function BuilderGymManualComposer({
                   {extraNotesOpen[row.id] ? (
                     <textarea
                       rows={3}
-                      className="mt-2 w-full rounded-lg border border-pink-400/25 bg-black/50 px-2 py-2 text-sm text-white"
+                      className="mt-2 w-full rounded-xl border border-orange-400/25 bg-black/40 px-2 py-2 text-sm text-white"
                       placeholder="Note al coach, varianti, logging…"
                       value={row.notes}
                       onChange={(e) => updateRow(row.id, { notes: e.target.value })}

@@ -825,7 +825,11 @@ export function FoodDiaryPanel({
           style={{ maxWidth: 200 }}
         />
         {planDateAnchor && planDateAnchor !== entryDate ? (
-          <button type="button" className="nutrition-ui-chip" onClick={() => setEntryDate(planDateAnchor)}>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
+            onClick={() => setEntryDate(planDateAnchor)}
+          >
             Allinea al giorno piano ({planDateAnchor})
           </button>
         ) : null}
@@ -1335,7 +1339,7 @@ export function FoodDiaryPanel({
                               <div className="nutrition-diary-expo-row-actions">
                                 <button
                                   type="button"
-                                  className="nutrition-ui-chip text-[11px] py-0.5 px-2"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                                   onClick={() => void removeEntry(row.id)}
                                 >
                                   Elimina

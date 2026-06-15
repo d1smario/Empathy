@@ -24,24 +24,7 @@ import {
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
 import { cn } from "@/lib/cn";
-
-const ACCENT_TEXT: Record<NonNullable<SessionKpiTile["accent"]>, string> = {
-  fuchsia: "text-fuchsia-300",
-  violet: "text-violet-300",
-  orange: "text-orange-300",
-  cyan: "text-cyan-300",
-  emerald: "text-emerald-300",
-  sky: "text-sky-300",
-};
-
-const ACCENT_BORDER: Record<NonNullable<SessionKpiTile["accent"]>, string> = {
-  fuchsia: "border-fuchsia-500/25",
-  violet: "border-violet-500/25",
-  orange: "border-orange-500/25",
-  cyan: "border-cyan-500/25",
-  emerald: "border-emerald-500/25",
-  sky: "border-sky-500/25",
-};
+import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -61,16 +44,17 @@ const CHART_CHANNELS: ReadonlySet<ChartChannel> = new Set([
   "vertical_speed_mps",
 ]);
 
+/** Colori segnale canonici da chart-theme (un hex per segnale in tutta l'app). */
 const SERIES_COLOR: Record<ChartChannel, string> = {
-  power: "#f0abfc",
-  hr: "#34d399",
-  speed: "#22d3ee",
-  cadence: "#a78bfa",
-  altitude: "#fb923c",
-  temperature: "#facc15",
-  distance: "#60a5fa",
-  pace_min_per_km: "#f472b6",
-  vertical_speed_mps: "#fb923c",
+  power: CHART_SIGNAL.power,
+  hr: CHART_SIGNAL.hr,
+  speed: CHART_SIGNAL.speed,
+  cadence: CHART_SIGNAL.cadence,
+  altitude: CHART_SIGNAL.altitude,
+  temperature: "#fbbf24", // amber-400 — nessun segnale canonico dedicato
+  distance: "#60a5fa", // blue-400 (ciclo CHART_SERIES)
+  pace_min_per_km: CHART_SIGNAL.speed,
+  vertical_speed_mps: CHART_SIGNAL.altitude,
 };
 
 const SESSION_SERIES_CHART_CHANNELS = Array.from(CHART_CHANNELS).join(",");
@@ -101,20 +85,12 @@ function fmt(value: number | null, digits: number): string {
 }
 
 function KpiTile({ tile }: { tile: SessionKpiTile }) {
-  const accent = tile.accent ?? "cyan";
   return (
-    <div
-      className={cn(
-        "rounded-2xl border bg-black/40 px-4 py-3",
-        ACCENT_BORDER[accent],
-      )}
-    >
-      <p className={cn("font-mono text-[0.6rem] font-bold uppercase tracking-wider", ACCENT_TEXT[accent])}>
-        {tile.label}
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-white">
+    <div className="rounded-2xl border border-orange-500/25 bg-black/40 px-4 py-3">
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{tile.label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
         {tile.value}
-        {tile.unit ? <span className="ml-1 text-sm font-medium text-zinc-400">{tile.unit}</span> : null}
+        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{tile.unit}</span> : null}
       </p>
     </div>
   );
@@ -250,17 +226,17 @@ function SessionDetailCard({
       <div className="flex flex-wrap items-center gap-3">
         {vm.sportGlyph ? <SportDisciplineGlyph glyph={vm.sportGlyph} className="h-9 w-9" /> : null}
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-wider text-zinc-400">
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
             {vm.sport ?? "Sessione"} · {vm.sourceLabel}
           </p>
           {vm.fileName ? (
-            <p className="truncate text-xs text-zinc-500" title={vm.fileName}>
+            <p className="truncate text-xs text-gray-500" title={vm.fileName}>
               file: {vm.fileName}
             </p>
           ) : null}
         </div>
         {vm.importQualityNote ? (
-          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber-200">
+          <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
             {vm.importQualityNote}
           </span>
         ) : null}
@@ -276,7 +252,6 @@ function SessionDetailCard({
               label: "Distanza",
               value: (distanceMeters / 1000).toFixed(2),
               unit: "km",
-              accent: "fuchsia",
             }}
           />
         ) : null}
@@ -285,11 +260,11 @@ function SessionDetailCard({
       {routeBundle && routeBundle.points.length > 0 ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <MapIcon className="h-3.5 w-3.5 text-fuchsia-300" />
-            <p className="font-mono text-[0.6rem] font-bold uppercase tracking-wider text-fuchsia-300">
+            <MapIcon className="h-3.5 w-3.5 text-orange-400" />
+            <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-400">
               Percorso GPS
             </p>
-            <span className="font-mono text-[0.6rem] uppercase tracking-wider text-zinc-500">
+            <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">
               {routeBundle.points.length} pt
               {routeBundle.points.length === 2 &&
               routeBundle.points[0]!.lat === routeBundle.points[1]!.lat &&
@@ -308,19 +283,19 @@ function SessionDetailCard({
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
           <table className="w-full divide-y divide-white/5 text-sm">
             <thead>
-              <tr className="bg-white/[0.03] text-[0.6rem] font-bold uppercase tracking-wider text-zinc-400">
+              <tr className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
                 <th className="px-3 py-2 text-left">Canale</th>
                 <th className="px-3 py-2 text-right">min</th>
                 <th className="px-3 py-2 text-right">avg</th>
                 <th className="px-3 py-2 text-right">max</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-mono tabular-nums text-zinc-200">
+            <tbody className="divide-y divide-white/5 font-mono tabular-nums text-white">
               {vm.secondary.map((row) => (
                 <tr key={row.channel}>
-                  <td className="px-3 py-2 font-sans text-zinc-300">
+                  <td className="px-3 py-2 font-sans text-gray-300">
                     {row.label}
-                    <span className="ml-1 text-[0.65rem] uppercase tracking-wider text-zinc-500">{row.unit}</span>
+                    <span className="ml-1 text-[0.65rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
                   </td>
                   <td className="px-3 py-2 text-right">{fmt(row.min, row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1)}</td>
                   <td className="px-3 py-2 text-right">{fmt(row.avg, row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1)}</td>
@@ -343,10 +318,10 @@ function SessionDetailCard({
                   type="button"
                   onClick={() => setActiveChannel(s.channel)}
                   className={cn(
-                    "rounded-xl border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition",
+                    "rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition",
                     isActive
                       ? "border-white/40 bg-white/10 text-white"
-                      : "border-white/10 bg-black/40 text-zinc-400 hover:border-white/25 hover:text-zinc-200",
+                      : "border-white/10 bg-black/40 text-gray-400 hover:border-white/25 hover:text-gray-200",
                   )}
                   style={isActive ? { borderColor: SERIES_COLOR[s.channel], color: SERIES_COLOR[s.channel] } : undefined}
                 >
@@ -368,7 +343,7 @@ function SessionDetailCard({
           ) : null}
         </div>
       ) : (
-        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-zinc-500">
+        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
           Nessuna serie temporale ad alta risoluzione disponibile per questa sessione (il summary device non le espone; per curve dense importa il file FIT/TCX/GPX).
         </p>
       )}
@@ -395,12 +370,12 @@ export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId 
     return (
       <div id="day-session-detail" className="scroll-mt-24">
         <Pro2SectionCard
-          accent="cyan"
+          accent="orange"
           title="Sessione del giorno"
           subtitle={subtitle}
           icon={Activity}
         >
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-gray-400">
             Nessuna sessione eseguita registrata per questo giorno. Importa un file (FIT/TCX/GPX) o attendi il sync da
             Garmin/Strava/Wahoo.
           </p>
@@ -417,7 +392,7 @@ export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId 
         return (
           <Pro2SectionCard
             key={vm.workoutId}
-            accent={idx === 0 ? "cyan" : "violet"}
+            accent="orange"
             title={idx === 0 ? "Sessione del giorno" : `Sessione · ${idx + 1}`}
             subtitle={idx === 0 ? subtitle : `${vm.sport ?? "Sessione"} · ${vm.sourceLabel}`}
             icon={idx === 0 ? Activity : Gauge}

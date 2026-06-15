@@ -40,6 +40,7 @@ import { buildAllSessionPeakAnalysisProfiles } from "@/lib/training/analytics/se
 import { deleteExecutedWorkout } from "@/modules/training/services/training-executed-api";
 import { deletePlannedWorkout } from "@/modules/training/services/training-planned-api";
 import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
+import { CHART_AXIS, CHART_SIGNAL } from "@/lib/ui/chart-theme";
 import {
   effectiveDurationMinutesFromPro2Contract,
   effectiveTssDisplayFromPro2Contract,
@@ -51,7 +52,7 @@ const StravaStyleMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-lg border border-white/10 bg-black/40 px-3 py-6 text-center text-sm text-slate-400">
+      <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-sm text-gray-400">
         Mappa percorso…
       </div>
     ),
@@ -305,18 +306,18 @@ export function TrainingCalendarAnalyzer({
 
   const analyzerMetricDefs = useMemo(
     () => [
-      { id: "tss", label: "Carico", color: "#c084fc", values: lineSeries.tss },
-      { id: "power", label: "Power", color: "#f97316", values: lineSeries.power },
-      { id: "hr", label: "HR", color: "#ef4444", values: lineSeries.hr },
-      { id: "cadence", label: "Cadence", color: "#a78bfa", values: lineSeries.cadence },
-      { id: "speed", label: "Speed", color: "#38bdf8", values: lineSeries.speed },
-      { id: "altitude", label: "Altitude", color: "#22d3ee", values: lineSeries.altitude },
-      { id: "temperature", label: "Temp", color: "#fb923c", values: lineSeries.temperature },
-      { id: "coreTemp", label: "Core Temp", color: "#f97316", values: lineSeries.coreTemp },
-      { id: "lactate", label: "Lactate", color: "#d946ef", values: lineSeries.lactate },
-      { id: "glucose", label: "Glucose", color: "#10b981", values: lineSeries.glucose },
-      { id: "smo2", label: "SmO2", color: "#06b6d4", values: lineSeries.smo2 },
-      { id: "vo2", label: "VO2", color: "#4ade80", values: lineSeries.vo2 },
+      { id: "tss", label: "Carico", color: CHART_SIGNAL.load, values: lineSeries.tss },
+      { id: "power", label: "Power", color: CHART_SIGNAL.power, values: lineSeries.power },
+      { id: "hr", label: "HR", color: CHART_SIGNAL.hr, values: lineSeries.hr },
+      { id: "cadence", label: "Cadence", color: CHART_SIGNAL.cadence, values: lineSeries.cadence },
+      { id: "speed", label: "Speed", color: CHART_SIGNAL.speed, values: lineSeries.speed },
+      { id: "altitude", label: "Altitude", color: CHART_SIGNAL.altitude, values: lineSeries.altitude },
+      { id: "temperature", label: "Temp", color: "#fbbf24", values: lineSeries.temperature },
+      { id: "coreTemp", label: "Core Temp", color: "#fb7185", values: lineSeries.coreTemp },
+      { id: "lactate", label: "Lactate", color: CHART_SIGNAL.lactate, values: lineSeries.lactate },
+      { id: "glucose", label: "Glucose", color: CHART_SIGNAL.glucose, values: lineSeries.glucose },
+      { id: "smo2", label: "SmO2", color: "#60a5fa", values: lineSeries.smo2 },
+      { id: "vo2", label: "VO2", color: "#34d399", values: lineSeries.vo2 },
       { id: "vco2", label: "VCO2", color: "#2dd4bf", values: lineSeries.vco2 },
     ],
     [lineSeries],
@@ -537,7 +538,7 @@ export function TrainingCalendarAnalyzer({
 
   if (nothingDay) {
     return (
-      <section className="rounded-2xl border border-violet-500/20 bg-gradient-to-b from-black/45 to-black/30 px-4 py-5 shadow-inner shadow-violet-950/15">
+      <section className="rounded-2xl border border-orange-500/20 bg-gradient-to-b from-black/45 to-black/30 px-4 py-5 shadow-inner shadow-orange-950/15">
         <h3 className="text-base font-bold text-white">
           Analyzer ·{" "}
           {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("it-IT", {
@@ -546,8 +547,8 @@ export function TrainingCalendarAnalyzer({
             month: "long",
           })}
         </h3>
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
-          <p className="font-semibold text-slate-200">Nessuna sessione in questo giorno</p>
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
+          <p className="font-semibold text-gray-200">Nessuna sessione in questo giorno</p>
           <p className="mt-2">
             Seleziona un altro giorno sul calendario oppure aggiungi una pianificazione / importa un file eseguito.
           </p>
@@ -557,7 +558,7 @@ export function TrainingCalendarAnalyzer({
   }
 
   return (
-    <section className="rounded-2xl border border-violet-500/20 bg-gradient-to-b from-black/45 to-black/30 px-4 py-5 shadow-inner shadow-violet-950/20">
+    <section className="rounded-2xl border border-orange-500/20 bg-gradient-to-b from-black/45 to-black/30 px-4 py-5 shadow-inner shadow-orange-950/20">
       <h3 className="text-base font-bold text-white">
         Analyzer ·{" "}
         {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("it-IT", {
@@ -568,7 +569,7 @@ export function TrainingCalendarAnalyzer({
       </h3>
 
       {plannedOnly ? (
-        <p className="mt-2 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 py-2 text-sm text-violet-100/90">
+        <p className="mt-2 rounded-xl border border-orange-400/25 bg-orange-500/10 px-3 py-2 text-sm text-orange-100/90">
           Solo pianificazione: il grafico mostra carico e durata target (blocchi PLAN). Importa un eseguito per mappa e traccia
           file.
         </p>
@@ -577,14 +578,14 @@ export function TrainingCalendarAnalyzer({
       <div className="mt-4 flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 flex-1">
           {plannedOnly ? (
-            <div className="flex h-[220px] items-center justify-center rounded-lg border border-white/10 bg-black/40 text-center text-sm text-slate-500">
+            <div className="flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-black/40 text-center text-sm text-gray-500">
               Mappa percorso dopo import di un workout eseguito (FIT/GPX/TCX).
             </div>
           ) : (
             <StravaStyleMap route={gpsRoute} height={220} />
           )}
         </div>
-        <div className="flex flex-shrink-0 flex-wrap gap-2 text-xs font-semibold text-slate-300 lg:flex-col lg:justify-center">
+        <div className="flex flex-shrink-0 flex-wrap gap-2 text-xs font-semibold text-gray-300 lg:flex-col lg:justify-center">
           <span className="rounded-lg bg-white/5 px-2 py-1">Distanza {gpsStats.distanceKm.toFixed(1)} km</span>
           <span className="rounded-lg bg-white/5 px-2 py-1">Dislivello {gpsStats.elevGain.toFixed(0)} m</span>
           <span className="rounded-lg bg-white/5 px-2 py-1">Durata {gpsStats.durationMin.toFixed(0)} min</span>
@@ -596,7 +597,7 @@ export function TrainingCalendarAnalyzer({
 
       {fitQuality ? (
         <details className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-slate-200">
+          <summary className="cursor-pointer font-semibold text-gray-200">
             Qualità file {fitQuality.sourceFormat.toUpperCase()}:{" "}
             <span
               className={
@@ -610,17 +611,17 @@ export function TrainingCalendarAnalyzer({
               {fitQuality.status}
             </span>
           </summary>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-gray-400">
             {fitQuality.note} · records: {fitQuality.recordCount} · sessions: {fitQuality.sessionCount}
           </p>
-          <p className="text-xs text-slate-400">parser: {fitQuality.parserEngine ?? "—"}</p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-400">parser: {fitQuality.parserEngine ?? "—"}</p>
+          <p className="text-xs text-gray-400">
             coverage → Power {fitQuality.channelCoveragePct.power}% · HR {fitQuality.channelCoveragePct.hr}% · Speed{" "}
             {fitQuality.channelCoveragePct.speed}% · Cadence {fitQuality.channelCoveragePct.cadence}% · Alt{" "}
             {fitQuality.channelCoveragePct.altitude}%
           </p>
           {fitQuality.sourceFile ? (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-gray-400">
               source: {fitQuality.sourceFile.slice(0, 70)}
               {fitQuality.sourceFile.length > 70 ? "…" : ""}
             </p>
@@ -629,7 +630,7 @@ export function TrainingCalendarAnalyzer({
       ) : null}
 
       {channelAvailability ? (
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-gray-500">
           Canali file:{" "}
           {Object.entries(channelAvailability)
             .map(([k, v]) => `${k}:${v ? "yes" : "no"}`)
@@ -644,18 +645,18 @@ export function TrainingCalendarAnalyzer({
           disabled={plannedOnly}
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${
             fileTraceMode
-              ? "border-fuchsia-400/45 bg-fuchsia-500/15 text-fuchsia-100"
-              : "border-white/15 bg-white/5 text-slate-400"
+              ? "border-orange-400/45 bg-orange-500/15 text-orange-100"
+              : "border-white/15 bg-white/5 text-gray-400"
           } ${plannedOnly ? "cursor-not-allowed opacity-40" : ""}`}
         >
           <span
             className="h-2 w-2 rounded-full"
-            style={{ background: fileTraceMode ? "#e879f9" : "#64748b" }}
+            style={{ background: fileTraceMode ? "#fb923c" : "#6b7280" }}
             aria-hidden
           />
           File trace mode
         </button>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-gray-500">
           Con traccia Garmin/Wahoo: potenza, FC, quota; radar vs picco mese — VAM da quota o vertical_speed (m/h).
         </span>
       </div>
@@ -669,50 +670,56 @@ export function TrainingCalendarAnalyzer({
             </p>
           ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <div className="rounded-2xl border border-rose-500/45 bg-rose-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-rose-200/80">Carico · seduta</div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-rose-50">{dayRefKpis.tss.toFixed(0)}</div>
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Carico · seduta</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{dayRefKpis.tss.toFixed(0)}</div>
           </div>
-          <div className="rounded-2xl border border-amber-500/45 bg-amber-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-amber-200/80">Kcal · seduta</div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-amber-50">{dayRefKpis.kcal.toFixed(0)}</div>
-          </div>
-          <div className="rounded-2xl border border-sky-500/45 bg-sky-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-sky-200/80">Watt medi</div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-sky-50">
-              {dayRefKpis.wattAvg != null ? `${dayRefKpis.wattAvg.toFixed(0)} W` : "—"}
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · seduta</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+              {dayRefKpis.kcal.toFixed(0)}
+              <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
             </div>
           </div>
-          <div className="rounded-2xl border border-emerald-500/45 bg-emerald-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-200/80">Durata · seduta</div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-emerald-50">
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Watt medi</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+              {dayRefKpis.wattAvg != null ? dayRefKpis.wattAvg.toFixed(0) : "—"}
+              {dayRefKpis.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata · seduta</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {formatDayDurationMin(dayRefKpis.totalMin)}
             </div>
           </div>
-          <div className="rounded-2xl border border-teal-500/45 bg-teal-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-teal-200/80">VAM media salita</div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-teal-50">
-              {dayRefKpis.vamAvg != null ? `${dayRefKpis.vamAvg} m/h` : "—"}
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">VAM media salita</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+              {dayRefKpis.vamAvg != null ? dayRefKpis.vamAvg : "—"}
+              {dayRefKpis.vamAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-teal-200/60">dislivello ÷ ore</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">dislivello ÷ ore</p>
           </div>
-          <div className="rounded-2xl border border-cyan-500/45 bg-cyan-500/[0.12] px-4 py-3">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wider text-cyan-200/80">
+          <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               VAM max{dayRefKpis.vamPeak ? ` · ${dayRefKpis.vamPeak.label}` : ""}
             </div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-cyan-50">
-              {dayRefKpis.vamPeak != null ? `${dayRefKpis.vamPeak.vamMh} m/h` : "—"}
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+              {dayRefKpis.vamPeak != null ? dayRefKpis.vamPeak.vamMh : "—"}
+              {dayRefKpis.vamPeak != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-cyan-200/60">picco finestra</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">picco finestra</p>
           </div>
         </div>
         </>
       ) : null}
 
       {telemetryRows.length >= 2 ? (
-        <div className="mt-4 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-slate-950/95 via-slate-900/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <div className="mt-4 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-black/80 via-black/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
           <h4 className="text-sm font-bold text-orange-100/95">Telemetria (stile sessione)</h4>
-          <p className="mb-3 text-xs text-slate-500">Potenza con riempimento gradiente; FC in rosso; quota separata sotto.</p>
+          <p className="mb-3 text-xs text-gray-500">Potenza con riempimento gradiente; FC in rosso; quota separata sotto.</p>
           <TrainingCalendarTelemetryChart data={telemetryRows} />
         </div>
       ) : null}
@@ -720,8 +727,8 @@ export function TrainingCalendarAnalyzer({
       {peakRadarProfiles.length > 0 ? (
         <div className="mt-6 space-y-4">
           <div>
-            <h4 className="text-sm font-bold text-pink-100/95">Profili · radar vs picco mese</h4>
-            <p className="mt-1 text-xs text-slate-500">
+            <h4 className="text-sm font-bold text-white">Profili · radar vs picco mese</h4>
+            <p className="mt-1 text-xs text-gray-500">
               Un esagono per ogni canale presente nella registrazione (potenza, FC, cadenza, velocità, VAM, lattato,
               glucosio, SmO₂, temperatura, VO₂, …) — finestre 5s → 60′ vs picco del mese.
             </p>
@@ -730,9 +737,9 @@ export function TrainingCalendarAnalyzer({
             {peakRadarProfiles.map((profile) => (
               <div
                 key={profile.metricId}
-                className="rounded-2xl border border-pink-500/25 bg-gradient-to-b from-slate-950/95 via-slate-900/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                className="rounded-2xl border border-orange-500/25 bg-gradient-to-b from-black/80 via-black/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
               >
-                <h5 className="mb-2 text-xs font-bold uppercase tracking-wide text-pink-200/90">
+                <h5 className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
                   {profile.label} ({profile.unit})
                 </h5>
                 <TrainingPowerProfileRadar rows={profile.rows} valueUnit={profile.unit} />
@@ -743,17 +750,17 @@ export function TrainingCalendarAnalyzer({
       ) : null}
 
       <details open className="group mt-6 rounded-xl border border-white/10 bg-black/20 p-3">
-        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-400 group-open:text-slate-300">
+        <summary className="cursor-pointer font-mono text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 group-open:text-gray-300">
           Confronto normalizzato (tutte le metriche sovrapposte)
         </summary>
-             <p className="mb-2 mt-2 text-xs text-slate-500">
+             <p className="mb-2 mt-2 text-xs text-gray-500">
                Asse Y 0–100%: ogni serie sul proprio min/max. Attiva/disattiva curve (FC, glucosio, core temp, smO2, VO2,
                VCO2, …) per sovrapporle.
              </p>
              <div className="mb-3 flex flex-wrap gap-2">
                <button
                  type="button"
-                 className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+                 className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
                  onClick={() => {
                    const o: Record<string, boolean> = {};
                    for (const m of availableAnalyzerMetricDefs) o[m.id] = true;
@@ -764,7 +771,7 @@ export function TrainingCalendarAnalyzer({
                </button>
                <button
                  type="button"
-                 className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+                 className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-gray-300 hover:bg-white/10"
                  onClick={() => {
                    const next: Record<string, boolean> = {};
                    for (const m of availableAnalyzerMetricDefs) {
@@ -780,7 +787,7 @@ export function TrainingCalendarAnalyzer({
                {availableAnalyzerMetricDefs.map((m) => (
                  <label
                    key={m.id}
-                   className="inline-flex cursor-pointer items-center gap-2 text-xs text-slate-400 hover:text-slate-200"
+                   className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-400 hover:text-gray-200"
                  >
                    <input
                      type="checkbox"
@@ -805,7 +812,7 @@ export function TrainingCalendarAnalyzer({
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Grafico analisi metriche allenamento"
-        className="mt-1 block max-h-[min(420px,70vw)] min-h-[280px] w-full text-slate-200"
+        className="mt-1 block max-h-[min(420px,70vw)] min-h-[280px] w-full text-gray-200"
       >
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
           <g key={`grid-${t}`}>
@@ -816,7 +823,7 @@ export function TrainingCalendarAnalyzer({
               y2={analyzerInteractive.yAt(t)}
               stroke="rgba(255,255,255,0.12)"
             />
-            <text x={18} y={analyzerInteractive.yAt(t) + 4} fill="#94a3b8" fontSize="11">
+            <text x={18} y={analyzerInteractive.yAt(t) + 4} fill={CHART_AXIS.tick} fontSize="11">
               {Math.round(t * 100)}%
             </text>
           </g>
@@ -874,7 +881,7 @@ export function TrainingCalendarAnalyzer({
           }}
           onMouseLeave={() => setHoverIdx(null)}
         />
-        <text x={analyzerInteractive.width - 210} y={analyzerInteractive.height - 8} fill="#94a3b8" fontSize="11">
+        <text x={analyzerInteractive.width - 210} y={analyzerInteractive.height - 8} fill={CHART_AXIS.tick} fontSize="11">
           Timeline
         </text>
       </svg>
@@ -883,10 +890,10 @@ export function TrainingCalendarAnalyzer({
 
       {hoverIdx != null ? (
         <div className="mt-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs">
-          <strong className="text-slate-200">{plottedAnalyzer.labels[hoverIdx] ?? selectedDate}</strong>
+          <strong className="text-gray-200">{plottedAnalyzer.labels[hoverIdx] ?? selectedDate}</strong>
           <div className="mt-1 flex flex-wrap gap-2">
             {hoverValues.map((v) => (
-              <span key={v.id} className="text-slate-400">
+              <span key={v.id} className="text-gray-400">
                 <span className="mr-1 inline-block h-2 w-2 rounded-full align-middle" style={{ background: v.color }} />
                 {v.label}: {Number.isFinite(v.value) ? v.value.toFixed(2) : "0.00"}
               </span>
@@ -904,11 +911,11 @@ export function TrainingCalendarAnalyzer({
           return (
             <div
               key={w.id}
-              className="rounded-xl border border-violet-400/30 bg-violet-500/10 px-3 py-3"
+              className="rounded-xl border border-orange-500/25 bg-orange-500/10 px-3 py-3"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-violet-400/55 bg-violet-400/15 px-2 py-0.5 text-[0.65rem] font-bold text-violet-100">
+                  <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold text-orange-300">
                     PLAN
                   </span>
                   <span>
@@ -919,7 +926,7 @@ export function TrainingCalendarAnalyzer({
                   <button
                     type="button"
                     disabled={deletingPlannedId === w.id}
-                    className="shrink-0 rounded-lg border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
+                    className="shrink-0 rounded-full border border-rose-400/40 bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
                     onClick={async () => {
                       if (!athleteId || !window.confirm("Eliminare questa seduta pianificata?")) return;
                       setDeletingPlannedId(w.id);
@@ -943,7 +950,7 @@ export function TrainingCalendarAnalyzer({
                 ) : null}
               </div>
               {isGym && c ? (
-                <div className="mt-3 border-t border-violet-400/20 pt-3">
+                <div className="mt-3 border-t border-orange-400/20 pt-3">
                   <Pro2GymSchedaBlockList contract={c} compact />
                 </div>
               ) : null}
@@ -956,10 +963,10 @@ export function TrainingCalendarAnalyzer({
           return (
             <div
               key={w.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
             >
               <div className="min-w-0">
-                <span className="rounded-full border border-sky-400/55 bg-sky-400/15 px-2 py-0.5 text-[0.65rem] font-bold text-sky-100">
+                <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.65rem] font-semibold text-gray-300">
                   EXEC
                 </span>
                 <span className="ml-2">
@@ -977,7 +984,7 @@ export function TrainingCalendarAnalyzer({
                 <button
                   type="button"
                   disabled={deletingId === w.id}
-                  className="shrink-0 rounded-lg border border-rose-400/40 bg-rose-500/15 px-2 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
+                  className="shrink-0 rounded-full border border-rose-400/40 bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
                   onClick={async () => {
                     if (
                       !athleteId ||

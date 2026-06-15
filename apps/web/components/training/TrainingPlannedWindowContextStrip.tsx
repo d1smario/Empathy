@@ -49,22 +49,22 @@ export function TrainingPlannedWindowContextStrip({
   return (
     <details
       className={cn(
-        "rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300",
+        "rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-gray-300",
         className,
       )}
     >
-      <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-sky-300/90">
+      <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
         {label} · spina lettura {readSpineCoverage.spineScore}%
         {twinContextStrip ? " · twin" : ""}
       </summary>
       {aid ? (
-        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-slate-500" title="athlete_id usato da planned-window">
+        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-gray-500" title="athlete_id usato da planned-window">
           atleta {aid}
         </p>
       ) : null}
       {showProv ? (
-        <p className="mt-1 text-xs text-slate-500">
-          <span className="font-semibold text-slate-400">Origine pianificati · </span>
+        <p className="mt-1 text-xs text-gray-500">
+          <span className="font-semibold text-gray-400">Origine pianificati · </span>
           {formatPlannedProvenanceSummaryIt(plannedProvenanceSummary)}
         </p>
       ) : null}
@@ -83,7 +83,7 @@ export function TrainingPlannedWindowContextStrip({
             key={name}
             className={cn(
               "rounded-full px-2 py-0.5 font-mono text-[0.6rem]",
-              on ? "bg-emerald-500/15 text-emerald-200/90" : "bg-white/5 text-slate-500",
+              on ? "bg-emerald-500/15 text-emerald-200/90" : "bg-white/5 text-gray-500",
             )}
           >
             {name}
@@ -91,11 +91,11 @@ export function TrainingPlannedWindowContextStrip({
         ))}
       </div>
       {twinContextStrip ? (
-        <p className="mt-2 text-xs text-slate-500">
-          <span className="font-semibold text-slate-400">Twin · </span>
+        <p className="mt-2 text-xs text-gray-500">
+          <span className="font-semibold text-gray-400">Twin · </span>
           {twinLine(twinContextStrip)}
           {twinContextStrip.asOf ? (
-            <span className="mt-1 block font-mono text-[0.6rem] text-slate-600">asOf {twinContextStrip.asOf}</span>
+            <span className="mt-1 block font-mono text-[0.6rem] text-gray-600">asOf {twinContextStrip.asOf}</span>
           ) : null}
         </p>
       ) : (

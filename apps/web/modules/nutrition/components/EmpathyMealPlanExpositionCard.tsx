@@ -167,7 +167,7 @@ export function EmpathyMealPlanExpositionCard({
   boostNote,
   integrationHref,
 }: EmpathyMealPlanExpositionCardProps) {
-  const { adminScoped } = useActiveAthlete();
+  const { adminScoped, platformAdminView } = useActiveAthlete();
   const Icon = slotHeaderIcon(slot);
   const kcalDenom = Math.max(1, totalKcal);
   const choPct = Math.round(((carbsG * 4) / kcalDenom) * 100);
@@ -216,6 +216,7 @@ export function EmpathyMealPlanExpositionCard({
         </div>
       </header>
 
+      <div className="empathy-meal-expo-general">
       <div className="empathy-meal-expo-macros">
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--cho">
           <Activity className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
@@ -265,24 +266,25 @@ export function EmpathyMealPlanExpositionCard({
         <span className="empathy-meal-expo-macro-seg empathy-meal-expo-macro-seg--pro">PRO {proPct}%</span>
         <span className="empathy-meal-expo-macro-seg empathy-meal-expo-macro-seg--fat">FAT {fatPct}%</span>
       </div>
+      </div>
 
       {boostNote ? (
         <aside
-          className="mt-2 rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/8 px-3 py-2"
+          className="mt-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2"
           aria-label="Suggerimenti complementari dal sistema intelligente"
         >
           <div className="flex items-start gap-2">
             <Zap
-              className="mt-[2px] h-3.5 w-3.5 shrink-0 text-fuchsia-300"
+              className="mt-[2px] h-3.5 w-3.5 shrink-0 text-amber-300"
               strokeWidth={2}
               aria-hidden
             />
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-200/90">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/90">
                 Suggerimenti complementari (sistema intelligente)
               </div>
-              <p className="mt-0.5 text-[11px] leading-snug text-fuchsia-50/90">{boostNote}</p>
-              <p className="mt-1 text-[10px] leading-snug text-fuchsia-200/70">
+              <p className="mt-0.5 text-[11px] leading-snug text-amber-50/90">{boostNote}</p>
+              <p className="mt-1 text-[10px] leading-snug text-amber-200/70">
                 Sono complementi da aggiungere o preferire al pasto, non sostituiscono gli alimenti scelti.
                 {integrationHref ? (
                   <>
@@ -290,7 +292,7 @@ export function EmpathyMealPlanExpositionCard({
                     {adminScoped ? (
                       /* Nelle schede admin il link cross-shell è inerte (v2). */
                       <span
-                        className="font-semibold text-fuchsia-200 underline decoration-fuchsia-300/60 underline-offset-2 hover:text-fuchsia-100 cursor-default opacity-50"
+                        className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 cursor-default opacity-50"
                         title="Disponibile nella scheda dedicata (v2)"
                       >
                         Apri Integrazione →
@@ -298,7 +300,7 @@ export function EmpathyMealPlanExpositionCard({
                     ) : (
                       <Link
                         href={integrationHref}
-                        className="font-semibold text-fuchsia-200 underline decoration-fuchsia-300/60 underline-offset-2 hover:text-fuchsia-100"
+                        className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100"
                       >
                         Apri Integrazione →
                       </Link>
@@ -311,6 +313,7 @@ export function EmpathyMealPlanExpositionCard({
         </aside>
       ) : null}
 
+      <div className="empathy-meal-expo-detail">
       <section className="empathy-meal-expo-detail-head">
         <span className="empathy-meal-expo-detail-bar" aria-hidden />
         <h4 className="empathy-meal-expo-detail-title">ALIMENTI DETTAGLIATI</h4>
@@ -325,22 +328,28 @@ export function EmpathyMealPlanExpositionCard({
             const busy = profileFoodExcludeBusyLabel === food.name.trim();
             return (
               <li key={`${food.name}-${food.sourceIndex}`} className="empathy-meal-expo-food-card">
-                <div className="empathy-meal-expo-food-top">
-                  <div className="empathy-meal-expo-food-name-row">
-                    <span className="empathy-meal-expo-dot" aria-hidden />
-                    <span className="empathy-meal-expo-food-name">{food.name}</span>
+                <div className="empathy-meal-expo-food-head">
+                  {/* Campo immagine alimento (placeholder; sostituibile con la foto quando disponibile) */}
+                  <div className="empathy-meal-expo-food-thumb" aria-hidden>
+                    <Apple className="h-5 w-5" strokeWidth={1.75} />
                   </div>
-                  <div className="empathy-meal-expo-food-pills">
-                    {food.weightG != null ? (
-                      <span className="empathy-meal-expo-pill empathy-meal-expo-pill--wt">{food.weightG}g</span>
-                    ) : null}
-                    <span className="empathy-meal-expo-pill empathy-meal-expo-pill--kcal">
-                      <Flame className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                      {food.kcal}
-                    </span>
-                    <span className={cn("empathy-meal-expo-pill", "empathy-meal-expo-pill--ig", giPillClass(b))}>
-                      IG {food.ig} · {giBandLabelIt(b)}
-                    </span>
+                  <div className="empathy-meal-expo-food-top">
+                    <div className="empathy-meal-expo-food-name-row">
+                      <span className="empathy-meal-expo-dot" aria-hidden />
+                      <span className="empathy-meal-expo-food-name">{food.name}</span>
+                    </div>
+                    <div className="empathy-meal-expo-food-pills">
+                      {food.weightG != null ? (
+                        <span className="empathy-meal-expo-pill empathy-meal-expo-pill--wt">{food.weightG}g</span>
+                      ) : null}
+                      <span className="empathy-meal-expo-pill empathy-meal-expo-pill--kcal">
+                        <Flame className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                        {food.kcal}
+                      </span>
+                      <span className={cn("empathy-meal-expo-pill", "empathy-meal-expo-pill--ig", giPillClass(b))}>
+                        IG {food.ig} · {giBandLabelIt(b)}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="empathy-meal-expo-food-macros">
@@ -360,18 +369,18 @@ export function EmpathyMealPlanExpositionCard({
                     <span className="empathy-meal-expo-pod-val">{food.fatG}g</span>
                   </div>
                 </div>
-                {showCoachControls && onCoachRemove && onCoachExcludeProfile ? (
+                {showCoachControls && platformAdminView && onCoachRemove && onCoachExcludeProfile ? (
                   <div className="empathy-meal-expo-coach">
                     <button
                       type="button"
-                      className="nutrition-ui-chip text-[11px] py-0.5 px-2"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                       onClick={() => onCoachRemove(food.sourceIndex)}
                     >
                       Rimuovi
                     </button>
                     <button
                       type="button"
-                      className="nutrition-ui-chip text-[11px] py-0.5 px-2"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={!athleteId || busy}
                       onClick={() => onCoachExcludeProfile(food.sourceIndex)}
                     >
@@ -384,6 +393,7 @@ export function EmpathyMealPlanExpositionCard({
           })
         )}
       </ul>
+      </div>
     </article>
   );
 }

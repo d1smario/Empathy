@@ -32,7 +32,8 @@ import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { ResearchTraceScientificPanel } from "@/components/training/ResearchTraceScientificPanel";
 import { ReplicateStatusStrip } from "@/components/training/ReplicateStatusStrip";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
+import { Pro2Accordion, Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import {
   buildPro2BuilderSessionContract,
   defaultManualPlanBlock,
@@ -160,7 +161,7 @@ function sumMinutesExecuted(rows: ExecutedWorkout[]): number {
 }
 
 const ACCENT_KPI: Record<
-  "cyan" | "orange" | "violet" | "emerald" | "slate",
+  "orange" | "slate",
   {
     border: string;
     bg: string;
@@ -172,20 +173,9 @@ const ACCENT_KPI: Record<
     glow: string;
   }
 > = {
-  cyan: {
-    border: "border-cyan-500/45",
-    bg: "bg-gradient-to-br from-cyan-950/55 via-slate-950/40 to-black/50",
-    ring: "ring-1 ring-cyan-400/25",
-    bar: "from-cyan-400 via-teal-400 to-cyan-600",
-    value: "text-cyan-50",
-    iconWrap:
-      "bg-cyan-500/40 text-cyan-50 border-2 border-cyan-300/60 shadow-[0_0_16px_rgba(34,211,238,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]",
-    icon: "drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]",
-    glow: "shadow-[0_0_24px_rgba(34,211,238,0.12)]",
-  },
   orange: {
     border: "border-orange-500/45",
-    bg: "bg-gradient-to-br from-orange-950/50 via-zinc-950/40 to-black/50",
+    bg: "bg-gradient-to-br from-orange-950/50 via-black/40 to-black/50",
     ring: "ring-1 ring-orange-400/25",
     bar: "from-orange-400 via-amber-400 to-orange-600",
     value: "text-orange-50",
@@ -194,35 +184,13 @@ const ACCENT_KPI: Record<
     icon: "drop-shadow-[0_0_6px_rgba(255,255,255,0.45)]",
     glow: "shadow-[0_0_24px_rgba(251,146,60,0.12)]",
   },
-  violet: {
-    border: "border-violet-500/45",
-    bg: "bg-gradient-to-br from-violet-950/50 via-zinc-950/40 to-black/50",
-    ring: "ring-1 ring-violet-400/25",
-    bar: "from-violet-400 via-fuchsia-400 to-violet-600",
-    value: "text-violet-50",
-    iconWrap:
-      "bg-violet-500/40 text-violet-50 border-2 border-violet-300/60 shadow-[0_0_16px_rgba(167,139,250,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]",
-    icon: "drop-shadow-[0_0_6px_rgba(255,255,255,0.45)]",
-    glow: "shadow-[0_0_24px_rgba(167,139,250,0.12)]",
-  },
-  emerald: {
-    border: "border-emerald-500/45",
-    bg: "bg-gradient-to-br from-emerald-950/50 via-zinc-950/40 to-black/50",
-    ring: "ring-1 ring-emerald-400/25",
-    bar: "from-emerald-400 via-teal-400 to-emerald-600",
-    value: "text-emerald-50",
-    iconWrap:
-      "bg-emerald-500/40 text-emerald-50 border-2 border-emerald-300/60 shadow-[0_0_16px_rgba(52,211,153,0.45),inset_0_1px_0_rgba(255,255,255,0.2)]",
-    icon: "drop-shadow-[0_0_6px_rgba(255,255,255,0.45)]",
-    glow: "shadow-[0_0_24px_rgba(52,211,153,0.12)]",
-  },
   slate: {
     border: "border-white/20",
-    bg: "bg-gradient-to-br from-zinc-900/60 to-black/50",
+    bg: "bg-gradient-to-br from-black/60 to-black/50",
     ring: "ring-1 ring-white/10",
-    bar: "from-zinc-500 via-zinc-400 to-zinc-600",
+    bar: "from-gray-500 via-gray-400 to-gray-600",
     value: "text-gray-100",
-    iconWrap: "bg-zinc-600/50 text-zinc-100 border-2 border-zinc-400/40 shadow-inner",
+    iconWrap: "bg-gray-600/50 text-gray-100 border-2 border-gray-400/40 shadow-inner",
     icon: "",
     glow: "",
   },
@@ -252,7 +220,7 @@ function KpiCard({
       />
       <div className="relative pt-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-400">{label}</p>
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${a.iconWrap}`}
             aria-hidden
@@ -260,7 +228,7 @@ function KpiCard({
             <Icon className={`h-5 w-5 ${a.icon}`} strokeWidth={2.35} />
           </div>
         </div>
-        <p className={`mt-2 font-mono text-2xl font-bold tracking-tight drop-shadow-sm ${a.value}`}>{value}</p>
+        <p className={`mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight ${a.value}`}>{value}</p>
         {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
       </div>
     </div>
@@ -1340,53 +1308,48 @@ export default function TrainingBuilderRichPageView() {
   const showData = !ctxLoading && !loading && !err;
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-zinc-950 via-black to-black px-4 py-8 sm:px-8 sm:py-10">
-      <div className="mx-auto max-w-6xl space-y-10">
-        <header className="flex flex-col gap-4 border-b border-white/10 pb-8 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.25em] text-orange-400">Training · Builder</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">Crea sessione</h1>
-            <p className="mt-2 max-w-xl text-sm text-gray-400">
-              KPI dal calendario reale; la sessione è generata dal motore deterministico del Builder. Il piano annuale
-              Virya riusa lo stesso motore.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Pro2Link
-              href="/training"
-              variant="ghost"
-              className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
-            >
-              Hub training
-            </Pro2Link>
-            <Pro2Link
-              href="/dashboard"
-              variant="secondary"
-              className="justify-center border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15"
-            >
-              Dashboard
-            </Pro2Link>
-          </div>
-        </header>
-
+    <Pro2ModulePageShell
+      eyebrow="Allenamento"
+      eyebrowClassName="text-orange-400"
+      title="Crea la tua seduta"
+      description="Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario in quattro passi."
+      headerActions={
+        <>
+          <Pro2Link
+            href="/training"
+            variant="ghost"
+            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+          >
+            Hub
+          </Pro2Link>
+          <Pro2Link
+            href="/dashboard"
+            variant="secondary"
+            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+          >
+            Dashboard
+          </Pro2Link>
+        </>
+      }
+    >
         <div className="scroll-mt-28">
           <TrainingSubnav />
         </div>
 
         {viryaEntry && !dismissViryaEntryBanner ? (
           <div
-            className="rounded-xl border border-pink-500/35 bg-pink-950/20 px-4 py-3 text-sm text-pink-100/95 shadow-[inset_0_1px_0_rgba(244,114,182,0.12)]"
+            className="rounded-xl border border-orange-500/35 bg-orange-950/20 px-4 py-3 text-sm text-orange-100/95 shadow-[inset_0_1px_0_rgba(251,146,60,0.12)]"
             role="status"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <p className="max-w-3xl leading-relaxed">
-                Percorso da <strong className="text-pink-200">VIRYA</strong>: qui materializzi la{" "}
-                <strong className="text-pink-200">singola sessione</strong> col motore builder. Il calendario si aggiorna solo dopo
+                Percorso da <strong className="text-orange-200">VIRYA</strong>: qui materializzi la{" "}
+                <strong className="text-orange-200">singola sessione</strong> col motore builder. Il calendario si aggiorna solo dopo
                 salvataggio esplicito.
               </p>
               <button
                 type="button"
-                className="shrink-0 rounded-lg border border-white/15 px-2 py-1 text-xs text-slate-300 hover:border-white/30 hover:text-white"
+                className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-xs text-gray-300 hover:border-white/30 hover:text-white"
                 onClick={() => setDismissViryaEntryBanner(true)}
               >
                 Chiudi
@@ -1409,11 +1372,11 @@ export default function TrainingBuilderRichPageView() {
         {athleteId ? (
           <section
             aria-label="Adattamento giornaliero guidato"
-            className="mb-4 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-black/40 to-violet-950/20 p-4 sm:p-5"
+            className="mb-4 rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 sm:p-5 shadow-inner"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-300">
+                <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
                   Adattamento giorno · {plannedDate}
                 </p>
                 {dayAdaptationBusy ? (
@@ -1449,7 +1412,7 @@ export default function TrainingBuilderRichPageView() {
                         : null}
                     </p>
                     {dayAdaptation.targetPlanned ? (
-                      <p className="mt-2 font-mono text-xs text-amber-100/85">
+                      <p className="mt-2 font-mono text-xs tabular-nums text-orange-100/85">
                         {dayAdaptation.targetPlanned.baselineDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.baselineTssTarget} →{" "}
                         {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.adaptedTssTarget}
                       </p>
@@ -1464,9 +1427,9 @@ export default function TrainingBuilderRichPageView() {
               <div className="flex flex-wrap gap-2">
                 <Pro2Button
                   type="button"
-                  variant="primary"
+                  variant="secondary"
                   disabled={!athleteId || genBusy || dayAdaptationBusy}
-                  className="!bg-gradient-to-r !from-amber-600 !via-orange-600 !to-fuchsia-600"
+                  className="border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
                   onClick={() => void runGenerate()}
                 >
                   {genBusy ? "Generazione…" : "Genera con adattamento"}
@@ -1489,89 +1452,20 @@ export default function TrainingBuilderRichPageView() {
         ) : null}
 
         <section
-          aria-label="Contesto generativo e asset"
-          className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5 shadow-inner"
-        >
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-violet-400">
-            Builder · contesto generativo
-          </p>
-          <p className="mt-1 max-w-3xl text-xs text-gray-500">
-            Knowledge library e asset esterni sono di supporto e audit: il motore sessione resta deterministico; nessun redirect o
-            blocco se i dati mancano (fallback locale in-modulo).
-          </p>
-          {!athleteId ? (
-            <p className="mt-3 text-sm text-gray-500">Seleziona un atleta attivo per caricare tracce e contesto nutrizione.</p>
-          ) : (
-            <div className="mt-4 space-y-4">
-              <ResearchTraceScientificPanel athleteId={athleteId} limit={16} traceSurface="latest_primary" />
-              <ReplicateStatusStrip />
-              <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-3 sm:p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-300/90">Nutrizione · giorno seduta engine</p>
-                    <p className="mt-0.5 font-mono text-[0.7rem] text-gray-500">{plannedDate}</p>
-                  </div>
-                  <Pro2Button
-                    type="button"
-                    variant="secondary"
-                    disabled={nutritionBusy}
-                    className="border-emerald-500/35 bg-emerald-500/10 text-xs hover:bg-emerald-500/15"
-                    onClick={() => void refreshNutritionContext()}
-                  >
-                    {nutritionBusy ? "Lettura…" : "Aggiorna sintesi"}
-                  </Pro2Button>
-                </div>
-                {nutritionErr ? <p className="mt-2 text-xs text-amber-200/90">{nutritionErr}</p> : null}
-                {nutritionLine ? (
-                  <p className="mt-2 text-sm text-gray-200">{nutritionLine}</p>
-                ) : !nutritionErr && !nutritionBusy ? (
-                  <p className="mt-2 text-xs text-gray-500">Solo lettura API nutrizione — utile per allineare fueling mentale al giorno scelto.</p>
-                ) : null}
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section aria-label="KPI finestra" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            label="TSS pianificato"
-            value={showData ? Math.round(stats.pTss).toString() : "—"}
-            hint={range ? `${range.from} → ${range.to}` : undefined}
-            accent="cyan"
-            icon={Flame}
-          />
-          <KpiCard
-            label="TSS eseguito"
-            value={showData ? Math.round(stats.eTss).toString() : "—"}
-            hint="Nella stessa finestra"
-            accent="orange"
-            icon={Activity}
-          />
-          <KpiCard
-            label="Sessioni (pian. / eseg.)"
-            value={showData ? `${stats.sessionsPlanned} / ${stats.sessionsExecuted}` : "—"}
-            accent="violet"
-            icon={Timer}
-          />
-          <KpiCard
-            label="Minuti totali"
-            value={showData ? `${Math.round(stats.pMin + stats.eMin)}` : "—"}
-            hint="Pianificato + eseguito (somma grezza)"
-            accent="emerald"
-            icon={Heart}
-          />
-        </section>
-
-        <section
           aria-label="Famiglie sessione"
-          className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-950/[0.12] via-orange-950/[0.08] to-black/85 p-6 shadow-inner"
+          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner"
         >
           <div className="mb-5 flex flex-wrap items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-fuchsia-400/45 bg-fuchsia-500/35 text-fuchsia-50 shadow-[0_0_16px_rgba(217,70,239,0.35)]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
               <LayoutGrid className="h-5 w-5" strokeWidth={2.35} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-white">Sport per settore (A → D)</h2>
+              <h2 className="flex items-center gap-2 text-lg font-bold text-white">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
+                  1
+                </span>
+                Sport per settore (A → D)
+              </h2>
               <p className="mt-1 text-sm text-gray-400">
                 Prima scegli macro e disciplina; dominio motore (endurance / gym / hyrox / crossfit / team_sport / combat /
                 mind_body) alimenta generazione engine e builder manuale sotto.
@@ -1602,7 +1496,7 @@ export default function TrainingBuilderRichPageView() {
                     {m.sports.map((s) => (
                       <span
                         key={s.sport}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/25 p-0.5 shadow-inner ring-1 ring-white/10 sm:h-11 sm:w-11"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/25 p-0.5 shadow-inner ring-1 ring-white/10 sm:h-11 sm:w-11"
                         title={s.label}
                         aria-hidden
                       >
@@ -1662,31 +1556,36 @@ export default function TrainingBuilderRichPageView() {
           aria-label="Genera sessione (builder engine)"
           className={`rounded-2xl border p-6 ${
             activeMacroId === "strength"
-              ? "border-fuchsia-500/35 bg-gradient-to-br from-violet-950/25 via-fuchsia-950/15 to-orange-950/20"
+              ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
               : activeMacroId === "technical"
-                ? "border-violet-500/35 bg-gradient-to-br from-violet-500/[0.1] via-fuchsia-950/15 to-black/40"
+                ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
                 : activeMacroId === "lifestyle"
-                  ? "border-emerald-500/35 bg-gradient-to-br from-emerald-500/[0.1] via-teal-950/20 to-black/40"
-                  : "border-cyan-500/30 bg-gradient-to-br from-cyan-500/[0.08] via-violet-950/10 to-black/40"
+                  ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
+                  : "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
           }`}
         >
-          <h2 className="text-lg font-bold text-white">Genera sessione</h2>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-white">
+            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
+              2
+            </span>
+            Genera sessione
+          </h2>
           {activeMacroId === "strength" ? (
             <p className="mt-1 text-sm text-gray-400">
               Il motore propone la struttura (nomi esercizio), poi si materializza la{" "}
-              <span className="text-fuchsia-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini.
+              <span className="text-orange-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini.
               Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
             </p>
           ) : activeMacroId === "technical" ? (
             <p className="mt-1 text-sm text-gray-400">
               Concentrati su tecnica, tattica, schemi e moduli: la parte aerobico-pura resta in A · Aerobico.
-              Il builder stima un <span className="text-violet-200/95">TSS</span> da confrontare con RPE / carico interno.
-              Disciplina: <span className="font-semibold text-violet-200">{currentSportLabel}</span>.
+              Il builder stima un <span className="text-orange-200/95">TSS</span> da confrontare con RPE / carico interno.
+              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
             </p>
           ) : activeMacroId === "lifestyle" ? (
             <p className="mt-1 text-sm text-gray-400">
               Preset per mobilità, recovery, qualità movimento e lavoro aerobico leggero (mind-body).
-              Disciplina: <span className="font-semibold text-emerald-200">{currentSportLabel}</span>.
+              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
             </p>
           ) : (
             <p className="mt-1 text-sm text-gray-400">
@@ -1697,7 +1596,7 @@ export default function TrainingBuilderRichPageView() {
 
           {activeMacroId === "strength" ? (
             <div className="mt-4 flex flex-col gap-3">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/90">Preset generativi</p>
+              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
               <div className="flex flex-wrap gap-2">
                 {ENGINE_QUICK_GYM.map((p) => (
                   <button
@@ -1713,7 +1612,7 @@ export default function TrainingBuilderRichPageView() {
                 ))}
               </div>
               <div className="rounded-xl border border-orange-500/20 bg-black/25 p-3">
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-200/90">Attrezzi · filtro libreria</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Attrezzi · filtro libreria</p>
                 <p className="mt-1 text-xs text-gray-500">
                   Pesi, corpo libero, cavi, elastici, macchinari. Nessun chip = nessun filtro stretto.
                 </p>
@@ -1740,7 +1639,7 @@ export default function TrainingBuilderRichPageView() {
                     );
                   })}
                 </div>
-                <p className="mt-3 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200/90">
+                <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
                   Contrazione / stile
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -1765,7 +1664,7 @@ export default function TrainingBuilderRichPageView() {
                 <label className="mt-3 flex max-w-lg flex-col gap-1 text-[0.65rem] text-gray-400">
                   Stile esecuzione nella scheda generata
                   <select
-                    className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={gymAutoExecutionStyle}
                     onChange={(e) => setGymAutoExecutionStyle(e.target.value)}
                   >
@@ -1784,12 +1683,12 @@ export default function TrainingBuilderRichPageView() {
                   <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
                 </summary>
                 <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
+                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Adattamento
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={adaptation}
                         onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
                       >
@@ -1806,7 +1705,7 @@ export default function TrainingBuilderRichPageView() {
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Fase
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={phase}
                         onChange={(e) => setPhase(e.target.value as typeof phase)}
                       >
@@ -1817,15 +1716,15 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-3">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
                       <input
                         type="number"
                         min={20}
                         max={180}
-                        className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={sessionMinutes}
                         onChange={(e) => setSessionMinutes(Number(e.target.value))}
                       />
@@ -1836,7 +1735,7 @@ export default function TrainingBuilderRichPageView() {
               <Pro2Button
                 type="button"
                 variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 !bg-gradient-to-r !from-orange-500 !to-amber-600 !shadow-lg !shadow-orange-500/25 sm:!w-auto"
+                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
                 disabled={!athleteId || genBusy}
                 onClick={() => void runGenerate()}
               >
@@ -1846,7 +1745,7 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : activeMacroId === "technical" ? (
             <div className="mt-4 flex flex-col gap-3">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Preset generativi</p>
+              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
               <div className="flex flex-wrap gap-2">
                 {ENGINE_QUICK_TECHNICAL.map((p) => (
                   <button
@@ -1854,15 +1753,15 @@ export default function TrainingBuilderRichPageView() {
                     type="button"
                     disabled={!athleteId || genBusy}
                     onClick={() => void runGenerate({ adaptation: p.adaptation, sessionMinutes: p.minutes, phase: p.phase })}
-                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-violet-400/35 bg-gradient-to-br from-violet-600/90 to-fuchsia-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(167,139,250,0.2)] transition hover:brightness-110 disabled:opacity-40"
+                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-orange-400/35 bg-gradient-to-br from-orange-600/90 to-amber-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(251,146,60,0.2)] transition hover:brightness-110 disabled:opacity-40"
                   >
-                    <Sparkles className="mb-1 h-4 w-4 text-violet-100 opacity-90" aria-hidden />
+                    <Sparkles className="mb-1 h-4 w-4 text-amber-100 opacity-90" aria-hidden />
                     {p.label}
                   </button>
                 ))}
               </div>
-              <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.07] p-4">
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-200/95">
+              <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.07] p-4">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
                   Struttura modulare · Macro C
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
@@ -1871,7 +1770,7 @@ export default function TrainingBuilderRichPageView() {
                 </p>
                 <div className="mt-3 space-y-3">
                   <div>
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">Fase di lavoro</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fase di lavoro</p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
                       {(
                         [
@@ -1887,7 +1786,7 @@ export default function TrainingBuilderRichPageView() {
                             onClick={() => setTechWorkPhase(opt.id)}
                             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                               sel
-                                ? "border-fuchsia-300 bg-fuchsia-500/25 text-fuchsia-50"
+                                ? "border-orange-400 bg-orange-500/30 text-white"
                                 : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
                             }`}
                           >
@@ -1898,7 +1797,7 @@ export default function TrainingBuilderRichPageView() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">Contesto</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Contesto</p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
                       {(
                         [
@@ -1915,7 +1814,7 @@ export default function TrainingBuilderRichPageView() {
                             onClick={() => setTechGameContext(opt.id)}
                             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                               sel
-                                ? "border-violet-300 bg-violet-500/25 text-violet-50"
+                                ? "border-orange-400 bg-orange-500/30 text-white"
                                 : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
                             }`}
                           >
@@ -1926,7 +1825,7 @@ export default function TrainingBuilderRichPageView() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">Qualità atletica (multipla)</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Qualità atletica (multipla)</p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
                       {TECHNICAL_ATHLETIC_QUALITY_OPTIONS.map((q) => {
                         const on = techQualities.includes(q.id);
@@ -1941,7 +1840,7 @@ export default function TrainingBuilderRichPageView() {
                             }
                             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                               on
-                                ? "border-violet-400 bg-violet-600/20 text-white"
+                                ? "border-orange-400 bg-orange-500/30 text-white"
                                 : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
                             }`}
                           >
@@ -1955,16 +1854,16 @@ export default function TrainingBuilderRichPageView() {
               </div>
               <details className="rounded-xl border border-white/10 bg-black/30">
                 <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <span className="underline decoration-violet-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
+                  <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
                   <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
                 </summary>
                 <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
+                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Adattamento
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={adaptation}
                         onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
                       >
@@ -1981,7 +1880,7 @@ export default function TrainingBuilderRichPageView() {
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Fase
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={phase}
                         onChange={(e) => setPhase(e.target.value as typeof phase)}
                       >
@@ -1992,15 +1891,15 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-3">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
                       <input
                         type="number"
                         min={20}
                         max={180}
-                        className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={sessionMinutes}
                         onChange={(e) => setSessionMinutes(Number(e.target.value))}
                       />
@@ -2011,7 +1910,7 @@ export default function TrainingBuilderRichPageView() {
               <Pro2Button
                 type="button"
                 variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 !bg-gradient-to-r !from-violet-600 !via-fuchsia-600 !to-orange-500 !shadow-lg !shadow-violet-500/25 sm:!w-auto"
+                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
                 disabled={!athleteId || genBusy}
                 onClick={() => void runGenerate()}
               >
@@ -2021,7 +1920,7 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : activeMacroId === "lifestyle" ? (
             <div className="mt-4 flex flex-col gap-3">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-300/90">Preset generativi · Lifestyle</p>
+              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi · Lifestyle</p>
               <div className="flex flex-wrap gap-2">
                 {ENGINE_QUICK_LIFESTYLE.map((p) => (
                   <button
@@ -2029,25 +1928,25 @@ export default function TrainingBuilderRichPageView() {
                     type="button"
                     disabled={!athleteId || genBusy}
                     onClick={() => void runGenerate({ adaptation: p.adaptation, sessionMinutes: p.minutes, phase: p.phase })}
-                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-emerald-400/35 bg-gradient-to-br from-emerald-600/90 to-teal-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(52,211,153,0.18)] transition hover:brightness-110 disabled:opacity-40"
+                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-orange-400/35 bg-gradient-to-br from-orange-600/90 to-amber-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(251,146,60,0.2)] transition hover:brightness-110 disabled:opacity-40"
                   >
-                    <Sparkles className="mb-1 h-4 w-4 text-emerald-100 opacity-90" aria-hidden />
+                    <Sparkles className="mb-1 h-4 w-4 text-amber-100 opacity-90" aria-hidden />
                     {p.label}
                   </button>
                 ))}
               </div>
               <details className="rounded-xl border border-white/10 bg-black/30">
                 <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <span className="underline decoration-emerald-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
+                  <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
                   <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
                 </summary>
                 <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden />
+                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
+                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Adattamento
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={adaptation}
                         onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
                       >
@@ -2064,7 +1963,7 @@ export default function TrainingBuilderRichPageView() {
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Fase
                       <select
-                        className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={phase}
                         onChange={(e) => setPhase(e.target.value as typeof phase)}
                       >
@@ -2075,15 +1974,15 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-3">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
                       <input
                         type="number"
                         min={20}
                         max={180}
-                        className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                         value={sessionMinutes}
                         onChange={(e) => setSessionMinutes(Number(e.target.value))}
                       />
@@ -2094,22 +1993,22 @@ export default function TrainingBuilderRichPageView() {
               <Pro2Button
                 type="button"
                 variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 !bg-gradient-to-r !from-emerald-600 !via-teal-600 !to-cyan-600 !shadow-lg !shadow-emerald-500/25 sm:!w-auto"
+                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
                 disabled={!athleteId || genBusy}
                 onClick={() => void runGenerate()}
               >
-                <Flame className="h-4 w-4 text-emerald-100 drop-shadow-[0_0_8px_rgba(167,243,208,0.5)]" aria-hidden />
+                <Flame className="h-4 w-4" aria-hidden />
                 {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
               </Pro2Button>
             </div>
           ) : (
             <div className="mt-4 flex flex-wrap items-end gap-3">
-              <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 p-3 sm:min-w-[10rem]">
-                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-violet-300" aria-hidden />
+              <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                   Adattamento
                   <select
-                    className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={adaptation}
                     onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
                   >
@@ -2126,7 +2025,7 @@ export default function TrainingBuilderRichPageView() {
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                   Fase
                   <select
-                    className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={phase}
                     onChange={(e) => setPhase(e.target.value as typeof phase)}
                   >
@@ -2137,27 +2036,27 @@ export default function TrainingBuilderRichPageView() {
                   </select>
                 </label>
               </div>
-              <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-3">
-                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+              <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                   Min
                   <input
                     type="number"
                     min={20}
                     max={180}
-                    className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={sessionMinutes}
                     onChange={(e) => setSessionMinutes(Number(e.target.value))}
                   />
                 </label>
               </div>
-              <div className="flex min-w-[9rem] flex-1 items-start gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-3 sm:min-w-[8rem]">
-                <Bike className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+              <div className="flex min-w-[9rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[8rem]">
+                <Bike className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                   Sport
                   <input
                     type="text"
-                    className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={sport}
                     onChange={(e) => setSport(e.target.value)}
                   />
@@ -2166,11 +2065,11 @@ export default function TrainingBuilderRichPageView() {
               <Pro2Button
                 type="button"
                 variant="primary"
-                className="!inline-flex !items-center !gap-2 !bg-gradient-to-r !from-cyan-600 !via-teal-600 !to-violet-600 !shadow-lg !shadow-cyan-500/25"
+                className="!inline-flex !items-center !gap-2"
                 disabled={!athleteId || genBusy}
                 onClick={() => void runGenerate()}
               >
-                <Flame className="h-4 w-4 text-cyan-100 drop-shadow-[0_0_8px_rgba(103,232,249,0.45)]" aria-hidden />
+                <Flame className="h-4 w-4" aria-hidden />
                 {genBusy ? "Generazione…" : "Genera sessione"}
               </Pro2Button>
             </div>
@@ -2197,8 +2096,8 @@ export default function TrainingBuilderRichPageView() {
           {genResult && "ok" in genResult && genResult.ok ? (
             <div className="mt-6 space-y-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm">
               {activeMacroId === "strength" ? (
-                <div className="space-y-3 rounded-xl border border-fuchsia-500/30 bg-gradient-to-br from-violet-950/30 via-fuchsia-950/10 to-orange-950/20 p-4">
-                  <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-200 via-fuchsia-200 to-orange-200">
+                <div className="space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4">
+                  <p className="text-sm font-semibold text-white">
                     Scheda generata ({gymManualRows.length} esercizi) · TSS stimato ~{manualTssPreview}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -2208,14 +2107,14 @@ export default function TrainingBuilderRichPageView() {
                     {gymManualRows.map((row) => (
                       <div
                         key={row.id}
-                        className="flex gap-3 rounded-2xl border border-violet-500/25 bg-black/35 p-3 shadow-inner"
+                        className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 shadow-inner"
                       >
                         <GymExerciseMediaThumb
                           src={row.mediaUrl}
                           alt={row.name}
                           catalogExerciseId={row.exerciseId}
                           fallbackLabel={row.name}
-                          className="h-28 w-28 shrink-0 rounded-xl border border-fuchsia-500/20 object-cover"
+                          className="h-28 w-28 shrink-0 rounded-xl border border-orange-500/20 object-cover"
                         />
                         <div className="min-w-0 flex-1">
                           <p className="font-bold leading-snug text-white">{row.name}</p>
@@ -2232,7 +2131,7 @@ export default function TrainingBuilderRichPageView() {
                             <p className="mt-1 text-[0.65rem] text-gray-400">{row.executionStyle}</p>
                           ) : null}
                           {(row.notes ?? "").trim() ? (
-                            <p className="mt-1 line-clamp-2 text-[0.65rem] text-pink-200/80">{row.notes}</p>
+                            <p className="mt-1 line-clamp-2 text-[0.65rem] text-gray-400">{row.notes}</p>
                           ) : null}
                         </div>
                       </div>
@@ -2243,10 +2142,10 @@ export default function TrainingBuilderRichPageView() {
                 <div
                   className={`rounded-xl border p-3 ${
                     activeMacroId === "lifestyle"
-                      ? "border-emerald-500/30 bg-gradient-to-br from-emerald-950/25 to-black/45"
+                      ? "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
                       : activeMacroId === "technical"
-                        ? "border-violet-500/30 bg-gradient-to-br from-violet-950/20 to-black/45"
-                        : "border-cyan-500/25 bg-gradient-to-br from-cyan-950/15 to-black/45"
+                        ? "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
+                        : "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
                   }`}
                 >
                   <SessionBlockIntensityChart
@@ -2269,7 +2168,7 @@ export default function TrainingBuilderRichPageView() {
                 <Pro2Button
                   type="button"
                   variant="secondary"
-                  className="!border-orange-400/40 !bg-orange-500/15 !text-orange-100"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
                   disabled={saveBusy || wahooPushBusy}
                   onClick={() => void saveToCalendar(plannedDate)}
                 >
@@ -2278,7 +2177,7 @@ export default function TrainingBuilderRichPageView() {
                 <Pro2Button
                   type="button"
                   variant="secondary"
-                  className="!border-cyan-500/35 !bg-cyan-500/10 !text-cyan-100"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
                   disabled={!wahooPushEligible || saveBusy || wahooPushBusy}
                   title={
                     !wahooPushEligible
@@ -2300,7 +2199,7 @@ export default function TrainingBuilderRichPageView() {
                   Wahoo: {wahooPushErr}
                 </p>
               ) : null}
-              {wahooPushOk ? <p className="text-sm text-cyan-200/90">{wahooPushOk}</p> : null}
+              {wahooPushOk ? <p className="text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
               {saveOkId ? (
                 <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={saveOkId} />
               ) : null}
@@ -2329,6 +2228,16 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : null}
         </section>
+
+        <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
+            3
+          </span>
+          <p className="text-sm font-bold text-white">
+            Rifinisci{" "}
+            <span className="font-normal text-gray-400">— adatta blocchi, esercizi, durata e nome della seduta nel composer qui sotto.</span>
+          </p>
+        </div>
 
         <div id="builder-manual-editor">
         {activeMacroId === "strength" ? (
@@ -2438,6 +2347,18 @@ export default function TrainingBuilderRichPageView() {
         )}
         </div>
 
+        <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
+            4
+          </span>
+          <p className="text-sm font-bold text-white">
+            Salva{" "}
+            <span className="font-normal text-gray-400">
+              — usa «Salva nel calendario» nella seduta generata o nel composer: la seduta appare in «Prossime pianificate» e nel Calendario.
+            </span>
+          </p>
+        </div>
+
         <CoachWorkoutLibraryPanel
           athleteId={athleteId}
           targetDate={plannedDate}
@@ -2449,10 +2370,10 @@ export default function TrainingBuilderRichPageView() {
 
         <section
           aria-label="Prossime sessioni pianificate"
-          className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/[0.14] via-black/55 to-violet-950/[0.12] p-6 shadow-inner"
+          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner"
         >
           <div className="mb-4 flex flex-wrap items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-cyan-400/45 bg-cyan-500/35 text-cyan-50 shadow-[0_0_16px_rgba(34,211,238,0.3)]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
               <CalendarDays className="h-5 w-5" strokeWidth={2.35} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -2461,7 +2382,7 @@ export default function TrainingBuilderRichPageView() {
             </div>
           </div>
           {ctxLoading || loading ? (
-            <div className="mt-4 h-10 w-full max-w-xs animate-pulse rounded-full bg-cyan-500/15" />
+            <div className="mt-4 h-10 w-full max-w-xs animate-pulse rounded-full bg-orange-500/15" />
           ) : null}
           {err ? (
             <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" role="alert">
@@ -2469,8 +2390,8 @@ export default function TrainingBuilderRichPageView() {
             </p>
           ) : null}
           {showData && upcoming.length === 0 ? (
-            <div className="mt-4 flex flex-col items-center justify-center rounded-2xl border border-cyan-500/25 bg-black/40 px-6 py-14 text-center">
-              <CalendarOff className="h-14 w-14 text-cyan-400 drop-shadow-[0_0_18px_rgba(34,211,238,0.35)]" aria-hidden />
+            <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-10 text-center">
+              <CalendarOff className="h-8 w-8 text-orange-400" aria-hidden />
               <p className="mt-5 text-base font-semibold text-white">Nessuna sessione futura nella finestra</p>
               <p className="mt-2 max-w-sm text-sm text-gray-500">
                 Pianifica dal builder sopra o attendi il refresh del calendario: qui vedrai le prossime sedute come card colorate.
@@ -2482,10 +2403,10 @@ export default function TrainingBuilderRichPageView() {
               {upcoming.map((w) => (
                 <li
                   key={w.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/35 via-black/45 to-violet-950/20 px-3 py-3 shadow-sm"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 transition-colors hover:border-orange-500/40 hover:bg-white/[0.05]"
                 >
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/45 bg-cyan-500/20 px-3 py-1 font-mono text-xs font-semibold text-cyan-100 shadow-inner">
-                    <CalendarDays className="h-3.5 w-3.5 text-cyan-300" aria-hidden />
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 font-mono text-xs font-semibold text-orange-300">
+                    <CalendarDays className="h-3.5 w-3.5 text-orange-300" aria-hidden />
                     {w.date}
                   </span>
                   <span className="min-w-0 flex-1 text-sm font-medium text-white">{formatPlannedWorkoutCardTitle(w)}</span>
@@ -2496,7 +2417,7 @@ export default function TrainingBuilderRichPageView() {
           {showData && executed.length > 0 ? (
             <div className="mt-8 border-t border-orange-500/20 pt-6">
               <h3 className="flex items-center gap-2 text-sm font-bold text-orange-100">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-400/40 bg-orange-500/25 text-orange-200 shadow-[0_0_10px_rgba(251,146,60,0.25)]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-orange-400/40 bg-orange-500/25 text-orange-200 shadow-[0_0_10px_rgba(251,146,60,0.25)]">
                   <Activity className="h-4 w-4" strokeWidth={2.35} aria-hidden />
                 </span>
                 Ultime eseguite (max 5)
@@ -2520,7 +2441,90 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : null}
         </section>
-      </div>
-    </div>
+
+        {/* In fondo: accordion unico «Dettagli e motore» — contesto generativo e KPI finestra. */}
+        <Pro2Accordion
+          id="mod-dettagli-motore"
+          title="Dettagli e motore"
+          subtitle="Contesto generativo, asset e KPI della finestra calendario"
+          accent="orange"
+        >
+          <div className="space-y-6">
+            <section
+              aria-label="Contesto generativo e asset"
+              className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5 shadow-inner"
+            >
+              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
+                Builder · contesto generativo
+              </p>
+              <p className="mt-1 max-w-3xl text-xs text-gray-500">
+                Knowledge library e asset esterni sono di supporto e audit: il motore sessione resta deterministico; nessun redirect o
+                blocco se i dati mancano (fallback locale in-modulo).
+              </p>
+              {!athleteId ? (
+                <p className="mt-3 text-sm text-gray-500">Seleziona un atleta attivo per caricare tracce e contesto nutrizione.</p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <ResearchTraceScientificPanel athleteId={athleteId} limit={16} traceSurface="latest_primary" />
+                  <ReplicateStatusStrip />
+                  <div className="rounded-xl border border-orange-500/25 bg-orange-950/10 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Nutrizione · giorno seduta engine</p>
+                        <p className="mt-0.5 font-mono text-[0.7rem] text-gray-500">{plannedDate}</p>
+                      </div>
+                      <Pro2Button
+                        type="button"
+                        variant="secondary"
+                        disabled={nutritionBusy}
+                        className="border-orange-500/30 bg-orange-500/10 text-xs text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+                        onClick={() => void refreshNutritionContext()}
+                      >
+                        {nutritionBusy ? "Lettura…" : "Aggiorna sintesi"}
+                      </Pro2Button>
+                    </div>
+                    {nutritionErr ? <p className="mt-2 text-xs text-amber-200/90">{nutritionErr}</p> : null}
+                    {nutritionLine ? (
+                      <p className="mt-2 text-sm text-gray-200">{nutritionLine}</p>
+                    ) : !nutritionErr && !nutritionBusy ? (
+                      <p className="mt-2 text-xs text-gray-500">Solo lettura API nutrizione — utile per allineare fueling mentale al giorno scelto.</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section aria-label="KPI finestra" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard
+                label="TSS pianificato"
+                value={showData ? Math.round(stats.pTss).toString() : "—"}
+                hint={range ? `${range.from} → ${range.to}` : undefined}
+                accent="orange"
+                icon={Flame}
+              />
+              <KpiCard
+                label="TSS eseguito"
+                value={showData ? Math.round(stats.eTss).toString() : "—"}
+                hint="Nella stessa finestra"
+                accent="orange"
+                icon={Activity}
+              />
+              <KpiCard
+                label="Sessioni (pian. / eseg.)"
+                value={showData ? `${stats.sessionsPlanned} / ${stats.sessionsExecuted}` : "—"}
+                accent="orange"
+                icon={Timer}
+              />
+              <KpiCard
+                label="Minuti totali"
+                value={showData ? `${Math.round(stats.pMin + stats.eMin)}` : "—"}
+                hint="Pianificato + eseguito (somma grezza)"
+                accent="orange"
+                icon={Heart}
+              />
+            </section>
+          </div>
+        </Pro2Accordion>
+    </Pro2ModulePageShell>
   );
 }

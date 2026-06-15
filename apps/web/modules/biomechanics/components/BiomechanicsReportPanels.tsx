@@ -1,5 +1,7 @@
 "use client";
 
+import { Activity, Crosshair, Ruler, ShieldAlert, Video } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { BiomechanicsCameraPlane } from "@empathy/contracts";
 import { capturePlaneToViewMode, type BiomechanicsCaptureViewMode } from "@/lib/biomechanics/biomech-capture-view";
 import type { BiomechanicsSessionImportV1 } from "@empathy/contracts";
@@ -13,6 +15,7 @@ import {
   SIDE_LABELS,
   type BiomechanicsReportData,
 } from "@/lib/biomechanics/biomech-report-utils";
+import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { BiomechanicsAngleOverlay } from "@/modules/biomechanics/components/BiomechanicsAngleOverlay";
 
 function formatDateTime(value: string | undefined): string {
@@ -22,11 +25,15 @@ function formatDateTime(value: string | undefined): string {
   return date.toLocaleString("it-IT", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function KpiTile({ label, value, accent }: { label: string; value: string; accent: string }) {
+function KpiTile({ label, value }: { label: string; value: string }) {
+  const percent = /^(.+?)\s*%$/.exec(value);
   return (
-    <div className={`rounded-2xl border ${accent} bg-black/30 p-4`}>
-      <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-gray-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+    <div className="rounded-xl border border-teal-500/25 bg-white/[0.03] p-4">
+      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+        {percent ? percent[1] : value}
+        {percent ? <span className="ml-1 text-xs font-medium text-gray-500">%</span> : null}
+      </p>
     </div>
   );
 }
@@ -34,18 +41,18 @@ function KpiTile({ label, value, accent }: { label: string; value: string; accen
 function Section({
   title,
   subtitle,
+  icon,
   children,
 }: {
   title: string;
   subtitle?: string;
+  icon: LucideIcon;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      {subtitle ? <p className="mt-1 text-xs text-gray-400">{subtitle}</p> : null}
-      <div className="mt-4">{children}</div>
-    </section>
+    <Pro2SectionCard accent="teal" icon={icon} title={title} subtitle={subtitle}>
+      {children}
+    </Pro2SectionCard>
   );
 }
 
@@ -107,7 +114,7 @@ export function BiomechanicsReportPanels({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
         <p>
           <span className="text-gray-500">Disciplina</span> · {data.discipline ?? "—"} ·{" "}
           <span className="text-gray-500">Sorgente</span> · {data.source ?? "—"}
@@ -116,7 +123,7 @@ export function BiomechanicsReportPanels({
           <p className="mt-1 text-xs text-gray-400">Registrata {formatDateTime(data.recordedAt)}</p>
         ) : null}
         {mode === "preview" ? (
-          <p className="mt-2 text-xs text-amber-200">
+          <p className="mt-2 text-xs text-amber-300">
             Anteprima proposta CV
             {typeof data.confidence01 === "number" ? ` · confidenza ${pct01(data.confidence01)}` : ""}
             {data.provider ? ` · ${data.provider}` : ""}
@@ -126,46 +133,42 @@ export function BiomechanicsReportPanels({
 
       {efficiency ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile
-            label="Efficienza"
-            value={pct01(efficiency.biomechanicalEfficiency01)}
-            accent="border-fuchsia-500/25"
-          />
-          <KpiTile label="Qualità movimento" value={pct01(efficiency.movementQuality01)} accent="border-violet-500/25" />
-          <KpiTile label="Simmetria" value={pct01(efficiency.symmetry01)} accent="border-cyan-500/25" />
-          <KpiTile label="Rischio infortunio" value={pct01(efficiency.injuryRisk01)} accent="border-orange-500/25" />
+          <KpiTile label="Efficienza" value={pct01(efficiency.biomechanicalEfficiency01)} />
+          <KpiTile label="Qualità movimento" value={pct01(efficiency.movementQuality01)} />
+          <KpiTile label="Simmetria" value={pct01(efficiency.symmetry01)} />
+          <KpiTile label="Rischio infortunio" value={pct01(efficiency.injuryRisk01)} />
         </div>
       ) : (
-        <p className="rounded-xl border border-white/10 px-4 py-3 text-sm text-gray-400">
+        <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-400">
           Nessun campione angolo disponibile per calcolare i KPI.
         </p>
       )}
 
       {envelopes.length ? (
-        <Section title="Angoli articolari (ROM)" subtitle="Min, max, range e media per articolazione e lato.">
+        <Section title="Angoli articolari (ROM)" subtitle="Min, max, range e media per articolazione e lato." icon={Ruler}>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="w-full min-w-[520px] text-xs">
               <thead>
-                <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-gray-500">
-                  <th className="px-2 py-2 font-medium">Articolazione</th>
-                  <th className="px-2 py-2 font-medium">Lato</th>
-                  <th className="px-2 py-2 font-medium">Min</th>
-                  <th className="px-2 py-2 font-medium">Max</th>
-                  <th className="px-2 py-2 font-medium">ROM</th>
-                  <th className="px-2 py-2 font-medium">Media</th>
-                  <th className="px-2 py-2 font-medium">Campioni</th>
+                <tr className="border-b border-white/10">
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Articolazione</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Lato</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Min</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Max</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">ROM</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Media</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Campioni</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {envelopes.map((row) => (
-                  <tr key={`${row.joint}-${row.side}`} className="border-b border-white/5 text-gray-200">
-                    <td className="px-2 py-2">{JOINT_LABELS[row.joint]}</td>
-                    <td className="px-2 py-2">{SIDE_LABELS[row.side ?? "midline"]}</td>
-                    <td className="px-2 py-2 font-mono">{deg(row.minDeg)}</td>
-                    <td className="px-2 py-2 font-mono">{deg(row.maxDeg)}</td>
-                    <td className="px-2 py-2 font-mono">{deg(row.rangeDeg)}</td>
-                    <td className="px-2 py-2 font-mono">{deg(row.meanDeg)}</td>
-                    <td className="px-2 py-2 font-mono">{row.samples}</td>
+                  <tr key={`${row.joint}-${row.side}`}>
+                    <td className="px-3 py-2 text-gray-300">{JOINT_LABELS[row.joint]}</td>
+                    <td className="px-3 py-2 text-gray-300">{SIDE_LABELS[row.side ?? "midline"]}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{deg(row.minDeg)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{deg(row.maxDeg)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{deg(row.rangeDeg)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{deg(row.meanDeg)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.samples}</td>
                   </tr>
                 ))}
               </tbody>
@@ -175,17 +178,17 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {movementEntries.length ? (
-        <Section title="Pattern di movimento" subtitle="Indicatori normalizzati 0–100%.">
+        <Section title="Pattern di movimento" subtitle="Indicatori normalizzati 0–100%." icon={Activity}>
           <div className="grid gap-2 sm:grid-cols-2">
             {movementEntries.map((key) => (
-              <div key={key} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2">
+              <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <span className="text-sm text-gray-300">{MOVEMENT_LABELS[key]}</span>
-                <span className="font-mono text-sm text-white">{pct01(data.movementPatterns?.[key])}</span>
+                <span className="font-mono text-sm tabular-nums text-white">{pct01(data.movementPatterns?.[key])}</span>
               </div>
             ))}
           </div>
           {data.compensationFlags?.length ? (
-            <p className="mt-3 text-xs text-amber-200">
+            <p className="mt-3 text-xs text-amber-300">
               Compensazioni: {data.compensationFlags.join(", ")}
             </p>
           ) : null}
@@ -193,12 +196,12 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {riskEntries.length ? (
-        <Section title="Rischio per distretto" subtitle="Punteggi normalizzati dal motore CV + domain engine.">
+        <Section title="Rischio per distretto" subtitle="Punteggi normalizzati dal motore CV + domain engine." icon={ShieldAlert}>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {riskEntries.map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2">
+              <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <span className="text-sm text-gray-300">{label}</span>
-                <span className="font-mono text-sm text-orange-200">
+                <span className="font-mono text-sm tabular-nums text-white">
                   {pct01(data.riskScores?.[key as keyof typeof RISK_LABELS])}
                 </span>
               </div>
@@ -208,7 +211,7 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {data.calibration ? (
-        <Section title="Calibrazione scala" subtitle="Riferimento metrico usato per la cattura.">
+        <Section title="Calibrazione scala" subtitle="Riferimento metrico usato per la cattura." icon={Crosshair}>
           <p className="text-sm text-gray-300">
             {data.calibration.referenceLabel} · {Math.round(data.calibration.referenceValueMm)} mm ·{" "}
             {data.calibration.method}
@@ -220,7 +223,7 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {data.anthropometrics ? (
-        <Section title="Segmenti antropometrici" subtitle="Lunghezze stimate (mm).">
+        <Section title="Segmenti antropometrici" subtitle="Lunghezze stimate (mm)." icon={Ruler}>
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
@@ -233,9 +236,12 @@ export function BiomechanicsReportPanels({
             )
               .filter(([key]) => typeof data.anthropometrics?.[key] === "number")
               .map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2">
+                <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                   <span className="text-sm text-gray-300">{label}</span>
-                  <span className="font-mono text-sm text-white">{Math.round(data.anthropometrics![key]!)} mm</span>
+                  <span className="font-mono text-sm tabular-nums text-white">
+                    {Math.round(data.anthropometrics![key]!)}
+                    <span className="ml-1 text-xs font-medium text-gray-500">mm</span>
+                  </span>
                 </div>
               ))}
           </div>
@@ -244,6 +250,7 @@ export function BiomechanicsReportPanels({
 
       <Section
         title="Overlay angoli"
+        icon={Video}
         subtitle={
           editable
             ? "Trascina i punti sul video; angoli e KPI si aggiornano dopo ogni correzione."

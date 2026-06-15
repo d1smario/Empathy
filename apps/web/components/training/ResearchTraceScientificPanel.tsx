@@ -125,7 +125,7 @@ export function ResearchTraceScientificPanel({
 
   return (
     <div
-      className={`rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/20 via-black/40 to-black/60 p-4 sm:p-5 ${className ?? ""}`}
+      className={`rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4 sm:p-5 ${className ?? ""}`}
     >
       <h3 className="text-base font-bold text-white">Traccia scientifica canonica</h3>
       <p className="mt-1 text-[0.7rem] leading-snug text-gray-500">
@@ -168,7 +168,7 @@ export function ResearchTraceScientificPanel({
                       return (
                         <div key={hop.traceHopId} className="builder-kpi-card min-h-[7rem] text-left">
                           <div className="kpi-card-label flex items-start gap-2 text-left leading-tight">
-                            <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" aria-hidden />
+                            <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-orange-400" aria-hidden />
                             <span>
                               {idx + 1}. {sector.shortTitle}
                             </span>
@@ -189,8 +189,8 @@ export function ResearchTraceScientificPanel({
             })}
 
             {historyTraces.length > 0 ? (
-              <details className="mt-4 rounded-xl border border-violet-500/20 bg-violet-950/10 px-3 py-2">
-                <summary className="cursor-pointer text-xs font-semibold text-violet-200/90">
+              <details className="mt-4 rounded-xl border border-orange-500/20 bg-orange-950/10 px-3 py-2">
+                <summary className="cursor-pointer text-xs font-semibold text-orange-200/90">
                   Cronologia tracce salvate ({historyTraces.length}) — stessa struttura a 4 settori, senza ripetere la griglia
                 </summary>
                 <ul className="mt-2 space-y-2 border-t border-white/10 pt-2 text-[0.65rem] leading-snug text-gray-400">

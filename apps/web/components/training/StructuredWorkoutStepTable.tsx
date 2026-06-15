@@ -27,16 +27,16 @@ export function StructuredWorkoutStepTable({
 
   return (
     <div className="rounded-xl border border-white/10 bg-black/30">
-      <p className="border-b border-white/10 px-3 py-2 text-[0.65rem] font-bold uppercase tracking-wider text-zinc-400">
+      <p className="border-b border-white/10 px-3 py-2 text-[0.65rem] font-bold uppercase tracking-wider text-gray-400">
         {title}
         {ftpW && ftpW > 0 ? (
-          <span className="ml-2 font-mono font-normal normal-case text-zinc-500">FTP {ftpW} W</span>
+          <span className="ml-2 font-mono font-normal normal-case text-gray-500">FTP {ftpW} W</span>
         ) : null}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[28rem] border-collapse text-left text-gray-200">
           <thead>
-            <tr className="border-b border-white/10 text-zinc-500">
+            <tr className="border-b border-white/10 text-gray-500">
               <th className={`${head} font-bold uppercase tracking-wider`}>#</th>
               <th className={`${head} font-bold uppercase tracking-wider`}>Step</th>
               <th className={`${head} font-bold uppercase tracking-wider`}>Durata</th>
@@ -48,14 +48,14 @@ export function StructuredWorkoutStepTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.index} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
-                <td className={`${cell} font-mono text-zinc-500`}>{r.index}</td>
+                <td className={`${cell} font-mono text-gray-500`}>{r.index}</td>
                 <td className={`${cell} max-w-[12rem] truncate font-medium text-white`} title={r.label}>
                   {r.label ?? `Step ${r.index}`}
                 </td>
-                <td className={`${cell} font-mono tabular-nums text-zinc-300`}>{formatDurationMmss(r.durationSec)}</td>
-                <td className={`${cell} font-mono tabular-nums text-cyan-200/90`}>{formatTargetW(r)}</td>
-                <td className={`${cell} font-mono text-violet-200/90`}>{r.zoneLabel ?? "—"}</td>
-                <td className={`${cell} max-w-[14rem] truncate text-xs text-zinc-400`} title={r.coachNote}>
+                <td className={`${cell} font-mono tabular-nums text-gray-300`}>{formatDurationMmss(r.durationSec)}</td>
+                <td className={`${cell} font-mono tabular-nums text-white`}>{formatTargetW(r)}</td>
+                <td className={`${cell} font-mono text-gray-300`}>{r.zoneLabel ?? "—"}</td>
+                <td className={`${cell} max-w-[14rem] truncate text-xs text-gray-400`} title={r.coachNote}>
                   {r.coachNote ?? ""}
                 </td>
               </tr>

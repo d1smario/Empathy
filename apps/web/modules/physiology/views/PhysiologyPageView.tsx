@@ -13,7 +13,6 @@ import { parseGasExchangeExport } from "@/lib/physiology/gas-exchange-file-parse
 import type { GasExchangeParseResult } from "@/lib/physiology/gas-exchange-file-parser";
 import { substrateOxidationRatesFromGasExchange } from "@/lib/physiology/substrate-from-gas-exchange";
 import { vo2LMinAtTimeOnset, vo2OnsetFractionAtTime } from "@/lib/physiology/vo2-on-kinetics";
-import { estimatePeakBloodLactateMmol } from "@/lib/physiology/lactate-steady-state-curve";
 import { METABOLIC_SIGNAL_SCHEMA_VERSION } from "@/lib/physiology/metabolic-signal-contracts";
 import { gutMetricsFromTaxa } from "@/lib/physiology/derive-gut-metrics-from-context";
 import {
@@ -35,8 +34,8 @@ import { PhysiologyPro2MetabolicDashboard } from "@/components/physiology/Physio
 import { MultiscaleBottleneckPanelPro2 } from "@/components/knowledge/MultiscaleBottleneckPanelPro2";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Button } from "@/components/ui/empathy";
-import { AdminScopedInlineLink, AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
+import { Pro2Button, Pro2Accordion } from "@/components/ui/empathy";
+import { AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { cn } from "@/lib/cn";
 import {
@@ -44,7 +43,7 @@ import {
   savePhysiologySnapshot,
 } from "@/modules/physiology/services/physiology-snapshot-api";
 import { clearVo2maxLab, saveVo2maxLab } from "@/modules/physiology/services/vo2max-lab-api";
-import { Activity, BookOpen, Layers, Network } from "lucide-react";
+import { Activity, Layers, Network } from "lucide-react";
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -98,9 +97,9 @@ type LabRun = {
 };
 
 function labHistorySectionTitle(section: LabSection): string {
-  if (section === "metabolic_profile") return "Metabolic profile";
-  if (section === "lactate_analysis") return "Lactate analysis";
-  return "Max Oxidate";
+  if (section === "metabolic_profile") return "Profilo metabolico";
+  if (section === "lactate_analysis") return "Analisi lattato";
+  return "Capacità ossidativa";
 }
 
 type WorkoutSample = {
@@ -371,7 +370,7 @@ function estimateUncertaintyPct(sources: PrecedenceSource[]) {
 export default function MetabolicLabPage() {
   const { athleteId, role, loading, userId, adminScoped } = useAthleteContext();
   const showTech = role === "coach" || adminScoped;
-  const [section, setSection] = useState<"profile" | "lactate" | "maxox">("profile");
+  const [section, setSection] = useState<"profile" | "lactate" | "maxox" | "dettagli">("profile");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -398,7 +397,7 @@ export default function MetabolicLabPage() {
   /** Peso profilo da API (allinea motore CP / L·min quando i campi lab massa sono vuoti). */
   const [athleteProfileWeightKg, setAthleteProfileWeightKg] = useState<number | null>(null);
   /** ISO `created_at` ultimo snapshot salvato per sezione (da `metabolic_lab_runs`). */
-  const [lastLabSavedAt, setLastLabSavedAt] = useState<{
+  const [, setLastLabSavedAt] = useState<{
     metabolic: string | null;
     lactate: string | null;
     maxox: string | null;
@@ -419,7 +418,6 @@ export default function MetabolicLabPage() {
   const [lactateVo2Mode, setLactateVo2Mode] = useState<Vo2InputMode>("device");
   const [maxOxVo2Mode, setMaxOxVo2Mode] = useState<Vo2InputMode>("device");
   const [profileRecalcHint, setProfileRecalcHint] = useState<string | null>(null);
-  const [metabolicProfileJsonHint, setMetabolicProfileJsonHint] = useState<string | null>(null);
   const [labVo2ManualInput, setLabVo2ManualInput] = useState("");
   const [labVo2Saving, setLabVo2Saving] = useState(false);
   const [labVo2Message, setLabVo2Message] = useState<string | null>(null);
@@ -1104,7 +1102,6 @@ export default function MetabolicLabPage() {
     setLabVo2ManualInput("");
     setLabVo2Message(null);
     setProfileRecalcHint(null);
-    setMetabolicProfileJsonHint(null);
     setEvidenceItems([]);
     setEvidenceError(null);
     setLactateSegmentAttachment(null);
@@ -1166,7 +1163,7 @@ export default function MetabolicLabPage() {
         }
         return next;
       });
-      setSaveMessage("Snapshot Metabolic profile importato negli input.");
+      setSaveMessage("Snapshot profilo metabolico importato negli input.");
       setError(null);
       return;
     }
@@ -1208,7 +1205,7 @@ export default function MetabolicLabPage() {
         }
         setLactateCalcTick((n) => n + 1);
       }
-      setSaveMessage("Snapshot Lactate analysis importato negli input.");
+      setSaveMessage("Snapshot analisi lattato importato negli input.");
       setError(null);
       return;
     }
@@ -1225,7 +1222,7 @@ export default function MetabolicLabPage() {
         if (rec.vo2_mode === "device" || rec.vo2_mode === "test") setMaxOxVo2Mode(rec.vo2_mode);
         setMaxOxCalcTick((n) => n + 1);
       }
-      setSaveMessage("Snapshot Max oxidate importato negli input.");
+      setSaveMessage("Snapshot capacità ossidativa importato negli input.");
       setError(null);
     }
   }
@@ -1702,7 +1699,7 @@ export default function MetabolicLabPage() {
     setProfileLastRecalcAt(Date.now());
     setSaveMessage(null);
     setProfileRecalcHint(
-      "Calcolo aggiornato in questa pagina. La curva CP non si archivia da sola: premi «Salva snapshot Metabolic profile» (Supabase + profilo fisiologico). Alla riapertura si ricarica l’ultimo salvataggio Metabolic profile per questo atleta.",
+      "Calcolo aggiornato in questa pagina. Per conservarlo premi «Salva profilo metabolico» in alto: alla prossima apertura ritrovi l’ultima analisi salvata.",
     );
     window.setTimeout(() => setProfileRecalcHint(null), 14000);
     requestAnimationFrame(() => {
@@ -1718,12 +1715,12 @@ export default function MetabolicLabPage() {
   if (loading) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Physiology · Metabolic Lab"
+        eyebrow="Il tuo motore fisiologico"
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Caricamento…"
-        description="Risoluzione contesto atleta."
+        description="Stiamo preparando i tuoi dati."
       >
-        <p className="text-sm text-slate-500">Caricamento contesto atleta…</p>
+        <p className="text-sm text-gray-500">Caricamento in corso…</p>
       </Pro2ModulePageShell>
     );
   }
@@ -1731,10 +1728,10 @@ export default function MetabolicLabPage() {
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Physiology · Metabolic Lab"
+        eyebrow="Il tuo motore fisiologico"
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Metabolic Lab"
-        description="CP, Lactate e Max Oxidate richiedono un atleta attivo nel contesto."
+        title="Fisiologia"
+        description="Per vedere la tua analisi serve un atleta attivo."
         headerActions={
           <AdminScopedPro2Link
             href="/access"
@@ -1745,7 +1742,7 @@ export default function MetabolicLabPage() {
           </AdminScopedPro2Link>
         }
       >
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
           Nessun atleta attivo. Se sei coach, seleziona un atleta in Athletes. Se sei privato, collega il tuo profilo in
           Accesso.
         </div>
@@ -1753,61 +1750,60 @@ export default function MetabolicLabPage() {
     );
   }
 
-  const physiologyTabClass = (active: boolean, tone: "cyan" | "amber" | "rose") =>
+  const physiologyTabClass = (active: boolean, _tone: "cyan" | "amber" | "rose") =>
     cn(
-      "rounded-full border px-4 py-2 text-sm font-semibold transition",
+      "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
       active
-        ? tone === "cyan"
-          ? "border-cyan-500/50 bg-cyan-500/15 text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.12)]"
-          : tone === "amber"
-            ? "border-amber-500/50 bg-amber-500/15 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.12)]"
-            : "border-rose-500/50 bg-rose-500/15 text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.12)]"
+        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-100"
         : "border-white/10 bg-black/30 text-gray-500 hover:border-white/20 hover:text-gray-300",
     );
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Physiology · Metabolic Lab"
+      eyebrow="Il tuo motore fisiologico"
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Model-driven physiology"
+      title="Fisiologia"
       description={
         <>
-          Motori versionati: <span className="text-cyan-200/90">Critical Power</span>,{" "}
-          <span className="text-amber-200/90">Lactate</span>, <span className="text-rose-200/90">Max Oxidate</span>.
-          Reality &gt; plan; snapshot salvabili come in V1.
+          Capisci come il tuo corpo produce e usa energia: potenza, soglie e capacità aerobica.
+          Scegli cosa analizzare, inserisci i dati e salva l&apos;analisi per ritrovarla la prossima volta.
         </>
       }
       headerActions={
-        <>
-          <AdminScopedPro2Link
-            href="/physiology/daily"
-            variant="secondary"
-            className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-          >
-            Wellness giornaliero
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/profile"
-            variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-          >
-            Profile
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
-          >
-            Builder
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/physiology/bioenergetics"
-            variant="secondary"
-            className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-          >
-            Bioenergetica
-          </AdminScopedPro2Link>
-        </>
+        /* Scorciatoie atleta (puntano alla shell privata): nascoste in coach/admin, dove
+           erano solo pulsanti inerti e la navigazione avviene dalla barra contestuale. */
+        adminScoped ? undefined : (
+          <>
+            <AdminScopedPro2Link
+              href="/physiology/daily"
+              variant="secondary"
+              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+            >
+              Wellness giornaliero
+            </AdminScopedPro2Link>
+            <AdminScopedPro2Link
+              href="/profile"
+              variant="secondary"
+              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+            >
+              Profilo
+            </AdminScopedPro2Link>
+            <AdminScopedPro2Link
+              href="/training/builder"
+              variant="secondary"
+              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+            >
+              Builder
+            </AdminScopedPro2Link>
+            <AdminScopedPro2Link
+              href="/physiology/bioenergetics"
+              variant="secondary"
+              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+            >
+              Bioenergetica
+            </AdminScopedPro2Link>
+          </>
+        )
       }
     >
       <div className="space-y-8">
@@ -1818,384 +1814,171 @@ export default function MetabolicLabPage() {
         </div>
       ) : null}
       {profileRecalcHint ? (
-        <div className="rounded-2xl border border-slate-500/30 bg-slate-900/50 px-4 py-3 text-sm text-slate-300">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
           {profileRecalcHint}
         </div>
       ) : null}
-      {canAccessValidationConsole ? (
-        <div className="rounded-2xl border border-violet-500/25 bg-violet-950/20 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <small className="text-xs text-slate-400">Validation console interna (visibile solo a coach/staff).</small>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="border border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15"
-              onClick={() => setShowValidationConsole((s) => !s)}
-            >
-              {showValidationConsole ? "Nascondi validazione" : "Mostra validazione"}
-            </Pro2Button>
-          </div>
-        </div>
-      ) : null}
-      {canAccessValidationConsole && showValidationConsole ? (
-      <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: "999px", padding: "4px 10px" }}>
-              Lactate reliability: <strong style={{ color: reliabilityBadge(lactateReliability).color }}>{lactateReliability}%</strong>
-            </span>
-            <span style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: "999px", padding: "4px 10px" }}>
-              MaxOx reliability: <strong style={{ color: reliabilityBadge(maxOxReliability).color }}>{maxOxReliability}%</strong>
-            </span>
-            <span style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: "999px", padding: "4px 10px" }}>
-              Lactate uncertainty: <strong style={{ color: "#ffd60a" }}>±{lactateUncertaintyPct}%</strong>
-            </span>
-            <span style={{ border: "1px solid rgba(255,255,255,0.2)", borderRadius: "999px", padding: "4px 10px" }}>
-              MaxOx uncertainty: <strong style={{ color: "#ffd60a" }}>±{maxOxResolved.uncertaintyPct}%</strong>
-            </span>
-          </div>
-          <Pro2Button type="button" variant="primary" onClick={runEvidenceCheck} disabled={evidenceLoading}>
-            {evidenceLoading ? "Checking evidence..." : "Validate with PubMed"}
-          </Pro2Button>
-        </div>
-        {evidenceError && <div className="alert-error" style={{ marginTop: "10px", marginBottom: 0 }}>{evidenceError}</div>}
-        {evidenceItems.length > 0 && (
-          <div style={{ marginTop: "10px", display: "grid", gap: "8px" }}>
-            {evidenceItems.slice(0, 5).map((item) => (
-              <a
-                key={item.pmid}
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  border: "1px solid rgba(255,255,255,0.16)",
-                  borderRadius: "8px",
-                  padding: "8px 10px",
-                  background: "#0f1117",
-                }}
-              >
-                <strong style={{ display: "block", marginBottom: "2px" }}>{item.title}</strong>
-                <small style={{ color: "var(--empathy-text-muted)" }}>
-                  {item.journal ?? "Journal n/a"} · {item.pub_date ?? "date n/a"} · PMID {item.pmid}
-                </small>
-              </a>
-            ))}
-          </div>
-        )}
-        {(section === "lactate" || section === "maxox") && (
-          <div style={{ marginTop: "12px" }}>
-            <h4 className="viz-title" style={{ marginBottom: "8px" }}>
-              Pro Check - source + literature alignment
-            </h4>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px", marginBottom: "8px" }}>
-              <div style={{ border: "1px solid rgba(0,224,141,0.35)", borderRadius: "8px", padding: "8px", background: "#0f1815" }}>
-                <strong style={{ color: "#00e08d" }}>Aligned (published): {alignedRows.length}</strong>
-                <div style={{ marginTop: "6px", display: "grid", gap: "4px", fontSize: "12px" }}>
-                  {alignedRows.length === 0 ? <span>Nessun valore allineato.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
-                </div>
-              </div>
-              <div style={{ border: "1px solid rgba(255,93,93,0.35)", borderRadius: "8px", padding: "8px", background: "#1a1012" }}>
-                <strong style={{ color: "#ff5d5d" }}>Blocked (not published): {blockedRows.length}</strong>
-                <div style={{ marginTop: "6px", display: "grid", gap: "4px", fontSize: "12px" }}>
-                  {blockedRows.length === 0 ? <span>Tutti i valori sono allineati.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
-                </div>
-              </div>
-            </div>
-            <table className="table-shell">
-              <thead>
-                <tr>
-                  <th>Value</th>
-                  <th>Source</th>
-                  <th>Study range</th>
-                  <th>Evidence</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proCheckRows.map((row) => (
-                  <tr key={row.key}>
-                    <td>
-                      <strong>{row.label}</strong>
-                      <div style={{ fontSize: "12px", opacity: 0.8 }}>{row.valueText}</div>
-                    </td>
-                    <td>{row.source}</td>
-                    <td>
-                      {row.rangeText} {row.inRange ? "✓" : "✕"}
-                    </td>
-                    <td>{row.evidenceReady ? "synced" : "missing"}</td>
-                    <td style={{ color: row.aligned ? "#00e08d" : "#ff5d5d", fontWeight: 700 }}>
-                      {row.aligned ? "ALIGNED" : "BLOCKED"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-2 text-xs text-slate-500">
-              Regola: un valore e pubblicabile solo se source-check valido + range fisiologico in letteratura + evidenza disponibile.
-            </p>
-          </div>
-        )}
-      </div>
-      ) : null}
-
-      {showTech ? (
-      <Pro2SectionCard accent="slate" icon={BookOpen} title="Ruolo Metabolic Lab nella piattaforma" subtitle="Cosa salviamo, cosa vedi al rientro, dove fluiscono i dati">
-        <details className="group">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-200 marker:text-cyan-400/80">
-            Integrazione Training, Nutrition e roadmap Builder
-          </summary>
-          <div className="mt-3 space-y-3 text-xs leading-relaxed text-slate-400">
-            <p>
-              <strong className="text-slate-200">Metabolic profile</strong> — Curva Critical Power (durate → W), FTP/LT, VO₂max stimato, tabelle zona/substrato. All&apos;ingresso ripristiniamo{" "}
-              <strong>l&apos;ultimo snapshot salvato</strong> su Supabase. Il profilo canonico (stesso schema usato da Virya/Builder) include FTP, CP, LT e i punti CP (
-              <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">cpCurveInputsW</code>
-              ) per allineare le zone: oggi le zone in{" "}
-              <AdminScopedInlineLink href="/training" className="text-cyan-300 underline-offset-2 hover:underline">
-                Training
-              </AdminScopedInlineLink>{" "}
-              seguono il <strong>profilo fisiologico</strong> (FTP/LT); il collegamento puntuale di ogni durata CP al calendario è il passo successivo esplicito in product.
-            </p>
-            <p>
-              <strong className="text-slate-200">Lactate analysis</strong> — Ripristino dell&apos;<strong>ultimo test salvato</strong> (input + motore). Serve a quantificare uso CHO, assorbimento intestinale, ossidazione e{" "}
-              <strong>ciclo di Cori</strong> (riconversione lattato → glucosio): segnali strutturati consumabili da{" "}
-              <AdminScopedInlineLink href="/nutrition" className="text-cyan-300 underline-offset-2 hover:underline">
-                Nutrition
-              </AdminScopedInlineLink>{" "}
-              per fueling e aderenza (non sostituisce il solver pasti: arricchisce i vincoli metabolici).
-            </p>
-            <p>
-              <strong className="text-slate-200">Max oxidate</strong> — Capacità ossidativa e andamento nel tempo; ripristino dell&apos;<strong>ultima analisi salvata</strong>. Utile per sforzi aerobici prolungati e, in roadmap, per affinare{" "}
-              <strong>zone aerobiche</strong> e strategie nel Builder quando il contesto fisiologico sarà cablato anche lì.
-            </p>
-          </div>
-        </details>
-      </Pro2SectionCard>
-      ) : null}
-
-      <div
-        id="physiology-live-metabolic-summary"
-        className="rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-slate-900/95 to-black/50 p-4"
-      >
-        {cpCurveHasData ? (
-          <>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-xs font-bold text-cyan-200/90">VO₂max stimato</span>
-              <span className="text-xl font-extrabold text-cyan-50">
-                {cpModel.vo2maxMlMinKg.toFixed(1)}{" "}
-                <span className="text-sm font-semibold text-cyan-200/80">ml/kg/min</span>
-              </span>
-              <span className="text-sm text-slate-400">≈ {cpModel.vo2maxLMin.toFixed(2)} L/min</span>
-              <span className="text-sm text-slate-500">
-                · CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W
-              </span>
-              {showTech ? (
-                <span className="font-mono text-[0.65rem] text-slate-600">{METABOLIC_CP_ENGINE_REVISION}</span>
-              ) : null}
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              Valori sempre calcolati dai punti potenza (scheda Profilo metabolico). Nello storico vedi lo snapshot salvato; i numeri qui sono quelli aggiornati.
-            </p>
-          </>
-        ) : (
-          <p className="text-sm leading-relaxed text-slate-400">
-            Curva CP vuota per questo atleta: compila le potenze in Metabolic profile (o ripristinale dallo snapshot) prima di usare i numeri riassuntivi CP/FTP/VO₂max stimato.
-          </p>
-        )}
-      </div>
-
-      <div className="sticky top-0 z-30 -mx-1 mb-4 flex flex-wrap gap-2 border-b border-white/10 bg-slate-950/90 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/80">
+      <div className="sticky top-0 z-30 -mx-1 mb-4 flex flex-wrap gap-2 border-b border-white/10 bg-black/85 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-black/75">
         <button
           type="button"
           className={physiologyTabClass(section === "profile", "cyan")}
           onClick={() => setSection("profile")}
         >
-          Metabolic profile
+          Profilo metabolico
         </button>
         <button
           type="button"
           className={physiologyTabClass(section === "lactate", "amber")}
           onClick={() => setSection("lactate")}
         >
-          Lactate analysis
+          Analisi lattato
         </button>
         <button
           type="button"
           className={physiologyTabClass(section === "maxox", "rose")}
           onClick={() => setSection("maxox")}
         >
-          Max oxidate
+          Capacità ossidativa
         </button>
-      </div>
-
-      <div
-        id="physiology-lab-save-bar"
-        className="sticky top-[3.35rem] z-20 mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/15 bg-slate-950/95 px-3 py-2.5 shadow-lg shadow-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/88"
-        role="region"
-        aria-label="Salvataggio Metabolic Lab"
-      >
-        {section === "profile" ? (
-          <>
-            <Pro2Button
-              type="button"
-              variant="primary"
-              disabled={saving || !cpCurveHasData}
-              onClick={saveMetabolicProfileSnapshot}
-            >
-              {saving ? "Salvataggio…" : "Salva snapshot Metabolic profile"}
-            </Pro2Button>
-            {!cpCurveHasData ? (
-              <span className="text-xs text-amber-200/90">
-                Compila almeno un punto potenza CP (o applica multisport) prima di salvare.
-              </span>
-            ) : (
-              <span className="text-xs text-slate-500">
-                VO₂ da file: usa i pulsanti nella card «VO₂max da laboratorio» sotto.
-              </span>
-            )}
-          </>
-        ) : null}
-        {section === "lactate" ? (
-          <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveLactateAnalysisSnapshot}>
-            {saving ? "Salvataggio…" : "Salva snapshot Lactate Analysis"}
-          </Pro2Button>
-        ) : null}
-        {section === "maxox" ? (
-          <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>
-            {saving ? "Salvataggio…" : "Salva snapshot Max Oxidate"}
-          </Pro2Button>
-        ) : null}
+        <button
+          type="button"
+          className={physiologyTabClass(section === "dettagli", "rose")}
+          onClick={() => setSection("dettagli")}
+        >
+          {showTech ? "Dettagli e diagnostica" : "Dettagli"}
+        </button>
       </div>
 
       {section === "profile" ? (
         <div className="space-y-8">
-          {lastLabSavedAt.metabolic ? (
-            <p className="text-xs text-slate-400">
-              Ultimo snapshot <strong className="text-slate-200">Metabolic profile</strong> salvato:{" "}
-              <span className="tabular-nums text-cyan-200/90">
-                {new Date(lastLabSavedAt.metabolic).toLocaleString("it-IT")}
-              </span>
+          <PhysiologyPro2MetabolicDashboard
+            cpPointDefs={CP_POINTS}
+            cpInputs={cpInputs}
+            onCpInputChange={(label, value) => setCpInputs((s) => ({ ...s, [label]: value }))}
+            model={cpModel}
+          />
+
+          {athleteId ? (
+          <MultisportCpCurveSuggestionPanel
+            athleteId={athleteId}
+            bodyMassKg={labBodyMassKg}
+            onApplyToCpInputs={(curve) => {
+              setCpInputs((prev) => {
+                const next = { ...prev };
+                for (const [label, w] of Object.entries(curve)) {
+                  if (typeof w === "number" && w > 0) next[label] = String(Math.round(w));
+                }
+                return next;
+              });
+            }}
+            onAfterApply={runProfileRecalc}
+          />
+          ) : null}
+
+          {cpCurveHasData ? (
+            <>
+          <MetabolicPowerComponentsStackChart
+            rows={cpModel.powerComponents}
+            engineRevision={METABOLIC_CP_ENGINE_REVISION}
+          />
+
+          <details className="collapsible-card" style={{ marginBottom: "14px" }}>
+            <summary>Power components · tre vie metaboliche (P = CP + W′/t)</summary>
+            <p className="session-sub-copy" style={{ marginBottom: 10, maxWidth: "58rem" }}>
+              <strong>P = CP + W′/t</strong>. <strong>PCr</strong>: min su W′/t con <strong>(E<sub>PCr</sub>/t)·e<sup>−t/τ</sup></strong>. <strong>Glicolisi</strong>:{" "}
+              <strong>W′/t − P<sub>PCr</sub> + CP·f<sub>∥</sub>(t)</strong> (soglia). Colonna <strong>Ossidativo</strong> = residuo. Le colonne <strong>kJ</strong> sono{" "}
+              <strong>P·t alla durata della riga</strong> (energia in quel bin): i kJ PCr <strong>non</strong> restano uguali al variare di t (vecchio modello: E/t fisso).
             </p>
-          ) : (
-            <p className="text-xs text-amber-200/85">
-              Nessuno snapshot Metabolic profile in archivio: dopo aver compilato la curva CP, usa <strong>Salva snapshot</strong> per conservare l&apos;analisi e vederla al prossimo accesso.
-            </p>
-          )}
-          <div className="flex flex-col gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/15 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Pro2Button
-                type="button"
-                variant="primary"
-                disabled={saving || !cpCurveHasData}
-                onClick={saveMetabolicProfileSnapshot}
-              >
-                {saving ? "Salvataggio…" : "Salva snapshot Metabolic profile"}
-              </Pro2Button>
-              <Pro2Button
-                type="button"
-                variant="secondary"
-                className="border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
-                onClick={runProfileRecalc}
-              >
-                Ricalcola (solo schermo)
-              </Pro2Button>
-              <Pro2Button
-                type="button"
-                variant="secondary"
-                className="border border-slate-500/35 bg-slate-500/10 hover:bg-slate-500/15"
-                onClick={async () => {
-                  const cpPoints = CP_POINTS.map((p) => ({
-                    sec: p.sec,
-                    powerW: parseFloat(cpInputs[p.label]) || 0,
-                  }));
-                  const payload = {
-                    export_version: "empathy-metabolic-profile-v1",
-                    exported_at: new Date().toISOString(),
-                    body_mass_kg: labBodyMassKg,
-                    vo2max: {
-                      estimated_ml_kg_min: cpModel.vo2maxMlMinKg,
-                      estimated_l_min: cpModel.vo2maxLMin,
-                      estimate_model_version: cpModel.vo2maxEstimate.modelVersion,
-                      profile_lab_ml_kg_min: profileVo2maxMlMinKg,
-                      profile_lab_l_min: profileVo2maxLMin,
-                    },
-                    glycolytic_index_proxy: cpModel.vlamax,
-                    glycolytic_index_note:
-                      "Adimensional glycolytic proxy from CP engine, typical band ~0.3–0.8; not laboratory V̇La max (mmol·L⁻¹·s⁻¹).",
-                    peak_blood_lactate_schematic_mmol_l: estimatePeakBloodLactateMmol(cpModel.vlamax),
-                    critical_power_model: {
-                      cp_w: cpModel.cp,
-                      ftp_w: cpModel.ftp,
-                      w_prime_j: cpModel.wPrimeJ,
-                      lt1_w: cpModel.lt1,
-                      lt2_w: cpModel.lt2,
-                      fatmax_w: cpModel.fatmax,
-                      sprint_reserve_w: cpModel.sprintReserve,
-                      phenotype: cpModel.phenotype,
-                      fit_r2: cpModel.fitR2,
-                      fit_confidence: cpModel.fitConfidence,
-                      cp_input_points: cpPoints,
-                    },
-                    vo2max_estimate_detail: cpModel.vo2maxEstimate,
-                    cp_work_time_linear: cpModel.cpWorkTimeLinear,
-                    vo2_onset_tau_sec_default: cpModel.vo2OnsetTauSecDefault,
-                    vo2_onset_preview_60s: vo2OnsetPreview,
-                    gas_exchange_substrate: gasExchangeSubstrateProfile,
-                    metabolic_signal_schema_version: METABOLIC_SIGNAL_SCHEMA_VERSION,
-                    metabolic_cp_engine_revision: METABOLIC_CP_ENGINE_REVISION,
-                  };
-                  try {
-                    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-                    setMetabolicProfileJsonHint("JSON copiato.");
-                    window.setTimeout(() => setMetabolicProfileJsonHint(null), 2800);
-                  } catch {
-                    setMetabolicProfileJsonHint("Copia non riuscita.");
-                    window.setTimeout(() => setMetabolicProfileJsonHint(null), 4000);
-                  }
-                }}
-              >
-                Copia JSON profilo
-              </Pro2Button>
-              {metabolicProfileJsonHint ? (
-                <span className="text-xs text-slate-500">{metabolicProfileJsonHint}</span>
-              ) : null}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[40rem] text-xs">
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Durata</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">P modello</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Ossidativo</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">PCr</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Glicolisi</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ oss @t</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ PCr @t</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ glic @t</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {cpModel.powerComponents.map((row) => (
+                    <tr key={row.sec} className="transition-colors hover:bg-white/[0.03]">
+                      <td className="px-3 py-2 text-gray-300">{row.label}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.modelPowerW.toFixed(0)} W</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.aerobicW.toFixed(0)} W ({(row.aerobicPct * 100).toFixed(0)}%)</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.pcrW.toFixed(0)} W</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
+                        {row.glycolyticW.toFixed(0)} W (
+                        {((row.glycolyticW / Math.max(1, row.modelPowerW)) * 100).toFixed(0)}%)
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.aerobicKJ.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.pcrKJ.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{row.glycolyticKJ.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <p className="text-xs leading-relaxed text-slate-400 sm:max-w-md">
-              Stesso flusso V1: verde = snapshot + profilo. VO₂max da carta/file nella card sotto. Substrati da gas quando imposti VO₂/VCO₂ in{" "}
-              <span
-                role="button"
-                tabIndex={0}
-                className="cursor-pointer text-cyan-300 underline"
-                onClick={() => setSection("lactate")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSection("lactate");
-                  }
-                }}
-              >
-                Lactate analysis
-              </span>
-              .
-            </p>
-            {profileLastRecalcAt ? (
-              <p className="text-[0.7rem] text-slate-500 sm:ml-auto sm:text-right">
-                Ultimo ricalcolo locale: {new Date(profileLastRecalcAt).toLocaleTimeString("it-IT")}
-              </p>
-            ) : null}
-          </div>
+          </details>
+
+          <details className="collapsible-card">
+            <summary>Zones & substrates</summary>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-xs">
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Zona</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Range W</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">RER stimato</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kcal/h</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">CHO g/h</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">FAT g/h</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {cpModel.substrateTable.map((z) => {
+                    const zoneColor = zoneColorFromName(z.name);
+                    return (
+                    <tr key={z.name} style={{ background: `${zoneColor}10` }}>
+                      <td className="px-3 py-2">
+                        <span
+                          className="builder-zone-chip"
+                          style={{
+                            borderColor: zoneColor,
+                            color: zoneColor,
+                            backgroundColor: `${zoneColor}22`,
+                          }}
+                        >
+                          {z.name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.low.toFixed(0)}-{z.high.toFixed(0)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.rer.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.kcalH.toFixed(0)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.choG.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.fatG.toFixed(1)}</td>
+                    </tr>
+                  )})}
+                </tbody>
+              </table>
+            </div>
+          </details>
+            </>
+          ) : null}
 
           <Pro2SectionCard
-            accent="cyan"
+            accent="emerald"
             title="VO₂max da laboratorio"
-            subtitle="Manuale o import CSV/TXT (Cosmed / export tabulare). Aggiorna physiological_profiles + audit metabolic_lab_runs (vo2max_lab)."
+            subtitle="Inserisci il valore a mano o importa il file del test (CSV/TXT). Aggiorna il tuo profilo fisiologico."
             icon={Activity}
           >
-            <p className="mb-3 text-sm text-slate-400">
+            <p className="mb-3 text-sm text-gray-400">
               {profileVo2maxMlMinKg != null ? (
                 <>
-                  <strong className="text-slate-200">Profilo attuale:</strong> {profileVo2maxMlMinKg.toFixed(1)} ml/kg/min
+                  <strong className="text-gray-200">Profilo attuale:</strong> {profileVo2maxMlMinKg.toFixed(1)} ml/kg/min
                   {profileVo2maxLMin != null ? ` (~${profileVo2maxLMin.toFixed(2)} L/min)` : ""}.
                 </>
               ) : (
@@ -2204,10 +1987,10 @@ export default function MetabolicLabPage() {
             </p>
             {labVo2Message ? <p className="mb-3 text-sm text-emerald-300/95">{labVo2Message}</p> : null}
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-medium uppercase tracking-wide text-slate-400">
+              <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
                 VO₂max noto (ml/kg/min)
                 <input
-                  className="mt-1 w-full rounded-lg border border-slate-600/60 bg-black/40 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 font-mono text-sm tabular-nums text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   type="text"
                   inputMode="decimal"
                   placeholder="es. 58.5"
@@ -2255,10 +2038,10 @@ export default function MetabolicLabPage() {
                 </Pro2Button>
               </div>
             </div>
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-400">
               File export (Cosmed / Cortex / CSV)
               <input
-                className="mt-1 block w-full text-sm text-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-cyan-600/80 file:px-3 file:py-1.5 file:text-white"
+                className="mt-1 block w-full text-sm text-gray-300 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-600/80 file:px-3 file:py-1.5 file:text-white"
                 type="file"
                 accept=".csv,.txt,text/csv,text/plain"
                 onChange={async (e) => {
@@ -2277,8 +2060,8 @@ export default function MetabolicLabPage() {
               />
             </label>
             {gasFileName ? (
-              <p className="mb-2 text-xs text-slate-500">
-                File: <strong className="text-slate-300">{gasFileName}</strong>
+              <p className="mb-2 text-xs text-gray-500">
+                File: <strong className="text-gray-300">{gasFileName}</strong>
                 {athleteBodyMassForGasImport != null
                   ? ` · massa per parser: ${athleteBodyMassForGasImport} kg`
                   : " · imposta massa in Lactate/MaxOx se l’export ha solo VO₂ assoluto"}
@@ -2287,7 +2070,7 @@ export default function MetabolicLabPage() {
             {gasParseResult ? (
               gasParseResult.ok ? (
                 <div className="mb-3 space-y-2">
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-gray-300">
                     Picco stimato: <strong>{gasParseResult.vo2maxMlMinKg.toFixed(1)} ml/kg/min</strong>
                     {gasParseResult.vo2maxLMin != null ? ` (~${gasParseResult.vo2maxLMin.toFixed(2)} L/min)` : ""} · riga #
                     {gasParseResult.peakRowIndex + 1} · {gasParseResult.rowCount} righe
@@ -2295,7 +2078,7 @@ export default function MetabolicLabPage() {
                   <Pro2Button
                     type="button"
                     variant="secondary"
-                    className="border border-cyan-500/40"
+                    className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
                     disabled={labVo2Saving || !athleteId}
                     onClick={async () => {
                       if (!athleteId || !gasParseResult.ok) return;
@@ -2339,7 +2122,6 @@ export default function MetabolicLabPage() {
             <Pro2Button
               type="button"
               variant="secondary"
-              className="border border-slate-600/50"
               disabled={labVo2Saving || !athleteId}
               onClick={async () => {
                 if (!athleteId) return;
@@ -2364,65 +2146,8 @@ export default function MetabolicLabPage() {
             </Pro2Button>
           </Pro2SectionCard>
 
-          {cpCurveHasData ? (
-            <details className="collapsible-card">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-300">
-                Cross-check: cinetica VO₂ (60 s) e substrati da gas (Lactate)
-              </summary>
-              <div className="mt-3 space-y-3 text-sm text-slate-400">
-                <table className="table-shell">
-                  <tbody>
-                    <tr>
-                      <th scope="row" className="text-left">
-                        τ VO₂ default (onset)
-                      </th>
-                      <td>
-                        {vo2OnsetPreview.tau} s ({cpModel.phenotype})
-                      </td>
-                    </tr>
-                    <tr>
-                      <th scope="row" className="text-left">
-                        VO₂ a 60 s (modello)
-                      </th>
-                      <td>
-                        {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}% di VO₂max stimato (
-                        {cpModel.vo2maxLMin.toFixed(2)} L/min)
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                {gasExchangeSubstrateProfile ? (
-                  <p>
-                    RER {gasExchangeSubstrateProfile.rer.toFixed(3)} · CHO {gasExchangeSubstrateProfile.choGPerMin.toFixed(3)} g/min · FAT{" "}
-                    {gasExchangeSubstrateProfile.fatGPerMin.toFixed(3)} g/min
-                    {!gasExchangeSubstrateProfile.plausible ? " (fuori banda consigliata)" : ""}
-                  </p>
-                ) : (
-                  <p>Substrati da gas: imposta VO₂ e VCO₂ (L/min) in Lactate analysis (stesso schema V1).</p>
-                )}
-              </div>
-            </details>
-          ) : null}
-
-          {athleteId ? (
-          <MultisportCpCurveSuggestionPanel
-            athleteId={athleteId}
-            bodyMassKg={labBodyMassKg}
-            onApplyToCpInputs={(curve) => {
-              setCpInputs((prev) => {
-                const next = { ...prev };
-                for (const [label, w] of Object.entries(curve)) {
-                  if (typeof w === "number" && w > 0) next[label] = String(Math.round(w));
-                }
-                return next;
-              });
-            }}
-            onAfterApply={runProfileRecalc}
-          />
-          ) : null}
-
           <Pro2SectionCard
-            accent="violet"
+            accent="emerald"
             title="Fisiologia sport-specifica (Bike / Run / Swim)"
             subtitle="Tre pannelli separati dalla stessa memoria atleta: confronta carico, costo metabolico e risposta per disciplina."
             icon={Layers}
@@ -2430,12 +2155,12 @@ export default function MetabolicLabPage() {
             <div className="grid gap-3 md:grid-cols-3">
               {sportSpecificPanels.map((panel) => (
                 <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">{panel.title}</p>
-                  <p className="mt-1 font-mono text-sm text-slate-300">
+                  <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
+                  <p className="mt-1 font-mono text-sm text-gray-300">
                     Sessioni: <span className="text-white">{panel.sessionCount}</span>
                     {panel.lastDate ? ` · ultima ${panel.lastDate}` : ""}
                   </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
                     <span>Durata media: {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
                     <span>TSS medio: {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
                     <span>P media: {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
@@ -2450,129 +2175,137 @@ export default function MetabolicLabPage() {
                 </article>
               ))}
             </div>
-            <p className="mt-3 text-[11px] text-slate-500">
+            <p className="mt-3 text-[11px] text-gray-500">
               Se una disciplina non ha sessioni recenti, il pannello resta visibile ma con metriche vuote: evita di confondere profili sport diversi.
             </p>
           </Pro2SectionCard>
 
-          <PhysiologyPro2MetabolicDashboard
-            cpPointDefs={CP_POINTS}
-            cpInputs={cpInputs}
-            onCpInputChange={(label, value) => setCpInputs((s) => ({ ...s, [label]: value }))}
-            model={cpModel}
-            sessionCount={workouts.length}
-            autoDecodeText={autoInfo}
-            bodyMassKg={labBodyMassKg}
-            profileVo2maxMlMinKg={profileVo2maxMlMinKg}
-            profileVo2maxLMin={profileVo2maxLMin}
-          />
-
           {cpCurveHasData ? (
-            <>
-          <MetabolicPowerComponentsStackChart
-            rows={cpModel.powerComponents}
-            engineRevision={METABOLIC_CP_ENGINE_REVISION}
-          />
-
-          <details className="collapsible-card" style={{ marginBottom: "14px" }}>
-            <summary>Power components · tre vie metaboliche (P = CP + W′/t)</summary>
-            <p className="session-sub-copy" style={{ marginBottom: 10, maxWidth: "58rem" }}>
-              <strong>P = CP + W′/t</strong>. <strong>PCr</strong>: min su W′/t con <strong>(E<sub>PCr</sub>/t)·e<sup>−t/τ</sup></strong>. <strong>Glicolisi</strong>:{" "}
-              <strong>W′/t − P<sub>PCr</sub> + CP·f<sub>∥</sub>(t)</strong> (soglia). Colonna <strong>Ossidativo</strong> = residuo. Le colonne <strong>kJ</strong> sono{" "}
-              <strong>P·t alla durata della riga</strong> (energia in quel bin): i kJ PCr <strong>non</strong> restano uguali al variare di t (vecchio modello: E/t fisso).
-            </p>
-            <table className="table-shell" style={{ marginBottom: 0 }}>
-              <thead>
-                <tr>
-                  <th>Durata</th>
-                  <th>P modello</th>
-                  <th>Ossidativo</th>
-                  <th>PCr</th>
-                  <th>Glicolisi</th>
-                  <th>kJ oss @t</th>
-                  <th>kJ PCr @t</th>
-                  <th>kJ glic @t</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cpModel.powerComponents.map((row) => (
-                  <tr key={row.sec}>
-                    <td>{row.label}</td>
-                    <td>{row.modelPowerW.toFixed(0)} W</td>
-                    <td>{row.aerobicW.toFixed(0)} W ({(row.aerobicPct * 100).toFixed(0)}%)</td>
-                    <td>{row.pcrW.toFixed(0)} W</td>
-                    <td>
-                      {row.glycolyticW.toFixed(0)} W (
-                      {((row.glycolyticW / Math.max(1, row.modelPowerW)) * 100).toFixed(0)}%)
-                    </td>
-                    <td>{row.aerobicKJ.toFixed(1)}</td>
-                    <td>{row.pcrKJ.toFixed(1)}</td>
-                    <td>{row.glycolyticKJ.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </details>
-
-          <details className="collapsible-card">
-            <summary>Zones & substrates</summary>
-            <table className="table-shell">
-              <thead>
-                <tr>
-                  <th>Zona</th>
-                  <th>Range W</th>
-                  <th>RER stimato</th>
-                  <th>kcal/h</th>
-                  <th>CHO g/h</th>
-                  <th>FAT g/h</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cpModel.substrateTable.map((z) => {
-                  const zoneColor = zoneColorFromName(z.name);
-                  return (
-                  <tr key={z.name} style={{ background: `${zoneColor}10` }}>
-                    <td>
-                      <span
-                        className="builder-zone-chip"
-                        style={{
-                          borderColor: zoneColor,
-                          color: zoneColor,
-                          backgroundColor: `${zoneColor}22`,
-                        }}
-                      >
-                        {z.name}
-                      </span>
-                    </td>
-                    <td>{z.low.toFixed(0)}-{z.high.toFixed(0)}</td>
-                    <td>{z.rer.toFixed(2)}</td>
-                    <td>{z.kcalH.toFixed(0)}</td>
-                    <td>{z.choG.toFixed(1)}</td>
-                    <td>{z.fatG.toFixed(1)}</td>
-                  </tr>
-                )})}
-              </tbody>
-            </table>
-          </details>
-            </>
+            <details className="collapsible-card">
+              <summary className="cursor-pointer text-sm font-semibold text-gray-300">
+                Cross-check: cinetica VO₂ (60 s) e substrati da gas (Analisi lattato)
+              </summary>
+              <div className="mt-3 space-y-3 text-sm text-gray-400">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y divide-white/5">
+                      <tr className="transition-colors hover:bg-white/[0.03]">
+                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
+                          τ VO₂ default (onset)
+                        </th>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
+                          {vo2OnsetPreview.tau} s ({cpModel.phenotype})
+                        </td>
+                      </tr>
+                      <tr className="transition-colors hover:bg-white/[0.03]">
+                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
+                          VO₂ a 60 s (modello)
+                        </th>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
+                          {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}% di VO₂max stimato (
+                          {cpModel.vo2maxLMin.toFixed(2)} L/min)
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {gasExchangeSubstrateProfile ? (
+                  <p>
+                    RER {gasExchangeSubstrateProfile.rer.toFixed(3)} · CHO {gasExchangeSubstrateProfile.choGPerMin.toFixed(3)} g/min · FAT{" "}
+                    {gasExchangeSubstrateProfile.fatGPerMin.toFixed(3)} g/min
+                    {!gasExchangeSubstrateProfile.plausible ? " (fuori banda consigliata)" : ""}
+                  </p>
+                ) : (
+                  <p>Substrati da gas: imposta VO₂ e VCO₂ (L/min) in Analisi lattato.</p>
+                )}
+              </div>
+            </details>
           ) : null}
+
+
+          <div
+            id="physiology-lab-save-bar"
+            className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.18] to-black/60 p-4 shadow-inner"
+            role="region"
+            aria-label="Riepilogo e salvataggio profilo metabolico"
+          >
+            <div id="physiology-live-metabolic-summary" className="space-y-3">
+              {/* Riga 1: dato unico VO₂max stimato + azioni salva/ricalcola */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                  {cpCurveHasData ? (
+                    <>
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">VO₂max stimato</span>
+                      <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-emerald-50 sm:text-4xl">
+                        {cpModel.vo2maxMlMinKg.toFixed(1)}
+                        <span className="ml-1 text-xs font-medium text-gray-500">ml/kg/min</span>
+                      </span>
+                      <span className="text-sm text-gray-400">
+                        ≈ {cpModel.vo2maxLMin.toFixed(2)} L/min @ {labBodyMassKg.toFixed(0)} kg
+                      </span>
+                      <span className="text-sm text-gray-500">· CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-amber-200/85">
+                      Compila la curva CP qui sopra: genera VO₂max, CP e FTP.
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pro2Button
+                    type="button"
+                    variant="secondary"
+                    className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+                    onClick={runProfileRecalc}
+                  >
+                    Ricalcola (solo schermo)
+                  </Pro2Button>
+                  <Pro2Button
+                    type="button"
+                    variant="primary"
+                    disabled={saving || !cpCurveHasData}
+                    onClick={saveMetabolicProfileSnapshot}
+                  >
+                    {saving ? "Salvataggio…" : "Salva profilo metabolico"}
+                  </Pro2Button>
+                </div>
+              </div>
+
+              {/* Riga 2: VO₂max profilo/lab · auto-decode · nota */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-3 text-xs">
+                {profileVo2maxMlMinKg != null && profileVo2maxMlMinKg > 0 ? (
+                  <span className="text-gray-400">
+                    VO₂max profilo/lab:{" "}
+                    <span className="font-mono tabular-nums text-white">{profileVo2maxMlMinKg.toFixed(1)} ml/kg/min</span>
+                    {profileVo2maxLMin != null ? (
+                      <span className="text-gray-500"> ≈ {profileVo2maxLMin.toFixed(2)} L/min</span>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Nessun VO₂max da lab sul profilo.</span>
+                )}
+                {autoInfo ? (
+                  <span className="flex items-center gap-1.5 text-emerald-300/90">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+                    {autoInfo}
+                  </span>
+                ) : null}
+                {profileLastRecalcAt ? (
+                  <span className="text-gray-500">
+                    Ultimo ricalcolo: {new Date(profileLastRecalcAt).toLocaleTimeString("it-IT")}
+                  </span>
+                ) : null}
+                <span className="ml-auto text-gray-500">
+                  Stima da curva CP (non spirometria) · «Salva» scrive sul profilo, «Ricalcola» aggiorna a schermo.
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
       {section === "lactate" ? (
         <div>
-          {lastLabSavedAt.lactate ? (
-            <p className="mb-3 text-xs text-slate-400">
-              Ultimo snapshot <strong className="text-slate-200">Lactate analysis</strong> caricato:{" "}
-              <span className="tabular-nums text-amber-200/90">
-                {new Date(lastLabSavedAt.lactate).toLocaleString("it-IT")}
-              </span>
-            </p>
-          ) : (
-            <p className="mb-3 text-xs text-amber-200/85">
-              Nessuno snapshot Lactate salvato: dopo l&apos;analisi premi <strong>Salva snapshot Lactate Analysis</strong> per conservare input e output e ritrovarli qui.
-            </p>
-          )}
           <PhysiologyPro2LactateLab
             model={lactateModel}
             reliabilityPct={lactateReliability}
@@ -2658,6 +2391,9 @@ export default function MetabolicLabPage() {
           </details>
           </div>
           <div className="physiology-pro2-lab-footer-actions">
+            <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveLactateAnalysisSnapshot}>
+              {saving ? "Salvataggio…" : "Salva analisi lattato"}
+            </Pro2Button>
             <Pro2Button
               type="button"
               variant="secondary"
@@ -2667,16 +2403,13 @@ export default function MetabolicLabPage() {
                 setLactateLastRecalcAt(Date.now());
               }}
             >
-              Ricalcola lactate
+              Ricalcola analisi lattato
             </Pro2Button>
-            <small className="text-xs text-slate-500">
+            <small className="text-xs text-gray-500">
               {lactateLastRecalcAt
                 ? `Ultimo ricalcolo: ${new Date(lactateLastRecalcAt).toLocaleTimeString("it-IT")} · Auto-update attivo a ogni modifica input.`
                 : "Auto-update attivo a ogni modifica input."}
             </small>
-            <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveLactateAnalysisSnapshot}>
-              {saving ? "Salvataggio..." : "Salva snapshot Lactate Analysis"}
-            </Pro2Button>
           </div>
           </PhysiologyPro2LactateLab>
         </div>
@@ -2684,18 +2417,6 @@ export default function MetabolicLabPage() {
 
       {section === "maxox" ? (
         <div>
-          {lastLabSavedAt.maxox ? (
-            <p className="mb-3 text-xs text-slate-400">
-              Ultimo snapshot <strong className="text-slate-200">Max oxidate</strong> caricato:{" "}
-              <span className="tabular-nums text-rose-200/90">
-                {new Date(lastLabSavedAt.maxox).toLocaleString("it-IT")}
-              </span>
-            </p>
-          ) : (
-            <p className="mb-3 text-xs text-amber-200/85">
-              Nessuno snapshot Max oxidate salvato: dopo l&apos;analisi usa <strong>Salva snapshot Max Oxidate</strong> per conservare capacità ossidativa e indici.
-            </p>
-          )}
           <PhysiologyPro2MaxOxLab
             model={maxOxModel}
             reliabilityPct={maxOxReliability}
@@ -2750,29 +2471,29 @@ export default function MetabolicLabPage() {
             />
           </div>
           <div className="physiology-pro2-lab-page-panel">
-            <div className="physiology-pro2-mini-banner">Fonte capacità VO₂ · riepilogo</div>
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs leading-relaxed text-slate-300">
-              <div className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wide text-rose-200/90">
+            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Fonte capacità VO₂ · riepilogo</div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs leading-relaxed text-gray-300">
+              <div className="mb-1 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
                 VO₂ usato come capacità (max)
               </div>
-              <div className="text-lg font-bold text-slate-100">{maxOxVo2Used.toFixed(2)} L/min</div>
-              <div className="mt-2 text-slate-400">
+              <div className="text-lg font-bold text-gray-200">{maxOxVo2Used.toFixed(2)} L/min</div>
+              <div className="mt-2 text-gray-400">
                 {maxOxVo2CapacitySource === "test_manual" ? (
                   <>
-                    <strong className="text-slate-200">Test manuale.</strong> A questa potenza stimato ~
+                    <strong className="text-gray-200">Test manuale.</strong> A questa potenza stimato ~
                     {maxOxVo2Estimate.vo2LMin.toFixed(2)} L/min ({maxOxVo2Estimate.vo2MlKgMin.toFixed(1)} ml/kg/min).
                   </>
                 ) : maxOxVo2CapacitySource === "metabolic_engine_vo2max" ? (
                   <>
-                    <strong className="text-slate-200">VO₂max da Metabolic Profile</strong> (blend CP/W′):{" "}
+                    <strong className="text-gray-200">VO₂max da Profilo metabolico</strong> (blend CP/W′):{" "}
                     {cpModel.vo2maxMlMinKg.toFixed(1)} ml/kg/min · {maxOxVo2Used.toFixed(2)} L/min @{" "}
                     {labBodyMassKg.toFixed(0)} kg. A questa potenza ~{maxOxVo2Estimate.vo2LMin.toFixed(2)} L/min.
                   </>
                 ) : (
                   <>
-                    <strong className="text-slate-200">Solo stima da potenza</strong> ({maxOxVo2Estimate.vo2LMin.toFixed(2)}{" "}
+                    <strong className="text-gray-200">Solo stima da potenza</strong> ({maxOxVo2Estimate.vo2LMin.toFixed(2)}{" "}
                     L/min, {maxOxVo2Estimate.vo2MlKgMin.toFixed(1)} ml/kg/min) — per una capacità massima credibile compila la
-                    curva CP in Metabolic profile (VO₂max motore); il lab non usa più il VO₂max anagrafico come tetto.
+                    curva CP in Profilo metabolico (VO₂max motore); il lab non usa più il VO₂max anagrafico come tetto.
                   </>
                 )}
               </div>
@@ -2787,17 +2508,17 @@ export default function MetabolicLabPage() {
           </div>
 
           <div className="physiology-pro2-lab-page-panel">
-            <div className="physiology-pro2-mini-banner">Indici principali · saturazione e bottleneck</div>
-            <div className="physiology-lab-pro2-kpi-grid">
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Potenza input · CP profilo</div>
-                <div className="physiology-lab-pro2-kpi-value">
+            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Indici principali · saturazione e bottleneck</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Potenza input · CP profilo</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
                   {(maxOxResolved.values.power_w || 0).toFixed(0)} W · CP {cpModel.cp.toFixed(0)} W
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Durata test · riga split CP</div>
-                <div className="physiology-lab-pro2-kpi-value">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata test · riga split CP</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
                   {(Number.isFinite(maxOxResolved.values.duration_min) && maxOxResolved.values.duration_min > 0
                     ? maxOxResolved.values.duration_min
                     : 60
@@ -2806,116 +2527,116 @@ export default function MetabolicLabPage() {
                   {maxOxCpPowerSplitRow ? (
                     <>
                       {" · "}
-                      <span className="text-slate-400">{maxOxCpPowerSplitRow.label}</span>
-                      <span className="tabular-nums text-slate-500">
+                      <span className="text-gray-400">{maxOxCpPowerSplitRow.label}</span>
+                      <span className="tabular-nums text-gray-500">
                         {" "}
                         ({(maxOxCpPowerSplitRow.sec / 60).toFixed(0)}′)
                       </span>
                     </>
                   ) : cpCurveHasData ? (
-                    <span className="text-slate-500"> — nessun split</span>
+                    <span className="text-gray-500"> — nessun split</span>
                   ) : (
-                    <span className="text-slate-500"> — compila CP</span>
+                    <span className="text-gray-500"> — compila CP</span>
                   )}
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Tetto meccanico ossidativo (P_oss)</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--cyan">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tetto meccanico ossidativo (P_oss)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
                   {maxOxModel.cpMechanicalAerobicCeilingW.toFixed(0)} W
                   {maxOxCpPowerSplitRow ? (
-                    <span className="mt-1 block text-[0.65rem] font-normal leading-snug text-slate-500">
+                    <span className="mt-1 block text-[0.65rem] font-normal leading-snug text-gray-500">
                       P modello {maxOxCpPowerSplitRow.modelPowerW.toFixed(0)} W · glic {maxOxCpPowerSplitRow.glycolyticW.toFixed(0)} W · PCr{" "}
                       {maxOxCpPowerSplitRow.pcrW.toFixed(0)} W
                     </span>
                   ) : null}
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">VO₂max capacità (L/min · ml/kg/min)</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--cyan">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">VO₂max capacità (L/min · ml/kg/min)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
                   {maxOxVo2Used.toFixed(2)} ·{" "}
                   {((maxOxVo2Used * 1000) / Math.max(1, labBodyMassKg)).toFixed(1)}
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Intensità test</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.intensityPctFtp.toFixed(0)} %FTP</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Intensità test</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.intensityPctFtp.toFixed(0)} %FTP</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Capacità ossidativa (netta)</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--cyan">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Capacità ossidativa (netta)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
                   {maxOxModel.oxidativeCapacityKcalMin.toFixed(2)} kcal/min
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Domanda totale</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.requiredKcalMin.toFixed(2)} kcal/min</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Domanda totale</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.requiredKcalMin.toFixed(2)} kcal/min</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Domanda ossidativa (P_oss @ durata)</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--cyan">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Domanda ossidativa (P_oss @ durata)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
                   {maxOxModel.oxidativeDemandKcalMin.toFixed(2)} kcal/min
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Potenza non ossidativa (residuo)</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.glycolyticPowerDemandW.toFixed(0)} W</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Potenza non ossidativa (residuo)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.glycolyticPowerDemandW.toFixed(0)} W</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Saturazione ossidativa</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.utilizationRatioPct.toFixed(0)}%</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Saturazione ossidativa</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationRatioPct.toFixed(0)}%</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Coerenza VO₂ grezza</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.utilizationVo2CoherencePct.toFixed(0)}%</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Coerenza VO₂ grezza</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationVo2CoherencePct.toFixed(0)}%</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Stress delivery (totale/netta)</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.utilizationDeliveryStressPct.toFixed(0)}%</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Stress delivery (totale/netta)</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationDeliveryStressPct.toFixed(0)}%</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Collo di bottiglia ossidativo</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--pink">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Collo di bottiglia ossidativo</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
                   {maxOxModel.oxidativeBottleneckIndex.toFixed(0)}/100
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Stress redox</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.redoxStressIndex.toFixed(0)}/100</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Stress redox</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.redoxStressIndex.toFixed(0)}/100</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Tipo limite</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxSummary.bottleneckText}</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tipo limite</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxSummary.bottleneckText}</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Affidabilità / incertezza</div>
-                <div className="physiology-lab-pro2-kpi-value">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Affidabilità / incertezza</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
                   {maxOxReliability}% / ±{maxOxResolved.uncertaintyPct}%
                 </div>
               </div>
             </div>
           </div>
           <div className="physiology-pro2-lab-page-panel">
-            <div className="physiology-pro2-mini-banner">Delivery · periferia · estrazione</div>
-            <div className="physiology-lab-pro2-kpi-grid">
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Delivery centrale O₂</div>
-                <div className="physiology-lab-pro2-kpi-value physiology-lab-pro2-kpi-value--cyan">
+            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Delivery · periferia · estrazione</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Delivery centrale O₂</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
                   {maxOxModel.centralDeliveryIndex.toFixed(2)}
                 </div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Utilizzo periferico</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.peripheralUtilizationIndex.toFixed(2)}</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Utilizzo periferico</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.peripheralUtilizationIndex.toFixed(2)}</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">Estrazione SmO₂</div>
-                <div className="physiology-lab-pro2-kpi-value">{maxOxModel.extractionPct.toFixed(1)}%</div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Estrazione SmO₂</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.extractionPct.toFixed(1)}%</div>
               </div>
-              <div className="physiology-lab-pro2-kpi">
-                <div className="physiology-lab-pro2-kpi-label">NADH / riossidazione</div>
-                <div className="physiology-lab-pro2-kpi-value">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">NADH / riossidazione</div>
+                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
                   {(maxOxModel.nadhPressureIndex * 100).toFixed(0)}% / {(maxOxModel.reoxidationCapacityIndex * 100).toFixed(0)}%
                 </div>
               </div>
@@ -2931,6 +2652,9 @@ export default function MetabolicLabPage() {
           </details>
           </div>
           <div className="physiology-pro2-lab-footer-actions">
+            <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>
+              {saving ? "Salvataggio…" : "Salva capacità ossidativa"}
+            </Pro2Button>
             <Pro2Button
               type="button"
               variant="secondary"
@@ -2940,33 +2664,173 @@ export default function MetabolicLabPage() {
                 setMaxOxLastRecalcAt(Date.now());
               }}
             >
-              Ricalcola maxox
+              Ricalcola capacità ossidativa
             </Pro2Button>
-            <small className="text-xs text-slate-500">
+            <small className="text-xs text-gray-500">
               {maxOxLastRecalcAt
                 ? `Ultimo ricalcolo: ${new Date(maxOxLastRecalcAt).toLocaleTimeString("it-IT")}`
                 : "Premi ricalcola per forzare il refresh del modello."}
             </small>
-            <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>
-              {saving ? "Salvataggio..." : "Salva snapshot Max Oxidate"}
-            </Pro2Button>
           </div>
           </PhysiologyPro2MaxOxLab>
         </div>
       ) : null}
 
+      {section === "dettagli" ? (
+        <div className="space-y-8">
       <Pro2SectionCard
-        accent="cyan"
+        accent="emerald"
         icon={Network}
         title="Multiscala biologica · collo di bottiglia (interpretazione)"
         subtitle="Solo narrativa e tag interpretativi: non modifica i dati del tuo profilo"
       >
-        <p className="mb-3 text-xs leading-relaxed text-slate-500">
+        <p className="mb-3 text-xs leading-relaxed text-gray-500">
           Priorità L1–L6 e nodi ontologia attivati in modo <strong>deterministico</strong>. I numeri canonici restano nei motori
           fisiologia / bioenergetica.
         </p>
         <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
       </Pro2SectionCard>
+
+      <Pro2Accordion
+        id="mod-dettagli-motore"
+        title="Dettagli e motore"
+        subtitle="Come leggere le tre analisi e cosa salviamo per te"
+        accent="slate"
+      >
+        <div className="space-y-3 text-sm leading-relaxed text-gray-400">
+          <p>
+            <strong className="text-gray-200">Profilo metabolico</strong> — Dalla tua curva di potenza ricaviamo soglie (CP, FTP, LT),
+            VO₂max stimato e le zone di allenamento con il consumo di carboidrati e grassi previsto. Quando salvi, il valore resta
+            sul tuo profilo e alla prossima apertura ritrovi l&apos;ultima analisi.
+          </p>
+          <p>
+            <strong className="text-gray-200">Analisi lattato</strong> — Stima quanto carburante (carboidrati) usi a una certa intensità,
+            quanto ne assorbi e quanto ne riconverti. Serve a capire come alimentarti durante gli sforzi lunghi.
+          </p>
+          <p>
+            <strong className="text-gray-200">Capacità ossidativa</strong> — Misura quanto a fondo riesci a usare l&apos;ossigeno e dove sta
+            il limite (cuore/sangue, muscolo, o tetto aerobico). Utile per gli sforzi aerobici prolungati.
+          </p>
+          <p className="text-xs text-gray-500">
+            I numeri si aggiornano da soli quando cambi gli input; lo storico conserva ogni analisi che salvi, così puoi confrontare i progressi.
+          </p>
+        </div>
+      </Pro2Accordion>
+
+      {canAccessValidationConsole ? (
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <small className="text-xs text-gray-400">Validation console interna (visibile solo a coach/staff).</small>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
+              onClick={() => setShowValidationConsole((s) => !s)}
+            >
+              {showValidationConsole ? "Nascondi validazione" : "Mostra validazione"}
+            </Pro2Button>
+          </div>
+        </div>
+      ) : null}
+      {canAccessValidationConsole && showValidationConsole ? (
+      <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
+              Lactate reliability:{" "}
+              <strong className="font-mono tabular-nums" style={{ color: reliabilityBadge(lactateReliability).color }}>{lactateReliability}%</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
+              MaxOx reliability:{" "}
+              <strong className="font-mono tabular-nums" style={{ color: reliabilityBadge(maxOxReliability).color }}>{maxOxReliability}%</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
+              Lactate uncertainty: <strong className="font-mono tabular-nums">±{lactateUncertaintyPct}%</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
+              MaxOx uncertainty: <strong className="font-mono tabular-nums">±{maxOxResolved.uncertaintyPct}%</strong>
+            </span>
+          </div>
+          <Pro2Button type="button" variant="primary" onClick={runEvidenceCheck} disabled={evidenceLoading}>
+            {evidenceLoading ? "Checking evidence..." : "Validate with PubMed"}
+          </Pro2Button>
+        </div>
+        {evidenceError && <div className="alert-error" style={{ marginTop: "10px", marginBottom: 0 }}>{evidenceError}</div>}
+        {evidenceItems.length > 0 && (
+          <div className="mt-2.5 grid gap-2">
+            {evidenceItems.slice(0, 5).map((item) => (
+              <a
+                key={item.pmid}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-gray-200 no-underline transition-colors hover:border-emerald-500/40 hover:bg-white/[0.05]"
+              >
+                <strong className="mb-0.5 block text-white">{item.title}</strong>
+                <small className="text-gray-500">
+                  {item.journal ?? "Journal n/a"} · {item.pub_date ?? "date n/a"} · PMID {item.pmid}
+                </small>
+              </a>
+            ))}
+          </div>
+        )}
+        {(
+          <div className="mt-3">
+            <h4 className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
+              Pro Check · source + literature alignment
+            </h4>
+            <div className="mb-2 grid gap-2 sm:grid-cols-2">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
+                <strong className="text-emerald-300">Aligned (published): {alignedRows.length}</strong>
+                <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
+                  {alignedRows.length === 0 ? <span>Nessun valore allineato.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3">
+                <strong className="text-rose-300">Blocked (not published): {blockedRows.length}</strong>
+                <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
+                  {blockedRows.length === 0 ? <span>Tutti i valori sono allineati.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-xs">
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Value</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Source</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Study range</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Evidence</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {proCheckRows.map((row) => (
+                    <tr key={row.key} className="transition-colors hover:bg-white/[0.03]">
+                      <td className="px-3 py-2 text-gray-300">
+                        <strong className="text-white">{row.label}</strong>
+                        <div className="mt-0.5 font-mono text-[0.7rem] tabular-nums text-gray-400">{row.valueText}</div>
+                      </td>
+                      <td className="px-3 py-2 text-gray-300">{row.source}</td>
+                      <td className="px-3 py-2 text-gray-300">
+                        {row.rangeText} {row.inRange ? "✓" : "✕"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-300">{row.evidenceReady ? "synced" : "missing"}</td>
+                      <td className={cn("px-3 py-2 font-bold", row.aligned ? "text-emerald-300" : "text-rose-300")}>
+                        {row.aligned ? "ALIGNED" : "BLOCKED"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Regola: un valore e pubblicabile solo se source-check valido + range fisiologico in letteratura + evidenza disponibile.
+            </p>
+          </div>
+        )}
+      </div>
+      ) : null}
 
       {showTech ? (
       <Pro2SectionCard
@@ -2975,22 +2839,22 @@ export default function MetabolicLabPage() {
         title="Storico Metabolic Lab"
         subtitle="Elenco snapshot + import negli input — dettaglio tecnico sotto"
       >
-        <p className="mb-3 text-xs leading-relaxed text-slate-500">
+        <p className="mb-3 text-xs leading-relaxed text-gray-500">
           I KPI nella pagina usano il <strong>motore attuale</strong> (
           <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">{METABOLIC_CP_ENGINE_REVISION}</code>
           ). Qui sotto è lo <strong>snapshot congelato</strong> al salvataggio.
         </p>
         {historyLoading ? (
-          <p className="text-sm text-slate-500">Caricamento storico…</p>
+          <p className="text-sm text-gray-500">Caricamento storico…</p>
         ) : history.length === 0 ? (
-          <p className="text-sm text-slate-500">Nessuno snapshot salvato.</p>
+          <p className="text-sm text-gray-500">Nessuno snapshot salvato.</p>
         ) : (
           <>
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <label className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Archivio snapshot
                 <select
-                  className="w-full max-w-full rounded-lg border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
+                  className="w-full max-w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   value={selectedHistoryId ?? ""}
                   onChange={(e) => setSelectedHistoryId(e.target.value ? e.target.value : null)}
                 >
@@ -3029,8 +2893,8 @@ export default function MetabolicLabPage() {
             {selectedHistoryRow ? (
               <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs text-slate-400">
-                    <span className="font-semibold text-slate-200">
+                  <div className="text-xs text-gray-400">
+                    <span className="font-semibold text-gray-200">
                       {labHistorySectionTitle(selectedHistoryRow.section)}
                     </span>
                     {" · "}
@@ -3041,14 +2905,14 @@ export default function MetabolicLabPage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">input_payload</p>
-                    <pre className="max-h-72 overflow-auto rounded-lg border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-slate-300">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">input_payload</p>
+                    <pre className="max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-gray-300">
                       {JSON.stringify(selectedHistoryRow.input_payload ?? {}, null, 2)}
                     </pre>
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">output_payload</p>
-                    <pre className="max-h-72 overflow-auto rounded-lg border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-slate-300">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">output_payload</p>
+                    <pre className="max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-gray-300">
                       {JSON.stringify(selectedHistoryRow.output_payload ?? {}, null, 2)}
                     </pre>
                   </div>
@@ -3061,9 +2925,11 @@ export default function MetabolicLabPage() {
       ) : null}
 
       {showTech ? (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-gray-600">
           Contesto: {role === "coach" ? "Coach" : "Privato"} · Atleta {athleteId.slice(0, 8)}…
         </p>
+      ) : null}
+        </div>
       ) : null}
       </div>
     </Pro2ModulePageShell>

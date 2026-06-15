@@ -2,14 +2,7 @@
 
 import { Activity, BookMarked, ChefHat, Flame, Layers, Workflow } from "lucide-react";
 import { usePathname } from "next/navigation";
-import {
-  MODULE_PILL_AMBER,
-  MODULE_PILL_CYAN,
-  MODULE_PILL_EMERALD,
-  MODULE_PILL_FUCHSIA,
-  MODULE_PILL_ORANGE,
-  MODULE_PILL_ROSE,
-} from "@/components/navigation/module-pill-styles";
+import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
 import { ModulePillSubnav, type ModulePillLinkItem } from "@/components/navigation/ModulePillSubnav";
 
 export const NUTRITION_SUBNAV_PATHS = {
@@ -33,35 +26,35 @@ const ITEMS: ModulePillLinkItem[] = [
     href: NUTRITION_SUBNAV_PATHS.mealPlan,
     label: "Meal plan",
     icon: ChefHat,
-    style: MODULE_PILL_EMERALD,
+    style: MODULE_PILL_AMBER,
   },
   {
     key: "fueling",
     href: NUTRITION_SUBNAV_PATHS.fueling,
     label: "Fueling",
     icon: Flame,
-    style: MODULE_PILL_ORANGE,
+    style: MODULE_PILL_AMBER,
   },
   {
     key: "integration",
     href: NUTRITION_SUBNAV_PATHS.integration,
     label: "Integrazione",
     icon: Workflow,
-    style: MODULE_PILL_FUCHSIA,
+    style: MODULE_PILL_AMBER,
   },
   {
     key: "predictor",
     href: NUTRITION_SUBNAV_PATHS.predictor,
     label: "Predictor",
     icon: Activity,
-    style: MODULE_PILL_CYAN,
+    style: MODULE_PILL_AMBER,
   },
   {
     key: "diary",
     href: NUTRITION_SUBNAV_PATHS.diary,
     label: "Diario alimentare",
     icon: BookMarked,
-    style: MODULE_PILL_ROSE,
+    style: MODULE_PILL_AMBER,
   },
 ];
 

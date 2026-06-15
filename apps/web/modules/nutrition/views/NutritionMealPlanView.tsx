@@ -3,10 +3,9 @@
 import { useRouter } from "next/navigation";
 import { Zap } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import { NutritionDayKpiStrip } from "@/components/nutrition/NutritionDayKpiStrip";
-import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
+import { Pro2Accordion } from "@/components/ui/empathy";
 import type {
   FunctionalFoodRecommendationsViewModel,
   NutritionApplicationDirectiveViewModel,
@@ -65,7 +64,7 @@ export type NutritionMealPlanDailyTargetsProps = {
   energyLedger?: NutritionMealPlanEnergyLedger | null;
 };
 
-/** Blocco KPI giornaliero (stesso `viz-card` del subnav — renderlo subito sotto `NutritionSubnav`). */
+/** Blocco KPI giornaliero: UNICO posto dei macro/kcal del giorno (sezione `mod-target-giorno`, dopo il selettore giorno). */
 export function NutritionMealPlanDailyTargets({
   complianceTargets,
   dateLabel,
@@ -86,7 +85,7 @@ export function NutritionMealPlanDailyTargets({
 
   return (
     <div>
-      <p className="mb-2 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Target giornaliero</p>
+      <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Target giornaliero</p>
       <NutritionDayKpiStrip
         targets={{
           kcal: complianceTargets.kcal,
@@ -98,44 +97,44 @@ export function NutritionMealPlanDailyTargets({
       />
       {showLedger ? (
         <div
-          className="mt-3 rounded-xl border border-slate-600/40 bg-slate-950/50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-400"
+          className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-gray-400"
           role="region"
           aria-label="Bilancio energetico giornaliero"
         >
-          <p className="mb-1.5 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-slate-500">Bilancio kcal · cosa stai sommando</p>
+          <p className="mb-1.5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Bilancio kcal · cosa stai sommando</p>
           <ul className="m-0 list-none space-y-1 p-0 font-mono">
             <li>
-              <span className="text-slate-500">Σ slot pasto (griglia sopra):</span>{" "}
-              <span className="font-semibold text-slate-200">{slotSumKcal} kcal</span>
+              <span className="text-gray-500">Σ slot pasto (griglia sopra):</span>{" "}
+              <span className="font-semibold tabular-nums text-white">{slotSumKcal} kcal</span>
             </li>
             {ledger.mealsKcalSolver != null ? (
               <li>
-                <span className="text-slate-500">Target pasti solver (BMR+lifestyle+quota training sui pasti):</span>{" "}
-                <span className="font-semibold text-cyan-100/90">{round(ledger.mealsKcalSolver)} kcal</span>
+                <span className="text-gray-500">Target pasti solver (BMR+lifestyle+quota training sui pasti):</span>{" "}
+                <span className="font-semibold tabular-nums text-white">{round(ledger.mealsKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.fuelingKcalSolver != null ? (
               <li>
-                <span className="text-slate-500">Quota fueling (pre/intra/post, non nei pasti):</span>{" "}
-                <span className="font-semibold text-amber-200/90">{round(ledger.fuelingKcalSolver)} kcal</span>
+                <span className="text-gray-500">Quota fueling (pre/intra/post, non nei pasti):</span>{" "}
+                <span className="font-semibold tabular-nums text-white">{round(ledger.fuelingKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.dailyKcalSolver != null ? (
               <li>
-                <span className="text-slate-500">Totale metabolico giornata (BMR+lifestyle+allenamento):</span>{" "}
-                <span className="font-semibold text-emerald-100/90">{round(ledger.dailyKcalSolver)} kcal</span>
+                <span className="text-gray-500">Totale metabolico giornata (BMR+lifestyle+allenamento):</span>{" "}
+                <span className="font-semibold tabular-nums text-white">{round(ledger.dailyKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.trainingKcalSolver != null && ledger.trainingKcalSolver > 0 ? (
               <li>
-                <span className="text-slate-500">Costo training pianificato (Builder, allineato al calendario):</span>{" "}
-                <span className="text-slate-300">{round(ledger.trainingKcalSolver)} kcal</span>
+                <span className="text-gray-500">Costo training pianificato (Builder, allineato al calendario):</span>{" "}
+                <span className="tabular-nums text-gray-300">{round(ledger.trainingKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.assembledUsdaKcalSum != null ? (
               <li>
-                <span className="text-slate-500">Σ piano USDA assemblato (voci alimenti):</span>{" "}
-                <span className="font-semibold text-orange-100/95">{round(ledger.assembledUsdaKcalSum)} kcal</span>
+                <span className="text-gray-500">Σ piano USDA assemblato (voci alimenti):</span>{" "}
+                <span className="font-semibold tabular-nums text-white">{round(ledger.assembledUsdaKcalSum)} kcal</span>
                 {ledger.mealsKcalSolver != null && ledger.mealsKcalSolver > 0 ? (
                   ledger.assembledUsdaKcalSum < ledger.mealsKcalSolver - 60 ? (
                     <span className="block pt-1 text-[10px] text-amber-300/90">
@@ -143,7 +142,7 @@ export function NutritionMealPlanDailyTargets({
                       voci.
                     </span>
                   ) : ledger.assembledUsdaKcalSum > ledger.mealsKcalSolver + 120 ? (
-                    <span className="block pt-1 text-[10px] text-slate-500">
+                    <span className="block pt-1 text-[10px] text-gray-500">
                       Sopra il target pasti solver: la somma USDA è orientativa (porzioni indicative) e non è vincolata slot-per-slot al
                       fabbisogno pasti del solver.
                     </span>
@@ -154,16 +153,16 @@ export function NutritionMealPlanDailyTargets({
           </ul>
         </div>
       ) : null}
-      <p className="mt-2 text-xs text-slate-500">
-        Idratazione minima: <span className="font-semibold text-slate-300">{hydrationMinDailyMl} ml</span>
+      <p className="mt-2 text-xs text-gray-500">
+        Idratazione minima: <span className="font-mono font-semibold tabular-nums text-gray-300">{hydrationMinDailyMl} ml</span>
         {" · "}
         {selectedExecutedKj > 0 ? (
           <>
-            Energia seduta (kj): <span className="font-semibold text-slate-300">{round(selectedExecutedKj)} kJ</span>
+            Energia seduta (kj): <span className="font-mono font-semibold tabular-nums text-gray-300">{round(selectedExecutedKj)} kJ</span>
           </>
         ) : (
           <>
-            Stima carico seduta: <span className="font-semibold text-slate-300">{round(sessionLoadKcalEstimate)} kcal</span>
+            Stima carico seduta: <span className="font-mono font-semibold tabular-nums text-gray-300">{round(sessionLoadKcalEstimate)} kcal</span>
           </>
         )}
       </p>
@@ -172,64 +171,57 @@ export function NutritionMealPlanDailyTargets({
 }
 
 export type NutritionMealPlanLeadPanelsProps = {
-  researchTraceSummaries: KnowledgeResearchTraceSummary[];
   nutritionSectorBoxes: AdaptationSectorBoxVm[];
   pathwayModulation: NutritionPathwayModulationViewModel | null;
   functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
 };
 
+/** Approfondimenti del giorno (adattamento + pillole funzionali): collassati di default per canone Pro2. */
 export function NutritionMealPlanLeadPanels({
-  researchTraceSummaries,
   nutritionSectorBoxes,
-  pathwayModulation,
   functionalFoodRecommendations,
 }: NutritionMealPlanLeadPanelsProps) {
   const router = useRouter();
-  const { role, adminScoped } = useActiveAthlete();
-  /** Research trace è diagnostica tecnica: solo coach/admin. */
-  const showTech = role === "coach" || adminScoped;
+  const { adminScoped } = useActiveAthlete();
   return (
-    <>
-      {showTech && !!researchTraceSummaries.length ? (
-        <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-          <ResearchTraceStatusSummary traces={researchTraceSummaries} label="Stato approfondimenti nutrizione" />
-        </section>
-      ) : null}
-
-      <section className="viz-card builder-panel" style={{ marginBottom: "12px", padding: "12px 14px" }}>
+    <Pro2Accordion
+      accent="amber"
+      title="Adattamento del giorno e pillole funzionali"
+      subtitle="Settori di adattamento e suggerimenti sui segnali della giornata"
+    >
+      <div className="space-y-3">
         <AdaptationSectorStrip title="Settori · adattamento (giorno)" boxes={nutritionSectorBoxes} />
-      </section>
 
-      {functionalFoodRecommendations.targets.length ? (
-        <section className="viz-card builder-panel" style={{ marginBottom: "12px", padding: "10px 14px", fontSize: "0.8rem" }}>
-          <strong>Pillole nutrizionali adattive</strong>
-          <span className="nutrition-muted"> — suggerimenti funzionali sui segnali del giorno: </span>
-          <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px", verticalAlign: "middle" }}>
-            {functionalFoodRecommendations.targets.slice(0, 8).map((t) => (
-              <span
-                key={t.nutrientId}
-                className="nutrition-ui-chip"
-                style={{ fontSize: "0.72rem" }}
-                title={t.rationaleIt}
-              >
-                {t.displayNameIt.split("(")[0].trim()}
-              </span>
-            ))}
-          </span>
-          <button
-            type="button"
-            className="nutrition-ui-chip"
-            style={{ marginLeft: "8px", cursor: "pointer" }}
-            onClick={() => {
-              if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
-              router.push("/nutrition/integration");
-            }}
-          >
-            Vai a Integrazione
-          </button>
-        </section>
-      ) : null}
-    </>
+        {functionalFoodRecommendations.targets.length ? (
+          <div style={{ fontSize: "0.8rem" }}>
+            <strong>Pillole nutrizionali adattive</strong>
+            <span className="nutrition-muted"> — suggerimenti funzionali sui segnali del giorno: </span>
+            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px", verticalAlign: "middle" }}>
+              {functionalFoodRecommendations.targets.slice(0, 8).map((t) => (
+                <span
+                  key={t.nutrientId}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300"
+                  title={t.rationaleIt}
+                >
+                  {t.displayNameIt.split("(")[0].trim()}
+                </span>
+              ))}
+            </span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20"
+              style={{ marginLeft: "8px", cursor: "pointer" }}
+              onClick={() => {
+                if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
+                router.push("/nutrition/integration");
+              }}
+            >
+              Vai a Integrazione
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </Pro2Accordion>
   );
 }
 
@@ -255,8 +247,6 @@ export type NutritionMealPlanWorkspaceProps = {
   dietDayNotice?: string | null;
   /** Giornata gara: regola fissa pasta/riso T−3 h (non dipende da USDA pathway). */
   raceDayPreRaceNotice?: string | null;
-  onGenerateIntelligentMealPlan: () => void;
-  onResetIntelligentMealPlan: () => void;
   coachMealRemovalKeys: Set<string>;
   coachSessionFoodExclusions: string[];
   onCoachShowAllItems: () => void;
@@ -286,8 +276,6 @@ export function NutritionMealPlanWorkspace({
   mealPathwayCatalogPending = false,
   dietDayNotice = null,
   raceDayPreRaceNotice = null,
-  onGenerateIntelligentMealPlan,
-  onResetIntelligentMealPlan,
   coachMealRemovalKeys,
   coachSessionFoodExclusions,
   onCoachShowAllItems,
@@ -302,7 +290,6 @@ export function NutritionMealPlanWorkspace({
 }: NutritionMealPlanWorkspaceProps) {
   const router = useRouter();
   const { adminScoped } = useActiveAthlete();
-  const hasApplicativeContext = Boolean(nutritionApplicationDirective) || Boolean(functionalMealSelectorNotes?.length);
   const mealPlanMicroBoardProps = intelligentMealPlan?.nutrientRollup?.dayTotals
     ? mealPlanDayTotalsToMicroLines(intelligentMealPlan.nutrientRollup.dayTotals)
     : mealTabMicronutrientProps;
@@ -311,74 +298,19 @@ export function NutritionMealPlanWorkspace({
     <>
       <section id="nutrition-meal-plan" className="scroll-mt-28 mb-10 space-y-4">
         <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-          <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Piano pasti · giorno selezionato</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 10 }}>
-            <button
-              type="button"
-              className="btn-nutrition-cta"
-              disabled={!athleteId || intelligentMealLoading || !canRequestIntelligentPlan}
-              onClick={() => void onGenerateIntelligentMealPlan()}
-            >
-              {intelligentMealLoading ? "Generazione piano…" : "Genera il mio piano pasti"}
-            </button>
-            {intelligentMealPlan ? (
-              <button type="button" className="nutrition-ui-chip" onClick={onResetIntelligentMealPlan}>
-                Rigenera piano
-              </button>
-            ) : null}
-            {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
-              <span className="nutrition-ui-chip text-[0.7rem] text-slate-400">Assemblaggio deterministico server</span>
-            ) : null}
-          </div>
+          <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Piano pasti · giorno selezionato</p>
           {mealPathwayCatalogPending ? (
-            <p className="mb-3 text-xs text-slate-500">Caricamento integrazione USDA per gli slot pasto del giorno… poi potrai generare il piano.</p>
+            <p className="mb-3 text-xs text-gray-500">Caricamento integrazione USDA per gli slot pasto del giorno… poi potrai generare il piano.</p>
           ) : null}
           {raceDayPreRaceNotice ? (
-            <p className="mb-3 rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-xs text-fuchsia-100" role="status">
+            <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100" role="status">
               {raceDayPreRaceNotice}
             </p>
           ) : null}
           {dietDayNotice ? (
-            <p className="mb-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100" role="status">
+            <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100" role="status">
               {dietDayNotice}
             </p>
-          ) : null}
-          {hasApplicativeContext ? (
-            <div
-              className="mb-3 rounded-lg border border-emerald-600/25 bg-emerald-950/20 px-3 py-2.5 text-[12px] leading-relaxed text-slate-300"
-              role="region"
-              aria-label="Contesto applicativo"
-            >
-              <p className="mb-2 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-emerald-400/90">Contesto applicativo</p>
-              {nutritionApplicationDirective ? (
-                <ul className="m-0 mb-2 list-none space-y-1 p-0 text-slate-300">
-                  {nutritionApplicationDirective.rationale.map((line, i) => (
-                    <li key={`dir-r-${i}`} className="pl-0">
-                      {line}
-                    </li>
-                  ))}
-                  <li className="font-mono text-[0.65rem] text-slate-400">
-                    Focus: {nutritionApplicationDirective.focus.join(", ") || "—"} · applicate{" "}
-                    {nutritionApplicationDirective.appliedCount} · in attesa {nutritionApplicationDirective.pendingCount}
-                    {typeof nutritionApplicationDirective.coachValidatedMemoryCount === "number"
-                      ? ` · memoria coach validate ${nutritionApplicationDirective.coachValidatedMemoryCount}`
-                      : null}
-                  </li>
-                </ul>
-              ) : null}
-              {functionalMealSelectorNotes?.length ? (
-                <details className="rounded border border-slate-600/35 bg-slate-950/40 px-2 py-1.5 text-slate-400">
-                  <summary className="cursor-pointer select-none text-[11px] font-semibold text-slate-300">
-                    Note selettore pasti funzionale (allineate a patch + direttiva)
-                  </summary>
-                  <ul className="mt-2 mb-0 list-disc space-y-1 pl-4 text-[11px]">
-                    {functionalMealSelectorNotes.map((n, i) => (
-                      <li key={`fms-${i}`}>{n}</li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
-            </div>
           ) : null}
           {intelligentMealError ? (
             <div className="alert-error" style={{ marginBottom: 10, fontSize: 13 }}>
@@ -390,7 +322,7 @@ export function NutritionMealPlanWorkspace({
           ) : null}
           {intelligentMealPlan?.pathwayBoostStatus === "usda_cache_miss" ? (
             <div
-              className="mb-3 rounded-lg border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-[12px] leading-relaxed text-amber-100/90"
+              className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-100/90"
               role="status"
             >
               Pathway attivo: swap alimenti applicati nel piano, ma la cache USDA (ranking top alimenti) non è
@@ -399,15 +331,15 @@ export function NutritionMealPlanWorkspace({
           ) : null}
           {intelligentMealPlan?.pathwayTargetRollup?.length ? (
             <div
-              className="mb-3 rounded-lg border border-fuchsia-500/25 bg-fuchsia-950/20 px-3 py-2 text-[12px] leading-relaxed text-zinc-200"
+              className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] leading-relaxed text-gray-200"
               role="status"
             >
-              <p className="mb-2 font-semibold text-fuchsia-200/90">Pathway · target vs rollup giorno</p>
+              <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">Pathway · target vs rollup giorno</p>
               <ul className="mb-0 grid gap-1 sm:grid-cols-2">
                 {intelligentMealPlan.pathwayTargetRollup.map((line) => (
                   <li key={line.nutrientId} className="flex items-baseline justify-between gap-2">
-                    <span className="text-zinc-300">{line.labelIt}</span>
-                    <span className={line.status === "met" ? "text-emerald-300" : "text-amber-300"}>
+                    <span className="text-gray-300">{line.labelIt}</span>
+                    <span className={`font-mono tabular-nums ${line.status === "met" ? "text-emerald-300" : "text-amber-300"}`}>
                       {line.dayValue} {line.unit} / ≥{line.floor} {line.unit}
                     </span>
                   </li>
@@ -424,10 +356,18 @@ export function NutritionMealPlanWorkspace({
                       Modifiche coach: {coachMealRemovalKeys.size} voci nascoste
                       {coachSessionFoodExclusions.length ? ` · ${coachSessionFoodExclusions.length} esclusioni per rigenerazione` : ""}
                     </span>
-                    <button type="button" className="nutrition-ui-chip" onClick={onCoachShowAllItems}>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
+                      onClick={onCoachShowAllItems}
+                    >
                       Mostra tutte le voci
                     </button>
-                    <button type="button" className="nutrition-ui-chip" onClick={onCoachClearSessionExclusions}>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
+                      onClick={onCoachClearSessionExclusions}
+                    >
                       Azzera esclusioni sessione
                     </button>
                   </div>
@@ -497,23 +437,7 @@ export function NutritionMealPlanWorkspace({
                   })}
                 </div>
                 <EmpathyMealPlanGlycemicLegend />
-                <div className="mt-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2 font-mono text-sm font-bold text-orange-50">
-                  Σ USDA assemblato · ~
-                  {intelligentMealPlan.slots.reduce((acc, sl) => {
-                    const sk = sl.slot as MealSlotKey;
-                    return (
-                      acc +
-                      sl.items.reduce(
-                        (a, it, ii) => (coachMealRemovalKeys.has(`${sk}:${ii}`) ? a : a + it.approxKcal),
-                        0,
-                      )
-                    );
-                  }, 0)}{" "}
-                  kcal
-                  <span className="mt-1 block text-[10px] font-normal font-sans text-orange-200/80">
-                    Non è il totale metabolico giornata: vedi «Bilancio kcal» sopra per pasti vs fueling vs giornata.
-                  </span>
-                </div>
+                {/* Σ kcal USDA assemblato: vive in UN solo posto, nel «Bilancio kcal» del target giornaliero. */}
               </div>
               <details className="collapsible-card" style={{ marginBottom: 12 }}>
                 <summary style={{ fontSize: 13, cursor: "pointer" }}>Avviso legale e note aggiuntive</summary>
@@ -530,12 +454,12 @@ export function NutritionMealPlanWorkspace({
                       if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
                       router.push("/nutrition/integration");
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-400/40 bg-fuchsia-500/10 px-3 py-1.5 text-[11px] font-semibold text-fuchsia-100 hover:bg-fuchsia-500/20 hover:text-fuchsia-50"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20"
                   >
                     <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
                     Vai a Integrazione →
                   </button>
-                  <span className="text-[10px] text-slate-400/80">
+                  <span className="text-[10px] text-gray-500">
                     Tutti i punti operativi (cofactors, leve solver, prodotti) sono raccolti nel modulo Integrazione.
                   </span>
                 </div>
@@ -562,7 +486,7 @@ export function NutritionMealPlanWorkspace({
                       <strong>Pathway modulation attivi</strong>:{" "}
                       {intelligentMealPlan.solverBasis.pathwayModulationActiveLabels.trim()}
                       {" · "}
-                      <span className="text-slate-400">
+                      <span className="text-gray-400">
                         I boost micronutrienti nelle note seguono i cofactors di questi pathway, non la lista alimenti del composer.
                       </span>
                     </p>
@@ -600,31 +524,29 @@ export function NutritionMealPlanWorkspace({
                     {intelligentMealPlan.hydrationRoutine.baselineDailyMl} ml + extra training ~{intelligentMealPlan.hydrationRoutine.trainingExtraMl}{" "}
                     ml). Valori educativi, adatta a clima e sudorazione.
                   </p>
-                  <div className="table-shell" style={{ marginTop: 10, overflowX: "auto" }}>
-                    <table style={{ fontSize: 11, minWidth: 720 }}>
+                  <div className="mt-2.5 overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-xs">
                       <thead>
                         <tr>
-                          <th>Finestra</th>
-                          <th>Orario</th>
-                          <th>Volume (ml)</th>
-                          <th>Na (mg)</th>
-                          <th>K (mg)</th>
-                          <th>Mg (mg)</th>
-                          <th>Note</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Finestra</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Orario</th>
+                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Volume (ml)</th>
+                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Na (mg)</th>
+                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">K (mg)</th>
+                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Mg (mg)</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Note</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-white/5">
                         {intelligentMealPlan.hydrationRoutine.windows.map((w, wi) => (
-                          <tr key={`hyd-${wi}-${w.labelIt}`}>
-                            <td>{w.labelIt}</td>
-                            <td>{w.scheduledTimeLocal}</td>
-                            <td>{w.volumeMl}</td>
-                            <td>{w.sodiumMg}</td>
-                            <td>{w.potassiumMg}</td>
-                            <td>{w.magnesiumMg}</td>
-                            <td className="nutrition-muted" style={{ maxWidth: 280 }}>
-                              {w.notesIt}
-                            </td>
+                          <tr key={`hyd-${wi}-${w.labelIt}`} className="transition-colors hover:bg-white/[0.03]">
+                            <td className="px-3 py-2 text-gray-300">{w.labelIt}</td>
+                            <td className="px-3 py-2 font-mono tabular-nums text-gray-300">{w.scheduledTimeLocal}</td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.volumeMl}</td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.sodiumMg}</td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.potassiumMg}</td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.magnesiumMg}</td>
+                            <td className="max-w-[280px] px-3 py-2 text-gray-400">{w.notesIt}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -636,7 +558,7 @@ export function NutritionMealPlanWorkspace({
           ) : null}
           {!intelligentMealPlan ? (
             <div className="empathy-meal-plan-expo-shell">
-              <p className="mb-3 text-center text-[12px] leading-snug text-slate-400">
+              <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
                 {intelligentMealLoading
                   ? "Sto generando il piano pasti allineato al tuo profilo (solver deterministico + USDA)…"
                   : canRequestIntelligentPlan
@@ -673,11 +595,11 @@ export function NutritionMealPlanWorkspace({
                 })}
               </div>
               <EmpathyMealPlanGlycemicLegend />
-              <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-slate-500">
+              <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
                 Pathway, USDA e ricerca FDC:{" "}
                 <button
                   type="button"
-                  className="nutrition-ui-chip align-middle text-[11px]"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 align-middle text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                   onClick={() => {
                     if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
                     router.push("/nutrition/integration");
@@ -688,30 +610,44 @@ export function NutritionMealPlanWorkspace({
               </p>
             </div>
           ) : null}
-          <section className="nutrition-report-shell">
-            <div className="nutrition-meal-plan-micro">
-              <NutritionMicronutrientDailyBoard {...mealPlanMicroBoardProps} />
-            </div>
-          </section>
-          <div className="kpi-grid nutrition-score-grid">
-            {nutritionStateCards.map((card) => (
-              <div key={card.label} className={`kpi-card signal-board-card tone-${card.tone} nutrition-score-card`}>
-                <div className="kpi-card-label">
-                  <span className="signal-board-dot" />
-                  {card.label}
-                </div>
-                <div className="kpi-card-value">{card.value}</div>
+          <Pro2Accordion
+            accent="amber"
+            title="Micronutrienti e stato del giorno"
+            subtitle="Board micronutrienti del piano e indicatori bioenergetici/adattamento"
+          >
+            <section className="nutrition-report-shell">
+              <div className="nutrition-meal-plan-micro">
+                <NutritionMicronutrientDailyBoard {...mealPlanMicroBoardProps} />
               </div>
-            ))}
-          </div>
+            </section>
+            <div className="kpi-grid nutrition-score-grid" style={{ marginTop: 12 }}>
+              {nutritionStateCards.map((card) => (
+                <div key={card.label} className={`kpi-card signal-board-card tone-${card.tone} nutrition-score-card`}>
+                  <div className="kpi-card-label">
+                    <span className="signal-board-dot" />
+                    {card.label}
+                  </div>
+                  <div className="kpi-card-value">{card.value}</div>
+                </div>
+              ))}
+            </div>
+          </Pro2Accordion>
         </section>
       </section>
 
       <section className="viz-card builder-panel">
         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-          <button type="button" disabled={saving} className="btn-nutrition-cta" onClick={onSaveNutrition}>
-            {saving ? "Salvataggio..." : "Salva Nutrition/Nutriomics"}
+          <button
+            type="button"
+            disabled={saving}
+            className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
+            onClick={onSaveNutrition}
+          >
+            {saving ? "Salvataggio..." : "Salva configurazione nutrizione"}
           </button>
+          <span className="text-xs text-gray-500">
+            Salva nel profilo ripartizione pasti, fueling e predictor (non rigenera il piano).
+          </span>
         </div>
       </section>
     </>

@@ -73,18 +73,18 @@ export function TrainingViryaActivePlanStrip({
   if (!athleteId?.trim()) return null;
 
   return (
-    <div className="mb-4 rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/40 via-violet-950/25 to-fuchsia-950/20 px-4 py-3 shadow-inner shadow-cyan-950/30">
+    <div className="mb-4 rounded-2xl border border-orange-500/25 bg-gradient-to-r from-orange-950/30 via-black/50 to-black/60 px-4 py-3 shadow-inner shadow-orange-950/30">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 text-cyan-200/90">
+        <div className="flex items-center gap-2 text-orange-200/90">
           <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
           <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em]">Piano VIRYA attivo</span>
         </div>
-        {plansLoading ? <span className="text-xs text-slate-500">Caricamento piani…</span> : null}
+        {plansLoading ? <span className="text-xs text-gray-500">Caricamento piani…</span> : null}
         {loadErr ? <span className="text-xs text-amber-300/90">{loadErr}</span> : null}
         {!plansLoading && !loadErr && plans && plans.length === 0 ? (
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-gray-500">
             Nessun piano VIRYA su Calendar —{" "}
-            <Pro2Link href="/training/vyria" variant="ghost" className="!inline text-cyan-200/90">
+            <Pro2Link href="/training/vyria" variant="ghost" className="!inline text-orange-200/90">
               crea da VIRYA
             </Pro2Link>
           </span>
@@ -92,23 +92,23 @@ export function TrainingViryaActivePlanStrip({
         {!plansLoading && !loadErr && plans && plans.length > 0 ? (
           <>
             {glyph ? (
-              <SportDisciplineGlyph glyph={glyph} className="h-9 w-9 shrink-0 text-fuchsia-200" />
+              <SportDisciplineGlyph glyph={glyph} className="h-9 w-9 shrink-0 text-orange-200" />
             ) : null}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-white">
                 {activePlan?.planName ?? "—"}
                 {familyLabel ? (
-                  <span className="ml-2 text-xs font-normal text-fuchsia-200/80">· {familyLabel}</span>
+                  <span className="ml-2 text-xs font-normal text-orange-200/80">· {familyLabel}</span>
                 ) : null}
               </p>
               {activePlan ? (
-                <p className="mt-0.5 font-mono text-[0.65rem] text-slate-500">
+                <p className="mt-0.5 font-mono text-[0.65rem] text-gray-500">
                   {activePlan.sessionCount} sedute · {activePlan.dateMin} → {activePlan.dateMax} ·{" "}
-                  <span className="text-cyan-300/80">{activePlan.tag}</span>
+                  <span className="text-orange-300/80">{activePlan.tag}</span>
                 </p>
               ) : null}
             </div>
-            <label className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+            <label className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
               Cambia piano
               <select
                 className="min-w-[12rem] rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-white"
@@ -129,7 +129,7 @@ export function TrainingViryaActivePlanStrip({
             <Pro2Link
               href="/training/vyria"
               variant="ghost"
-              className="border border-fuchsia-500/35 bg-fuchsia-500/10 text-xs"
+              className="border border-orange-500/35 bg-orange-500/10 text-xs"
             >
               VIRYA
             </Pro2Link>

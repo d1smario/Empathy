@@ -37,7 +37,7 @@ export function Pro2GymSchedaBlockList({
   return (
     <div className="space-y-3">
       {withCatalog.length > 0 ? (
-        <p className="font-mono text-[0.65rem] text-fuchsia-200/80">
+        <p className="font-mono text-[0.65rem] text-orange-200/80">
           {withCatalog.length} esercizi catalogo · {contract.sessionName?.trim() || contract.discipline || "Gym"}
         </p>
       ) : (
@@ -51,8 +51,8 @@ export function Pro2GymSchedaBlockList({
             key={block.id || `gym-block-${idx}`}
             className={
               compact
-                ? "rounded-xl border border-fuchsia-500/25 bg-fuchsia-950/15 p-3 text-sm text-gray-200"
-                : "rounded-2xl border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-950/25 via-violet-950/15 to-black/40 p-4 text-sm text-gray-200 shadow-inner shadow-fuchsia-950/20"
+                ? "rounded-xl border border-orange-500/25 bg-orange-950/15 p-3 text-sm text-gray-200"
+                : "rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-950/25 via-orange-950/15 to-black/40 p-4 text-sm text-gray-200 shadow-inner shadow-orange-950/20"
             }
           >
             <div className="flex flex-wrap gap-4">
@@ -62,8 +62,8 @@ export function Pro2GymSchedaBlockList({
                 fallbackLabel={block.label}
                 className={
                   compact
-                    ? "h-16 w-16 shrink-0 rounded-lg border border-fuchsia-500/25 object-cover"
-                    : "h-24 w-24 shrink-0 rounded-xl border border-fuchsia-500/30 object-cover sm:h-28 sm:w-28"
+                    ? "h-16 w-16 shrink-0 rounded-xl border border-orange-500/25 object-cover"
+                    : "h-24 w-24 shrink-0 rounded-xl border border-orange-500/30 object-cover sm:h-28 sm:w-28"
                 }
               />
               <div className="min-w-0 flex-1">
@@ -74,14 +74,14 @@ export function Pro2GymSchedaBlockList({
                   <>
                     <p className="mt-2 font-mono text-sm text-orange-200/95">{gymRxLine(block.gymRx)}</p>
                     {block.intensityCue ? (
-                      <p className="mt-1 text-xs text-violet-200/75">{block.intensityCue}</p>
+                      <p className="mt-1 text-xs text-orange-200/75">{block.intensityCue}</p>
                     ) : null}
                   </>
                 ) : (
-                  <p className="mt-2 text-xs text-slate-400">{block.intensityCue ?? block.notes ?? block.target ?? "—"}</p>
+                  <p className="mt-2 text-xs text-gray-400">{block.intensityCue ?? block.notes ?? block.target ?? "—"}</p>
                 )}
                 {block.notes && block.gymRx ? (
-                  <p className="mt-2 text-[0.65rem] text-slate-500">{block.notes}</p>
+                  <p className="mt-2 text-[0.65rem] text-gray-500">{block.notes}</p>
                 ) : null}
               </div>
             </div>

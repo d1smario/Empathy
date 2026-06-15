@@ -140,7 +140,7 @@ export function LactateEnginePro2Viz({ model, choGapG }: LactateEnginePro2VizPro
         <h4 className="lactate-engine-viz-title">Pipeline CHO in seduta (g)</h4>
         <p className="lactate-engine-viz-sub">
           Ingeriti totali <strong>{model.choIngestedTotalG.toFixed(1)} g</strong> · ossidati esogeni {model.exogenousOxidizedG.toFixed(1)} g · CHO gap strategia{" "}
-          <strong style={{ color: choGapG > 15 ? "#ff5d5d" : choGapG > 5 ? "#ffd60a" : "#00e08d" }}>{choGapG.toFixed(0)} g</strong>
+          <strong className={`font-mono tabular-nums ${choGapG > 15 ? "text-rose-400" : choGapG > 5 ? "text-amber-300" : "text-emerald-400"}`}>{choGapG.toFixed(0)} g</strong>
           {model.bloodGlucoseMmolL != null ? (
             <>
               {" "}

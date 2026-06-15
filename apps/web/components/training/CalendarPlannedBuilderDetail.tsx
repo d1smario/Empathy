@@ -67,10 +67,10 @@ function familyLabel(family: string | undefined): string {
 }
 
 const familyBadgeClass: Record<string, string> = {
-  aerobic: "border-cyan-400/50 bg-cyan-500/15 text-cyan-100",
-  strength: "border-fuchsia-400/50 bg-fuchsia-500/15 text-fuchsia-100",
-  technical: "border-violet-400/50 bg-violet-500/15 text-violet-100",
-  lifestyle: "border-emerald-400/50 bg-emerald-500/15 text-emerald-100",
+  aerobic: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+  strength: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+  technical: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+  lifestyle: "border-orange-500/30 bg-orange-500/10 text-orange-300",
 };
 
 export function CalendarPlannedBuilderDetail({
@@ -172,7 +172,7 @@ export function CalendarPlannedBuilderDetail({
               {contract ? familyLabel(family) : "Pianificato"}
             </span>
             {typeof workout.notes === "string" && workout.notes.includes("[STRUCTURED_PLAN_IMPORT]") ? (
-              <span className="rounded-full border border-sky-400/45 bg-sky-500/15 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-sky-100">
+              <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-orange-300">
                 Import strutturato
               </span>
             ) : null}
@@ -198,7 +198,7 @@ export function CalendarPlannedBuilderDetail({
           <button
             type="button"
             disabled={adaptNavigating}
-            className="inline-flex items-center justify-center rounded-full border border-fuchsia-500/35 bg-fuchsia-500/10 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-fuchsia-500/20 disabled:opacity-40"
+            className="inline-flex items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 px-5 py-2.5 text-xs font-bold text-orange-100 transition hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
             title="Apre il builder con adattamento giornaliero e sostituisce questa riga al salvataggio."
             onClick={() => {
               setActionFeedback(null);
@@ -342,7 +342,7 @@ export function CalendarPlannedBuilderDetail({
           <button
             type="button"
             disabled={calendarBusy != null || !targetDate.trim()}
-            className="inline-flex items-center gap-1 rounded-lg border border-violet-400/45 bg-violet-500/15 px-2.5 py-1.5 text-xs font-bold text-violet-100 hover:bg-violet-500/25 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
             title="Duplica la seduta su un'altra data (la riga originale resta invariata)"
             onClick={async () => {
               setCalendarActionMsg(null);
@@ -367,14 +367,14 @@ export function CalendarPlannedBuilderDetail({
             {calendarBusy === "copy" ? "Copio…" : "Copia"}
           </button>
           {moveConfirmOpen ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-cyan-400/35 bg-cyan-950/30 px-2 py-1.5">
-              <span className="text-xs text-cyan-100">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-400/35 bg-orange-950/30 px-2 py-1.5">
+              <span className="text-xs text-orange-100">
                 Spostare dal {workout.date} al {targetDate.trim()}?
               </span>
               <button
                 type="button"
                 disabled={calendarBusy != null}
-                className="rounded-lg border border-cyan-300/50 bg-cyan-500/25 px-2 py-1 text-xs font-bold text-white disabled:opacity-40"
+                className="rounded-full border border-orange-300/50 bg-orange-500/25 px-2 py-1 text-xs font-bold text-white disabled:opacity-40"
                 onClick={async () => {
                   setCalendarActionMsg(null);
                   setCalendarBusy("move");
@@ -409,7 +409,7 @@ export function CalendarPlannedBuilderDetail({
             <button
               type="button"
               disabled={calendarBusy != null || !targetDate.trim() || targetDate.trim() === workout.date}
-              className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/45 bg-cyan-500/15 px-2.5 py-1.5 text-xs font-bold text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
               title="Sposta la seduta su un'altra data"
               onClick={() => {
                 setCalendarActionMsg(null);
@@ -430,7 +430,7 @@ export function CalendarPlannedBuilderDetail({
 
       {exportAid && contract ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
-          <span className="flex items-center gap-1 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-zinc-500">
+          <span className="flex items-center gap-1 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">
             <Download className="h-3 w-3 shrink-0" aria-hidden />
             Export device
           </span>
@@ -439,27 +439,27 @@ export function CalendarPlannedBuilderDetail({
               <Pro2Link
                 href={exportHref("zwo")!}
                 variant="ghost"
-                className="border border-cyan-500/35 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100"
+                className="border border-orange-500/35 bg-orange-500/10 px-2 py-1 text-xs text-orange-100"
               >
                 ZWO
               </Pro2Link>
               <Pro2Link
                 href={exportHref("fit_workout")!}
                 variant="ghost"
-                className="border border-cyan-500/35 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100"
+                className="border border-orange-500/35 bg-orange-500/10 px-2 py-1 text-xs text-orange-100"
               >
                 FIT
               </Pro2Link>
               <Pro2Link
                 href={exportHref("interval_csv")!}
                 variant="ghost"
-                className="border border-cyan-500/35 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100"
+                className="border border-orange-500/35 bg-orange-500/10 px-2 py-1 text-xs text-orange-100"
               >
                 CSV
               </Pro2Link>
             </>
           ) : (
-            <span className="text-xs text-zinc-500">ZWO/FIT/CSV: richiede macro aerobico + watt.</span>
+            <span className="text-xs text-gray-500">ZWO/FIT/CSV: richiede macro aerobico + watt.</span>
           )}
           <Pro2Link
             href={exportHref("fueling_json")!}
@@ -482,9 +482,9 @@ export function CalendarPlannedBuilderDetail({
           {family === "strength" ? (
             <div
               id="calendar-gym-scheda"
-              className="mt-4 scroll-mt-28 rounded-2xl border border-fuchsia-500/35 bg-gradient-to-br from-fuchsia-950/30 via-violet-950/20 to-black/50 p-4 shadow-[0_0_32px_-12px_rgba(217,70,239,0.35)]"
+              className="mt-4 scroll-mt-28 rounded-2xl border border-orange-500/35 bg-gradient-to-br from-orange-950/30 via-orange-950/20 to-black/50 p-4 shadow-[0_0_32px_-12px_rgba(217,70,239,0.35)]"
             >
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-fuchsia-200">Scheda palestra · come Builder</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-200">Scheda palestra · come Builder</p>
               <div className="mt-4">
                 <Pro2GymSchedaBlockList contract={contract} />
               </div>
@@ -606,7 +606,7 @@ export function CalendarPlannedBuilderDetail({
                             ) : null}
                           </p>
                           {block.technicalRx ? (
-                            <p className="mt-2 text-xs text-violet-200/85">
+                            <p className="mt-2 text-xs text-orange-200/85">
                               {block.technicalRx.entryType === "scheme" ? "Schema" : "Drill"}
                               {block.technicalRx.periodsLabel ? ` · ${block.technicalRx.periodsLabel}` : ""}
                               {block.technicalRx.spaceLabel ? ` · ${block.technicalRx.spaceLabel}` : ""}

@@ -210,22 +210,22 @@ export function MultisportCpCurveSuggestionPanel({
   const modeMeta = MODES.find((m) => m.id === mode);
 
   return (
-    <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-slate-900/90 via-black/40 to-black/60 p-4">
+    <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.14] via-black/40 to-black/60 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold tracking-wide text-cyan-100/95">Multisport · suggerimento curva CP</h3>
-          <p className="mt-1 max-w-prose text-xs leading-relaxed text-slate-500">
-            W equivalenti ciclismo sugli 8 punti del lab + VO₂ deterministico (stesso stack <code className="text-slate-400">estimateVo2FromDevice</code>). Calcolo
-            server; <strong className="text-slate-300">applica solo in anteprima</strong> ai campi sotto — poi &quot;Salva snapshot&quot; come sempre.
+          <h3 className="text-sm font-bold text-white">Multisport · suggerimento curva CP</h3>
+          <p className="mt-1 max-w-prose text-xs leading-relaxed text-gray-500">
+            W equivalenti ciclismo sugli 8 punti del lab + VO₂ deterministico (stesso stack <code className="text-gray-400">estimateVo2FromDevice</code>). Calcolo
+            server; <strong className="text-gray-300">applica solo in anteprima</strong> ai campi sotto — poi &quot;Salva snapshot&quot; come sempre.
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs text-slate-400">
+        <label className="flex flex-col gap-1 text-xs text-gray-400">
           Sport
           <select
-            className="rounded-lg border border-white/15 bg-black/40 px-2 py-2 text-sm text-slate-100"
+            className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-gray-200"
             value={sport}
             onChange={(e) => setSport(e.target.value as MultisportEngineSport)}
           >
@@ -236,10 +236,10 @@ export function MultisportCpCurveSuggestionPanel({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs text-slate-400 sm:col-span-2">
+        <label className="flex flex-col gap-1 text-xs text-gray-400 sm:col-span-2">
           Modalità
           <select
-            className="rounded-lg border border-white/15 bg-black/40 px-2 py-2 text-sm text-slate-100"
+            className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-gray-200"
             value={mode}
             onChange={(e) => setMode(e.target.value as MultisportCpCurveSuggestionMode)}
           >
@@ -250,19 +250,19 @@ export function MultisportCpCurveSuggestionPanel({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs text-slate-400">
+        <label className="flex flex-col gap-1 text-xs text-gray-400">
           η (efficienza)
           <input
-            className="rounded-lg border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-slate-100"
+            className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-gray-200"
             value={efficiencyStr}
             onChange={(e) => setEfficiencyStr(e.target.value)}
             inputMode="decimal"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-slate-400">
+        <label className="flex flex-col gap-1 text-xs text-gray-400">
           Pendenza %
           <input
-            className="rounded-lg border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-slate-100"
+            className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-gray-200"
             value={gradePctStr}
             onChange={(e) => setGradePctStr(e.target.value)}
             inputMode="decimal"
@@ -271,26 +271,26 @@ export function MultisportCpCurveSuggestionPanel({
         </label>
       </div>
 
-      {modeMeta ? <p className="mt-2 text-[0.65rem] text-slate-500">{modeMeta.hint}</p> : null}
+      {modeMeta ? <p className="mt-2 text-[0.65rem] text-gray-500">{modeMeta.hint}</p> : null}
 
       {mode === "cycling_power_anchors" ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Durata 1 (s)
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cD1} onChange={(e) => setCD1(e.target.value)} />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               W 1
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cP1} onChange={(e) => setCP1(e.target.value)} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Durata 2 (s)
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cD2} onChange={(e) => setCD2(e.target.value)} />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               W 2
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cP2} onChange={(e) => setCP2(e.target.value)} />
             </label>
@@ -300,7 +300,7 @@ export function MultisportCpCurveSuggestionPanel({
 
       {mode === "reference_w_phenotype" ? (
         <div className="mt-3 flex flex-wrap gap-3">
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-gray-400">
             W riferimento
             <input
               className="mt-1 block w-32 rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm"
@@ -308,10 +308,10 @@ export function MultisportCpCurveSuggestionPanel({
               onChange={(e) => setRefW(e.target.value)}
             />
           </label>
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-gray-400">
             Fenotipo
             <select
-              className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100"
+              className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-gray-200"
               value={phenotype}
               onChange={(e) => setPhenotype(e.target.value as "oxidative" | "balanced" | "glycolytic")}
             >
@@ -328,21 +328,21 @@ export function MultisportCpCurveSuggestionPanel({
       mode === "velocity_sport_riegel" ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Distanza 1 (m)
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceD1} onChange={(e) => setRaceD1(e.target.value)} />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Tempo 1 (s)
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceT1} onChange={(e) => setRaceT1(e.target.value)} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Distanza 2 (m) opz.
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceD2} onChange={(e) => setRaceD2(e.target.value)} />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-gray-400">
               Tempo 2 (s) opz.
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceT2} onChange={(e) => setRaceT2(e.target.value)} />
             </label>
@@ -350,13 +350,13 @@ export function MultisportCpCurveSuggestionPanel({
         </div>
       ) : null}
 
-      <p className="mt-2 text-[0.65rem] text-slate-600">
-        Peso usato: <span className="font-mono text-slate-400">{bodyMassKg.toFixed(1)}</span> kg
+      <p className="mt-2 text-[0.65rem] text-gray-600">
+        Peso usato: <span className="font-mono text-gray-400">{bodyMassKg.toFixed(1)}</span> kg
         {!massOk ? " — imposta peso nel lab (campi massa / profilo)." : null}
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Pro2Button type="button" variant="secondary" className="border border-cyan-500/35 bg-cyan-500/10" disabled={loading} onClick={() => void runSuggest()}>
+        <Pro2Button type="button" variant="secondary" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20" disabled={loading} onClick={() => void runSuggest()}>
           {loading ? "Calcolo…" : "Calcola suggerimento"}
         </Pro2Button>
         <Pro2Button type="button" variant="primary" disabled={!result || loading} onClick={applyPreview}>
@@ -382,9 +382,9 @@ export function MultisportCpCurveSuggestionPanel({
 
       {result ? (
         <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-black/25 p-3">
-          <p className="text-xs text-slate-400">{result.handoffHintIt}</p>
+          <p className="text-xs text-gray-400">{result.handoffHintIt}</p>
           {result.notes.length ? (
-            <ul className="list-inside list-disc text-[0.65rem] text-slate-500">
+            <ul className="list-inside list-disc text-[0.65rem] text-gray-500">
               {result.notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}
@@ -393,7 +393,7 @@ export function MultisportCpCurveSuggestionPanel({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[28rem] text-left text-xs">
               <thead>
-                <tr className="border-b border-white/10 text-slate-500">
+                <tr className="border-b border-white/10 text-gray-500">
                   <th className="py-1 pr-2">Durata</th>
                   <th className="py-1 pr-2">W eq.</th>
                   <th className="py-1">VO₂ ml/kg/min</th>
@@ -401,7 +401,7 @@ export function MultisportCpCurveSuggestionPanel({
               </thead>
               <tbody>
                 {MULTISPORT_CP_CURVE_LABELS.map((label) => (
-                  <tr key={label} className="border-b border-white/5 font-mono text-slate-200">
+                  <tr key={label} className="border-b border-white/5 font-mono text-gray-200">
                     <td className="py-1 pr-2">{label}</td>
                     <td className="py-1 pr-2">{result.cpCurveInputsW[label] != null ? `${Math.round(result.cpCurveInputsW[label]!)}` : "—"}</td>
                     <td className="py-1">{result.vo2MlKgMinByLabel[label] != null ? result.vo2MlKgMinByLabel[label]!.toFixed(1) : "—"}</td>

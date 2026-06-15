@@ -46,24 +46,24 @@ const SPACE_CHIP_PRESETS = [
 ] as const;
 
 const panelShell =
-  "rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-950/55 via-fuchsia-950/25 to-orange-950/35 shadow-[0_0_40px_-10px_rgba(139,92,246,0.35)]";
+  "rounded-2xl border border-orange-500/40 bg-gradient-to-br from-orange-950/55 via-orange-950/25 to-orange-950/35 shadow-[0_0_40px_-10px_rgba(251,146,60,0.35)]";
 const catalogPanel =
-  "mt-4 rounded-xl border border-violet-400/35 bg-gradient-to-br from-violet-950/35 via-fuchsia-950/12 to-black/40 p-3";
+  "mt-4 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-950/35 via-orange-950/12 to-black/40 p-3";
 
 const chipOff =
   "rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[0.65rem] font-bold text-gray-300 transition hover:border-white/25 hover:bg-white/5";
 const chipOnKind =
-  "rounded-full border border-fuchsia-300/55 bg-gradient-to-r from-fuchsia-600/95 to-violet-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-fuchsia-600/25";
+  "rounded-full border border-orange-300/55 bg-gradient-to-r from-orange-600/95 to-orange-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-600/25";
 const chipOnViolet =
-  "rounded-full border border-violet-300/55 bg-gradient-to-r from-violet-600/95 to-fuchsia-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-violet-600/25";
+  "rounded-full border border-orange-300/55 bg-gradient-to-r from-orange-600/95 to-orange-600/90 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-600/25";
 const chipOnOrange =
   "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-500/90 to-amber-600/85 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/25";
 const chipOnTeal =
-  "rounded-full border border-teal-300/50 bg-gradient-to-r from-teal-600/90 to-cyan-600/85 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-teal-500/20";
+  "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-600/90 to-amber-600/85 px-2.5 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/20";
 const chipRxIdle =
   "rounded-full border border-white/12 bg-black/35 px-2 py-1 text-[0.65rem] font-semibold text-gray-400 transition hover:border-orange-400/30 hover:text-orange-100";
 const chipRxActive =
-  "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-500/90 to-pink-600/80 px-2 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/25";
+  "rounded-full border border-orange-300/50 bg-gradient-to-r from-orange-500/90 to-amber-600/80 px-2 py-1 text-[0.65rem] font-bold text-white shadow-md shadow-orange-500/25";
 
 export type BuilderTechnicalManualComposerProps = {
   athleteId: string | null;
@@ -238,12 +238,12 @@ export function BuilderTechnicalManualComposer({
     <section aria-label="Builder manuale scheda tecnici" className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="bg-gradient-to-r from-violet-200 via-fuchsia-200 to-orange-200 bg-clip-text text-lg font-bold text-transparent">
+          <h2 className="text-lg font-bold text-white">
             Manuale · Scheda sport tecnici
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-gray-400">
-            Playbook + <span className="text-violet-300">schema grafico comune</span> (SVG come V1). Componi la giornata con chip come la scheda palestra; immagini esecuzione arriveranno sulla stessa{" "}
-            <span className="font-mono text-fuchsia-200/80">visualAssetKey</span>.
+            Playbook + <span className="text-orange-300">schema grafico comune</span> (SVG come V1). Componi la giornata con chip come la scheda palestra; immagini esecuzione arriveranno sulla stessa{" "}
+            <span className="font-mono text-orange-200/80">visualAssetKey</span>.
           </p>
         </div>
         {physioHint ? (
@@ -253,8 +253,8 @@ export function BuilderTechnicalManualComposer({
         ) : null}
       </div>
 
-      <div className="mt-4 rounded-xl border border-fuchsia-500/25 bg-black/45 p-3">
-        <p className="text-[0.6rem] font-bold uppercase tracking-wider text-fuchsia-200/90">Modulo sessione (allineato al generatore)</p>
+      <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/45 p-3">
+        <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Modulo sessione (allineato al generatore)</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <span className={chipOnKind}>{phaseLabel}</span>
           <span className={chipOnViolet}>{ctxLabel}</span>
@@ -271,13 +271,13 @@ export function BuilderTechnicalManualComposer({
         <p className="mt-2 text-[0.65rem] text-gray-600">Modifica sopra nel pannello viola &quot;Genera sessione&quot;.</p>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-violet-500/30 bg-black/45 p-3 shadow-inner">
+      <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione (proxy tempo)" estimatedTss={estimatedTss} />
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-violet-500/20 bg-violet-950/25 px-3 py-2.5">
+        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-orange-950/25 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-fuchsia-200/90">Durata nel calendario</span>
+            <span className="font-bold uppercase tracking-wider text-orange-200/90">Durata nel calendario</span>
             <select
-              className="min-w-[7.5rem] rounded-lg border border-violet-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+              className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
               onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
             >
@@ -289,13 +289,13 @@ export function BuilderTechnicalManualComposer({
             </select>
           </label>
           <p className="max-w-sm flex-1 pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            Blocchi playbook ~ <span className="font-mono font-semibold text-violet-200/90">{structureMinutesFromChart} min</span>
+            Blocchi playbook ~ <span className="font-mono font-semibold text-orange-200/90">{structureMinutesFromChart} min</span>
           </p>
           <button
             type="button"
             disabled={!athleteId || manualSaveBusy || !canSave}
             onClick={() => onSaveManual(manualPlannedDate)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:brightness-110 border border-white/10"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
           >
             <FileText className="h-4 w-4" aria-hidden />
             {manualSaveBusy ? "Salvo…" : "Salva scheda"}
@@ -304,8 +304,8 @@ export function BuilderTechnicalManualComposer({
       </div>
 
       <div className={catalogPanel}>
-        <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-violet-200">
-          <Sparkles className="h-3.5 w-3.5 text-fuchsia-300" aria-hidden />
+        <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200">
+          <Sparkles className="h-3.5 w-3.5 text-orange-300" aria-hidden />
           Playbook · filtri (stile scheda palestra)
         </p>
         <div className="flex flex-wrap gap-2">
@@ -333,7 +333,7 @@ export function BuilderTechnicalManualComposer({
         </label>
 
         {selectedEntry ? (
-          <div className="mt-4 space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-r from-orange-950/25 to-violet-950/20 p-3">
+          <div className="mt-4 space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-r from-orange-950/25 to-orange-950/20 p-3">
             <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Presets prima di aggiungere</p>
             <div>
               <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Minuti</p>
@@ -414,7 +414,7 @@ export function BuilderTechnicalManualComposer({
                         onClick={() => setSelectedEntryId(e.id)}
                         className={`flex w-full flex-col rounded-md px-2 py-1.5 text-left text-xs transition ${
                           sel
-                            ? "bg-gradient-to-r from-violet-600/50 to-fuchsia-600/40 text-white ring-1 ring-fuchsia-300/45"
+                            ? "bg-gradient-to-r from-orange-600/50 to-orange-600/40 text-white ring-1 ring-orange-300/45"
                             : "text-gray-300 hover:bg-white/10"
                         }`}
                       >
@@ -430,7 +430,7 @@ export function BuilderTechnicalManualComposer({
               </ul>
             )}
           </div>
-          <div className="flex flex-col gap-3 rounded-lg border border-fuchsia-500/30 bg-gradient-to-br from-violet-950/40 to-fuchsia-950/15 p-3">
+          <div className="flex flex-col gap-3 rounded-lg border border-orange-500/30 bg-gradient-to-br from-orange-950/40 to-orange-950/15 p-3">
             {selectedEntry && selectedSchemaUrl ? (
               <>
                 <TechnicalPlaybookSchemaFrame
@@ -440,14 +440,14 @@ export function BuilderTechnicalManualComposer({
                   className="max-w-xl"
                 />
                 <div>
-                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-fuchsia-300/80">Selezionato</p>
+                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selezionato</p>
                   <p className="mt-1 text-sm font-bold text-white">{selectedEntry.name}</p>
                   <p className="mt-1 text-[0.65rem] leading-relaxed text-gray-400">{selectedEntry.brief}</p>
                 </div>
                 <div className="flex flex-col gap-2">
                   <button
                     type="button"
-                    className="w-full rounded-xl border border-fuchsia-400/45 bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-fuchsia-500/20 transition hover:brightness-110"
+                    className="w-full rounded-xl border border-orange-400/45 bg-gradient-to-r from-orange-600 to-orange-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:brightness-110"
                     onClick={() => addFromEntry(selectedEntry)}
                   >
                     <Plus className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
@@ -465,13 +465,13 @@ export function BuilderTechnicalManualComposer({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-violet-500/25 bg-black/35 p-3">
+      <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
         <div className="flex flex-wrap gap-3">
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-[0.65rem] text-gray-400">
             Nome sessione
             <input
               type="text"
-              className="rounded-lg border border-violet-400/30 bg-black/50 px-2 py-2 text-sm text-white"
+              className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
               value={manualSessionName}
               onChange={(e) => setManualSessionName(e.target.value)}
             />
@@ -489,12 +489,12 @@ export function BuilderTechnicalManualComposer({
       </div>
 
       <div className="mt-4 space-y-3">
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-violet-300 via-fuchsia-300 to-orange-200">
+        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-300 to-orange-200">
           Scheda giornaliera · {technicalManualRows.length} blocchi
         </p>
         {technicalManualRows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-violet-500/30 bg-violet-950/20 px-4 py-8 text-center text-sm text-gray-500">
-            Aggiungi dal playbook: ogni blocco ha schema V1 + <span className="font-mono text-violet-300">visualAssetKey</span> per le immagini future.
+          <p className="rounded-xl border border-dashed border-orange-500/30 bg-orange-950/20 px-4 py-8 text-center text-sm text-gray-500">
+            Aggiungi dal playbook: ogni blocco ha schema V1 + <span className="font-mono text-orange-300">visualAssetKey</span> per le immagini future.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -503,7 +503,7 @@ export function BuilderTechnicalManualComposer({
               return (
                 <li
                   key={row.id}
-                  className="rounded-2xl border border-violet-400/35 bg-gradient-to-br from-violet-950/40 via-fuchsia-950/15 to-black/30 p-4 shadow-inner"
+                  className="rounded-2xl border border-orange-400/35 bg-gradient-to-br from-orange-950/40 via-orange-950/15 to-black/30 p-4 shadow-inner"
                 >
                   <div className="flex flex-col gap-3 lg:flex-row">
                     <div className="w-full shrink-0 lg:w-[min(100%,22rem)]">
@@ -513,7 +513,7 @@ export function BuilderTechnicalManualComposer({
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <input
                           type="text"
-                          className="min-w-[10rem] flex-1 rounded-lg border border-violet-400/35 bg-black/45 px-3 py-2 text-base font-semibold text-white"
+                          className="min-w-[10rem] flex-1 rounded-lg border border-orange-400/35 bg-black/45 px-3 py-2 text-base font-semibold text-white"
                           value={row.name}
                           onChange={(e) => updateRow(row.id, { name: e.target.value })}
                         />
@@ -558,7 +558,7 @@ export function BuilderTechnicalManualComposer({
                         </div>
                       </div>
                       <div>
-                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-violet-200/80">Periodi</p>
+                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-orange-200/80">Periodi</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {PERIOD_CHIP_PRESETS.map((p) => (
                             <button
@@ -636,7 +636,7 @@ export function BuilderTechnicalManualComposer({
           type="button"
           disabled={!athleteId || manualSaveBusy || !canSave}
           onClick={() => onSaveManual(manualPlannedDate)}
-          className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 hover:brightness-110 border border-white/10"
+          className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
         >
           <FileText className="h-4 w-4" aria-hidden />
           {manualSaveBusy ? "Salvataggio…" : "Salva scheda su calendario"}

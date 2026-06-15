@@ -153,7 +153,7 @@ export function MuscleDistrictGlyph({
 }
 
 const btnBase =
-  "flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-fuchsia-400/55 focus:ring-offset-2 focus:ring-offset-black/80";
+  "flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-orange-400/55 focus:ring-offset-2 focus:ring-offset-black/80";
 
 export type MuscleDistrictFilterPopoverProps = {
   value: Block1MusclePreset | "";
@@ -182,25 +182,25 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
 
   return (
     <div ref={wrapRef} className="relative inline-flex flex-col gap-1" id={id}>
-      <span className="text-[0.65rem] font-medium text-violet-200/80">Filtro distretto</span>
+      <span className="text-[0.65rem] font-medium text-orange-200/80">Filtro distretto</span>
       <button
         type="button"
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="inline-flex min-w-[12rem] max-w-[20rem] items-center justify-between gap-2 rounded-xl border border-violet-500/35 bg-gradient-to-r from-violet-950/50 to-black/55 px-3 py-2.5 text-left text-sm font-semibold text-white shadow-inner shadow-violet-900/20 transition hover:border-fuchsia-400/45 hover:from-violet-900/55"
+        className="inline-flex min-w-[12rem] max-w-[20rem] items-center justify-between gap-2 rounded-xl border border-orange-500/35 bg-gradient-to-r from-orange-950/50 to-black/55 px-3 py-2.5 text-left text-sm font-semibold text-white shadow-inner shadow-orange-900/20 transition hover:border-orange-400/45 hover:from-orange-900/55"
         onClick={() => setOpen((o) => !o)}
       >
         <span className="flex min-w-0 items-center gap-2">
           <MuscleDistrictGlyph
             preset={value}
-            className="h-9 w-9 shrink-0 rounded-lg border border-fuchsia-400/30 bg-violet-950/40 p-0.5"
+            className="h-9 w-9 shrink-0 rounded-xl border border-orange-400/30 bg-orange-950/40 p-0.5"
           />
-          <span className="truncate bg-gradient-to-r from-violet-100 via-fuchsia-100 to-orange-100 bg-clip-text text-transparent">
+          <span className="truncate text-white">
             {currentLabel}
           </span>
         </span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-fuchsia-300/90 transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-orange-300/90 transition ${open ? "rotate-180" : ""}`}
           aria-hidden
         />
       </button>
@@ -209,15 +209,15 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
         <div
           role="listbox"
           aria-label="Seleziona distretto muscolare"
-          className="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-fuchsia-500/35 bg-gradient-to-b from-violet-950/[0.97] via-gray-950/95 to-black/95 py-3 shadow-2xl shadow-fuchsia-950/50 backdrop-blur-md"
+          className="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-orange-500/35 bg-gradient-to-b from-orange-950/[0.97] via-gray-950/95 to-black/95 py-3 shadow-2xl shadow-orange-950/50 backdrop-blur-md"
         >
-          <div className="flex items-start gap-3 border-b border-violet-500/20 px-3 pb-3">
+          <div className="flex items-start gap-3 border-b border-orange-500/20 px-3 pb-3">
             <MuscleDistrictGlyph
               preset={value}
-              className="h-[7.5rem] w-[4.25rem] shrink-0 rounded-xl border border-fuchsia-400/35 bg-gradient-to-br from-violet-950/60 to-orange-950/30 p-1"
+              className="h-[7.5rem] w-[4.25rem] shrink-0 rounded-xl border border-orange-400/35 bg-gradient-to-br from-orange-950/60 to-orange-950/30 p-1"
             />
             <div className="min-w-0 pt-0.5">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-violet-300 to-orange-200">
+              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
                 Anteprima regione
               </p>
               <p className="mt-1 text-sm font-semibold leading-snug text-white">{currentLabel}</p>
@@ -238,8 +238,8 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
                     aria-selected={sel}
                     className={`${btnBase} ${
                       sel
-                        ? "border-violet-400/50 bg-gradient-to-r from-violet-600/35 via-fuchsia-600/25 to-orange-600/20 text-white shadow-md shadow-violet-900/30"
-                        : "border-white/10 bg-black/40 text-gray-300 hover:border-violet-400/25 hover:bg-violet-950/25"
+                        ? "border-orange-400/50 bg-gradient-to-r from-orange-600/35 via-orange-600/25 to-orange-600/20 text-white shadow-md shadow-orange-900/30"
+                        : "border-white/10 bg-black/40 text-gray-300 hover:border-orange-400/25 hover:bg-orange-950/25"
                     }`}
                     onClick={() => {
                       onChange(o.value);
@@ -248,7 +248,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
                   >
                     <MuscleDistrictGlyph
                       preset={o.value}
-                      className="h-8 w-8 shrink-0 rounded-md border border-fuchsia-500/25 bg-violet-950/35"
+                      className="h-8 w-8 shrink-0 rounded-md border border-orange-500/25 bg-orange-950/35"
                     />
                     <span className="min-w-0 flex-1 text-[0.72rem] font-semibold leading-tight">{o.label}</span>
                   </button>

@@ -24,7 +24,7 @@ export async function fetchIntelligentMealPlan(
     return { ok: false, error: j.error ?? `HTTP ${res.status}`, status: res.status };
   }
   if (
-    j.layer !== "deterministic_meal_assembly_v1" ||
+    (j.layer !== "deterministic_meal_assembly_v1" && j.layer !== "db_engine_v1") ||
     !Array.isArray(j.slots) ||
     !j.solverBasis ||
     j.solverBasis.source !== "nutrition_meal_plan_solver"

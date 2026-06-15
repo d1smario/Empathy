@@ -26,6 +26,15 @@ export const MODULE_PILL_FUCHSIA: ModulePillStyle = {
   iconActive: "text-fuchsia-100 drop-shadow-[0_0_10px_rgba(232,121,249,0.55)]",
 };
 
+export const MODULE_PILL_TEAL: ModulePillStyle = {
+  idleBorder: "border-teal-500/35",
+  idleBg: "bg-teal-500/10",
+  activeGradient: "bg-gradient-to-br from-teal-500/45 via-emerald-500/35 to-teal-700/25",
+  activeRing: "ring-2 ring-teal-400/50 shadow-[0_0_20px_rgba(45,212,191,0.2)]",
+  iconIdle: "text-teal-400",
+  iconActive: "text-teal-100 drop-shadow-[0_0_10px_rgba(45,212,191,0.55)]",
+};
+
 export const MODULE_PILL_SKY: ModulePillStyle = {
   idleBorder: "border-sky-500/35",
   idleBg: "bg-sky-500/10",

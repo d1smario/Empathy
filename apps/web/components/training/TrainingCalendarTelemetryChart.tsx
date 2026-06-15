@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_AXIS, CHART_FONT, CHART_GRID, CHART_SIGNAL, CHART_STROKE, chartTooltipStyle } from "@/lib/ui/chart-theme";
 
 export type TelemetryChartRow = {
   t: string;
@@ -48,37 +49,31 @@ export function TrainingCalendarTelemetryChart({ data }: Props) {
           <ComposedChart data={plot} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
             <defs>
               <linearGradient id={powFill} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f97316" stopOpacity={0.85} />
-                <stop offset="50%" stopColor="#a855f7" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05} />
+                <stop offset="5%" stopColor={CHART_SIGNAL.power} stopOpacity={0.85} />
+                <stop offset="95%" stopColor={CHART_SIGNAL.power} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-            <XAxis dataKey="t" tick={{ fill: "#94a3b8", fontSize: 10 }} interval="preserveStartEnd" minTickGap={28} />
+            <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+            <XAxis dataKey="t" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} interval="preserveStartEnd" minTickGap={28} />
             <YAxis
               yAxisId="pow"
               orientation="left"
-              tick={{ fill: "#fdba74", fontSize: 10 }}
+              tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
               width={44}
               domain={["auto", "auto"]}
-              label={{ value: "W", angle: -90, position: "insideLeft", fill: "#fb923c", fontSize: 10 }}
+              label={{ value: "W", angle: -90, position: "insideLeft", fill: CHART_SIGNAL.power, fontSize: CHART_FONT.tick }}
             />
             <YAxis
               yAxisId="hr"
               orientation="right"
-              tick={{ fill: "#fca5a5", fontSize: 10 }}
+              tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
               width={40}
               domain={["auto", "auto"]}
-              label={{ value: "bpm", angle: 90, position: "insideRight", fill: "#f87171", fontSize: 10 }}
+              label={{ value: "bpm", angle: 90, position: "insideRight", fill: CHART_SIGNAL.hr, fontSize: CHART_FONT.tick }}
             />
             <Tooltip
-              contentStyle={{
-                background: "rgba(15, 23, 42, 0.95)",
-                border: "1px solid rgba(167, 139, 250, 0.35)",
-                borderRadius: 12,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "#e2e8f0" }}
+              contentStyle={chartTooltipStyle("training")}
+              labelStyle={{ color: "#e5e7eb" }}
               formatter={(value: number, name: string) => {
                 const v = Number.isFinite(value) ? value.toFixed(0) : "—";
                 if (name === "power") return [`${v} W`, "Potenza"];
@@ -90,8 +85,8 @@ export function TrainingCalendarTelemetryChart({ data }: Props) {
               yAxisId="pow"
               type="monotone"
               dataKey="power"
-              stroke="#f97316"
-              strokeWidth={2}
+              stroke={CHART_SIGNAL.power}
+              strokeWidth={CHART_STROKE.base}
               fill={`url(#${powFill})`}
               dot={false}
               isAnimationActive={false}
@@ -100,8 +95,8 @@ export function TrainingCalendarTelemetryChart({ data }: Props) {
               yAxisId="hr"
               type="monotone"
               dataKey="hr"
-              stroke="#ef4444"
-              strokeWidth={2.2}
+              stroke={CHART_SIGNAL.hr}
+              strokeWidth={CHART_STROKE.base}
               dot={false}
               isAnimationActive={false}
             />
@@ -114,32 +109,27 @@ export function TrainingCalendarTelemetryChart({ data }: Props) {
           <ComposedChart data={plot} margin={{ top: 4, right: 8, left: 4, bottom: 2 }}>
             <defs>
               <linearGradient id={altFill} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.65} />
-                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.08} />
+                <stop offset="5%" stopColor={CHART_SIGNAL.altitude} stopOpacity={0.65} />
+                <stop offset="95%" stopColor={CHART_SIGNAL.altitude} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
             <XAxis dataKey="t" hide />
             <YAxis
-              tick={{ fill: "#67e8f9", fontSize: 10 }}
+              tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
               width={44}
               domain={["auto", "auto"]}
-              label={{ value: "m", angle: -90, position: "insideLeft", fill: "#22d3ee", fontSize: 10 }}
+              label={{ value: "m", angle: -90, position: "insideLeft", fill: CHART_SIGNAL.altitude, fontSize: CHART_FONT.tick }}
             />
             <Tooltip
-              contentStyle={{
-                background: "rgba(15, 23, 42, 0.95)",
-                border: "1px solid rgba(34, 211, 238, 0.35)",
-                borderRadius: 12,
-                fontSize: 12,
-              }}
+              contentStyle={chartTooltipStyle("training")}
               formatter={(value: number) => [`${Number.isFinite(value) ? value.toFixed(0) : "—"} m`, "Quota"]}
             />
             <Area
               type="monotone"
               dataKey="altitude"
-              stroke="#06b6d4"
-              strokeWidth={1.5}
+              stroke={CHART_SIGNAL.altitude}
+              strokeWidth={CHART_STROKE.thin}
               fill={`url(#${altFill})`}
               dot={false}
               isAnimationActive={false}
@@ -147,8 +137,8 @@ export function TrainingCalendarTelemetryChart({ data }: Props) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-center text-[0.65rem] font-medium uppercase tracking-wider text-slate-500">
-        Potenza (area) · FC linea rossa · Quota (area sotto)
+      <p className="text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+        Potenza (area) · FC (linea) · Quota (area sotto)
       </p>
     </div>
   );

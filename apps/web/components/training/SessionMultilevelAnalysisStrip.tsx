@@ -83,16 +83,16 @@ export function SessionMultilevelAnalysisStrip({
 
   return (
     <div
-      className={`rounded-xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/15 via-black/30 to-black/50 ${
+      className={`rounded-xl border border-orange-500/25 bg-gradient-to-br from-orange-950/15 via-black/30 to-black/50 ${
         compact ? "p-3" : "p-4"
       }`}
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-[0.6rem] font-bold uppercase tracking-wider text-cyan-400/90">
+        <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-400">
           Analisi multilivello · deterministico
         </p>
         {activeCount > 0 ? (
-          <span className="font-mono text-[0.6rem] text-slate-500">
+          <span className="font-mono text-[0.6rem] text-gray-500">
             {activeCount} settori attivi · profilo blocchi + target
           </span>
         ) : null}
@@ -104,12 +104,12 @@ export function SessionMultilevelAnalysisStrip({
       />
 
       {vm.coachPrompts.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-violet-500/20 bg-violet-950/20 px-3 py-2.5">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Domande coach</p>
+        <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/20 px-3 py-2.5">
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Domande coach</p>
           <ul className="mt-2 space-y-1.5">
             {vm.coachPrompts.map((q) => (
               <li key={q} className="text-xs leading-relaxed text-gray-300">
-                <span className="mr-1.5 text-fuchsia-400/90" aria-hidden>
+                <span className="mr-1.5 text-orange-400/90" aria-hidden>
                   ?
                 </span>
                 {q}
@@ -120,8 +120,8 @@ export function SessionMultilevelAnalysisStrip({
       ) : null}
 
       {vm.facilitationHints.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-950/15 px-3 py-2.5">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-300/90">
+        <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/15 px-3 py-2.5">
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             Stimoli · facilitazioni
           </p>
           <ul className="mt-2 space-y-1.5">

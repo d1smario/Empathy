@@ -62,7 +62,7 @@ export function NutritionAthleteSummaryCard() {
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
       aria-label="Riepilogo nutrizione"
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-emerald-300">Nutrition · dati reali</p>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">Nutrition · dati reali</p>
       <h2 className="mt-2 text-lg font-bold text-white">Vincoli e piani</h2>
 
       {ctxLoading || loading ? (
@@ -83,14 +83,14 @@ export function NutritionAthleteSummaryCard() {
 
       {!ctxLoading && !loading && !err && constraints ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">Vincoli</h3>
+          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Vincoli</h3>
           <p className="mt-1 text-sm text-gray-200">{formatNutritionConstraintsLine(constraints)}</p>
         </div>
       ) : null}
 
       {!ctxLoading && !loading && !err && plans.length > 0 ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">Piani recenti</h3>
+          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Piani recenti</h3>
           <ul className="mt-2 space-y-2">
             {plans.map((p) => (
               <li

@@ -37,10 +37,10 @@ function MetricCell({
 }) {
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 p-4">
-      <p className="font-mono text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">{label}</p>
-      <p className="mt-1 truncate text-xl font-bold text-white">
+      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
+      <p className="mt-1 truncate font-mono text-2xl font-bold tabular-nums text-white">
         {value}
-        {unit ? <span className="ml-1 text-sm font-semibold text-gray-400">{unit}</span> : null}
+        {unit ? <span className="ml-1 text-xs font-medium text-gray-500">{unit}</span> : null}
       </p>
       {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
     </div>
@@ -65,8 +65,8 @@ function TimeSeriesPlaceholder({
         </div>
         <span className="font-mono text-[0.6rem] uppercase text-gray-500">{unitHint}</span>
       </div>
-      <div className="relative mt-4 h-32 w-full overflow-hidden rounded-lg border border-white/10 bg-gradient-to-b from-zinc-900/80 to-black/90">
-        <svg viewBox="0 0 400 120" className="h-full w-full text-cyan-400/50" preserveAspectRatio="none" aria-hidden>
+      <div className="relative mt-4 h-32 w-full overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-black/90">
+        <svg viewBox="0 0 400 120" className="h-full w-full text-emerald-400/50" preserveAspectRatio="none" aria-hidden>
           <line x1="0" y1="100" x2="400" y2="100" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 4" />
           <polyline
             fill="none"
@@ -134,8 +134,8 @@ function AdvancedPhysiologyChannelsStrip({ panel }: { panel: PhysiologyDailyPane
   ];
 
   return (
-    <div className="rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-950/20 via-black/40 to-black/60 p-4 shadow-inner sm:p-5">
-      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400/95">
+    <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/[0.18] via-black/40 to-black/60 p-4 shadow-inner sm:p-5">
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
         Canali dati avanzati
       </p>
       <p className="mt-2 max-w-3xl text-sm text-gray-300">
@@ -147,13 +147,13 @@ function AdvancedPhysiologyChannelsStrip({ panel }: { panel: PhysiologyDailyPane
           <div
             key={s.title}
             className={`rounded-xl border p-3 ${
-              s.warm ? "border-emerald-500/40 bg-emerald-500/10" : "border-white/12 bg-black/35"
+              s.warm ? "border-emerald-500/40 bg-emerald-500/10" : "border-white/10 bg-black/35"
             }`}
           >
-            <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{s.title}</p>
-            <p className="mt-1 font-mono text-lg font-bold text-white">
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{s.title}</p>
+            <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
               {s.value}
-              {s.unit ? <span className="ml-1 text-sm font-semibold text-gray-400">{s.unit}</span> : null}
+              {s.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{s.unit}</span> : null}
             </p>
             <p className="mt-2 text-[0.7rem] leading-snug text-gray-500">{s.foot}</p>
           </div>
@@ -221,12 +221,12 @@ export default function PhysiologyDailyWellnessPageView() {
   if (ctxLoading || (loading && athleteId && dateValid)) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Physiology · Giornata"
+        eyebrow="La tua giornata"
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Caricamento…"
-        description="Aggregazione device e biomarker per la data selezionata."
+        description="Stiamo raccogliendo i dati del giorno scelto."
       >
-        <p className="text-sm text-slate-500">Caricamento contesto atleta…</p>
+        <p className="text-sm text-gray-500">Caricamento contesto atleta…</p>
       </Pro2ModulePageShell>
     );
   }
@@ -234,17 +234,17 @@ export default function PhysiologyDailyWellnessPageView() {
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Physiology · Giornata"
+        eyebrow="La tua giornata"
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Wellness giornaliero"
-        description="Seleziona un atleta attivo per vedere il pannello."
+        description="Seleziona un atleta attivo per vedere i dati del giorno."
         headerActions={
-          <AdminScopedPro2Link href="/access" variant="secondary" className="border border-emerald-500/35 bg-emerald-500/10">
+          <AdminScopedPro2Link href="/access" variant="secondary" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
             Accesso
           </AdminScopedPro2Link>
         }
       >
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
           Nessun atleta attivo. Da coach apri Athletes; da atleta privato collega il profilo in Accesso.
         </div>
       </Pro2ModulePageShell>
@@ -254,13 +254,13 @@ export default function PhysiologyDailyWellnessPageView() {
   if (!dateValid) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Physiology · Giornata"
+        eyebrow="La tua giornata"
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Data non valida"
-        description="Seleziona un giorno valido per vedere il pannello."
+        description="Seleziona un giorno valido per vedere i dati."
         headerActions={
-          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
-            Metabolic Lab
+          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
+            Fisiologia
           </AdminScopedPro2Link>
         }
       >
@@ -273,13 +273,13 @@ export default function PhysiologyDailyWellnessPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Physiology · Giornata"
+      eyebrow="La tua giornata"
       eyebrowClassName={moduleEyebrowClass("physiology")}
       title="Wellness giornaliero"
       description={
         <>
-          Allineato al calendario operativo (<span className="text-orange-200/90">stessa data ISO</span> di Training).
-          Celle per KPI; grafici classici per serie dense e laboratorio quando i dati sono disponibili.
+          La fotografia del giorno: recupero, sonno, energia e segnali del corpo, sullo stesso giorno del tuo allenamento.
+          I grafici compaiono quando i dati sono disponibili.
         </>
       }
       headerActions={
@@ -287,7 +287,7 @@ export default function PhysiologyDailyWellnessPageView() {
           <AdminScopedPro2Link
             href={`/training/calendar?date=${encodeURIComponent(date)}`}
             variant="secondary"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             <CalendarDays className="mr-1 inline h-4 w-4" aria-hidden />
             Calendar
@@ -295,13 +295,13 @@ export default function PhysiologyDailyWellnessPageView() {
           <AdminScopedPro2Link
             href={`/training/session/${encodeURIComponent(date)}`}
             variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
+            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           >
             <LineChart className="mr-1 inline h-4 w-4" aria-hidden />
             Training giornata
           </AdminScopedPro2Link>
-          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-orange-500/35 bg-orange-500/10">
-            Metabolic Lab
+          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
+            Fisiologia
           </AdminScopedPro2Link>
         </>
       }
@@ -319,7 +319,7 @@ export default function PhysiologyDailyWellnessPageView() {
       ) : null}
 
       {panel?.notes?.length ? (
-        <div className="mb-6 space-y-2 rounded-2xl border border-slate-500/30 bg-slate-500/10 px-4 py-3 text-sm text-slate-200">
+        <div className="mb-6 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200">
           {panel.notes.map((n) => (
             <p key={n}>{n}</p>
           ))}
@@ -330,7 +330,7 @@ export default function PhysiologyDailyWellnessPageView() {
         <AdvancedPhysiologyChannelsStrip panel={panel} />
       </div>
 
-      <Pro2SectionCard accent="cyan" title="Profilo e attività" subtitle="Peso profilo, passi, energia, vitale" icon={Activity}>
+      <Pro2SectionCard accent="emerald" title="Profilo e attività" subtitle="Peso profilo, passi, energia, vitale" icon={Activity}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCell label="Peso (profilo)" value={fmtNum(panel?.profileWeightKg ?? null, 1)} unit="kg" />
           <MetricCell label="Passi" value={fmtNum(panel?.activity.steps ?? null, 0)} />
@@ -352,7 +352,7 @@ export default function PhysiologyDailyWellnessPageView() {
         </div>
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="violet" title="Recovery e sonno" subtitle="HRV, FC notturna, durata, score" icon={Moon}>
+      <Pro2SectionCard accent="emerald" title="Recovery e sonno" subtitle="HRV, FC notturna, durata, score" icon={Moon}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCell label="HRV" value={fmtNum(r?.hrvMs ?? null, 0)} unit="ms" />
           <MetricCell label="FC a riposo / notte" value={fmtNum(r?.restingHrBpm ?? null, 0)} unit="bpm" />
