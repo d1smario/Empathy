@@ -87,7 +87,7 @@ export function ProductBottomNav({ onOpenModuleMenu, moduleMenuOpen }: ProductBo
                 onClick={onOpenModuleMenu}
                 aria-expanded={moduleMenuOpen}
                 aria-label="Apri menu moduli"
-                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 text-[0.6rem] font-semibold transition ${
+                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[0.65rem] font-semibold transition sm:px-1.5 ${
                   active ? "text-white" : "text-gray-500 hover:text-gray-300"
                 }`}
               >
@@ -100,7 +100,7 @@ export function ProductBottomNav({ onOpenModuleMenu, moduleMenuOpen }: ProductBo
                 >
                   <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
                 </span>
-                <span className="truncate">{item.label}</span>
+                <span className="max-w-full truncate">{item.label}</span>
               </button>
             );
           }
@@ -110,7 +110,7 @@ export function ProductBottomNav({ onOpenModuleMenu, moduleMenuOpen }: ProductBo
               key={item.key}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 text-[0.6rem] font-semibold transition ${
+              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[0.65rem] font-semibold transition sm:px-1.5 ${
                 active ? "text-white" : "text-gray-500 hover:text-gray-300"
               }`}
             >

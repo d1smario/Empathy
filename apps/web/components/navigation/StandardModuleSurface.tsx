@@ -132,14 +132,14 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
                 <Pro2Link
                   href="/training/session"
                   variant="secondary"
-                  className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
+                  className="w-full justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15 sm:w-auto"
                 >
                   Training · giornata
                 </Pro2Link>
                 <Pro2Link
                   href="/physiology/daily"
                   variant="secondary"
-                  className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
+                  className="w-full justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15 sm:w-auto"
                 >
                   <HeartPulse className="mr-1 inline h-4 w-4" aria-hidden />
                   Wellness giornaliero
@@ -147,7 +147,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
                 <Pro2Link
                   href="/training/calendar"
                   variant="ghost"
-                  className="justify-center border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15"
+                  className="w-full justify-center border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15 sm:w-auto"
                 >
                   Calendar
                 </Pro2Link>

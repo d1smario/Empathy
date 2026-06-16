@@ -100,7 +100,7 @@ export function HealthImportSection({
   return (
     <section
       id="mod-import"
-      className="scroll-mt-28 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-6 shadow-inner"
+      className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
       aria-label="Carica un esame"
     >
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -133,11 +133,11 @@ export function HealthImportSection({
               type="button"
               aria-pressed={isActive}
               onClick={() => setSelectedType(t.panelType)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold transition-colors ${
                 isActive ? TYPE_PILL.active : TYPE_PILL.idle
               }`}
             >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
               {t.title}
             </button>
           );

@@ -123,7 +123,7 @@ function ScaleRow({
         <span className="text-xs font-medium text-gray-400">{label}</span>
         <span className="text-[0.65rem] text-gray-500">{hint}</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 sm:gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -131,7 +131,7 @@ function ScaleRow({
             onClick={() => onChange(n)}
             aria-pressed={value === n}
             className={cn(
-              "h-10 flex-1 rounded-xl border text-sm font-bold transition",
+              "h-10 min-w-0 flex-1 rounded-xl border text-sm font-bold transition",
               value === n
                 ? "border-transparent bg-gradient-to-r from-fuchsia-600 to-orange-500 text-white shadow-lg shadow-fuchsia-500/25"
                 : "border-white/15 bg-black/40 text-gray-400 hover:border-fuchsia-500/40 hover:text-white",
@@ -325,7 +325,7 @@ export default function LongevityFitnessPageView() {
                   </p>
                 ) : null}
 
-                <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+                <div className="flex flex-wrap items-end gap-x-4 gap-y-2 sm:gap-x-6">
                   <div>
                     <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-white sm:text-4xl">
                       {Math.round(epi.score)}
@@ -363,7 +363,7 @@ export default function LongevityFitnessPageView() {
                 <div className="space-y-2.5">
                   {pillars.map((p) => (
                     <div key={p.pillar} className="flex items-center gap-3">
-                      <span className="w-44 shrink-0 text-xs text-gray-400">{PILLAR_LABELS[p.pillar]}</span>
+                      <span className="w-28 shrink-0 truncate text-xs text-gray-400 sm:w-44">{PILLAR_LABELS[p.pillar]}</span>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-400"
@@ -392,7 +392,7 @@ export default function LongevityFitnessPageView() {
           <Pro2SectionCard accent="fuchsia" title="Empathy Coin" subtitle="Certificazione Bronze · Silver · Gold" icon={Award}>
             {balance ? (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+                <div className="flex flex-wrap items-end gap-x-4 gap-y-2 sm:gap-x-6">
                   <div>
                     <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-white sm:text-4xl">
                       {balance.totalCoins.toLocaleString("it-IT")}

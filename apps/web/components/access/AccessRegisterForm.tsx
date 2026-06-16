@@ -182,7 +182,7 @@ export function AccessRegisterForm() {
       className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-md"
       aria-label="Registrazione"
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-left">
           <span className={labelClass}>Nome</span>
           <input

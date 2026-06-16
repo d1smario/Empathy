@@ -142,13 +142,13 @@ export function CoachRosterCard() {
                 key={a.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3"
               >
-                <div>
-                  <p className="font-medium text-white">{formatAthleteLabel(a)}</p>
-                  {a.email ? <p className="text-xs text-gray-500">{a.email}</p> : null}
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-white">{formatAthleteLabel(a)}</p>
+                  {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}
                 </div>
                 <Link
                   href={`/athletes/${a.id}/health`}
-                  className="empathy-btn-gradient flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20"
+                  className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden />
                   Apri schede

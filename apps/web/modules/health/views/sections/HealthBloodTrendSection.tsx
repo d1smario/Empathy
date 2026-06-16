@@ -43,7 +43,7 @@ export function HealthBloodTrendSection({
       <p className="mt-1 text-sm text-gray-400">
         Ultimi 6 mesi · valori principali {usingDemoTrend ? "(demo finché mancano ≥2 punti reali)" : ""}
       </p>
-      <div className="mt-4 h-[320px] w-full">
+      <div className="mt-4 h-[260px] w-full sm:h-[300px] lg:h-[320px]">
         {data.length === 0 ? (
           <p className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-400">
             {!hasLatestStructuredRow

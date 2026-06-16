@@ -85,13 +85,13 @@ export function BrutalistAppBackdrop({ children, matrix = true }: BrutalistAppBa
         />
       ) : null}
 
-      <div className="absolute top-20 left-20 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute top-10 left-10 h-48 w-48 rounded-full bg-purple-600/20 blur-3xl animate-pulse sm:top-20 sm:left-20 sm:h-96 sm:w-96" />
       <div
-        className="absolute bottom-20 right-20 w-96 h-96 bg-pink-600/20 rounded-full blur-3xl animate-pulse"
+        className="absolute bottom-10 right-10 h-48 w-48 rounded-full bg-pink-600/20 blur-3xl animate-pulse sm:bottom-20 sm:right-20 sm:h-96 sm:w-96"
         style={{ animationDelay: "1s" }}
       />
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-3xl animate-pulse"
+        className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/10 blur-3xl animate-pulse sm:h-[600px] sm:w-[600px]"
         style={{ animationDelay: "2s" }}
       />
 

@@ -539,7 +539,7 @@ export function NutritionMealPlanWorkspace({
                     ml). Valori educativi, adatta a clima e sudorazione.
                   </p>
                   <div className="mt-2.5 overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-xs">
+                    <table className="w-full min-w-[560px] text-xs sm:min-w-[720px]">
                       <thead>
                         <tr>
                           <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Finestra</th>

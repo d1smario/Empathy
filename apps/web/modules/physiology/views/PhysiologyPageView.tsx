@@ -2533,7 +2533,7 @@ export default function MetabolicLabPage() {
 
           <div className="physiology-pro2-lab-page-panel">
             <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Indici principali · saturazione e bottleneck</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Potenza input · CP profilo</div>
                 <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">

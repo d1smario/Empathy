@@ -892,7 +892,7 @@ export default function TrainingAnalyticsPageView() {
                 </label>
               ))}
             </div>
-            <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[40vh]">
+            <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[30vh] sm:max-h-[40vh]">
               {OVERLAY_METRIC_DEFS.map((d) => {
                 if (!overlayOn[d.key]) return null;
                 const raw = seriesForMetric(d.key);
@@ -1023,7 +1023,7 @@ export default function TrainingAnalyticsPageView() {
               <BarChart3 className="h-4 w-4 text-orange-400" aria-hidden />
               Trend 42g · Planned vs real vs internal
             </h2>
-            <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[40vh]">
+            <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[30vh] sm:max-h-[40vh]">
               <polyline fill="none" stroke={TRAINING_SERIES[1]} strokeWidth="2" points={plannedPolyline} />
               <polyline fill="none" stroke={TRAINING_SERIES[0]} strokeWidth="2.5" points={extPolyline} />
               <polyline fill="none" stroke={TRAINING_SERIES[2]} strokeWidth="2.5" points={intPolyline} />

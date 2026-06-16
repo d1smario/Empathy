@@ -87,7 +87,7 @@ export function HealthAreaCharts({
   return (
     <div className="space-y-6">
       {/* Epigenetica — anelli + radar pathway + trend */}
-      <section className="space-y-6 rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/[0.14] via-black/60 to-black/85 p-6 shadow-inner">
+      <section className="space-y-6 rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/[0.14] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div>
           <div className="mb-1 flex items-center gap-2">
             <Dna className="h-5 w-5 text-violet-400" />
@@ -104,7 +104,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Profilo a ciambelle
             </h4>
-            <div className="h-[260px] w-full">
+            <div className="h-[220px] w-full sm:h-[260px]">
               {epigeneticRings.length === 0 ? (
                 <PointToLatest>
                   Carica un referto epigenetico per questo profilo. I valori estratti compaiono nella sezione «Ultimo
@@ -148,7 +148,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Pathway · radar
             </h4>
-            <div className="h-[300px] w-full overflow-y-auto">
+            <div className="h-[240px] w-full overflow-y-auto sm:h-[300px]">
               {epigeneticRadar.rows.length === 0 ? (
                 <PointToLatest>
                   Nessun dato numerico epigenetico strutturato — importa un referto <code className="mx-1 text-violet-300">epigenetics</code>.
@@ -212,7 +212,7 @@ export function HealthAreaCharts({
       </section>
 
       {/* Endocrino — radar equilibrio + bar referto */}
-      <section className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner">
+      <section className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Heart className="h-5 w-5 text-orange-400" />
           <h3 className="text-lg font-bold text-white">Sistema endocrino</h3>
@@ -226,7 +226,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Equilibrio assi
             </h4>
-            <div className="h-[300px] w-full">
+            <div className="h-[240px] w-full sm:h-[300px]">
               {endocrineRadar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
@@ -250,7 +250,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Valori ormonali (referto)
             </h4>
-            <div className="h-[300px] w-full">
+            <div className="h-[240px] w-full sm:h-[300px]">
               {hormonesBar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
@@ -274,7 +274,7 @@ export function HealthAreaCharts({
       </section>
 
       {/* Stress ossidativo — radar */}
-      <section className="rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner">
+      <section className="rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Zap className="h-5 w-5 text-sky-400" />
           <h3 className="text-lg font-bold text-white">Stress ossidativo · capacità antiossidante</h3>
@@ -282,7 +282,7 @@ export function HealthAreaCharts({
         <p className="text-sm text-gray-400">
           d-ROMs, BAP, glutatione, enzimi. {oxidativeRadar.isDemo ? "Demo finché mancano valori." : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[300px] w-full max-w-lg">
+        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
           {oxidativeRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasOxidativePanel
@@ -304,7 +304,7 @@ export function HealthAreaCharts({
       </section>
 
       {/* Infiammazione — radar */}
-      <section className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner">
+      <section className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Flame className="h-5 w-5 text-amber-400" />
           <h3 className="text-lg font-bold text-white">Markers infiammatori</h3>
@@ -313,7 +313,7 @@ export function HealthAreaCharts({
           Radar · score sintetico (valori bassi = migliore){" "}
           {inflammationRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[300px] w-full max-w-lg">
+        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
           {inflammationRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasInflammationPanel
@@ -335,7 +335,7 @@ export function HealthAreaCharts({
       </section>
 
       {/* Microbiota — radar */}
-      <section className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.12] via-teal-950/[0.08] to-black/85 p-6 shadow-inner">
+      <section className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.12] via-teal-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <HeartPulse className="h-5 w-5 text-emerald-400" />
           <h3 className="text-lg font-bold text-white">Composizione microbiota</h3>
@@ -344,7 +344,7 @@ export function HealthAreaCharts({
           Percentuali / diversità (asse 0–100){" "}
           {microbiotaRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[300px] w-full max-w-lg">
+        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
           {microbiotaRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasMicrobiotaPanel

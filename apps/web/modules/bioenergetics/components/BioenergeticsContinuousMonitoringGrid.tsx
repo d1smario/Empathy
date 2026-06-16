@@ -169,7 +169,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
             className="rounded-xl border border-white/10 bg-black/30 p-3 shadow-inner shadow-black/40"
           >
             <div className="mb-1 flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium leading-snug text-white">{ch.labelIt}</p>
                 <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{ch.unit}</p>
               </div>
@@ -208,7 +208,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
                       : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo."
                 : "Asse orizzontale: ore del giorno (0–23, locale)."}
             </p>
-            <div className="w-full min-w-[160px]" style={{ height: CHART_H }}>
+            <div className="w-full min-w-0" style={{ height: CHART_H }}>
               <ResponsiveContainer width="100%" height={CHART_H} debounce={50}>
                 {streamRows?.length ? (
                   <LineChart data={streamRows} margin={{ top: 6, right: 4, left: 2, bottom: 22 }}>

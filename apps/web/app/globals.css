@@ -311,6 +311,46 @@ body {
   white-space: nowrap;
 }
 
+/* ─── Training Calendar · responsività mobile (≤640px) ───
+   La griglia desktop forza min-width 1280px+ con scroll orizzontale.
+   Su mobile collassa al viewport: 7 colonne scalate, celle/chip compatti. */
+@media (max-width: 640px) {
+  .tc2-calendar-frame {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .tc2-calendar-weekdays,
+  .tc2-calendar-grid {
+    gap: 4px;
+  }
+
+  .tc2-calendar-weekday-label {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  .tc2-calendar-day,
+  .tc2-calendar-grid-pad {
+    min-height: 96px;
+  }
+
+  .tc2-calendar-day {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .tc2-calendar-day-num {
+    font-size: 12px;
+  }
+
+  .tc2-calendar-chip {
+    padding: 5px 6px;
+    font-size: 9px;
+    line-height: 1.3;
+  }
+}
+
 /* Contenitore griglia pasti + legenda (piano generato o piano base) */
 .empathy-meal-plan-expo-shell {
   margin-bottom: 1rem;
@@ -337,6 +377,13 @@ body {
 @media (max-width: 1024px) {
   .empathy-meal-expo-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablet/mobile: passa a 1 colonna prima per non schiacciare le card pasto */
+@media (max-width: 768px) {
+  .empathy-meal-expo-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -558,6 +605,18 @@ body {
   font-weight: 700;
   letter-spacing: 0.12em;
   color: rgba(255, 255, 255, 0.75);
+}
+
+/* Mobile: il tile kcal nel banner non deve sconfinare dalla card su 375px */
+@media (max-width: 480px) {
+  .empathy-meal-expo-kcal-tile {
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .empathy-meal-expo-kcal-num {
+    font-size: clamp(1rem, 5vw, 1.25rem);
+  }
 }
 
 .empathy-meal-expo-macros {
@@ -1532,6 +1591,13 @@ body {
   margin-bottom: 1.15rem;
 }
 
+/* Mobile stretto: i 4 KPI in 2×2 si comprimono; passa a colonna singola */
+@media (max-width: 600px) {
+  .nutrition-diary-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 900px) {
   .nutrition-diary-summary-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2280,6 +2346,13 @@ body {
   margin-bottom: 4px;
 }
 
+/* Mobile ultra-stretto: riduci la label per non rubare spazio all'input */
+@media (max-width: 480px) {
+  .form-label {
+    font-size: 0.75rem;
+  }
+}
+
 .form-input,
 .form-select,
 .form-textarea {
@@ -2630,10 +2703,26 @@ body {
   color: #ffd3b1;
 }
 
+/* Mobile: chip stretti → evita che la label strabordi su 375px */
+@media (max-width: 480px) {
+  .profile-black-chip {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .profile-meal-macro-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+}
+
+/* Mobile: 2 colonne fisse compatte (2×2) invece di 1 sola card per riga */
+@media (max-width: 640px) {
+  .profile-meal-macro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .profile-meal-macro-card {
@@ -3232,6 +3321,18 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
+/* Mobile: minmax più piccolo per riempire 2 colonne quando c'è spazio (220px non entra su 375px) */
+@media (max-width: 640px) {
+  .profile-page .profile-editor-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .profile-page .profile-editor-grid.profile-editor-grid-compact {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+}
+
 .profile-page .profile-editor-grid > .form-group,
 .profile-page .profile-subpanel .form-group {
   margin-bottom: 0;
@@ -3676,6 +3777,24 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
   gap: 0.65rem;
+}
+
+/* Mobile: minmax più piccolo + gap ridotto per evitare overflow orizzontale delle CP card */
+@media (max-width: 640px) {
+  .physiology-pro2-lab-cp-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .physiology-pro2-lab-cp-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .physiology-pro2-lab-cp-watts {
+    font-size: 1rem;
+  }
 }
 
 @media (min-width: 900px) {
@@ -4397,6 +4516,13 @@ body {
   grid-template-columns: repeat(2, 1fr);
 }
 
+/* Mobile stretto: a 375px le 2 colonne schiacciano label+valore → colonna singola */
+@media (max-width: 480px) {
+  .physiology-pro2-ctx-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 720px) {
   .physiology-pro2-ctx-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -4411,6 +4537,13 @@ body {
 
 .physiology-pro2-ctx-grid--maxox {
   grid-template-columns: repeat(2, 1fr);
+}
+
+/* Mobile stretto: anche la variante maxox stacca in colonna singola su 375px */
+@media (max-width: 480px) {
+  .physiology-pro2-ctx-grid--maxox {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 1100px) {
@@ -4790,6 +4923,21 @@ body {
   display: grid;
   gap: 0.65rem;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+
+/* Mobile: minmax più piccolo per non strabordare su 375px */
+@media (max-width: 640px) {
+  .physiology-pro2-eng-param-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+/* Mobile stretto: colonna singola per leggibilità completa dei tile */
+@media (max-width: 400px) {
+  .physiology-pro2-eng-param-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 1100px) {

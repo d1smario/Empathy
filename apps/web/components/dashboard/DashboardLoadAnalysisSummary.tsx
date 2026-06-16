@@ -451,7 +451,13 @@ export function DashboardLoadAnalysisSummary() {
                   <LineChart className="h-4 w-4 text-cyan-400" aria-hidden />
                   Pannello unico 42g · carico + fitness + confronto
                 </h3>
-                <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[40vh]">
+                <svg
+                  viewBox="0 0 1100 260"
+                  width="100%"
+                  height="260"
+                  preserveAspectRatio="none"
+                  className="h-[200px] max-h-[45vh] w-full sm:h-[260px] sm:max-h-[40vh]"
+                >
                   <polyline fill="none" stroke="#60a5fa" strokeWidth="1.8" points={plannedLine} />
                   <polyline fill="none" stroke="#ff7a1a" strokeWidth="2.3" points={extLine} />
                   <polyline fill="none" stroke="#d946ef" strokeWidth="2.3" points={intLine} />
@@ -471,7 +477,10 @@ export function DashboardLoadAnalysisSummary() {
             <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
               <h3 className="mb-2 text-sm font-bold text-white">Radar confronto · core loading</h3>
               <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center">
-                <svg viewBox="0 0 420 420" width="300" height="300" className="shrink-0">
+                <svg
+                  viewBox="0 0 420 420"
+                  className="h-auto w-full max-w-[260px] shrink-0 sm:max-w-[300px]"
+                >
                   {Array.from({ length: 6 }, (_, i) => {
                     const t = ((-90 + i * 60) * Math.PI) / 180;
                     const cx = 210;
@@ -495,7 +504,7 @@ export function DashboardLoadAnalysisSummary() {
                     strokeWidth={2.5}
                   />
                 </svg>
-                <details className="max-w-md rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400">
+                <details className="w-full max-w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-400 lg:max-w-md">
                   <summary className="cursor-pointer text-slate-300">
                     Confronto stella · recente vs baseline ({adaptabilityScore}/100)
                   </summary>

@@ -566,7 +566,7 @@ export default function HealthPageView() {
             ) : null}
 
             {/* TREND NEL TEMPO — in fondo al blocco Carica esame */}
-            <section id="health-storico" className="scroll-mt-28">
+            <section id="health-storico" className="scroll-mt-20 sm:scroll-mt-28">
               <div className="mb-4 flex items-center justify-center gap-2">
                 <Activity className="h-4 w-4 text-rose-400" />
                 <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">

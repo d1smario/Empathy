@@ -693,9 +693,8 @@ function IntegrationProductCard({
         : "rgba(251,146,60,0.5)";
   return (
     <article
+      className="grid grid-cols-1 sm:grid-cols-2"
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
         minHeight: 168,
         overflow: "hidden",
         borderRadius: 12,
@@ -705,12 +704,12 @@ function IntegrationProductCard({
       }}
     >
       <div
+        className="border-b border-white/[0.08] sm:border-b-0 sm:border-r"
         style={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "12px 14px",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         <div>
@@ -4007,10 +4006,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                                   )}
                                 </div>
                                 <div
-                                  className="fueling-vcard"
+                                  className="fueling-vcard grid grid-cols-1 sm:grid-cols-2"
                                   style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 1fr",
                                     overflow: "hidden",
                                     borderRadius: 12,
                                     border: "1px solid rgba(167,139,250,0.28)",
@@ -4018,12 +4015,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                                   }}
                                 >
                                   <div
-                                    className="fueling-step-body"
-                                    style={{
-                                      borderRight: "1px solid rgba(255,255,255,0.08)",
-                                      paddingRight: 10,
-                                      marginRight: 0,
-                                    }}
+                                    className="fueling-step-body border-b border-white/[0.08] pr-0 sm:border-b-0 sm:border-r sm:pr-2.5"
                                   >
                                     <span
                                       className="fueling-step-time"

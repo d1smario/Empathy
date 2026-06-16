@@ -110,15 +110,15 @@ export function MobileModuleDrawer({ open, onClose }: MobileModuleDrawerProps) {
         onClick={onClose}
       />
       <div className="absolute inset-x-0 bottom-0 flex max-h-[min(92vh,40rem)] flex-col rounded-t-3xl border border-white/10 bg-zinc-950 shadow-2xl shadow-purple-950/50">
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
-          <div>
-            <p className="text-base font-bold text-white">Moduli Empathy</p>
-            <p className="text-[0.65rem] text-gray-500">Hub operativo, salute, lab e impostazioni</p>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-white">Moduli Empathy</p>
+            <p className="truncate text-[0.65rem] text-gray-500">Hub operativo, salute, lab e impostazioni</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300"
             aria-label="Chiudi"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -142,7 +142,7 @@ export function MobileModuleDrawer({ open, onClose }: MobileModuleDrawerProps) {
           ))}
         </div>
 
-        <div className="shrink-0 border-t border-white/10 px-5 py-3">
+        <div className="shrink-0 border-t border-white/10 px-4 py-3 sm:px-5">
           <p className="flex items-center gap-2 text-[0.65rem] text-gray-500">
             <Grid3X3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Builder, VIRYA e staging lab avanzato restano su versione desktop.

@@ -43,9 +43,9 @@ function MetricCell({
   hint?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 p-4">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/35 p-3 sm:p-4">
       <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
-      <p className="mt-1 truncate font-mono text-2xl font-bold tabular-nums text-white">
+      <p className="mt-1 truncate font-mono text-xl font-bold tabular-nums text-white sm:text-2xl">
         {value}
         {unit ? <span className="ml-1 text-xs font-medium text-gray-500">{unit}</span> : null}
       </p>

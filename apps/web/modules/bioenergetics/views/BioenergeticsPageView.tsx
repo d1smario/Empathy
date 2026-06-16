@@ -316,7 +316,7 @@ export default function BioenergeticsPageView() {
                 type="date"
                 value={date}
                 onChange={(e) => setDateAndPersist(e.currentTarget.value)}
-                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 sm:w-auto"
                 aria-label="Giorno da visualizzare"
               />
               {!isToday ? (
@@ -444,7 +444,7 @@ export default function BioenergeticsPageView() {
                                 className={`rounded-xl border px-3 py-2.5 ${impactTileClass(t.impact)}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className="text-xs font-medium leading-snug text-white">{t.labelIt}</p>
+                                  <p className="min-w-0 text-xs font-medium leading-snug text-white">{t.labelIt}</p>
                                   <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-gray-300">
                                     {provenanceLabel(t.provenance)}
                                   </span>

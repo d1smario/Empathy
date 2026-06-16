@@ -839,11 +839,10 @@ export function FoodDiaryPanel({
           Giorno consumi
         </label>
         <input
-          className="form-input"
+          className="form-input w-full min-w-[140px] sm:w-auto sm:max-w-[200px]"
           type="date"
           value={entryDate}
           onChange={(e) => setEntryDate(e.target.value)}
-          style={{ maxWidth: 200 }}
         />
         {planDateAnchor && planDateAnchor !== entryDate ? (
           <button
@@ -903,10 +902,9 @@ export function FoodDiaryPanel({
               <input
                 id="fd-entry-time"
                 type="time"
-                className="form-input"
+                className="form-input w-full min-w-[120px] sm:w-auto sm:max-w-[148px]"
                 value={entryTime}
                 onChange={(e) => setEntryTime(e.target.value)}
-                style={{ maxWidth: 148 }}
               />
               <span className="muted-copy" style={{ fontSize: "0.72rem", maxWidth: 340, lineHeight: 1.45 }}>
                 Serve a BioEnergetic e alla timeline (picchi post-prandiali). Cambiando pasto proponiamo un orario tipico; correggi se serve.

@@ -217,7 +217,7 @@ export function DashboardAthleteHubCard() {
 
   return (
     <section
-      className="w-full max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
+      className="w-full max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
       aria-label="Riepilogo atleta"
     >
       <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-orange-300">Dashboard · dati reali</p>
@@ -253,7 +253,7 @@ export function DashboardAthleteHubCard() {
               <p className="font-mono text-[0.65rem] uppercase tracking-wider text-orange-300/90">
                 Bioenergetica · twin → loop adattamento → dial nutrizione
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                 <HubOpCell
                   label="Twin · atteso"
                   value={hub.operationalSignals.adaptationGuidance.expectedAdaptation.toFixed(2)}

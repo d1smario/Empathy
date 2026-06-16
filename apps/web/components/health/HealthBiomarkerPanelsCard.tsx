@@ -74,7 +74,7 @@ export function HealthBiomarkerPanelsCard() {
 
   return (
     <section
-      className="w-full rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
+      className="w-full rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
       aria-label="Panel biomarkers"
     >
       <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Salute · dati reali</p>
@@ -99,10 +99,9 @@ export function HealthBiomarkerPanelsCard() {
           {panels.map((p) => (
             <li
               key={p.id}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition-colors hover:border-rose-500/40 hover:bg-white/[0.05]"
+              className="flex min-w-0 flex-wrap items-baseline gap-x-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition-colors hover:border-rose-500/40 hover:bg-white/[0.05]"
             >
-              <span className="font-medium capitalize text-white">{p.type.replace(/_/g, " ")}</span>
-              <span className="mx-2 text-gray-600">·</span>
+              <span className="min-w-0 truncate font-medium capitalize text-white">{p.type.replace(/_/g, " ")}</span>
               <span className="font-mono text-xs tabular-nums text-gray-500">
                 {p.sample_date ?? p.reported_at?.slice(0, 10) ?? "—"}
               </span>

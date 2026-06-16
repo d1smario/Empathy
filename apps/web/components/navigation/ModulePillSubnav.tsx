@@ -6,10 +6,10 @@ import Link from "next/link";
 import type { ModulePillStyle } from "@/components/navigation/module-pill-styles";
 
 const NAV_SHELL =
-  "flex flex-wrap gap-2 rounded-2xl border border-orange-500/20 bg-gradient-to-r from-orange-500/[0.07] via-fuchsia-500/[0.06] to-violet-500/[0.08] p-2 shadow-inner";
+  "flex flex-wrap gap-1.5 rounded-2xl border border-orange-500/20 bg-gradient-to-r from-orange-500/[0.07] via-fuchsia-500/[0.06] to-violet-500/[0.08] p-2 shadow-inner sm:gap-2";
 
 const BTN_BASE =
-  "inline-flex min-w-[6.5rem] flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition sm:min-w-0 sm:flex-none sm:px-4";
+  "inline-flex min-w-[5rem] flex-1 items-center justify-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-semibold transition sm:min-w-0 sm:flex-none sm:px-4";
 
 export type ModulePillLinkItem = {
   key: string;
@@ -77,7 +77,7 @@ export function ModulePillSubnav(props: ModulePillSubnavProps) {
               }`}
             >
               <I className={`h-4 w-4 shrink-0 ${active ? s.iconActive : s.iconIdle}`} aria-hidden />
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -103,7 +103,7 @@ export function ModulePillSubnav(props: ModulePillSubnavProps) {
             }`}
           >
             <I className={`h-4 w-4 shrink-0 ${active ? s.iconActive : s.iconIdle}`} aria-hidden />
-            {item.label}
+            <span className="truncate">{item.label}</span>
           </button>
         );
       })}

@@ -129,15 +129,15 @@ function TrainingSignalCell({
 }) {
   const t = SIGNAL_TONE[tone];
   return (
-    <article className={`relative overflow-hidden rounded-2xl border p-4 backdrop-blur-sm ${t.border} ${t.bg}`}>
+    <article className={`relative overflow-hidden rounded-2xl border p-3 backdrop-blur-sm sm:p-4 ${t.border} ${t.bg}`}>
       <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${t.bar}`} aria-hidden />
-      <div className="flex items-start justify-between gap-3 pt-1">
+      <div className="flex items-start justify-between gap-2 pt-1 sm:gap-3">
         <div className="min-w-0">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
-          <p className={`mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight ${t.value}`}>{value}</p>
+          <p className={`mt-2 break-words font-mono text-xl font-bold tabular-nums tracking-tight sm:text-2xl ${t.value}`}>{value}</p>
         </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 ${t.icon}`} aria-hidden>
-          <Icon className="h-5 w-5 drop-shadow-[0_0_6px_rgba(255,255,255,0.35)]" strokeWidth={2.3} />
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border-2 sm:h-10 sm:w-10 ${t.icon}`} aria-hidden>
+          <Icon className="h-4 w-4 drop-shadow-[0_0_6px_rgba(255,255,255,0.35)] sm:h-5 sm:w-5" strokeWidth={2.3} />
         </div>
       </div>
       <p className="mt-2 text-xs leading-snug text-gray-500">{detail}</p>
@@ -232,7 +232,7 @@ function TrainingSessionSignalPanel({
         />
       </div>
 
-      <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {[
           {
             id: "session",
@@ -279,7 +279,7 @@ function TrainingSessionSignalPanel({
         ].map((cell) => (
           <div
             key={cell.id}
-            className={`min-w-[8.5rem] shrink-0 rounded-xl border bg-black/30 px-3 py-2 ${SIGNAL_TONE[cell.tone].border}`}
+            className={`min-w-0 rounded-xl border bg-black/30 px-3 py-2 ${SIGNAL_TONE[cell.tone].border}`}
           >
             <div className="font-mono text-[0.62rem] font-semibold uppercase tracking-wider text-slate-500">{cell.label}</div>
             <div className="mt-1 font-mono text-base font-bold tabular-nums text-white">{cell.value}</div>

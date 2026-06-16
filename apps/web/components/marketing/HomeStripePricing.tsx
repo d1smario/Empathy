@@ -182,7 +182,7 @@ export function HomeStripePricing({
         </p>
       ) : null}
 
-      <div className={cn("grid gap-5 lg:grid-cols-2", showTitle || billingFlash ? "mt-10" : "mt-2")}>
+      <div className={cn("grid grid-cols-1 gap-5 lg:grid-cols-2", showTitle || billingFlash ? "mt-10" : "mt-2")}>
         {basePlans.map((plan) => {
           const pid = plan.id as EmpathyBasePlanId;
           const priceOk = planPriceConfigured(pid, availability);
@@ -193,7 +193,7 @@ export function HomeStripePricing({
               type="button"
               onClick={() => setBasePlanId(pid)}
               className={cn(
-                "flex flex-col rounded-2xl border bg-white/[0.03] p-6 text-left backdrop-blur-md transition hover:border-white/20",
+                "flex flex-col rounded-2xl border bg-white/[0.03] p-4 text-left backdrop-blur-md transition hover:border-white/20 sm:p-6",
                 plan.id === "gold" && "shadow-lg shadow-orange-500/10",
                 selected
                   ? "border-purple-400/60 ring-2 ring-purple-500/40"
@@ -229,7 +229,7 @@ export function HomeStripePricing({
       <div className="mt-12">
         <h3 className="text-lg font-bold text-white">{t("coachHeading")}</h3>
         <p className="mt-1 text-sm text-gray-500">{t("coachSub")}</p>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <button
             type="button"
             onClick={() => setCoachAddOnId(null)}
@@ -278,7 +278,7 @@ export function HomeStripePricing({
         </div>
       </div>
 
-      <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+      <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-6">
         <label htmlFor="checkout-email" className="block text-xs font-medium text-gray-500">
           {t("emailLabel")}
         </label>

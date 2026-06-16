@@ -32,10 +32,10 @@ export function HealthLongitudinalTables({ bloodCols, microCols }: HealthLongitu
       </p>
 
       {bloodCols.length > 0 ? (
-        <div className="rounded-xl border border-rose-500/25 bg-white/[0.03] p-4">
+        <div className="rounded-xl border border-rose-500/25 bg-white/[0.03] p-3 sm:p-4">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Sangue — parametri chiave</p>
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[520px] text-xs">
+            <table className="w-full min-w-[480px] text-xs sm:min-w-[520px]">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Parametro</th>
@@ -83,10 +83,10 @@ export function HealthLongitudinalTables({ bloodCols, microCols }: HealthLongitu
       ) : null}
 
       {microCols ? (
-        <div className="rounded-xl border border-emerald-500/25 bg-white/[0.03] p-4">
+        <div className="rounded-xl border border-emerald-500/25 bg-white/[0.03] p-3 sm:p-4">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Microbiota — abbondanze / diversità</p>
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[480px] text-xs">
+            <table className="w-full min-w-[440px] text-xs sm:min-w-[480px]">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Indicatore</th>

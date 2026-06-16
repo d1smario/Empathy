@@ -83,7 +83,7 @@ export default async function AccessPage({
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-16 outline-none"
+        className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-12 outline-none sm:py-16"
       >
         <div className="text-center">
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">{t("eyebrow")}</p>
@@ -108,7 +108,7 @@ export default async function AccessPage({
           </p>
         ) : null}
         <AccessPasswordForm redirectAfterLogin={safeNext} />
-        <div className="flex w-full max-w-xs flex-col gap-3">
+        <div className="flex w-full max-w-sm flex-col gap-3">
           <Pro2Link href="/" variant="ghost" className="justify-center">
             {t("goToHome")}
           </Pro2Link>

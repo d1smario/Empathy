@@ -22,7 +22,7 @@ export function HealthSystemMapPanel({
   onPatchStagingRun,
 }: HealthSystemMapPanelProps) {
   return (
-    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-6 shadow-inner">
+    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
       <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
         Mappa interazioni · panoramica cross-area
       </h2>

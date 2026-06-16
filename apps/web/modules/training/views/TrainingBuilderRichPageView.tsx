@@ -1499,7 +1499,7 @@ export default function TrainingBuilderRichPageView() {
 
         <section
           aria-label="Famiglie sessione"
-          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner"
+          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
         >
           <div className="mb-5 flex flex-wrap items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
@@ -1519,7 +1519,7 @@ export default function TrainingBuilderRichPageView() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
             {SPORT_MACRO_SECTORS.map((m) => {
               const sel = activeMacroId === m.id;
               return (
@@ -1571,7 +1571,7 @@ export default function TrainingBuilderRichPageView() {
               >
                 <p className="text-sm font-bold text-white">{sector.title}</p>
                 <p className="mt-1 text-xs text-gray-500">{sector.blurb}</p>
-                <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-5 lg:grid-cols-6">
                   {sector.sports.map((chip) => {
                     const active = sport.trim().toLowerCase() === chip.sport.trim().toLowerCase();
                     return (
@@ -1600,7 +1600,7 @@ export default function TrainingBuilderRichPageView() {
 
         <section
           aria-label="Genera sessione (builder engine)"
-          className={`rounded-2xl border p-6 ${
+          className={`rounded-2xl border p-4 sm:p-5 lg:p-6 ${
             activeMacroId === "strength"
               ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
               : activeMacroId === "technical"
@@ -1762,7 +1762,7 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
                     <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
@@ -1937,7 +1937,7 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
                     <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
@@ -2020,7 +2020,7 @@ export default function TrainingBuilderRichPageView() {
                       </select>
                     </label>
                   </div>
-                  <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
+                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
                     <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
                       Min
@@ -2416,7 +2416,7 @@ export default function TrainingBuilderRichPageView() {
 
         <section
           aria-label="Prossime sessioni pianificate"
-          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-6 shadow-inner"
+          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
         >
           <div className="mb-4 flex flex-wrap items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
@@ -2540,7 +2540,7 @@ export default function TrainingBuilderRichPageView() {
               )}
             </section>
 
-            <section aria-label="KPI finestra" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <section aria-label="KPI finestra" className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
               <KpiCard
                 label="TSS pianificato"
                 value={showData ? Math.round(stats.pTss).toString() : "—"}

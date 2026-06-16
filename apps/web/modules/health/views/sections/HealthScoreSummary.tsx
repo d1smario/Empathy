@@ -12,7 +12,7 @@ export function HealthScoreSummary({ scores }: { scores: HealthGlobalScores }) {
   return (
     <section
       id="mod-score"
-      className="scroll-mt-28 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-6 shadow-inner"
+      className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
       aria-label="Stato di salute"
     >
       <h2 className="text-center font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
@@ -32,9 +32,9 @@ export function HealthScoreSummary({ scores }: { scores: HealthGlobalScores }) {
         ] satisfies Array<{ k: string; v: number | null }>).map((c) => (
           <div
             key={c.k}
-            className="rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-4 py-5 text-center shadow-inner"
+            className="rounded-xl border border-rose-500/25 bg-rose-500/[0.08] px-3 py-4 text-center shadow-inner sm:px-4 sm:py-5"
           >
-            <div className="font-mono text-3xl font-black tabular-nums tracking-tight text-rose-50 sm:text-4xl">
+            <div className="font-mono text-2xl font-black tabular-nums tracking-tight text-rose-50 sm:text-4xl">
               {c.v ?? "—"}
             </div>
             <div className="mt-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{c.k}</div>

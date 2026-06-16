@@ -44,11 +44,11 @@ export function CalendarTodayCard({
         }
         icon={LayoutGrid}
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col flex-wrap gap-2 sm:flex-row sm:items-center sm:gap-3">
           <Pro2Link
             href={`/training/builder?date=${encodeURIComponent(selectedDate)}`}
             variant="primary"
-            className="justify-center"
+            className="w-full justify-center sm:w-auto"
           >
             Crea o adatta la seduta nel Builder
           </Pro2Link>
@@ -56,7 +56,7 @@ export function CalendarTodayCard({
             <Pro2Link
               href={`/training/builder?date=${encodeURIComponent(selectedDate)}&replace_planned_id=${encodeURIComponent(builderReplacePlanned.id)}`}
               variant="ghost"
-              className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+              className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
             >
               Sostituisci seduta
             </Pro2Link>
@@ -64,7 +64,7 @@ export function CalendarTodayCard({
           <Pro2Link
             href={selectedSessionHref}
             variant="ghost"
-            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+            className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
           >
             <LineChart className="mr-1 inline h-4 w-4" aria-hidden />
             Giornata
@@ -72,7 +72,7 @@ export function CalendarTodayCard({
           <Pro2Link
             href={`/physiology/daily/${encodeURIComponent(selectedDate)}`}
             variant="ghost"
-            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+            className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
           >
             <Heart className="mr-1 inline h-4 w-4" aria-hidden />
             Fisiologia

@@ -479,7 +479,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
       ) : null}
 
       {/* ── Card piani (DB-driven) ───────────────────────────────────────── */}
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {basePlans.map((plan) => {
           const price = productPrice(plan);
           // Sconto applicato a QUESTA card (target specifico o sconto globale).
@@ -530,7 +530,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               >
                 {plan.name}
               </span>
-              <span className="mt-2 flex flex-wrap items-baseline gap-2 text-3xl font-black text-white sm:text-4xl">
+              <span className="mt-2 flex flex-wrap items-baseline gap-2 text-2xl font-black text-white sm:text-3xl lg:text-4xl">
                 {cardDiscount ? (
                   <span className="text-base font-semibold text-gray-500 line-through sm:text-lg">
                     {formatProductPrice(price, plan.currency)}
@@ -602,7 +602,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
           <p className="mt-1 text-sm text-gray-500">
             Aggiungi uno o più livelli di supporto al piano {selectedPlan.name}.
           </p>
-          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {addons.map((a) => {
               const checked = addonCodes.includes(a.code);
               const aPrice = productPrice(a);
@@ -647,7 +647,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
           </div>
 
           {/* Riepilogo carrello */}
-          <div className="mt-8 max-w-md rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+          <div className="mt-8 w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.02] p-6">
             <h4 className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-400">
               Riepilogo carrello
             </h4>

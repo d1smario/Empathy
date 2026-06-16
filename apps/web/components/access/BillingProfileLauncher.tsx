@@ -97,7 +97,7 @@ export function BillingProfileLauncher() {
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
-            <div className="max-h-[85vh] overflow-y-auto rounded-2xl bg-[#0b0a10] shadow-2xl shadow-purple-500/10">
+            <div className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl bg-[#0b0a10] shadow-2xl shadow-purple-500/10 sm:max-h-[85vh]">
               <BillingProfileForm onCompletenessChange={setComplete} />
             </div>
           </div>

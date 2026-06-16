@@ -56,7 +56,7 @@ export function CoachAthletesModulePanel() {
         ) : null}
 
         <CoachRosterCard />
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2">
           <CoachInviteLinksCard />
           <CoachCodeCard />
         </div>

@@ -195,7 +195,7 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
         <p className="mt-6 text-xs text-gray-500">Caricamento anagrafica…</p>
       ) : (
         <>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {FIELDS.map((f) => (
               <label key={f.key} className={cn("text-left", !f.half && "sm:col-span-2")}>
                 <span className={labelClass}>{f.label}</span>

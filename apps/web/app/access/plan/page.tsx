@@ -88,9 +88,9 @@ export default async function AccessPlanPage({
         tabIndex={-1}
         className="relative mx-auto max-w-6xl scroll-mt-0 px-4 py-12 outline-none sm:px-6 sm:py-16"
       >
-        <header className="relative text-center">
+        <header className="relative pt-12 text-center sm:pt-0">
           {/* Icona profilo: anagrafica fatturazione in un modale. */}
-          <div className="absolute right-0 top-0">
+          <div className="absolute right-0 top-0 mr-0 sm:mr-2">
             <BillingProfileLauncher />
           </div>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.28em] text-gray-500">
@@ -100,7 +100,7 @@ export default async function AccessPlanPage({
                 ? t("greetingNamed", { name: firstName })
                 : t("greeting")}
           </p>
-          <h1 className="mx-auto mt-4 max-w-4xl bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-4xl font-black leading-[1.05] tracking-tight text-transparent sm:text-6xl">
+          <h1 className="mx-auto mt-4 max-w-4xl bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-3xl font-black leading-[1.05] tracking-tight text-transparent sm:text-4xl lg:text-5xl xl:text-6xl">
             {isCheckoutSuccess ? t("welcomeTitle") : t("title")}
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-gray-400">

@@ -40,7 +40,7 @@ export function HealthLatestPanelsSection({
   return (
     <section
       id="mod-ultimo-referto"
-      className="scroll-mt-28 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-6 shadow-inner"
+      className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
       aria-label="Valori ultimo referto per tipo"
     >
       <h2 className="text-center font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">

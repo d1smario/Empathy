@@ -325,7 +325,7 @@ function athleteTypePillClass(tone: "green" | "violet" | "amber" | "neutral") {
 
 function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amber" | "rose" | "slate") {
   const base =
-    "rounded-xl border px-3 py-2 text-left text-[0.65rem] font-bold uppercase tracking-wider transition sm:px-4";
+    "rounded-xl border px-2.5 py-1.5 text-left text-[0.6rem] font-bold uppercase tracking-wider transition sm:px-4 sm:py-2 sm:text-[0.65rem]";
   const idle: Record<typeof accent, string> = {
     violet: "border-white/10 bg-black/30 text-gray-400 hover:border-violet-500/30",
     cyan: "border-white/10 bg-black/30 text-gray-400 hover:border-cyan-500/30",
@@ -1413,7 +1413,7 @@ export default function ProfilePage({
 
         {currentProfile ? (
           <>
-            <section className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-950/[0.12] via-orange-950/[0.08] to-black/85 p-6 shadow-inner">
+            <section className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-950/[0.12] via-orange-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
               <div className="flex flex-wrap items-center gap-5">
                 <div
                   className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-fuchsia-400/40 bg-fuchsia-500/25 text-xl font-black text-white shadow-[0_0_24px_rgba(217,70,239,0.3)]"
@@ -1563,8 +1563,8 @@ export default function ProfilePage({
           <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "supplements", "rose")} onClick={() => goToEditorSection("nutrition", "supplements")}>Integratori</button>
           <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
         </div>
-        <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)}`} style={{ marginBottom: "24px", padding: "20px" }}>
-          <div ref={editorScrollRef} style={{ height: "60vh", overflowY: "auto" }}>
+        <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} mb-6 p-4 sm:p-5`}>
+          <div ref={editorScrollRef} className="h-[55vh] overflow-y-auto sm:h-[60vh]">
           {activeSection === "personal" && (
             <div>
               <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />Dati personali</h3>
@@ -1626,7 +1626,7 @@ export default function ProfilePage({
                     ) : (
                       <p className="muted-copy text-sm">Garmin non collegato</p>
                     )}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <a
                         href={`/api/integrations/garmin/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                         target="_self"
@@ -1661,7 +1661,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">WHOOP non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/whoop/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -1700,7 +1700,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">Polar non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/polar/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -1745,7 +1745,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">Suunto non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/suunto/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -1790,7 +1790,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">Karoo non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/karoo/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -1842,7 +1842,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">Wahoo non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/wahoo/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -1881,7 +1881,7 @@ export default function ProfilePage({
                       ) : (
                         <p className="muted-copy text-sm">Strava non collegato</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         <a
                           href={`/api/integrations/strava/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
                           target="_self"
@@ -2121,7 +2121,7 @@ export default function ProfilePage({
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px", marginBottom: "12px" }}>
+                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "12px" }}>
                     {(findSupplementCategory(activeSupplementCategory)?.items ?? []).map((item) => {
                       const categoryId = normalizeSupplementCategoryId(activeSupplementCategory);
                       const token = `${categoryId}:${item}`;
@@ -2134,7 +2134,7 @@ export default function ProfilePage({
                     })}
                   </div>
                   <h4 className="section-title" style={{ fontSize: "14px" }}>Brand preferiti (40)</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px", marginBottom: "12px" }}>
+                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "12px" }}>
                     {SUPPLEMENT_BRANDS.map((brand) => {
                       const selected = form.supplement_brands.split(",").map((s) => s.trim()).filter(Boolean).includes(brand);
                       return (

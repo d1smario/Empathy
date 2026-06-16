@@ -72,7 +72,7 @@ export default async function RegisterPage() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-16 outline-none"
+        className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-12 outline-none sm:py-16"
       >
         <div className="text-center">
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">REGISTRATI</p>

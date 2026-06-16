@@ -435,7 +435,7 @@ export function CoachDashboardView() {
         ) : null}
 
         {/* KPI */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((c) => (
             <div key={c.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{c.label}</p>
@@ -476,7 +476,7 @@ export function CoachDashboardView() {
                     </div>
                     <Link
                       href={`/athletes/${a.id}/health`}
-                      className="empathy-btn-gradient flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20"
+                      className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
                     >
                       <LayoutGrid className="h-4 w-4" aria-hidden />
                       {COPY.openCards}

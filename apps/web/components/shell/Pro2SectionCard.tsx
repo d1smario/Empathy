@@ -113,7 +113,7 @@ export function Pro2SectionCard({
 }) {
   const a = ACCENT[accent];
   return (
-    <section className={cn("rounded-2xl border p-6 sm:p-6", a.section, className)}>
+    <section className={cn("rounded-2xl border p-4 sm:p-6", a.section, className)}>
       <div className={cn("mb-5 flex flex-wrap items-start gap-3", headerClassName)}>
         <div
           className={cn(

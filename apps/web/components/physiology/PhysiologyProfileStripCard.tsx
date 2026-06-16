@@ -61,7 +61,7 @@ export function PhysiologyProfileStripCard() {
 
   return (
     <section
-      className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
+      className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
       aria-label="Profilo fisiologico"
     >
       <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Physiology · dati reali</p>

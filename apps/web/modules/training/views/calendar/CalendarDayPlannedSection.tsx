@@ -111,7 +111,7 @@ export function CalendarDayPlannedSection({
                   setDragPlannedId(null);
                   setDropTargetDate(null);
                 }}
-                className={`mb-2 flex cursor-grab items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 px-3 py-2 text-xs text-orange-100 active:cursor-grabbing ${
+                className={`mb-2 flex cursor-grab flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 px-3 py-2 text-xs text-orange-100 active:cursor-grabbing ${
                   dragPlannedId === w.id ? "ring-1 ring-orange-400/60" : ""
                 }`}
                 title="Trascina su un giorno del calendario sopra"
@@ -119,7 +119,7 @@ export function CalendarDayPlannedSection({
                 <span aria-hidden className="text-orange-300/80">
                   ⋮⋮
                 </span>
-                <span>
+                <span className="min-w-0 break-words">
                   Trascina su un altro giorno ·{" "}
                   {plannedCalendarChipViewModel(w, { athleteFtpWatts }).sportLabel}
                 </span>

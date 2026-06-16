@@ -277,7 +277,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               /\.pdf(\?|$)/i.test(signedUrl) ? (
                 <iframe
                   src={signedUrl}
-                  className="h-[640px] w-full rounded-md border border-white/10 bg-white"
+                  className="h-[60vh] max-h-[640px] min-h-[360px] w-full rounded-md border border-white/10 bg-white sm:h-[640px]"
                   title="Documento referto"
                 />
               ) : (
@@ -309,7 +309,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               {showTech ? <span className="text-[11px] text-zinc-500">{enabledCount} attivi</span> : null}
             </div>
 
-            <div className="max-h-[600px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[600px]">
               {fields.map((f, i) => {
                 const badge = confidenceBadge(f.confidence);
                 const readableLabel = biomarkerLabelIt(f.field) ?? humanizePayloadKey(f.field);

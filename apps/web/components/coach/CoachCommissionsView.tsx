@@ -248,15 +248,15 @@ export function CoachCommissionsView() {
               {f.label} <span className="opacity-60">{counts[f.key]}</span>
             </button>
           ))}
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+            <div className="relative w-full min-w-0 sm:w-56">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" aria-hidden />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={COPY.searchPlaceholder}
-                className="w-44 rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none sm:w-56"
+                className="w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
               />
             </div>
             {accruedIds.length > 1 ? (

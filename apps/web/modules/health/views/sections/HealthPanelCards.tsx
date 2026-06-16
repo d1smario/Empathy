@@ -21,7 +21,7 @@ export function BloodSnapshotTable({
         Ultimo referto ematico
         {sampleLabel ? <span className="ml-2 font-sans font-normal normal-case text-gray-400">· {sampleLabel}</span> : null}
       </p>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
         {cells.map((c) => (
           <div key={c.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
             <dt className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{c.label}</dt>
