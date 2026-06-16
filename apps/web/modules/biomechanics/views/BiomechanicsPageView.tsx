@@ -56,6 +56,18 @@ const SOURCE_LABELS: Record<BiomechanicsCaptureSource, string> = {
   external_pose_import: "Import esterno (OpenCap)",
 };
 
+// Cache cross-mount delle catture biomeccaniche: ri-atterrando sulla pagina i
+// dati compaiono subito (niente spinner "Caricamento archivio…"); il refresh
+// avviene in background silenzioso, così upload/import/analisi restano riflessi.
+type BiomechanicsRefreshData = {
+  sessions: BiomechanicsSessionImportV1[];
+  captureJobs: BiomechanicsCaptureJobV1[];
+  pendingStaging: Array<{ id: string; jobId: string | null }>;
+  error: string | null;
+};
+let biomechanicsCacheId: string | null = null;
+let biomechanicsCache: BiomechanicsRefreshData | null = null;
+
 function disciplineLabel(value: BiomechanicsDiscipline): string {
   return DISCIPLINE_OPTIONS.find((option) => option.value === value)?.label ?? value;
 }
@@ -323,20 +335,42 @@ export default function BiomechanicsPageView() {
 
   const refresh = useCallback(async (opts?: { preserveError?: boolean }) => {
     if (!athleteId) return;
-    setLoading(true);
-    if (!opts?.preserveError) setError(null);
+    // Se le catture di questo atleta sono già in cache, mostrale SUBITO (niente
+    // spinner "Caricamento archivio…"); il fetch sotto aggiorna in background.
+    const cached = biomechanicsCacheId === athleteId ? biomechanicsCache : null;
+    if (cached) {
+      setSessions(cached.sessions);
+      setCaptureJobs(cached.captureJobs);
+      setPendingStaging(cached.pendingStaging);
+      if (cached.pendingStaging[0]?.id) {
+        setReviewStagingRunId(cached.pendingStaging[0].id);
+      }
+      if (!opts?.preserveError) setError(cached.error);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      if (!opts?.preserveError) setError(null);
+    }
     try {
       const result = await fetchBiomechanicsSessions(athleteId);
+      const nextPendingStaging = result.pendingStaging.map((row) => ({ id: row.id, jobId: row.jobId }));
       setSessions(result.sessions);
       setCaptureJobs(result.captureJobs);
-      setPendingStaging(result.pendingStaging.map((row) => ({ id: row.id, jobId: row.jobId })));
+      setPendingStaging(nextPendingStaging);
       setLastCreatedJob(null);
       if (result.pendingStaging[0]?.id) {
         setReviewStagingRunId(result.pendingStaging[0].id);
       }
       if (result.error) setError(result.error);
+      biomechanicsCache = {
+        sessions: result.sessions,
+        captureJobs: result.captureJobs,
+        pendingStaging: nextPendingStaging,
+        error: result.error,
+      };
+      biomechanicsCacheId = athleteId;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analisi biomeccanica non disponibile.");
+      if (!cached) setError(err instanceof Error ? err.message : "Analisi biomeccanica non disponibile.");
     } finally {
       setLoading(false);
     }

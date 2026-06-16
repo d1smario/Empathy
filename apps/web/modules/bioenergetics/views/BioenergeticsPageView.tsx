@@ -138,6 +138,15 @@ function athleteDisclaimers(lines: string[]): string[] {
   return out;
 }
 
+// Cache cross-mount della giornata bioenergetica, keyed by athleteId+date: ri-atterrando
+// sulla pagina (stesso atleta/giorno) i dati compaiono subito (niente spinner/skeleton),
+// con refetch in background silenzioso così le mutazioni a monte (pasti/sedute) restano riflesse.
+// La chiave composta garantisce di non mostrare mai i dati di un altro atleta o di un altro giorno.
+const bioDayVmCache = new Map<string, BioenergeticsDayViewModel>();
+function bioDayCacheKey(athleteId: string, date: string): string {
+  return `${athleteId}::${date}`;
+}
+
 // Link cross-shell (Nutrition/Training): inerte nelle viste scoped admin/coach (v2).
 function CrossShellLink({
   adminScoped,
@@ -220,9 +229,18 @@ export default function BioenergeticsPageView() {
       return;
     }
     let cancelled = false;
+    const cacheKey = bioDayCacheKey(athleteId, date);
+    const cached = bioDayVmCache.get(cacheKey);
     (async () => {
-      setLoading(true);
-      setError(null);
+      if (cached) {
+        // Stessa giornata già in cache: mostra subito (niente spinner) e aggiorna in background.
+        setVm(cached);
+        setError(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const q = new URLSearchParams({ athleteId, date, stripAudit: "1" });
         const res = await fetch(`/api/bioenergetics/day?${q}`, {
@@ -233,8 +251,11 @@ export default function BioenergeticsPageView() {
         const json = (await res.json()) as BioenergeticsDayViewModel & { error?: string };
         if (cancelled) return;
         if (!res.ok) {
-          setVm(null);
-          setError(json.error ?? "Non è stato possibile caricare la giornata.");
+          // Con cache già mostrata, non sovrascriverla con un errore di refresh in background.
+          if (!cached) {
+            setVm(null);
+            setError(json.error ?? "Non è stato possibile caricare la giornata.");
+          }
           return;
         }
         const cm = json.continuousMonitoring as BioenergeticsDayViewModel["continuousMonitoring"] | undefined;
@@ -255,9 +276,11 @@ export default function BioenergeticsPageView() {
               ? cm
               : undefined,
         };
+        bioDayVmCache.set(cacheKey, vmPayload);
         setVm(vmPayload);
       } catch {
-        if (!cancelled) {
+        // Con cache già mostrata, lascia i dati visibili e non mostrare l'errore di rete del refresh.
+        if (!cancelled && !cached) {
           setVm(null);
           setError("Errore di rete durante il caricamento.");
         }

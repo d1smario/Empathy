@@ -16,6 +16,13 @@ import { SleepHypnogramChart } from "@/components/physiology/SleepHypnogramChart
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Cache cross-mount del pannello wellness giornaliero, keyed by athleteId+date:
+// ri-atterrando sulla pagina (stesso atleta + stesso giorno) i dati compaiono
+// subito (niente spinner/"refresh"); l'aggiornamento avviene in background
+// silenzioso, così le mutazioni/ingest restano riflesse senza spinner.
+let dailyPanelCacheKey: string | null = null;
+let dailyPanelCache: { panel: PhysiologyDailyPanelOk | null; error: string | null } | null = null;
+
 function fmtNum(n: number | null | undefined, digits = 0): string {
   if (n == null || !Number.isFinite(n)) return "—";
   return n.toLocaleString("it-IT", {
@@ -180,8 +187,17 @@ export default function PhysiologyDailyWellnessPageView() {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setErr(null);
+    const cacheKey = `${athleteId}|${date}`;
+    const cached = dailyPanelCacheKey === cacheKey ? dailyPanelCache : null;
+    if (cached) {
+      // Mostra subito i dati in cache (niente spinner); refresh in background sotto.
+      setPanel(cached.panel);
+      setErr(cached.error);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setErr(null);
+    }
     try {
       const q = new URLSearchParams({ athleteId, date });
       const res = await fetch(`/api/physiology/daily-panel?${q}`, {
@@ -191,11 +207,17 @@ export default function PhysiologyDailyWellnessPageView() {
       });
       const json = (await res.json()) as PhysiologyDailyPanelOk | { ok: false; error?: string };
       if (!res.ok || !json || typeof json !== "object" || !("ok" in json) || json.ok !== true) {
+        const nextErr = (json as { error?: string }).error || "Lettura pannello non riuscita.";
         setPanel(null);
-        setErr((json as { error?: string }).error || "Lettura pannello non riuscita.");
+        setErr(nextErr);
+        dailyPanelCache = { panel: null, error: nextErr };
+        dailyPanelCacheKey = cacheKey;
         return;
       }
       setPanel(json);
+      setErr(null);
+      dailyPanelCache = { panel: json, error: null };
+      dailyPanelCacheKey = cacheKey;
     } catch {
       setPanel(null);
       setErr("Errore di rete.");

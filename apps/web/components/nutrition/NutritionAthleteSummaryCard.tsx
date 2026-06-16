@@ -12,6 +12,15 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 type ApiOk = { ok: true; athleteId: string; constraints: NutritionConstraints | null; plans: NutritionPlan[] };
 type ApiErr = { ok: false; error?: string };
 
+// Cache cross-mount del riepilogo nutrizione: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"refresh"); il refetch in background gira
+// comunque, così eventuali aggiornamenti restano riflessi senza spinner.
+let nutritionSummaryCacheId: string | null = null;
+let nutritionSummaryCache: {
+  constraints: NutritionConstraints | null;
+  plans: NutritionPlan[];
+} | null = null;
+
 export function NutritionAthleteSummaryCard() {
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
@@ -29,9 +38,19 @@ export function NutritionAthleteSummaryCard() {
       return;
     }
     let c = false;
-    (async () => {
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner); il fetch sotto gira comunque in background e aggiorna stato+cache.
+    const cached = nutritionSummaryCacheId === athleteId ? nutritionSummaryCache : null;
+    if (cached) {
+      setConstraints(cached.constraints);
+      setPlans(cached.plans);
+      setErr(null);
+      setLoading(false);
+    } else {
       setLoading(true);
       setErr(null);
+    }
+    (async () => {
       try {
         const res = await fetch(`/api/nutrition/athlete-summary?athleteId=${encodeURIComponent(athleteId)}`, {
           cache: "no-store",
@@ -39,15 +58,20 @@ export function NutritionAthleteSummaryCard() {
         const json = (await res.json()) as ApiOk | ApiErr;
         if (c) return;
         if (!res.ok || !json.ok) {
-          setConstraints(null);
-          setPlans([]);
-          setErr(("error" in json && json.error) || "Lettura non riuscita.");
+          if (!cached) {
+            setConstraints(null);
+            setPlans([]);
+            setErr(("error" in json && json.error) || "Lettura non riuscita.");
+          }
           return;
         }
         setConstraints(json.constraints);
         setPlans(json.plans);
+        setErr(null);
+        nutritionSummaryCache = { constraints: json.constraints, plans: json.plans };
+        nutritionSummaryCacheId = athleteId;
       } catch {
-        if (!c) setErr("Errore di rete.");
+        if (!c && !cached) setErr("Errore di rete.");
       } finally {
         if (!c) setLoading(false);
       }

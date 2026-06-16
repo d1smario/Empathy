@@ -7,6 +7,12 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 type ApiOk = { ok: true; athleteId: string; profile: AthleteProfileRowView | null };
 type ApiErr = { ok: false; error?: string };
 
+// Cache cross-mount dell'anagrafica atleta: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"refresh"); il refetch parte comunque in
+// background silenzioso, così le modifiche al profilo restano riflesse.
+let athleteCardCacheId: string | null = null;
+let athleteCardCache: { profile: AthleteProfileRowView | null; err: string | null } | null = null;
+
 export function ProfileAthleteCard() {
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
@@ -23,8 +29,17 @@ export function ProfileAthleteCard() {
     }
     let c = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
+      // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+      // spinner); il refetch in background sotto aggiorna comunque stato+cache.
+      const cached = athleteCardCacheId === athleteId ? athleteCardCache : null;
+      if (cached) {
+        setProfile(cached.profile);
+        setErr(cached.err);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setErr(null);
+      }
       try {
         const res = await fetch(`/api/profile/athlete-row?athleteId=${encodeURIComponent(athleteId)}`, {
           cache: "no-store",
@@ -33,10 +48,16 @@ export function ProfileAthleteCard() {
         if (c) return;
         if (!res.ok || !json.ok) {
           setProfile(null);
-          setErr(("error" in json && json.error) || "Lettura non riuscita.");
+          const nextErr = ("error" in json && json.error) || "Lettura non riuscita.";
+          setErr(nextErr);
+          athleteCardCache = { profile: null, err: nextErr };
+          athleteCardCacheId = athleteId;
           return;
         }
         setProfile(json.profile);
+        setErr(null);
+        athleteCardCache = { profile: json.profile, err: null };
+        athleteCardCacheId = athleteId;
       } catch {
         if (!c) setErr("Errore di rete.");
       } finally {

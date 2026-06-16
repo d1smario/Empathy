@@ -34,6 +34,12 @@ function traceStatusClass(status: KnowledgeResearchTraceSummary["status"]): stri
   }
 }
 
+// Cache cross-mount del contesto planner Virya: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"refresh"); l'aggiornamento avviene in background
+// silenzioso, così le mutazioni (es. persistenza trace) restano riflesse al prossimo fetch.
+let viryaContextCacheId: string | null = null;
+let viryaContextCache: Awaited<ReturnType<typeof fetchTrainingPlannerContext>> | null = null;
+
 /**
  * Virya (V1 parity, shell Pro 2): contesto canonico da `resolveAthleteMemory` + hint strategici.
  * La materializzazione sedute resta sul builder (`/api/training/engine/generate`) e sul calendario.
@@ -55,8 +61,17 @@ export default function TrainingViryaPageView() {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setErr(null);
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner/"refresh"); il refetch sotto aggiorna comunque stato+cache in background.
+    const cached = viryaContextCacheId === athleteId ? viryaContextCache : null;
+    if (cached) {
+      setCtx(cached);
+      setErr(cached.error ?? null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setErr(null);
+    }
     try {
       const vm = await fetchTrainingPlannerContext(athleteId, { persistResearchTraces: true });
       if (vm.error) {
@@ -65,9 +80,13 @@ export default function TrainingViryaPageView() {
         setErr(null);
       }
       setCtx(vm);
+      viryaContextCache = vm;
+      viryaContextCacheId = athleteId;
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Caricamento contesto non riuscito.");
-      setCtx(null);
+      if (!cached) {
+        setErr(e instanceof Error ? e.message : "Caricamento contesto non riuscito.");
+        setCtx(null);
+      }
     } finally {
       setLoading(false);
     }

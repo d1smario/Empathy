@@ -357,6 +357,25 @@ type EngineGenerateOverrides = Partial<{
 }>;
 
 /**
+ * Cache cross-mount della finestra calendario builder: ri-atterrando sulla pagina
+ * (es. dal calendario al builder e ritorno) i dati compaiono SUBITO, senza spinner
+ * né "refresh". Il refetch parte comunque in background (silenzioso) e aggiorna
+ * stato + cache, così le sedute appena salvate restano riflesse. La chiave include
+ * athleteId + finestra from/to (che dipende dalla data selezionata): non si mostrano
+ * mai i dati di un atleta o di una finestra diversa.
+ */
+type BuilderWindowCacheEntry = {
+  planned: PlannedWorkout[];
+  executed: ExecutedWorkout[];
+  range: { from: string; to: string } | null;
+  readSpineCoverage: ReadSpineCoverageSummary | null;
+  twinContextStrip: TrainingTwinContextStripViewModel | null;
+  plannedProvenanceSummary: Partial<Record<string, number>> | null;
+};
+let builderWindowCacheKey: string | null = null;
+let builderWindowCache: BuilderWindowCacheEntry | null = null;
+
+/**
  * Builder = unico motore sessione; Vyria annuale userà solo questo endpoint per materializzare.
  */
 export default function TrainingBuilderRichPageView() {
@@ -438,10 +457,24 @@ export default function TrainingBuilderRichPageView() {
     }
     let c = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
+      const { from, to } = builderPlannedWindowRange(plannedDate);
+      const cacheKey = `${athleteId}|${from}|${to}`;
+      const cached = builderWindowCacheKey === cacheKey ? builderWindowCache : null;
+      if (cached) {
+        // Cache cross-mount: mostra subito i dati (niente spinner); refresh in background sotto.
+        setPlanned(cached.planned);
+        setExecuted(cached.executed);
+        setRange(cached.range);
+        setReadSpineCoverage(cached.readSpineCoverage);
+        setTwinContextStrip(cached.twinContextStrip);
+        setPlannedProvenanceSummary(cached.plannedProvenanceSummary);
+        setErr(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setErr(null);
+      }
       try {
-        const { from, to } = builderPlannedWindowRange(plannedDate);
         const q = new URLSearchParams({
           athleteId,
           from,
@@ -458,6 +491,8 @@ export default function TrainingBuilderRichPageView() {
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | WindowErr;
         if (c) return;
         if (!res.ok || !json.ok) {
+          // Refresh in background fallito: tieni i dati già mostrati dalla cache, niente flash di errore.
+          if (cached) return;
           setPlanned([]);
           setExecuted([]);
           setRange(null);
@@ -467,14 +502,25 @@ export default function TrainingBuilderRichPageView() {
           setErr(("error" in json && json.error) || "Lettura calendario non riuscita.");
           return;
         }
-        setPlanned(json.planned);
-        setExecuted(json.executed ?? []);
-        setRange({ from: json.from, to: json.to });
-        setReadSpineCoverage(json.readSpineCoverage ?? null);
-        setTwinContextStrip(json.twinContextStrip ?? null);
-        setPlannedProvenanceSummary(json.plannedProvenanceSummary ?? null);
+        const entry: BuilderWindowCacheEntry = {
+          planned: json.planned,
+          executed: json.executed ?? [],
+          range: { from: json.from, to: json.to },
+          readSpineCoverage: json.readSpineCoverage ?? null,
+          twinContextStrip: json.twinContextStrip ?? null,
+          plannedProvenanceSummary: json.plannedProvenanceSummary ?? null,
+        };
+        setPlanned(entry.planned);
+        setExecuted(entry.executed);
+        setRange(entry.range);
+        setReadSpineCoverage(entry.readSpineCoverage);
+        setTwinContextStrip(entry.twinContextStrip);
+        setPlannedProvenanceSummary(entry.plannedProvenanceSummary);
+        setErr(null);
+        builderWindowCache = entry;
+        builderWindowCacheKey = cacheKey;
       } catch {
-        if (!c) {
+        if (!c && !cached) {
           setErr("Errore di rete.");
           setReadSpineCoverage(null);
           setTwinContextStrip(null);

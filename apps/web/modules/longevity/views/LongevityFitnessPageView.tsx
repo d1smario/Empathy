@@ -85,6 +85,14 @@ const EMPTY_FORM: CheckinForm = {
   stress: null,
 };
 
+// Cache cross-mount dell'indice longevità: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner "Calcolo in corso…"); il refetch avviene in
+// background silenzioso, così i nuovi check-in salvati restano comunque riflessi.
+// La chiave include adminScoped perché la scheda admin non persiste lo snapshot
+// (persist=false): non mescoliamo mai dati di scope/atleti diversi.
+let longevityIndexCacheKey: string | null = null;
+let longevityIndexCache: LongevityFitnessPayload | null = null;
+
 function tierPillClass(tier: EmpathyCoinBalance["tier"]): string {
   if (tier === "gold") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
   if (tier === "silver") return "border-white/15 bg-white/5 text-gray-200";
@@ -163,7 +171,19 @@ export default function LongevityFitnessPageView() {
 
   const loadIndex = useCallback(
     async (id: string) => {
-      setLoading(true);
+      const cacheKey = `${id}::${adminScoped ? "admin" : "self"}`;
+      // Se i dati di questa stessa chiave sono già in cache, mostrali SUBITO
+      // (niente spinner "Calcolo in corso…"); il refetch in background sotto
+      // aggiorna comunque stato+cache, così i nuovi check-in restano riflessi.
+      const cached = longevityIndexCacheKey === cacheKey ? longevityIndexCache : null;
+      if (cached) {
+        setData(cached);
+        hydrateFromCheckin(cached.checkin);
+        setError(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         // In scheda admin niente persistenza snapshot/coin: la sola apertura non muta lo storico
@@ -175,8 +195,12 @@ export default function LongevityFitnessPageView() {
         if (!res.ok) throw new Error(json.error ?? "Errore caricamento");
         setData(json);
         hydrateFromCheckin(json.checkin);
+        longevityIndexCache = json;
+        longevityIndexCacheKey = cacheKey;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Errore caricamento");
+        // Con cache già mostrata teniamo i dati validi a schermo: il banner
+        // d'errore avviserebbe a vuoto su un refresh di sfondo fallito.
+        if (!cached) setError(err instanceof Error ? err.message : "Errore caricamento");
       } finally {
         setLoading(false);
       }

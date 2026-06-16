@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { fetchCanonicalPhysiologyProfile } from "@/modules/physiology/services/physiology-profile-api";
 
+// Cache cross-mount del profilo fisiologico canonico: ri-atterrando sulla pagina i
+// dati compaiono subito (niente spinner/"refresh"); l'aggiornamento avviene in
+// background silenzioso, così restano riflesse anche eventuali mutazioni a monte.
+let physiologyStripCacheId: string | null = null;
+let physiologyStripCache: Awaited<ReturnType<typeof fetchCanonicalPhysiologyProfile>> | null = null;
+
 export function PhysiologyProfileStripCard() {
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
@@ -21,19 +27,31 @@ export function PhysiologyProfileStripCard() {
     }
     let c = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
+      // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+      // spinner); poi prosegui col fetch in background per aggiornare stato e cache.
+      const cached = physiologyStripCacheId === athleteId ? physiologyStripCache : null;
+      if (cached) {
+        setProfile(cached.physiologicalProfile as PhysiologicalProfile);
+        setErr(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setErr(null);
+      }
       try {
         const state = await fetchCanonicalPhysiologyProfile(athleteId);
         if (c) return;
+        physiologyStripCache = state;
+        physiologyStripCacheId = athleteId;
         setProfile(state.physiologicalProfile as PhysiologicalProfile);
+        setErr(null);
       } catch (e) {
-        if (!c) {
+        if (!c && !cached) {
           setProfile(null);
           setErr(e instanceof Error ? e.message : "Lettura non riuscita.");
         }
       } finally {
-        if (!c) setLoading(false);
+        if (!c && !cached) setLoading(false);
       }
     })();
     return () => {

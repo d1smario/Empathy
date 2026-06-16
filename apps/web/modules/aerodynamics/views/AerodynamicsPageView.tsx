@@ -95,6 +95,12 @@ function LatestAeroJobCard({
   );
 }
 
+// Cache cross-mount dei test/job aero: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner "Caricamento archivio..."); il refetch avviene
+// sempre in background silenzioso, così upload/elaborazione restano riflessi.
+let aeroTestsCacheId: string | null = null;
+let aeroTestsCache: Awaited<ReturnType<typeof fetchAerodynamicsTests>> | null = null;
+
 function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
   if (!tests.length) {
     return (
@@ -145,22 +151,37 @@ export default function AerodynamicsPageView() {
   const source: AerodynamicsCaptureSource = file?.type.startsWith("image/") ? "image" : "smartphone_video";
   const latestCda = tests[0]?.cdaEstimate.cdaM2;
 
+  const applyAeroResult = useCallback((result: Awaited<ReturnType<typeof fetchAerodynamicsTests>>) => {
+    setTests(result.tests);
+    setCaptureJobs(result.captureJobs);
+    setPendingStaging(result.pendingStaging.map((row) => ({ id: row.id, jobId: row.jobId })));
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!athleteId) return;
-    setLoading(true);
-    setError(null);
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner "Caricamento archivio..."); il refetch sotto gira sempre in background.
+    const cached = aeroTestsCacheId === athleteId ? aeroTestsCache : null;
+    if (cached) {
+      applyAeroResult(cached);
+      setError(cached.error);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await fetchAerodynamicsTests(athleteId);
-      setTests(result.tests);
-      setCaptureJobs(result.captureJobs);
-      setPendingStaging(result.pendingStaging.map((row) => ({ id: row.id, jobId: row.jobId })));
-      if (result.error) setError(result.error);
+      applyAeroResult(result);
+      setError(result.error ?? null);
+      aeroTestsCache = result;
+      aeroTestsCacheId = athleteId;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Aerodynamics non disponibile.");
+      if (!cached) setError(err instanceof Error ? err.message : "Aerodynamics non disponibile.");
     } finally {
       setLoading(false);
     }
-  }, [athleteId]);
+  }, [athleteId, applyAeroResult]);
 
   useEffect(() => {
     if (athleteLoading || !athleteId) return;

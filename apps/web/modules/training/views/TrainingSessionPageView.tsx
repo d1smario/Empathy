@@ -30,6 +30,21 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Cache cross-mount della giornata training (chiave athleteId:date): ri-atterrando
+// sulla pagina i dati compaiono subito (niente spinner "Caricamento segnali sessione…");
+// il refetch gira comunque in background silenzioso, così le esecuzioni/registrazioni
+// più recenti restano riflesse senza mostrare lo spinner.
+type TrainingSessionPayload = {
+  planned: PlannedWorkout[];
+  executed: ExecutedWorkout[];
+  readSpineCoverage: ReadSpineCoverageSummary | null;
+  twinContextStrip: TrainingTwinContextStripViewModel | null;
+  plannedProvenanceSummary: Partial<Record<string, number>> | null;
+  err: string | null;
+};
+let trainingSessionCacheKey: string | null = null;
+let trainingSessionCache: TrainingSessionPayload | null = null;
+
 type WindowErr = { ok: false; error?: string };
 type SignalTone = "cyan" | "orange" | "violet" | "emerald" | "amber" | "slate";
 
@@ -317,10 +332,25 @@ export default function TrainingSessionPageView() {
       return;
     }
 
-    let cancelled = false;
-    (async () => {
+    // Se la giornata di questo atleta è già in cache, mostrala SUBITO (niente
+    // spinner); il refetch sotto gira comunque in background e aggiorna stato+cache.
+    const cacheKey = `${athleteId}:${date}`;
+    const cached = trainingSessionCacheKey === cacheKey ? trainingSessionCache : null;
+    if (cached) {
+      setPlanned(cached.planned);
+      setExecuted(cached.executed);
+      setReadSpineCoverage(cached.readSpineCoverage);
+      setTwinContextStrip(cached.twinContextStrip);
+      setPlannedProvenanceSummary(cached.plannedProvenanceSummary);
+      setErr(cached.err);
+      setLoading(false);
+    } else {
       setLoading(true);
       setErr(null);
+    }
+
+    let cancelled = false;
+    (async () => {
       try {
         const q = new URLSearchParams({ athleteId, from: date, to: date, includeAthleteContext: "0" });
         const res = await fetch(`/api/training/planned-window?${q}`, {
@@ -330,21 +360,44 @@ export default function TrainingSessionPageView() {
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | WindowErr;
         if (cancelled) return;
         if (!res.ok || !json.ok) {
+          const errMsg = ("error" in json && json.error) || "Lettura non riuscita.";
           setPlanned([]);
           setExecuted([]);
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
-          setErr(("error" in json && json.error) || "Lettura non riuscita.");
+          setErr(errMsg);
+          trainingSessionCacheKey = cacheKey;
+          trainingSessionCache = {
+            planned: [],
+            executed: [],
+            readSpineCoverage: null,
+            twinContextStrip: null,
+            plannedProvenanceSummary: null,
+            err: errMsg,
+          };
           return;
         }
+        const nextReadSpineCoverage = json.readSpineCoverage ?? null;
+        const nextTwinContextStrip = json.twinContextStrip ?? null;
+        const nextPlannedProvenanceSummary = json.plannedProvenanceSummary ?? null;
         setPlanned(json.planned);
         setExecuted(json.executed);
-        setReadSpineCoverage(json.readSpineCoverage ?? null);
-        setTwinContextStrip(json.twinContextStrip ?? null);
-        setPlannedProvenanceSummary(json.plannedProvenanceSummary ?? null);
+        setReadSpineCoverage(nextReadSpineCoverage);
+        setTwinContextStrip(nextTwinContextStrip);
+        setPlannedProvenanceSummary(nextPlannedProvenanceSummary);
+        setErr(null);
+        trainingSessionCacheKey = cacheKey;
+        trainingSessionCache = {
+          planned: json.planned,
+          executed: json.executed,
+          readSpineCoverage: nextReadSpineCoverage,
+          twinContextStrip: nextTwinContextStrip,
+          plannedProvenanceSummary: nextPlannedProvenanceSummary,
+          err: null,
+        };
       } catch {
-        if (!cancelled) {
+        if (!cancelled && !cached) {
           setErr("Errore di rete.");
           setPlanned([]);
           setExecuted([]);

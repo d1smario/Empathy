@@ -88,6 +88,22 @@ function normalizeIsoDateParam(raw: string | null): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Cache cross-mount della griglia PLAN del Calendario: ri-atterrando sulla pagina
+ * (stesso atleta + stessa finestra mese) i chip compaiono SUBITO, senza spinner
+ * "Caricamento" ad ogni montaggio. Il fetch della griglia parte comunque in
+ * background (refresh silenzioso) e ri-allinea stato + cache, così le mutazioni
+ * (import, spostamento, eliminazione) restano riflesse. Chiave composta perché i
+ * dati dipendono dalla finestra di fetch, non solo dall'atleta.
+ */
+type CalendarGridCacheEntry = {
+  planned: PlannedWorkout[];
+  plannedProvenanceSummary: Partial<Record<string, number>> | null;
+  fetchDiag: CalendarFetchDiag | null;
+};
+let calendarGridCacheKey: string | null = null;
+let calendarGridCache: CalendarGridCacheEntry | null = null;
+
 export const PLANNED_DRAG_MIME = "application/x-empathy-planned-workout";
 
 export type PlannedDragPayload = { id: string; fromDate: string };
@@ -430,14 +446,31 @@ export function useCalendarMonthData() {
         setMonthRefreshing(false);
         return;
       }
-      if (calendarReadyRef.current) {
+      /**
+       * Cache cross-mount: senza anchor (atterraggio normale, non post-mutazione)
+       * e con chiave atleta+finestra invariata, mostra subito i chip dalla cache
+       * e salta lo spinner. Il fetch sotto gira comunque e ri-allinea stato+cache.
+       */
+      const gridCacheKey = `${athleteId}|${fetchFrom}|${fetchTo}`;
+      const hasAnchor = Boolean(opts?.anchorDay?.trim());
+      const gridCacheHit =
+        !hasAnchor && calendarGridCacheKey === gridCacheKey ? calendarGridCache : null;
+      if (gridCacheHit) {
+        setPlanned(gridCacheHit.planned.filter((row) => !locallyRemovedPlannedIdsRef.current.has(row.id)));
+        setPlannedProvenanceSummary(gridCacheHit.plannedProvenanceSummary);
+        setFetchDiag(gridCacheHit.fetchDiag);
+        setLoading(false);
+        calendarReadyRef.current = true;
+        setCalendarReady(true);
+        setMonthRefreshing(true);
+      } else if (calendarReadyRef.current) {
         setMonthRefreshing(true);
       } else {
         setLoading(true);
       }
       setErr(null);
       setBelowFoldReady(false);
-      if (opts?.anchorDay?.trim()) {
+      if (hasAnchor) {
         invalidatePlannedWindowCacheForAthlete(athleteId);
       }
       try {
@@ -477,6 +510,8 @@ export function useCalendarMonthData() {
         if (isStale()) return;
 
         if (!res.ok || !json.ok) {
+          /** Refresh in background fallito su cache hit: preserva i chip già mostrati. */
+          if (gridCacheHit) return;
           setPlanned([]);
           setExecuted([]);
           setPlannedProvenanceSummary(null);
@@ -504,10 +539,9 @@ export function useCalendarMonthData() {
             if (!p.some((row) => row.id === id)) removed.delete(id);
           }
         }
-        setPlanned(p.filter((row) => !removed.has(row.id)));
-        setExecuted([]);
-        setPlannedProvenanceSummary(core.plannedProvenanceSummary ?? null);
-        setFetchDiag({
+        const visiblePlanned = p.filter((row) => !removed.has(row.id));
+        const nextProvenance = core.plannedProvenanceSummary ?? null;
+        const nextFetchDiag: CalendarFetchDiag = {
           status: res.status,
           plannedN: p.length,
           executedN: 0,
@@ -516,9 +550,22 @@ export function useCalendarMonthData() {
           sampleDates: [],
           resFrom: core.from,
           resTo: core.to,
-        });
+        };
+        setPlanned(visiblePlanned);
+        setExecuted([]);
+        setPlannedProvenanceSummary(nextProvenance);
+        setFetchDiag(nextFetchDiag);
+        /** Aggiorna la cache cross-mount con la griglia appena letta (refresh silenzioso). */
+        calendarGridCacheKey = `${athleteId}|${fetchFrom}|${fetchTo}`;
+        calendarGridCache = {
+          planned: p,
+          plannedProvenanceSummary: nextProvenance,
+          fetchDiag: nextFetchDiag,
+        };
       } catch {
         if (isStale()) return;
+        /** Refresh in background fallito su cache hit: preserva i chip già mostrati. */
+        if (gridCacheHit) return;
         setErr("Errore di rete.");
         setPlanned([]);
         setExecuted([]);

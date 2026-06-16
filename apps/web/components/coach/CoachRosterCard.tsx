@@ -21,6 +21,12 @@ function formatAthleteLabel(a: CanonicalAthleteRow): string {
   return a.id.slice(0, 8);
 }
 
+// Cache cross-mount del roster coach: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/placeholder); il refetch avviene in background
+// silenzioso, così restano visibili anche le variazioni del roster dopo un invito.
+let rosterCache: { role: "private" | "coach"; athletes: CanonicalAthleteRow[]; coachActivation: "pending" | "suspended" | null } | null =
+  null;
+
 /**
  * Roster coach: la selezione vive nell'URL (stesso pattern dell'admin) —
  * "Apri schede" porta a /athletes/[id]/health con la barra contestuale sopra.
@@ -40,23 +46,40 @@ export function CoachRosterCard() {
   useEffect(() => {
     let c = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
-      setCoachActivation(null);
+      if (rosterCache) {
+        // Mostra subito i dati in cache (niente spinner/placeholder); refresh in background sotto.
+        setRole(rosterCache.role);
+        setAthletes(rosterCache.athletes);
+        setCoachActivation(rosterCache.coachActivation);
+        setErr(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setErr(null);
+        setCoachActivation(null);
+      }
       try {
         const res = await fetch("/api/athletes/roster", { cache: "no-store" });
         const json = (await res.json()) as RosterOk | RosterErr;
         if (c) return;
         if (!res.ok || !json.ok) {
-          setAthletes([]);
-          setErr(("error" in json && json.error) || "Impossibile caricare l’elenco.");
+          if (!rosterCache) {
+            setAthletes([]);
+            setErr(("error" in json && json.error) || "Impossibile caricare l’elenco.");
+          }
           return;
         }
         setRole(json.role);
         setAthletes(json.athletes);
         setCoachActivation(json.coachActivation ?? null);
+        setErr(null);
+        rosterCache = {
+          role: json.role,
+          athletes: json.athletes,
+          coachActivation: json.coachActivation ?? null,
+        };
       } catch {
-        if (!c) setErr("Errore di rete.");
+        if (!c && !rosterCache) setErr("Errore di rete.");
       } finally {
         if (!c) setLoading(false);
       }

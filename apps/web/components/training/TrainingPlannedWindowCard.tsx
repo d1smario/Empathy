@@ -27,6 +27,21 @@ function SessionDayLink({ date, variant }: { date: string; variant: "planned" | 
 
 type ApiErr = { ok: false; error?: string; planned?: []; executed?: [] };
 
+// Cache cross-mount della finestra pianificato+eseguito: ri-atterrando sul calendario
+// i dati compaiono subito (niente spinner/skeleton); l'aggiornamento avviene in
+// background silenzioso, così si vedono anche le mutazioni senza spinner.
+type PlannedWindowCacheData = {
+  planned: PlannedWorkout[];
+  executed: ExecutedWorkout[];
+  range: { from: string; to: string } | null;
+  readSpineCoverage: ReadSpineCoverageSummary | null;
+  twinContextStrip: TrainingTwinContextStripViewModel | null;
+  plannedProvenanceSummary: Partial<Record<string, number>> | null;
+  err: string | null;
+};
+let plannedWindowCacheId: string | null = null;
+let plannedWindowCache: PlannedWindowCacheData | null = null;
+
 /**
  * Fase 5 — pianificato + eseguito nella stessa finestra (default −7 / +28 giorni).
  */
@@ -56,9 +71,23 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
     }
 
     let cancelled = false;
-    (async () => {
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner/skeleton); il refresh in background sotto aggiorna stato e cache.
+    const cached = plannedWindowCacheId === athleteId ? plannedWindowCache : null;
+    if (cached) {
+      setPlanned(cached.planned);
+      setExecuted(cached.executed);
+      setRange(cached.range);
+      setReadSpineCoverage(cached.readSpineCoverage);
+      setTwinContextStrip(cached.twinContextStrip);
+      setPlannedProvenanceSummary(cached.plannedProvenanceSummary);
+      setErr(cached.err);
+      setLoading(false);
+    } else {
       setLoading(true);
       setErr(null);
+    }
+    (async () => {
       try {
         const q = new URLSearchParams({ athleteId, includeAthleteContext: "0" });
         const res = await fetch(`/api/training/planned-window?${q.toString()}`, {
@@ -68,21 +97,44 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | ApiErr;
         if (cancelled) return;
         if (!res.ok || !json.ok) {
+          const errMsg = ("error" in json && json.error) || "Could not load data.";
           setPlanned([]);
           setExecuted([]);
           setRange(null);
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
-          setErr(("error" in json && json.error) || "Could not load data.");
+          setErr(errMsg);
+          plannedWindowCache = {
+            planned: [],
+            executed: [],
+            range: null,
+            readSpineCoverage: null,
+            twinContextStrip: null,
+            plannedProvenanceSummary: null,
+            err: errMsg,
+          };
+          plannedWindowCacheId = athleteId;
           return;
         }
-        setPlanned(json.planned);
-        setExecuted(json.executed ?? []);
-        setRange({ from: json.from, to: json.to });
-        setReadSpineCoverage(json.readSpineCoverage ?? null);
-        setTwinContextStrip(json.twinContextStrip ?? null);
-        setPlannedProvenanceSummary(json.plannedProvenanceSummary ?? null);
+        const nextData: PlannedWindowCacheData = {
+          planned: json.planned,
+          executed: json.executed ?? [],
+          range: { from: json.from, to: json.to },
+          readSpineCoverage: json.readSpineCoverage ?? null,
+          twinContextStrip: json.twinContextStrip ?? null,
+          plannedProvenanceSummary: json.plannedProvenanceSummary ?? null,
+          err: null,
+        };
+        setPlanned(nextData.planned);
+        setExecuted(nextData.executed);
+        setRange(nextData.range);
+        setReadSpineCoverage(nextData.readSpineCoverage);
+        setTwinContextStrip(nextData.twinContextStrip);
+        setPlannedProvenanceSummary(nextData.plannedProvenanceSummary);
+        setErr(null);
+        plannedWindowCache = nextData;
+        plannedWindowCacheId = athleteId;
       } catch {
         if (!cancelled) {
           setErr("Network error.");

@@ -13,6 +13,18 @@ import {
 } from "@/modules/biomechanics/components/BiomechanicsReportPanels";
 import { fetchBiomechanicsSessionDetail } from "@/modules/biomechanics/services/biomechanics-module-api";
 
+// Cache cross-mount del report sessione: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner "Caricamento report..."); il refresh avviene in
+// background silenzioso. La chiave è composta (athleteId|sessionId) per non mostrare
+// mai i dati di un atleta o di una sessione diversa.
+type BiomechReportCacheEntry = {
+  reportData: ReturnType<typeof sessionToReportData> | null;
+  signedUrl: string | null;
+  error: string | null;
+};
+let biomechReportCacheKey: string | null = null;
+let biomechReportCache: BiomechReportCacheEntry | null = null;
+
 export default function BiomechanicsSessionReportView({ sessionId }: { sessionId: string }) {
   const { athleteId, loading: athleteLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
@@ -23,19 +35,37 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
   useEffect(() => {
     if (athleteLoading || !athleteId) return;
     let cancelled = false;
-    (async () => {
+    const cacheKey = `${athleteId}|${sessionId}`;
+    const cached = biomechReportCacheKey === cacheKey ? biomechReportCache : null;
+    if (cached) {
+      // Dati in cache per la stessa chiave: mostrali subito (niente spinner);
+      // sotto si prosegue comunque col fetch per il refresh in background.
+      setReportData(cached.reportData);
+      setSignedUrl(cached.signedUrl);
+      setError(cached.error);
+      setLoading(false);
+    } else {
       setLoading(true);
       setError(null);
+    }
+    (async () => {
       const result = await fetchBiomechanicsSessionDetail({ athleteId, sessionId });
       if (cancelled) return;
+      let nextEntry: BiomechReportCacheEntry;
       if (!result.ok || !result.session) {
-        setError(result.error ?? "Report non disponibile");
-        setReportData(null);
-        setSignedUrl(null);
+        nextEntry = { reportData: null, signedUrl: null, error: result.error ?? "Report non disponibile" };
       } else {
-        setReportData(sessionToReportData(result.session));
-        setSignedUrl(result.signedUrl ?? null);
+        nextEntry = {
+          reportData: sessionToReportData(result.session),
+          signedUrl: result.signedUrl ?? null,
+          error: null,
+        };
       }
+      setReportData(nextEntry.reportData);
+      setSignedUrl(nextEntry.signedUrl);
+      setError(nextEntry.error);
+      biomechReportCache = nextEntry;
+      biomechReportCacheKey = cacheKey;
       setLoading(false);
     })();
     return () => {

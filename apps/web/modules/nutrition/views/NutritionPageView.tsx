@@ -429,6 +429,13 @@ const FUELING_MISSING_DAY_TRAINING = "seduta pianificata nel calendario per il g
 
 export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary";
 
+// Cache cross-mount del contesto modulo nutrition: ri-atterrando sulla pagina i
+// dati compaiono subito (niente spinner "Caricamento…"); il refetch parte comunque
+// in background e aggiorna stato+cache, così le mutazioni (save/upload/rigenera)
+// restano riflesse senza spinner.
+let nutritionModuleCacheId: string | null = null;
+let nutritionModuleCache: Awaited<ReturnType<typeof fetchNutritionModuleContext>> | null = null;
+
 const BRAND_ALIASES: Array<{ label: string; aliases: string[] }> = [
   { label: "Enervit", aliases: ["enervit"] },
   { label: "Maurten", aliases: ["maurten"] },
@@ -1133,8 +1140,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         setLoading(false);
         return;
       }
-      setLoading(true);
-      setError(null);
       const today = new Date();
       const fullWindow = nutritionModuleWindowKeys(30, 30, today);
       const initialWindow = nutritionModuleWindowKeys(7, 7, today);
@@ -1148,6 +1153,68 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         return d;
       };
 
+      /** Applica un contesto modulo (fetchato o da cache) a stato + finestra + data piano. */
+      const applyModuleData = (data: NonNullable<typeof nutritionModuleCache>) => {
+        const p = mergeNutritionProfileForSolver(
+          null,
+          (data.profile as AthleteNutritionRow | null) ?? null,
+        );
+        const ph = mergePhysioForSolver(null, (data.physio as PhysioRow | null) ?? null);
+        const physiology = (data.physiologyState as PhysiologyState | null) ?? null;
+        const twin = (data.twinState as TwinStateRow | null) ?? null;
+        const recovery = (data.recoverySummary as RecoverySummaryRow | null) ?? null;
+        const operational = (data.operationalContext as TrainingDayOperationalContext | null) ?? null;
+        const loop = (data.adaptationLoop as TrainingAdaptationLoopViewModel | null) ?? null;
+        const bio = (data.bioenergeticModulation as TrainingBioenergeticModulationViewModel | null) ?? null;
+        const ex = (data.executed as ExecutedRow[]) ?? [];
+        const pl = (data.planned as PlannedRow[]) ?? [];
+
+        setProfile(p);
+        setPhysio(ph);
+        setPhysiologyState(physiology);
+        setTwinState(twin);
+        setRecoverySummary(recovery);
+        setOperationalContext(operational);
+        setAdaptationLoop(loop);
+        setBioenergeticModulation(bio);
+        setResearchTraceSummaries(data.researchTraceSummaries ?? []);
+        setMetabolicEfficiencyGenerativeModel(data.metabolicEfficiencyGenerativeModel ?? null);
+        setNutritionApplicationDirective(data.nutritionApplicationDirective ?? null);
+        setNutritionApprovedPatches(data.nutritionApprovedPatches ?? []);
+        setNutritionPerformanceIntegration(data.nutritionPerformanceIntegration ?? null);
+        setExecuted(ex);
+        setPlanned(pl);
+        /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
+        setIntelligentMealPlan(null);
+        setIntelligentMealError(null);
+        setCoachMealRemovalKeys(new Set());
+        setCoachSessionFoodExclusions([]);
+        const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
+        const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
+        const persisted = readPersistedNutritionPlanDate(athleteId);
+        const finalPlanDate = clampIsoDay(persisted ?? nextDate);
+        setFunctionalMealSelector(null);
+        setPathwayModulation(null);
+        setApplicationPlaybook(null);
+        setServerDailyEnergyModel(null);
+        serverDailyEnergyDateRef.current = null;
+        serverSelectorPathwayDateRef.current = null;
+        nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
+        setSelectedPlanDate(finalPlanDate);
+      };
+
+      // Cache cross-mount: se questo atleta è già stato caricato, mostra subito i
+      // dati (niente spinner) e prosegui comunque col refetch in background.
+      const cached = nutritionModuleCacheId === athleteId ? nutritionModuleCache : null;
+      if (cached && !cached.error) {
+        applyModuleData(cached);
+        setError(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
+
       let moduleData = await fetchNutritionModuleContext({
         athleteId,
         from: initialStartKey,
@@ -1155,70 +1222,30 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         mode: "light",
       });
       if (moduleData.error) {
-        setError(moduleData.error || "Errore caricamento");
-        setResearchTraceSummaries([]);
-        setMetabolicEfficiencyGenerativeModel(null);
-        setFunctionalMealSelector(null);
-        setPathwayModulation(null);
-        setApplicationPlaybook(null);
-        setNutritionApplicationDirective(null);
-        setNutritionApprovedPatches([]);
-        setNutritionPerformanceIntegration(null);
-        nutritionModuleWindowRef.current = null;
-        nutritionModuleFullWindowRef.current = null;
-        nutritionModuleExpandInFlightRef.current = false;
-        serverSelectorPathwayDateRef.current = null;
-        setLoading(false);
+        // Con cache già mostrata teniamo i dati visibili (refresh in background
+        // silenzioso); senza cache puliamo e segnaliamo l'errore come prima.
+        if (!cached || cached.error) {
+          setError(moduleData.error || "Errore caricamento");
+          setResearchTraceSummaries([]);
+          setMetabolicEfficiencyGenerativeModel(null);
+          setFunctionalMealSelector(null);
+          setPathwayModulation(null);
+          setApplicationPlaybook(null);
+          setNutritionApplicationDirective(null);
+          setNutritionApprovedPatches([]);
+          setNutritionPerformanceIntegration(null);
+          nutritionModuleWindowRef.current = null;
+          nutritionModuleFullWindowRef.current = null;
+          nutritionModuleExpandInFlightRef.current = false;
+          serverSelectorPathwayDateRef.current = null;
+          setLoading(false);
+        }
         return;
       }
 
-      const memory = null;
-      const p = mergeNutritionProfileForSolver(
-        null,
-        (moduleData.profile as AthleteNutritionRow | null) ?? null,
-      );
-      const ph = mergePhysioForSolver(null, (moduleData.physio as PhysioRow | null) ?? null);
-      const physiology = (moduleData.physiologyState as PhysiologyState | null) ?? null;
-      const twin = (moduleData.twinState as TwinStateRow | null) ?? null;
-      const recovery = (moduleData.recoverySummary as RecoverySummaryRow | null) ?? null;
-      const operational = (moduleData.operationalContext as TrainingDayOperationalContext | null) ?? null;
-      const loop = (moduleData.adaptationLoop as TrainingAdaptationLoopViewModel | null) ?? null;
-      const bio = (moduleData.bioenergeticModulation as TrainingBioenergeticModulationViewModel | null) ?? null;
-      const ex = (moduleData.executed as ExecutedRow[]) ?? [];
-      const pl = (moduleData.planned as PlannedRow[]) ?? [];
-
-      setProfile(p);
-      setPhysio(ph);
-      setPhysiologyState(physiology);
-      setTwinState(twin);
-      setRecoverySummary(recovery);
-      setOperationalContext(operational);
-      setAdaptationLoop(loop);
-      setBioenergeticModulation(bio);
-      setResearchTraceSummaries(moduleData.researchTraceSummaries ?? []);
-      setMetabolicEfficiencyGenerativeModel(moduleData.metabolicEfficiencyGenerativeModel ?? null);
-      setNutritionApplicationDirective(moduleData.nutritionApplicationDirective ?? null);
-      setNutritionApprovedPatches(moduleData.nutritionApprovedPatches ?? []);
-      setNutritionPerformanceIntegration(moduleData.nutritionPerformanceIntegration ?? null);
-      setExecuted(ex);
-      setPlanned(pl);
-      /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
-      setIntelligentMealPlan(null);
-      setIntelligentMealError(null);
-      setCoachMealRemovalKeys(new Set());
-      setCoachSessionFoodExclusions([]);
-      const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
-      const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
-      const persisted = readPersistedNutritionPlanDate(athleteId);
-      const finalPlanDate = clampIsoDay(persisted ?? nextDate);
-      setFunctionalMealSelector(null);
-      setPathwayModulation(null);
-      setApplicationPlaybook(null);
-      setServerDailyEnergyModel(null);
-      serverDailyEnergyDateRef.current = null;
-      serverSelectorPathwayDateRef.current = null;
-      nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
-      setSelectedPlanDate(finalPlanDate);
+      applyModuleData(moduleData);
+      nutritionModuleCache = moduleData;
+      nutritionModuleCacheId = athleteId;
       setLoading(false);
 
       const expandToFullWindow = async () => {

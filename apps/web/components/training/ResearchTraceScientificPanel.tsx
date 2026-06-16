@@ -88,6 +88,13 @@ function traceSubtitle(trace: KnowledgeExpansionTrace) {
   );
 }
 
+// Cache cross-mount delle tracce di ricerca: ri-atterrando sulla pagina (es. builder
+// training) i dati compaiono subito (niente spinner "Caricamento tracce…"); il refetch
+// avviene in background silenzioso, così i nuovi salvataggi restano comunque riflessi.
+// Chiave composta athleteId|limit: dataset diversi non si mischiano mai tra atleti/limiti.
+let researchTracesCacheKey: string | null = null;
+let researchTracesCache: { traces: KnowledgeExpansionTrace[]; error: string | null } | null = null;
+
 export function ResearchTraceScientificPanel({
   athleteId,
   limit = 8,
@@ -99,19 +106,36 @@ export function ResearchTraceScientificPanel({
   const [traces, setTraces] = useState<KnowledgeExpansionTrace[]>([]);
 
   const load = useCallback(async () => {
-    if (!athleteId?.trim()) {
+    const trimmedId = athleteId?.trim();
+    if (!trimmedId) {
       setTraces([]);
       return;
     }
-    setLoading(true);
-    setError(null);
+    const cacheKey = `${trimmedId}|${limit}`;
+    const cached = researchTracesCacheKey === cacheKey ? researchTracesCache : null;
+    if (cached) {
+      // Stesso atleta+limit già in cache: mostra subito (niente spinner) e prosegui
+      // con il refetch in background sotto per riflettere eventuali nuovi salvataggi.
+      setTraces(cached.traces);
+      setError(cached.error);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
     try {
-      const res = await fetchKnowledgeResearchTracesExpanded(athleteId.trim(), { limit });
-      if (res.error) setError(res.error);
-      setTraces(res.expansionTraces ?? []);
+      const res = await fetchKnowledgeResearchTracesExpanded(trimmedId, { limit });
+      const nextTraces = res.expansionTraces ?? [];
+      const nextError = res.error ?? null;
+      setError(nextError);
+      setTraces(nextTraces);
+      researchTracesCache = { traces: nextTraces, error: nextError };
+      researchTracesCacheKey = cacheKey;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Caricamento tracce fallito");
-      setTraces([]);
+      if (!cached) {
+        setError(e instanceof Error ? e.message : "Caricamento tracce fallito");
+        setTraces([]);
+      }
     } finally {
       setLoading(false);
     }

@@ -124,6 +124,14 @@ function radarRingPoints(values: number[], cx: number, cy: number, maxR: number)
     .join(" ");
 }
 
+// Cache cross-mount delle righe analytics: ri-atterrando sulla pagina (stesso
+// atleta + stessa finestra) i dati compaiono subito (niente spinner/"refresh");
+// il refetch parte comunque in background, così le mutazioni restano riflesse.
+// La chiave è composta (athleteId|from|to): la finestra temporale cambia il
+// dataset, quindi non bisogna mai mostrare i dati di un'altra finestra/atleta.
+let trainingAnalyticsCacheKey: string | null = null;
+let trainingAnalyticsCache: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows>> | null = null;
+
 /**
  * Analyzer — logica V1 (carico esterno/interno, planned vs real) con shell Pro 2 / Tailwind.
  */
@@ -259,35 +267,9 @@ export default function TrainingAnalyticsPageView() {
         setLoading(false);
         return;
       }
-      setLoading(true);
-      setError(null);
-
-      const payload = await fetchTrainingAnalyticsRows({
-        athleteId,
-        from: bounds.from,
-        to: bounds.to,
-      });
-
-      if (payload.error) {
-        setError(payload.error);
-        setRows([]);
-        setPlannedRows([]);
-        setSeries([]);
-        setCompareSeries([]);
-        setLatest(null);
-        setWindows(null);
-        setPlanWindows(null);
-        setAdaptationLoop(null);
-        setTwinState(null);
-        setRecoverySummary(null);
-        setOperationalContext(null);
-        setBioenergeticModulation(null);
-        setReadSpineCoverage(null);
-        setCrossModuleDynamicsLines([]);
-        setCrossChannelSessions([]);
-        setExecutedSessions([]);
-        setTrainingRealityDiagnostics(null);
-      } else {
+      // Applica il payload di successo a stato + cache (riuso per cache-hit e refetch).
+      const applyPayload = (payload: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows>>) => {
+        setError(null);
         setRows(payload.rows ?? []);
         setExecutedSessions(payload.executedSessions ?? []);
         setTrainingRealityDiagnostics(payload.trainingRealityDiagnostics ?? null);
@@ -305,6 +287,55 @@ export default function TrainingAnalyticsPageView() {
         setReadSpineCoverage(payload.readSpineCoverage ?? null);
         setCrossModuleDynamicsLines(payload.crossModuleDynamicsLines ?? []);
         setCrossChannelSessions(payload.crossChannelSessions ?? []);
+      };
+
+      // Cache-hit per stessa chiave (atleta + finestra): mostra subito i dati senza
+      // spinner; sotto si procede comunque al refetch in background (silenzioso).
+      const cacheKey = `${athleteId}|${bounds.from}|${bounds.to}`;
+      const cached =
+        trainingAnalyticsCacheKey === cacheKey && trainingAnalyticsCache && !trainingAnalyticsCache.error
+          ? trainingAnalyticsCache
+          : null;
+      if (cached) {
+        applyPayload(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
+
+      const payload = await fetchTrainingAnalyticsRows({
+        athleteId,
+        from: bounds.from,
+        to: bounds.to,
+      });
+
+      if (payload.error) {
+        // Su cache-hit teniamo i dati già mostrati: l'errore di refresh è silenzioso.
+        if (!cached) {
+          setError(payload.error);
+          setRows([]);
+          setPlannedRows([]);
+          setSeries([]);
+          setCompareSeries([]);
+          setLatest(null);
+          setWindows(null);
+          setPlanWindows(null);
+          setAdaptationLoop(null);
+          setTwinState(null);
+          setRecoverySummary(null);
+          setOperationalContext(null);
+          setBioenergeticModulation(null);
+          setReadSpineCoverage(null);
+          setCrossModuleDynamicsLines([]);
+          setCrossChannelSessions([]);
+          setExecutedSessions([]);
+          setTrainingRealityDiagnostics(null);
+        }
+      } else {
+        applyPayload(payload);
+        trainingAnalyticsCache = payload;
+        trainingAnalyticsCacheKey = cacheKey;
       }
       setLoading(false);
     }

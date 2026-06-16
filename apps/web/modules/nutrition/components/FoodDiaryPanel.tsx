@@ -170,6 +170,12 @@ function parseDecimalInput(s: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+// Cache cross-mount delle voci diario per atleta: ri-atterrando sul registro i dati
+// compaiono subito (niente spinner/"Caricamento…"); il refetch gira comunque in
+// background, così le voci appena salvate/eliminate restano riflesse senza spinner.
+let foodDiaryCacheId: string | null = null;
+let foodDiaryCache: FoodDiaryEntryViewModel[] | null = null;
+
 export function FoodDiaryPanel({
   athleteId,
   onComplianceRowsChange,
@@ -343,18 +349,33 @@ export function FoodDiaryPanel({
       complianceCbRef.current([]);
       return;
     }
-    setLoading(true);
+    // Se le voci di questo atleta sono già in cache, mostrale SUBITO (niente
+    // spinner/"Caricamento…"); poi prosegui col refetch in background per
+    // riflettere salvataggi/eliminazioni senza far ricomparire lo spinner.
+    const cached = foodDiaryCacheId === athleteId ? foodDiaryCache : null;
+    if (cached) {
+      setEntries(cached);
+      complianceCbRef.current(entriesToComplianceRows(cached));
+      setLoadError(null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setLoadError(null);
     const res = await fetchFoodDiary({ athleteId, from: range.from, to: range.to });
     setLoading(false);
     if (res.error) {
       setLoadError(res.error);
-      setEntries([]);
-      complianceCbRef.current([]);
+      if (!cached) {
+        setEntries([]);
+        complianceCbRef.current([]);
+      }
       return;
     }
     setEntries(res.entries);
     complianceCbRef.current(entriesToComplianceRows(res.entries));
+    foodDiaryCache = res.entries;
+    foodDiaryCacheId = athleteId;
   }, [athleteId, range.from, range.to]);
 
   useEffect(() => {

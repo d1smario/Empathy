@@ -132,6 +132,21 @@ function athleteLabel(a: AthleteRow): string {
   return a.id.slice(0, 8);
 }
 
+// Cache cross-mount della dashboard coach: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"Caricamento dati…"); il refetch parte sempre
+// in background silenzioso, così le commissioni e i contatori restano freschi e le
+// mutazioni (richiedi pagamento) si riflettono al successivo refresh. Keyed per
+// utente coach (uid sessione): mai mostrare i dati di un coach a un altro.
+let coachDashboardCacheId: string | null = null;
+let coachDashboardCache: {
+  firstName: string | null;
+  athletes: AthleteRow[];
+  planned: WorkoutLite[];
+  executed: WorkoutLite[];
+  commissions: CommissionRow[];
+  updatedAt: string | null;
+} | null = null;
+
 /**
  * Home operativa del coach (DB-first): roster da `coach_athletes` → `athlete_profiles`,
  * contatori settimana/7gg da `planned_workouts` / `executed_workouts` (colonna `date`,
@@ -152,7 +167,6 @@ export function CoachDashboardView() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setErr(null);
     setActionErr(null);
     const supabase = createEmpathyBrowserSupabase();
@@ -166,11 +180,28 @@ export function CoachDashboardView() {
       const session = sessionData?.session ?? null;
       if (sessionErr || !session) {
         setErr(COPY.noSession);
+        setLoading(false);
         return;
       }
       const uid = session.user.id;
       const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
       setFirstName(typeof meta.first_name === "string" && meta.first_name.trim() ? meta.first_name.trim() : null);
+
+      // Cache per QUESTO coach (uid): mostra subito i dati (niente spinner) e
+      // prosegui comunque col refetch in background per tenerli freschi.
+      const cached = coachDashboardCacheId === uid ? coachDashboardCache : null;
+      if (cached) {
+        setFirstName(cached.firstName);
+        setAthletes(cached.athletes);
+        setPlanned(cached.planned);
+        setExecuted(cached.executed);
+        setCommissions(cached.commissions);
+        setUpdatedAt(cached.updatedAt);
+        setLoaded(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       const { data: linkRows, error: linkErr } = await supabase
         .from("coach_athletes")
@@ -201,16 +232,21 @@ export function CoachDashboardView() {
         .order("created_at", { ascending: false })
         .limit(500);
 
+      let nextAthletes: AthleteRow[] = [];
+      let nextPlanned: WorkoutLite[] = [];
+      let nextExecuted: WorkoutLite[] = [];
+      let nextCommissions: CommissionRow[] = [];
+
       if (ids.length === 0) {
         const commissionsRes = await commissionsQuery;
         if (commissionsRes.error) {
           setErr(`${COPY.errPrefix}: ${commissionsRes.error.message}`);
           return;
         }
-        setAthletes([]);
-        setPlanned([]);
-        setExecuted([]);
-        setCommissions((commissionsRes.data ?? []) as CommissionRow[]);
+        nextAthletes = [];
+        nextPlanned = [];
+        nextExecuted = [];
+        nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       } else {
         const [profilesRes, plannedRes, executedRes, commissionsRes] = await Promise.all([
           supabase.from("athlete_profiles").select("id, first_name, last_name, email").in("id", ids),
@@ -235,13 +271,29 @@ export function CoachDashboardView() {
           setErr(`${COPY.errPrefix}: ${firstError.message}`);
           return;
         }
-        setAthletes((profilesRes.data ?? []) as AthleteRow[]);
-        setPlanned((plannedRes.data ?? []) as WorkoutLite[]);
-        setExecuted((executedRes.data ?? []) as WorkoutLite[]);
-        setCommissions((commissionsRes.data ?? []) as CommissionRow[]);
+        nextAthletes = (profilesRes.data ?? []) as AthleteRow[];
+        nextPlanned = (plannedRes.data ?? []) as WorkoutLite[];
+        nextExecuted = (executedRes.data ?? []) as WorkoutLite[];
+        nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       }
+      setAthletes(nextAthletes);
+      setPlanned(nextPlanned);
+      setExecuted(nextExecuted);
+      setCommissions(nextCommissions);
       setLoaded(true);
-      setUpdatedAt(new Intl.DateTimeFormat("it-CH", { timeStyle: "short" }).format(new Date()));
+      const nextUpdatedAt = new Intl.DateTimeFormat("it-CH", { timeStyle: "short" }).format(new Date());
+      setUpdatedAt(nextUpdatedAt);
+      const nextFirstName =
+        typeof meta.first_name === "string" && meta.first_name.trim() ? meta.first_name.trim() : null;
+      coachDashboardCache = {
+        firstName: nextFirstName,
+        athletes: nextAthletes,
+        planned: nextPlanned,
+        executed: nextExecuted,
+        commissions: nextCommissions,
+        updatedAt: nextUpdatedAt,
+      };
+      coachDashboardCacheId = uid;
     } catch {
       setErr(`${COPY.errPrefix}: richiesta non riuscita.`);
     } finally {
@@ -277,6 +329,16 @@ export function CoachDashboardView() {
       }
       const updated = new Set(data.map((row) => (row as { id: string }).id));
       setCommissions((prev) => prev.map((c) => (updated.has(c.id) ? { ...c, status: "requested" } : c)));
+      // Tieni allineata la cache cross-mount così la mutazione resta riflessa
+      // anche ri-atterrando dalla cache, prima che il refetch in background giri.
+      if (coachDashboardCache) {
+        coachDashboardCache = {
+          ...coachDashboardCache,
+          commissions: coachDashboardCache.commissions.map((c) =>
+            updated.has(c.id) ? { ...c, status: "requested" } : c,
+          ),
+        };
+      }
     } catch {
       setActionErr(COPY.actionUnavailable);
     } finally {

@@ -367,6 +367,13 @@ function estimateUncertaintyPct(sources: PrecedenceSource[]) {
   return Math.round(clamp(pct, 5, 40));
 }
 
+// Cache cross-mount dello storico physiology + FTP: ri-atterrando sulla pagina i
+// dati compaiono subito (niente spinner "Caricamento storico…"); l'aggiornamento
+// avviene in background silenzioso, così le mutazioni (salvataggio snapshot,
+// import device) restano riflesse perché il fetch in background gira sempre.
+let physiologyHistoryCacheId: string | null = null;
+let physiologyHistoryCache: Awaited<ReturnType<typeof fetchPhysiologyHistoryAndFtp>> | null = null;
+
 export default function MetabolicLabPage() {
   const { athleteId, role, loading, userId, adminScoped } = useAthleteContext();
   const showTech = role === "coach" || adminScoped;
@@ -1227,12 +1234,8 @@ export default function MetabolicLabPage() {
     }
   }
 
-  async function loadHistory(activeAthleteId: string) {
-    setHistoryLoading(true);
-    setSelectedHistoryId(null);
-    try {
+  function applyHistoryPayload(payload: NonNullable<typeof physiologyHistoryCache>) {
       setLastLabSavedAt({ metabolic: null, lactate: null, maxox: null });
-      const payload = await fetchPhysiologyHistoryAndFtp(activeAthleteId);
       const hist = (payload.history as LabRun[]) ?? [];
       setHistory(hist);
       const latestMetabolicRow =
@@ -1408,20 +1411,41 @@ export default function MetabolicLabPage() {
         if (rec.vo2_mode === "device" || rec.vo2_mode === "test") setMaxOxVo2Mode(rec.vo2_mode);
         setMaxOxCalcTick((n) => n + 1);
       }
+  }
+
+  async function loadHistory(activeAthleteId: string) {
+    setSelectedHistoryId(null);
+    // Se lo storico di questo atleta è già in cache, mostralo SUBITO (niente
+    // spinner "Caricamento storico…"); il refetch in background sotto aggiorna
+    // comunque stato+cache, così le mutazioni restano riflesse.
+    const cached = physiologyHistoryCacheId === activeAthleteId ? physiologyHistoryCache : null;
+    if (cached) {
+      applyHistoryPayload(cached);
+      setHistoryLoading(false);
+    } else {
+      setHistoryLoading(true);
+    }
+    try {
+      const payload = await fetchPhysiologyHistoryAndFtp(activeAthleteId);
+      applyHistoryPayload(payload);
+      physiologyHistoryCache = payload;
+      physiologyHistoryCacheId = activeAthleteId;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore caricamento storico physiology");
-      setHistory([]);
-      setAthleteProfileWeightKg(null);
-      setLastLabSavedAt({ metabolic: null, lactate: null, maxox: null });
-      setSelectedHistoryId(null);
-      setWorkouts([]);
-      setSelectedWorkoutId("");
-      setProfileVo2maxLMin(null);
-      setProfileVo2maxMlMinKg(null);
-      setAutoLactateBaseline(null);
-      setAutoMaxOxBaseline(null);
-      setHealthBioGlucoseMeta(null);
-      setHealthBioCoreTempCBaseline(null);
+      if (!cached) {
+        setError(err instanceof Error ? err.message : "Errore caricamento storico physiology");
+        setHistory([]);
+        setAthleteProfileWeightKg(null);
+        setLastLabSavedAt({ metabolic: null, lactate: null, maxox: null });
+        setSelectedHistoryId(null);
+        setWorkouts([]);
+        setSelectedWorkoutId("");
+        setProfileVo2maxLMin(null);
+        setProfileVo2maxMlMinKg(null);
+        setAutoLactateBaseline(null);
+        setAutoMaxOxBaseline(null);
+        setHealthBioGlucoseMeta(null);
+        setHealthBioCoreTempCBaseline(null);
+      }
     }
     setHistoryLoading(false);
   }

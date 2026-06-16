@@ -111,6 +111,13 @@ function asTrace(row: Record<string, unknown>): Record<string, unknown> | null {
   return t && typeof t === "object" ? (t as Record<string, unknown>) : null;
 }
 
+// Cache cross-mount degli analytics di volume: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/placeholder), poi un refetch in background
+// silenzioso aggiorna stato+cache così restano riflessi i nuovi eseguiti.
+// La chiave è composta (athleteId + finestra from→to del preset) per non mostrare
+// mai i dati di un altro atleta o di un'altra finestra temporale.
+const trainingVolumeCache = new Map<string, TrainingAnalyticsViewModel>();
+
 export function TrainingPeriodVolumeSummary({
   athleteId,
   deferUntilVisible = false,
@@ -145,14 +152,27 @@ export function TrainingPeriodVolumeSummary({
       return;
     }
     let cancelled = false;
-    setLoading(true);
-    setFetchErr(null);
+    const cacheKey = `${athleteId}|${bounds.from}|${bounds.to}`;
+    const cached = trainingVolumeCache.get(cacheKey);
+    if (cached) {
+      // Dati già visti per questo atleta+finestra: mostrali subito (niente spinner),
+      // poi prosegui col refetch in background per riflettere eventuali nuovi eseguiti.
+      setRollup(cached.executedVolumeRollup ?? null);
+      setRecoveryRollup(cached.recoveryContinuousRollup ?? null);
+      setAnalyticsVm(cached);
+      setFetchErr(cached.error ?? null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setFetchErr(null);
+    }
     void fetchTrainingAnalyticsRows({ athleteId: athleteId!, from: bounds.from, to: bounds.to }).then((vm) => {
       if (cancelled) return;
       setRollup(vm.executedVolumeRollup ?? null);
       setRecoveryRollup(vm.recoveryContinuousRollup ?? null);
       setAnalyticsVm(vm);
       setFetchErr(vm.error ?? null);
+      trainingVolumeCache.set(cacheKey, vm);
       setLoading(false);
     });
     return () => {

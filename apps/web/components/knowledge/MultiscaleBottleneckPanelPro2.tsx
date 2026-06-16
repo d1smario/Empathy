@@ -13,6 +13,13 @@ function formatPct01(x: number): string {
   return `${Math.round(x * 100)}%`;
 }
 
+// Cache cross-mount della vista multiscala: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"Aggiornamento…" né placeholder vuoto); il
+// refetch avviene comunque in background silenzioso, così le mutazioni (twin/lab)
+// restano riflesse al prossimo atterraggio.
+let multiscaleBottleneckCacheId: string | null = null;
+let multiscaleBottleneckCache: MultiscaleBottleneckApiOk | null = null;
+
 export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
   const [data, setData] = useState<MultiscaleBottleneckApiOk | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,14 +27,27 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
 
   const load = useCallback(async () => {
     if (!athleteId) return;
-    setLoading(true);
-    setErr(null);
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner); il refetch in background sotto aggiorna stato + cache.
+    const cached = multiscaleBottleneckCacheId === athleteId ? multiscaleBottleneckCache : null;
+    if (cached) {
+      setData(cached);
+      setErr(null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setErr(null);
+    }
     try {
       const res = await fetchMultiscaleBottleneck(athleteId, { includeSubgraph: true });
       setData(res);
+      multiscaleBottleneckCache = res;
+      multiscaleBottleneckCacheId = athleteId;
     } catch (e) {
-      setData(null);
-      setErr(e instanceof Error ? e.message : "Errore caricamento");
+      if (!cached) {
+        setData(null);
+        setErr(e instanceof Error ? e.message : "Errore caricamento");
+      }
     } finally {
       setLoading(false);
     }
