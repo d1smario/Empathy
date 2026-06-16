@@ -153,7 +153,8 @@ export function HomeStripePricing({
     <section id={sectionId} className="scroll-mt-24">
       {showTitle ? (
         <>
-          <p className="text-xl font-black tracking-[0.14em] text-white sm:text-3xl lg:text-4xl">EMPATHY</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-8 w-auto sm:h-10" />
           <div className="mx-auto mt-4 h-px w-20 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </>
       ) : null}

@@ -89,9 +89,11 @@ export default async function AccessPage({
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">{t("eyebrow")}</p>
           <Link
             href="/"
+            aria-label="Empathy"
             className="mt-4 inline-block text-2xl font-black tracking-[0.12em] text-white transition-opacity hover:opacity-80 sm:text-3xl"
           >
-            EMPATHY
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-9 w-auto" />
           </Link>
           <div className="mx-auto mt-4 h-px w-16 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </div>

@@ -22,9 +22,12 @@ export function HeroSection() {
         </div>
 
         {/* Wordmark */}
-        <h1 className="text-6xl font-black tracking-[0.12em] text-white sm:text-8xl lg:text-9xl">
-          {HERO.title}
-        </h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/empathy-wordmark-white.svg"
+          alt={HERO.title}
+          className="mx-auto h-24 w-auto sm:h-36 lg:h-44"
+        />
 
         {/* Subtitle */}
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-300 sm:mt-8">

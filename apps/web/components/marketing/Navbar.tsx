@@ -21,11 +21,9 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link
-          href="/"
-          className="text-lg font-black tracking-[0.15em] text-white transition-opacity hover:opacity-80"
-        >
-          {COPY.brand}
+        <Link href="/" className="transition-opacity hover:opacity-80" aria-label={COPY.brand}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/empathy-wordmark-white.svg" alt={COPY.brand} className="h-8 w-auto" />
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">

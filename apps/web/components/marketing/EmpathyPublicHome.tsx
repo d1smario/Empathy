@@ -56,7 +56,8 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
       >
         <div className="relative mx-auto max-w-4xl">
           <header className="mb-10 border-b border-white/10 pb-8">
-            <p className="text-3xl font-black tracking-[0.12em] text-white sm:text-4xl">EMPATHY</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-9 w-auto sm:h-10" />
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-400">{t("pitch")}</p>
             <p className="mt-3 text-sm text-gray-500">
               <Link href="/" className="text-pink-300 underline-offset-4 hover:underline">

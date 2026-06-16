@@ -12,7 +12,8 @@ export function ProductBrandHeader({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <p className="text-3xl font-black tracking-[0.12em] text-white sm:text-4xl lg:text-5xl">EMPATHY</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-9 w-auto sm:h-10 lg:h-12" />
       <h1 className="mt-1 text-lg font-bold text-gray-400 sm:text-xl lg:text-2xl">{moduleTitle}</h1>
     </div>
   );
