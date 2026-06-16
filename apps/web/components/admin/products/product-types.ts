@@ -25,6 +25,8 @@ export type ProductRow = {
   commission_promoter_amount: number | null;
   commission_promoter_currency: string | null;
   is_active: boolean;
+  /** Nascosto dalla pagina pubblica: vendibile solo via codice promo 'unlock'. */
+  is_hidden: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;

@@ -11,6 +11,7 @@ import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 type BioTone = ReasoningTone;
 type ManualActionStatus = "pending" | "applied" | "rejected" | "superseded";
@@ -394,12 +395,14 @@ function ManualActionsPanel({
   error,
   busyAction,
   onPatchAction,
+  showTech,
 }: {
   actions: ManualActionRow[];
   loading: boolean;
   error: string | null;
   busyAction: string | null;
   onPatchAction: (actionId: string, status: "applied" | "rejected" | "superseded") => void;
+  showTech: boolean;
 }) {
   return (
     <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
@@ -440,7 +443,7 @@ function ManualActionsPanel({
               {vm.stagingRunId ? (
                 <p className="mt-2 font-mono text-[0.62rem] text-gray-600">staging: {vm.stagingRunId}</p>
               ) : null}
-              {action.status === "pending" ? (
+              {showTech && action.status === "pending" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {[
                     { status: "applied" as const, label: "Applica" },
@@ -477,12 +480,14 @@ function ReasoningDashboardPanel({
   error,
   busyRun,
   onPatchRun,
+  showTech,
 }: {
   data: ReasoningDashboardOk | null;
   loading: boolean;
   error: string | null;
   busyRun: string | null;
   onPatchRun: (runId: string, status: "committed" | "rejected" | "archived") => void;
+  showTech: boolean;
 }) {
   const cards = data?.cards ?? [];
   return (
@@ -581,7 +586,7 @@ function ReasoningDashboardPanel({
                 ) : null}
               </div>
             </details>
-            {card.stagingRunId ? (
+            {showTech && card.stagingRunId ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
                   { status: "committed" as const, label: "Valida" },
@@ -612,6 +617,8 @@ function ReasoningDashboardPanel({
 }
 
 export default function BioenergeticTransparencyHubPageView() {
+  const { role, adminScoped } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const { athleteId, ctxLoading, loading, error: err, hub, refetch } = useAthleteOperationalHub({
     signals: "eager",
   });
@@ -819,7 +826,19 @@ export default function BioenergeticTransparencyHubPageView() {
           </div>
         ) : null}
 
-        {!showLoading && !err && hub ? (
+        {!showLoading && !err && !showTech ? (
+          <section className="viz-card builder-panel space-y-3" style={{ marginBottom: 12 }}>
+            <header>
+              <h2 className="viz-title">Sezione avanzata</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Questa è un’area operativa di bioenergetica avanzata. Il tuo coach la usa per leggere i segnali e adattare il piano:
+                puoi rivederla insieme a lui. I tuoi dati restano al sicuro e continuano ad alimentare dashboard e nutrizione.
+              </p>
+            </header>
+          </section>
+        ) : null}
+
+        {!showLoading && !err && hub && showTech ? (
           <>
             <ReasoningDashboardPanel
               data={reasoning}
@@ -827,6 +846,7 @@ export default function BioenergeticTransparencyHubPageView() {
               error={reasoningErr}
               busyRun={reasoningBusyRun}
               onPatchRun={patchReasoningRun}
+              showTech={showTech}
             />
 
             <OperationalRecommendationsPanel recommendations={recommendations} />
@@ -837,6 +857,7 @@ export default function BioenergeticTransparencyHubPageView() {
               error={manualActionsErr}
               busyAction={manualActionBusy}
               onPatchAction={patchManualAction}
+              showTech={showTech}
             />
 
             {sig ? (

@@ -541,6 +541,7 @@ export default function HealthPageView() {
             bloodRow={bloodLatestStructuredRow}
             newestBloodPanel={newestBloodPanel}
             latestPanelsByTypeForRaw={latestPanelsByTypeForRaw}
+            showTech={showTech}
           />
         </div>
       ) : null}

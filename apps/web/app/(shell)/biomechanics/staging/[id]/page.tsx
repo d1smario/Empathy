@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Review biomeccanica · Biomechanics",
-  description: "Validazione proposta CV prima della promozione a sessione canonica.",
+  description: "Revisione della cattura prima della conferma.",
 };
 
 export default function BiomechanicsStagingPage({ params }: { params: { id: string } }) {

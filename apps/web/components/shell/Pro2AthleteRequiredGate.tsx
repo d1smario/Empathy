@@ -16,7 +16,7 @@ export function Pro2AthleteRequiredGate({
   enabled: boolean;
   children: ReactNode;
 }) {
-  const { athleteId, loading, signedIn, role } = useAthleteContext();
+  const { athleteId, loading, signedIn, role, coachOperationalApproved } = useAthleteContext();
   const t = useTranslations("AthleteGate");
 
   if (!enabled) return <>{children}</>;
@@ -37,7 +37,11 @@ export function Pro2AthleteRequiredGate({
       <div className="mx-auto max-w-lg rounded-2xl border border-amber-500/35 bg-amber-950/20 px-6 py-8 text-center text-sm text-slate-200">
         <p className="text-base font-semibold text-amber-100">{t("noActiveTitle")}</p>
         <p className="mt-3 leading-relaxed text-slate-400">
-          {role === "coach" ? t("noActiveCoach") : t("noActiveAthlete")}
+          {role === "coach"
+            ? coachOperationalApproved
+              ? t("noActiveCoachApproved")
+              : t("noActiveCoachPending")
+            : t("noActiveAthlete")}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {role === "coach" ? (

@@ -57,6 +57,8 @@ type StreamChartRow = {
 
 type Props = {
   monitoring: BioenergeticContinuousMonitoringDay;
+  /** Vista atleta (false) nasconde governance/policy, pesi fusione e riferimenti motore/AI. */
+  showTech?: boolean;
 };
 
 const CHART_H = 92;
@@ -129,7 +131,7 @@ function formatStreamAxisTick(ms: number): string {
   return new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 }
 
-export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
+export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = false }: Props) {
   const sorted = [...monitoring.channels].sort(
     (a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category),
   );
@@ -171,18 +173,20 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
                 <p className="text-xs font-medium leading-snug text-white">{ch.labelIt}</p>
                 <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{ch.unit}</p>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
-                >
-                  {planeLabel(ch.dataPlane)}
-                </span>
-                {ch.replacesWithDeviceStream ? (
-                  <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-lime-300/80">Slot stream</span>
-                ) : null}
-              </div>
+              {showTech ? (
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
+                  >
+                    {planeLabel(ch.dataPlane)}
+                  </span>
+                  {ch.replacesWithDeviceStream ? (
+                    <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-lime-300/80">Slot stream</span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-            {ch.curveResolution ? (
+            {showTech && ch.curveResolution ? (
               <p className="mb-2 text-[0.58rem] leading-snug text-gray-400">
                 {fusionSummary(ch.curveResolution)}
                 <span className="text-gray-500"> · </span>
@@ -192,10 +196,16 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring }: Props) {
             <p className="mb-1 text-[0.6rem] text-gray-500">
               {streamRows?.length
                 ? ch.dataPlane === "measured_stream"
-                  ? "Asse: tempo reale del campione (stream misurato; tabella 055 / merge device)."
+                  ? showTech
+                    ? "Asse: tempo reale del campione (stream misurato; tabella 055 / merge device)."
+                    : "Asse: tempo reale del campione (misura registrata)."
                   : ch.dataPlane === "ai_from_inputs"
-                    ? "Asse: tempo reale (passo 5 min; curva da OpenAI sugli input giornata — non è CGM né sim diurno v1)."
-                    : "Asse: tempo reale del modello (passo 5 min, deterministico da timeline — non è CGM)."
+                    ? showTech
+                      ? "Asse: tempo reale (passo 5 min; curva da OpenAI sugli input giornata — non è CGM né sim diurno v1)."
+                      : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo."
+                    : showTech
+                      ? "Asse: tempo reale del modello (passo 5 min, deterministico da timeline — non è CGM)."
+                      : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo."
                 : "Asse orizzontale: ore del giorno (0–23, locale)."}
             </p>
             <div className="w-full min-w-[160px]" style={{ height: CHART_H }}>

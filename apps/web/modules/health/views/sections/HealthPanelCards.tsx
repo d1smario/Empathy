@@ -40,12 +40,15 @@ export function RawPanelValuesCard({
   panel,
   title,
   className = "border-white/10",
+  showTech = true,
 }: {
   panel: HealthPanelTimelineRow;
   title?: string;
   className?: string;
+  /** false per l'atleta: solo etichette note, niente chiavi grezze/sconosciute né JSON annidato. */
+  showTech?: boolean;
 }) {
-  const rows = panelRawDisplayRows(panel);
+  const rows = panelRawDisplayRows(panel, { showTech });
   if (rows.length === 0) return null;
   const when = panel.sample_date ?? panel.created_at?.slice(0, 10) ?? null;
   return (

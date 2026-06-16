@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Button } from "@/components/ui/empathy";
 
@@ -18,8 +18,13 @@ export function InviteTokenClient({
   const router = useRouter();
   const [status, setStatus] = useState<InviteInitialStatus>(initialStatus);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  /** Profilo atleta già collegato all'account loggato: pilota l'auto-accept on-mount. */
+  const [hasAthleteId, setHasAthleteId] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  const [linked, setLinked] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /** Evita doppio auto-accept (StrictMode / re-render). */
+  const autoAcceptedRef = useRef(false);
 
   const accessHref = `/access?next=${encodeURIComponent(`/invite/${token}`)}`;
 
@@ -27,8 +32,32 @@ export function InviteTokenClient({
     let c = false;
     (async () => {
       const res = await fetch("/api/auth/session", { cache: "no-store" });
-      const j = (await res.json()) as { ok?: boolean; signedIn?: boolean };
-      if (!c) setSignedIn(j?.ok === true && Boolean(j.signedIn));
+      const j = (await res.json()) as { ok?: boolean; signedIn?: boolean; userId?: string | null };
+      if (c) return;
+      const isSignedIn = j?.ok === true && Boolean(j.signedIn);
+      setSignedIn(isSignedIn);
+      if (!isSignedIn) {
+        setHasAthleteId(false);
+        return;
+      }
+      try {
+        const { createEmpathyBrowserSupabase } = await import("@/lib/supabase/browser");
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase || !j.userId) {
+          if (!c) setHasAthleteId(false);
+          return;
+        }
+        const { data } = await supabase
+          .from("app_user_profiles")
+          .select("athlete_id")
+          .eq("user_id", j.userId)
+          .maybeSingle();
+        if (c) return;
+        const athleteId = (data as { athlete_id?: string | null } | null)?.athlete_id?.trim() || null;
+        setHasAthleteId(Boolean(athleteId));
+      } catch {
+        if (!c) setHasAthleteId(false);
+      }
     })();
     return () => {
       c = true;
@@ -50,6 +79,7 @@ export function InviteTokenClient({
         setBusy(false);
         return;
       }
+      setLinked(true);
       setMsg("Collegamento creato. Puoi aprire il modulo Athletes dal coach.");
       router.refresh();
     } catch {
@@ -58,6 +88,17 @@ export function InviteTokenClient({
       setBusy(false);
     }
   }, [router, token]);
+
+  // Auto-accept on-mount: utente loggato con profilo atleta → collega senza click.
+  // Se manca athlete_id, lasciamo il bottone come fallback (l'API lo crea comunque al volo).
+  useEffect(() => {
+    if (autoAcceptedRef.current) return;
+    if (status !== "valid") return;
+    if (signedIn !== true) return;
+    if (hasAthleteId !== true) return;
+    autoAcceptedRef.current = true;
+    void accept();
+  }, [accept, hasAthleteId, signedIn, status]);
 
   return (
     <BrutalistAppBackdrop matrix>
@@ -98,16 +139,24 @@ export function InviteTokenClient({
                 </Link>
               </>
             ) : null}
-            {signedIn === true ? (
-              <>
-                <p className="text-sm text-gray-400">
-                  Confermi il collegamento al coach che ti ha inviato il link? Serve un profilo atleta già
-                  associato al tuo account (private).
+            {signedIn === true && !linked ? (
+              hasAthleteId === null ? (
+                <p className="text-sm text-gray-500">Verifica profilo atleta…</p>
+              ) : hasAthleteId === true ? (
+                <p className="text-sm text-gray-400" role="status">
+                  Collegamento in corso al coach che ti ha invitato…
                 </p>
-                <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
-                  {busy ? "Elaborazione…" : "Accetta invito"}
-                </Pro2Button>
-              </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-400">
+                    Confermi il collegamento al coach che ti ha inviato il link? Creeremo il tuo profilo atleta se
+                    non esiste ancora.
+                  </p>
+                  <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
+                    {busy ? "Elaborazione…" : "Accetta invito"}
+                  </Pro2Button>
+                </>
+              )
             ) : null}
             {signedIn === null ? (
               <p className="text-sm text-gray-500">Verifica sessione…</p>

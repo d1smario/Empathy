@@ -35,6 +35,8 @@
     "loadingContext": "Loading athlete context…",
     "noActiveTitle": "No active athlete",
     "noActiveCoach": "If you are an approved coach, pick an athlete in Athletes. If the account is awaiting platform approval, data modules stay disabled until enabled.",
+    "noActiveCoachApproved": "Pick an athlete from the Athletes list to open their data (calendar, health, nutrition…).",
+    "noActiveCoachPending": "Your coach account is awaiting platform approval: data modules stay disabled until enabled.",
     "noActiveAthlete": "Complete your profile in Profile to link your athlete, or wait for the account bootstrap to finish.",
     "goToProfile": "Go to Profile",
     "goToDashboard": "Dashboard"

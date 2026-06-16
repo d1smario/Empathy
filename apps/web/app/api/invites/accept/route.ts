@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
+import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,16 +90,47 @@ export async function POST(request: Request) {
     );
   }
 
-  const athleteId = prof?.athlete_id?.trim() || null;
+  let athleteId = prof?.athlete_id?.trim() || null;
+  if (!athleteId) {
+    // Hardening: il registrante può non avere ancora un profilo atleta collegato
+    // (es. primo accesso post-invito). Lo creiamo al volo come faremmo da ensure-profile
+    // invece di bloccare con 400, così l'auto-accept va a buon fine.
+    const { error: bootstrapErr } = await bootstrapAppUserProfile(cookieClient, {
+      userId: user.id,
+      role: "private",
+      email: user.email ?? null,
+    });
+    if (bootstrapErr) {
+      return NextResponse.json({ ok: false as const, error: bootstrapErr }, { status: 500 });
+    }
+
+    const { data: refreshed, error: refreshErr } = await cookieClient
+      .from("app_user_profiles")
+      .select("athlete_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (refreshErr) {
+      return NextResponse.json({ ok: false as const, error: refreshErr.message }, { status: 500 });
+    }
+    athleteId = (refreshed as { athlete_id?: string | null } | null)?.athlete_id?.trim() || null;
+  }
+
   if (!athleteId) {
     return NextResponse.json(
       {
         ok: false as const,
-        error:
-          "Nessun atleta collegato al profilo. Apri l’app da utente private e completa il profilo / ensure-profile prima di accettare.",
+        error: "Impossibile creare o risolvere il profilo atleta collegato al tuo account.",
       },
-      { status: 400 },
+      { status: 500 },
     );
+  }
+
+  // ESCLUSIVO (come la RPC codice-coach e la route admin): un solo coach per
+  // atleta → rimuovi i legami precedenti prima di collegare il coach invitante.
+  // Senza questo, accettare un secondo invito accumulava un coach in più.
+  const { error: unlinkErr } = await admin.from("coach_athletes").delete().eq("athlete_id", athleteId);
+  if (unlinkErr) {
+    return NextResponse.json({ ok: false as const, error: unlinkErr.message }, { status: 500 });
   }
 
   const { error: linkErr } = await admin.from("coach_athletes").upsert(

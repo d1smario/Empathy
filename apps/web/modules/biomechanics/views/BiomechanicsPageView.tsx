@@ -173,26 +173,36 @@ function CaptureNextSteps({
   awaitingReview,
   stagingRunId,
   processingJobId,
+  showTech,
   onAnalyze,
 }: {
   latestJob: BiomechanicsCaptureJobV1 | null;
   awaitingReview: boolean;
   stagingRunId: string | null;
   processingJobId: string | null;
+  showTech: boolean;
   onAnalyze: () => void;
 }) {
   if (awaitingReview && stagingRunId) {
     return (
       <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
         <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-amber-300">Prossimo passo</p>
-        <p className="mt-2 text-sm text-amber-100">
-          Proposta pronta — non è ancora un report. Validala per generare efficienza, simmetria e rischio.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <ShellPro2Link href={`/biomechanics/staging/${stagingRunId}`} className="justify-center">
-            Valida proposta
-          </ShellPro2Link>
-        </div>
+        {showTech ? (
+          <>
+            <p className="mt-2 text-sm text-amber-100">
+              Proposta pronta — non è ancora un report. Validala per generare efficienza, simmetria e rischio.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ShellPro2Link href={`/biomechanics/staging/${stagingRunId}`} className="justify-center">
+                Valida proposta
+              </ShellPro2Link>
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-amber-100">
+            La tua cattura è registrata ed è in attesa di validazione dal coach. Riceverai il report quando sarà pronto.
+          </p>
+        )}
       </div>
     );
   }
@@ -542,12 +552,13 @@ export default function BiomechanicsPageView() {
               awaitingReview={latestJobAwaitingReview}
               stagingRunId={activeStagingId}
               processingJobId={processingJobId}
+              showTech={showTech}
               onAnalyze={() => void runAnalyzeLatestJob()}
             />
             {message ? (
               <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
                 {message}
-                {activeStagingId && !latestJobAwaitingReview ? (
+                {showTech && activeStagingId && !latestJobAwaitingReview ? (
                   <>
                     {" "}
                     <ShellLink href={`/biomechanics/staging/${activeStagingId}`} className="font-semibold underline">

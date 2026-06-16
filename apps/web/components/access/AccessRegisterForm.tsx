@@ -49,6 +49,7 @@ export function AccessRegisterForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [coachCode, setCoachCode] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -77,6 +78,8 @@ export function AccessRegisterForm() {
     const fn = firstName.trim();
     const ln = lastName.trim();
     const em = email.trim();
+    // Codice coach opzionale: normalizziamo a uppercase (la colonna è citext lato DB).
+    const coachCodeNorm = coachCode.trim().toUpperCase();
     if (!fn || !ln) {
       notify("Inserisci nome e cognome.");
       return;
@@ -107,7 +110,10 @@ export function AccessRegisterForm() {
       email: em,
       password,
       options: {
-        data: { first_name: fn, last_name: ln },
+        // coach_code finisce in user_metadata: /auth/callback lo rilegge nel ramo conferma-email.
+        data: coachCodeNorm
+          ? { first_name: fn, last_name: ln, coach_code: coachCodeNorm }
+          : { first_name: fn, last_name: ln },
         emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(signupNext)}`,
       },
     });
@@ -129,6 +135,8 @@ export function AccessRegisterForm() {
             email: em,
             firstName: fn,
             lastName: ln,
+            // Ramo sessione-immediata: il codice coach viaggia nel body (riconvalidato server-side).
+            coachCode: coachCodeNorm || null,
           }),
         });
       } catch {
@@ -209,6 +217,19 @@ export function AccessRegisterForm() {
           disabled={busy}
           className={inputClass}
           placeholder="nome@esempio.it"
+        />
+      </label>
+
+      <label className="text-left">
+        <span className={labelClass}>Codice coach (opzionale)</span>
+        <input
+          type="text"
+          autoComplete="off"
+          value={coachCode}
+          onChange={(e) => setCoachCode(e.target.value.toUpperCase())}
+          disabled={busy}
+          className={`${inputClass} font-mono uppercase tracking-[0.15em]`}
+          placeholder="ES. COACH-7K2P"
         />
       </label>
 

@@ -88,6 +88,22 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
   const activityMap = athleteId ? await loadAdminAthleteActivityRollups(admin, [athleteId]) : new Map();
   const activity = athleteId ? activityMap.get(athleteId) ?? null : null;
 
+  // Coach assegnato (ESCLUSIVO): unico legame in coach_athletes per l'atleta.
+  let assignedCoach: { userId: string; email: string | null } | null = null;
+  if (athleteId) {
+    const { data: link } = await admin
+      .from("coach_athletes")
+      .select("coach_user_id")
+      .eq("athlete_id", athleteId)
+      .limit(1)
+      .maybeSingle();
+    const coachUserId = (link as { coach_user_id?: string | null } | null)?.coach_user_id?.trim() || null;
+    if (coachUserId) {
+      const { data: coachAuth } = await admin.auth.admin.getUserById(coachUserId);
+      assignedCoach = { userId: coachUserId, email: coachAuth?.user?.email ?? null };
+    }
+  }
+
   const stripeSubscriptions = ((subs ?? []) as Array<Record<string, unknown>>).map((row) => ({
     status: typeof row.status === "string" ? row.status : "",
     currentPeriodEnd: typeof row.current_period_end === "string" ? row.current_period_end : null,
@@ -133,5 +149,6 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
     grants: (grants ?? []) as GrantRow[],
     activity,
     anagrafica,
+    assignedCoach,
   });
 }

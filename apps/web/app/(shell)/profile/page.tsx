@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { CoachProfileView } from "@/components/coach/CoachProfileView";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { getSessionProfile } from "@/lib/auth/session-profile";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { loadBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
 import ProfilePageView from "@/modules/profile/views/ProfilePageView";
 
 export const dynamic = "force-dynamic";
@@ -36,5 +38,29 @@ export default async function ProfilePage() {
       </Pro2ModulePageShell>
     );
   }
-  return <ProfilePageView />;
+  // Box "Invita il tuo coach": nascosto se l'atleta ha già un coach collegato.
+  // L'atleta non può leggere `coach_athletes` (RLS = solo il coach), quindi il
+  // controllo è server-side con service role, limitato al SUO athlete_id.
+  let hasLinkedCoach = false;
+  if (session.athleteId) {
+    const admin = createSupabaseAdminClient();
+    if (admin) {
+      const { data } = await admin
+        .from("coach_athletes")
+        .select("coach_user_id")
+        .eq("athlete_id", session.athleteId)
+        .limit(1);
+      hasLinkedCoach = (data?.length ?? 0) > 0;
+    }
+  }
+
+  // Piano attivo: la scelta "quali dati prendere dal device" (sorgente + stream
+  // di ingest) è riservata a chi ha un piano attivo.
+  let hasActivePlan = false;
+  if (session.userId) {
+    const ent = await loadBillingEntitlementForAuthUser(session.userId);
+    hasActivePlan = ent.hasAthleteAccess === true;
+  }
+
+  return <ProfilePageView hasLinkedCoach={hasLinkedCoach} hasActivePlan={hasActivePlan} />;
 }

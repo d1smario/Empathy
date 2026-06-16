@@ -161,13 +161,13 @@ export function InviteCoachCard() {
       accent="emerald"
       icon={UserPlus}
       title="Invita il tuo coach"
-      subtitle="Prodotto Silver: collega il coach con cui ti alleni"
+      subtitle="Collega il coach con cui ti alleni"
     >
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-gray-400">
           Genera un link personale e invialo al <span className="font-semibold text-gray-200">tuo coach</span>: aprendolo si
           registra su Empathy (o accede se ha già un account) e viene collegato al tuo profilo. L&apos;attivazione finale del suo
-          account coach la fa Empathy con l&apos;approvazione dell&apos;admin.
+          account coach la completa Empathy.
         </p>
 
         {error ? (
@@ -218,9 +218,7 @@ export function InviteCoachCard() {
                       {status.label}
                     </span>
                     <span className="text-xs text-gray-500">Creato il {formatDateIt(invite.created_at)}</span>
-                    <span className="min-w-0 flex-1 break-all font-mono text-[0.65rem] text-gray-600">
-                      …{invite.token.slice(-12)}
-                    </span>
+                    <span className="min-w-0 flex-1" aria-hidden />
                     {status.active ? (
                       <Pro2Button type="button" variant="ghost" onClick={() => void copyInviteLink(invite.token)}>
                         {copiedToken === invite.token ? "Copiato!" : "Copia"}

@@ -1,10 +1,13 @@
 import { EMPATHY_PLATFORM_VERSION, type ProductModuleId } from "@empathy/contracts";
 import { BookOpen, CalendarDays, HeartPulse, LayoutDashboard, Settings2 } from "lucide-react";
 import { getEmpathyAccountCatalog } from "@/lib/account/plan-catalog";
+import type { UserAccessEntitlement } from "@/lib/billing/access-entitlement";
+import { loadBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
 import { checkoutPayReady, hostedCheckoutAvailability } from "@/lib/billing/stripe-checkout-availability";
 import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
-import { DashboardAthleteHubCard } from "@/components/dashboard/DashboardAthleteHubCard";
+import { getSessionProfile } from "@/lib/auth/session-profile";
 import { DashboardIntroAndPricing } from "@/components/dashboard/DashboardIntroAndPricing";
+import { DashboardPlanBadge } from "@/components/dashboard/DashboardPlanBadge";
 import { DashboardLoadAnalysisSummary } from "@/components/dashboard/DashboardLoadAnalysisSummary";
 import { HealthBiomarkerPanelsCard } from "@/components/health/HealthBiomarkerPanelsCard";
 import { CoachAthletesModulePanel } from "@/components/coach/CoachAthletesModulePanel";
@@ -29,7 +32,7 @@ import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { getProductNavItemByModule } from "@/core/navigation/module-registry";
 
 /** Hub / coach / settings: shell e sezioni canone Pro 2 (`docs/PRO2_UI_PAGE_CANON.md`). */
-export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
+export async function StandardModuleSurface({ module }: { module: ProductModuleId }) {
   const nav = getProductNavItemByModule(module);
   const title = nav?.label ?? module;
   const panel = getModuleDomainPanel(module);
@@ -37,6 +40,13 @@ export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
   const dashboardHosted = module === "dashboard" ? hostedCheckoutAvailability() : null;
   const dashboardPayReady = module === "dashboard" ? checkoutPayReady() : false;
   const dashboardTrialDays = module === "dashboard" ? readCheckoutTrialDays() : undefined;
+  // Piani d'acquisto solo per chi non ha già un piano attivo: chi ha accesso
+  // (abbonamento, grant beta/promo, ecc.) vede lo stato del proprio piano, non upsell.
+  let dashboardEntitlement: UserAccessEntitlement | null = null;
+  if (module === "dashboard") {
+    const session = await getSessionProfile();
+    dashboardEntitlement = session.userId ? await loadBillingEntitlementForAuthUser(session.userId) : null;
+  }
 
   return (
     <Pro2ModulePageShell
@@ -45,9 +55,8 @@ export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
       title={title}
       description={
         module === "dashboard" ? (
-          <span className="leading-relaxed">
-            Solo due aree: <strong className="text-gray-300">Empathy · piani</strong> e <strong className="text-gray-300">Core</strong>.
-            Il resto dei moduli resta nella sidebar.
+          <span className="text-sm text-gray-400">
+            Il tuo stato di oggi: allenamento, recupero e progressi in un colpo d&apos;occhio.
           </span>
         ) : module === "athletes" ? (
           <span className="text-sm text-gray-400">Stato account, atleti collegati e inviti.</span>
@@ -59,18 +68,22 @@ export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
         ) : undefined
       }
       headerActions={
-        <>
-          <Pro2Link href="/" variant="ghost" className="justify-center border border-white/15 bg-white/5 hover:bg-white/10">
-            Home
-          </Pro2Link>
-          <Pro2Link
-            href="/dashboard"
-            variant="secondary"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
-          >
-            Dashboard
-          </Pro2Link>
-        </>
+        module === "dashboard" ? (
+          dashboardEntitlement?.hasAthleteAccess ? <DashboardPlanBadge entitlement={dashboardEntitlement} /> : undefined
+        ) : (
+          <>
+            <Pro2Link href="/" variant="ghost" className="justify-center border border-white/15 bg-white/5 hover:bg-white/10">
+              Home
+            </Pro2Link>
+            <Pro2Link
+              href="/dashboard"
+              variant="secondary"
+              className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
+            >
+              Dashboard
+            </Pro2Link>
+          </>
+        )
       }
     >
       <div className="scroll-mt-28">
@@ -106,13 +119,13 @@ export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
             coachAddOns={dashboardCatalog.coachAddOns}
             trialPolicy={dashboardCatalog.trialPolicy}
             trialDaysConfigured={dashboardTrialDays}
+            entitlement={dashboardEntitlement}
           />
-          <DashboardLoadAnalysisSummary />
           <section id="dash-day-views" className="scroll-mt-28">
             <Pro2SectionCard
               accent="cyan"
-              title="Viste giornata"
-              subtitle="Stessa data ISO tra Training · giornata e Physiology · wellness (device + twin)"
+              title="Oggi"
+              subtitle="Allenamento, recupero e calendario della giornata"
               icon={CalendarDays}
             >
               <ActionBar className="border-0 pt-0 flex-wrap justify-start gap-2" aria-label="Apri giornata operativa">
@@ -141,13 +154,9 @@ export function StandardModuleSurface({ module }: { module: ProductModuleId }) {
               </ActionBar>
             </Pro2SectionCard>
           </section>
-          <section id="dash-operational" className="scroll-mt-28 grid gap-6 xl:grid-cols-2">
-            <div className="flex justify-center">
-              <DashboardAthleteHubCard />
-            </div>
-            <div className="flex justify-center">
-              <HealthBiomarkerPanelsCard />
-            </div>
+          <DashboardLoadAnalysisSummary />
+          <section id="dash-health" className="scroll-mt-28">
+            <HealthBiomarkerPanelsCard />
           </section>
         </div>
       ) : null}

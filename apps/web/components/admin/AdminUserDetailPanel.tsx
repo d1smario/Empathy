@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { AdminCoachRow } from "@/lib/admin/coach-list-types";
 import type { AdminUserAnagraficaRow } from "@/lib/admin/user-directory-types";
 
 const COPY = {
@@ -11,6 +12,15 @@ const COPY = {
   anagrafica: "Anagrafica · fatturazione",
   anagraficaEmpty:
     "Anagrafica non compilata: l'utente non ha ancora inserito i dati di fatturazione (indirizzo richiesto per fatture/ricevute CH).",
+  coach: "Coach assegnato",
+  coachExclusive: "Un atleta ha un solo coach: assegnarne uno sostituisce il precedente.",
+  coachNone: "Nessun coach assegnato.",
+  coachOnCoach: "Gli account coach non possono avere un coach assegnato.",
+  coachNoAthlete:
+    "Nessun atleta collegato al profilo: assegnazione coach non disponibile finché l'utente non completa un accesso.",
+  coachAssign: "Assegna",
+  coachUnlink: "Scollega",
+  coachSelect: "Seleziona un coach approvato…",
 } as const;
 
 function fmtDate(iso: string | null | undefined): string {
@@ -34,6 +44,7 @@ export type AdminUserDetail = {
   stripeSubscriptions?: { status: string; basePlanId: string | null; currentPeriodEnd: string | null }[];
   grants?: { id: string; kind: string; ends_at: string; revoked_at: string | null }[];
   anagrafica?: AdminUserAnagraficaRow | null;
+  assignedCoach?: { userId: string; email: string | null } | null;
 };
 
 /**
@@ -44,10 +55,22 @@ export type AdminUserDetail = {
 export function AdminUserDetailPanel({ userId }: { userId: string }) {
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [coaches, setCoaches] = useState<AdminCoachRow[]>([]);
+  const [selectedCoach, setSelectedCoach] = useState("");
+  const [coachBusy, setCoachBusy] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
+
+  const loadDetail = useCallback(async (): Promise<void> => {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/detail`, { cache: "no-store" });
+    const data = (await res.json()) as AdminUserDetail;
+    setDetail(data);
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setCoachError(null);
+    setSelectedCoach("");
     void (async () => {
       try {
         const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/detail`, { cache: "no-store" });
@@ -63,6 +86,67 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
       cancelled = true;
     };
   }, [userId]);
+
+  // Elenco coach approvati per il selettore di assegnazione.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/coaches", { cache: "no-store" });
+        const data = (await res.json()) as { ok?: boolean; coaches?: AdminCoachRow[] };
+        if (cancelled) return;
+        const approved = (data.coaches ?? []).filter((c) => c.platformCoachStatus === "approved");
+        setCoaches(approved);
+      } catch {
+        if (!cancelled) setCoaches([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const assignCoach = useCallback(async (): Promise<void> => {
+    if (!selectedCoach) return;
+    setCoachBusy(true);
+    setCoachError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/coach`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ coachUserId: selectedCoach }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setCoachError(data.error ?? "Assegnazione non riuscita.");
+        return;
+      }
+      setSelectedCoach("");
+      await loadDetail();
+    } catch {
+      setCoachError("Assegnazione non riuscita.");
+    } finally {
+      setCoachBusy(false);
+    }
+  }, [selectedCoach, userId, loadDetail]);
+
+  const unlinkCoach = useCallback(async (): Promise<void> => {
+    setCoachBusy(true);
+    setCoachError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/coach`, { method: "DELETE" });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setCoachError(data.error ?? "Scollegamento non riuscito.");
+        return;
+      }
+      await loadDetail();
+    } catch {
+      setCoachError("Scollegamento non riuscito.");
+    } finally {
+      setCoachBusy(false);
+    }
+  }, [userId, loadDetail]);
 
   if (loading) {
     return <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-xs text-gray-500">{COPY.loading}</div>;
@@ -146,6 +230,67 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
             grant attivi su <span className="font-mono tabular-nums text-zinc-200">{detail.grants.length}</span>
           </p>
         ) : null}
+      </section>
+
+      {/* Coach assegnato (ESCLUSIVO) */}
+      <section className="rounded-2xl border border-violet-400/20 bg-white/[0.03] p-5">
+        <h3 className="text-[11px] uppercase tracking-wider text-violet-300/80">{COPY.coach}</h3>
+        {detail.profile?.role === "coach" ? (
+          <p className="mt-3 text-xs leading-relaxed text-gray-500">{COPY.coachOnCoach}</p>
+        ) : !detail.profile?.athleteId ? (
+          <p className="mt-3 text-xs leading-relaxed text-gray-500">{COPY.coachNoAthlete}</p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-gray-200">
+              {detail.assignedCoach ? (
+                <span className="break-all font-medium text-white">{detail.assignedCoach.email ?? detail.assignedCoach.userId}</span>
+              ) : (
+                <span className="text-gray-500">{COPY.coachNone}</span>
+              )}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">{COPY.coachExclusive}</p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                value={selectedCoach}
+                onChange={(e) => setSelectedCoach(e.target.value)}
+                disabled={coachBusy}
+                className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
+              >
+                <option value="">{COPY.coachSelect}</option>
+                {coaches.map((c) => (
+                  <option key={c.userId} value={c.userId}>
+                    {c.email ?? c.userId}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void assignCoach()}
+                disabled={coachBusy || !selectedCoach}
+                className="rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {COPY.coachAssign}
+              </button>
+              {detail.assignedCoach ? (
+                <button
+                  type="button"
+                  onClick={() => void unlinkCoach()}
+                  disabled={coachBusy}
+                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {COPY.coachUnlink}
+                </button>
+              ) : null}
+            </div>
+
+            {coachError ? (
+              <p className="mt-2 text-[11px] text-red-400" role="alert">
+                {coachError}
+              </p>
+            ) : null}
+          </>
+        )}
       </section>
 
       {/* Anagrafica */}

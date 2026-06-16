@@ -210,7 +210,6 @@ export function useCalendarMonthData() {
   const plannedWindowFetchGenRef = useRef(0);
   const selectedDayFetchGenRef = useRef(0);
   const calendarReadyRef = useRef(false);
-  const lastVisibilityRefreshAtRef = useRef(0);
   /** Id eliminati in-sessione: filtra fetch stale che ripresentano la riga prima che il DB sia allineato. */
   const locallyRemovedPlannedIdsRef = useRef<Set<string>>(new Set());
   const [viryaReappearWarning, setViryaReappearWarning] = useState<string | null>(null);
@@ -625,25 +624,6 @@ export function useCalendarMonthData() {
     postGridEnrichedDayRef.current = null;
     void loadMonth(urlDay ? { anchorDay: urlDay } : undefined);
   }, [athleteId, loadMonth, searchParams]);
-
-  /** Dopo salvataggio in Builder (altra tab) o ritorno alla pagina: ricarica finestra (debounced). */
-  useEffect(() => {
-    if (!athleteId || ctxLoading) return;
-    const refresh = () => {
-      if (document.visibilityState !== "visible") return;
-      const now = Date.now();
-      if (now - lastVisibilityRefreshAtRef.current < 12_000) return;
-      lastVisibilityRefreshAtRef.current = now;
-      invalidatePlannedWindowCacheForAthlete(athleteId);
-      void loadMonth({ anchorDay: selectedDate });
-    };
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("focus", refresh);
-    return () => {
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [athleteId, ctxLoading, selectedDate, loadMonth]);
 
   const plannedByDate = useMemo(() => {
     const m = new Map<string, PlannedWorkout[]>();

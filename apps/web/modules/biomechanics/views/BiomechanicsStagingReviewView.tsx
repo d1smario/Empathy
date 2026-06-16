@@ -7,6 +7,7 @@ import type { BiomechanicsJointAngleSample, BiomechanicsLandmark3D } from "@empa
 import { computeBiomechanicsEfficiencyScores } from "@empathy/domain-biomechanics";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { parseBiomechPoseProposal, type BiomechanicsReportData } from "@/lib/biomechanics/biomech-report-utils";
 import { resolveOverlayLandmarks } from "@/lib/biomechanics/biomech-skeleton-overlay";
 import type { BiomechanicsCameraPlane } from "@empathy/contracts";
@@ -49,6 +50,8 @@ function parseCameraPlaneFromBundle(bundle: Record<string, unknown> | null): Bio
 }
 
 export default function BiomechanicsStagingReviewView({ runId }: { runId: string }) {
+  const { role, adminScoped } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveHint, setSaveHint] = useState<string | null>(null);
@@ -170,10 +173,14 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Biomechanics · Review CV"
+      eyebrow={showTech ? "Biomechanics · Review CV" : "Biomechanics · Cattura"}
       eyebrowClassName="text-emerald-300"
-      title="Validazione proposta pose"
-      description="Allinea i punti sul video, verifica angoli e KPI, poi conferma la sessione."
+      title={showTech ? "Validazione proposta pose" : "Cattura in revisione"}
+      description={
+        showTech
+          ? "Allinea i punti sul video, verifica angoli e KPI, poi conferma la sessione."
+          : "I tuoi dati sono stati registrati e sono in attesa di validazione dal coach."
+      }
       headerActions={
         <Pro2Link href="/biomechanics" variant="secondary" className="justify-center border border-white/15">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -181,12 +188,20 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
         </Pro2Link>
       }
     >
-      {loading ? <p className="text-sm text-gray-400">Caricamento review...</p> : null}
+      {loading ? (
+        <p className="text-sm text-gray-400">{showTech ? "Caricamento review..." : "Caricamento..."}</p>
+      ) : null}
       {!loading && reportData ? (
-        <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          {angleCount} campioni angolo · trascina i punti rosa per correggere la CV
-          {saveHint ? ` · ${saveHint}` : ""}
-        </p>
+        showTech ? (
+          <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            {angleCount} campioni angolo · trascina i punti rosa per correggere la CV
+            {saveHint ? ` · ${saveHint}` : ""}
+          </p>
+        ) : (
+          <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            La tua cattura è registrata ed è in attesa di validazione dal coach.
+          </p>
+        )
       ) : null}
       {signedUrl ? (
         <p className="mt-3 text-xs text-gray-400 print:hidden">
@@ -202,22 +217,26 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
             data={reportData}
             mode="preview"
             videoUrl={signedUrl}
-            editable={!done}
+            editable={showTech && !done}
             cameraPlane={cameraPlane}
-            onPoseAdjust={handlePoseAdjust}
+            onPoseAdjust={showTech ? handlePoseAdjust : undefined}
           />
         </div>
       ) : !loading ? (
         <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Proposta CV senza angoli strutturati — controlla il sidecar o ri-elabora il job.
+          {showTech
+            ? "Proposta CV senza angoli strutturati — controlla il sidecar o ri-elabora il job."
+            : "La cattura è in attesa di validazione dal coach. Riprova più tardi."}
         </p>
       ) : null}
       {error ? <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
       {done ? (
         <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          Review chiusa. Torna al modulo per vedere sessioni e twin aggiornati.
+          {showTech
+            ? "Review chiusa. Torna al modulo per vedere sessioni e twin aggiornati."
+            : "Cattura completata. Torna al modulo per vedere le sessioni aggiornate."}
         </p>
-      ) : (
+      ) : showTech ? (
         <div className="mt-6 flex flex-wrap gap-3 print:hidden">
           <Pro2Button onClick={onConfirm} disabled={busy != null || loading} className="justify-center">
             <Check className="mr-2 h-4 w-4" />
@@ -228,6 +247,10 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
             {busy === "reject" ? "Rifiuto..." : "Rifiuta"}
           </Pro2Button>
         </div>
+      ) : (
+        <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300 print:hidden">
+          La validazione verrà completata dal tuo coach. Riceverai il report quando sarà pronto.
+        </p>
       )}
     </Pro2ModulePageShell>
   );

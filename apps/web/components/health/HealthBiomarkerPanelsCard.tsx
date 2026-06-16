@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { Pro2Link } from "@/components/ui/empathy";
+import { readSwrCache, writeSwrCache } from "@/lib/client-swr-cache";
 import { fetchHealthPanelsTimeline, type HealthPanelTimelineRow } from "@/modules/health/services/health-module-api";
 
 type BiomarkerPanelRow = {
@@ -25,27 +27,42 @@ export function HealthBiomarkerPanelsCard() {
       setLoading(false);
       return;
     }
+    // Stale-while-revalidate: al ritorno mostra subito gli ultimi referti in cache
+    // (niente skeleton) e rivalida in background.
+    const cacheKey = `dash-biomarkers:${athleteId}`;
+    const cached = readSwrCache<BiomarkerPanelRow[]>(cacheKey);
+    if (cached) {
+      setPanels(cached);
+      setErr(null);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     let c = false;
     (async () => {
-      setLoading(true);
       setErr(null);
       try {
         const { panels: timelinePanels, error } = await fetchHealthPanelsTimeline(athleteId);
         if (c) return;
         if (error) {
-          setPanels([]);
-          setErr(error);
+          if (!cached) {
+            setPanels([]);
+            setErr(error);
+          }
           return;
         }
-        const compactRows: BiomarkerPanelRow[] = (timelinePanels as HealthPanelTimelineRow[]).map((p) => ({
-          id: p.id,
-          type: p.type,
-          sample_date: p.sample_date,
-          reported_at: p.reported_at,
-        }));
-        setPanels(compactRows.slice(0, 8));
+        const compactRows: BiomarkerPanelRow[] = (timelinePanels as HealthPanelTimelineRow[])
+          .map((p) => ({
+            id: p.id,
+            type: p.type,
+            sample_date: p.sample_date,
+            reported_at: p.reported_at,
+          }))
+          .slice(0, 8);
+        setPanels(compactRows);
+        writeSwrCache(cacheKey, compactRows);
       } catch {
-        if (!c) setErr("Errore di rete.");
+        if (!c && !cached) setErr("Errore di rete.");
       } finally {
         if (!c) setLoading(false);
       }
@@ -57,7 +74,7 @@ export function HealthBiomarkerPanelsCard() {
 
   return (
     <section
-      className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
+      className="w-full rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
       aria-label="Panel biomarkers"
     >
       <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Salute · dati reali</p>
@@ -74,11 +91,11 @@ export function HealthBiomarkerPanelsCard() {
       ) : null}
 
       {!ctxLoading && !loading && !err && panels.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">Nessun panel in database per questo atleta.</p>
+        <p className="mt-4 text-sm text-gray-500">Nessun referto ancora. Aggiungi i tuoi esami in Health.</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && panels.length > 0 ? (
-        <ul className="mt-4 space-y-2 border-t border-white/10 pt-4">
+        <ul className="mt-4 grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-2">
           {panels.map((p) => (
             <li
               key={p.id}
@@ -93,6 +110,14 @@ export function HealthBiomarkerPanelsCard() {
           ))}
         </ul>
       ) : null}
+
+      <Pro2Link
+        href="/health"
+        variant="ghost"
+        className="mt-4 inline-flex justify-center border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/15"
+      >
+        Apri Health
+      </Pro2Link>
     </section>
   );
 }

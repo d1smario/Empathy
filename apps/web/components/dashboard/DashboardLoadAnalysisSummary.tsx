@@ -2,24 +2,24 @@
 
 import type {
   TrainingAdaptationLoopViewModel,
-  TrainingBioenergeticModulationViewModel,
   TrainingRealityDiagnosticsViewModel,
 } from "@/api/training/contracts";
 import { Activity, LineChart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Pro2Link } from "@/components/ui/empathy";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { fetchHealthPanelsTimeline, type HealthPanelTimelineRow } from "@/modules/health/services/health-module-api";
 import {
   type ExecutedAnalyticsRow,
   refKpisLastNDays,
 } from "@/lib/training/analytics/executed-metric-aggregates";
-import type { RecoverySummary } from "@/lib/reality/recovery-summary";
 import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { fetchTrainingAnalyticsRows } from "@/modules/training/services/training-analytics-api";
 import { EMPATHY_LOAD_LABELS_IT } from "@/lib/training/load-metrics-labels";
 import { trainingRealityDiagnosticsBannerIt } from "@/lib/training/training-reality-diagnostics";
+import { readSwrCache, writeSwrCache } from "@/lib/client-swr-cache";
+
+type AnalyticsPayload = Awaited<ReturnType<typeof fetchTrainingAnalyticsRows>>;
 
 function toDateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -66,79 +66,6 @@ function couplingColor(coupling: number): string {
   return "#34d399";
 }
 
-function readNum(record: Record<string, unknown>, keys: string[]): number | null {
-  for (const k of keys) {
-    const v = record[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (typeof v === "string" && v.trim() !== "") {
-      const n = Number(v);
-      if (Number.isFinite(n)) return n;
-    }
-  }
-  return null;
-}
-
-/** Estrae dai panel Health i segnali che il modello incrocia con il carico (lab + sonno / wearable). */
-function extractModulatorBiomarkers(panels: HealthPanelTimelineRow[]): {
-  cortisolAm: number | null;
-  cortisolPm: number | null;
-  respiratorySleep: number | null;
-  respiratoryLabel: string | null;
-  panelHint: string | null;
-} {
-  let cortisolAm: number | null = null;
-  let cortisolPm: number | null = null;
-  let respiratorySleep: number | null = null;
-  let respiratoryLabel: string | null = null;
-  let panelHint: string | null = null;
-
-  for (const p of panels) {
-    const v = p.values;
-    if (!v || typeof v !== "object") continue;
-    const type = (p.type ?? "").toLowerCase();
-    if (cortisolAm == null) {
-      cortisolAm = readNum(v as Record<string, unknown>, [
-        "cortisol_am",
-        "cortisol_morning",
-        "cortisol",
-        "salivary_cortisol",
-        "cortisol_serum",
-      ]);
-    }
-    if (cortisolPm == null) {
-      cortisolPm = readNum(v as Record<string, unknown>, ["cortisol_pm", "cortisol_evening"]);
-    }
-    if (respiratorySleep == null) {
-      const r = readNum(v as Record<string, unknown>, [
-        "respiratory_rate_sleep",
-        "sleep_respiratory_rate",
-        "avg_respiratory_rate_sleep",
-        "respiratory_rate_avg_sleep",
-        "breathing_rate_sleep",
-        "resp_rate_sleep",
-        "respiratory_rate",
-        "breaths_per_min_sleep",
-        "rpm_sleep",
-      ]);
-      if (r != null) {
-        respiratorySleep = r;
-        respiratoryLabel =
-          type.includes("sleep") || type.includes("sonno")
-            ? "Sonno / recovery"
-            : type.includes("blood") || type.includes("lab")
-              ? "Lab / referto"
-              : "Panel";
-      }
-    }
-  }
-
-  if (panels.length > 0 && panels[0].sample_date) {
-    panelHint = `Ultimo campione: ${panels[0].sample_date ?? panels[0].reported_at ?? "—"}`;
-  }
-
-  return { cortisolAm, cortisolPm, respiratorySleep, respiratoryLabel, panelHint };
-}
-
 function kpiTile(label: string, value: string, sub?: string, accent?: "rose" | "fuchsia" | "slate") {
   const border =
     accent === "rose"
@@ -160,7 +87,10 @@ function kpiTile(label: string, value: string, sub?: string, accent?: "rose" | "
  * — allineato al loop di controllo carico esterno / interno e modulatori del sistema.
  */
 export function DashboardLoadAnalysisSummary() {
-  const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
+  // Loop di controllo del motore (stato "regenerate", trigger grezzi, coupling): roba
+  // da coach/admin, non da atleta. Vedi pattern showTech nelle viste moduli.
+  const showTech = role === "coach" || adminScoped;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
   const [series, setSeries] = useState<
     Array<{ date: string; external: number; internal: number; ctl: number; atl: number; tsb: number; iCtl: number; iAtl: number; iTsb: number }>
@@ -185,118 +115,100 @@ export function DashboardLoadAnalysisSummary() {
     iAtl: number;
     iTsb: number;
   } | null>(null);
-  const [twinState, setTwinState] = useState<{
-    readiness?: number;
-    fatigueAcute?: number;
-    glycogenStatus?: number;
-    adaptationScore?: number;
-    redoxStressIndex?: number;
-    divergenceScore?: number;
-    interventionScore?: number;
-  } | null>(null);
   const [adaptationLoop, setAdaptationLoop] = useState<TrainingAdaptationLoopViewModel | null>(null);
-  const [recoverySummary, setRecoverySummary] = useState<RecoverySummary | null>(null);
   const [operationalContext, setOperationalContext] = useState<TrainingDayOperationalContext | null>(null);
-  const [bioenergeticModulation, setBioenergeticModulation] = useState<TrainingBioenergeticModulationViewModel | null>(null);
-  const [healthPanels, setHealthPanels] = useState<HealthPanelTimelineRow[]>([]);
   const [trainingRealityDiagnostics, setTrainingRealityDiagnostics] =
     useState<TrainingRealityDiagnosticsViewModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const cacheKey = athleteId ? `dash-core:${athleteId}` : null;
+
+    const resetState = () => {
+      setRows([]);
+      setSeries([]);
+      setCompareSeries([]);
+      setWindows(null);
+      setPlanWindows(null);
+      setLatest(null);
+      setAdaptationLoop(null);
+      setOperationalContext(null);
+      setTrainingRealityDiagnostics(null);
+    };
+
+    const applyPayload = (payload: AnalyticsPayload) => {
+      setRows(payload.rows ?? []);
+      setSeries(payload.series ?? []);
+      setCompareSeries(payload.compareSeries ?? []);
+      setWindows(payload.windows ?? null);
+      const pw = payload.planWindows;
+      setPlanWindows(
+        pw
+          ? {
+              last7: {
+                planned: pw.last7.planned,
+                executed: pw.last7.executed,
+                internal: pw.last7.internal,
+                compliancePct: pw.last7.compliancePct,
+              },
+              last28: {
+                planned: pw.last28.planned,
+                executed: pw.last28.executed,
+                internal: pw.last28.internal,
+                compliancePct: pw.last28.compliancePct,
+              },
+            }
+          : null,
+      );
+      const lat = payload.latest;
+      setLatest(
+        lat
+          ? { ctl: lat.ctl, atl: lat.atl, tsb: lat.tsb, iCtl: lat.iCtl, iAtl: lat.iAtl, iTsb: lat.iTsb }
+          : null,
+      );
+      setAdaptationLoop(payload.adaptationLoop ?? null);
+      setOperationalContext(payload.operationalContext ?? null);
+      setTrainingRealityDiagnostics(payload.trainingRealityDiagnostics ?? null);
+    };
+
     async function load() {
-      if (!athleteId) {
-        setRows([]);
-        setSeries([]);
-        setCompareSeries([]);
-        setWindows(null);
-        setPlanWindows(null);
-        setLatest(null);
-        setTwinState(null);
-        setAdaptationLoop(null);
-        setRecoverySummary(null);
-        setOperationalContext(null);
-        setBioenergeticModulation(null);
-        setHealthPanels([]);
-        setTrainingRealityDiagnostics(null);
+      if (!athleteId || !cacheKey) {
+        resetState();
         setLoading(false);
         return;
       }
-      setLoading(true);
-      setError(null);
+      // Stale-while-revalidate: se ho già i dati di questo atleta li mostro subito
+      // (niente skeleton al ritorno sulla pagina) e rivalido in background.
+      const cached = readSwrCache<AnalyticsPayload>(cacheKey);
+      if (cached && !cached.error) {
+        applyPayload(cached);
+        setError(null);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
+
       const today = new Date();
       const start = new Date(today);
       start.setDate(today.getDate() - 120);
       const from = toDateOnly(start);
       const to = toDateOnly(today);
 
-      const [payload, healthRes] = await Promise.all([
-        fetchTrainingAnalyticsRows({ athleteId, from, to }),
-        fetchHealthPanelsTimeline(athleteId),
-      ]);
+      const payload = await fetchTrainingAnalyticsRows({ athleteId, from, to });
 
       if (payload.error) {
-        setError(payload.error);
-        setRows([]);
-        setSeries([]);
-        setCompareSeries([]);
-        setWindows(null);
-        setPlanWindows(null);
-        setLatest(null);
-        setTwinState(null);
-        setAdaptationLoop(null);
-        setRecoverySummary(null);
-        setOperationalContext(null);
-        setBioenergeticModulation(null);
-        setTrainingRealityDiagnostics(null);
+        // Con dati in cache li tengo (niente blank); altrimenti mostro l'errore.
+        if (!cached) {
+          setError(payload.error);
+          resetState();
+        }
       } else {
-        setRows(payload.rows ?? []);
-        setSeries(payload.series ?? []);
-        setCompareSeries(payload.compareSeries ?? []);
-        setWindows(payload.windows ?? null);
-        const pw = payload.planWindows;
-        setPlanWindows(
-          pw
-            ? {
-                last7: {
-                  planned: pw.last7.planned,
-                  executed: pw.last7.executed,
-                  internal: pw.last7.internal,
-                  compliancePct: pw.last7.compliancePct,
-                },
-                last28: {
-                  planned: pw.last28.planned,
-                  executed: pw.last28.executed,
-                  internal: pw.last28.internal,
-                  compliancePct: pw.last28.compliancePct,
-                },
-              }
-            : null,
-        );
-        const lat = payload.latest;
-        setLatest(
-          lat
-            ? {
-                ctl: lat.ctl,
-                atl: lat.atl,
-                tsb: lat.tsb,
-                iCtl: lat.iCtl,
-                iAtl: lat.iAtl,
-                iTsb: lat.iTsb,
-              }
-            : null,
-        );
-        const tw = payload.athleteMemory?.twin ?? payload.twinState;
-        setTwinState(tw ?? null);
-        setAdaptationLoop(payload.adaptationLoop ?? null);
-        setRecoverySummary(payload.recoverySummary ?? null);
-        setOperationalContext(payload.operationalContext ?? null);
-        setBioenergeticModulation(payload.bioenergeticModulation ?? null);
-        setTrainingRealityDiagnostics(payload.trainingRealityDiagnostics ?? null);
+        applyPayload(payload);
+        writeSwrCache(cacheKey, payload);
+        setError(null);
       }
-
-      setHealthPanels(healthRes.panels ?? []);
       setLoading(false);
     }
     void load();
@@ -316,8 +228,6 @@ export function DashboardLoadAnalysisSummary() {
     [rows, analyticsEndDate],
   );
 
-  const biomarkers = useMemo(() => extractModulatorBiomarkers(healthPanels), [healthPanels]);
-
   const ext7 = windows?.last7.external ?? 0;
   const int7 = windows?.last7.internal ?? 0;
   const coupling7 = windows?.last7.coupling ?? 0;
@@ -328,8 +238,8 @@ export function DashboardLoadAnalysisSummary() {
   const compliance7 = plan7?.compliancePct ?? 0;
   const compliance28 = plan28?.compliancePct ?? 0;
 
-  const divergenceScore = adaptationLoop?.divergenceScore ?? twinState?.divergenceScore ?? 0;
-  const interventionScore = adaptationLoop?.interventionScore ?? twinState?.interventionScore ?? 0;
+  const divergenceScore = adaptationLoop?.divergenceScore ?? 0;
+  const interventionScore = adaptationLoop?.interventionScore ?? 0;
 
   const couplingTone =
     coupling7 > 1.15 ? "text-rose-300" : coupling7 < 0.85 ? "text-amber-300" : "text-emerald-300";
@@ -361,22 +271,6 @@ export function DashboardLoadAnalysisSummary() {
   const couplingSub =
     `28g ${coupling28.toFixed(2)} · Δ ` + (deltaCoupling >= 0 ? "+" : "") + deltaCoupling.toFixed(2);
   const divInt = `${divergenceScore.toFixed(1)} / ${interventionScore.toFixed(1)}`;
-  const hrvVal = recoverySummary?.hrvMs != null ? `${Math.round(recoverySummary.hrvMs)} ms` : "—";
-  const rhrVal = recoverySummary?.restingHrBpm != null ? `${Math.round(recoverySummary.restingHrBpm)} bpm` : "—";
-  const sleepH = recoverySummary?.sleepDurationHours != null ? `${recoverySummary.sleepDurationHours.toFixed(1)} h` : "—";
-  const sleepScoreSub =
-    recoverySummary?.sleepScore != null ? `Score ${Math.round(recoverySummary.sleepScore)}` : undefined;
-  const cortisolVal = biomarkers.cortisolAm != null ? String(biomarkers.cortisolAm) : "—";
-  const cortisolSub =
-    biomarkers.cortisolPm != null ? `PM ${biomarkers.cortisolPm}` : biomarkers.panelHint ?? undefined;
-  const respVal = biomarkers.respiratorySleep != null ? `${biomarkers.respiratorySleep.toFixed(1)} rpm` : "—";
-  const opSub = operationalContext ? `~${operationalContext.loadScalePct}% carico pianificato` : undefined;
-  const twinRf = twinState
-    ? `${(twinState.readiness ?? 0).toFixed(0)} / ${(twinState.fatigueAcute ?? 0).toFixed(0)}`
-    : "—";
-  const twinGa = twinState
-    ? `${(twinState.glycogenStatus ?? 0).toFixed(0)} / ${(twinState.adaptationScore ?? 0).toFixed(0)}`
-    : "—";
   const adaptabilityScore = Math.max(0, Math.min(100, Math.round(100 - divergenceScore * 1.7)));
   const realityDiagBanner = trainingRealityDiagnostics
     ? trainingRealityDiagnosticsBannerIt(trainingRealityDiagnostics)
@@ -418,15 +312,14 @@ export function DashboardLoadAnalysisSummary() {
 
   return (
     <section id="dash-core" className="scroll-mt-28">
-      <Pro2SectionCard accent="cyan" title="Core" subtitle="Stimolo · fitness · risposta fisiologica" icon={Activity}>
+      <Pro2SectionCard accent="cyan" title="Core" subtitle="Carico, fitness e aderenza al piano" icon={Activity}>
         <details className="rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-gray-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-cyan-300/90">
-            Core overview · adattabilita {adaptabilityScore}/100
+            Cos&apos;è il Core
           </summary>
           <p className="mt-2 text-sm leading-relaxed text-gray-400">
-            Vista sintetica del <strong className="text-gray-200">modello di controllo</strong>: a sinistra stimolo e stato
-            di fitness (carico, fitness/strain/form, piano vs reale); a destra modulatori della risposta (sonno/HRV, contesto
-            operativo, bioenergetica, twin, lab quando presenti).
+            Il tuo carico di allenamento e lo stato di fitness: quanto hai fatto, quanto era pianificato e quanto sei
+            stato costante. Sonno, recupero e bioenergetica li trovi in Physiology.
           </p>
         </details>
 
@@ -477,65 +370,38 @@ export function DashboardLoadAnalysisSummary() {
                 eseguite o collega un provider training.
               </p>
             ) : null}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-orange-200/90">Stimolo &amp; fitness</h3>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {kpiTile(`${EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7g`, ref7.tss.toFixed(0), tssSub28, "rose")}
-                  {kpiTile("Kcal · 7g", ref7.kcal.toFixed(0), kcalSub28)}
-                  {kpiTile("Watt medi · 7g", wattVal, "Durata-weighted da trace")}
-                  {kpiTile("Piano · reale · 7g", planReal7, planReal28Sub)}
-                  {kpiTile(
-                    "Compliance · 7g · 28g",
-                    compliance7s,
-                    compliance28s,
-                    compliance7 < 70 || compliance7 > 130 ? "rose" : undefined,
-                  )}
-                  {kpiTile(
-                    `${EMPATHY_LOAD_LABELS_IT.fitness4} · ${EMPATHY_LOAD_LABELS_IT.strain} · ${EMPATHY_LOAD_LABELS_IT.form}`,
-                    ctlExt,
-                    "Carico esterno (V2)",
-                  )}
-                  {kpiTile(
-                    `${EMPATHY_LOAD_LABELS_IT.conditioningInt4} · ${EMPATHY_LOAD_LABELS_IT.fatigueInt} · diff.`,
-                    ctlInt,
-                    "Stress core (V2)",
-                    "fuchsia",
-                  )}
-                  {kpiTile("Coupling int/ext · 7g", coupling7.toFixed(2), couplingSub)}
-                  {kpiTile("Carico esterno 7g", ext7.toFixed(0), "Somma training load")}
-                  {kpiTile("Carico interno 7g", int7.toFixed(0), "Indice stress interno", "fuchsia")}
-                  {kpiTile("Divergenza · intervento", divInt, "Loop adattamento vs piano", divergenceScore > 35 ? "rose" : undefined)}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-violet-200/90">Risposta &amp; modulatori</h3>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {kpiTile("Recovery (device)", recoverySummary?.status?.toUpperCase() ?? "—", recoverySummary?.guidance?.slice(0, 80))}
-                  {kpiTile("HRV", hrvVal, "Da export recovery · sonno", "fuchsia")}
-                  {kpiTile("FC a riposo", rhrVal, recoverySummary?.provider ?? undefined)}
-                  {kpiTile("Sonno · ore", sleepH, sleepScoreSub)}
-                  {kpiTile(
-                    "Strain / load device",
-                    recoverySummary?.strainScore != null ? recoverySummary.strainScore.toFixed(1) : "—",
-                    "Stress aggregato wearable (se presente)",
-                  )}
-                  {kpiTile("Cortisolo (lab)", cortisolVal, cortisolSub)}
-                  {kpiTile("Freq. respiratoria (notte · sonno)", respVal, biomarkers.respiratoryLabel ?? "Da panel o device se mappato")}
-                  {kpiTile("Contesto operativo", operationalContext?.headline ?? "—", opSub)}
-                  {kpiTile("Readiness · fatica (twin)", twinRf, "Stato gemello digitale")}
-                  {kpiTile("Glicogeno · adatt. (twin)", twinGa, undefined)}
-                  {kpiTile(
-                    "Stress redox (twin)",
-                    twinState?.redoxStressIndex != null ? twinState.redoxStressIndex.toFixed(1) : "—",
-                    "Modulazione ossido-riduttiva",
-                  )}
-                </div>
+            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-orange-200/90">Carico &amp; fitness</h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {kpiTile(`${EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7g`, ref7.tss.toFixed(0), tssSub28, "rose")}
+                {kpiTile("Kcal · 7g", ref7.kcal.toFixed(0), kcalSub28)}
+                {kpiTile("Watt medi · 7g", wattVal, "Durata-weighted da trace")}
+                {kpiTile("Piano · reale · 7g", planReal7, planReal28Sub)}
+                {kpiTile(
+                  "Compliance · 7g · 28g",
+                  compliance7s,
+                  compliance28s,
+                  compliance7 < 70 || compliance7 > 130 ? "rose" : undefined,
+                )}
+                {kpiTile(
+                  `${EMPATHY_LOAD_LABELS_IT.fitness4} · ${EMPATHY_LOAD_LABELS_IT.strain} · ${EMPATHY_LOAD_LABELS_IT.form}`,
+                  ctlExt,
+                  "Carico esterno (V2)",
+                )}
+                {kpiTile(
+                  `${EMPATHY_LOAD_LABELS_IT.conditioningInt4} · ${EMPATHY_LOAD_LABELS_IT.fatigueInt} · diff.`,
+                  ctlInt,
+                  "Stress core (V2)",
+                  "fuchsia",
+                )}
+                {kpiTile("Coupling int/ext · 7g", coupling7.toFixed(2), couplingSub)}
+                {kpiTile("Carico esterno 7g", ext7.toFixed(0), "Somma training load")}
+                {kpiTile("Carico interno 7g", int7.toFixed(0), "Indice stress interno", "fuchsia")}
+                {kpiTile("Divergenza · intervento", divInt, "Loop adattamento vs piano", divergenceScore > 35 ? "rose" : undefined)}
               </div>
             </div>
 
-            {adaptationLoop ? (
+            {showTech && adaptationLoop ? (
               <details className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm">
                 <summary className="cursor-pointer font-semibold text-white">Loop di adattamento · {adaptabilityScore}/100</summary>
                 <p className="mt-2 text-gray-400">
@@ -564,41 +430,20 @@ export function DashboardLoadAnalysisSummary() {
               </details>
             ) : null}
 
-            {bioenergeticModulation ? (
+            {showTech ? (
               <details
-                className={`rounded-2xl border p-4 text-sm ${
-                  bioenergeticModulation.state === "protective"
-                    ? "border-amber-500/35 bg-amber-500/10 text-amber-50"
-                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-50"
-                }`}
+                className="rounded-2xl border border-white/10 bg-black/25 p-4"
+                style={{ borderLeft: `3px solid ${couplingColor(coupling7)}` }}
               >
-                <summary className="cursor-pointer">
-                  <strong>{bioenergeticModulation.headline}</strong> · readiness{" "}
-                  {bioenergeticModulation.mitochondrialReadinessScore.toFixed(0)}/100
+                <summary className={`cursor-pointer text-sm font-semibold ${couplingTone}`}>
+                  Adattabilita {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
                 </summary>
-                <p className="mt-2">
-                  stato {bioenergeticModulation.state} · autonomico {bioenergeticModulation.autonomicRecoveryScore?.toFixed(0) ?? "—"} ·
-                  infiammatorio/stress {bioenergeticModulation.inflammatoryStressScore?.toFixed(0) ?? "—"} · idratazione cellulare{" "}
-                  {bioenergeticModulation.cellularHydrationScore?.toFixed(0) ?? "—"} · fuel{" "}
-                  {bioenergeticModulation.fuelAvailabilityScore?.toFixed(0) ?? "—"} · fase (proxy){" "}
-                  {bioenergeticModulation.phaseAngleNormalized?.toFixed(2) ?? "—"}
-                </p>
-                <p className="mt-2 text-xs opacity-90">{bioenergeticModulation.guidance}</p>
+                <p className={`mt-2 text-sm font-semibold ${couplingTone}`}>{adaptationNarrative}</p>
+                {operationalContext ? (
+                  <p className="mt-2 text-xs text-gray-500">{operationalContext.guidance}</p>
+                ) : null}
               </details>
             ) : null}
-
-            <details
-              className="rounded-2xl border border-white/10 bg-black/25 p-4"
-              style={{ borderLeft: `3px solid ${couplingColor(coupling7)}` }}
-            >
-              <summary className={`cursor-pointer text-sm font-semibold ${couplingTone}`}>
-                Adattabilita {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
-              </summary>
-              <p className={`mt-2 text-sm font-semibold ${couplingTone}`}>{adaptationNarrative}</p>
-              {operationalContext ? (
-                <p className="mt-2 text-xs text-gray-500">{operationalContext.guidance}</p>
-              ) : null}
-            </details>
 
             {last42Compare.length > 1 ? (
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">

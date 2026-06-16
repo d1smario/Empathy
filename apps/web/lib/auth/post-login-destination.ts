@@ -41,6 +41,11 @@ export function resolvePostLoginDestination(input: PostLoginDestinationInput): s
   if (typeof input.next === "string" && input.next.startsWith("/coach-invite/")) {
     return input.next;
   }
+  // Invito coach (coach→atleta): chi arriva da /invite/[token] deve tornare
+  // all'invito dopo il login per l'auto-accept (la pagina è pubblica).
+  if (typeof input.next === "string" && input.next.startsWith("/invite/")) {
+    return input.next;
+  }
 
   const next = safeAppInternalPath(input.next, "/dashboard");
   const preferMobile = input.preferMobile === true;

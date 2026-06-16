@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
+import { linkAthleteByCoachCode } from "@/lib/auth/link-coach-by-code";
 import { resolveBootstrapRole } from "@/lib/auth/resolve-bootstrap-role";
 import { coachOperationalApproved } from "@/lib/platform-coach-status";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
     email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
+    coachCode?: string | null;
   };
   const userId = (body.userId ?? "").trim();
   const requestedRole = body.role ?? "private";
@@ -105,6 +107,14 @@ export async function POST(req: Request) {
   const resolvedAthleteId = effectiveRole === "private" ? (rowAfter?.athlete_id ?? null) : null;
   const platformCoachStatus = rowAfter?.platform_coach_status ?? null;
 
+  // Codice coach (opzionale) inserito a registrazione: collegamento ESCLUSIVO via RPC.
+  // Solo per atleti con athlete_id già pronto; un fallimento non blocca il signup.
+  let coachLinked = false;
+  if (effectiveRole === "private" && resolvedAthleteId) {
+    const link = await linkAthleteByCoachCode(supabase, body.coachCode);
+    coachLinked = link.ok;
+  }
+
   return NextResponse.json({
     status: current ? "existing" : "created",
     role: effectiveRole,
@@ -113,5 +123,6 @@ export async function POST(req: Request) {
     athleteId: resolvedAthleteId,
     platformCoachStatus,
     coachOperationalApproved: coachOperationalApproved(effectiveRole, platformCoachStatus),
+    coachLinked,
   });
 }

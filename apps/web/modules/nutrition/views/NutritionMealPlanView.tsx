@@ -74,9 +74,13 @@ export function NutritionMealPlanDailyTargets({
   round,
   energyLedger,
 }: NutritionMealPlanDailyTargetsProps) {
+  const { role: viewerRole, adminScoped } = useActiveAthlete();
+  /** Bilancio kcal (solver / Σ USDA / BMR): dettaglio motore, solo coach/admin. */
+  const showTech = viewerRole === "coach" || adminScoped;
   const slotSumKcal = round(complianceTargets.kcal);
   const ledger = energyLedger ?? null;
   const showLedger =
+    showTech &&
     ledger &&
     (ledger.mealsKcalSolver != null ||
       ledger.dailyKcalSolver != null ||
@@ -289,7 +293,9 @@ export function NutritionMealPlanWorkspace({
   onSaveNutrition,
 }: NutritionMealPlanWorkspaceProps) {
   const router = useRouter();
-  const { adminScoped } = useActiveAthlete();
+  const { role: viewerRole, adminScoped } = useActiveAthlete();
+  /** Numeri/etichette motore (solver/composer/pathway/planDate, cache USDA): solo coach/admin. */
+  const showTech = viewerRole === "coach" || adminScoped;
   const mealPlanMicroBoardProps = intelligentMealPlan?.nutrientRollup?.dayTotals
     ? mealPlanDayTotalsToMicroLines(intelligentMealPlan.nutrientRollup.dayTotals)
     : mealTabMicronutrientProps;
@@ -325,11 +331,17 @@ export function NutritionMealPlanWorkspace({
               className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-100/90"
               role="status"
             >
-              Pathway attivo: swap alimenti applicati nel piano, ma la cache USDA (ranking top alimenti) non è
-              disponibile. Popola `nutrition_fdc_foods` o riprova più tardi per i suggerimenti densità-nutriente.
+              Catalogo alimenti in aggiornamento: il piano è completo, ma alcuni suggerimenti di alimenti più
+              ricchi di nutrienti potrebbero arrivare a breve. Riprova più tardi.
+              {showTech ? (
+                <span className="mt-1 block text-[11px] text-amber-200/70">
+                  Pathway attivo: swap alimenti applicati nel piano, ma la cache USDA (ranking top alimenti) non è
+                  disponibile.
+                </span>
+              ) : null}
             </div>
           ) : null}
-          {intelligentMealPlan?.pathwayTargetRollup?.length ? (
+          {showTech && intelligentMealPlan?.pathwayTargetRollup?.length ? (
             <div
               className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] leading-relaxed text-gray-200"
               role="status"
@@ -460,10 +472,11 @@ export function NutritionMealPlanWorkspace({
                     Vai a Integrazione →
                   </button>
                   <span className="text-[10px] text-gray-500">
-                    Tutti i punti operativi (cofactors, leve solver, prodotti) sono raccolti nel modulo Integrazione.
+                    Tutti i dettagli operativi sono raccolti nel modulo Integrazione.
                   </span>
                 </div>
               </details>
+              {showTech ? (
               <details className="collapsible-card" style={{ marginBottom: 12 }}>
                 <summary style={{ fontSize: 13, cursor: "pointer" }}>
                   Numeri tecnici del giorno (allenamento, routine, target per pasto)
@@ -516,6 +529,7 @@ export function NutritionMealPlanWorkspace({
                   </ul>
                 </div>
               </details>
+              ) : null}
               {intelligentMealPlan.hydrationRoutine ? (
                 <details className="collapsible-card" style={{ marginBottom: 12 }}>
                   <summary style={{ fontSize: 13, cursor: "pointer" }}>Quanto bere oggi (acqua e sali) — dettaglio</summary>

@@ -272,7 +272,7 @@ export default function AerodynamicsPageView() {
             {message ? (
               <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
                 {message}
-                {(reviewStagingRunId ?? latestJobStaging?.id) ? (
+                {showTech && (reviewStagingRunId ?? latestJobStaging?.id) ? (
                   <>
                     {" "}
                     {adminScoped ? (
@@ -322,7 +322,7 @@ export default function AerodynamicsPageView() {
                 <p className="mt-1 text-xs text-gray-400">Solo da un test validato.</p>
               </div>
             </div>
-            {pendingStaging.length ? (
+            {showTech && pendingStaging.length ? (
               <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 {pendingStaging.length} proposte da validare —{" "}
                 {adminScoped ? (
@@ -459,7 +459,7 @@ export default function AerodynamicsPageView() {
           </Pro2Accordion>
         ) : null}
 
-        {latestJob?.status === "pending" && !latestJobAwaitingReview ? (
+        {showTech && latestJob?.status === "pending" && !latestJobAwaitingReview ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Pro2Button
               variant="secondary"

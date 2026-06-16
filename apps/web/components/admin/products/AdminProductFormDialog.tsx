@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cn } from "@/lib/cn";
@@ -48,6 +49,8 @@ const COPY = {
   commissionPromoter: "Commissione promoter (importo fisso — ruolo in arrivo)",
   amount: "Importo",
   isActive: "Prodotto attivo (vendibile)",
+  isHidden: "Nascosto dalla pagina pubblica",
+  isHiddenHint: "Non compare nei piani pubblici: vendibile solo tramite codice promo di sblocco.",
   sortOrder: "Ordinamento",
   // Errori
   errCodeRequired: "Il codice è obbligatorio.",
@@ -88,6 +91,7 @@ type ProductDraft = {
   commission_promoter_amount: string;
   commission_promoter_currency: string;
   is_active: boolean;
+  is_hidden: boolean;
   sort_order: string;
 };
 
@@ -111,6 +115,7 @@ function draftFromProduct(p: ProductRow | null): ProductDraft {
       commission_promoter_amount: "",
       commission_promoter_currency: "CHF",
       is_active: true,
+      is_hidden: false,
       sort_order: "0",
     };
   }
@@ -136,6 +141,7 @@ function draftFromProduct(p: ProductRow | null): ProductDraft {
     commission_promoter_amount: p.commission_promoter_amount != null ? String(p.commission_promoter_amount) : "",
     commission_promoter_currency: p.commission_promoter_currency ?? "CHF",
     is_active: Boolean(p.is_active),
+    is_hidden: Boolean(p.is_hidden),
     sort_order: String(p.sort_order ?? 0),
   };
 }
@@ -237,6 +243,7 @@ export function AdminProductFormDialog({
       commission_promoter_amount: promoterAmount,
       commission_promoter_currency: (draft.commission_promoter_currency.trim() || "CHF").toUpperCase(),
       is_active: draft.is_active,
+      is_hidden: draft.is_hidden,
       sort_order: sortOrder,
     };
 
@@ -261,7 +268,7 @@ export function AdminProductFormDialog({
     }
   };
 
-  return (
+  const dialogContent = (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       role="dialog"
@@ -539,6 +546,18 @@ export function AdminProductFormDialog({
                 />
               </Field>
             </div>
+            <label className="flex items-start gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={draft.is_hidden}
+                onChange={(e) => set("is_hidden", e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-amber-500"
+              />
+              <span>
+                {COPY.isHidden}
+                <span className="mt-0.5 block text-xs text-gray-500">{COPY.isHiddenHint}</span>
+              </span>
+            </label>
           </section>
         </div>
 
@@ -563,4 +582,6 @@ export function AdminProductFormDialog({
       </div>
     </div>
   );
+
+  return typeof document === "undefined" ? null : createPortal(dialogContent, document.body);
 }

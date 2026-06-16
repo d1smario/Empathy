@@ -26,6 +26,7 @@ const COPY = {
   searchPh: "Cerca in tutti i campi…",
   active: "Attivo",
   inactive: "Disattivo",
+  hidden: "Nascosto",
   activate: "Attiva prodotto",
   deactivate: "Disattiva prodotto",
   flagOwnCoach: "Coach proprio",
@@ -236,6 +237,11 @@ export function AdminProductsManager() {
                 >
                   {p.is_active ? COPY.active : COPY.inactive}
                 </span>
+                {p.is_hidden ? (
+                  <span className="inline-block rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-amber-200">
+                    {COPY.hidden}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 truncate font-mono text-[0.7rem] text-gray-500">{p.code}</p>
               {p.subtitle ? <p className="mt-0.5 truncate text-xs text-gray-400">{p.subtitle}</p> : null}

@@ -1,33 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, Heart, Network } from "lucide-react";
+import { Activity, CalendarDays, Heart } from "lucide-react";
 import { MODULE_PILL_AMBER, MODULE_PILL_CYAN, MODULE_PILL_ROSE } from "@/components/navigation/module-pill-styles";
 import { ModulePillSubnav, type ModulePillAnchorItem, scrollToModuleAnchor } from "@/components/navigation/ModulePillSubnav";
 
-export const DASHBOARD_MODULE_ANCHORS = ["dash-intro", "dash-core", "dash-operational"] as const;
+export const DASHBOARD_MODULE_ANCHORS = ["dash-day-views", "dash-core", "dash-health"] as const;
 
 const ITEMS: ModulePillAnchorItem[] = [
   {
-    key: "intro",
-    anchor: "dash-intro",
-    label: "Empathy · piani",
-    icon: Heart,
-    style: MODULE_PILL_ROSE,
+    key: "today",
+    anchor: "dash-day-views",
+    label: "Oggi",
+    icon: CalendarDays,
+    style: MODULE_PILL_CYAN,
   },
   {
     key: "core",
     anchor: "dash-core",
-    label: "Core",
+    label: "Stato",
     icon: Activity,
-    style: MODULE_PILL_CYAN,
+    style: MODULE_PILL_AMBER,
   },
   {
-    key: "operational",
-    anchor: "dash-operational",
-    label: "Operativo",
-    icon: Network,
-    style: MODULE_PILL_AMBER,
+    key: "health",
+    anchor: "dash-health",
+    label: "Salute",
+    icon: Heart,
+    style: MODULE_PILL_ROSE,
   },
 ];
 

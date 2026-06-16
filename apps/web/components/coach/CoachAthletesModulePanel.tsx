@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { CoachCodeCard } from "@/components/coach/CoachCodeCard";
 import { CoachInviteLinksCard } from "@/components/coach/CoachInviteLinksCard";
 import { CoachRosterCard } from "@/components/coach/CoachRosterCard";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
@@ -55,7 +56,10 @@ export function CoachAthletesModulePanel() {
         ) : null}
 
         <CoachRosterCard />
-        <CoachInviteLinksCard />
+        <div className="grid gap-6 md:grid-cols-2">
+          <CoachInviteLinksCard />
+          <CoachCodeCard />
+        </div>
 
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-6">
           <Pro2Link href="/dashboard" variant="secondary" className="justify-center border border-white/15 text-sm">

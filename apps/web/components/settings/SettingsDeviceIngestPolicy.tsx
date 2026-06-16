@@ -117,18 +117,12 @@ export function SettingsDeviceIngestPolicy() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-300">
-          Dispositivi · policy ingest
+          Dati da sincronizzare
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Scegli quali stream ogni integrazione può scrivere in <code className="text-gray-500">device_sync_exports</code> durante il
-          pull. WHOOP/Wahoo <strong className="font-normal text-gray-300">workout</strong>: lascia Off se il training canonico
-          arriva da Garmin o Strava; abbina la preferenza «Training» sopra allo stesso provider per evitare doppioni in Core.
-        </p>
-        <p className="mt-1 text-[0.65rem] text-gray-600">
-          API:{" "}
-          <code className="rounded border border-white/10 bg-black/40 px-1 font-mono text-[0.65rem] text-pink-300">
-            GET/PATCH /api/settings/device-ingest-policy
-          </code>
+          Scegli quali dati ogni dispositivo può sincronizzare (sonno, recupero, allenamenti). Lascia spento
+          {" "}<strong className="font-normal text-gray-300">«Workout»</strong> su WHOOP/Wahoo se gli allenamenti arrivano
+          già da Garmin o Strava, così eviti doppioni.
         </p>
 
         {err ? (

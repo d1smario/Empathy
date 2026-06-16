@@ -135,6 +135,148 @@ export function humanizePayloadKey(key: string): string {
   return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Dizionario chiave grezza → etichetta italiana leggibile per la vista atleta.
+ * Evita di esporre token tecnici/grezzi (es. `crp_mg_l`, `tnf_alpha`, `igf1`).
+ * Le chiavi sono normalizzate (lowercase, separatori `_`/`-` → `_`).
+ */
+const BIOMARKER_LABELS_IT: Record<string, string> = {
+  // Ematici
+  hb: "Emoglobina",
+  hemoglobin: "Emoglobina",
+  emoglobina: "Emoglobina",
+  hb_g_dl: "Emoglobina",
+  ferritin: "Ferritina",
+  ferritina: "Ferritina",
+  ferritina_ng_ml: "Ferritina",
+  vit_d: "Vitamina D",
+  vitamin_d: "Vitamina D",
+  vitamina_d: "Vitamina D",
+  "25_oh_d": "Vitamina D (25-OH)",
+  vitamina_d_25oh: "Vitamina D (25-OH)",
+  vitamin_d_25oh: "Vitamina D (25-OH)",
+  b12: "Vitamina B12",
+  vit_b12: "Vitamina B12",
+  cobalamin: "Vitamina B12",
+  vitamina_b12: "Vitamina B12",
+  glucose: "Glicemia",
+  glicemia: "Glicemia",
+  glucosio: "Glicemia",
+  fasting_glucose_mg_dl: "Glicemia a digiuno",
+  blood_glucose: "Glicemia",
+  // Infiammazione
+  crp_mg_l: "Proteina C reattiva",
+  crp: "Proteina C reattiva",
+  pcr: "Proteina C reattiva",
+  pcr_us: "Proteina C reattiva (us)",
+  hs_crp: "Proteina C reattiva (us)",
+  c_reactive_protein: "Proteina C reattiva",
+  il6: "Interleuchina 6",
+  il_6: "Interleuchina 6",
+  interleukin_6: "Interleuchina 6",
+  tnf_alpha: "TNF-alfa",
+  tnf: "TNF-alfa",
+  tnfa: "TNF-alfa",
+  homocysteine: "Omocisteina",
+  omocisteina: "Omocisteina",
+  oxidized_ldl: "LDL ossidate",
+  ldl_ox: "LDL ossidate",
+  ldl_oxidized: "LDL ossidate",
+  ox_ldl: "LDL ossidate",
+  // Ormoni
+  cortisol: "Cortisolo",
+  cortisolo: "Cortisolo",
+  cortisol_ug_dl: "Cortisolo",
+  cortisol_am: "Cortisolo (mattina)",
+  cortisol_morning: "Cortisolo (mattina)",
+  cortisolo_am: "Cortisolo (mattina)",
+  cortisolo_mattina: "Cortisolo (mattina)",
+  cortisol_pm: "Cortisolo (sera)",
+  cortisol_evening: "Cortisolo (sera)",
+  cortisolo_pm: "Cortisolo (sera)",
+  cortisolo_sera: "Cortisolo (sera)",
+  testosterone: "Testosterone",
+  testosterone_total: "Testosterone totale",
+  testosterone_totale: "Testosterone totale",
+  testosterone_ng_dl: "Testosterone",
+  tsh: "TSH",
+  tsh_miu_l: "TSH",
+  ft3: "T3 libera",
+  t3_free: "T3 libera",
+  t3_libero: "T3 libera",
+  t3_libera: "T3 libera",
+  t3: "T3",
+  free_t3_pg_ml: "T3 libera",
+  ft4: "T4 libera",
+  t4_free: "T4 libera",
+  t4_libero: "T4 libera",
+  t4_libera: "T4 libera",
+  t4: "T4",
+  free_t4_ng_dl: "T4 libera",
+  dhea_s: "DHEA-S",
+  dhea: "DHEA",
+  dehydroepiandrosterone: "DHEA",
+  dhea_s_ug_dl: "DHEA-S",
+  igf1: "IGF-1",
+  igf_1: "IGF-1",
+  "igf-1": "IGF-1",
+  insulin_like_growth_factor_1: "IGF-1",
+  // Microbiota
+  firmicutes_pct: "Firmicutes",
+  firmicutes: "Firmicutes",
+  bacteroidetes_pct: "Bacteroidetes",
+  bacteroidetes: "Bacteroidetes",
+  proteobacteria_pct: "Proteobacteria",
+  proteobacteria: "Proteobacteria",
+  actinobacteria_pct: "Actinobacteria",
+  actinobacteria: "Actinobacteria",
+  diversity_shannon: "Diversità (Shannon)",
+  diversity: "Diversità",
+  alpha_diversity: "Diversità (alfa)",
+  shannon: "Diversità (Shannon)",
+  shannon_index: "Diversità (Shannon)",
+  diversita_shannon: "Diversità (Shannon)",
+  // Stress ossidativo
+  d_roms: "d-ROMs",
+  roms: "d-ROMs",
+  d_rom: "d-ROMs",
+  bap: "BAP",
+  bap_umol: "BAP",
+  glutathione: "Glutatione",
+  glutatione: "Glutatione",
+  gsh: "Glutatione",
+  glutatione_ridotto: "Glutatione ridotto",
+  sod: "Superossido dismutasi (SOD)",
+  superoxide_dismutase: "Superossido dismutasi (SOD)",
+  catalase: "Catalasi",
+  catalasi: "Catalasi",
+  // Epigenetica
+  methylation_score: "Metilazione",
+  metilazione: "Metilazione",
+  methylation: "Metilazione",
+  metilazione_score: "Metilazione",
+  epigenetic_age_years: "Età biologica",
+  biological_age_years: "Età biologica",
+  eta_biologica: "Età biologica",
+  chronological_age_years: "Età cronologica",
+  age_years: "Età",
+  eta_cronologica: "Età cronologica",
+  biological_age_delta: "Differenza età biologica",
+  epigenetic_age_delta: "Differenza età biologica",
+  eta_bio_vs_crono: "Differenza età biologica",
+  epigenetic_detox: "Detox",
+  detox_score: "Detox",
+  epigenetic_repair: "Riparazione DNA",
+  repair_score: "Riparazione DNA",
+  dna_repair: "Riparazione DNA",
+};
+
+/** Etichetta leggibile per una chiave grezza, o `null` se sconosciuta (vista atleta). */
+export function biomarkerLabelIt(key: string): string | null {
+  const norm = key.trim().toLowerCase().replace(/-/g, "_");
+  return BIOMARKER_LABELS_IT[norm] ?? null;
+}
+
 export function formatScalarForDisplay(val: unknown): string {
   if (val == null) return "—";
   if (typeof val === "number" && Number.isFinite(val))
@@ -154,20 +296,37 @@ export function formatScalarForDisplay(val: unknown): string {
   return String(val);
 }
 
+/** true se il valore è un oggetto/array annidato (verrebbe serializzato in JSON). */
+function isNestedValue(val: unknown): boolean {
+  return typeof val === "object" && val != null;
+}
+
 export function panelRawDisplayRows(
   panel: HealthPanelTimelineRow,
+  options?: { showTech?: boolean },
 ): Array<{ key: string; label: string; value: string }> {
+  // showTech=true (coach/admin): comportamento storico (chiavi grezze umanizzate, JSON dei valori annidati).
+  // showTech=false (atleta): solo chiavi note via dizionario, niente chiavi sconosciute né JSON di valori annidati.
+  const showTech = options?.showTech !== false;
   const v = panel.values;
   if (!v || typeof v !== "object") return [];
   const rec = v as Record<string, unknown>;
   const flat = Object.keys(rec)
     .filter((k) => k !== "import" && k !== "vlm_proposals" && k !== "vlm_pending_validation")
     .sort((a, b) => a.localeCompare(b))
-    .map((key) => ({
-      key,
-      label: humanizePayloadKey(key),
-      value: formatScalarForDisplay(rec[key]),
-    }));
+    .map((key) => {
+      const friendly = biomarkerLabelIt(key);
+      if (!showTech) {
+        // Atleta: salta chiavi sconosciute e valori annidati (no JSON.stringify).
+        if (!friendly || isNestedValue(rec[key])) return null;
+      }
+      return {
+        key,
+        label: friendly ?? humanizePayloadKey(key),
+        value: formatScalarForDisplay(rec[key]),
+      };
+    })
+    .filter((r): r is { key: string; label: string; value: string } => r != null);
   const proposals = rec.vlm_proposals;
   if (!Array.isArray(proposals) || proposals.length === 0) return flat;
   // Append VLM proposals as virtual rows (clearly tagged) so the inline "Apri"
@@ -177,13 +336,18 @@ export function panelRawDisplayRows(
     .filter((p): p is Record<string, unknown> => Boolean(p) && typeof p === "object" && !Array.isArray(p))
     .map((p) => {
       const field = typeof p.field === "string" ? p.field : "";
+      const friendly = field ? biomarkerLabelIt(field) : null;
+      if (!showTech && (!friendly || isNestedValue(p.value))) return null;
       const unit = typeof p.unit === "string" && p.unit.trim() ? ` ${p.unit}` : "";
+      const baseLabel = friendly ?? humanizePayloadKey(field || "—");
       return {
         key: field || `proposal_${Math.random().toString(36).slice(2, 8)}`,
-        label: `${humanizePayloadKey(field || "—")} · proposto`,
+        // L'atleta vede solo "in attesa di validazione"; il coach vede "proposto".
+        label: showTech ? `${baseLabel} · proposto` : `${baseLabel} · in attesa di validazione`,
         value: `${formatScalarForDisplay(p.value)}${unit}`,
       };
     })
+    .filter((r): r is { key: string; label: string; value: string } => r != null)
     .filter((r) => !seenFields.has(r.key));
   return [...flat, ...proposed];
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { HomeStripePricing } from "@/components/marketing/HomeStripePricing";
+import type { UserAccessEntitlement } from "@/lib/billing/access-entitlement";
 import type { HostedCheckoutAvailability } from "@/lib/billing/stripe-checkout-availability";
 import type { EmpathyPlanCatalogItem, EmpathyTrialPolicy } from "@empathy/contracts";
 
@@ -14,6 +15,8 @@ type DashboardIntroAndPricingProps = {
   coachAddOns: EmpathyPlanCatalogItem[];
   trialPolicy: EmpathyTrialPolicy;
   trialDaysConfigured?: number;
+  /** Entitlement utente: con accesso attivo niente upsell, solo lo stato del piano. */
+  entitlement?: UserAccessEntitlement | null;
 };
 
 export function DashboardIntroAndPricing({
@@ -23,7 +26,13 @@ export function DashboardIntroAndPricing({
   coachAddOns,
   trialPolicy,
   trialDaysConfigured,
+  entitlement,
 }: DashboardIntroAndPricingProps) {
+  // Chi ha già un piano attivo non vede le opzioni d'acquisto: il badge del piano
+  // sta nell'header (DashboardPlanBadge), qui non si rende nulla. Solo chi non ha
+  // accesso vede i piani da acquistare.
+  if (entitlement?.hasAthleteAccess) return null;
+
   return (
     <section id="dash-intro" className="scroll-mt-28 space-y-8 rounded-2xl border border-white/10 bg-black/20 p-6 sm:p-8">
       <div>

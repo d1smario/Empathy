@@ -246,7 +246,7 @@ export function BiomechanicsAngleOverlay({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-black via-black to-teal-950/40">
-            <p className="text-xs text-gray-500">Anteprima scheletro · angoli CV</p>
+            <p className="text-xs text-gray-500">Anteprima scheletro · angoli</p>
           </div>
         )}
         <canvas

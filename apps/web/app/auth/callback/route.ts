@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { safeAppInternalPath } from "@/core/routing/guards";
 import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
+import { linkAthleteByCoachCode } from "@/lib/auth/link-coach-by-code";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { PENDING_APP_ROLE_COOKIE, parsePendingAppRole } from "@/lib/auth/pending-role-cookie";
 import {
@@ -79,8 +80,8 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.redirect(`${origin}/access?error=auth`);
   }
+  const meta = user.user_metadata as Record<string, unknown>;
   if (pending) {
-    const meta = user.user_metadata as Record<string, unknown>;
     await bootstrapAppUserProfile(supabase, {
       userId: user.id,
       role: pending,
@@ -89,6 +90,15 @@ export async function GET(request: NextRequest) {
       lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
       athleteId: null,
     });
+  }
+
+  // Codice coach (opzionale) propagato via options.data.coach_code a registrazione
+  // con conferma email: lo rileggiamo da user_metadata (come first_name) e
+  // colleghiamo l'atleta al coach (ESCLUSIVO) tramite l'unico punto server-side.
+  // La RPC risolve l'atleta da auth.uid(); il bootstrap sopra ha già garantito athlete_id.
+  const coachCodeFromMeta = typeof meta?.coach_code === "string" ? meta.coach_code : null;
+  if (coachCodeFromMeta) {
+    await linkAthleteByCoachCode(supabase, coachCodeFromMeta);
   }
 
   const admin = createSupabaseAdminClient();

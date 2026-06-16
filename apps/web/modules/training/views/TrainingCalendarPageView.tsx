@@ -217,16 +217,18 @@ export default function TrainingCalendarPageView() {
                 onCalendarMutated={cal.handleDayCalendarMutated}
               />
             ) : null}
-            <div className="mb-8 w-full min-w-0">
-              <CoachWorkoutLibraryPanel
-                athleteId={cal.athleteId}
-                targetDate={cal.selectedDate}
-                contractToSave={cal.calendarLibraryContract}
-                saveTitle={cal.calendarLibraryContract?.sessionName ?? undefined}
-                sourcePlannedId={cal.dayPlanned[0]?.id ?? null}
-                onApplied={() => void cal.loadMonth()}
-              />
-            </div>
+            {cal.showTech ? (
+              <div className="mb-8 w-full min-w-0">
+                <CoachWorkoutLibraryPanel
+                  athleteId={cal.athleteId}
+                  targetDate={cal.selectedDate}
+                  contractToSave={cal.calendarLibraryContract}
+                  saveTitle={cal.calendarLibraryContract?.sessionName ?? undefined}
+                  sourcePlannedId={cal.dayPlanned[0]?.id ?? null}
+                  onApplied={() => void cal.loadMonth()}
+                />
+              </div>
+            ) : null}
           </>
         ) : null}
       </section>

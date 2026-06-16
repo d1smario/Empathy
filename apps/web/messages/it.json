@@ -35,6 +35,8 @@
     "loadingContext": "Caricamento contesto atleta…",
     "noActiveTitle": "Nessun atleta attivo",
     "noActiveCoach": "Se sei coach già abilitato, seleziona un assistito in Atleti. Se l'account è in attesa di approvazione piattaforma, i moduli dati restano disattivi fino all'abilitazione.",
+    "noActiveCoachApproved": "Seleziona un atleta dalla lista Atleti per aprirne le schede (calendario, salute, nutrizione…).",
+    "noActiveCoachPending": "Il tuo account coach è in attesa di approvazione dalla piattaforma: i moduli dati restano disattivi fino all'abilitazione.",
     "noActiveAthlete": "Completa il profilo in Profilo per collegare il tuo atleta, oppure attendi il completamento del bootstrap account.",
     "goToProfile": "Vai a Profilo",
     "goToDashboard": "Dashboard"

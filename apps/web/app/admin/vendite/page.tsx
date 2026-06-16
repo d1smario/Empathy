@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdminSalesView } from "@/components/admin/sales/AdminSalesView";
+import { AdminPromoCodesManager } from "@/components/admin/promo-codes/AdminPromoCodesManager";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,11 @@ export default function AdminVenditePage() {
       }
     >
       <AdminSalesView />
+
+      {/* Codici promo: sezione DENTRO Vendite (sconto o sblocco prodotto nascosto). */}
+      <div className="mt-12 border-t border-white/10 pt-10">
+        <AdminPromoCodesManager />
+      </div>
     </Pro2ModulePageShell>
   );
 }

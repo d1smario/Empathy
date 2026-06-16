@@ -6,6 +6,8 @@ export interface HealthLatestPanelsSectionProps {
   bloodRow: BloodPanelRow | null;
   newestBloodPanel: HealthPanelTimelineRow | undefined;
   latestPanelsByTypeForRaw: HealthPanelTimelineRow[];
+  /** false per l'atleta: le card valori grezzi mostrano solo etichette note. */
+  showTech?: boolean;
 }
 
 /** Etichette italiane per i tipi di pannello visibili all'atleta (solo presentazione). */
@@ -30,6 +32,7 @@ export function HealthLatestPanelsSection({
   bloodRow,
   newestBloodPanel,
   latestPanelsByTypeForRaw,
+  showTech = true,
 }: HealthLatestPanelsSectionProps) {
   const hasNonBlood = latestPanelsByTypeForRaw.some((p) => p.type !== "blood");
   if (!bloodRow && !hasNonBlood) return null;
@@ -55,7 +58,7 @@ export function HealthLatestPanelsSection({
           />
         ) : newestBloodPanel &&
           structuredValuesFieldCount(newestBloodPanel.values as Record<string, unknown> | null) > 0 ? (
-          <RawPanelValuesCard panel={newestBloodPanel} title="ematici" className="border-rose-500/20" />
+          <RawPanelValuesCard panel={newestBloodPanel} title="ematici" className="border-rose-500/20" showTech={showTech} />
         ) : null}
         {latestPanelsByTypeForRaw
           .filter((p) => p.type !== "blood")
@@ -65,6 +68,7 @@ export function HealthLatestPanelsSection({
               panel={p}
               title={panelTypeLabelIt(p.type)}
               className="border-rose-500/20"
+              showTech={showTech}
             />
           ))}
       </div>

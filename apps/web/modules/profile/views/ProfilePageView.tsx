@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ProfilePro2KpiGrid,
   profileMetricLabelToAccent,
   profileSectionTitleToAccent,
 } from "@/components/profile/ProfilePro2KpiCard";
 import { InviteCoachCard } from "@/components/profile/InviteCoachCard";
+import { SettingsDataSourcePreference } from "@/components/settings/SettingsDataSourcePreference";
+import { SettingsDeviceIngestPolicy } from "@/components/settings/SettingsDeviceIngestPolicy";
+import { SettingsLocalePreference } from "@/components/settings/SettingsLocalePreference";
+import { SettingsBuildPhasesCard } from "@/components/settings/SettingsBuildPhasesCard";
+import { SettingsAuthSessionDiagnostics } from "@/components/settings/SettingsAuthSessionDiagnostics";
+import { SettingsAthleteContextDiagnostics } from "@/components/settings/SettingsAthleteContextDiagnostics";
+import { SettingsIntegrationsDiagnostics } from "@/components/settings/SettingsIntegrationsDiagnostics";
+import { SettingsBillingDiagnostics } from "@/components/settings/SettingsBillingDiagnostics";
+import { PlatformAdminOnly } from "@/components/auth/PlatformAdminOnly";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { ManualIntegrationPullButton } from "@/components/integrations/ManualIntegrationPullButton";
@@ -15,13 +24,6 @@ import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import type { AthleteMemory, PhysiologyState, TwinState } from "@/lib/empathy/schemas";
 import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { garminOAuthReasonGuidance } from "@/lib/integrations/garmin-oauth-reason-copy";
-import {
-  GARMIN_SUMMARY_BACKFILL_STREAMS,
-  GARMIN_WELLNESS_BATCH_BACKFILL_STREAMS,
-  maxRangeSecondsForGarminSummaryBackfillStream,
-  type GarminSummaryBackfillStream,
-} from "@/lib/integrations/garmin-summary-backfill-streams";
 import { createProfilePayload, fetchProfileViewModel, updateProfilePayload } from "@/modules/profile/services/profile-api";
 import {
   findSupplementCategory,
@@ -32,7 +34,7 @@ import {
   SUPPLEMENT_CATEGORIES,
 } from "@/lib/profile/supplement-category-catalog";
 import { resolveSixMealSnackPercentages } from "@/lib/nutrition/diet-meal-slot-budgets";
-import { Activity, Dna, Flame, GaugeCircle, Heart, Layers, PencilLine, User } from "lucide-react";
+import { Activity, Dna, Flame, GaugeCircle, Heart, Layers, PencilLine, Settings2 } from "lucide-react";
 
 type AthleteProfileRow = {
   id: string;
@@ -384,8 +386,25 @@ function estimateVo2maxMlMinKg(params: {
   return round1(clampNumber(vo2maxMlMinKg, 35, 90));
 }
 
-export default function ProfilePage() {
-  const { activeAthleteId, role, loading: athleteLoading } = useActiveAthlete();
+// Cache cross-mount del view-model profilo: ri-atterrando sulla pagina i dati
+// compaiono subito (niente spinner/"refresh"); refetch in background solo se la
+// cache è più vecchia di PROFILE_VM_FRESH_MS, o forzato dopo un salvataggio.
+let profileVmCacheId: string | null = null;
+let profileVmCache: Awaited<ReturnType<typeof fetchProfileViewModel>> | null = null;
+let profileVmCacheAt = 0;
+const PROFILE_VM_FRESH_MS = 60_000;
+
+export default function ProfilePage({
+  hasLinkedCoach = false,
+  hasActivePlan = false,
+}: {
+  hasLinkedCoach?: boolean;
+  hasActivePlan?: boolean;
+}) {
+  const { activeAthleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
+  // Output del motore (segnali fisiologici, copertura dataset, digital twin) e note
+  // tecniche: roba da coach/admin, non dall'atleta. Stesso pattern showTech del resto.
+  const showTech = role === "coach" || adminScoped;
   const [profiles, setProfiles] = useState<AthleteProfileRow[]>([]);
   const [physioMap, setPhysioMap] = useState<Record<string, PhysiologyRow>>({});
   const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
@@ -397,98 +416,28 @@ export default function ProfilePage() {
     biomarkerPanel: boolean;
   } | null>(null);
   const [twinSnapshot, setTwinSnapshot] = useState<TwinState | null>(null);
-  const [garminLink, setGarminLink] = useState<{
-    linked: boolean;
-    garminUserIdMasked?: string;
-    oauthScope?: string | null;
-    userPermissionsGranted?: string[] | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [garminLink, setGarminLink] = useState<{ linked: boolean } | null>(null);
   const [garminReturn, setGarminReturn] = useState<string | null>(null);
-  const [garminReason, setGarminReason] = useState<string | null>(null);
-  const [garminDetail, setGarminDetail] = useState<string | null>(null);
   const [garminDisconnecting, setGarminDisconnecting] = useState(false);
-  const [garminBackfillStream, setGarminBackfillStream] = useState("activityDetails");
-  const [garminBackfillDays, setGarminBackfillDays] = useState(14);
-  const [garminBackfillBusy, setGarminBackfillBusy] = useState(false);
-  const [garminBackfillNotice, setGarminBackfillNotice] = useState<string | null>(null);
-  const garminSingleBackfillMaxDays = useMemo(() => {
-    return Math.floor(
-      maxRangeSecondsForGarminSummaryBackfillStream(garminBackfillStream as GarminSummaryBackfillStream) / 86_400,
-    );
-  }, [garminBackfillStream]);
-  const garminWellnessBatchMaxDays = useMemo(
-    () =>
-      Math.floor(
-        Math.min(
-          ...GARMIN_WELLNESS_BATCH_BACKFILL_STREAMS.map((s) => maxRangeSecondsForGarminSummaryBackfillStream(s)),
-        ) / 86_400,
-      ),
-    [],
-  );
-  const [whoopLink, setWhoopLink] = useState<{
-    linked: boolean;
-    whoopUserIdMasked?: string;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [whoopLink, setWhoopLink] = useState<{ linked: boolean } | null>(null);
   const [whoopReturn, setWhoopReturn] = useState<string | null>(null);
-  const [whoopReason, setWhoopReason] = useState<string | null>(null);
-  const [whoopDetail, setWhoopDetail] = useState<string | null>(null);
   const [whoopPullBusy, setWhoopPullBusy] = useState(false);
   const [whoopPullNotice, setWhoopPullNotice] = useState<string | null>(null);
-  const [wahooLink, setWahooLink] = useState<{
-    linked: boolean;
-    wahooUserIdMasked?: string;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [wahooLink, setWahooLink] = useState<{ linked: boolean } | null>(null);
   const [wahooReturn, setWahooReturn] = useState<string | null>(null);
-  const [wahooReason, setWahooReason] = useState<string | null>(null);
-  const [wahooDetail, setWahooDetail] = useState<string | null>(null);
   const [wahooPullBusy, setWahooPullBusy] = useState(false);
   const [wahooPullNotice, setWahooPullNotice] = useState<string | null>(null);
-  const [stravaLink, setStravaLink] = useState<{
-    linked: boolean;
-    stravaAthleteIdMasked?: string;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [stravaLink, setStravaLink] = useState<{ linked: boolean } | null>(null);
   const [stravaReturn, setStravaReturn] = useState<string | null>(null);
-  const [stravaReason, setStravaReason] = useState<string | null>(null);
-  const [stravaDetail, setStravaDetail] = useState<string | null>(null);
-  const [polarLink, setPolarLink] = useState<{
-    linked: boolean;
-    polarUserIdMasked?: string;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [polarLink, setPolarLink] = useState<{ linked: boolean } | null>(null);
   const [polarReturn, setPolarReturn] = useState<string | null>(null);
-  const [polarReason, setPolarReason] = useState<string | null>(null);
-  const [polarDetail, setPolarDetail] = useState<string | null>(null);
   const [polarPullBusy, setPolarPullBusy] = useState(false);
   const [polarPullNotice, setPolarPullNotice] = useState<string | null>(null);
-  const [suuntoLink, setSuuntoLink] = useState<{
-    linked: boolean;
-    suuntoUserIdMasked?: string;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [suuntoLink, setSuuntoLink] = useState<{ linked: boolean } | null>(null);
   const [suuntoReturn, setSuuntoReturn] = useState<string | null>(null);
   const [suuntoPullBusy, setSuuntoPullBusy] = useState(false);
   const [suuntoPullNotice, setSuuntoPullNotice] = useState<string | null>(null);
-  const [karooLink, setKarooLink] = useState<{
-    linked: boolean;
-    oauthScope?: string | null;
-    linkStatusError?: string;
-    linkStatusHint?: string;
-  } | null>(null);
+  const [karooLink, setKarooLink] = useState<{ linked: boolean } | null>(null);
   const [karooReturn, setKarooReturn] = useState<string | null>(null);
   const [karooPullBusy, setKarooPullBusy] = useState(false);
   const [karooPullNotice, setKarooPullNotice] = useState<string | null>(null);
@@ -499,9 +448,9 @@ export default function ProfilePage() {
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"personal" | "physical" | "routine" | "nutrition">("personal");
   const [activeNutritionTab, setActiveNutritionTab] = useState<"diet" | "intolerances" | "supplements">("diet");
+  const editorScrollRef = useRef<HTMLDivElement>(null);
   const [activeSupplementCategory, setActiveSupplementCategory] = useState("carboidrati");
   const [daysActive, setDaysActive] = useState(0);
-  const [dayStreak, setDayStreak] = useState(0);
   const [activeRoutineDay, setActiveRoutineDay] = useState<WeekDay>("Mon");
   const [activeDietDay, setActiveDietDay] = useState<WeekDay>("Mon");
   const [routineWeekPlan, setRoutineWeekPlan] = useState<Record<WeekDay, RoutineDayConfig>>(defaultRoutineWeek());
@@ -561,36 +510,11 @@ export default function ProfilePage() {
     supplement_brands: "",
   });
 
-  async function load() {
-    if (!activeAthleteId) {
-      setProfiles([]);
-      setPhysioMap({});
-      setPhysiologyState(null);
-      setPhysiologyCoverage(null);
-      setTwinSnapshot(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const vm = await fetchProfileViewModel(activeAthleteId);
-    if (vm.error) {
-      setError(vm.error);
-      setProfiles([]);
-      setPhysioMap({});
-      setPhysiologyState(null);
-      setPhysiologyCoverage(null);
-      setTwinSnapshot(null);
-      setDaysActive(0);
-      setDayStreak(0);
-      setLoading(false);
-      return;
-    }
+  function applyProfileVm(vm: NonNullable<typeof profileVmCache>) {
     const memory = vm.athleteMemory ?? null;
     const mappedProfile = mapAthleteMemoryToProfileRow(memory);
     setProfiles(mappedProfile ? [mappedProfile] : vm.profile ? [vm.profile as AthleteProfileRow] : []);
     setDaysActive(vm.activity.daysActive);
-    setDayStreak(vm.activity.dayStreak);
     const map: Record<string, PhysiologyRow> = {};
     const mappedPhysio = mapAthleteMemoryToPhysiologyRow(memory);
     if (mappedPhysio) {
@@ -603,6 +527,48 @@ export default function ProfilePage() {
     setPhysiologyState((memory?.physiology as PhysiologyState | null) ?? ((vm.physiologyState as PhysiologyState | null) ?? null));
     setPhysiologyCoverage(vm.physiologyCoverage ?? memory?.physiology?.sources ?? null);
     setTwinSnapshot(vm.athleteMemory?.twin ?? null);
+  }
+
+  async function load() {
+    if (!activeAthleteId) {
+      setProfiles([]);
+      setPhysioMap({});
+      setPhysiologyState(null);
+      setPhysiologyCoverage(null);
+      setTwinSnapshot(null);
+      setLoading(false);
+      return;
+    }
+    // Se i dati di questo atleta sono già in cache, mostrali SUBITO (niente
+    // spinner/"refresh"); aggiorna in background solo se la cache è "stale".
+    const hasCache = profileVmCacheId === activeAthleteId && profileVmCache != null && !profileVmCache.error;
+    if (hasCache) {
+      applyProfileVm(profileVmCache!);
+      setError(null);
+      setLoading(false);
+      if (Date.now() - profileVmCacheAt < PROFILE_VM_FRESH_MS) return;
+    } else {
+      setLoading(true);
+      setError(null);
+    }
+    const vm = await fetchProfileViewModel(activeAthleteId);
+    if (vm.error) {
+      if (!hasCache) {
+        setError(vm.error);
+        setProfiles([]);
+        setPhysioMap({});
+        setPhysiologyState(null);
+        setPhysiologyCoverage(null);
+        setTwinSnapshot(null);
+        setDaysActive(0);
+        setLoading(false);
+      }
+      return;
+    }
+    profileVmCache = vm;
+    profileVmCacheId = activeAthleteId;
+    profileVmCacheAt = Date.now();
+    applyProfileVm(vm);
     setLoading(false);
   }
 
@@ -613,37 +579,25 @@ export default function ProfilePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
-    const reason = q.get("reason");
-    const detail = q.get("detail");
     const wahoo = q.get("wahoo");
     const whoop = q.get("whoop");
     const strava = q.get("strava");
     const polar = q.get("polar");
     if (wahoo) {
       setWahooReturn(wahoo);
-      if (reason) setWahooReason(reason);
-      if (detail) setWahooDetail(detail);
     } else if (whoop) {
       setWhoopReturn(whoop);
-      if (reason) setWhoopReason(reason);
-      if (detail) setWhoopDetail(detail);
     } else if (polar) {
       setPolarReturn(polar);
-      if (reason) setPolarReason(reason);
-      if (detail) setPolarDetail(detail);
     } else if (q.get("suunto")) {
       setSuuntoReturn(q.get("suunto"));
     } else if (q.get("karoo")) {
       setKarooReturn(q.get("karoo"));
     } else if (strava) {
       setStravaReturn(strava);
-      if (reason) setStravaReason(reason);
-      if (detail) setStravaDetail(detail);
     } else {
       const p = q.get("garmin");
       if (p) setGarminReturn(p);
-      if (reason) setGarminReason(reason);
-      if (detail) setGarminDetail(detail);
     }
   }, []);
 
@@ -684,147 +638,21 @@ export default function ProfilePage() {
             credentials: "include",
           }),
         ]);
-        const jG = (await rG.json()) as {
-          linked?: boolean;
-          garminUserIdMasked?: string;
-          oauthScope?: string | null;
-          userPermissionsGranted?: string[] | null;
-          error?: string;
-          hint?: string;
-        };
-        const jWhoop = (await rWhoop.json()) as {
-          linked?: boolean;
-          whoopUserIdMasked?: string;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
-        const jWahoo = (await rWahoo.json()) as {
-          linked?: boolean;
-          wahooUserIdMasked?: string;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
-        const jStrava = (await rStrava.json()) as {
-          linked?: boolean;
-          stravaAthleteIdMasked?: string;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
-        const jPolar = (await rPolar.json()) as {
-          linked?: boolean;
-          polarUserIdMasked?: string;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
-        const jSuunto = (await rSuunto.json()) as {
-          linked?: boolean;
-          suuntoUserIdMasked?: string;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
-        const jKaroo = (await rKaroo.json()) as {
-          linked?: boolean;
-          oauthScope?: string | null;
-          error?: string;
-          hint?: string;
-        };
+        const jG = (await rG.json()) as { linked?: boolean };
+        const jWhoop = (await rWhoop.json()) as { linked?: boolean };
+        const jWahoo = (await rWahoo.json()) as { linked?: boolean };
+        const jStrava = (await rStrava.json()) as { linked?: boolean };
+        const jPolar = (await rPolar.json()) as { linked?: boolean };
+        const jSuunto = (await rSuunto.json()) as { linked?: boolean };
+        const jKaroo = (await rKaroo.json()) as { linked?: boolean };
         if (cancelled) return;
-        if (!rG.ok) {
-          setGarminLink({
-            linked: false,
-            linkStatusError: jG.error ?? `HTTP ${rG.status}`,
-            linkStatusHint: typeof jG.hint === "string" ? jG.hint : undefined,
-          });
-        } else {
-          setGarminLink({
-            linked: Boolean(jG.linked),
-            garminUserIdMasked: jG.garminUserIdMasked,
-            oauthScope: jG.oauthScope ?? null,
-            userPermissionsGranted: Array.isArray(jG.userPermissionsGranted) ? jG.userPermissionsGranted : null,
-          });
-        }
-        if (!rWhoop.ok) {
-          setWhoopLink({
-            linked: false,
-            linkStatusError: jWhoop.error ?? `HTTP ${rWhoop.status}`,
-            linkStatusHint: typeof jWhoop.hint === "string" ? jWhoop.hint : undefined,
-          });
-        } else {
-          setWhoopLink({
-            linked: Boolean(jWhoop.linked),
-            whoopUserIdMasked: jWhoop.whoopUserIdMasked,
-            oauthScope: jWhoop.oauthScope ?? null,
-          });
-        }
-        if (!rWahoo.ok) {
-          setWahooLink({
-            linked: false,
-            linkStatusError: jWahoo.error ?? `HTTP ${rWahoo.status}`,
-            linkStatusHint: typeof jWahoo.hint === "string" ? jWahoo.hint : undefined,
-          });
-        } else {
-          setWahooLink({
-            linked: Boolean(jWahoo.linked),
-            wahooUserIdMasked: jWahoo.wahooUserIdMasked,
-            oauthScope: jWahoo.oauthScope ?? null,
-          });
-        }
-        if (!rStrava.ok) {
-          setStravaLink({
-            linked: false,
-            linkStatusError: jStrava.error ?? `HTTP ${rStrava.status}`,
-            linkStatusHint: typeof jStrava.hint === "string" ? jStrava.hint : undefined,
-          });
-        } else {
-          setStravaLink({
-            linked: Boolean(jStrava.linked),
-            stravaAthleteIdMasked: jStrava.stravaAthleteIdMasked,
-            oauthScope: jStrava.oauthScope ?? null,
-          });
-        }
-        if (!rPolar.ok) {
-          setPolarLink({
-            linked: false,
-            linkStatusError: jPolar.error ?? `HTTP ${rPolar.status}`,
-            linkStatusHint: typeof jPolar.hint === "string" ? jPolar.hint : undefined,
-          });
-        } else {
-          setPolarLink({
-            linked: Boolean(jPolar.linked),
-            polarUserIdMasked: jPolar.polarUserIdMasked,
-            oauthScope: jPolar.oauthScope ?? null,
-          });
-        }
-        if (!rSuunto.ok) {
-          setSuuntoLink({
-            linked: false,
-            linkStatusError: jSuunto.error ?? `HTTP ${rSuunto.status}`,
-            linkStatusHint: typeof jSuunto.hint === "string" ? jSuunto.hint : undefined,
-          });
-        } else {
-          setSuuntoLink({
-            linked: Boolean(jSuunto.linked),
-            suuntoUserIdMasked: jSuunto.suuntoUserIdMasked,
-            oauthScope: jSuunto.oauthScope ?? null,
-          });
-        }
-        if (!rKaroo.ok) {
-          setKarooLink({
-            linked: false,
-            linkStatusError: jKaroo.error ?? `HTTP ${rKaroo.status}`,
-            linkStatusHint: typeof jKaroo.hint === "string" ? jKaroo.hint : undefined,
-          });
-        } else {
-          setKarooLink({
-            linked: Boolean(jKaroo.linked),
-            oauthScope: jKaroo.oauthScope ?? null,
-          });
-        }
+        setGarminLink({ linked: rG.ok && Boolean(jG.linked) });
+        setWhoopLink({ linked: rWhoop.ok && Boolean(jWhoop.linked) });
+        setWahooLink({ linked: rWahoo.ok && Boolean(jWahoo.linked) });
+        setStravaLink({ linked: rStrava.ok && Boolean(jStrava.linked) });
+        setPolarLink({ linked: rPolar.ok && Boolean(jPolar.linked) });
+        setSuuntoLink({ linked: rSuunto.ok && Boolean(jSuunto.linked) });
+        setKarooLink({ linked: rKaroo.ok && Boolean(jKaroo.linked) });
       } catch {
         if (!cancelled) {
           setGarminLink({ linked: false });
@@ -1036,95 +864,6 @@ export default function ProfilePage() {
     }
   }
 
-  async function runGarminBackfill() {
-    if (!activeAthleteId || !garminLink?.linked || garminBackfillBusy) return;
-    setGarminBackfillBusy(true);
-    setGarminBackfillNotice(null);
-    try {
-      const days = Math.min(
-        garminSingleBackfillMaxDays,
-        Math.max(1, Math.floor(Number(garminBackfillDays) || 14)),
-      );
-      const r = await fetch("/api/integrations/garmin/backfill", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          athleteId: activeAthleteId,
-          stream: garminBackfillStream,
-          days,
-        }),
-      });
-      const j = (await r.json()) as {
-        ok?: boolean;
-        batch?: boolean;
-        message?: string;
-        error?: string;
-        errorMessage?: string | null;
-        httpStatus?: number;
-        hint?: string;
-        results?: Array<{ stream: string; ok: boolean; httpStatus: number; errorMessage?: string | null }>;
-      };
-      if (j.ok) {
-        setGarminBackfillNotice(j.message ?? "Richiesta inviata a Garmin.");
-      } else {
-        const core = j.errorMessage ?? j.error ?? `Errore HTTP ${j.httpStatus ?? r.status}`;
-        setGarminBackfillNotice(j.hint ? `${core} — ${j.hint}` : core);
-      }
-    } catch {
-      setGarminBackfillNotice("Errore di rete.");
-    } finally {
-      setGarminBackfillBusy(false);
-    }
-  }
-
-  async function runGarminBackfillWellnessBatch() {
-    if (!activeAthleteId || !garminLink?.linked || garminBackfillBusy) return;
-    setGarminBackfillBusy(true);
-    setGarminBackfillNotice(null);
-    try {
-      const days = Math.min(
-        garminWellnessBatchMaxDays,
-        Math.max(1, Math.floor(Number(garminBackfillDays) || 14)),
-      );
-      const r = await fetch("/api/integrations/garmin/backfill", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          athleteId: activeAthleteId,
-          streams: [...GARMIN_WELLNESS_BATCH_BACKFILL_STREAMS],
-          days,
-        }),
-      });
-      const j = (await r.json()) as {
-        batch?: boolean;
-        allOk?: boolean;
-        message?: string;
-        error?: string;
-        hint?: string;
-        hint429?: string;
-        results?: Array<{ stream: string; ok: boolean; httpStatus: number; errorMessage?: string | null }>;
-      };
-      if (j.batch && j.results && j.results.length > 0) {
-        const bits = j.results.map((row) =>
-          row.ok ? `${row.stream}:${row.httpStatus}` : `${row.stream}:FAIL:${row.httpStatus}`,
-        );
-        const hints = [j.hint, j.hint429].filter(Boolean).join(" — ");
-        const suffix = hints ? ` — ${hints}` : "";
-        setGarminBackfillNotice(`${j.message ?? ""} ${bits.join(" · ")}`.trim() + suffix);
-      } else if (j.error) {
-        setGarminBackfillNotice(j.error);
-      } else {
-        setGarminBackfillNotice("Risposta imprevista dal server.");
-      }
-    } catch {
-      setGarminBackfillNotice("Errore di rete.");
-    } finally {
-      setGarminBackfillBusy(false);
-    }
-  }
-
   function startEditProfile(p: AthleteProfileRow) {
     const routine = toRecord(p.routine_config);
     const mealTimes = toRecord(routine.meal_times);
@@ -1269,17 +1008,19 @@ export default function ProfilePage() {
     }));
   }
 
-  function openEditSubsection(
+  function goToEditorSection(
     section: "personal" | "physical" | "routine" | "nutrition",
     nutritionTab?: "diet" | "intolerances" | "supplements",
   ) {
-    if (!currentProfile) return;
-    startEditProfile(currentProfile);
     setActiveSection(section);
     if (nutritionTab) setActiveNutritionTab(nutritionTab);
     if (nutritionTab === "supplements") {
       setActiveSupplementCategory(normalizeSupplementCategoryId(activeSupplementCategory));
     }
+    // La pagina NON si muove: l'editor ha ingombro fisso (wrapper ad altezza fissa
+    // con scroll interno). Resettiamo solo lo scroll INTERNO del pannello, così ogni
+    // sezione riparte dall'alto senza toccare lo scroll della pagina.
+    if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
   }
 
   function updateRoutineDay(day: WeekDay, patch: Partial<RoutineDayConfig>) {
@@ -1398,6 +1139,7 @@ export default function ProfilePage() {
       }
       setShowForm(false);
       setEditingProfileId(null);
+      profileVmCache = null; // forza il refetch dei dati appena salvati
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore salvataggio profilo");
@@ -1649,45 +1391,18 @@ export default function ProfilePage() {
       eyebrow="Athlete · Profile"
       eyebrowClassName={moduleEyebrowClass("profile")}
       title="Identità e vincoli"
-      description={
-        <>
-          Dati da <code className="text-fuchsia-200/80">GET /api/profile</code> + memoria atleta. FTP{" "}
-          <span className="text-orange-200/90">{resolvedFtp != null ? `${Math.round(resolvedFtp)} W` : "—"}</span>
-          {" · "}
-          classificazione {athleteType.label} · streak attività {dayStreak}g
-        </>
-      }
+      description={<span className="text-sm text-gray-400">I tuoi dati, misure e preferenze alimentari.</span>}
       headerActions={
-        <>
-          {currentProfile ? (
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-              onClick={() => startEditProfile(currentProfile)}
-            >
-              Modifica profilo
-            </Pro2Button>
-          ) : null}
-          {!isCoachWithoutAthlete ? (
-            <>
-              <Pro2Link
-                href="/physiology"
-                variant="secondary"
-                className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-              >
-                Physiology
-              </Pro2Link>
-              <Pro2Link
-                href="/training/builder"
-                variant="secondary"
-                className="justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15"
-              >
-                Builder
-              </Pro2Link>
-            </>
-          ) : null}
-        </>
+        currentProfile ? (
+          <Pro2Button
+            type="button"
+            variant="secondary"
+            className="border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
+            onClick={() => startEditProfile(currentProfile)}
+          >
+            Modifica profilo
+          </Pro2Button>
+        ) : null
       }
     >
       <div className="profile-page space-y-10">
@@ -1697,12 +1412,7 @@ export default function ProfilePage() {
 
         {currentProfile ? (
           <>
-            <Pro2SectionCard
-              accent="fuchsia"
-              icon={User}
-              title="Identità atleta"
-              subtitle={`${currentProfile.activity_level ?? "advanced"}${currentProfile.diet_type ? ` · ${currentProfile.diet_type}` : ""}`}
-            >
+            <section className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-950/[0.12] via-orange-950/[0.08] to-black/85 p-6 shadow-inner">
               <div className="flex flex-wrap items-center gap-5">
                 <div
                   className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-fuchsia-400/40 bg-fuchsia-500/25 text-xl font-black text-white shadow-[0_0_24px_rgba(217,70,239,0.3)]"
@@ -1714,34 +1424,39 @@ export default function ProfilePage() {
                   <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                     {[currentProfile.first_name, currentProfile.last_name].filter(Boolean).join(" ") || "Utente"}
                   </p>
-                  <span
-                    className={cn(
-                      "mt-3 inline-flex rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide",
-                      athleteTypePillClass(athleteType.tone),
-                    )}
-                  >
-                    {athleteType.label}
-                  </span>
+                  <p className="mt-1 text-sm text-gray-400">
+                    {`${currentProfile.activity_level ?? "advanced"}${currentProfile.diet_type ? ` · ${currentProfile.diet_type}` : ""}`}
+                  </p>
                 </div>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide",
+                    athleteTypePillClass(athleteType.tone),
+                  )}
+                >
+                  {athleteType.label}
+                </span>
               </div>
-            </Pro2SectionCard>
+            </section>
 
-            {role === "private" ? <InviteCoachCard /> : null}
+            {role === "private" && !hasLinkedCoach ? <InviteCoachCard /> : null}
 
             <Pro2SectionCard
               accent="orange"
               icon={GaugeCircle}
               title="Metriche chiave"
-              subtitle="Profilo tabellare + merge fisiologia (reality > plan)"
+              subtitle="I tuoi valori principali"
             >
               <ProfilePro2KpiGrid items={keyMetricItems} />
-              <p className="mt-3 text-[0.8rem] leading-relaxed text-gray-500">
-                FTP / indice glicolitico / VO₂max qui sono dall&apos;ultimo dato salvato su Supabase (snapshot Physiology). Per numeri col motore
-                attuale, apri Physiology → Metabolic Profile e premi &quot;Salva snapshot&quot;.
-              </p>
+              {showTech ? (
+                <p className="mt-3 text-[0.8rem] leading-relaxed text-gray-500">
+                  FTP / indice glicolitico / VO₂max qui sono dall&apos;ultimo dato salvato su Supabase (snapshot Physiology). Per numeri col motore
+                  attuale, apri Physiology → Metabolic Profile e premi &quot;Salva snapshot&quot;.
+                </p>
+              ) : null}
             </Pro2SectionCard>
 
-            {physiologySummarySections.length ? (
+            {showTech && physiologySummarySections.length ? (
               <Pro2SectionCard
                 accent="cyan"
                 icon={Activity}
@@ -1768,7 +1483,7 @@ export default function ProfilePage() {
               </Pro2SectionCard>
             ) : null}
 
-            {physiologyCoverage ? (
+            {showTech && physiologyCoverage ? (
               <Pro2SectionCard
                 accent="slate"
                 icon={Dna}
@@ -1789,7 +1504,7 @@ export default function ProfilePage() {
               </Pro2SectionCard>
             ) : null}
 
-            {twinSnapshot ? (
+            {showTech && twinSnapshot ? (
               <Pro2SectionCard
                 accent="violet"
                 icon={Layers}
@@ -1803,61 +1518,6 @@ export default function ProfilePage() {
                 <ProfilePro2KpiGrid items={twinKpiItems} />
               </Pro2SectionCard>
             ) : null}
-
-            <div className="flex flex-wrap gap-2 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-950/10 p-2 sm:p-3">
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "personal", "violet")}
-                onClick={() => openEditSubsection("personal")}
-              >
-                Personal
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "physical", "cyan")}
-                onClick={() => openEditSubsection("physical")}
-              >
-                Physical
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "physical", "cyan")}
-                onClick={() => openEditSubsection("physical")}
-              >
-                Body scan
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "routine", "amber")}
-                onClick={() => openEditSubsection("routine")}
-              >
-                Routine
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "diet", "rose")}
-                onClick={() => openEditSubsection("nutrition", "diet")}
-              >
-                Diet
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "intolerances", "rose")}
-                onClick={() => openEditSubsection("nutrition", "intolerances")}
-              >
-                Intolerances
-              </button>
-              <button
-                type="button"
-                className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "supplements", "rose")}
-                onClick={() => openEditSubsection("nutrition", "supplements")}
-              >
-                Integratori
-              </button>
-              <button type="button" className={editorTabClass(false, "slate")} onClick={() => openEditSubsection("personal")}>
-                Devices
-              </button>
-            </div>
           </>
         ) : null}
 
@@ -1873,33 +1533,39 @@ export default function ProfilePage() {
             </Pro2Link>
           </div>
         </div>
-      ) : (
+      ) : !showForm && !currentProfile ? (
         <div>
           <Pro2Button
             type="button"
             variant="secondary"
             className="border border-white/20 bg-white/5 hover:bg-white/10"
-            onClick={() => {
-              setShowForm(!showForm);
-              if (showForm) setEditingProfileId(null);
-            }}
+            onClick={() => setShowForm(true)}
           >
-            {showForm ? "Annulla editor" : "Nuovo profilo"}
+            Crea il tuo profilo
           </Pro2Button>
         </div>
-      )}
+      ) : null}
 
       {!isCoachWithoutAthlete && showForm && (
         <Pro2SectionCard
           accent="slate"
           icon={PencilLine}
           title="Editor profilo"
-          subtitle="Salvataggio tramite API profilo (memoria atleta dominio profile)"
+          subtitle="Modifica i tuoi dati"
         >
+        <div className="mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+          <button type="button" className={editorTabClass(activeSection === "personal", "violet")} onClick={() => goToEditorSection("personal")}>Personale</button>
+          <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>Fisico</button>
+          <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
+          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "diet", "rose")} onClick={() => goToEditorSection("nutrition", "diet")}>Dieta</button>
+          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "intolerances", "rose")} onClick={() => goToEditorSection("nutrition", "intolerances")}>Intolleranze</button>
+          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "supplements", "rose")} onClick={() => goToEditorSection("nutrition", "supplements")}>Integratori</button>
+        </div>
         <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)}`} style={{ marginBottom: "24px", padding: "20px" }}>
+          <div ref={editorScrollRef} style={{ height: "60vh", overflowY: "auto" }}>
           {activeSection === "personal" && (
             <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />Personal Information</h3>
+              <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />Dati personali</h3>
               <div className="profile-editor-grid">
               <div className="form-group"><label className="form-label">Nome</label><input type="text" className="form-input" value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">Cognome</label><input type="text" className="form-input" value={form.last_name} onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))} /></div>
@@ -1910,321 +1576,49 @@ export default function ProfilePage() {
               <div className="form-group"><label className="form-label">Lifestyle</label><select className="form-select" value={form.lifestyle_activity_class} onChange={(e) => setForm((f) => ({ ...f, lifestyle_activity_class: e.target.value }))}><option value="sedentary">Sedentary +15%</option><option value="moderate">Moderate +20%</option><option value="active">Active +30%</option><option value="very_active">Very active +40%</option></select></div>
               <div className="form-group"><label className="form-label">Fuso orario</label><input type="text" className="form-input" value={form.timezone} onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))} /></div>
               </div>
+              <div style={{ marginTop: "12px" }}>
+                <SettingsLocalePreference />
+              </div>
               <div className="profile-subpanel tone-slate" style={{ marginTop: "12px" }}>
                 <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Devices</h4>
-                <p className="muted-copy">Qui colleghiamo le API device: Garmin, Strava, Whoop, Oura e altri provider.</p>
+                <p className="muted-copy">Collega i tuoi dispositivi per sincronizzare automaticamente allenamenti e dati di salute.</p>
                 {garminReturn === "connected" ? (
-                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>
-                    Garmin Connect collegato. In automatico abbiamo richiesto uno storico iniziale via Summary Backfill
-                    (stream multipli e giorni configurabili lato server con{" "}
-                    <code className="text-white/80">GARMIN_POST_CONNECT_BACKFILL_STREAMS</code> e{" "}
-                    <code className="text-white/80">GARMIN_POST_CONNECT_BACKFILL_DAYS</code>
-                    ); i dati arrivano quando Garmin li elabora, poi il worker pull (cron) li scarica.
-                  </p>
+                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Garmin collegato ✓</p>
                 ) : null}
-                {garminReturn === "error" ? (
-                  <div className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    <p style={{ marginBottom: 8 }}>
-                      Collegamento Garmin non riuscito
-                      {garminReason ? (
-                        <>
-                          {" "}
-                          (<code className="text-white/70">{garminReason}</code>
-                          {garminDetail ? (
-                            <>
-                              , dettaglio: <code className="text-white/70">{garminDetail}</code>
-                            </>
-                          ) : null}
-                          )
-                        </>
-                      ) : garminDetail ? (
-                        <>
-                          : <code className="text-white/70">{garminDetail}</code>
-                        </>
-                      ) : (
-                        <>
-                          {" "}
-                          (parametri <code className="text-white/80">reason</code> /{" "}
-                          <code className="text-white/80">detail</code> nell&apos;URL)
-                        </>
-                      )}
-                      . Riprova o verifica env e redirect URI nel portale Garmin.
-                    </p>
-                    {(() => {
-                      const g = garminOAuthReasonGuidance(garminReason);
-                      if (!g) return null;
-                      return (
-                        <div
-                          className="rounded-md border border-rose-500/25 bg-rose-950/20 px-3 py-2 text-white/85"
-                          style={{ marginTop: 4 }}
-                        >
-                          <p className="font-medium text-rose-100/95" style={{ marginBottom: 6 }}>
-                            {g.title}
-                          </p>
-                          <ul className="list-disc space-y-1 pl-4 text-xs leading-relaxed">
-                            {g.bullets.map((b, i) => (
-                              <li key={i}>{b}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : null}
-                {garminReturn === "forbidden" ? (
-                  <p className="text-sm text-amber-400/90" style={{ marginTop: 8 }}>
-                    Accesso negato per questo atleta (profilo coach/atleta o org non allineata). Verifica il collegamento
-                    coach–atleta e riprova.
-                  </p>
-                ) : null}
-                {garminReturn === "server_config" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    OAuth Garmin non configurato sul server: imposta in Vercel{" "}
-                    <code className="text-white/80">GARMIN_OAUTH2_CLIENT_ID</code> e{" "}
-                    <code className="text-white/80">GARMIN_OAUTH2_REDIRECT_URI</code> (o{" "}
-                    <code className="text-white/80">GARMIN_OAUTH2_REDIRECT_URL</code>), poi ridistribuisci.
-                  </p>
-                ) : null}
-                {garminReturn === "missing_athlete" ? (
-                  <p className="text-sm text-amber-400/90" style={{ marginTop: 8 }}>
-                    Atleta non selezionato. Apri il profilo con un atleta attivo e usa di nuovo &quot;Collega Garmin&quot;.
-                  </p>
-                ) : null}
-                {garminReturn === "pkce" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    Errore cookie PKCE: imposta <code className="text-white/80">GARMIN_OAUTH_PKCE_SECRET</code> su Vercel
-                    (min. 16 caratteri).
-                    {garminDetail ? (
-                      <>
-                        {" "}
-                        Dettaglio: <code className="text-white/70">{garminDetail}</code>
-                      </>
-                    ) : null}
-                  </p>
+                {garminReturn && garminReturn !== "connected" ? (
+                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
                 ) : null}
                 {whoopReturn === "ok" ? (
-                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>
-                    WHOOP collegato. Puoi usare &quot;Aggiorna dati WHOOP&quot; qui sotto per scaricare sonno, recovery e
-                    workout (ultimi ~14 giorni). Quali stream vengono salvati dipende dalla policy in{" "}
-                    <strong className="text-white/90">Impostazioni</strong> → ingest dispositivi.
-                  </p>
+                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>WHOOP collegato ✓</p>
                 ) : null}
-                {whoopReturn === "error" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    Collegamento WHOOP non riuscito
-                    {whoopReason ? (
-                      <>
-                        {" "}
-                        (<code className="text-white/70">{whoopReason}</code>
-                        {whoopDetail ? (
-                          <>
-                            , dettaglio: <code className="text-white/70">{whoopDetail}</code>
-                          </>
-                        ) : null}
-                        )
-                      </>
-                    ) : whoopDetail ? (
-                      <>
-                        : <code className="text-white/70">{whoopDetail}</code>
-                      </>
-                    ) : null}
-                    . Verifica env WHOOP e redirect URI nel developer dashboard WHOOP.
-                  </p>
-                ) : null}
-                {whoopReturn === "server_config" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    OAuth WHOOP non configurato sul server:{" "}
-                    <code className="text-white/80">WHOOP_OAUTH2_CLIENT_ID</code>,{" "}
-                    <code className="text-white/80">WHOOP_OAUTH2_REDIRECT_URI</code>, segreti.
-                  </p>
-                ) : null}
-                {whoopReturn === "denied" || whoopReturn === "missing_athlete" ? (
-                  <p className="text-sm text-amber-400/90" style={{ marginTop: 8 }}>
-                    {whoopReturn === "missing_athlete"
-                      ? "Atleta non indicato nel flusso OAuth WHOOP: apri il profilo con atleta attivo e riprova «Collega WHOOP»."
-                      : "Accesso negato per WHOOP (sessione o atleta). Riprova da account autorizzato."}
-                  </p>
+                {whoopReturn && whoopReturn !== "ok" ? (
+                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
                 ) : null}
                 {polarReturn === "ok" ? (
-                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>
-                    Polar collegato. Puoi usare &quot;Aggiorna dati Polar&quot; qui sotto per scaricare allenamenti, sonno e
-                    Nightly Recharge. Quali stream vengono salvati dipende dalla policy in{" "}
-                    <strong className="text-white/90">Impostazioni</strong> → ingest dispositivi.
-                  </p>
+                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Polar collegato ✓</p>
                 ) : null}
-                {polarReturn === "error" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    Collegamento Polar non riuscito
-                    {polarReason ? (
-                      <>
-                        {" "}
-                        (<code className="text-white/70">{polarReason}</code>
-                        {polarDetail ? (
-                          <>
-                            , dettaglio: <code className="text-white/70">{polarDetail}</code>
-                          </>
-                        ) : null}
-                        )
-                      </>
-                    ) : polarDetail ? (
-                      <>
-                        : <code className="text-white/70">{polarDetail}</code>
-                      </>
-                    ) : null}
-                    . Se l&apos;errore è <code className="text-white/70">register_user</code> /{" "}
-                    <code className="text-white/70">consents_missing</code>, accetta i consensi su account.polar.com e riprova.
-                  </p>
-                ) : null}
-                {polarReturn === "server_config" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    OAuth Polar non configurato sul server:{" "}
-                    <code className="text-white/80">POLAR_OAUTH2_CLIENT_ID</code>,{" "}
-                    <code className="text-white/80">POLAR_OAUTH2_CLIENT_SECRET</code>.
-                  </p>
-                ) : null}
-                {polarReturn === "denied" || polarReturn === "missing_athlete" ? (
-                  <p className="text-sm text-amber-400/90" style={{ marginTop: 8 }}>
-                    {polarReturn === "missing_athlete"
-                      ? "Atleta non indicato nel flusso OAuth Polar: apri il profilo con atleta attivo e riprova «Collega Polar»."
-                      : "Accesso negato per Polar (sessione o atleta). Riprova da account autorizzato."}
-                  </p>
+                {polarReturn && polarReturn !== "ok" ? (
+                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
                 ) : null}
                 {wahooReturn === "ok" ? (
-                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>
-                    Wahoo Cloud collegato. API piani e workout:{" "}
-                    <code className="text-white/80">/api/integrations/wahoo/plans</code>,{" "}
-                    <code className="text-white/80">/api/integrations/wahoo/workouts</code> (sessione). Ricollega se
-                    servono scope <code className="text-white/80">plans_*</code> / <code className="text-white/80">workouts_write</code>.
-                  </p>
+                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Wahoo collegato ✓</p>
                 ) : null}
-                {wahooReturn === "error" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    Collegamento Wahoo non riuscito
-                    {wahooReason ? (
-                      <>
-                        {" "}
-                        (<code className="text-white/70">{wahooReason}</code>
-                        {wahooDetail ? (
-                          <>
-                            , dettaglio: <code className="text-white/70">{wahooDetail}</code>
-                          </>
-                        ) : null}
-                        )
-                      </>
-                    ) : wahooDetail ? (
-                      <>
-                        : <code className="text-white/70">{wahooDetail}</code>
-                      </>
-                    ) : null}
-                    .
-                  </p>
-                ) : null}
-                {wahooReturn === "server_config" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    OAuth Wahoo non configurato sul server:{" "}
-                    <code className="text-white/80">WAHOO_OAUTH2_CLIENT_ID</code>,{" "}
-                    <code className="text-white/80">WAHOO_OAUTH2_REDIRECT_URI</code>.
-                  </p>
+                {wahooReturn && wahooReturn !== "ok" ? (
+                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
                 ) : null}
                 {stravaReturn === "ok" ? (
-                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>
-                    Strava collegato. Token salvati lato server; usa «Aggiorna attività Strava» qui sotto o in Impostazioni →
-                    Mio account · device.
-                  </p>
+                  <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Strava collegato ✓</p>
                 ) : null}
-                {stravaReturn === "error" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    Collegamento Strava non riuscito
-                    {stravaReason ? (
-                      <>
-                        {" "}
-                        (<code className="text-white/70">{stravaReason}</code>
-                        {stravaDetail ? (
-                          <>
-                            , dettaglio: <code className="text-white/70">{stravaDetail}</code>
-                          </>
-                        ) : null}
-                        )
-                      </>
-                    ) : stravaDetail ? (
-                      <>
-                        : <code className="text-white/70">{stravaDetail}</code>
-                      </>
-                    ) : null}
-                    . Verifica env Strava e redirect URI nel portale sviluppatori Strava.
-                  </p>
-                ) : null}
-                {stravaReturn === "server_config" ? (
-                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
-                    OAuth Strava non configurato sul server:{" "}
-                    <code className="text-white/80">STRAVA_OAUTH2_CLIENT_ID</code>,{" "}
-                    <code className="text-white/80">STRAVA_OAUTH2_CLIENT_SECRET</code>,{" "}
-                    <code className="text-white/80">STRAVA_OAUTH2_REDIRECT_URI</code>.
-                  </p>
-                ) : null}
-                {stravaReturn === "denied" || stravaReturn === "missing_athlete" ? (
-                  <p className="text-sm text-amber-400/90" style={{ marginTop: 8 }}>
-                    {stravaReturn === "missing_athlete"
-                      ? "Atleta non indicato nel flusso OAuth Strava: apri il profilo con atleta attivo e riprova «Collega Strava»."
-                      : "Accesso negato per Strava (sessione o atleta). Riprova da account autorizzato."}
-                  </p>
+                {stravaReturn && stravaReturn !== "ok" ? (
+                  <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
                 ) : null}
                 {activeAthleteId && garminLink && whoopLink && wahooLink && stravaLink ? (
                   <div className="flex flex-col gap-2" style={{ marginTop: 12 }}>
-                    {garminLink.linkStatusError ? (
-                      <p className="text-sm text-amber-400/90">
-                        Stato Garmin non disponibile: {garminLink.linkStatusError}
-                        {garminLink.linkStatusHint ? (
-                          <>
-                            {" "}
-                            <span className="text-white/75">({garminLink.linkStatusHint})</span>
-                          </>
-                        ) : null}
-                      </p>
-                    ) : null}
                     {garminLink.linked ? (
-                      <p className="muted-copy text-sm">
-                        Garmin collegato (ID API <span className="text-white/80">{garminLink.garminUserIdMasked}</span>
-                        ).
-                      </p>
+                      <p className="muted-copy text-sm">Garmin collegato</p>
                     ) : (
-                      <p className="muted-copy text-sm">Nessun account Garmin collegato a questo profilo atleta.</p>
+                      <p className="muted-copy text-sm">Garmin non collegato</p>
                     )}
-                    {garminLink.linked &&
-                    (garminLink.oauthScope || (garminLink.userPermissionsGranted && garminLink.userPermissionsGranted.length > 0)) ? (
-                      <div
-                        className="rounded-md border border-white/12 bg-black/25 px-3 py-2 text-xs text-white/80"
-                        style={{ marginTop: 4 }}
-                      >
-                        <p className="font-medium text-white/90" style={{ marginBottom: 6 }}>
-                          Permessi e scope (allineamento portale Garmin)
-                        </p>
-                        {garminLink.oauthScope ? (
-                          <p className="break-all" style={{ marginBottom: 6 }}>
-                            <span className="text-white/60">OAuth scope (token):</span>{" "}
-                            <code className="text-cyan-100/90">{garminLink.oauthScope}</code>
-                          </p>
-                        ) : null}
-                        {garminLink.userPermissionsGranted && garminLink.userPermissionsGranted.length > 0 ? (
-                          <div>
-                            <p className="text-white/60" style={{ marginBottom: 4 }}>
-                              Health API — permessi concessi (GET /rest/user/permissions):
-                            </p>
-                            <ul className="max-h-32 list-disc space-y-0.5 overflow-y-auto pl-4 font-mono text-[11px] text-white/75">
-                              {garminLink.userPermissionsGranted.map((perm) => (
-                                <li key={perm}>{perm}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : (
-                          <p className="text-white/55">
-                            Elenco permessi da Garmin non ancora disponibile o vuoto; dopo il collegamento può
-                            popolarsi al prossimo refresh o quando Garmin invia il webhook{" "}
-                            <code className="text-white/65">push/userPermissions</code>.
-                          </p>
-                        )}
-                      </div>
-                    ) : null}
                     <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={`/api/integrations/garmin/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2232,7 +1626,7 @@ export default function ProfilePage() {
                         rel="noopener noreferrer"
                         className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                       >
-                        {garminLink.linked ? "Ricollega Garmin Connect" : "Collega Garmin Connect"}
+                        {garminLink.linked ? "Ricollega Garmin" : "Collega Garmin"}
                       </a>
                       {garminLink.linked ? (
                         <Pro2Button
@@ -2246,119 +1640,6 @@ export default function ProfilePage() {
                         </Pro2Button>
                       ) : null}
                     </div>
-                    {garminLink.linked ? (
-                      <div
-                        className="rounded-lg border border-white/15 bg-black/20 px-3 py-3"
-                        style={{ marginTop: 10 }}
-                      >
-                        <p className="muted-copy text-xs" style={{ marginBottom: 8 }}>
-                          Storico Garmin (Summary Backfill): intervallo ultimi N giorni UTC (max{" "}
-                          <strong className="text-white/80">{garminSingleBackfillMaxDays}</strong> giorni per richiesta sullo
-                          stream selezionato; stream Activity tipo activityDetails/moveiq usano 30 giorni, Health/wellness fino a
-                          90). Oltre il limite il server taglia alla finestra più recente. Risposta tipica 202, poi notifiche + pull.
-                        </p>
-                        <div className="flex flex-wrap items-end gap-2">
-                          <div className="form-group" style={{ minWidth: 160 }}>
-                            <label className="form-label text-xs">Stream</label>
-                            <select
-                              className="form-select profile-dark-select text-sm"
-                              value={garminBackfillStream}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setGarminBackfillStream(v);
-                                const cap = Math.floor(
-                                  maxRangeSecondsForGarminSummaryBackfillStream(v as GarminSummaryBackfillStream) / 86_400,
-                                );
-                                setGarminBackfillDays((d) =>
-                                  Math.min(Math.max(1, Math.floor(Number(d) || 14)), cap),
-                                );
-                              }}
-                            >
-                              {GARMIN_SUMMARY_BACKFILL_STREAMS.map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="form-group" style={{ width: 100 }}>
-                            <label className="form-label text-xs">Giorni</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={garminSingleBackfillMaxDays}
-                              className="form-input text-sm"
-                              value={garminBackfillDays}
-                              onChange={(e) =>
-                                setGarminBackfillDays(
-                                  Math.min(
-                                    garminSingleBackfillMaxDays,
-                                    Math.max(1, Math.floor(Number(e.target.value)) || 1),
-                                  ),
-                                )
-                              }
-                            />
-                          </div>
-                          <Pro2Button
-                            type="button"
-                            variant="secondary"
-                            disabled={garminBackfillBusy}
-                            className="border border-cyan-500/35 bg-cyan-500/10 text-cyan-50 hover:bg-cyan-500/20"
-                            onClick={() => void runGarminBackfill()}
-                          >
-                            {garminBackfillBusy ? "Invio…" : "Richiedi storico"}
-                          </Pro2Button>
-                          <Pro2Button
-                            type="button"
-                            variant="secondary"
-                            disabled={garminBackfillBusy}
-                            className="border border-fuchsia-500/35 bg-fuchsia-500/10 text-fuchsia-50 hover:bg-fuchsia-500/18"
-                            onClick={() => void runGarminBackfillWellnessBatch()}
-                          >
-                            {garminBackfillBusy ? "Invio…" : "Wellness batch"}
-                          </Pro2Button>
-                        </div>
-                        <p className="muted-copy text-xs" style={{ marginTop: 10, marginBottom: 4 }}>
-                          Dati wellness (passi, sonno, stress, HRV): Garmin non espone un “download del giorno” con il solo token
-                          OAuth2. Le GET <code className="text-white/65">/rest/dailies</code> ecc. usano il{" "}
-                          <strong className="text-white/85">pull token</strong> (<code className="text-white/65">token=</code>)
-                          presente nella URL inviata dalla <strong className="text-white/85">notifica Push/Ping</strong>; senza
-                          quello il server risponde <code className="text-white/65">InvalidPullTokenException</code>. OAuth2
-                          serve per collegare l’utente e per <code className="text-white/65">GET /rest/user/permissions</code> (come
-                          indica Garmin). Flusso Empathy: push nel portale Garmin Connect Developer → POST{" "}
-                          <code className="text-white/65">/push/…</code> → coda pull → elaborazione quasi subito in background (e
-                          cron ogni pochi minuti come riserva). I dati nuovi non richiedono un tasto: sincronizza il dispositivo
-                          con Garmin Connect. Le azioni sotto «Richiedi storico» / «Wellness batch» usano invece{" "}
-                          <strong className="text-white/85">Summary Backfill</strong> (<code className="text-white/65">
-                            GET /rest/backfill/&lt;stream&gt;
-                          </code>
-                          , solo Bearer): se Garmin risponde <code className="text-white/65">412</code>, è un problema di
-                          permessi/programma o finestra storica sul <em>backfill</em>, non del pull automatico con token dalle
-                          notifiche.
-                        </p>
-                        {garminBackfillNotice ? (
-                          <p className="text-xs text-white/80" style={{ marginTop: 8 }}>
-                            {garminBackfillNotice}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <p className="muted-copy text-xs">
-                      Worker pull: dopo ogni notifica push parte un run in background; cron Vercel su{" "}
-                      <code className="text-white/70">/api/integrations/garmin/pull/cron</code> (
-                      <code className="text-white/70">CRON_SECRET</code>) oppure{" "}
-                      <code className="text-white/70">POST …/pull/run</code> con{" "}
-                      <code className="text-white/70">GARMIN_PULL_RUN_SECRET</code>. Riferimenti portale:{" "}
-                      <a
-                        className="text-cyan-200/90 underline underline-offset-2 hover:text-cyan-100"
-                        href="https://apis.garmin.com/tools/apiDocs"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        apis.garmin.com/tools/apiDocs
-                      </a>
-                      .
-                    </p>
 
                     <div
                       className="mt-6 border-t border-white/10 pt-5"
@@ -2368,34 +1649,11 @@ export default function ProfilePage() {
                         <span className="profile-kpi-dot" />
                         WHOOP
                       </h4>
-                      {whoopLink.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato WHOOP non disponibile: {whoopLink.linkStatusError}
-                          {whoopLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({whoopLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
-                      ) : null}
                       {whoopLink.linked ? (
-                        <p className="muted-copy text-sm">
-                          Account WHOOP collegato (ID{" "}
-                          <span className="text-white/80">{whoopLink.whoopUserIdMasked ?? "—"}</span>).
-                        </p>
+                        <p className="muted-copy text-sm">WHOOP collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account WHOOP collegato: autorizza l&apos;app per leggere sleep, recovery e workout
-                          (scope configurati sul server).
-                        </p>
+                        <p className="muted-copy text-sm">WHOOP non collegato</p>
                       )}
-                      {whoopLink.linked && whoopLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{whoopLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/whoop/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2420,13 +1678,6 @@ export default function ProfilePage() {
                       {whoopPullNotice ? (
                         <p className="muted-copy mt-2 text-xs text-white/80">{whoopPullNotice}</p>
                       ) : null}
-                      <p className="muted-copy mt-2 text-xs">
-                        Aggiornamento automatico: cron Vercel su{" "}
-                        <code className="text-white/70">GET /api/integrations/whoop/pull/cron</code> (
-                        <code className="text-white/70">CRON_SECRET</code>
-                        {" "}o <code className="text-white/70">WHOOP_PULL_RUN_SECRET</code>). Pull manuale:{" "}
-                        <code className="text-white/70">POST …/whoop/pull/run</code> con sessione o stesso Bearer.
-                      </p>
                     </div>
 
                     <div
@@ -2437,34 +1688,11 @@ export default function ProfilePage() {
                         <span className="profile-kpi-dot" />
                         Polar
                       </h4>
-                      {polarLink?.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato Polar non disponibile: {polarLink.linkStatusError}
-                          {polarLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({polarLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
-                      ) : null}
                       {polarLink?.linked ? (
-                        <p className="muted-copy text-sm">
-                          Account Polar collegato (ID{" "}
-                          <span className="text-white/80">{polarLink.polarUserIdMasked ?? "—"}</span>).
-                        </p>
+                        <p className="muted-copy text-sm">Polar collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account Polar collegato: autorizza l&apos;app AccessLink per leggere allenamenti, sonno e
-                          Nightly Recharge. Al primo collegamento registriamo l&apos;utente presso il client AccessLink.
-                        </p>
+                        <p className="muted-copy text-sm">Polar non collegato</p>
                       )}
-                      {polarLink?.linked && polarLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{polarLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/polar/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2489,13 +1717,6 @@ export default function ProfilePage() {
                       {polarPullNotice ? (
                         <p className="muted-copy mt-2 text-xs text-white/80">{polarPullNotice}</p>
                       ) : null}
-                      <p className="muted-copy mt-2 text-xs">
-                        Aggiornamento automatico: cron Vercel su{" "}
-                        <code className="text-white/70">GET /api/integrations/polar/pull/cron</code> (
-                        <code className="text-white/70">CRON_SECRET</code>
-                        {" "}o <code className="text-white/70">POLAR_PULL_RUN_SECRET</code>). Pull manuale:{" "}
-                        <code className="text-white/70">POST …/polar/pull/run</code> con sessione o stesso Bearer.
-                      </p>
                     </div>
 
                     <div
@@ -2507,48 +1728,16 @@ export default function ProfilePage() {
                         Suunto
                       </h4>
                       {suuntoReturn === "ok" ? (
-                        <p className="text-sm text-emerald-300/90">
-                          Suunto collegato. Usa &quot;Aggiorna dati Suunto&quot; per scaricare gli allenamenti.
-                        </p>
+                        <p className="text-sm text-emerald-300/90">Suunto collegato ✓</p>
                       ) : null}
-                      {suuntoReturn === "error" ? (
-                        <p className="text-sm text-amber-400/90">Collegamento Suunto non riuscito. Riprova.</p>
-                      ) : null}
-                      {suuntoReturn === "server_config" ? (
-                        <p className="text-sm text-amber-400/90">
-                          OAuth Suunto non configurato sul server:{" "}
-                          <code className="text-white/80">SUUNTO_OAUTH2_CLIENT_ID</code>,{" "}
-                          <code className="text-white/80">SUUNTO_OAUTH2_REDIRECT_URI</code>.
-                        </p>
-                      ) : null}
-                      {suuntoLink?.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato Suunto non disponibile: {suuntoLink.linkStatusError}
-                          {suuntoLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({suuntoLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
+                      {suuntoReturn && suuntoReturn !== "ok" ? (
+                        <p className="text-sm text-rose-400/90">Collegamento non riuscito, riprova.</p>
                       ) : null}
                       {suuntoLink?.linked ? (
-                        <p className="muted-copy text-sm">
-                          Account Suunto collegato (ID{" "}
-                          <span className="text-white/80">{suuntoLink.suuntoUserIdMasked ?? "—"}</span>).
-                        </p>
+                        <p className="muted-copy text-sm">Suunto collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account Suunto collegato: autorizza l&apos;app Suunto Cloud per leggere gli allenamenti
-                          (richiede anche la subscription key API lato server).
-                        </p>
+                        <p className="muted-copy text-sm">Suunto non collegato</p>
                       )}
-                      {suuntoLink?.linked && suuntoLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{suuntoLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/suunto/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2573,12 +1762,6 @@ export default function ProfilePage() {
                       {suuntoPullNotice ? (
                         <p className="muted-copy mt-2 text-xs text-white/80">{suuntoPullNotice}</p>
                       ) : null}
-                      <p className="muted-copy mt-2 text-xs">
-                        Cron Vercel:{" "}
-                        <code className="text-white/70">GET /api/integrations/suunto/pull/cron</code> (
-                        <code className="text-white/70">CRON_SECRET</code>
-                        {" "}o <code className="text-white/70">SUUNTO_PULL_RUN_SECRET</code>).
-                      </p>
                     </div>
 
                     <div
@@ -2590,45 +1773,16 @@ export default function ProfilePage() {
                         Karoo (Hammerhead)
                       </h4>
                       {karooReturn === "ok" ? (
-                        <p className="text-sm text-emerald-300/90">
-                          Karoo collegato. Usa &quot;Aggiorna dati Karoo&quot; per scaricare le attività.
-                        </p>
+                        <p className="text-sm text-emerald-300/90">Karoo collegato ✓</p>
                       ) : null}
-                      {karooReturn === "error" ? (
-                        <p className="text-sm text-amber-400/90">Collegamento Karoo non riuscito. Riprova.</p>
-                      ) : null}
-                      {karooReturn === "server_config" ? (
-                        <p className="text-sm text-amber-400/90">
-                          OAuth Karoo non configurato sul server:{" "}
-                          <code className="text-white/80">KAROO_OAUTH2_CLIENT_ID</code>,{" "}
-                          <code className="text-white/80">KAROO_OAUTH2_REDIRECT_URI</code>.
-                        </p>
-                      ) : null}
-                      {karooLink?.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato Karoo non disponibile: {karooLink.linkStatusError}
-                          {karooLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({karooLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
+                      {karooReturn && karooReturn !== "ok" ? (
+                        <p className="text-sm text-rose-400/90">Collegamento non riuscito, riprova.</p>
                       ) : null}
                       {karooLink?.linked ? (
-                        <p className="muted-copy text-sm">Account Karoo collegato.</p>
+                        <p className="muted-copy text-sm">Karoo collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account Karoo collegato: autorizza l&apos;app Hammerhead Developer Platform per leggere le
-                          attività del ciclocomputer.
-                        </p>
+                        <p className="muted-copy text-sm">Karoo non collegato</p>
                       )}
-                      {karooLink?.linked && karooLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{karooLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/karoo/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2653,12 +1807,6 @@ export default function ProfilePage() {
                       {karooPullNotice ? (
                         <p className="muted-copy mt-2 text-xs text-white/80">{karooPullNotice}</p>
                       ) : null}
-                      <p className="muted-copy mt-2 text-xs">
-                        Cron Vercel:{" "}
-                        <code className="text-white/70">GET /api/integrations/karoo/pull/cron</code> (
-                        <code className="text-white/70">CRON_SECRET</code>
-                        {" "}o <code className="text-white/70">KAROO_PULL_RUN_SECRET</code>).
-                      </p>
                     </div>
 
                     <div
@@ -2670,9 +1818,7 @@ export default function ProfilePage() {
                         Zepp <span className="text-white/50">· in arrivo</span>
                       </h4>
                       <p className="muted-copy text-sm">
-                        Integrazione Zepp in preparazione: in attesa delle credenziali partner. Lo slot e gli env
-                        (<code className="text-white/70">ZEPP_OAUTH2_*</code>) sono già predisposti; il collegamento sarà
-                        attivato quando le API saranno verificate.
+                        Integrazione Zepp in arrivo: il collegamento sarà attivato a breve.
                       </p>
                     </div>
 
@@ -2684,35 +1830,11 @@ export default function ProfilePage() {
                         <span className="profile-kpi-dot" />
                         Wahoo Cloud
                       </h4>
-                      {wahooLink.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato Wahoo non disponibile: {wahooLink.linkStatusError}
-                          {wahooLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({wahooLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
-                      ) : null}
                       {wahooLink.linked ? (
-                        <p className="muted-copy text-sm">
-                          Account Wahoo collegato (ID{" "}
-                          <span className="text-white/80">{wahooLink.wahooUserIdMasked ?? "—"}</span>). Piani e
-                          trasmissione workout usano le route sotto <code className="text-white/70">/api/integrations/wahoo/*</code>.
-                        </p>
+                        <p className="muted-copy text-sm">Wahoo collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account Wahoo collegato. Scope consigliati: lettura/scrittura piani e workout (vedi env{" "}
-                          <code className="text-white/70">WAHOO_OAUTH2_SCOPES</code>).
-                        </p>
+                        <p className="muted-copy text-sm">Wahoo non collegato</p>
                       )}
-                      {wahooLink.linked && wahooLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{wahooLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/wahoo/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2737,23 +1859,6 @@ export default function ProfilePage() {
                       {wahooPullNotice ? (
                         <p className="muted-copy mt-2 text-xs text-white/80">{wahooPullNotice}</p>
                       ) : null}
-                      <p className="muted-copy mt-2 text-xs">
-                        Cloud API:{" "}
-                        <code className="text-white/70">GET/POST /api/integrations/wahoo/plans</code>,{" "}
-                        <code className="text-white/70">GET/PUT/DELETE …/plans/[id]</code>,{" "}
-                        <code className="text-white/70">GET …/plans/[id]/file?athleteId=…</code>,{" "}
-                        <code className="text-white/70">GET/POST …/workouts</code>,{" "}
-                        <code className="text-white/70">GET …/workouts/[id]/plans</code>. Riferimento:{" "}
-                        <a
-                          href="https://cloud-api.wahooligan.com/"
-                          className="text-sky-300 underline"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          cloud-api.wahooligan.com
-                        </a>
-                        .
-                      </p>
                     </div>
 
                     <div
@@ -2764,46 +1869,11 @@ export default function ProfilePage() {
                         <span className="profile-kpi-dot" />
                         Strava
                       </h4>
-                      {stravaLink.linkStatusError ? (
-                        <p className="text-sm text-amber-400/90">
-                          Stato Strava non disponibile: {stravaLink.linkStatusError}
-                          {stravaLink.linkStatusHint ? (
-                            <>
-                              {" "}
-                              <span className="text-white/75">({stravaLink.linkStatusHint})</span>
-                            </>
-                          ) : null}
-                        </p>
-                      ) : null}
                       {stravaLink.linked ? (
-                        <p className="muted-copy text-sm">
-                          Account Strava collegato (atleta id{" "}
-                          <span className="text-white/80">{stravaLink.stravaAthleteIdMasked ?? "—"}</span>).
-                        </p>
+                        <p className="muted-copy text-sm">Strava collegato</p>
                       ) : (
-                        <p className="muted-copy text-sm">
-                          Nessun account Strava collegato. OAuth:{" "}
-                          <code className="text-white/70">STRAVA_OAUTH2_CLIENT_ID</code>,{" "}
-                          <code className="text-white/70">STRAVA_OAUTH2_CLIENT_SECRET</code>,{" "}
-                          <code className="text-white/70">STRAVA_OAUTH2_REDIRECT_URI</code> (stesso URL registrato su{" "}
-                          <a
-                            href="https://www.strava.com/settings/api"
-                            className="text-orange-300 underline"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            strava.com/settings/api
-                          </a>
-                          ); scope opzionale <code className="text-white/70">STRAVA_OAUTH2_SCOPES</code> (default{" "}
-                          <code className="text-white/70">read,activity:read</code>).
-                        </p>
+                        <p className="muted-copy text-sm">Strava non collegato</p>
                       )}
-                      {stravaLink.linked && stravaLink.oauthScope ? (
-                        <p className="mt-2 break-all font-mono text-[11px] text-white/70">
-                          <span className="text-white/50">OAuth scope:</span>{" "}
-                          <code className="text-cyan-100/90">{stravaLink.oauthScope}</code>
-                        </p>
-                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <a
                           href={`/api/integrations/strava/authorize?athleteId=${encodeURIComponent(activeAthleteId)}`}
@@ -2823,13 +1893,25 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ) : null}
+                {hasActivePlan ? (
+                  <div className="mt-6 border-t border-white/10 pt-5">
+                    <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Quali dati prendere dai dispositivi</h4>
+                    <p className="muted-copy" style={{ marginBottom: 8 }}>
+                      Scegli da quale dispositivo arrivano sonno, recupero e allenamenti, e quali dati ogni device può sincronizzare.
+                    </p>
+                    <div className="flex flex-col gap-6" style={{ marginTop: 8 }}>
+                      <SettingsDataSourcePreference />
+                      <SettingsDeviceIngestPolicy />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           )}
 
           {activeSection === "physical" && (
             <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("physical")}`}><span className="profile-kpi-dot" />Physical Measurements</h3>
+              <h3 className={`profile-section-band tone-${profileToneForEditorSection("physical")}`}><span className="profile-kpi-dot" />Misure fisiche</h3>
               <div className="profile-editor-grid">
               <div className="form-group"><label className="form-label">Height (cm)</label><input className="form-input" type="number" value={form.height_cm} onChange={(e) => setForm((f) => ({ ...f, height_cm: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">Weight (kg)</label><input className="form-input" type="number" step="0.1" value={form.weight_kg} onChange={(e) => setForm((f) => ({ ...f, weight_kg: e.target.value }))} /></div>
@@ -2851,7 +1933,7 @@ export default function ProfilePage() {
 
           {activeSection === "routine" && (
             <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("routine")}`}><span className="profile-kpi-dot" />Routine - Weekly Planner</h3>
+              <h3 className={`profile-section-band tone-${profileToneForEditorSection("routine")}`}><span className="profile-kpi-dot" />Routine settimanale</h3>
               <div className="profile-day-strip">
                 {weekDays.map((day) => (
                   <button
@@ -2894,7 +1976,7 @@ export default function ProfilePage() {
 
           {activeSection === "nutrition" && (
             <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("nutrition")}`}><span className="profile-kpi-dot" />Nutrition Systems</h3>
+              <h3 className={`profile-section-band tone-${profileToneForEditorSection("nutrition")}`}><span className="profile-kpi-dot" />Alimentazione</h3>
               <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "12px" }}>
                 <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>Diet</button>
                 <button type="button" className={`page-tab ${activeNutritionTab === "intolerances" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("intolerances")}>Intolerances</button>
@@ -3061,10 +2143,24 @@ export default function ProfilePage() {
               )}
             </div>
           )}
+          </div>
 
-          <Pro2Button type="submit" disabled={saving} variant="primary" className="mt-4">
-            {saving ? "Salvataggio…" : editingProfileId ? "Aggiorna profilo" : "Salva profilo"}
-          </Pro2Button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Pro2Button type="submit" disabled={saving} variant="primary">
+              {saving ? "Salvataggio…" : editingProfileId ? "Aggiorna profilo" : "Salva profilo"}
+            </Pro2Button>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="border border-white/20 bg-white/5 hover:bg-white/10"
+              onClick={() => {
+                setShowForm(false);
+                setEditingProfileId(null);
+              }}
+            >
+              Annulla
+            </Pro2Button>
+          </div>
         </form>
         </Pro2SectionCard>
       )}
@@ -3088,6 +2184,23 @@ export default function ProfilePage() {
           )}
         </div>
       ) : null}
+
+      <PlatformAdminOnly>
+        <Pro2SectionCard
+          accent="slate"
+          icon={Settings2}
+          title="Diagnostica · admin"
+          subtitle="Sessione, atleta, integrazioni, billing — visibile solo a operatori piattaforma"
+        >
+          <div className="flex flex-col gap-10">
+            <SettingsBuildPhasesCard />
+            <SettingsAuthSessionDiagnostics />
+            <SettingsAthleteContextDiagnostics />
+            <SettingsIntegrationsDiagnostics />
+            <SettingsBillingDiagnostics />
+          </div>
+        </Pro2SectionCard>
+      </PlatformAdminOnly>
       </div>
     </Pro2ModulePageShell>
   );

@@ -59,8 +59,7 @@ export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   { module: "aerodynamics", href: "/aerodynamics", label: "Aerodynamics", icon: "wind", area: "main", scope: "athlete" },
   { module: "bioenergetics", href: "/bioenergetics", label: "BioEnergetic Intelligence", icon: "pulse", area: "main", scope: "athlete" },
   { module: "longevity", href: "/longevity", label: "Longevity & Fitness", icon: "award", area: "main", scope: "athlete" },
-  // — Footer (solo account privato; rimosso dalla vista coach) —
-  { module: "settings", href: "/settings", label: "Impostazioni", icon: "settings", area: "footer", scope: "account", roles: ["private"] },
+  // Impostazioni consolidate nel Profilo: nessuna voce nav dedicata (/settings → /profile).
 ];
 
 const byHref = new Map<string, ProductModuleNavItem>(

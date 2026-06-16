@@ -4,6 +4,7 @@ import { Activity, Crosshair, Ruler, ShieldAlert, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { BiomechanicsCameraPlane } from "@empathy/contracts";
 import { capturePlaneToViewMode, type BiomechanicsCaptureViewMode } from "@/lib/biomechanics/biomech-capture-view";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import type { BiomechanicsSessionImportV1 } from "@empathy/contracts";
 import { computeBiomechanicsEfficiencyScores, summarizeJointAngles } from "@empathy/domain-biomechanics";
 import {
@@ -102,6 +103,8 @@ export function BiomechanicsReportPanels({
   ) => void;
   cameraPlane?: BiomechanicsCameraPlane;
 }) {
+  const { role, adminScoped } = useActiveAthlete();
+  const showTech = role === "coach" || adminScoped;
   const viewMode: BiomechanicsCaptureViewMode = capturePlaneToViewMode(cameraPlane);
   const envelopes = data.jointAngles?.length ? summarizeJointAngles(data.jointAngles) : [];
   const efficiency = data.efficiencyScores;
@@ -124,9 +127,9 @@ export function BiomechanicsReportPanels({
         ) : null}
         {mode === "preview" ? (
           <p className="mt-2 text-xs text-amber-300">
-            Anteprima proposta CV
-            {typeof data.confidence01 === "number" ? ` · confidenza ${pct01(data.confidence01)}` : ""}
-            {data.provider ? ` · ${data.provider}` : ""}
+            Anteprima proposta
+            {showTech && typeof data.confidence01 === "number" ? ` · confidenza ${pct01(data.confidence01)}` : ""}
+            {showTech && data.provider ? ` · ${data.provider}` : ""}
           </p>
         ) : null}
       </div>
@@ -196,7 +199,7 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {riskEntries.length ? (
-        <Section title="Rischio per distretto" subtitle="Punteggi normalizzati dal motore CV + domain engine." icon={ShieldAlert}>
+        <Section title="Rischio per distretto" subtitle={showTech ? "Punteggi normalizzati dal motore CV + domain engine." : "Punteggi di rischio normalizzati per distretto."} icon={ShieldAlert}>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {riskEntries.map(([key, label]) => (
               <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -215,7 +218,7 @@ export function BiomechanicsReportPanels({
           <p className="text-sm text-gray-300">
             {data.calibration.referenceLabel} · {Math.round(data.calibration.referenceValueMm)} mm ·{" "}
             {data.calibration.method}
-            {typeof data.calibration.confidence01 === "number"
+            {showTech && typeof data.calibration.confidence01 === "number"
               ? ` · confidenza ${pct01(data.calibration.confidence01)}`
               : ""}
           </p>
@@ -254,7 +257,7 @@ export function BiomechanicsReportPanels({
         subtitle={
           editable
             ? "Trascina i punti sul video; angoli e KPI si aggiornano dopo ogni correzione."
-            : "Scheletro CV, archi e valori in gradi sul frame chiave (fase ciclo)."
+            : "Scheletro, archi e valori in gradi sul frame chiave (fase ciclo)."
         }
       >
         <BiomechanicsAngleOverlay

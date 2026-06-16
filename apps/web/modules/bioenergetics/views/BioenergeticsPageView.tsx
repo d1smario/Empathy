@@ -67,6 +67,77 @@ function provenanceLabel(p: BioenergeticMetricTile["provenance"]): string {
 
 const TIMELINE_MODEL_TYPES = new Set<BioenergeticTimelineEvent["type"]>(["meal", "planned_session", "executed_session"]);
 
+// Disclaimer tecnici da NON mostrare all'atleta (nomi tabella/colonna DB, identificatori motore,
+// kernel/skeleton/policy fusione, env var, predittori). Restano visibili solo a coach/admin.
+const DISCLAIMER_TECH_MARKERS = [
+  "athlete_time_series_samples",
+  "planned_workouts",
+  "kernel",
+  "skeleton",
+  "policy fusione",
+  "fusione v1",
+  "modello:",
+  "banca coefficienti",
+  "nutrition_plans",
+  "calendar_training_solver",
+  "_predictor_",
+  "buildSimulated",
+  "stimulusPredictor",
+  "SIM_",
+  "OPENAI_API_KEY",
+  "boundary adapter",
+  "endpoint e schema",
+];
+
+// Errori grezzi LLM / chiave assente: per l'atleta diventano un singolo messaggio generico.
+const DISCLAIMER_LLM_ERROR_MARKERS = [
+  "openai:",
+  "openai http",
+  "json non interpretabile",
+  "imposta openai_api_key",
+  "openai_api_key",
+];
+
+// Menzioni informative del fornitore AI: per l'atleta vanno semplicemente nascoste (niente vendor name).
+const DISCLAIMER_LLM_VENDOR_MARKERS = ["openai", "llm"];
+
+const ATHLETE_LLM_FALLBACK_DISCLAIMER = "Stima temporaneamente non disponibile: riprova tra qualche minuto.";
+
+function disclaimerIsTech(line: string): boolean {
+  const low = line.toLowerCase();
+  if (line.includes("`")) return true; // qualsiasi identificatore tecnico in backtick
+  return DISCLAIMER_TECH_MARKERS.some((m) => low.includes(m.toLowerCase()));
+}
+
+function disclaimerIsLlmError(line: string): boolean {
+  const low = line.toLowerCase();
+  return DISCLAIMER_LLM_ERROR_MARKERS.some((m) => low.includes(m));
+}
+
+function disclaimerMentionsVendor(line: string): boolean {
+  const low = line.toLowerCase();
+  return DISCLAIMER_LLM_VENDOR_MARKERS.some((m) => low.includes(m));
+}
+
+/** Vista atleta: solo voci comprensibili; errori LLM → un solo messaggio generico, vendor name nascosto. */
+function athleteDisclaimers(lines: string[]): string[] {
+  const out: string[] = [];
+  let llmFallbackAdded = false;
+  for (const line of lines) {
+    if (disclaimerIsLlmError(line)) {
+      if (!llmFallbackAdded) {
+        out.push(ATHLETE_LLM_FALLBACK_DISCLAIMER);
+        llmFallbackAdded = true;
+      }
+      continue;
+    }
+    if (disclaimerMentionsVendor(line)) continue; // menzione informativa del fornitore AI
+    if (disclaimerIsTech(line)) continue;
+    out.push(line);
+  }
+  return out;
+}
+
 // Link cross-shell (Nutrition/Training): inerte nelle viste scoped admin/coach (v2).
 function CrossShellLink({
   adminScoped,
@@ -301,7 +372,7 @@ export default function BioenergeticsPageView() {
                     </p>
                   ) : null}
                   {vm.continuousMonitoring.channels.length > 0 ? (
-                    <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} />
+                    <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} showTech={showTech} />
                   ) : null}
                 </div>
               ) : (
@@ -375,11 +446,18 @@ export default function BioenergeticsPageView() {
 
       <section id="gen-focus" className="scroll-mt-28 space-y-6">
         <Pro2SectionCard accent="lime" title="Da tenere a mente" subtitle="Come leggere questi numeri" icon={Activity}>
-          <ul className="space-y-2 text-sm text-gray-300">
-            {(vm?.disclaimers ?? ["Nessuna nota disponibile."]).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+          {(() => {
+            const raw = vm?.disclaimers ?? [];
+            const lines = showTech ? raw : athleteDisclaimers(raw);
+            const display = lines.length ? lines : ["Nessuna nota disponibile."];
+            return (
+              <ul className="space-y-2 text-sm text-gray-300">
+                {display.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            );
+          })()}
         </Pro2SectionCard>
 
         <Pro2Accordion

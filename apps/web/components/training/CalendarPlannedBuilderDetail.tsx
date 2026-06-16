@@ -213,7 +213,7 @@ export function CalendarPlannedBuilderDetail({
               <div className="flex max-w-md flex-col gap-2 rounded-lg border border-rose-400/40 bg-rose-950/40 px-2 py-2">
                 <span className="text-xs text-rose-100">
                   {isViryaSession
-                    ? `Seduta VIRYA (${planNameFromViryaTag(viryaTag)}). Non è memoria AI: è una riga in planned_workouts.`
+                    ? `Seduta VIRYA (${planNameFromViryaTag(viryaTag)}). Non è memoria AI: è una seduta pianificata sul calendario.`
                     : "Rimuovere dal calendario?"}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -302,7 +302,7 @@ export function CalendarPlannedBuilderDetail({
                 type="button"
                 disabled={deleting}
                 className="inline-flex items-center gap-1 rounded-lg border border-rose-400/45 bg-rose-500/15 px-2.5 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
-                title="Rimuove questa riga da planned_workouts"
+                title="Rimuove questa seduta pianificata dal calendario"
                 onClick={() => {
                   setActionFeedback(null);
                   setDeleteConfirmOpen(true);
