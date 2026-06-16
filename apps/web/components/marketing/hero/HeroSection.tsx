@@ -24,7 +24,7 @@ export function HeroSection() {
         {/* Wordmark */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/brand/empathy-wordmark-white.svg"
+          src="/brand/empathy-wordmark-white.png"
           alt={HERO.title}
           className="mx-auto h-24 w-auto sm:h-36 lg:h-44"
         />

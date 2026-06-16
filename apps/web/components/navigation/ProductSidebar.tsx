@@ -103,7 +103,7 @@ export function ProductSidebar() {
       <div className="relative border-b border-white/10 px-4 py-5">
         <Link href="/" className="block" aria-label="Empathy">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-8 w-auto" />
+          <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-8 w-auto" />
         </Link>
         <p className="mt-2 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
       </div>

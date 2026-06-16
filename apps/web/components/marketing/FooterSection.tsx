@@ -40,7 +40,7 @@ export function FooterSection() {
           <div className="max-w-sm text-center md:text-left">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand/empathy-wordmark-white.svg"
+              src="/brand/empathy-wordmark-white.png"
               alt={FOOTER.wordmark}
               className="h-7 w-auto"
             />

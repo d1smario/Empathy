@@ -93,7 +93,7 @@ export default async function AccessPage({
             className="mt-4 inline-block text-2xl font-black tracking-[0.12em] text-white transition-opacity hover:opacity-80 sm:text-3xl"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-9 w-auto" />
+            <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-9 w-auto" />
           </Link>
           <div className="mx-auto mt-4 h-px w-16 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </div>

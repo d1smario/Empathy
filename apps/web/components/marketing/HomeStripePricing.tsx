@@ -154,7 +154,7 @@ export function HomeStripePricing({
       {showTitle ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-8 w-auto sm:h-10" />
+          <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-8 w-auto sm:h-10" />
           <div className="mx-auto mt-4 h-px w-20 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </>
       ) : null}
