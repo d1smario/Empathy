@@ -101,16 +101,11 @@ export function ProductSidebar() {
   return (
     <aside className="relative flex w-[16.5rem] shrink-0 flex-col border-r border-white/10 bg-black/40 shadow-[inset_-1px_0_0_rgba(168,85,247,0.12)] backdrop-blur-xl">
       <div className="relative border-b border-white/10 px-4 py-5">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-pulse rounded-full bg-orange-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-gradient-to-br from-orange-400 to-pink-500" />
-          </span>
-          <Link href="/" className="text-lg font-black tracking-[0.1em] text-white sm:text-xl">
-            EMPATHY
-          </Link>
-        </div>
-        <p className="mt-1 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
+        <Link href="/" className="block" aria-label="Empathy">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-8 w-auto" />
+        </Link>
+        <p className="mt-2 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label={t("ariaModules")}>
         {accountItems.map((item) => (
