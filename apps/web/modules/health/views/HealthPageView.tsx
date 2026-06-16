@@ -52,6 +52,16 @@ import { HealthArchiveSection } from "@/modules/health/views/sections/HealthArch
 
 type HealthTabId = "aree" | "stato" | "dettagli";
 
+// Cache cross-mount della timeline referti: ri-atterrando su Health & Bio i dati
+// compaiono subito (niente spinner/"refresh"); l'aggiornamento avviene in background
+// silenzioso, così si vedono anche i nuovi referti dopo un upload senza spinner.
+let healthTimelineCacheId: string | null = null;
+let healthTimelineCache: {
+  panels: HealthPanelTimelineRow[];
+  error: string | null;
+  diagnostics: HealthTimelineFetchDiagnostics | null;
+} | null = null;
+
 export default function HealthPageView() {
   const { athleteId, loading: ctxLoading, adminScoped, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
@@ -88,7 +98,16 @@ export default function HealthPageView() {
       setLoadingTimeline(false);
       return;
     }
-    setLoadingTimeline(true);
+    const cached = healthTimelineCacheId === athleteId ? healthTimelineCache : null;
+    if (cached) {
+      // Mostra subito i dati in cache (niente spinner); refresh in background sotto.
+      setPanels(cached.panels);
+      setTimelineErr(cached.error);
+      setTimelineDiag(cached.diagnostics);
+      setLoadingTimeline(false);
+    } else {
+      setLoadingTimeline(true);
+    }
     const { panels: next, error, diagnostics } = await fetchHealthPanelsTimeline(athleteId);
     let resolvedPanels = next;
     let resolvedErr = error;
@@ -126,6 +145,8 @@ export default function HealthPageView() {
     setPanels(resolvedPanels);
     setTimelineErr(resolvedErr);
     setTimelineDiag(resolvedDiag);
+    healthTimelineCache = { panels: resolvedPanels, error: resolvedErr, diagnostics: resolvedDiag };
+    healthTimelineCacheId = athleteId;
     setLoadingTimeline(false);
   }, [athleteId]);
 
