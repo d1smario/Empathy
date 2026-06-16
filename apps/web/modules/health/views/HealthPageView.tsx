@@ -525,18 +525,23 @@ export default function HealthPageView() {
 
           {/* CARICA ESAME — spostato in fondo a «Stato di salute» */}
           <div className="space-y-6">
-            <HealthImportSection
-              sampleDate={sampleDate}
-              onSampleDateChange={setSampleDate}
-              onPickFile={onPickFile}
-              uploadBusy={uploadBusy}
-              loadingTimeline={loadingTimeline}
-              timelineErr={timelineErr}
-            />
-            {toast ? (
-              <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
-                {toast}
-              </p>
+            {/* Carica esame: solo l'atleta carica i propri referti; al coach/admin resta solo lo storico. */}
+            {role === "private" ? (
+              <>
+                <HealthImportSection
+                  sampleDate={sampleDate}
+                  onSampleDateChange={setSampleDate}
+                  onPickFile={onPickFile}
+                  uploadBusy={uploadBusy}
+                  loadingTimeline={loadingTimeline}
+                  timelineErr={timelineErr}
+                />
+                {toast ? (
+                  <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
+                    {toast}
+                  </p>
+                ) : null}
+              </>
             ) : null}
 
             {/* TREND NEL TEMPO — in fondo al blocco Carica esame */}
