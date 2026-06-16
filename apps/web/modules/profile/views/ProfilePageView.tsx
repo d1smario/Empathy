@@ -343,10 +343,11 @@ function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amber" | "
   return cn(base, active ? activeCls[accent] : idle[accent]);
 }
 
-function profileToneForEditorSection(section: "personal" | "physical" | "routine" | "nutrition") {
+function profileToneForEditorSection(section: "personal" | "physical" | "routine" | "nutrition" | "devices") {
   if (section === "personal") return "violet";
   if (section === "physical") return "cyan";
   if (section === "routine") return "amber";
+  if (section === "devices") return "slate";
   return "rose";
 }
 
@@ -446,7 +447,7 @@ export default function ProfilePage({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<"personal" | "physical" | "routine" | "nutrition">("personal");
+  const [activeSection, setActiveSection] = useState<"personal" | "physical" | "routine" | "nutrition" | "devices">("personal");
   const [activeNutritionTab, setActiveNutritionTab] = useState<"diet" | "intolerances" | "supplements">("diet");
   const editorScrollRef = useRef<HTMLDivElement>(null);
   const [activeSupplementCategory, setActiveSupplementCategory] = useState("carboidrati");
@@ -1009,7 +1010,7 @@ export default function ProfilePage({
   }
 
   function goToEditorSection(
-    section: "personal" | "physical" | "routine" | "nutrition",
+    section: "personal" | "physical" | "routine" | "nutrition" | "devices",
     nutritionTab?: "diet" | "intolerances" | "supplements",
   ) {
     setActiveSection(section);
@@ -1560,6 +1561,7 @@ export default function ProfilePage({
           <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "diet", "rose")} onClick={() => goToEditorSection("nutrition", "diet")}>Dieta</button>
           <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "intolerances", "rose")} onClick={() => goToEditorSection("nutrition", "intolerances")}>Intolleranze</button>
           <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "supplements", "rose")} onClick={() => goToEditorSection("nutrition", "supplements")}>Integratori</button>
+          <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
         </div>
         <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)}`} style={{ marginBottom: "24px", padding: "20px" }}>
           <div ref={editorScrollRef} style={{ height: "60vh", overflowY: "auto" }}>
@@ -1579,6 +1581,11 @@ export default function ProfilePage({
               <div style={{ marginTop: "12px" }}>
                 <SettingsLocalePreference />
               </div>
+            </div>
+          )}
+
+          {activeSection === "devices" && (
+            <div>
               <div className="profile-subpanel tone-slate" style={{ marginTop: "12px" }}>
                 <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Devices</h4>
                 <p className="muted-copy">Collega i tuoi dispositivi per sincronizzare automaticamente allenamenti e dati di salute.</p>

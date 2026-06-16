@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, HeartPulse, Microscope, TrendingUp, Upload, Wrench } from "lucide-react";
+import { Activity, HeartPulse, Microscope, Wrench } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { ModulePillSubnav, type ModulePillAnchorItem } from "@/components/navigation/ModulePillSubnav";
@@ -50,7 +50,7 @@ import {
 import { HealthSystemMapPanel } from "@/modules/health/views/sections/HealthSystemMapPanel";
 import { HealthArchiveSection } from "@/modules/health/views/sections/HealthArchiveSection";
 
-type HealthTabId = "carica" | "stato" | "trend" | "aree" | "dettagli";
+type HealthTabId = "aree" | "stato" | "dettagli";
 
 export default function HealthPageView() {
   const { athleteId, loading: ctxLoading, adminScoped, role } = useActiveAthlete();
@@ -73,8 +73,8 @@ export default function HealthPageView() {
   const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
   const [analyzeBusyPanelId, setAnalyzeBusyPanelId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  /** Tab di navigazione: si monta solo la sezione attiva (apertura su «Carica esame»). */
-  const [activeTab, setActiveTab] = useState<HealthTabId>("carica");
+  /** Tab di navigazione: si monta solo la sezione attiva (apertura su «Analisi dettagliata»). */
+  const [activeTab, setActiveTab] = useState<HealthTabId>("aree");
   /** athleteId per cui la mappa di sistema è già stata caricata (lazy, solo tab «Dettagli e motore»). */
   const [systemMapLoadedFor, setSystemMapLoadedFor] = useState<string | null>(null);
 
@@ -488,11 +488,9 @@ export default function HealthPageView() {
   }
 
   const tabItems: ModulePillAnchorItem[] = [
-    { key: "carica", anchor: "carica", label: "Carica esame", icon: Upload, style: MODULE_PILL_ROSE },
+    { key: "aree", anchor: "aree", label: "Analisi dettagliata", icon: Microscope, style: MODULE_PILL_ROSE },
     { key: "stato", anchor: "stato", label: "Stato di salute", icon: HeartPulse, style: MODULE_PILL_ROSE },
-    { key: "trend", anchor: "trend", label: "Trend nel tempo", icon: TrendingUp, style: MODULE_PILL_ROSE },
-    { key: "aree", anchor: "aree", label: "Approfondimenti", icon: Microscope, style: MODULE_PILL_ROSE },
-    { key: "dettagli", anchor: "dettagli", label: "Dettagli e motore", icon: Wrench, style: MODULE_PILL_ROSE },
+    { key: "dettagli", anchor: "dettagli", label: "Dettagli motore", icon: Wrench, style: MODULE_PILL_ROSE },
   ];
   const hasMatrici = bloodComparisonCols.length > 0 || Boolean(microComparisonCols);
 
@@ -514,26 +512,7 @@ export default function HealthPageView() {
         />
       </div>
 
-      {/* CARICA ESAME — primary job */}
-      {activeTab === "carica" ? (
-        <>
-          <HealthImportSection
-            sampleDate={sampleDate}
-            onSampleDateChange={setSampleDate}
-            onPickFile={onPickFile}
-            uploadBusy={uploadBusy}
-            loadingTimeline={loadingTimeline}
-            timelineErr={timelineErr}
-          />
-          {toast ? (
-            <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
-              {toast}
-            </p>
-          ) : null}
-        </>
-      ) : null}
-
-      {/* STATO DI SALUTE — sintesi + valori puntuali (fonte unica) */}
+      {/* STATO DI SALUTE — sintesi + valori puntuali, poi Carica esame (con Trend nel tempo in fondo) */}
       {activeTab === "stato" ? (
         <div className="space-y-6">
           <HealthScoreSummary scores={globalScores} />
@@ -543,28 +522,43 @@ export default function HealthPageView() {
             latestPanelsByTypeForRaw={latestPanelsByTypeForRaw}
             showTech={showTech}
           />
+
+          {/* CARICA ESAME — spostato in fondo a «Stato di salute» */}
+          <div className="space-y-6">
+            <HealthImportSection
+              sampleDate={sampleDate}
+              onSampleDateChange={setSampleDate}
+              onPickFile={onPickFile}
+              uploadBusy={uploadBusy}
+              loadingTimeline={loadingTimeline}
+              timelineErr={timelineErr}
+            />
+            {toast ? (
+              <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
+                {toast}
+              </p>
+            ) : null}
+
+            {/* TREND NEL TEMPO — in fondo al blocco Carica esame */}
+            <section id="health-storico" className="scroll-mt-28">
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <Activity className="h-4 w-4 text-rose-400" />
+                <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
+                  Storico esami del sangue
+                </h2>
+              </div>
+              <HealthBloodTrendSection
+                data={bloodLineChartData}
+                realPointCount={bloodRowsChronological.length}
+                usingDemoTrend={usingDemoTrend}
+                hasLatestStructuredRow={Boolean(bloodLatestStructuredRow)}
+              />
+            </section>
+          </div>
         </div>
       ) : null}
 
-      {/* TREND NEL TEMPO */}
-      {activeTab === "trend" ? (
-        <section id="health-storico" className="scroll-mt-28">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            <Activity className="h-4 w-4 text-rose-400" />
-            <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-              Storico esami del sangue
-            </h2>
-          </div>
-          <HealthBloodTrendSection
-            data={bloodLineChartData}
-            realPointCount={bloodRowsChronological.length}
-            usingDemoTrend={usingDemoTrend}
-            hasLatestStructuredRow={Boolean(bloodLatestStructuredRow)}
-          />
-        </section>
-      ) : null}
-
-      {/* APPROFONDIMENTI — aree + matrici longitudinali */}
+      {/* ANALISI DETTAGLIATA — aree + matrici longitudinali (tab di default) */}
       {activeTab === "aree" ? (
         <div className="space-y-6">
           <HealthAreaCharts
