@@ -8,6 +8,7 @@ import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
 import { getSessionProfile } from "@/lib/auth/session-profile";
 import { DashboardIntroAndPricing } from "@/components/dashboard/DashboardIntroAndPricing";
 import { DashboardPlanBadge } from "@/components/dashboard/DashboardPlanBadge";
+import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
 import { NewDashboardView } from "@/components/dashboard/NewDashboardView";
 import { CoachAthletesModulePanel } from "@/components/coach/CoachAthletesModulePanel";
 import { SettingsCoachAccountCard } from "@/components/settings/SettingsCoachAccountCard";
@@ -48,15 +49,23 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
 
   return (
     <Pro2ModulePageShell
-      eyebrow={`${title} · Modulo`}
+      eyebrow={module === "dashboard" ? "Human Performance Operating System" : `${title} · Modulo`}
       eyebrowClassName={moduleEyebrowClass(module)}
-      title={title}
-      description={
+      title={
         module === "dashboard" ? (
-          <span className="text-sm text-gray-400">
-            Il tuo stato di oggi: allenamento, recupero e progressi in un colpo d&apos;occhio.
-          </span>
-        ) : module === "athletes" ? (
+          <>
+            Understand Today.
+            <br />
+            <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+              Predict Tomorrow.
+            </span>
+          </>
+        ) : (
+          title
+        )
+      }
+      description={
+        module === "dashboard" ? undefined : module === "athletes" ? (
           <span className="text-sm text-gray-400">Stato account, atleti collegati e inviti.</span>
         ) : panel ? (
           <span className="leading-relaxed">
@@ -67,7 +76,12 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
       }
       headerActions={
         module === "dashboard" ? (
-          dashboardEntitlement?.hasAthleteAccess ? <DashboardPlanBadge entitlement={dashboardEntitlement} /> : undefined
+          dashboardEntitlement?.hasAthleteAccess ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <DashboardReadinessHeader />
+              <DashboardPlanBadge entitlement={dashboardEntitlement} />
+            </div>
+          ) : undefined
         ) : (
           <>
             <Pro2Link href="/" variant="ghost" className="justify-center border border-white/15 bg-white/5 hover:bg-white/10">

@@ -595,6 +595,61 @@ function skelLifter(t: number): Skeleton {
   };
 }
 
+/**
+ * NEUTRAL STANDING pose (idle twin). Frontal, arms slightly away from the torso
+ * and pointing down, straight legs — a person standing still. No sport equipment
+ * (the equip painter pushes deterministic filler points hidden far below frame so
+ * the canonical POINT_COUNT/index ranges stay intact for the point-cloud build).
+ */
+function skelIdle(): Skeleton {
+  const hip: Vec2 = { x: 0, y: 6 };
+  const shoulder: Vec2 = { x: 0, y: -26 };
+  const neck: Vec2 = { x: 0, y: -40 };
+  const head: Vec2 = { x: 0, y: -52 };
+
+  // Legs straight, feet ~shoulder-width, knees solved nearly straight.
+  const footL: Vec2 = { x: -9, y: 52 };
+  const footR: Vec2 = { x: 9, y: 52 };
+  const hipL: Vec2 = { x: hip.x - 6, y: hip.y };
+  const hipR: Vec2 = { x: hip.x + 6, y: hip.y };
+  const kneeL = solveJoint(hipL, footL, UP_LEG, LO_LEG, -1);
+  const kneeR = solveJoint(hipR, footR, UP_LEG, LO_LEG, 1);
+
+  // Arms hang down, slightly away from the torso (hands by the hips, a touch out).
+  const shoulderL: Vec2 = { x: shoulder.x - 9, y: shoulder.y };
+  const shoulderR: Vec2 = { x: shoulder.x + 9, y: shoulder.y };
+  const handL: Vec2 = { x: -16, y: 18 };
+  const handR: Vec2 = { x: 16, y: 18 };
+  const elbowL = solveJoint(shoulderL, handL, UP_ARM, LO_ARM, -1);
+  const elbowR = solveJoint(shoulderR, handR, UP_ARM, LO_ARM, 1);
+
+  return {
+    head,
+    neck,
+    shoulderL,
+    shoulderR,
+    hipL,
+    hipR,
+    torsoTop: shoulder,
+    torsoBot: hip,
+    elbowL,
+    handL,
+    elbowR,
+    handR,
+    kneeL,
+    footL,
+    kneeR,
+    footR,
+    headR: 11,
+    equip(out) {
+      // No equipment in idle: emit EXACTLY BUDGET.equip deterministic points
+      // parked far below the frame so they're never visible nor meshed near the
+      // body, keeping POINT_COUNT and the per-part index ranges canonical.
+      for (let i = 0; i < BUDGET.equip; i++) out.push({ x: 0, y: 9000 });
+    },
+  };
+}
+
 function skeletonFor(sport: Sport, t: number): Skeleton {
   switch (sport) {
     case "cyclist":
@@ -705,6 +760,64 @@ function buildNormalizedPose(sport: Sport, t: number): Vec2[] {
 }
 
 /* ------------------------------------------------------------------ */
+/*  IDLE (twin) — single neutral standing figure, no sport equipment.  */
+/*  Built once from the BODY points only; equip filler is hidden far   */
+/*  below frame so it never affects framing, mesh, or the visible blob. */
+/* ------------------------------------------------------------------ */
+
+function buildIdlePoints(): Vec2[] {
+  const s = skelIdle();
+  const out: Vec2[] = [];
+  fillDisc(out, s.head.x, s.head.y, s.headR, BUDGET.head);
+  fillBone(out, s.neck, s.torsoTop, BUDGET.neck, 4);
+  const torsoC: Vec2 = {
+    x: (s.torsoTop.x + s.torsoBot.x) / 2,
+    y: (s.torsoTop.y + s.torsoBot.y) / 2,
+  };
+  const tdx = s.torsoBot.x - s.torsoTop.x;
+  const tdy = s.torsoBot.y - s.torsoTop.y;
+  const torsoH = Math.max(18, Math.sqrt(tdx * tdx + tdy * tdy) / 2 + 8);
+  const tilt = Math.atan2(tdy, tdx) - Math.PI / 2;
+  fillEllipse(out, torsoC.x, torsoC.y, 12, torsoH, BUDGET.torso, tilt);
+  fillBone(out, s.shoulderL, s.elbowL, BUDGET.upperArmL, 6);
+  fillBone(out, s.elbowL, s.handL, BUDGET.lowerArmL, 5);
+  fillBone(out, s.shoulderR, s.elbowR, BUDGET.upperArmR, 6);
+  fillBone(out, s.elbowR, s.handR, BUDGET.lowerArmR, 5);
+  fillBone(out, s.hipL, s.kneeL, BUDGET.thighL, 7);
+  fillBone(out, s.kneeL, s.footL, BUDGET.shankL, 6);
+  fillBone(out, s.hipR, s.kneeR, BUDGET.thighR, 7);
+  fillBone(out, s.kneeR, s.footR, BUDGET.shankR, 6);
+  fillShoe(out, s.footL, BUDGET.footL);
+  fillShoe(out, s.footR, BUDGET.footR);
+  s.equip(out); // parked filler (y=9000), keeps POINT_COUNT canonical
+  return out;
+}
+
+/** Normalized idle pose: frame computed from BODY points only (no parked filler). */
+function buildNormalizedIdlePose(): Vec2[] {
+  const pts = buildIdlePoints();
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < BODY_TOTAL; i++) {
+    const p = pts[i];
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const h = maxY - minY || 1;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const scale = TARGET_HEIGHT / h;
+  for (let i = 0; i < pts.length; i++) {
+    pts[i] = { x: (pts[i].x - cx) * scale, y: (pts[i].y - cy) * scale };
+  }
+  return pts;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Background data streams (the ONLY place randomness is allowed)     */
 /* ------------------------------------------------------------------ */
 
@@ -779,10 +892,22 @@ function drawMesh(ctx: CanvasRenderingContext2D, pts: Vec2[], threshold: number)
 
 export function AthleteCanvas({
   onMetrics,
+  mode = "loop",
+  className,
 }: {
   /** Emette le metriche live (così l'orologio mostra gli STESSI valori). */
   onMetrics?: (m: { hr: number; pwr: number; cad: number; spd: number }) => void;
+  /**
+   * "loop" (default): rotazione/morph tra sport con label, card metriche e
+   * indicatori (uso storico in WatchLabSection).
+   * "idle": UNA figura umana ferma in posa neutra (twin centrale dashboard),
+   * niente sport/equip, niente label/metriche/controlli, solo respiro/shimmer.
+   */
+  mode?: "loop" | "idle";
+  /** Sizing/posizionamento dal contenitore (sostituisce il wrapper di default). */
+  className?: string;
 } = {}) {
+  const idle = mode === "idle";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sportIndex, setSportIndex] = useState(0);
   const [metrics, setMetrics] = useState({ hr: 142, pwr: 312, cad: 89, spd: 38.2 });
@@ -800,6 +925,82 @@ export function AthleteCanvas({
 
     const cvs = canvas;
     const context = ctx;
+
+    /* -------------------------------------------------------------- */
+    /*  IDLE TWIN: single neutral standing figure, gentle breath +    */
+    /*  shimmer. No sport loop/morph, no equipment, no HUD wiring.    */
+    /* -------------------------------------------------------------- */
+    if (idle) {
+      const basePose = buildNormalizedIdlePose();
+      const idlePts: Vec2[] = Array.from({ length: POINT_COUNT }, () => ({ x: 0, y: 0 }));
+      let idleAnim = 0;
+      const t0 = performance.now();
+
+      function resizeIdle() {
+        const rect = cvs.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        cvs.width = rect.width * dpr;
+        cvs.height = rect.height * dpr;
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeIdle();
+      window.addEventListener("resize", resizeIdle);
+
+      function renderIdle(elapsed: number) {
+        const w = cvs.clientWidth;
+        const h = cvs.clientHeight;
+        const c = { x: w / 2, y: h / 2 - 6 };
+        const scale = Math.min(w, h) / 200;
+
+        // Gentle "breath": tiny vertical pulse of the whole figure; per-point
+        // shimmer is a small radius/alpha wobble. Only BODY points are drawn
+        // (the parked equip filler stays hidden far below frame).
+        const breath = Math.sin(elapsed * 0.9) * 0.6; // px-ish, pre-scale
+        for (let i = 0; i < BODY_TOTAL; i++) {
+          idlePts[i].x = c.x + basePose[i].x * scale;
+          idlePts[i].y = c.y + (basePose[i].y + breath) * scale;
+        }
+
+        // Clear toward transparent so the dashboard background shows through.
+        context.clearRect(0, 0, w, h);
+
+        // Proximity mesh on the body points only.
+        drawMesh(context, idlePts.slice(0, BODY_TOTAL), 22 * scale);
+
+        for (let i = 0; i < BODY_TOTAL; i++) {
+          const p = idlePts[i];
+          const col = pointColor(p.x, w);
+          const shimmer = 0.85 + Math.sin(elapsed * 1.6 + i * 0.7) * 0.15;
+          context.fillStyle = col;
+          context.shadowBlur = 10;
+          context.shadowColor = col;
+          context.beginPath();
+          context.arc(p.x, p.y, 2.2 * shimmer, 0, Math.PI * 2);
+          context.fill();
+          context.shadowBlur = 0;
+
+          context.fillStyle = `rgba(255,255,255,${0.85 * shimmer})`;
+          context.beginPath();
+          context.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
+          context.fill();
+        }
+      }
+
+      if (reduceMotion) {
+        renderIdle(0);
+      } else {
+        const stepIdle = (now: number) => {
+          renderIdle((now - t0) / 1000);
+          idleAnim = requestAnimationFrame(stepIdle);
+        };
+        idleAnim = requestAnimationFrame(stepIdle);
+      }
+
+      return () => {
+        cancelAnimationFrame(idleAnim);
+        window.removeEventListener("resize", resizeIdle);
+      };
+    }
 
     let animId = 0;
     let lastT = performance.now();
@@ -980,10 +1181,24 @@ export function AthleteCanvas({
       if (metricInterval) clearInterval(metricInterval);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [idle]);
+
+  // IDLE: solo il canvas (twin centrale). Niente label sport, niente card
+  // metriche, niente indicatori. Il sizing arriva dal contenitore via className.
+  if (idle) {
+    return (
+      <div className={className ?? "relative w-full h-full"}>
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 h-full w-full"
+          aria-label="Twin atleta in posa neutra costruito da flussi di dati"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full aspect-[4/3] max-w-3xl mx-auto">
+    <div className={className ?? "relative w-full aspect-[4/3] max-w-3xl mx-auto"}>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"

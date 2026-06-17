@@ -1,15 +1,19 @@
 "use client";
 
 /**
- * Dashboard "F0" — Human Performance Operating System.
+ * Dashboard "F0" — Human Performance Operating System (vista corpo).
  *
- * Vista atleta unica: readiness ring, umanoide centrale con 9 aree, trend 7g,
- * profilo fisiologico (KPI) e human system status. Cablata su
- * `GET /api/dashboard/scores` (contratto in `@/lib/dashboard/dashboard-scores`).
+ * L'hero e lo score generale di readiness vivono ORA nel titolo pagina
+ * (`StandardModuleSurface` + `DashboardReadinessHeader`): qui resta il CORPO.
+ * Umanoide centrale (`AthleteCanvas mode="idle"`, posa neutra senza HUD) con 9
+ * contatori piccoli disposti quasi in cerchio attorno ad esso, più "Trend 7g" e
+ * "Profilo fisiologico" (KPI).
  *
- * Stale-while-revalidate cross-mount (`@/lib/client-swr-cache`): se c'è cache la
- * dipinge subito e rivalida in background — niente spinner ad ogni atterraggio.
- * Dati assenti => stato "in attesa" muto, mai numeri finti.
+ * Cablata su `GET /api/dashboard/scores` (contratto in `@/lib/dashboard/dashboard-scores`).
+ * Stale-while-revalidate cross-mount (`@/lib/client-swr-cache`, chiave condivisa
+ * con `DashboardReadinessHeader`): cache → dipingi subito, rivalida in background —
+ * niente doppio fetch, niente spinner ad ogni atterraggio. Dati assenti => stato
+ * "in attesa" muto, mai numeri finti.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,31 +31,31 @@ import type {
 /*  Palette + copy per area                                           */
 /* ------------------------------------------------------------------ */
 
-type AreaTheme = { ring: string; text: string; border: string; dot: string };
+type AreaTheme = { ring: string; text: string; border: string; glow: string };
 
 const AREA_THEME: Record<DashboardAreaKey, AreaTheme> = {
-  performance: { ring: "#fb7185", text: "text-rose-300", border: "border-rose-500/30", dot: "bg-rose-400" },
-  recovery: { ring: "#a78bfa", text: "text-violet-300", border: "border-violet-500/30", dot: "bg-violet-400" },
-  sleep: { ring: "#60a5fa", text: "text-sky-300", border: "border-sky-500/30", dot: "bg-sky-400" },
-  stress: { ring: "#c084fc", text: "text-purple-300", border: "border-purple-500/30", dot: "bg-purple-400" },
-  biomarkers: { ring: "#fb923c", text: "text-orange-300", border: "border-orange-500/30", dot: "bg-orange-400" },
-  hormones: { ring: "#2dd4bf", text: "text-teal-300", border: "border-teal-500/30", dot: "bg-teal-400" },
-  microbiome: { ring: "#f472b6", text: "text-pink-300", border: "border-pink-500/30", dot: "bg-pink-400" },
-  nutrition: { ring: "#34d399", text: "text-emerald-300", border: "border-emerald-500/30", dot: "bg-emerald-400" },
-  longevity: { ring: "#fbbf24", text: "text-amber-300", border: "border-amber-500/30", dot: "bg-amber-400" },
+  performance: { ring: "#fb7185", text: "text-rose-300", border: "border-rose-500/40", glow: "rgba(251,113,133,0.25)" },
+  recovery: { ring: "#a78bfa", text: "text-violet-300", border: "border-violet-500/40", glow: "rgba(167,139,250,0.25)" },
+  sleep: { ring: "#60a5fa", text: "text-sky-300", border: "border-sky-500/40", glow: "rgba(96,165,250,0.25)" },
+  stress: { ring: "#c084fc", text: "text-purple-300", border: "border-purple-500/40", glow: "rgba(192,132,252,0.25)" },
+  biomarkers: { ring: "#fb923c", text: "text-orange-300", border: "border-orange-500/40", glow: "rgba(251,146,60,0.25)" },
+  hormones: { ring: "#2dd4bf", text: "text-teal-300", border: "border-teal-500/40", glow: "rgba(45,212,191,0.25)" },
+  microbiome: { ring: "#f472b6", text: "text-pink-300", border: "border-pink-500/40", glow: "rgba(244,114,182,0.25)" },
+  nutrition: { ring: "#34d399", text: "text-emerald-300", border: "border-emerald-500/40", glow: "rgba(52,211,153,0.25)" },
+  longevity: { ring: "#fbbf24", text: "text-amber-300", border: "border-amber-500/40", glow: "rgba(251,191,36,0.25)" },
 };
 
 /** Hint utile quando l'area non ha ancora dati reali (mai numero finto). */
 const AREA_WAITING_HINT: Record<DashboardAreaKey, string> = {
-  performance: "Sincronizza training per la performance",
-  recovery: "Collega un device per il recupero",
-  sleep: "Collega un device per il sonno",
-  stress: "Collega un device per lo stress",
-  biomarkers: "Carica un esame in Health",
-  hormones: "Carica un pannello ormonale in Health",
-  microbiome: "Carica un test microbiota in Health",
-  nutrition: "Compila il diario alimentare",
-  longevity: "Servono più dati per l'indice longevità",
+  performance: "Sincronizza training",
+  recovery: "Collega un device",
+  sleep: "Collega un device",
+  stress: "Collega un device",
+  biomarkers: "Carica un esame",
+  hormones: "Carica un pannello",
+  microbiome: "Carica un test",
+  nutrition: "Compila il diario",
+  longevity: "Servono più dati",
 };
 
 const STATUS_LABEL: Record<NonNullable<DashboardArea["status"]>, string> = {
@@ -76,35 +80,6 @@ function fmtKpi(value: number | null, digits = 0): string {
 
 function isPayload(value: unknown): value is DashboardScoresPayload {
   return Boolean(value) && typeof value === "object" && (value as { ok?: unknown }).ok === true;
-}
-
-/* ------------------------------------------------------------------ */
-/*  ReadinessRing                                                     */
-/* ------------------------------------------------------------------ */
-
-function ReadinessRing({ score, label }: { score: number | null; label: string | null }) {
-  const pct = score == null ? 0 : Math.max(0, Math.min(100, score));
-  const deg = (pct / 100) * 360;
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div
-        className="relative grid h-32 w-32 place-items-center rounded-full sm:h-36 sm:w-36"
-        style={{
-          background: `conic-gradient(from -90deg, #a855f7 0deg, #ec4899 ${deg * 0.55}deg, #fb923c ${deg}deg, rgba(255,255,255,0.06) ${deg}deg 360deg)`,
-        }}
-        role="img"
-        aria-label={`Readiness ${fmtScore(score)}${label ? `, ${label}` : ""}`}
-      >
-        <div className="grid h-[6.25rem] w-[6.25rem] place-items-center rounded-full bg-black/80 sm:h-28 sm:w-28">
-          <span className="text-3xl font-bold tabular-nums text-white sm:text-4xl">{fmtScore(score)}</span>
-        </div>
-      </div>
-      <div className="text-center">
-        <div className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Readiness</div>
-        <div className="text-sm font-semibold capitalize text-gray-200">{label ?? "In attesa"}</div>
-      </div>
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -140,28 +115,27 @@ function Sparkline({ values, color, width = 96, height = 28 }: { values: number[
 }
 
 /* ------------------------------------------------------------------ */
-/*  AreaBox                                                           */
+/*  AreaCounter — contatore piccolo, bordo neon del colore-area       */
+/*  (label piccola in alto · score grande · micro-status sotto).      */
 /* ------------------------------------------------------------------ */
 
-function AreaBox({ area }: { area: DashboardArea }) {
+function AreaCounter({ area }: { area: DashboardArea }) {
   const theme = AREA_THEME[area.key];
-  if (!area.hasData || area.score == null) {
-    return (
-      <div className={`rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center ${theme.border}`}>
-        <div className={`font-mono text-[0.6rem] uppercase tracking-wider ${theme.text} opacity-80`}>{area.label}</div>
-        <div className="mt-1 text-2xl font-bold text-gray-600">—</div>
-        <div className="mt-1 text-[0.62rem] leading-snug text-gray-500">{AREA_WAITING_HINT[area.key]}</div>
-      </div>
-    );
-  }
+  const waiting = !area.hasData || area.score == null;
   return (
-    <div className={`rounded-2xl border bg-black/30 px-3 py-3 text-center ${theme.border}`}>
-      <div className={`flex items-center justify-center gap-1.5 font-mono text-[0.6rem] uppercase tracking-wider ${theme.text}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${theme.dot}`} aria-hidden />
+    <div
+      className={`rounded-xl border bg-black/40 px-2.5 py-2 text-center backdrop-blur-sm ${theme.border}`}
+      style={waiting ? undefined : { boxShadow: `0 0 14px -4px ${theme.glow}` }}
+    >
+      <div className={`truncate font-mono text-[0.55rem] uppercase tracking-wider ${theme.text} ${waiting ? "opacity-70" : ""}`}>
         {area.label}
       </div>
-      <div className="mt-1 text-2xl font-bold tabular-nums text-white sm:text-3xl">{fmtScore(area.score)}</div>
-      <div className="mt-0.5 text-[0.62rem] text-gray-400">{area.status ? STATUS_LABEL[area.status] : "—"}</div>
+      <div className={`mt-0.5 text-xl font-bold tabular-nums sm:text-2xl ${waiting ? "text-gray-600" : "text-white"}`}>
+        {fmtScore(area.score)}
+      </div>
+      <div className="mt-0.5 truncate text-[0.55rem] leading-tight text-gray-500">
+        {waiting ? AREA_WAITING_HINT[area.key] : area.status ? STATUS_LABEL[area.status] : "In attesa"}
+      </div>
     </div>
   );
 }
@@ -197,6 +171,10 @@ const AREA_ORDER: DashboardAreaKey[] = [
   "nutrition",
   "longevity",
 ];
+
+/** Colonne attorno al corpo (come nel mockup): sinistra / destra. */
+const LEFT_KEYS: DashboardAreaKey[] = ["stress", "biomarkers", "nutrition", "microbiome"];
+const RIGHT_KEYS: DashboardAreaKey[] = ["recovery", "sleep", "hormones", "longevity"];
 
 export function NewDashboardView() {
   const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
@@ -288,8 +266,6 @@ export function NewDashboardView() {
     );
   }
 
-  const readiness = data?.readiness ?? { score: null, label: null, trend7d: [] };
-  const systemStatus = data?.systemStatus ?? { pct: null, label: null, trend: [] };
   const kpis: DashboardKpis =
     data?.kpis ?? {
       weightKg: null,
@@ -303,74 +279,43 @@ export function NewDashboardView() {
       targetAge: null,
     };
 
-  // Aree per il layout desktop a 3 colonne: 4 a sinistra, 4 a destra, Performance al centro.
+  // Disposizione "quasi in cerchio" attorno all'umanoide (vedi mockup).
   const performanceArea = areasByKey.get("performance") ?? null;
-  const leftKeys: DashboardAreaKey[] = ["recovery", "sleep", "stress", "biomarkers"];
-  const rightKeys: DashboardAreaKey[] = ["hormones", "microbiome", "nutrition", "longevity"];
-  const leftAreas = leftKeys.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
-  const rightAreas = rightKeys.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
-
-  const systemPct = systemStatus.pct == null ? 0 : Math.max(0, Math.min(100, systemStatus.pct));
+  const leftAreas = LEFT_KEYS.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
+  const rightAreas = RIGHT_KEYS.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
 
   return (
     <div className="space-y-10">
-      {/* 1) HERO */}
-      <section className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-black/30 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">
-            Human Performance Operating System
-          </p>
-          <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
-            Understand Today.
-            <br />
-            <span className="bg-gradient-to-r from-violet-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-              Predict Tomorrow.
-            </span>
-          </h2>
-        </div>
-        <div className="shrink-0">
-          <ReadinessRing score={readiness.score} label={readiness.label} />
-        </div>
-      </section>
-
-      {/* 2) CORPO + AREE */}
+      {/* CORPO + AREE: umanoide centrale (idle, no HUD) con contatori attorno. */}
       <section aria-label="Aree fisiologiche">
-        {/* Mobile: umanoide in alto, poi 9 aree in grid 2 col */}
-        <div className="lg:hidden">
-          <div className="mx-auto max-w-sm">
-            <AthleteCanvas />
+        {/* Performance in cima al centro, su tutte le viewport. */}
+        {performanceArea ? (
+          <div className="mx-auto mb-4 w-32 sm:w-36">
+            <AreaCounter area={performanceArea} />
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            {orderedAreas.map((area) => (
-              <AreaBox key={area.key} area={area} />
-            ))}
-          </div>
-        </div>
+        ) : null}
 
-        {/* Desktop: 4 box | umanoide | 4 box, Performance sopra il centro */}
-        <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-          <div className="flex flex-col justify-center gap-3">
+        {/* Due colonne strette di contatori ai lati del corpo (mobile e desktop). */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4 lg:gap-6">
+          <div className="flex flex-col gap-2 sm:gap-3">
             {leftAreas.map((area) => (
-              <AreaBox key={area.key} area={area} />
+              <AreaCounter key={area.key} area={area} />
             ))}
           </div>
-          <div className="flex w-[22rem] flex-col items-center">
-            {performanceArea ? (
-              <div className="mb-4 w-56">
-                <AreaBox area={performanceArea} />
-              </div>
-            ) : null}
-            <AthleteCanvas />
+
+          <div className="relative h-72 w-44 shrink-0 sm:h-96 sm:w-72 lg:w-80">
+            <AthleteCanvas mode="idle" />
           </div>
-          <div className="flex flex-col justify-center gap-3">
+
+          <div className="flex flex-col gap-2 sm:gap-3">
             {rightAreas.map((area) => (
-              <AreaBox key={area.key} area={area} />
+              <AreaCounter key={area.key} area={area} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* 3) TREND 7 GIORNI */}
+      {/* TREND 7 GIORNI */}
       <section aria-label="Trend 7 giorni">
         <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Trend · 7 giorni</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -391,7 +336,7 @@ export function NewDashboardView() {
         </div>
       </section>
 
-      {/* 4) PROFILO FISIOLOGICO */}
+      {/* PROFILO FISIOLOGICO */}
       <section aria-label="Profilo fisiologico">
         <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Profilo fisiologico</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -404,31 +349,6 @@ export function NewDashboardView() {
           <KpiTile label="VLamax" value={fmtKpi(kpis.vLamax, 2)} />
           <KpiTile label="Età biologica" value={fmtKpi(kpis.biologicalAge, 1)} unit="anni" />
           <KpiTile label="Target" value={fmtKpi(kpis.targetAge, 1)} unit="anni" />
-        </div>
-      </section>
-
-      {/* 5) HUMAN SYSTEM STATUS */}
-      <section aria-label="Human system status" className="rounded-3xl border border-white/10 bg-black/30 p-6">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Human System Status</p>
-        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-4xl font-bold tabular-nums text-white sm:text-5xl">
-              {systemStatus.pct == null ? "—" : `${Math.round(systemStatus.pct)}%`}
-            </div>
-            <div className="mt-1 text-sm font-semibold capitalize text-gray-300">{systemStatus.label ?? "In attesa"}</div>
-          </div>
-          <div className="w-full sm:w-64">
-            {systemStatus.trend.length ? (
-              <Sparkline values={systemStatus.trend} color="#a78bfa" width={256} height={40} />
-            ) : (
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-pink-500"
-                  style={{ width: `${systemPct}%` }}
-                />
-              </div>
-            )}
-          </div>
         </div>
       </section>
     </div>

@@ -17,7 +17,8 @@ export function Pro2ModulePageShell({
 }: {
   eyebrow: string;
   eyebrowClassName?: string;
-  title: string;
+  /** string per i moduli standard; ReactNode per titoli ricchi (es. dashboard con seconda riga in gradiente). */
+  title: ReactNode;
   description?: ReactNode;
   headerActions?: ReactNode;
   children: ReactNode;
