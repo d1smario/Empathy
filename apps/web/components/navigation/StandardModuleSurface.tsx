@@ -1,5 +1,5 @@
 import { EMPATHY_PLATFORM_VERSION, type ProductModuleId } from "@empathy/contracts";
-import { BookOpen, CalendarDays, HeartPulse, LayoutDashboard, Settings2 } from "lucide-react";
+import { BookOpen, LayoutDashboard, Settings2 } from "lucide-react";
 import { getEmpathyAccountCatalog } from "@/lib/account/plan-catalog";
 import type { UserAccessEntitlement } from "@/lib/billing/access-entitlement";
 import { loadBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
@@ -8,8 +8,7 @@ import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
 import { getSessionProfile } from "@/lib/auth/session-profile";
 import { DashboardIntroAndPricing } from "@/components/dashboard/DashboardIntroAndPricing";
 import { DashboardPlanBadge } from "@/components/dashboard/DashboardPlanBadge";
-import { DashboardLoadAnalysisSummary } from "@/components/dashboard/DashboardLoadAnalysisSummary";
-import { HealthBiomarkerPanelsCard } from "@/components/health/HealthBiomarkerPanelsCard";
+import { NewDashboardView } from "@/components/dashboard/NewDashboardView";
 import { CoachAthletesModulePanel } from "@/components/coach/CoachAthletesModulePanel";
 import { SettingsCoachAccountCard } from "@/components/settings/SettingsCoachAccountCard";
 import { SettingsAthleteContextDiagnostics } from "@/components/settings/SettingsAthleteContextDiagnostics";
@@ -25,7 +24,6 @@ import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { ActionBar, Pro2Link } from "@/components/ui/empathy";
 import { PlatformAdminOnly } from "@/components/auth/PlatformAdminOnly";
-import { DashboardModuleSubnav } from "@/components/navigation/DashboardModuleSubnav";
 import { StandardModuleSubnav } from "@/components/navigation/StandardModuleSubnav";
 import { getModuleDomainPanel } from "@/core/navigation/module-domain-bridge";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
@@ -87,11 +85,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
       }
     >
       <div className="scroll-mt-28">
-        {module === "dashboard" ? (
-          <DashboardModuleSubnav />
-        ) : module === "athletes" ? null : (
-          <StandardModuleSubnav />
-        )}
+        {module === "dashboard" || module === "athletes" ? null : <StandardModuleSubnav />}
       </div>
 
       {module === "settings" ? (
@@ -110,55 +104,22 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
         </section>
       ) : null}
 
-      {module === "dashboard" && dashboardCatalog && dashboardHosted ? (
-        <div className="space-y-12">
-          <DashboardIntroAndPricing
-            hosted={dashboardHosted}
-            payReady={dashboardPayReady}
-            basePlans={dashboardCatalog.basePlans}
-            coachAddOns={dashboardCatalog.coachAddOns}
-            trialPolicy={dashboardCatalog.trialPolicy}
-            trialDaysConfigured={dashboardTrialDays}
-            entitlement={dashboardEntitlement}
-          />
-          <section id="dash-day-views" className="scroll-mt-28">
-            <Pro2SectionCard
-              accent="cyan"
-              title="Oggi"
-              subtitle="Allenamento, recupero e calendario della giornata"
-              icon={CalendarDays}
-            >
-              <ActionBar className="border-0 pt-0 flex-wrap justify-start gap-2" aria-label="Apri giornata operativa">
-                <Pro2Link
-                  href="/training/session"
-                  variant="secondary"
-                  className="w-full justify-center border border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15 sm:w-auto"
-                >
-                  Training · giornata
-                </Pro2Link>
-                <Pro2Link
-                  href="/physiology/daily"
-                  variant="secondary"
-                  className="w-full justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15 sm:w-auto"
-                >
-                  <HeartPulse className="mr-1 inline h-4 w-4" aria-hidden />
-                  Wellness giornaliero
-                </Pro2Link>
-                <Pro2Link
-                  href="/training/calendar"
-                  variant="ghost"
-                  className="w-full justify-center border border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15 sm:w-auto"
-                >
-                  Calendar
-                </Pro2Link>
-              </ActionBar>
-            </Pro2SectionCard>
-          </section>
-          <DashboardLoadAnalysisSummary />
-          <section id="dash-health" className="scroll-mt-28">
-            <HealthBiomarkerPanelsCard />
-          </section>
-        </div>
+      {module === "dashboard" ? (
+        dashboardEntitlement?.hasAthleteAccess ? (
+          <NewDashboardView />
+        ) : dashboardCatalog && dashboardHosted ? (
+          <div className="space-y-12">
+            <DashboardIntroAndPricing
+              hosted={dashboardHosted}
+              payReady={dashboardPayReady}
+              basePlans={dashboardCatalog.basePlans}
+              coachAddOns={dashboardCatalog.coachAddOns}
+              trialPolicy={dashboardCatalog.trialPolicy}
+              trialDaysConfigured={dashboardTrialDays}
+              entitlement={dashboardEntitlement}
+            />
+          </div>
+        ) : null
       ) : null}
 
       {module !== "dashboard" ? (
