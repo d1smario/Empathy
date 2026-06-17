@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { AthleteCanvas } from "@/components/marketing/hero/AthleteCanvas";
+import { DashboardTwinRadial } from "@/components/dashboard/DashboardTwinRadial";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { readSwrCache, writeSwrCache } from "@/lib/client-swr-cache";
 import type {
@@ -43,26 +43,6 @@ const AREA_THEME: Record<DashboardAreaKey, AreaTheme> = {
   microbiome: { ring: "#f472b6", text: "text-pink-300", border: "border-pink-500/40", glow: "rgba(244,114,182,0.25)" },
   nutrition: { ring: "#34d399", text: "text-emerald-300", border: "border-emerald-500/40", glow: "rgba(52,211,153,0.25)" },
   longevity: { ring: "#fbbf24", text: "text-amber-300", border: "border-amber-500/40", glow: "rgba(251,191,36,0.25)" },
-};
-
-/** Hint utile quando l'area non ha ancora dati reali (mai numero finto). */
-const AREA_WAITING_HINT: Record<DashboardAreaKey, string> = {
-  performance: "Sincronizza training",
-  recovery: "Collega un device",
-  sleep: "Collega un device",
-  stress: "Collega un device",
-  biomarkers: "Carica un esame",
-  hormones: "Carica un pannello",
-  microbiome: "Carica un test",
-  nutrition: "Compila il diario",
-  longevity: "Servono più dati",
-};
-
-const STATUS_LABEL: Record<NonNullable<DashboardArea["status"]>, string> = {
-  ottimale: "Ottimale",
-  buona: "Buona",
-  attenzione: "Attenzione",
-  bassa: "Bassa",
 };
 
 /* ------------------------------------------------------------------ */
@@ -115,32 +95,6 @@ function Sparkline({ values, color, width = 96, height = 28 }: { values: number[
 }
 
 /* ------------------------------------------------------------------ */
-/*  AreaCounter — contatore piccolo, bordo neon del colore-area       */
-/*  (label piccola in alto · score grande · micro-status sotto).      */
-/* ------------------------------------------------------------------ */
-
-function AreaCounter({ area }: { area: DashboardArea }) {
-  const theme = AREA_THEME[area.key];
-  const waiting = !area.hasData || area.score == null;
-  return (
-    <div
-      className={`rounded-xl border bg-black/40 px-2.5 py-2 text-center backdrop-blur-sm ${theme.border}`}
-      style={waiting ? undefined : { boxShadow: `0 0 14px -4px ${theme.glow}` }}
-    >
-      <div className={`truncate font-mono text-[0.55rem] uppercase tracking-wider ${theme.text} ${waiting ? "opacity-70" : ""}`}>
-        {area.label}
-      </div>
-      <div className={`mt-0.5 text-xl font-bold tabular-nums sm:text-2xl ${waiting ? "text-gray-600" : "text-white"}`}>
-        {fmtScore(area.score)}
-      </div>
-      <div className="mt-0.5 truncate text-[0.55rem] leading-tight text-gray-500">
-        {waiting ? AREA_WAITING_HINT[area.key] : area.status ? STATUS_LABEL[area.status] : "In attesa"}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  KpiTile                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -171,10 +125,6 @@ const AREA_ORDER: DashboardAreaKey[] = [
   "nutrition",
   "longevity",
 ];
-
-/** Colonne attorno al corpo (come nel mockup): sinistra / destra. */
-const LEFT_KEYS: DashboardAreaKey[] = ["stress", "biomarkers", "nutrition", "microbiome"];
-const RIGHT_KEYS: DashboardAreaKey[] = ["recovery", "sleep", "hormones", "longevity"];
 
 export function NewDashboardView() {
   const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
@@ -279,40 +229,11 @@ export function NewDashboardView() {
       targetAge: null,
     };
 
-  // Disposizione "quasi in cerchio" attorno all'umanoide (vedi mockup).
-  const performanceArea = areasByKey.get("performance") ?? null;
-  const leftAreas = LEFT_KEYS.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
-  const rightAreas = RIGHT_KEYS.map((k) => areasByKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
-
   return (
     <div className="space-y-10">
-      {/* CORPO + AREE: umanoide centrale (idle, no HUD) con contatori attorno. */}
+      {/* CORPO + AREE: umanoide point-cloud denso con i 9 contatori ad arco. */}
       <section aria-label="Aree fisiologiche">
-        {/* Performance in cima al centro, su tutte le viewport. */}
-        {performanceArea ? (
-          <div className="mx-auto mb-4 w-32 sm:w-36">
-            <AreaCounter area={performanceArea} />
-          </div>
-        ) : null}
-
-        {/* Due colonne strette di contatori ai lati del corpo (mobile e desktop). */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4 lg:gap-6">
-          <div className="flex flex-col gap-2 sm:gap-3">
-            {leftAreas.map((area) => (
-              <AreaCounter key={area.key} area={area} />
-            ))}
-          </div>
-
-          <div className="relative h-72 w-44 shrink-0 sm:h-96 sm:w-72 lg:w-80">
-            <AthleteCanvas mode="idle" />
-          </div>
-
-          <div className="flex flex-col gap-2 sm:gap-3">
-            {rightAreas.map((area) => (
-              <AreaCounter key={area.key} area={area} />
-            ))}
-          </div>
-        </div>
+        <DashboardTwinRadial areas={data?.areas ?? []} />
       </section>
 
       {/* TREND 7 GIORNI */}
