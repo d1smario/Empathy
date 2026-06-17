@@ -237,8 +237,8 @@ export function NewDashboardView() {
       </section>
 
       {/* TREND 7 GIORNI */}
-      <section aria-label="Trend 7 giorni">
-        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Trend · 7 giorni</p>
+      <section aria-label="Trend 30 giorni">
+        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Trend · 30 giorni</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {orderedAreas.map((area) => {
             const theme = AREA_THEME[area.key];
