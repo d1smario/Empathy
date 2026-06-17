@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2Button } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { ViryaAnnualPlanOrchestrator } from "@/modules/training/components/ViryaAnnualPlanOrchestrator";
 import { fetchTrainingPlannerContext, persistTrainingResearchPlans } from "@/modules/training/services/training-virya-api";
@@ -128,38 +128,6 @@ export default function TrainingViryaPageView() {
       eyebrowClassName="text-violet-400"
       title="Virya · contesto e piano annuale"
       description="Con atleta attivo l’orchestratore annuale è in cima alla pagina (stimoli al passo 5, deploy su Calendar). Le schede di contesto canonico compaiono sotto al caricamento della memoria atleta."
-      headerActions={
-        <>
-          <Pro2Link
-            href="/training"
-            variant="ghost"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
-          >
-            Hub
-          </Pro2Link>
-          <Pro2Link
-            href="/training/calendar"
-            variant="ghost"
-            className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15"
-          >
-            Calendar
-          </Pro2Link>
-          <Pro2Link
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-          >
-            Builder
-          </Pro2Link>
-          <Pro2Link
-            href="/nutrition"
-            variant="ghost"
-            className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
-          >
-            Nutrition
-          </Pro2Link>
-        </>
-      }
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />

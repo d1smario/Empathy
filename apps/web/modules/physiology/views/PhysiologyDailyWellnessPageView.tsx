@@ -1,7 +1,7 @@
 "use client";
 
 import { OperationalDayNavigator } from "@/components/navigation/OperationalDayNavigator";
-import { Activity, Beaker, CalendarDays, Heart, LineChart, Moon } from "lucide-react";
+import { Activity, Beaker, Heart, Moon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
@@ -280,11 +280,6 @@ export default function PhysiologyDailyWellnessPageView() {
         eyebrowClassName={moduleEyebrowClass("physiology")}
         title="Data non valida"
         description="Seleziona un giorno valido per vedere i dati."
-        headerActions={
-          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
-            Fisiologia
-          </AdminScopedPro2Link>
-        }
       >
         <p className="text-sm text-amber-200/90">Il giorno indicato non è valido.</p>
       </Pro2ModulePageShell>
@@ -302,29 +297,6 @@ export default function PhysiologyDailyWellnessPageView() {
         <>
           La fotografia del giorno: recupero, sonno, energia e segnali del corpo, sullo stesso giorno del tuo allenamento.
           I grafici compaiono quando i dati sono disponibili.
-        </>
-      }
-      headerActions={
-        <>
-          <AdminScopedPro2Link
-            href={`/training/calendar?date=${encodeURIComponent(date)}`}
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            <CalendarDays className="mr-1 inline h-4 w-4" aria-hidden />
-            Calendar
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href={`/training/session/${encodeURIComponent(date)}`}
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            <LineChart className="mr-1 inline h-4 w-4" aria-hidden />
-            Training giornata
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link href="/physiology" variant="ghost" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
-            Fisiologia
-          </AdminScopedPro2Link>
         </>
       }
     >

@@ -8,7 +8,6 @@ import type { OperationalSignalsBundle } from "@/lib/dashboard/resolve-operation
 import type { ReasoningCardVm, ReasoningDashboardErr, ReasoningDashboardOk, ReasoningTone } from "@/lib/dashboard/reasoning-dashboard-contract";
 import { reasoningDashboardUrl } from "@/lib/dashboard/reasoning-dashboard-contract";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { AdminScopedPro2Link } from "@/modules/physiology/components/AdminScopedLink";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
@@ -766,52 +765,6 @@ export default function BioenergeticTransparencyHubPageView() {
         <>
           Una vista di <strong className="text-emerald-200/90">sola lettura</strong> sugli stessi segnali usati da dashboard e nutrizione.
           Parti dalla realtà del giorno, leggi i segnali e vedi come si adatta il piano fino alla sessione.
-        </>
-      }
-      headerActions={
-        <>
-          <AdminScopedPro2Link
-            href="/bioenergetics"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            Report giornaliero
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/dashboard"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            Dashboard
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/physiology"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            Fisiologia
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/training/vyria"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            VIRYA
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            Builder
-          </AdminScopedPro2Link>
-          <AdminScopedPro2Link
-            href="/nutrition"
-            variant="secondary"
-            className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-          >
-            Nutrition
-          </AdminScopedPro2Link>
         </>
       }
     >

@@ -8,7 +8,6 @@ import { BarChart3, Hexagon, LineChart } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { Pro2Link } from "@/components/ui/empathy";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import type { RecoverySummary } from "@/lib/reality/recovery-summary";
 import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
@@ -470,24 +469,6 @@ export default function TrainingAnalyticsPageView() {
       eyebrowClassName="text-orange-400"
       title="Analisi del carico"
       description="Quanto ti stai allenando davvero: carico pianificato ed eseguito, tendenze e analisi del giorno."
-      headerActions={
-        <>
-          <Pro2Link
-            href="/training/calendar"
-            variant="secondary"
-            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-          >
-            Calendario
-          </Pro2Link>
-          <Pro2Link
-            href="/training/builder"
-            variant="secondary"
-            className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-          >
-            Builder
-          </Pro2Link>
-        </>
-      }
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />

@@ -50,17 +50,6 @@ export default function TrainingHubPageView() {
       eyebrowClassName="text-orange-400"
       title="Allenamento"
       description="Il punto di partenza: crea le tue sedute, consulta il calendario, analizza i dati e segui il piano annuale."
-      headerActions={
-        <>
-          <HubLink
-            href="/dashboard"
-            variant="secondary"
-            className="justify-center border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-          >
-            Dashboard
-          </HubLink>
-        </>
-      }
     >
       {/* Subnav condivisa: nelle schede admin i suoi link restano visibili ma inerti */}
       <div

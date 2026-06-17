@@ -488,24 +488,6 @@ export default function BiomechanicsPageView() {
         eyebrowClassName={moduleEyebrowClass("biomechanics")}
         title="Biomeccanica"
         description="Carica un video del tuo gesto: dopo la validazione con il coach ottieni efficienza, simmetria e rischio."
-        headerActions={
-          <>
-            <ShellPro2Link
-              href="/training"
-              variant="secondary"
-              className="justify-center border border-teal-500/30 bg-teal-500/10 text-teal-100 hover:border-teal-400/50 hover:bg-teal-500/20"
-            >
-              Training
-            </ShellPro2Link>
-            <ShellPro2Link
-              href="/physiology"
-              variant="ghost"
-              className="justify-center border border-teal-500/30 bg-teal-500/10 text-teal-100 hover:border-teal-400/50 hover:bg-teal-500/20"
-            >
-              Physiology
-            </ShellPro2Link>
-          </>
-        }
       >
         <Pro2StickyAnchorSubnav
           accent={MODULE_PILL_TEAL}

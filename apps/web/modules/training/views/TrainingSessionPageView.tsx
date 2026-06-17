@@ -191,45 +191,6 @@ export default function TrainingSessionPageView() {
           "Indirizzo non valido: la data deve avere il formato YYYY-MM-DD (es. 2025-04-02)."
         )
       }
-      headerActions={
-        <>
-          <Pro2Link
-            href={dateValid ? `/physiology/daily/${encodeURIComponent(date)}` : "/physiology/daily"}
-            variant="secondary"
-            className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-          >
-            Wellness
-          </Pro2Link>
-          <Pro2Link
-            href={dateValid ? `/training/calendar?date=${encodeURIComponent(date)}` : "/training/calendar"}
-            variant="secondary"
-            className="justify-center border border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15"
-          >
-            Calendar
-          </Pro2Link>
-          <Pro2Link
-            href={dateValid ? `/training/builder?date=${encodeURIComponent(date)}` : "/training/builder"}
-            variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-          >
-            Builder · adatta giorno
-          </Pro2Link>
-          <Pro2Link
-            href="/training"
-            variant="ghost"
-            className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15"
-          >
-            Hub
-          </Pro2Link>
-          <Pro2Link
-            href="/profile"
-            variant="secondary"
-            className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-          >
-            Profile
-          </Pro2Link>
-        </>
-      }
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />

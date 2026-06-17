@@ -1793,42 +1793,6 @@ export default function MetabolicLabPage() {
           Scegli cosa analizzare, inserisci i dati e salva l&apos;analisi per ritrovarla la prossima volta.
         </>
       }
-      headerActions={
-        /* Scorciatoie atleta (puntano alla shell privata): nascoste in coach/admin, dove
-           erano solo pulsanti inerti e la navigazione avviene dalla barra contestuale. */
-        adminScoped ? undefined : (
-          <>
-            <AdminScopedPro2Link
-              href="/physiology/daily"
-              variant="secondary"
-              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-            >
-              Wellness giornaliero
-            </AdminScopedPro2Link>
-            <AdminScopedPro2Link
-              href="/profile"
-              variant="secondary"
-              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-            >
-              Profilo
-            </AdminScopedPro2Link>
-            <AdminScopedPro2Link
-              href="/training/builder"
-              variant="secondary"
-              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-            >
-              Builder
-            </AdminScopedPro2Link>
-            <AdminScopedPro2Link
-              href="/physiology/bioenergetics"
-              variant="secondary"
-              className="justify-center border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-            >
-              Bioenergetica
-            </AdminScopedPro2Link>
-          </>
-        )
-      }
     >
       <div className="space-y-8">
       {error ? <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">{error}</div> : null}

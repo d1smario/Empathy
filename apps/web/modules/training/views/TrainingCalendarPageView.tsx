@@ -42,15 +42,6 @@ export default function TrainingCalendarPageView() {
       eyebrowClassName="text-orange-400"
       title="Calendario allenamenti"
       description="Le tue sedute pianificate ed eseguite, giorno per giorno."
-      headerActions={
-        <Pro2Link
-          href="/training"
-          variant="ghost"
-          className="justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-        >
-          Hub
-        </Pro2Link>
-      }
     >
       <div className="scroll-mt-28">
         {isMobileApp ? null : <TrainingSubnav />}
