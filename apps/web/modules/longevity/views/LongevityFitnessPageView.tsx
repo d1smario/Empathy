@@ -1,24 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Award, HeartPulse, Sparkles } from "lucide-react";
+import { Activity, HeartPulse } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2AthleteRequiredGate } from "@/components/shell/Pro2AthleteRequiredGate";
-import { Pro2Accordion, Pro2Button } from "@/components/ui/empathy";
+import { Pro2Button } from "@/components/ui/empathy";
 import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
 import { MODULE_PILL_FUCHSIA } from "@/components/navigation/module-pill-styles";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { cn } from "@/lib/cn";
 import {
-  COIN_PER_EFFICIENT_DAY,
-  COIN_TIERS,
   DAILY_CHECKIN_SYMPTOMS,
-  EPI_EFFICIENT_DAY_MIN_SCORE,
   type DailyCheckin,
   type DailyCheckinSymptom,
-  type EmpathyCoinBalance,
   type EpiPillarId,
   type EpiResult,
 } from "@/lib/empathy/schemas";
@@ -26,7 +22,6 @@ import {
 type LongevityFitnessPayload = {
   epi: EpiResult;
   checkin: DailyCheckin | null;
-  balance: EmpathyCoinBalance;
   snapshotDate: string;
 };
 
@@ -63,8 +58,6 @@ const PILLAR_LABELS: Record<EpiPillarId, string> = {
 const SUBNAV_ITEMS = [
   { id: "long-checkin", label: "Check-in" },
   { id: "long-indice", label: "Indice" },
-  { id: "long-coin", label: "Empathy Coin" },
-  { id: "long-dettagli", label: "Dettagli e motore" },
 ];
 
 type CheckinForm = {
@@ -92,13 +85,6 @@ const EMPTY_FORM: CheckinForm = {
 // (persist=false): non mescoliamo mai dati di scope/atleti diversi.
 let longevityIndexCacheKey: string | null = null;
 let longevityIndexCache: LongevityFitnessPayload | null = null;
-
-function tierPillClass(tier: EmpathyCoinBalance["tier"]): string {
-  if (tier === "gold") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  if (tier === "silver") return "border-white/15 bg-white/5 text-gray-200";
-  if (tier === "bronze") return "border-orange-500/30 bg-orange-500/10 text-orange-300";
-  return "border-white/10 bg-white/5 text-gray-500";
-}
 
 function formatSnapshotDate(iso: string): string {
   const parsed = new Date(`${iso}T00:00:00`);
@@ -237,7 +223,6 @@ export default function LongevityFitnessPageView() {
   }, [athleteId, form, symptoms, note, loadIndex]);
 
   const epi = data?.epi ?? null;
-  const balance = data?.balance ?? null;
 
   const pillars = useMemo(() => (epi?.pillars ?? []).filter((p) => p.available), [epi]);
 
@@ -246,7 +231,7 @@ export default function LongevityFitnessPageView() {
       eyebrow="Benessere quotidiano"
       eyebrowClassName={moduleEyebrowClass("longevity")}
       title="Longevità"
-      description="Fai il check-in di oggi e segui il tuo indice: ogni giorno efficiente vale Empathy Coin verso Bronze, Silver e Gold."
+      description="Fai il check-in di oggi e segui il tuo indice di longevità e fitness."
     >
       <Pro2AthleteRequiredGate enabled={signedIn}>
         {error ? (
@@ -339,7 +324,7 @@ export default function LongevityFitnessPageView() {
                     <p className="mt-1">
                       {epi.efficientDay ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-300">
-                          Giorno efficiente · +{epi.coinAwardForDay} Coin
+                          Giorno efficiente
                         </span>
                       ) : epi.illnessDay ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
@@ -356,7 +341,7 @@ export default function LongevityFitnessPageView() {
 
                 {epi.illnessDay ? (
                   <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-                    Hai segnalato un malessere: nessuna penalità sull&apos;indice e nessun Coin perso. Priorità al recupero.
+                    Hai segnalato un malessere: nessuna penalità sull&apos;indice, priorità al recupero.
                   </div>
                 ) : null}
 
@@ -388,101 +373,6 @@ export default function LongevityFitnessPageView() {
           </Pro2SectionCard>
         </section>
 
-        <section id="long-coin" className="scroll-mt-28">
-          <Pro2SectionCard accent="fuchsia" title="Empathy Coin" subtitle="Certificazione Bronze · Silver · Gold" icon={Award}>
-            {balance ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-end gap-x-4 gap-y-2 sm:gap-x-6">
-                  <div>
-                    <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-white sm:text-4xl">
-                      {balance.totalCoins.toLocaleString("it-IT")}
-                    </span>
-                    <span className="ml-1 text-xs font-medium text-gray-500">Coin</span>
-                  </div>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold uppercase",
-                      tierPillClass(balance.tier),
-                    )}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                    {balance.tier ?? "Nessun tier"}
-                  </span>
-                  <span className="text-xs text-gray-500">{balance.efficientDays} giorni efficienti</span>
-                </div>
-
-                {balance.nextTier ? (
-                  <div>
-                    <div className="mb-1 flex justify-between font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                      <span>Verso {balance.nextTier.next}</span>
-                      <span>Obiettivo {COIN_TIERS[balance.nextTier.next].toLocaleString("it-IT")} Coin</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-400"
-                        style={{
-                          width: `${Math.min(100, Math.round((balance.totalCoins / COIN_TIERS[balance.nextTier.next]) * 100))}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="mt-1.5 text-xs text-gray-500">
-                      Mancano {balance.nextTier.remaining.toLocaleString("it-IT")} Coin a {balance.nextTier.next}.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-amber-200">Hai raggiunto il livello massimo: Gold.</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">Saldo non disponibile.</p>
-            )}
-          </Pro2SectionCard>
-        </section>
-
-        <Pro2Accordion
-          id="long-dettagli"
-          title="Dettagli e motore"
-          subtitle="Come nasce l'indice e come guadagni i Coin"
-          accent="fuchsia"
-        >
-          <div className="space-y-3 text-sm text-gray-300">
-            <p>
-              L&apos;indice (0–100) è calcolato in modo deterministico dai tuoi dati reali e dal check-in giornaliero,
-              combinando otto pilastri: carico &amp; attività, recupero, HRV, sonno, nutrizione, composizione corporea,
-              aderenza ai protocolli e benessere soggettivo. Solo i pilastri con dati disponibili entrano nel calcolo;
-              l&apos;AI aiuta a interpretare i numeri, non li produce.
-            </p>
-            <p>
-              Giorno efficiente: quando l&apos;indice raggiunge almeno {EPI_EFFICIENT_DAY_MIN_SCORE} punti la giornata
-              vale {COIN_PER_EFFICIENT_DAY} Empathy Coin. Se nel check-in segnali un malessere, l&apos;obiettivo del
-              giorno è sospeso: nessuna penalità e nessun Coin perso.
-            </p>
-            <p>
-              Livelli di certificazione: Bronze a {COIN_TIERS.bronze.toLocaleString("it-IT")} Coin, Silver a{" "}
-              {COIN_TIERS.silver.toLocaleString("it-IT")}, Gold a {COIN_TIERS.gold.toLocaleString("it-IT")}.
-            </p>
-            {epi ? (
-              <p className="text-xs text-gray-400">
-                Affidabilità del calcolo di oggi: {Math.round(epi.confidence * 100)}% — cresce man mano che colleghi più
-                fonti dati (device, sonno, nutrizione).
-              </p>
-            ) : null}
-            {showTech && epi ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-gray-400">
-                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Diagnostica (coach/admin)</p>
-                <p className="mt-1">
-                  versione {epi.algorithmVersion} · tier dati {epi.dataTier} · confidenza {epi.confidence.toFixed(2)} ·
-                  snapshot {data?.snapshotDate ?? "—"}
-                </p>
-                {epi.provenance.pillarsMissing.length ? (
-                  <p className="mt-1">
-                    Pilastri mancanti: {epi.provenance.pillarsMissing.map((p) => PILLAR_LABELS[p]).join(", ")}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </Pro2Accordion>
       </Pro2AthleteRequiredGate>
     </Pro2ModulePageShell>
   );
