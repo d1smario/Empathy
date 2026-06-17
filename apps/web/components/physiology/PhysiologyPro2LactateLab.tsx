@@ -18,8 +18,6 @@ export type PhysiologyPro2LactateLabProps = {
   choGap: number;
   fuelingHint: string;
   lactateHint: string;
-  sessionCount: number;
-  autoDecodeText: string | null;
   ftpW: number;
   lt1W: number;
   lt2W: number;
@@ -41,8 +39,6 @@ export function PhysiologyPro2LactateLab({
   choGap,
   fuelingHint,
   lactateHint,
-  sessionCount,
-  autoDecodeText,
   ftpW,
   lt1W,
   lt2W,
@@ -54,17 +50,6 @@ export function PhysiologyPro2LactateLab({
   const vo2maxRefMlMinKg = Math.max(0, profileVo2maxMlMinKg ?? 0, vo2MlKg ?? 0);
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--lactate">
-      {autoDecodeText ? (
-        <div className="physiology-pro2-lab-hero">
-          <div className="physiology-pro2-lab-decode physiology-pro2-lab-decode--amber">
-            <CheckCircle2 className="physiology-pro2-lab-decode-ico" aria-hidden />
-            <span>
-              <strong>Auto-decode attivo</strong> · {sessionCount} sessioni analizzate
-            </span>
-          </div>
-        </div>
-      ) : null}
-
       <LactatePro2EngineReport model={model} vo2Used={vo2Used} rerUsed={rerUsed} />
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">

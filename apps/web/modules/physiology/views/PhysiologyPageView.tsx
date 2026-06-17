@@ -1871,6 +1871,9 @@ export default function MetabolicLabPage() {
         >
           {showTech ? "Dettagli e diagnostica" : "Dettagli"}
         </button>
+        {autoInfo ? (
+          <span className="ml-auto self-center font-mono text-[0.65rem] text-emerald-300/90">{autoInfo}</span>
+        ) : null}
       </div>
 
       {section === "profile" ? (
@@ -2308,12 +2311,6 @@ export default function MetabolicLabPage() {
                 ) : (
                   <span className="text-gray-500">Nessun VO₂max da lab sul profilo.</span>
                 )}
-                {autoInfo ? (
-                  <span className="flex items-center gap-1.5 text-emerald-300/90">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
-                    {autoInfo}
-                  </span>
-                ) : null}
                 {profileLastRecalcAt ? (
                   <span className="text-gray-500">
                     Ultimo ricalcolo: {new Date(profileLastRecalcAt).toLocaleTimeString("it-IT")}
@@ -2341,8 +2338,6 @@ export default function MetabolicLabPage() {
             choGap={lactateStrategy.choGap}
             fuelingHint={lactateStrategy.fuelingAction}
             lactateHint={lactateStrategy.lactateAction}
-            sessionCount={workouts.length}
-            autoDecodeText={autoInfo}
             ftpW={physiologyLabFtpW}
             lt1W={cpModel.lt1}
             lt2W={cpModel.lt2}
@@ -2456,8 +2451,6 @@ export default function MetabolicLabPage() {
             vo2maxMlMinKgForCaption={cpCurveHasData && cpModel.vo2maxLMin >= 0.35 ? cpModel.vo2maxMlMinKg : null}
             vo2maxLMinForCaption={cpCurveHasData && cpModel.vo2maxLMin >= 0.35 ? cpModel.vo2maxLMin : null}
             maxOxVo2Mode={maxOxVo2Mode}
-            sessionCount={workouts.length}
-            autoDecodeText={autoInfo}
           >
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--lac-pick">
             <LactateWorkoutPickerPro2
@@ -2531,150 +2524,6 @@ export default function MetabolicLabPage() {
             />
           </div>
 
-          <div className="physiology-pro2-lab-page-panel">
-            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Indici principali · saturazione e bottleneck</div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Potenza input · CP profilo</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
-                  {(maxOxResolved.values.power_w || 0).toFixed(0)} W · CP {cpModel.cp.toFixed(0)} W
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata test · riga split CP</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
-                  {(Number.isFinite(maxOxResolved.values.duration_min) && maxOxResolved.values.duration_min > 0
-                    ? maxOxResolved.values.duration_min
-                    : 60
-                  ).toFixed(1)}{" "}
-                  min
-                  {maxOxCpPowerSplitRow ? (
-                    <>
-                      {" · "}
-                      <span className="text-gray-400">{maxOxCpPowerSplitRow.label}</span>
-                      <span className="tabular-nums text-gray-500">
-                        {" "}
-                        ({(maxOxCpPowerSplitRow.sec / 60).toFixed(0)}′)
-                      </span>
-                    </>
-                  ) : cpCurveHasData ? (
-                    <span className="text-gray-500"> — nessun split</span>
-                  ) : (
-                    <span className="text-gray-500"> — compila CP</span>
-                  )}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tetto meccanico ossidativo (P_oss)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
-                  {maxOxModel.cpMechanicalAerobicCeilingW.toFixed(0)} W
-                  {maxOxCpPowerSplitRow ? (
-                    <span className="mt-1 block text-[0.65rem] font-normal leading-snug text-gray-500">
-                      P modello {maxOxCpPowerSplitRow.modelPowerW.toFixed(0)} W · glic {maxOxCpPowerSplitRow.glycolyticW.toFixed(0)} W · PCr{" "}
-                      {maxOxCpPowerSplitRow.pcrW.toFixed(0)} W
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">VO₂max capacità (L/min · ml/kg/min)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
-                  {maxOxVo2Used.toFixed(2)} ·{" "}
-                  {((maxOxVo2Used * 1000) / Math.max(1, labBodyMassKg)).toFixed(1)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Intensità test</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.intensityPctFtp.toFixed(0)} %FTP</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Capacità ossidativa (netta)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
-                  {maxOxModel.oxidativeCapacityKcalMin.toFixed(2)} kcal/min
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Domanda totale</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.requiredKcalMin.toFixed(2)} kcal/min</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Domanda ossidativa (P_oss @ durata)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
-                  {maxOxModel.oxidativeDemandKcalMin.toFixed(2)} kcal/min
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Potenza non ossidativa (residuo)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.glycolyticPowerDemandW.toFixed(0)} W</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Saturazione ossidativa</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationRatioPct.toFixed(0)}%</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Coerenza VO₂ grezza</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationVo2CoherencePct.toFixed(0)}%</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Stress delivery (totale/netta)</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.utilizationDeliveryStressPct.toFixed(0)}%</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Collo di bottiglia ossidativo</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
-                  {maxOxModel.oxidativeBottleneckIndex.toFixed(0)}/100
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Stress redox</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.redoxStressIndex.toFixed(0)}/100</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tipo limite</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxSummary.bottleneckText}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Affidabilità / incertezza</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
-                  {maxOxReliability}% / ±{maxOxResolved.uncertaintyPct}%
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="physiology-pro2-lab-page-panel">
-            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Delivery · periferia · estrazione</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Delivery centrale O₂</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-emerald-50">
-                  {maxOxModel.centralDeliveryIndex.toFixed(2)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Utilizzo periferico</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.peripheralUtilizationIndex.toFixed(2)}</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Estrazione SmO₂</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">{maxOxModel.extractionPct.toFixed(1)}%</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">NADH / riossidazione</div>
-                <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-white">
-                  {(maxOxModel.nadhPressureIndex * 100).toFixed(0)}% / {(maxOxModel.reoxidationCapacityIndex * 100).toFixed(0)}%
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--notes">
-          <details className="collapsible-card physiology-pro2-lab-details">
-            <summary>Note lettura MaxOx</summary>
-            <div className="session-sub-copy" style={{ marginBottom: 0 }}>
-              Lettura rapida: {maxOxSummary.ratioText}, limite dominante = {maxOxSummary.bottleneckText.toLowerCase()}, {maxOxSummary.redoxText}.
-            </div>
-          </details>
-          </div>
           <div className="physiology-pro2-lab-footer-actions">
             <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>
               {saving ? "Salvataggio…" : "Salva capacità ossidativa"}

@@ -5,7 +5,7 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import { Activity, CalendarDays, ClipboardList, Gauge, Heart, Target, Wrench, Zap } from "lucide-react";
+import { CalendarDays, ClipboardList, Heart, Wrench } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarPlannedBuilderDetail } from "@/components/training/CalendarPlannedBuilderDetail";
@@ -15,14 +15,6 @@ import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link } from "@/components/ui/empathy";
-import {
-  effectiveDurationMinutesFromPro2Contract,
-  effectiveTssDisplayFromPro2Contract,
-  parsePro2BuilderSessionFromNotes,
-} from "@/lib/training/builder/pro2-session-notes";
-import { buildSessionMultilevelAnalysisStrip } from "@/lib/training/session-multilevel-analysis-strip";
-import { buildTrainingUnifiedAdaptationSectorBoxes } from "@/lib/training/training-unified-adaptation-sector-strip";
-import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
@@ -46,250 +38,6 @@ let trainingSessionCacheKey: string | null = null;
 let trainingSessionCache: TrainingSessionPayload | null = null;
 
 type WindowErr = { ok: false; error?: string };
-type SignalTone = "cyan" | "orange" | "violet" | "emerald" | "amber" | "slate";
-
-const SIGNAL_TONE: Record<SignalTone, { border: string; bg: string; bar: string; value: string; icon: string }> = {
-  cyan: {
-    border: "border-cyan-500/40",
-    bg: "bg-gradient-to-br from-cyan-950/45 via-slate-950/35 to-black/55",
-    bar: "from-cyan-400 via-sky-300 to-cyan-600",
-    value: "text-cyan-50",
-    icon: "border-cyan-300/55 bg-cyan-500/35 text-cyan-50 shadow-[0_0_16px_rgba(34,211,238,0.35)]",
-  },
-  orange: {
-    border: "border-orange-500/40",
-    bg: "bg-gradient-to-br from-orange-950/45 via-zinc-950/35 to-black/55",
-    bar: "from-orange-400 via-amber-300 to-orange-600",
-    value: "text-orange-50",
-    icon: "border-orange-300/55 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]",
-  },
-  violet: {
-    border: "border-violet-500/40",
-    bg: "bg-gradient-to-br from-violet-950/45 via-zinc-950/35 to-black/55",
-    bar: "from-violet-400 via-fuchsia-300 to-violet-600",
-    value: "text-violet-50",
-    icon: "border-violet-300/55 bg-violet-500/35 text-violet-50 shadow-[0_0_16px_rgba(167,139,250,0.35)]",
-  },
-  emerald: {
-    border: "border-emerald-500/40",
-    bg: "bg-gradient-to-br from-emerald-950/45 via-zinc-950/35 to-black/55",
-    bar: "from-emerald-400 via-teal-300 to-emerald-600",
-    value: "text-emerald-50",
-    icon: "border-emerald-300/55 bg-emerald-500/35 text-emerald-50 shadow-[0_0_16px_rgba(52,211,153,0.35)]",
-  },
-  amber: {
-    border: "border-amber-500/40",
-    bg: "bg-gradient-to-br from-amber-950/40 via-zinc-950/35 to-black/55",
-    bar: "from-amber-300 via-orange-300 to-amber-600",
-    value: "text-amber-50",
-    icon: "border-amber-300/55 bg-amber-500/30 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.3)]",
-  },
-  slate: {
-    border: "border-white/15",
-    bg: "bg-gradient-to-br from-zinc-900/60 via-slate-950/35 to-black/55",
-    bar: "from-zinc-500 via-slate-300 to-zinc-700",
-    value: "text-gray-100",
-    icon: "border-white/20 bg-white/10 text-gray-100",
-  },
-};
-
-function formatDuration(minutes: number): string {
-  const safe = Math.max(0, Math.round(minutes || 0));
-  const hours = Math.floor(safe / 60);
-  const mins = safe % 60;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${safe}m`;
-}
-
-function scoreLine(value: number | null | undefined, suffix = "/100"): string {
-  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}${suffix}` : "—";
-}
-
-function adaptationLabel(score: number | null | undefined, readiness: number | null | undefined, fatigue: number | null | undefined): string {
-  if (typeof fatigue === "number" && fatigue >= 75) return "Protezione";
-  if (typeof readiness === "number" && readiness < 45) return "Readiness bassa";
-  if (typeof score !== "number" || !Number.isFinite(score)) return "Twin parziale";
-  if (score >= 75) return "Consolidamento";
-  if (score >= 55) return "Adattamento utile";
-  return "Da osservare";
-}
-
-function TrainingSignalCell({
-  label,
-  value,
-  detail,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: SignalTone;
-  icon: typeof Activity;
-}) {
-  const t = SIGNAL_TONE[tone];
-  return (
-    <article className={`relative overflow-hidden rounded-2xl border p-3 backdrop-blur-sm sm:p-4 ${t.border} ${t.bg}`}>
-      <div className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${t.bar}`} aria-hidden />
-      <div className="flex items-start justify-between gap-2 pt-1 sm:gap-3">
-        <div className="min-w-0">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
-          <p className={`mt-2 break-words font-mono text-xl font-bold tabular-nums tracking-tight sm:text-2xl ${t.value}`}>{value}</p>
-        </div>
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border-2 sm:h-10 sm:w-10 ${t.icon}`} aria-hidden>
-          <Icon className="h-4 w-4 drop-shadow-[0_0_6px_rgba(255,255,255,0.35)] sm:h-5 sm:w-5" strokeWidth={2.3} />
-        </div>
-      </div>
-      <p className="mt-2 text-xs leading-snug text-gray-500">{detail}</p>
-    </article>
-  );
-}
-
-function TrainingSessionSignalPanel({
-  planned,
-  executed,
-  readSpineCoverage,
-  twinContextStrip,
-}: {
-  planned: PlannedWorkout[];
-  executed: ExecutedWorkout[];
-  readSpineCoverage: ReadSpineCoverageSummary | null;
-  twinContextStrip: TrainingTwinContextStripViewModel | null;
-}) {
-  const plannedContracts = planned.map((w) => parsePro2BuilderSessionFromNotes(w.notes ?? null));
-  const plannedMinutes = planned.reduce((sum, w, index) => {
-    const summarySec = plannedContracts[index]?.summary?.durationSec;
-    return sum + (typeof summarySec === "number" && Number.isFinite(summarySec) && summarySec > 0 ? summarySec / 60 : w.durationMinutes);
-  }, 0);
-  const plannedTss = planned.reduce((sum, w, index) => {
-    const contractTss = plannedContracts[index]?.summary?.tss;
-    return sum + (typeof contractTss === "number" && Number.isFinite(contractTss) && contractTss > 0 ? contractTss : w.tssTarget);
-  }, 0);
-  const plannedKj = planned.reduce((sum, w, index) => {
-    const contractKj = plannedContracts[index]?.summary?.kj;
-    return sum + (typeof contractKj === "number" && Number.isFinite(contractKj) && contractKj > 0 ? contractKj : (w.kjTarget ?? 0));
-  }, 0);
-  const executedMinutes = executed.reduce((sum, w) => sum + Math.max(0, w.durationMinutes || 0), 0);
-  const executedTss = executed.reduce((sum, w) => sum + Math.max(0, w.tss || 0), 0);
-  const executedKj = executed.reduce((sum, w) => sum + Math.max(0, w.kj ?? 0), 0);
-  const tssCompletion = plannedTss > 0 ? (executedTss / plannedTss) * 100 : null;
-  const durationCompletion = plannedMinutes > 0 ? (executedMinutes / plannedMinutes) * 100 : null;
-  const tssDelta = executedTss - plannedTss;
-  const adaptation = twinContextStrip?.adaptationScore ?? null;
-  const v1 = twinContextStrip?.adaptationScoreV1 ?? null;
-  const tier = twinContextStrip?.recoveryDataTier ?? null;
-  const readiness = twinContextStrip?.readiness ?? null;
-  const fatigue = twinContextStrip?.fatigueAcute ?? null;
-  const glycogen = twinContextStrip?.glycogenStatus ?? null;
-  const adaptationState = adaptationLabel(adaptation, readiness, fatigue);
-  const adaptationValue =
-    v1 != null
-      ? `${Math.round(v1.compositeScore)}`
-      : adaptation != null
-        ? scoreLine(adaptation)
-        : "—";
-  const adaptationDetailParts = [
-    adaptationState,
-    tier ? `dati recupero ${tier === "minimal" ? "minimi" : tier === "extended" ? "estesi" : "standard"}` : null,
-    v1 ? `conf ${(v1.confidence * 100).toFixed(0)}%` : null,
-    `readiness ${scoreLine(readiness, "")}`,
-    `fatigue ${scoreLine(fatigue, "")}`,
-  ].filter((s): s is string => Boolean(s));
-  const adaptationDetail = adaptationDetailParts.join(" · ");
-  const planLabel = plannedContracts[0]?.adaptationTarget?.replaceAll("_", " ") ?? planned[0]?.adaptiveGoal ?? planned[0]?.type ?? "—";
-  const realitySources = Array.from(new Set(executed.map((w) => w.source ?? "manual"))).join(" · ") || "nessuna realtà";
-
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <TrainingSignalCell
-          label="Stimolo piano"
-          value={plannedTss > 0 ? `${Math.round(plannedTss)} carico` : "—"}
-          detail={`${planned.length} sedute · ${formatDuration(plannedMinutes)} · ${planLabel}`}
-          tone="orange"
-          icon={Target}
-        />
-        <TrainingSignalCell
-          label="Reality load"
-          value={executedTss > 0 ? `${Math.round(executedTss)} carico` : "—"}
-          detail={`${executed.length} registrazioni · ${formatDuration(executedMinutes)} · ${realitySources}`}
-          tone="emerald"
-          icon={Activity}
-        />
-        <TrainingSignalCell
-          label="Aderenza"
-          value={tssCompletion != null ? `${Math.round(tssCompletion)}%` : "—"}
-          detail={`Δ carico ${tssDelta >= 0 ? "+" : ""}${Math.round(tssDelta)} · durata ${durationCompletion != null ? `${Math.round(durationCompletion)}%` : "—"}`}
-          tone={tssCompletion == null ? "slate" : tssCompletion < 70 || tssCompletion > 130 ? "amber" : "cyan"}
-          icon={Gauge}
-        />
-        <TrainingSignalCell
-          label="Adattamento"
-          value={adaptationValue}
-          detail={adaptationDetail}
-          tone={adaptationState === "Protezione" || adaptationState === "Readiness bassa" ? "amber" : "violet"}
-          icon={Zap}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {[
-          {
-            id: "session",
-            label: "Sessione",
-            value: `${planned.length}/${executed.length}`,
-            detail: "pianificate / eseguite",
-            tone: "cyan" as const,
-          },
-          {
-            id: "energy",
-            label: "Energia",
-            value: plannedKj || executedKj ? `${Math.round(executedKj || plannedKj)} kJ` : "—",
-            detail: executedKj ? "reality kJ" : "target kJ",
-            tone: "orange" as const,
-          },
-          {
-            id: "glycogen",
-            label: "Glicogeno",
-            value: scoreLine(glycogen, ""),
-            detail: "twin fuel availability",
-            tone: "emerald" as const,
-          },
-          {
-            id: "spine",
-            label: "Read spine",
-            value: readSpineCoverage ? `${readSpineCoverage.spineScore}%` : "—",
-            detail: "copertura segnali atleta",
-            tone: "slate" as const,
-          },
-          {
-            id: "decision",
-            label: "Decisione",
-            value:
-              tssCompletion == null
-                ? "attesa"
-                : tssCompletion < 70
-                  ? "rileggi"
-                  : tssCompletion > 130
-                    ? "scarico"
-                    : "ok",
-            detail: "reality > plan",
-            tone: tssCompletion != null && (tssCompletion < 70 || tssCompletion > 130) ? ("amber" as const) : ("violet" as const),
-          },
-        ].map((cell) => (
-          <div
-            key={cell.id}
-            className={`min-w-0 rounded-xl border bg-black/30 px-3 py-2 ${SIGNAL_TONE[cell.tone].border}`}
-          >
-            <div className="font-mono text-[0.62rem] font-semibold uppercase tracking-wider text-slate-500">{cell.label}</div>
-            <div className="mt-1 font-mono text-base font-bold tabular-nums text-white">{cell.value}</div>
-            <div className="mt-0.5 text-[0.68rem] leading-snug text-slate-500">{cell.detail}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Vista giornata: pianificato + eseguito per `date` (stessa API finestra calendario, `from`=`to`=`date`).
@@ -429,32 +177,6 @@ export default function TrainingSessionPageView() {
     }
   }, [date, dateValid]);
 
-  /** Stessi sei settori della nutrizione: facet seduta (→) + twin giornata (←). */
-  const trainingDaySectorBoxes = useMemo(() => {
-    const first = planned[0];
-    const contract = first ? parsePro2BuilderSessionFromNotes(first.notes ?? null) : null;
-    const durationMin = first ? effectiveDurationMinutesFromPro2Contract(contract, first.durationMinutes ?? 0) : null;
-    const tssFallback = typeof first?.tssTarget === "number" && Number.isFinite(first.tssTarget) ? first.tssTarget : 0;
-    const tss = first ? effectiveTssDisplayFromPro2Contract(contract, tssFallback) : null;
-    const vm = buildSessionMultilevelAnalysisStrip({
-      contract,
-      fallbackTss: tss,
-      fallbackDurationMin: durationMin,
-    });
-    const stim =
-      planned.length > 0
-        ? planned
-            .map((w) => {
-              const c = parsePro2BuilderSessionFromNotes(w.notes ?? null);
-              const name = (c?.sessionName ?? w.type ?? "Sessione").trim();
-              const tgt = c?.adaptationTarget ? ` · ${c.adaptationTarget}` : "";
-              return `${name}${tgt}`;
-            })
-            .join(" + ")
-        : null;
-    return buildTrainingUnifiedAdaptationSectorBoxes(vm, twinContextStrip, stim);
-  }, [planned, twinContextStrip]);
-
   return (
     <Pro2ModulePageShell
       eyebrow="Training · Giornata"
@@ -540,36 +262,6 @@ export default function TrainingSessionPageView() {
 
       {dateValid ? (
         <>
-          <Pro2SectionCard
-            accent="orange"
-            title="Bioenergetica sessione"
-            subtitle="Celle operative: piano, realtà, twin e adattamento"
-            icon={Activity}
-          >
-            {ctxLoading || loading ? (
-              <p className="text-sm text-gray-500">Caricamento segnali sessione…</p>
-            ) : err ? (
-              <p className="text-sm text-amber-300/90" role="alert">
-                {err}
-              </p>
-            ) : (
-              <div className="space-y-5">
-                <TrainingSessionSignalPanel
-                  planned={planned}
-                  executed={executed}
-                  readSpineCoverage={readSpineCoverage}
-                  twinContextStrip={twinContextStrip}
-                />
-                <AdaptationSectorStrip
-                  className="rounded-xl border border-orange-500/20 bg-black/20 p-3"
-                  title="Settori · adattamento (stimolo → vie · contesto twin)"
-                  boxes={trainingDaySectorBoxes}
-                  emptyHint="Nessun dato giornata."
-                />
-              </div>
-            )}
-          </Pro2SectionCard>
-
           <Pro2SectionCard
             accent="cyan"
             title="Pianificato"

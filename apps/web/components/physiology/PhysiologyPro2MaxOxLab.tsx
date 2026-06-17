@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Activity, CheckCircle2 } from "lucide-react";
+import { Activity } from "lucide-react";
 import type { MaxOxidateOutput } from "@/lib/engines/max-oxidate-engine";
 import { MaxOxidateLabPro2Panel } from "@/components/physiology/MaxOxidateLabPro2Panel";
 import { MaxOxPro2EngineReport } from "@/components/physiology/MaxOxPro2EngineReport";
@@ -23,8 +23,6 @@ export type PhysiologyPro2MaxOxLabProps = {
   vo2maxMlMinKgForCaption?: number | null;
   vo2maxLMinForCaption?: number | null;
   maxOxVo2Mode: "device" | "test";
-  sessionCount: number;
-  autoDecodeText: string | null;
   children: ReactNode;
 };
 
@@ -43,28 +41,10 @@ export function PhysiologyPro2MaxOxLab({
   vo2maxMlMinKgForCaption,
   vo2maxLMinForCaption,
   maxOxVo2Mode,
-  sessionCount,
-  autoDecodeText,
   children,
 }: PhysiologyPro2MaxOxLabProps) {
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--maxox">
-      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="physiology-pro2-maxox-steady-note" style={{ marginTop: 0 }}>
-          Il motore lavora su <strong>un solo stato metabolico</strong>: una potenza, un VO₂, un RER, SmO₂ e lattato coerenti tra loro (quasi-stazionario). Selezionando una sessione intera, i campi si riempiono con i{" "}
-          <strong>valori aggregati / snapshot</strong> che l’import espone oggi — non con un ritaglio lap-by-lap. Per una salita o un test a ritmo costante ha senso usare{" "}
-          <strong>numeri di quel tratto</strong> (export dedicato o input manuale). Scatti e on/off alternati violano l’ipotesi: i numeri restano calcolabili ma la lettura fisiologica è debole.
-        </p>
-        {autoDecodeText ? (
-          <div className="physiology-pro2-lab-decode physiology-pro2-lab-decode--rose shrink-0" style={{ marginTop: 0 }}>
-            <CheckCircle2 className="physiology-pro2-lab-decode-ico" aria-hidden />
-            <span>
-              <strong>Auto-decode attivo</strong> · {sessionCount} sessioni analizzate
-            </span>
-          </div>
-        ) : null}
-      </div>
-
       <MaxOxidateLabPro2Panel
         model={model}
         vo2maxMlMinKg={vo2maxMlMinKgForCaption ?? null}
