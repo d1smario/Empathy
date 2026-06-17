@@ -105,7 +105,6 @@ export function ProductSidebar() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-8 w-auto" />
         </Link>
-        <p className="mt-2 font-mono text-[0.65rem] text-gray-500">{t("brandTagline")}</p>
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label={t("ariaModules")}>
         {accountItems.map((item) => (
