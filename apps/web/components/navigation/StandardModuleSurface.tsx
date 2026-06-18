@@ -78,7 +78,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
           dashboardEntitlement?.hasAthleteAccess ? (
             <DashboardPlanBadge entitlement={dashboardEntitlement} />
           ) : undefined
-        ) : (
+        ) : module === "athletes" ? undefined : (
           <>
             <Pro2Link href="/" variant="ghost" className="justify-center border border-white/15 bg-white/5 hover:bg-white/10">
               Home
