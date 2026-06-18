@@ -148,7 +148,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Pathway · radar
             </h4>
-            <div className="h-[240px] w-full overflow-y-auto sm:h-[300px]">
+            <div className="w-full min-w-0" style={{ height: 300 }}>
               {epigeneticRadar.rows.length === 0 ? (
                 <PointToLatest>
                   Nessun dato numerico epigenetico strutturato — importa un referto <code className="mx-1 text-violet-300">epigenetics</code>.
@@ -226,7 +226,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Equilibrio assi
             </h4>
-            <div className="h-[240px] w-full sm:h-[300px]">
+            <div className="w-full min-w-0" style={{ height: 300 }}>
               {endocrineRadar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
@@ -250,7 +250,7 @@ export function HealthAreaCharts({
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
               Valori ormonali (referto)
             </h4>
-            <div className="h-[240px] w-full sm:h-[300px]">
+            <div className="w-full min-w-0" style={{ height: 300 }}>
               {hormonesBar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
@@ -282,7 +282,7 @@ export function HealthAreaCharts({
         <p className="text-sm text-gray-400">
           d-ROMs, BAP, glutatione, enzimi. {oxidativeRadar.isDemo ? "Demo finché mancano valori." : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
+        <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {oxidativeRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasOxidativePanel
@@ -313,7 +313,7 @@ export function HealthAreaCharts({
           Radar · score sintetico (valori bassi = migliore){" "}
           {inflammationRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
+        <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {inflammationRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasInflammationPanel
@@ -344,7 +344,7 @@ export function HealthAreaCharts({
           Percentuali / diversità (asse 0–100){" "}
           {microbiotaRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
         </p>
-        <div className="mx-auto mt-4 min-h-[240px] w-full max-w-none sm:min-h-[300px] sm:max-w-lg">
+        <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {microbiotaRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasMicrobiotaPanel
