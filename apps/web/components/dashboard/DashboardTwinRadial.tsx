@@ -105,15 +105,15 @@ type Slot = { color: string; icon: LucideIcon; bx: number; by: number; anchor: P
 const VB_W = 680;
 const VB_H = 540;
 const SLOTS: Record<DashboardAreaKey, Slot> = {
-  performance: { color: "#ec4899", icon: Activity, bx: 50, by: 8, anchor: { x: 340, y: 120 } },
-  stress: { color: "#a855f7", icon: Zap, bx: 21, by: 28, anchor: J.shL },
-  biomarkers: { color: "#f59e0b", icon: FlaskConical, bx: 15, by: 46, anchor: J.elL },
-  nutrition: { color: "#84cc16", icon: Apple, bx: 17, by: 63, anchor: J.hpL },
-  microbiome: { color: "#f472b6", icon: Bug, bx: 25, by: 80, anchor: J.knL },
-  recovery: { color: "#8b5cf6", icon: BatteryCharging, bx: 79, by: 28, anchor: J.shR },
-  sleep: { color: "#3b82f6", icon: Moon, bx: 85, by: 46, anchor: J.elR },
-  hormones: { color: "#14b8a6", icon: Flame, bx: 83, by: 63, anchor: J.hpR },
-  longevity: { color: "#f97316", icon: InfinityIcon, bx: 75, by: 80, anchor: J.knR },
+  performance: { color: "#ec4899", icon: Activity, bx: 50, by: 7, anchor: { x: 340, y: 120 } },
+  stress: { color: "#a855f7", icon: Zap, bx: 20, by: 24, anchor: J.shL },
+  biomarkers: { color: "#f59e0b", icon: FlaskConical, bx: 14, by: 44, anchor: J.elL },
+  nutrition: { color: "#84cc16", icon: Apple, bx: 16, by: 64, anchor: J.hpL },
+  microbiome: { color: "#f472b6", icon: Bug, bx: 24, by: 84, anchor: J.knL },
+  recovery: { color: "#8b5cf6", icon: BatteryCharging, bx: 80, by: 24, anchor: J.shR },
+  sleep: { color: "#3b82f6", icon: Moon, bx: 86, by: 44, anchor: J.elR },
+  hormones: { color: "#14b8a6", icon: Flame, bx: 84, by: 64, anchor: J.hpR },
+  longevity: { color: "#f97316", icon: InfinityIcon, bx: 76, by: 84, anchor: J.knR },
 };
 const SLOT_KEYS = Object.keys(SLOTS) as DashboardAreaKey[];
 
@@ -184,15 +184,15 @@ export function DashboardTwinRadial({ areas }: { areas: DashboardArea[] }) {
               {a?.label ?? k}
             </div>
             <div
-              className="mx-auto mt-1 flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 bg-black/70"
-              style={{ borderColor: s.color, opacity: on ? 1 : 0.5, boxShadow: on ? `0 0 16px -3px ${s.color}` : undefined }}
+              className="mx-auto mt-0.5 flex h-11 w-11 items-center justify-center rounded-full border-2 bg-black/70"
+              style={{ borderColor: s.color, opacity: on ? 1 : 0.5, boxShadow: on ? `0 0 14px -3px ${s.color}` : undefined }}
             >
-              <Icon size={22} style={{ color: s.color }} aria-hidden />
+              <Icon size={19} style={{ color: s.color }} aria-hidden />
             </div>
-            <div className="mt-1 text-xl font-bold tabular-nums" style={{ color: on ? "#ffffff" : "#6b7280" }}>
+            <div className="text-lg font-bold leading-tight tabular-nums" style={{ color: on ? "#ffffff" : "#6b7280" }}>
               {on ? Math.round(a!.score as number) : "—"}
             </div>
-            <div className="text-[0.62rem]" style={{ color: on ? s.color : "#6b7280" }}>
+            <div className="text-[0.6rem] leading-tight" style={{ color: on ? s.color : "#6b7280" }}>
               {statusText(a, on)}
             </div>
           </div>

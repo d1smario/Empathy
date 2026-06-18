@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DashboardTwinRadial } from "@/components/dashboard/DashboardTwinRadial";
+import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { readSwrCache, writeSwrCache } from "@/lib/client-swr-cache";
 import type {
@@ -232,7 +233,10 @@ export function NewDashboardView() {
   return (
     <div className="space-y-10">
       {/* CORPO + AREE: umanoide point-cloud denso con i 9 contatori ad arco. */}
-      <section aria-label="Aree fisiologiche">
+      <section aria-label="Aree fisiologiche" className="relative">
+        <div className="absolute right-0 top-0 z-10">
+          <DashboardReadinessHeader />
+        </div>
         <DashboardTwinRadial areas={data?.areas ?? []} />
       </section>
 

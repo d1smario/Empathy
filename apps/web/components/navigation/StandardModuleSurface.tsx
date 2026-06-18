@@ -8,7 +8,6 @@ import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
 import { getSessionProfile } from "@/lib/auth/session-profile";
 import { DashboardIntroAndPricing } from "@/components/dashboard/DashboardIntroAndPricing";
 import { DashboardPlanBadge } from "@/components/dashboard/DashboardPlanBadge";
-import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
 import { NewDashboardView } from "@/components/dashboard/NewDashboardView";
 import { CoachAthletesModulePanel } from "@/components/coach/CoachAthletesModulePanel";
 import { SettingsCoachAccountCard } from "@/components/settings/SettingsCoachAccountCard";
@@ -77,10 +76,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
       headerActions={
         module === "dashboard" ? (
           dashboardEntitlement?.hasAthleteAccess ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <DashboardReadinessHeader />
-              <DashboardPlanBadge entitlement={dashboardEntitlement} />
-            </div>
+            <DashboardPlanBadge entitlement={dashboardEntitlement} />
           ) : undefined
         ) : (
           <>
