@@ -253,7 +253,7 @@ export function NewDashboardView() {
                   <span className="text-sm font-bold tabular-nums text-white">{fmtScore(area.score)}</span>
                 </div>
                 <div className="mt-2">
-                  <Sparkline values={area.trend7d} color={theme.ring} />
+                  <Sparkline values={area.trend} color={theme.ring} />
                 </div>
               </div>
             );

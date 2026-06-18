@@ -5,7 +5,7 @@
  * internal-load, EPI, biomarker panels with VALUES, physiological profile) and passes the
  * already-resolved inputs in. This file only normalizes/composes them into the 9-area +
  * readiness + systemStatus + KPI contract. Areas without real data => score:null,
- * status:null, hasData:false, trend7d:[]. Never invent scores.
+ * status:null, hasData:false, trend:[]. Never invent scores.
  *
  * Reuses existing engines and never re-derives physiology:
  *  - twin scores come from `resolveCanonicalTwinState` (0–100, already normalized)
@@ -54,8 +54,8 @@ export type DashboardArea = {
   status: DashboardAreaStatus | null;
   /** false per "stress" (livello basso = bene). */
   higherIsBetter: boolean;
-  /** [] se serie non disponibile. */
-  trend7d: number[];
+  /** Serie cronologica (oldest→newest) fino a ~30 punti. [] se non disponibile. */
+  trend: number[];
   hasData: boolean;
 };
 
@@ -75,7 +75,7 @@ export type DashboardScoresPayload = {
   ok: true;
   athleteId: string;
   generatedAt: string;
-  readiness: { score: number | null; label: string | null; trend7d: number[] };
+  readiness: { score: number | null; label: string | null; trend: number[] };
   systemStatus: { pct: number | null; label: string | null; trend: number[] };
   areas: DashboardArea[];
   kpis: DashboardKpis;
@@ -89,21 +89,43 @@ export type BiomarkerPanelInput = {
   values: Record<string, unknown> | null;
 };
 
+/**
+ * Snapshot-derived trends (oldest→newest), one number per stored daily snapshot.
+ * Built by the route from `dashboard_daily_scores` (last ~30 rows). Optional and
+ * empty-safe: when the table is missing / no snapshot exists, the route omits it
+ * and the composer falls back to the device-derived series (recovery/sleep) or [].
+ */
+export type DashboardSnapshotTrends = {
+  readiness?: number[];
+  systemStatus?: number[];
+  /** Per-area chronological series keyed by area key. */
+  areas?: Partial<Record<DashboardAreaKey, number[]>>;
+};
+
 export type DashboardScoresInput = {
   athleteId: string;
   generatedAt?: string;
   twin: CanonicalTwinState | null;
   recovery: RecoverySummary | null;
-  /** Twin history slice (oldest→newest) for trend7d where available. */
+  /** Twin history slice (oldest→newest) for the trend where available. */
   twinHistory7d?: CanonicalTwinState["history"];
   /** Recovery 7d series (oldest→newest), one summary per day where present. */
   recoverySeries7d?: RecoverySummary[];
   /** Internal-load index 7d series (oldest→newest) for systemStatus trend. */
   internalLoadIndexSeries7d?: number[];
+  /**
+   * 30-day trends reconstructed from `dashboard_daily_scores` snapshots. For
+   * recovery/sleep the richer device-derived series is preferred when present;
+   * for all other areas (and readiness/systemStatus) the snapshot series is used
+   * when the in-memory series is empty. Missing table / no rows => undefined.
+   */
+  snapshotTrends?: DashboardSnapshotTrends;
   epi: EpiResult | null;
   physiology: PhysiologicalProfile | null;
   /** athlete_profiles.weight_kg / body_fat_pct (when present). */
   profile: { weightKg: number | null; bodyFatPct: number | null } | null;
+  /** Chronological age (years, 1 decimal) from athlete_profiles.birth_date; null if missing. */
+  targetAge?: number | null;
   /** Latest panel per relevant type (with VALUES), keyed by normalized type. */
   panelsByType: Partial<Record<string, BiomarkerPanelInput>>;
 };
@@ -318,7 +340,15 @@ function longevityFromEpi(epi: EpiResult | null): { score: number | null; hasDat
   return { score: round1(clamp(epi.score, 0, 100)), hasData: true };
 }
 
-/** Build trend7d for recovery-derived areas from a 7d series of summaries. */
+/** Keep only finite, 1-decimal-rounded numbers from a snapshot series. */
+function cleanSnapshotSeries(series: number[] | undefined): number[] {
+  if (!series || !series.length) return [];
+  return series
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
+    .map((v) => round1(v));
+}
+
+/** Build trend for recovery-derived areas from a series of summaries (oldest→newest). */
 function recoveryTrend(
   series: RecoverySummary[] | undefined,
   pick: (s: RecoverySummary) => number | null,
@@ -350,16 +380,22 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const twin = input.twin;
   const recovery = input.recovery;
+  const snapshots = input.snapshotTrends;
+  const snapAreas = snapshots?.areas ?? {};
 
   // ---- Readiness (reuse existing twin readiness) ----
   const readinessScore = twin ? asNum(twin.readiness) : null;
-  const readinessTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.readiness);
+  const readinessTwinTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.readiness);
+  const readinessTrend = readinessTwinTrend.length
+    ? readinessTwinTrend
+    : cleanSnapshotSeries(snapshots?.readiness);
 
   // ---- systemStatus (reuse internalLoadIndex aggregate; do NOT invent a new formula) ----
   const systemStatusPct = twin ? asNum(twin.internalLoadIndex) : null;
-  const systemStatusTrend = (input.internalLoadIndexSeries7d ?? [])
-    .filter((v): v is number => typeof v === "number" && Number.isFinite(v))
-    .map((v) => round1(v));
+  const systemStatusFromSeries = cleanSnapshotSeries(input.internalLoadIndexSeries7d);
+  const systemStatusTrend = systemStatusFromSeries.length
+    ? systemStatusFromSeries
+    : cleanSnapshotSeries(snapshots?.systemStatus);
 
   // ---- recovery ----
   const recoveryScore =
@@ -370,19 +406,25 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     recovery?.recoveryScore != null ||
     recovery?.readinessScore != null ||
     (twin?.sources.internalLoad === true && asNum(twin.recoveryCapacity) != null);
+  // Prefer the richer device-derived series; else snapshot trend; else twin history.
   const recoveryFromSeries = recoveryTrend(input.recoverySeries7d, (s) => s.recoveryScore ?? s.readinessScore);
-  const recoveryTrend7d = recoveryFromSeries.length
+  const recoveryTrendValues = recoveryFromSeries.length
     ? recoveryFromSeries
-    : twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.recoveryCapacity);
+    : cleanSnapshotSeries(snapAreas.recovery).length
+      ? cleanSnapshotSeries(snapAreas.recovery)
+      : twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.recoveryCapacity);
 
   // ---- sleep ----
   const sleepScore =
     asNum(recovery?.sleepScore ?? null) ?? (twin ? asNum(twin.sleepRecovery) : null);
   const sleepHasData = recovery?.sleepScore != null || (twin ? asNum(twin.sleepRecovery) != null : false);
+  // Prefer the richer device-derived series; else snapshot trend; else twin history.
   const sleepFromSeries = recoveryTrend(input.recoverySeries7d, (s) => s.sleepScore);
-  const sleepTrend7d = sleepFromSeries.length
+  const sleepTrendValues = sleepFromSeries.length
     ? sleepFromSeries
-    : twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.sleepRecovery);
+    : cleanSnapshotSeries(snapAreas.sleep).length
+      ? cleanSnapshotSeries(snapAreas.sleep)
+      : twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.sleepRecovery);
 
   // ---- stress (level, lower = better) ----
   // Composite of autonomic strain + redox stress (+ thermal when present). All twin 0–100.
@@ -391,9 +433,10 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     : [];
   const stressLevel = avgPresent(stressComponents);
   const stressHasData = stressLevel != null;
-  const stressTrend7d = twinTrend(input.twinHistory7d ?? twin?.history, (s) =>
+  const stressTwinTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) =>
     avgPresent([s.autonomicStrain, s.redoxStressIndex, s.thermalStress]),
   );
+  const stressTrendValues = stressTwinTrend.length ? stressTwinTrend : cleanSnapshotSeries(snapAreas.stress);
 
   // ---- biomarkers / hormones / microbiome (real panel values only) ----
   const biomarkersScore = computeBiomarkers(input.panelsByType);
@@ -407,6 +450,12 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
   // ---- performance ----
   const performance = computePerformance(twin);
 
+  // Performance: prefer twin adaptation history; else snapshot trend.
+  const performanceTwinTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.adaptationScore);
+  const performanceTrend = performanceTwinTrend.length
+    ? performanceTwinTrend
+    : cleanSnapshotSeries(snapAreas.performance);
+
   const areas: DashboardArea[] = [
     {
       key: "performance",
@@ -414,7 +463,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: performance.score,
       higherIsBetter: true,
       hasData: performance.hasData,
-      trend7d: twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.adaptationScore),
+      trend: performanceTrend,
       status: statusFromScore(performance.score, true),
     },
     {
@@ -423,7 +472,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: recoveryScore != null ? round1(clamp(recoveryScore, 0, 100)) : null,
       higherIsBetter: true,
       hasData: Boolean(recoveryHasData) && recoveryScore != null,
-      trend7d: recoveryTrend7d,
+      trend: recoveryTrendValues,
       status: statusFromScore(recoveryScore, true),
     },
     {
@@ -432,7 +481,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: sleepScore != null ? round1(clamp(sleepScore, 0, 100)) : null,
       higherIsBetter: true,
       hasData: Boolean(sleepHasData) && sleepScore != null,
-      trend7d: sleepTrend7d,
+      trend: sleepTrendValues,
       status: statusFromScore(sleepScore, true),
     },
     {
@@ -441,7 +490,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: stressLevel != null ? round1(clamp(stressLevel, 0, 100)) : null,
       higherIsBetter: false,
       hasData: stressHasData,
-      trend7d: stressTrend7d,
+      trend: stressTrendValues,
       status: statusFromScore(stressLevel, false),
     },
     {
@@ -450,7 +499,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: biomarkersScore,
       higherIsBetter: true,
       hasData: biomarkersScore != null,
-      trend7d: [],
+      trend: cleanSnapshotSeries(snapAreas.biomarkers),
       status: statusFromScore(biomarkersScore, true),
     },
     {
@@ -459,7 +508,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: hormonesScore,
       higherIsBetter: true,
       hasData: hormonesScore != null,
-      trend7d: [],
+      trend: cleanSnapshotSeries(snapAreas.hormones),
       status: statusFromScore(hormonesScore, true),
     },
     {
@@ -468,7 +517,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: microbiomeScore,
       higherIsBetter: true,
       hasData: microbiomeScore != null,
-      trend7d: [],
+      trend: cleanSnapshotSeries(snapAreas.microbiome),
       status: statusFromScore(microbiomeScore, true),
     },
     {
@@ -477,7 +526,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: nutrition.score,
       higherIsBetter: true,
       hasData: nutrition.hasData,
-      trend7d: [],
+      trend: cleanSnapshotSeries(snapAreas.nutrition),
       status: statusFromScore(nutrition.score, true),
     },
     {
@@ -486,7 +535,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
       score: longevity.score,
       higherIsBetter: true,
       hasData: longevity.hasData,
-      trend7d: [],
+      trend: cleanSnapshotSeries(snapAreas.longevity),
       status: statusFromScore(longevity.score, true),
     },
   ];
@@ -501,7 +550,8 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     lt2Watts: phys?.lt2Watts ?? null,
     vLamax: phys?.vLamax ?? null,
     biologicalAge: biologicalAgeYears(input.panelsByType),
-    targetAge: null,
+    // Target = età anagrafica (riferimento dell'età biologica), da athlete_profiles.birth_date.
+    targetAge: input.targetAge ?? null,
   };
 
   return {
@@ -511,7 +561,7 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     readiness: {
       score: readinessScore != null ? round1(clamp(readinessScore, 0, 100)) : null,
       label: readinessLabel(readinessScore),
-      trend7d: readinessTrend,
+      trend: readinessTrend,
     },
     systemStatus: {
       pct: systemStatusPct != null ? round1(clamp(systemStatusPct, 0, 100)) : null,

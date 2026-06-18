@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { physiologicalProfileFromDbRow, type PhysiologicalProfileDbRow } from "@empathy/domain-physiology";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resolveCanonicalTwinState } from "@/lib/twin/athlete-state-resolver";
 import { resolveLatestRecoverySummary, buildRecoverySummaryFromRows, type RecoverySummary } from "@/lib/reality/recovery-summary";
 import { resolveEpiForDate } from "@/lib/epi/epi-resolver";
@@ -8,7 +9,10 @@ import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-s
 import {
   composeDashboardScores,
   type BiomarkerPanelInput,
+  type DashboardAreaKey,
   type DashboardScoresInput,
+  type DashboardScoresPayload,
+  type DashboardSnapshotTrends,
 } from "@/lib/dashboard/dashboard-scores";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +23,33 @@ const NO_STORE = { "Cache-Control": "no-store" as const };
 const PHYS_SELECT =
   "id, athlete_id, ftp_watts, cp_watts, lt1_watts, lt1_heart_rate, lt2_watts, lt2_heart_rate, v_lamax, vo2max_ml_min_kg, economy, baseline_hrv_ms, valid_from, valid_to, updated_at";
 
-type ProfileRow = { weight_kg?: number | string | null; body_fat_pct?: number | string | null } | null;
+type ProfileRow = {
+  weight_kg?: number | string | null;
+  body_fat_pct?: number | string | null;
+  birth_date?: string | null;
+} | null;
 type PanelRow = { type?: string | null; sample_date?: string | null; created_at?: string | null; values?: Record<string, unknown> | null };
 type DeviceExportRow = Record<string, unknown>;
+
+/** All 9 dashboard areas, used to build the snapshot row + per-area trends. */
+const AREA_KEYS: DashboardAreaKey[] = [
+  "performance",
+  "recovery",
+  "sleep",
+  "stress",
+  "biomarkers",
+  "hormones",
+  "microbiome",
+  "nutrition",
+  "longevity",
+];
+
+/** One stored daily snapshot row (today + the 9 area columns). */
+type DailyScoreRow = {
+  date?: string | null;
+  readiness?: number | null;
+  system_status?: number | null;
+} & Partial<Record<DashboardAreaKey, number | null>>;
 
 function asNum(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -41,6 +69,17 @@ function addDays(isoDate: string, delta: number): string {
   if (Number.isNaN(base.getTime())) return isoDate;
   base.setUTCDate(base.getUTCDate() + delta);
   return base.toISOString().slice(0, 10);
+}
+
+/** Chronological age in years (1 decimal) from birth_date; null if missing/invalid. */
+function chronologicalAge(birthDate: string | null | undefined, asOfIso: string): number | null {
+  if (typeof birthDate !== "string" || birthDate.trim() === "") return null;
+  const birth = new Date(`${birthDate.slice(0, 10)}T00:00:00.000Z`);
+  const asOf = new Date(`${asOfIso}T00:00:00.000Z`);
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(asOf.getTime())) return null;
+  const years = (asOf.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (!Number.isFinite(years) || years < 0) return null;
+  return Math.round(years * 10) / 10;
 }
 
 /** Latest panel per normalized `type` (rows assumed newest-first). Keeps the row WITH values. */
@@ -88,6 +127,83 @@ function buildRecoverySeries7d(rows: DeviceExportRow[], endIso: string): Recover
   return series;
 }
 
+/** Today's scores as an integer-or-null snapshot row (null where the area has no data). */
+function snapshotRowFromPayload(athleteId: string, dateIso: string, today: DashboardScoresPayload): DailyScoreRow & {
+  athlete_id: string;
+} {
+  const intOrNull = (v: number | null | undefined): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null;
+  const byKey = new Map<DashboardAreaKey, number | null>();
+  for (const area of today.areas) byKey.set(area.key, area.hasData ? intOrNull(area.score) : null);
+  const row: DailyScoreRow & { athlete_id: string } = {
+    athlete_id: athleteId,
+    date: dateIso,
+    readiness: intOrNull(today.readiness.score),
+    system_status: intOrNull(today.systemStatus.pct),
+  };
+  for (const key of AREA_KEYS) row[key] = byKey.get(key) ?? null;
+  return row;
+}
+
+/**
+ * Persist today's snapshot and reconstruct 30-day chronological trends from
+ * `dashboard_daily_scores`. Entirely best-effort: if the admin client is missing,
+ * the table does not exist, or any query errors, returns `null` so the composer
+ * falls back to the in-memory device/twin series. Never throws, never fakes data.
+ */
+async function persistAndReadSnapshotTrends(
+  athleteId: string,
+  dateIso: string,
+  today: DashboardScoresPayload,
+): Promise<DashboardSnapshotTrends | null> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return null;
+
+  // UPSERT today (silent on failure — e.g. table not migrated yet).
+  try {
+    const row = snapshotRowFromPayload(athleteId, dateIso, today);
+    await admin.from("dashboard_daily_scores").upsert(row, { onConflict: "athlete_id,date" });
+  } catch {
+    /* swallow: dashboard must not break if snapshots are unavailable */
+  }
+
+  // READ the last ~30 snapshots (oldest→newest) and build per-area trends.
+  try {
+    const since = addDays(dateIso, -29);
+    const { data, error } = await admin
+      .from("dashboard_daily_scores")
+      .select("date, readiness, system_status, performance, recovery, sleep, stress, biomarkers, hormones, microbiome, nutrition, longevity")
+      .eq("athlete_id", athleteId)
+      .gte("date", since)
+      .lte("date", dateIso)
+      .order("date", { ascending: true })
+      .limit(31);
+    if (error || !data || !data.length) return null;
+
+    const rows = data as DailyScoreRow[];
+    const numericSeries = (pick: (r: DailyScoreRow) => number | null | undefined): number[] =>
+      rows
+        .map((r) => pick(r))
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
+    const areas: Partial<Record<DashboardAreaKey, number[]>> = {};
+    for (const key of AREA_KEYS) {
+      const series = numericSeries((r) => r[key]);
+      if (series.length) areas[key] = series;
+    }
+    const readiness = numericSeries((r) => r.readiness);
+    const systemStatus = numericSeries((r) => r.system_status);
+
+    const trends: DashboardSnapshotTrends = {};
+    if (readiness.length) trends.readiness = readiness;
+    if (systemStatus.length) trends.systemStatus = systemStatus;
+    if (Object.keys(areas).length) trends.areas = areas;
+    return Object.keys(trends).length ? trends : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * GET /api/dashboard/scores?athleteId=...&date=YYYY-MM-DD
  * 0–100 scores for the 9 dashboard areas + readiness + system status + physiological KPIs.
@@ -107,7 +223,7 @@ export async function GET(req: NextRequest) {
     const { db } = await requireAthleteReadContext(req, athleteId);
 
     const [profRes, physRes, panelsRes, deviceRes, twin, recovery, resolvedEpi] = await Promise.all([
-      db.from("athlete_profiles").select("weight_kg, body_fat_pct").eq("id", athleteId).maybeSingle(),
+      db.from("athlete_profiles").select("weight_kg, body_fat_pct, birth_date").eq("id", athleteId).maybeSingle(),
       db
         .from("physiological_profiles")
         .select(PHYS_SELECT)
@@ -144,6 +260,8 @@ export async function GET(req: NextRequest) {
     const profile = profileRow
       ? { weightKg: asNum(profileRow.weight_kg), bodyFatPct: asNum(profileRow.body_fat_pct) }
       : null;
+    // Target = età anagrafica (riferimento dell'età biologica) da athlete_profiles.birth_date.
+    const targetAge = chronologicalAge(profileRow?.birth_date, end);
 
     const physRow = (physRes.data ?? null) as PhysiologicalProfileDbRow | null;
     const physiology = physRow ? physiologicalProfileFromDbRow(physRow) : null;
@@ -151,7 +269,7 @@ export async function GET(req: NextRequest) {
     const panelsByType = indexLatestPanelsByType((panelsRes.data ?? []) as PanelRow[]);
     const recoverySeries7d = buildRecoverySeries7d((deviceRes.data ?? []) as DeviceExportRow[], end);
 
-    const input: DashboardScoresInput = {
+    const baseInput: DashboardScoresInput = {
       athleteId,
       generatedAt,
       twin,
@@ -162,10 +280,21 @@ export async function GET(req: NextRequest) {
       epi: resolvedEpi?.epi ?? null,
       physiology,
       profile,
+      targetAge,
       panelsByType,
     };
 
-    const payload = composeDashboardScores(input);
+    // Compose today's scores first; they seed the snapshot upsert below.
+    const today = composeDashboardScores(baseInput);
+
+    // ---- Snapshot trend (robust if `dashboard_daily_scores` does not exist yet) ----
+    // UPSERT today's row (service role) then read the last ~30 days for chronological trends.
+    // Any failure here (missing table, RLS, etc.) is swallowed: the dashboard never breaks.
+    const snapshotTrends = await persistAndReadSnapshotTrends(athleteId, end, today);
+
+    const payload = snapshotTrends
+      ? composeDashboardScores({ ...baseInput, snapshotTrends })
+      : today;
     return NextResponse.json(payload, { headers: NO_STORE });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {

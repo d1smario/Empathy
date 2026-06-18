@@ -139,6 +139,7 @@ export function DashboardTwinRadial({ areas }: { areas: DashboardArea[] }) {
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
         </defs>
+        <style>{`@keyframes twinBreathe{0%,100%{opacity:.82}50%{opacity:1}}.twin-breathe{animation:twinBreathe 5.5s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.twin-breathe{animation:none}}`}</style>
         <g fill="none" stroke="#5eead4" opacity="0.1">
           <circle cx="340" cy="300" r="118" />
           <circle cx="340" cy="300" r="170" />
@@ -162,7 +163,7 @@ export function DashboardTwinRadial({ areas }: { areas: DashboardArea[] }) {
             />
           );
         })}
-        <g fill="url(#twinGrad)">
+        <g className="twin-breathe" fill="url(#twinGrad)">
           {BODY_DOTS.map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={1.7} />
           ))}
