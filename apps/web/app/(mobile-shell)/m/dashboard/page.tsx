@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import MobileTodayPageView from "@/modules/mobile/views/MobileTodayPageView";
+import { MobileDashboardView } from "@/modules/mobile/views/MobileDashboardView";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Oggi",
-  description: "Hub operativo giornaliero atleta.",
+  title: "Dashboard",
+  description: "Human Performance Operating System",
 };
 
 export default function MobileDashboardPage() {
-  return <MobileTodayPageView />;
+  return <MobileDashboardView />;
 }

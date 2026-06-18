@@ -1,12 +1,11 @@
-import type { Metadata } from "next";
-import LongevityFitnessPageView from "@/modules/longevity/views/LongevityFitnessPageView";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Longevity & Fitness",
-};
-
-export default function MobileLongevityPage() {
-  return <LongevityFitnessPageView />;
+/**
+ * Longevity & Fitness assorbito nella Dashboard mobile (check-in di oggi + indice EPI):
+ * /m/longevity reindirizza a /m/dashboard, così vecchi link/bookmark continuano a funzionare.
+ */
+export default function MobileLongevityRedirectPage(): never {
+  redirect("/m/dashboard");
 }

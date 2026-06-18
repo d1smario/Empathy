@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { PRODUCT_MODULE_NAV, type ProductModuleNavItem, type ProductNavIconKey } from "@/core/navigation/module-registry";
 import { SidebarSessionActions } from "@/components/navigation/SidebarSessionActions";
+import type { AppRole } from "@/lib/app-session";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const ICONS: Record<ProductNavIconKey, LucideIcon> = {
@@ -78,9 +79,21 @@ function NavLink({ item }: { item: ProductModuleNavItem }) {
   );
 }
 
-export function ProductSidebar() {
+export function ProductSidebar({
+  initialRole,
+  initialAthleteId,
+}: {
+  initialRole?: AppRole;
+  initialAthleteId?: string | null;
+} = {}) {
   const t = useTranslations("Nav");
-  const { athleteId, role, loading, athletes } = useActiveAthlete();
+  const { athleteId: ctxAthleteId, role: ctxRole, loading, athletes } = useActiveAthlete();
+
+  // Finché il contesto atleta si risolve lato client (cold start / reload) usa i
+  // valori risolti dal server: la sidebar mostra subito le voci giuste, senza il
+  // flash in cui appaiono dopo. A risoluzione avvenuta prevale il context.
+  const role = loading ? (initialRole ?? ctxRole) : ctxRole;
+  const athleteId = loading ? (initialAthleteId ?? ctxAthleteId) : ctxAthleteId;
 
   const visibleForRole = (item: ProductModuleNavItem) => !item.roles || item.roles.includes(role);
   const mainItems = PRODUCT_MODULE_NAV.filter((i) => i.area === "main" && visibleForRole(i));
@@ -93,7 +106,7 @@ export function ProductSidebar() {
    * Il coach naviga gli assistiti via /athletes/[id]/... con la barra a tab
    * (stesso pattern admin): in sidebar gli restano solo le voci account.
    */
-  const athleteInScope = !loading && Boolean(athleteId) && role !== "coach";
+  const athleteInScope = Boolean(athleteId) && role !== "coach";
   const selectedAthlete = athleteId ? athletes.find((a) => a.id === athleteId) : undefined;
   const selectedAthleteName =
     [selectedAthlete?.first_name, selectedAthlete?.last_name].filter(Boolean).join(" ").trim() || null;

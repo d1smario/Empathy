@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { coachOrgIdForDb } from "@/lib/coach-org-id";
 import { resolveBootstrapRole } from "@/lib/auth/resolve-bootstrap-role";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function athleteIdByNormalizedEmail(
   supabase: SupabaseClient,
@@ -61,7 +62,19 @@ export async function bootstrapAppUserProfile(
   const explicitAthleteId = typeof input.athleteId === "string" ? input.athleteId.trim() : "";
   const athleteId = explicitAthleteId || null;
 
-  const { data: existing, error: existingErr } = await supabase
+  /**
+   * Provisioning privilegiato. L'identità del chiamante è SEMPRE già verificata dal
+   * route handler (`userId` === utente di sessione), quindi usiamo il service-role per
+   * letture/scritture. Motivo: con il client legato a RLS, l'`insert().select()` su
+   * `athlete_profiles` NON vede la riga appena creata (la policy SELECT richiede
+   * `app_user_profiles.athlete_id = id`, ancora non collegato) → l'id di ritorno era
+   * `null`, il link non avveniva e ogni nuovo private restava senza profilo atleta
+   * (regressione: nessun atleta creato dopo il 2026-06-03). Fallback al client passato
+   * se il service-role non è configurato (es. ambienti senza SERVICE_ROLE_KEY).
+   */
+  const db = createSupabaseAdminClient() ?? supabase;
+
+  const { data: existing, error: existingErr } = await db
     .from("app_user_profiles")
     .select("role, athlete_id, platform_coach_status")
     .eq("user_id", input.userId)
@@ -85,7 +98,7 @@ export async function bootstrapAppUserProfile(
    * l'insert atleta del primo onboarding viola la RLS (403) per ogni nuovo utente.
    */
   if (!current) {
-    const { error: seedErr } = await supabase.from("app_user_profiles").insert({
+    const { error: seedErr } = await db.from("app_user_profiles").insert({
       user_id: input.userId,
       role,
       athlete_id: null,
@@ -98,13 +111,13 @@ export async function bootstrapAppUserProfile(
 
   let resolvedAthleteId: string | null;
   if (role === "coach") {
-    resolvedAthleteId = athleteId ? await resolveExistingAthleteId(supabase, athleteId, null) : null;
+    resolvedAthleteId = athleteId ? await resolveExistingAthleteId(db, athleteId, null) : null;
   } else {
-    resolvedAthleteId = await resolveExistingAthleteId(supabase, athleteId ?? current?.athlete_id ?? null, email);
+    resolvedAthleteId = await resolveExistingAthleteId(db, athleteId ?? current?.athlete_id ?? null, email);
   }
 
   if (role === "private" && !resolvedAthleteId) {
-    const { data: inserted, error: insErr } = await supabase.from("athlete_profiles").insert({
+    const { data: inserted, error: insErr } = await db.from("athlete_profiles").insert({
       email,
       first_name: firstName,
       last_name: lastName,
@@ -113,7 +126,7 @@ export async function bootstrapAppUserProfile(
     }).select("id").maybeSingle();
     if (insErr) {
       if (insErr.code === "23505" && email) {
-        resolvedAthleteId = await athleteIdByNormalizedEmail(supabase, email);
+        resolvedAthleteId = await athleteIdByNormalizedEmail(db, email);
       }
       if (!resolvedAthleteId) {
         return { error: insErr.message };
@@ -144,7 +157,7 @@ export async function bootstrapAppUserProfile(
     (current.platform_coach_status ?? null) !== (nextPlatformCoachStatus ?? null);
 
   if (shouldUpsertProfile) {
-    const { error: profileErr } = await supabase.from("app_user_profiles").upsert(
+    const { error: profileErr } = await db.from("app_user_profiles").upsert(
       {
         user_id: input.userId,
         role: nextRole,
@@ -160,7 +173,7 @@ export async function bootstrapAppUserProfile(
 
   if (nextRole === "coach" && resolvedAthleteId) {
     const orgId = coachOrgIdForDb();
-    const { error: linkErr } = await supabase.from("coach_athletes").upsert(
+    const { error: linkErr } = await db.from("coach_athletes").upsert(
       { org_id: orgId, coach_user_id: input.userId, athlete_id: resolvedAthleteId },
       { onConflict: "org_id,coach_user_id,athlete_id" },
     );

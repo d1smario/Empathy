@@ -137,7 +137,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
   );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {sorted.map((ch) => {
         const streamTrace = ch.streamTrace;
         const isGluLac = ch.id === "glucose" || ch.id === "lactate";

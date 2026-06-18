@@ -57,8 +57,8 @@ export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   { module: "nutrition", href: "/nutrition", label: "Nutrition", icon: "utensils", area: "main", scope: "athlete" },
   { module: "biomechanics", href: "/biomechanics", label: "Biomechanics", icon: "motion", area: "main", scope: "athlete" },
   { module: "aerodynamics", href: "/aerodynamics", label: "Aerodynamics", icon: "wind", area: "main", scope: "athlete" },
-  { module: "bioenergetics", href: "/bioenergetics", label: "BioEnergetic Intelligence", icon: "pulse", area: "main", scope: "athlete" },
-  { module: "longevity", href: "/longevity", label: "Longevity & Fitness", icon: "award", area: "main", scope: "athlete" },
+  // Bioenergetica (box "Striscia 24 h") assorbita nella Dashboard: nessuna voce nav dedicata (/bioenergetics → /dashboard).
+  // Longevity & Fitness assorbito nella Dashboard: nessuna voce nav dedicata (/longevity → /dashboard).
   // Impostazioni consolidate nel Profilo: nessuna voce nav dedicata (/settings → /profile).
 ];
 

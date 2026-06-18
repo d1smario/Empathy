@@ -63,14 +63,8 @@ export const MOBILE_MODULE_MENU_SECTIONS: MobileMenuSection[] = [
     items: [
       { key: "health", module: "health", href: "/m/health", label: "Health & Bio", icon: "heart" },
       { key: "physiology", module: "physiology", href: "/m/physiology", label: "Physiology", icon: "activity" },
-      {
-        key: "bioenergetics",
-        module: "bioenergetics",
-        href: "/m/bioenergetics",
-        label: "BioEnergetics",
-        icon: "pulse",
-      },
-      { key: "longevity", module: "longevity", href: "/m/longevity", label: "Longevity & Fitness", icon: "award" },
+      // BioEnergetics ("Striscia 24 h") e Longevity & Fitness assorbiti nella Dashboard
+      // (/m/dashboard): niente voce in tendina (/m/bioenergetics, /m/longevity → /m/dashboard).
     ],
   },
   {

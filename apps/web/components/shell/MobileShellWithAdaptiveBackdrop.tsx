@@ -33,11 +33,13 @@ export function MobileShellWithAdaptiveBackdrop({ children }: { children: React.
   const athleteGate = requiresResolvedAthleteForPath(pathname);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const title = useMemo(() => mobileTitleForPath(pathname), [pathname]);
+  // La dashboard mobile ha il proprio header in stile riferimento; nascondiamo la top bar di shell.
+  const showTopBar = pathname !== "/m/dashboard" && !pathname.startsWith("/m/dashboard/");
 
   return (
     <BrutalistAppBackdrop matrix={false}>
       <div className="flex min-h-screen flex-col">
-        <MobileTopBar title={title} onOpenDrawer={() => setDrawerOpen(true)} />
+        {showTopBar ? <MobileTopBar title={title} onOpenDrawer={() => setDrawerOpen(true)} /> : null}
         <ShellMainFrame
           generative={generative}
           athleteGate={athleteGate}

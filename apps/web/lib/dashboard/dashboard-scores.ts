@@ -332,9 +332,17 @@ function nutritionFromEpi(epi: EpiResult | null): { score: number | null; hasDat
   return { score: round1(clamp(pillar.score, 0, 100)), hasData: true };
 }
 
-/** Longevity = EpiResult.score, only when the index actually has coverage. */
+/**
+ * Longevity = EpiResult.score, solo con copertura reale. "minimal" (es. solo baseline
+ * demografico dall'età) NON basta: richiediamo almeno "standard"/"extended", altrimenti
+ * un utente nuovo vedrebbe un punteggio inventato dall'età anagrafica.
+ */
 function longevityFromEpi(epi: EpiResult | null): { score: number | null; hasData: boolean } {
-  if (!epi || epi.dataTier === "none" || epi.provenance.pillarsAvailable.length === 0) {
+  if (
+    !epi ||
+    !(epi.dataTier === "standard" || epi.dataTier === "extended") ||
+    epi.provenance.pillarsAvailable.length === 0
+  ) {
     return { score: null, hasData: false };
   }
   return { score: round1(clamp(epi.score, 0, 100)), hasData: true };
@@ -383,29 +391,53 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
   const snapshots = input.snapshotTrends;
   const snapAreas = snapshots?.areas ?? {};
 
+  /**
+   * "Sorgente reale": il twin resolver produce SEMPRE valori baseline (readiness
+   * default 60, autonomicStrain = 100 − readiness, `sources.internalLoad` hardcoded
+   * a true). Per rispettare la regola del dashboard ("aree senza dati reali →
+   * nessun punteggio, mai inventare"), readiness / systemStatus / stress / recupero
+   * vengono mostrati SOLO quando esiste una sorgente realmente misurata.
+   *  - twinRealSignal: c'è almeno un dato reale (allenamento eseguito, recovery da
+   *    device, fisiologia o bioenergetica) → readiness e systemStatus sono sensati.
+   *  - autonomicRealSignal: c'è un dato autonomico/fisiologico → lo Stress è sensato
+   *    (altrimenti deriverebbe solo dal baseline di readiness).
+   */
+  const twinRealSignal = Boolean(
+    twin &&
+      (twin.sources.executedLoad ||
+        twin.sources.realityRecovery ||
+        twin.sources.physiology ||
+        twin.sources.bioenergetics),
+  );
+  const autonomicRealSignal = Boolean(twin && (twin.sources.realityRecovery || twin.sources.physiology));
+
   // ---- Readiness (reuse existing twin readiness) ----
-  const readinessScore = twin ? asNum(twin.readiness) : null;
+  const readinessScore = twinRealSignal && twin ? asNum(twin.readiness) : null;
   const readinessTwinTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) => s.readiness);
   const readinessTrend = readinessTwinTrend.length
     ? readinessTwinTrend
     : cleanSnapshotSeries(snapshots?.readiness);
 
   // ---- systemStatus (reuse internalLoadIndex aggregate; do NOT invent a new formula) ----
-  const systemStatusPct = twin ? asNum(twin.internalLoadIndex) : null;
+  const systemStatusPct = twinRealSignal && twin ? asNum(twin.internalLoadIndex) : null;
   const systemStatusFromSeries = cleanSnapshotSeries(input.internalLoadIndexSeries7d);
   const systemStatusTrend = systemStatusFromSeries.length
     ? systemStatusFromSeries
     : cleanSnapshotSeries(snapshots?.systemStatus);
 
   // ---- recovery ----
-  const recoveryScore =
-    asNum(recovery?.recoveryScore ?? null) ??
-    asNum(recovery?.readinessScore ?? null) ??
-    (twin ? asNum(twin.recoveryCapacity) : null);
+  // hasData su sorgente reale: recovery da device OPPURE recovery dalla realtà
+  // (`sources.realityRecovery`). NON `sources.internalLoad` (hardcoded true → mostrava
+  // sempre un baseline). Senza sorgente reale → score null ("in attesa").
   const recoveryHasData =
     recovery?.recoveryScore != null ||
     recovery?.readinessScore != null ||
-    (twin?.sources.internalLoad === true && asNum(twin.recoveryCapacity) != null);
+    (twin?.sources.realityRecovery === true && asNum(twin.recoveryCapacity) != null);
+  const recoveryScore = recoveryHasData
+    ? asNum(recovery?.recoveryScore ?? null) ??
+      asNum(recovery?.readinessScore ?? null) ??
+      (twin ? asNum(twin.recoveryCapacity) : null)
+    : null;
   // Prefer the richer device-derived series; else snapshot trend; else twin history.
   const recoveryFromSeries = recoveryTrend(input.recoverySeries7d, (s) => s.recoveryScore ?? s.readinessScore);
   const recoveryTrendValues = recoveryFromSeries.length
@@ -432,7 +464,10 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     ? [asNum(twin.autonomicStrain), asNum(twin.redoxStressIndex), asNum(twin.thermalStress)]
     : [];
   const stressLevel = avgPresent(stressComponents);
-  const stressHasData = stressLevel != null;
+  // autonomicStrain deriva dal baseline di readiness (sempre presente): senza una
+  // sorgente autonomica/fisiologica reale lo Stress resta "in attesa".
+  const stressHasData = autonomicRealSignal && stressLevel != null;
+  const stressScoreOut = stressHasData ? stressLevel : null;
   const stressTwinTrend = twinTrend(input.twinHistory7d ?? twin?.history, (s) =>
     avgPresent([s.autonomicStrain, s.redoxStressIndex, s.thermalStress]),
   );
@@ -487,11 +522,11 @@ export function composeDashboardScores(input: DashboardScoresInput): DashboardSc
     {
       key: "stress",
       label: "Stress",
-      score: stressLevel != null ? round1(clamp(stressLevel, 0, 100)) : null,
+      score: stressScoreOut != null ? round1(clamp(stressScoreOut, 0, 100)) : null,
       higherIsBetter: false,
       hasData: stressHasData,
       trend: stressTrendValues,
-      status: statusFromScore(stressLevel, false),
+      status: statusFromScore(stressScoreOut, false),
     },
     {
       key: "biomarkers",

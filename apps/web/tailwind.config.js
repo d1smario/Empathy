@@ -59,10 +59,15 @@ module.exports = {
           "0%, 100%": { opacity: "0.55" },
           "50%": { opacity: "1" },
         },
+        "empathy-twin-breathe": {
+          "0%, 100%": { opacity: "0.78" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         "empathy-scan": "empathy-scan 8s linear infinite",
         "empathy-glow-pulse": "empathy-glow-pulse 3.5s ease-in-out infinite",
+        "empathy-twin-breathe": "empathy-twin-breathe 5.5s ease-in-out infinite",
       },
     },
   },

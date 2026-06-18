@@ -59,6 +59,10 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
   const [selectedCoach, setSelectedCoach] = useState("");
   const [coachBusy, setCoachBusy] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
+  const [pwd, setPwd] = useState("");
+  const [pwd2, setPwd2] = useState("");
+  const [pwdBusy, setPwdBusy] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const loadDetail = useCallback(async (): Promise<void> => {
     const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/detail`, { cache: "no-store" });
@@ -148,6 +152,38 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
     }
   }, [userId, loadDetail]);
 
+  const changePassword = useCallback(async (): Promise<void> => {
+    setPwdMsg(null);
+    if (pwd.length < 8) {
+      setPwdMsg({ ok: false, text: "La password deve avere almeno 8 caratteri." });
+      return;
+    }
+    if (pwd !== pwd2) {
+      setPwdMsg({ ok: false, text: "Le due password non coincidono." });
+      return;
+    }
+    setPwdBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/password`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: pwd }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setPwdMsg({ ok: false, text: data.error ?? "Aggiornamento non riuscito." });
+        return;
+      }
+      setPwd("");
+      setPwd2("");
+      setPwdMsg({ ok: true, text: "Password aggiornata. Comunicala all'utente." });
+    } catch {
+      setPwdMsg({ ok: false, text: "Aggiornamento non riuscito." });
+    } finally {
+      setPwdBusy(false);
+    }
+  }, [pwd, pwd2, userId]);
+
   if (loading) {
     return <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-xs text-gray-500">{COPY.loading}</div>;
   }
@@ -228,6 +264,47 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
               {detail.grants.filter((g) => !g.revoked_at).length}
             </span>{" "}
             grant attivi su <span className="font-mono tabular-nums text-zinc-200">{detail.grants.length}</span>
+          </p>
+        ) : null}
+      </section>
+
+      {/* Cambia password (platform admin → auth.admin.updateUserById via API service-role) */}
+      <section className="rounded-2xl border border-amber-400/20 bg-white/[0.03] p-5">
+        <h3 className="text-[11px] uppercase tracking-wider text-amber-300/80">Cambia password</h3>
+        <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+          Imposta una nuova password per questo utente. Non viene inviata via email: comunicagliela tu.
+        </p>
+        <div className="mt-3 space-y-2">
+          <input
+            type="password"
+            value={pwd}
+            onChange={(e) => setPwd(e.target.value)}
+            disabled={pwdBusy}
+            autoComplete="new-password"
+            placeholder="Nuova password (min 8 caratteri)"
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-amber-400/50 disabled:opacity-50"
+          />
+          <input
+            type="password"
+            value={pwd2}
+            onChange={(e) => setPwd2(e.target.value)}
+            disabled={pwdBusy}
+            autoComplete="new-password"
+            placeholder="Conferma nuova password"
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-amber-400/50 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => void changePassword()}
+            disabled={pwdBusy || !pwd || !pwd2}
+            className="w-full rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {pwdBusy ? "Aggiornamento…" : "Imposta nuova password"}
+          </button>
+        </div>
+        {pwdMsg ? (
+          <p className={`mt-2 text-[11px] ${pwdMsg.ok ? "text-emerald-400" : "text-red-400"}`} role="alert">
+            {pwdMsg.text}
           </p>
         ) : null}
       </section>

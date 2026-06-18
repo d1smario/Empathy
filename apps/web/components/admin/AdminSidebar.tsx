@@ -88,19 +88,13 @@ export function AdminSidebar() {
   return (
     <aside className="relative flex w-[16.5rem] shrink-0 flex-col border-r border-white/10 bg-black/40 shadow-[inset_-1px_0_0_rgba(244,63,94,0.12)] backdrop-blur-xl">
       <div className="relative border-b border-white/10 px-4 py-5">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-pulse rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-gradient-to-br from-orange-400 to-rose-500" />
+        <Link href="/admin" className="flex items-center gap-2.5" aria-label="Empathy Admin">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-7 w-auto" />
+          <span className="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-[0.15em] text-rose-300">
+            Admin
           </span>
-          <Link href="/admin" className="text-lg font-black tracking-[0.1em] text-white sm:text-xl">
-            EMPATHY
-          </Link>
-        </div>
-        <p className="mt-1 bg-gradient-to-r from-orange-400 via-rose-400 to-amber-400 bg-clip-text text-base font-black tracking-tight text-transparent sm:text-lg">
-          Admin
-        </p>
-        <p className="mt-1 font-mono text-[0.65rem] text-gray-500">PLATFORM · CONSOLE</p>
+        </Link>
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label="Pannelli admin">
         {ADMIN_ACCOUNT_NAV.map((item) => (
