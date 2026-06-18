@@ -78,6 +78,16 @@ export function DashboardTwinRadial({
             <stop offset="70%" stopColor="#f97316" />
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
+          <radialGradient id="twinUplight" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.45" />
+            <stop offset="45%" stopColor="#7c3aed" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="twinPlatform" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.85" />
+            <stop offset="45%" stopColor="#8b5cf6" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          </radialGradient>
           <mask id="twinBodyMask">
             <image
               href="/brand/empathy-twin-body.png"
@@ -98,12 +108,13 @@ export function DashboardTwinRadial({
         </defs>
         <style>{`@keyframes twinBreathe{0%,100%{opacity:.86}50%{opacity:1}}.twin-breathe{animation:twinBreathe 5.5s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.twin-breathe{animation:none}}`}</style>
 
-        <g fill="none" stroke="#5eead4" opacity="0.1">
+        <ellipse cx="340" cy="505" rx="240" ry="180" fill="url(#twinUplight)" />
+        <g fill="none" stroke="#5eead4" opacity="0.12">
           <circle cx="340" cy="300" r="118" />
           <circle cx="340" cy="300" r="170" />
           <circle cx="340" cy="300" r="222" />
         </g>
-        <ellipse cx="340" cy="500" rx="62" ry="8" fill="#22d3ee" opacity="0.12" />
+        <ellipse cx="340" cy="504" rx="130" ry="28" fill="url(#twinPlatform)" />
 
         {SLOT_KEYS.map((k) => {
           const s = SLOTS[k];
@@ -134,6 +145,8 @@ export function DashboardTwinRadial({
           mask="url(#twinBodyMask)"
           filter="url(#twinGlow)"
         />
+        <ellipse cx="340" cy="506" rx="40" ry="12" fill="url(#twinPlatform)" opacity="0.8" />
+        <circle cx="340" cy="505" r="3" fill="#ffffff" filter="url(#twinGlow)" />
       </svg>
 
       {SLOT_KEYS.map((k) => {
