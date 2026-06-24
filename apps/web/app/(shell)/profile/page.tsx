@@ -42,6 +42,7 @@ export default async function ProfilePage() {
   // L'atleta non può leggere `coach_athletes` (RLS = solo il coach), quindi il
   // controllo è server-side con service role, limitato al SUO athlete_id.
   let hasLinkedCoach = false;
+  let linkedCoach: { name: string; email: string | null } | null = null;
   if (session.athleteId) {
     const admin = createSupabaseAdminClient();
     if (admin) {
@@ -51,6 +52,21 @@ export default async function ProfilePage() {
         .eq("athlete_id", session.athleteId)
         .limit(1);
       hasLinkedCoach = (data?.length ?? 0) > 0;
+      const coachUserId = (data?.[0]?.coach_user_id as string | undefined) ?? undefined;
+      if (coachUserId) {
+        // Nome/email del coach collegato (service role: l'atleta non legge coach_athletes).
+        try {
+          const { data: u } = await admin.auth.admin.getUserById(coachUserId);
+          const meta = (u?.user?.user_metadata ?? {}) as Record<string, unknown>;
+          const fullName = [meta.first_name, meta.last_name]
+            .filter((v): v is string => typeof v === "string" && v.trim() !== "")
+            .join(" ")
+            .trim();
+          linkedCoach = { name: fullName || u?.user?.email || "Coach", email: u?.user?.email ?? null };
+        } catch {
+          linkedCoach = { name: "Coach", email: null };
+        }
+      }
     }
   }
 
@@ -62,5 +78,5 @@ export default async function ProfilePage() {
     hasActivePlan = ent.hasAthleteAccess === true;
   }
 
-  return <ProfilePageView hasLinkedCoach={hasLinkedCoach} hasActivePlan={hasActivePlan} />;
+  return <ProfilePageView hasLinkedCoach={hasLinkedCoach} hasActivePlan={hasActivePlan} linkedCoach={linkedCoach} />;
 }

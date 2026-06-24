@@ -20,8 +20,12 @@ export function ShellMainFrame({ generative, athleteGate, children, className }:
       tabIndex={-1}
       className={
         className ??
+        // NB: niente backdrop-blur/filter/transform qui — creerebbe un containing-block
+        // per i discendenti `position: fixed` (es. il modale Editor profilo), rendendoli
+        // relativi a <main> (alto quanto la pagina) invece che al viewport → l'overlay
+        // diventa alto quanto la pagina e non scrolla. La velatura resta via bg-black/50.
         (generative
-          ? "min-w-0 flex-1 scroll-mt-0 bg-black/50 outline-none backdrop-blur-[2px]"
+          ? "min-w-0 flex-1 scroll-mt-0 bg-black/50 outline-none"
           : "min-w-0 flex-1 scroll-mt-0 outline-none")
       }
     >

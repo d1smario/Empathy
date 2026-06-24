@@ -34,7 +34,7 @@ import {
   SUPPLEMENT_CATEGORIES,
 } from "@/lib/profile/supplement-category-catalog";
 import { resolveSixMealSnackPercentages } from "@/lib/nutrition/diet-meal-slot-budgets";
-import { Activity, Dna, Flame, GaugeCircle, Heart, Layers, PencilLine, Settings2 } from "lucide-react";
+import { Activity, Dna, Flame, GaugeCircle, Heart, Layers, PencilLine, Settings2, UserCheck, X } from "lucide-react";
 
 type AthleteProfileRow = {
   id: string;
@@ -398,9 +398,11 @@ const PROFILE_VM_FRESH_MS = 60_000;
 export default function ProfilePage({
   hasLinkedCoach = false,
   hasActivePlan = false,
+  linkedCoach = null,
 }: {
   hasLinkedCoach?: boolean;
   hasActivePlan?: boolean;
+  linkedCoach?: { name: string; email: string | null } | null;
 }) {
   const { activeAthleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
   // Output del motore (segnali fisiologici, copertura dataset, digital twin) e note
@@ -576,6 +578,21 @@ export default function ProfilePage({
   useEffect(() => {
     if (!athleteLoading) load();
   }, [athleteLoading, activeAthleteId]);
+
+  // Esc chiude il modale "Modifica profilo". (Il blocco dello scroll di sfondo è
+  // fatto con un tag <style> dentro il render del modale, non qui: così si applica
+  // in modo sincrono col layout e sopravvive all'HMR / Fast Refresh.)
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowForm(false);
+        setEditingProfileId(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showForm]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1018,9 +1035,8 @@ export default function ProfilePage({
     if (nutritionTab === "supplements") {
       setActiveSupplementCategory(normalizeSupplementCategoryId(activeSupplementCategory));
     }
-    // La pagina NON si muove: l'editor ha ingombro fisso (wrapper ad altezza fissa
-    // con scroll interno). Resettiamo solo lo scroll INTERNO del pannello, così ogni
-    // sezione riparte dall'alto senza toccare lo scroll della pagina.
+    // Cambiando sezione riportiamo in cima lo scroll del modale (la barra esterna
+    // dell'overlay), così ogni tab riparte dall'alto con la barra tab sticky visibile.
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
   }
 
@@ -1413,6 +1429,7 @@ export default function ProfilePage({
 
         {currentProfile ? (
           <>
+            <div className={cn("grid gap-6 lg:items-start", role === "private" ? "lg:grid-cols-2" : "lg:grid-cols-1")}>
             <section className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-br from-fuchsia-950/[0.12] via-orange-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
               <div className="flex flex-wrap items-center gap-5">
                 <div
@@ -1440,7 +1457,40 @@ export default function ProfilePage({
               </div>
             </section>
 
-            {role === "private" && !hasLinkedCoach ? <InviteCoachCard /> : null}
+            {role === "private" ? (
+              hasLinkedCoach ? (
+                <Pro2SectionCard
+                  accent="emerald"
+                  icon={UserCheck}
+                  title="Il tuo coach"
+                  subtitle="Coach collegato al tuo profilo"
+                >
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-400/40 bg-emerald-500/20 text-lg font-black text-white"
+                      aria-hidden
+                    >
+                      {(linkedCoach?.name?.[0] ?? "C").toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold text-white">{linkedCoach?.name ?? "Coach"}</p>
+                      {linkedCoach?.email ? (
+                        <p className="mt-0.5 break-all text-sm text-gray-400">{linkedCoach.email}</p>
+                      ) : null}
+                    </div>
+                    <span className="inline-flex shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                      Collegato
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[0.8rem] leading-relaxed text-gray-500">
+                    Hai già un coach collegato: puoi averne uno solo. Per cambiarlo, scrivi al supporto.
+                  </p>
+                </Pro2SectionCard>
+              ) : (
+                <InviteCoachCard />
+              )
+            ) : null}
+            </div>
 
             <Pro2SectionCard
               accent="orange"
@@ -1548,23 +1598,50 @@ export default function ProfilePage({
       ) : null}
 
       {!isCoachWithoutAthlete && showForm && (
-        <Pro2SectionCard
-          accent="slate"
-          icon={PencilLine}
-          title="Editor profilo"
-          subtitle="Modifica i tuoi dati"
+        <div
+          ref={editorScrollRef}
+          className="fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-black/75 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Modifica profilo"
         >
-        <div className="mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+          {/* Blocca lo scroll della pagina di sfondo mentre il modale è aperto:
+              elimina la seconda scrollbar (quella del documento html/body). */}
+          <style>{`html,body{overflow:hidden!important}`}</style>
+          <div
+            className="min-h-full px-3 py-6 sm:px-6 sm:py-10"
+            onClick={() => {
+              setShowForm(false);
+              setEditingProfileId(null);
+            }}
+          >
+            <div className="relative mx-auto w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                aria-label="Chiudi editor"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingProfileId(null);
+                }}
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-black/40 text-gray-300 transition hover:bg-white/10"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+              <Pro2SectionCard
+                accent="slate"
+                icon={PencilLine}
+                title="Editor profilo"
+                subtitle="Modifica i tuoi dati"
+              >
+        <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/85 p-2 backdrop-blur">
           <button type="button" className={editorTabClass(activeSection === "personal", "violet")} onClick={() => goToEditorSection("personal")}>Personale</button>
           <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>Fisico</button>
           <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
-          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "diet", "rose")} onClick={() => goToEditorSection("nutrition", "diet")}>Dieta</button>
-          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "intolerances", "rose")} onClick={() => goToEditorSection("nutrition", "intolerances")}>Intolleranze</button>
-          <button type="button" className={editorTabClass(activeSection === "nutrition" && activeNutritionTab === "supplements", "rose")} onClick={() => goToEditorSection("nutrition", "supplements")}>Integratori</button>
+          <button type="button" className={editorTabClass(activeSection === "nutrition", "rose")} onClick={() => goToEditorSection("nutrition")}>Alimentazione</button>
           <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
         </div>
-        <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} mb-6 p-4 sm:p-5`}>
-          <div ref={editorScrollRef} className="h-[55vh] overflow-y-auto sm:h-[60vh]">
+        <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} p-4 sm:p-5`}>
+          <div className="pt-4 sm:pt-5">
           {activeSection === "personal" && (
             <div>
               <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />Dati personali</h3>
@@ -1928,13 +2005,6 @@ export default function ProfilePage({
               <div className="form-group"><label className="form-label">FC Massima</label><input className="form-input" type="number" value={form.max_hr_bpm} onChange={(e) => setForm((f) => ({ ...f, max_hr_bpm: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">FC Soglia</label><input className="form-input" type="number" value={form.threshold_hr_bpm} onChange={(e) => setForm((f) => ({ ...f, threshold_hr_bpm: e.target.value }))} /></div>
               </div>
-              <div className="profile-subpanel tone-cyan" style={{ marginTop: "12px" }}>
-                <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Body Scan</h4>
-                <p className="muted-copy">
-                  Modulo per scansione corpo via camera smartphone: stima volume, peso specifico, body composition,
-                  rapporto massa magra/grassa, liquidi corporei e massa ossea stimata.
-                </p>
-              </div>
             </div>
           )}
 
@@ -1983,10 +2053,9 @@ export default function ProfilePage({
 
           {activeSection === "nutrition" && (
             <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("nutrition")}`}><span className="profile-kpi-dot" />Alimentazione</h3>
-              <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "12px" }}>
-                <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>Diet</button>
-                <button type="button" className={`page-tab ${activeNutritionTab === "intolerances" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("intolerances")}>Intolerances</button>
+              <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "24px" }}>
+                <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>Dieta</button>
+                <button type="button" className={`page-tab ${activeNutritionTab === "intolerances" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("intolerances")}>Intolleranze</button>
                 <button type="button" className={`page-tab ${activeNutritionTab === "supplements" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("supplements")}>Integratori</button>
               </div>
 
@@ -2109,7 +2178,8 @@ export default function ProfilePage({
 
               {activeNutritionTab === "supplements" && (
                 <div>
-                  <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "10px" }}>
+                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Categoria</h4>
+                  <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "28px" }}>
                     {SUPPLEMENT_CATEGORIES.map((cat) => (
                       <button
                         key={cat.id}
@@ -2121,7 +2191,8 @@ export default function ProfilePage({
                       </button>
                     ))}
                   </div>
-                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "12px" }}>
+                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Integratori disponibili</h4>
+                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "28px" }}>
                     {(findSupplementCategory(activeSupplementCategory)?.items ?? []).map((item) => {
                       const categoryId = normalizeSupplementCategoryId(activeSupplementCategory);
                       const token = `${categoryId}:${item}`;
@@ -2133,8 +2204,8 @@ export default function ProfilePage({
                       );
                     })}
                   </div>
-                  <h4 className="section-title" style={{ fontSize: "14px" }}>Brand preferiti (40)</h4>
-                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "12px" }}>
+                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Brand preferiti (40)</h4>
+                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "28px" }}>
                     {SUPPLEMENT_BRANDS.map((brand) => {
                       const selected = form.supplement_brands.split(",").map((s) => s.trim()).filter(Boolean).includes(brand);
                       return (
@@ -2169,7 +2240,10 @@ export default function ProfilePage({
             </Pro2Button>
           </div>
         </form>
-        </Pro2SectionCard>
+              </Pro2SectionCard>
+            </div>
+          </div>
+        </div>
       )}
 
       {loading ? (
