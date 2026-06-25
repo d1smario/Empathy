@@ -186,10 +186,19 @@ export function prepareBioenergeticChannel(ch: BioenergeticMonitoringChannel24):
  * modalità `lite` (dashboard mobile): mostra solo l'andamento. Il grafico ricco
  * (assi/tooltip recharts) resta nel modale d'espansione, montato una sola volta.
  */
+/** Formato adattivo: piu' decimali sui valori piccoli (es. glucosio 5.62), meno sui grandi (es. IGF-1 172). */
+function formatSparkValue(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
+
 export function BioenergeticSparkline({
   channel: ch,
   prepared,
-  height = 52,
+  height = 36,
 }: {
   channel: BioenergeticMonitoringChannel24;
   prepared: PreparedChannel;
@@ -203,41 +212,57 @@ export function BioenergeticSparkline({
   const W = 100;
   const H = height;
 
-  if (values.length < 2) {
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
-        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={stroke} strokeOpacity={0.5} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-      </svg>
-    );
+  if (values.length === 0) {
+    return <p className="text-[0.65rem] text-gray-600">Nessun dato</p>;
   }
 
-  let mn = Math.min(...values);
-  let mx = Math.max(...values);
+  const current = values[values.length - 1];
+  const vMin = Math.min(...values);
+  const vMax = Math.max(...values);
+
+  let mn = vMin;
+  let mx = vMax;
   if (mn === mx) {
     mn -= 1;
     mx += 1;
   }
-  const pad = 4;
-  const n = values.length;
-  const points = values
+  const pad = 3;
+  const nPts = values.length;
+  const linePoints = values
     .map((v, i) => {
-      const x = (i / (n - 1)) * W;
+      const x = (i / (nPts - 1)) * W;
       const y = pad + (H - 2 * pad) * (1 - (v - mn) / (mx - mn));
       return `${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <div>
+      {/* Valori leggibili a colpo d'occhio (sostituiscono assi/tooltip recharts su mobile; dettaglio pieno al tocco). */}
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-sm font-semibold tabular-nums text-white">
+          {formatSparkValue(current)}
+          <span className="ml-1 text-[0.6rem] font-normal uppercase tracking-wide text-gray-500">{ch.unit}</span>
+        </span>
+        <span className="text-[0.6rem] tabular-nums text-gray-500">
+          min {formatSparkValue(vMin)} · max {formatSparkValue(vMax)}
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
+        {nPts < 2 ? (
+          <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={stroke} strokeOpacity={0.5} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        ) : (
+          <polyline
+            points={linePoints}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={1.6}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+      </svg>
+    </div>
   );
 }

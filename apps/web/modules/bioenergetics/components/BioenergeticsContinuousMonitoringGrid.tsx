@@ -36,7 +36,7 @@ type Props = {
 };
 
 const CHART_H = 92;
-const CHART_H_LITE = 52;
+const CHART_H_LITE = 36;
 
 export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = false, lite = false }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
