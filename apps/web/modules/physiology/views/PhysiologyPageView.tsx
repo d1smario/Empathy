@@ -84,6 +84,7 @@ import {
   type WorkoutSample,
 } from "@/modules/physiology/lib/metabolic-lab-kit";
 import { MetabolicLabDetailsSection } from "@/modules/physiology/views/sections/MetabolicLabDetailsSection";
+import { useLactateLabState } from "@/modules/physiology/hooks/use-lactate-lab-state";
 
 // Cache cross-mount dello storico physiology + FTP: ri-atterrando sulla pagina i
 // dati compaiono subito (niente spinner "Caricamento storico…"); l'aggiornamento
@@ -111,7 +112,22 @@ export default function MetabolicLabPage() {
   const [workouts, setWorkouts] = useState<WorkoutSample[]>([]);
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string>("");
   const [showValidationConsole, setShowValidationConsole] = useState(false);
-  const [lactateRerMode, setLactateRerMode] = useState<RerInputMode>("auto");
+  const {
+    lactateInput,
+    setLactateInput,
+    lactateSport,
+    setLactateSport,
+    lactateVo2Mode,
+    setLactateVo2Mode,
+    lactateRerMode,
+    setLactateRerMode,
+    lactateSegmentAttachment,
+    setLactateSegmentAttachment,
+    lactateCalcTick,
+    setLactateCalcTick,
+    lactateLastRecalcAt,
+    setLactateLastRecalcAt,
+  } = useLactateLabState();
   const [microbiotaSourceMode, setMicrobiotaSourceMode] = useState<MicrobiotaSourceMode>("health_bio");
   const [dysbiosisPreset, setDysbiosisPreset] = useState<DysbiosisPreset>("eubiosi");
   const [hasHealthMicrobiotaProfile, setHasHealthMicrobiotaProfile] = useState(false);
@@ -129,18 +145,13 @@ export default function MetabolicLabPage() {
   }>({ metabolic: null, lactate: null, maxox: null });
   const [fatOxAdaptation, setFatOxAdaptation] = useState(0.5);
   const [profileCalcTick, setProfileCalcTick] = useState(0);
-  const [lactateCalcTick, setLactateCalcTick] = useState(0);
-  const [lactateSegmentAttachment, setLactateSegmentAttachment] = useState<SegmentAttachmentMeta>(null);
   const [maxOxCalcTick, setMaxOxCalcTick] = useState(0);
   const [profileLastRecalcAt, setProfileLastRecalcAt] = useState<number | null>(null);
-  const [lactateLastRecalcAt, setLactateLastRecalcAt] = useState<number | null>(null);
   const [maxOxLastRecalcAt, setMaxOxLastRecalcAt] = useState<number | null>(null);
   const [maxOxSegmentLastVo2LMin, setMaxOxSegmentLastVo2LMin] = useState<number | null>(null);
   const [maxOxSegmentLastO2TotalL, setMaxOxSegmentLastO2TotalL] = useState<number | null>(null);
   const [maxOxSegmentLastDurationMin, setMaxOxSegmentLastDurationMin] = useState<number | null>(null);
-  const [lactateSport, setLactateSport] = useState<SupportedSport>("cycling");
   const [maxOxSport, setMaxOxSport] = useState<SupportedSport>("cycling");
-  const [lactateVo2Mode, setLactateVo2Mode] = useState<Vo2InputMode>("device");
   const [maxOxVo2Mode, setMaxOxVo2Mode] = useState<Vo2InputMode>("device");
   const [profileRecalcHint, setProfileRecalcHint] = useState<string | null>(null);
   const [labVo2ManualInput, setLabVo2ManualInput] = useState("");
@@ -150,8 +161,6 @@ export default function MetabolicLabPage() {
   const [gasParseResult, setGasParseResult] = useState<GasExchangeParseResult | null>(null);
 
   const [cpInputs, setCpInputs] = useState<Record<string, string>>(() => initialEmptyCpInputs());
-
-  const [lactateInput, setLactateInput] = useState({ ...LACTATE_DEFAULT_INPUT });
 
   const [maxOxInput, setMaxOxInput] = useState({ ...MAXOX_DEFAULT_INPUT });
 
