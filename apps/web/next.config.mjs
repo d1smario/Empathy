@@ -124,8 +124,20 @@ const nextConfig = {
     "@empathy/integrations-stripe",
     "@empathy/integrations-supabase",
   ],
+  /**
+   * Typecheck + ESLint sono spostati in CI (.github/workflows/ci.yml → `npm run verify`):
+   * non bloccano più il build di deploy su Vercel, che così evita di ri-type-checkare
+   * ~207k righe ad ogni deploy. tsc e lint girano comunque in CI su ogni push/PR (e in
+   * locale prima di ogni commit) — `npm run verify` chiama `tsc` SEPARATAMENTE, quindi
+   * questi due flag (che valgono solo per lo step interno a `next build`) non riducono
+   * la copertura: riducono solo il tempo di deploy.
+   */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   eslint: {
     dirs: ["app", "components", "core", "lib"],
+    ignoreDuringBuilds: true,
   },
   webpack: (config, { dev }) => {
     config.resolve.alias = {
