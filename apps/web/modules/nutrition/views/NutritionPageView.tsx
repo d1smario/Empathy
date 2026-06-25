@@ -11,7 +11,6 @@ import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledge
 import { Pro2Accordion } from "@/components/ui/empathy";
 import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
 import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
-import { CHART_AXIS, CHART_MODULE_ACCENT, CHART_SIGNAL, chartHexToRgba } from "@/lib/ui/chart-theme";
 import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
 import type {
   AdaptationGuidance,
@@ -31,7 +30,11 @@ import { fetchUsdaFoodsForCatalogIds } from "@/modules/nutrition/services/pathwa
 import { buildFunctionalFoodRecommendationsViewModel } from "@/lib/nutrition/functional-food-recommendations";
 import { buildFunctionalMealSelectorViewModel } from "@/lib/nutrition/functional-meal-selector";
 import {
+  BRAND_ALIASES,
+  FUELING_CHART_THEME_PRO2,
+  FUELING_MISSING_DAY_TRAINING,
   FUNCTIONAL_EXAMPLE_CELL_CLASSES,
+  SPORTS,
   clamp,
   fuelingPhaseColor,
   functionalCandidateRowClass,
@@ -52,6 +55,17 @@ import {
   type AthleteNutritionRow,
   type PhysioRow,
 } from "@/lib/nutrition/nutrition-athlete-profile-mappers";
+import type {
+  ExecutedRow,
+  FoodLookupItem,
+  FuelingSlot,
+  FuelingTrainingContextRow,
+  GarminFuelingStep,
+  MediaAssetRow,
+  PlannedRow,
+  RecoverySummaryRow,
+  TwinStateRow,
+} from "@/lib/nutrition/nutrition-view-types";
 import { buildEffectiveDayTrainingContext } from "@/lib/training/day-reality-context";
 import {
   fetchNutritionModuleContext,
@@ -181,147 +195,9 @@ import {
 } from "@/lib/nutrition/persisted-nutrition-plan-date";
 
 
-type TwinStateRow = {
-  readiness?: number;
-  fatigueAcute?: number;
-  glycogenStatus?: number;
-  adaptationScore?: number;
-  redoxStressIndex?: number;
-  inflammationRisk?: number;
-};
-
-type RecoverySummaryRow = {
-  status: "good" | "moderate" | "poor" | "unknown";
-  guidance: string;
-  sleepScore: number | null;
-  readinessScore: number | null;
-  recoveryScore: number | null;
-  hrvMs: number | null;
-  restingHrBpm: number | null;
-  sleepDurationHours: number | null;
-  strainScore: number | null;
-  sourceDate: string | null;
-  provider: string | null;
-  importedAt: string | null;
-};
-
-type ExecutedRow = {
-  id: string;
-  date: string;
-  duration_minutes: number;
-  tss: number;
-  kcal?: number | null;
-  kj?: number | null;
-  trace_summary?: Record<string, unknown> | null;
-  lactate_mmoll: number | null;
-  glucose_mmol: number | null;
-  smo2: number | null;
-};
-
-type PlannedRow = NutritionPlannedWorkoutRow & {
-  id: string;
-  date: string;
-  type: string | null;
-  duration_minutes: number;
-  tss_target: number | null;
-  kcal_target: number | null;
-  notes: string | null;
-};
-
-/** Palette grafico fueling / glicogeno — valori convergenti su lib/ui/chart-theme.ts (Grammatica §12). */
-const FUELING_CHART_THEME_PRO2 = {
-  areaTop: CHART_SIGNAL.cho,
-  areaBottom: CHART_SIGNAL.cho,
-  line: CHART_SIGNAL.cho,
-  dot: CHART_MODULE_ACCENT.nutrition,
-  text: CHART_AXIS.tick,
-  axis: CHART_AXIS.line,
-  zoneGreen: chartHexToRgba(CHART_SIGNAL.hrv, 0.2),
-  zoneYellow: chartHexToRgba(CHART_MODULE_ACCENT.nutrition, 0.2),
-  zoneRed: chartHexToRgba("#fb7185", 0.18),
-} as const;
-
-type FoodLookupItem = {
-  source: "usda" | "brand-site";
-  lookupTier?: string;
-  fdcId?: number | null;
-  catalogId?: string | null;
-  label: string;
-  brand: string | null;
-  kcal_100: number | null;
-  carbs_100: number | null;
-  protein_100: number | null;
-  fat_100: number | null;
-  sodium_mg_100: number | null;
-};
-
-type GarminFuelingStep = {
-  phase: string;
-  minute_offset: number;
-  icon: string;
-  protocol: string;
-  cho_g: number;
-  hydration_ml: number;
-  notes: string;
-};
-
-type FuelingSlot = {
-  phase: string;
-  time: string;
-  icon: string;
-  plan: string;
-  cho: number;
-  fluid: number;
-  notes: string;
-  category: FuelingCategory;
-};
-
-type FuelingTrainingContextRow = {
-  id: string;
-  builderContract: Pro2BuilderSessionContract | null;
-  title: string;
-  family: string | null;
-  discipline: string | null;
-  target: string | null;
-  durationMin: number;
-  tss: number;
-  kcal: number;
-  structure: string | null;
-  blockLabels: string[];
-  intensityCues: string[];
-  substrate: {
-    estimatedIntensityPctFtp: number;
-    lactateProducedG: number;
-    glucoseFromCoriG: number;
-    glucoseNetFromCoriG: number;
-    exogenousOxidizedG: number;
-    choAvailableG: number;
-    glycolyticSharePct: number;
-    gutPathwayRisk: string;
-    bloodDeliveryPctOfIngested: number;
-    glycogenCombustedNetG: number;
-    glucoseRequiredForStrategyG: number;
-  } | null;
-  physiologicalIntent: string[];
-  nutritionSupports: string[];
-  inhibitorsAndRisks: string[];
-  choEnergyWeight: number;
-};
-
-type MediaAssetRow = {
-  entity_type?: "meal" | "fueling" | "exercise";
-  entity_key: string;
-  media_kind: "image" | "video" | "gif";
-  url: string;
-  active: boolean;
-  sort_order: number;
-};
 
 
-const SPORTS = ["Running", "Ciclismo", "Nuoto", "XC Ski", "Triathlon", "Canoa", "MTB"];
 
-/** Voce unica nel gate fueling quando manca la seduta pianificata quel giorno (solo piano, non eseguito retroattivo). */
-const FUELING_MISSING_DAY_TRAINING = "seduta pianificata nel calendario per il giorno scelto";
 
 export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary";
 
@@ -332,13 +208,6 @@ export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predi
 let nutritionModuleCacheId: string | null = null;
 let nutritionModuleCache: Awaited<ReturnType<typeof fetchNutritionModuleContext>> | null = null;
 
-const BRAND_ALIASES: Array<{ label: string; aliases: string[] }> = [
-  { label: "Enervit", aliases: ["enervit"] },
-  { label: "Maurten", aliases: ["maurten"] },
-  { label: "SiS", aliases: ["sis", "science in sport", "scienceinsport"] },
-  { label: "+Watt", aliases: ["+watt", "watt", "plus watt"] },
-  { label: "Powerbar", aliases: ["powerbar", "power bar"] },
-];
 
 function isTrustedFuelingImage(url: string | undefined | null): boolean {
   if (!url) return false;

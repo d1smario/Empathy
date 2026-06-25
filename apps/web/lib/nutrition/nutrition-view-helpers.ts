@@ -6,6 +6,34 @@
  * comportamento invariato).
  */
 
+import { CHART_AXIS, CHART_MODULE_ACCENT, CHART_SIGNAL, chartHexToRgba } from "@/lib/ui/chart-theme";
+
+export const SPORTS = ["Running", "Ciclismo", "Nuoto", "XC Ski", "Triathlon", "Canoa", "MTB"];
+
+/** Voce unica nel gate fueling quando manca la seduta pianificata quel giorno (solo piano, non eseguito retroattivo). */
+export const FUELING_MISSING_DAY_TRAINING = "seduta pianificata nel calendario per il giorno scelto";
+
+export const BRAND_ALIASES: Array<{ label: string; aliases: string[] }> = [
+  { label: "Enervit", aliases: ["enervit"] },
+  { label: "Maurten", aliases: ["maurten"] },
+  { label: "SiS", aliases: ["sis", "science in sport", "scienceinsport"] },
+  { label: "+Watt", aliases: ["+watt", "watt", "plus watt"] },
+  { label: "Powerbar", aliases: ["powerbar", "power bar"] },
+];
+
+/** Palette grafico fueling / glicogeno — valori convergenti su lib/ui/chart-theme.ts (Grammatica §12). */
+export const FUELING_CHART_THEME_PRO2 = {
+  areaTop: CHART_SIGNAL.cho,
+  areaBottom: CHART_SIGNAL.cho,
+  line: CHART_SIGNAL.cho,
+  dot: CHART_MODULE_ACCENT.nutrition,
+  text: CHART_AXIS.tick,
+  axis: CHART_AXIS.line,
+  zoneGreen: chartHexToRgba(CHART_SIGNAL.hrv, 0.2),
+  zoneYellow: chartHexToRgba(CHART_MODULE_ACCENT.nutrition, 0.2),
+  zoneRed: chartHexToRgba("#fb7185", 0.18),
+} as const;
+
 export function parseFuelingMinuteOffset(timeLabel: string): number {
   const match = timeLabel.match(/([+-]?\d+)/);
   return match ? Number(match[1]) : 0;
