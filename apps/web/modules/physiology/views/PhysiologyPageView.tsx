@@ -83,6 +83,7 @@ import {
   type Vo2InputMode,
   type WorkoutSample,
 } from "@/modules/physiology/lib/metabolic-lab-kit";
+import { MetabolicLabDetailsSection } from "@/modules/physiology/views/sections/MetabolicLabDetailsSection";
 
 // Cache cross-mount dello storico physiology + FTP: ri-atterrando sulla pagina i
 // dati compaiono subito (niente spinner "Caricamento storico…"); l'aggiornamento
@@ -2231,259 +2232,30 @@ export default function MetabolicLabPage() {
       ) : null}
 
       {section === "dettagli" ? (
-        <div className="space-y-8">
-      <Pro2SectionCard
-        accent="emerald"
-        icon={Network}
-        title="Multiscala biologica · collo di bottiglia (interpretazione)"
-        subtitle="Solo narrativa e tag interpretativi: non modifica i dati del tuo profilo"
-      >
-        <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          Priorità L1–L6 e nodi ontologia attivati in modo <strong>deterministico</strong>. I numeri canonici restano nei motori
-          fisiologia / bioenergetica.
-        </p>
-        <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
-      </Pro2SectionCard>
-
-      <Pro2Accordion
-        id="mod-dettagli-motore"
-        title="Dettagli e motore"
-        subtitle="Come leggere le tre analisi e cosa salviamo per te"
-        accent="slate"
-      >
-        <div className="space-y-3 text-sm leading-relaxed text-gray-400">
-          <p>
-            <strong className="text-gray-200">Profilo metabolico</strong> — Dalla tua curva di potenza ricaviamo soglie (CP, FTP, LT),
-            VO₂max stimato e le zone di allenamento con il consumo di carboidrati e grassi previsto. Quando salvi, il valore resta
-            sul tuo profilo e alla prossima apertura ritrovi l&apos;ultima analisi.
-          </p>
-          <p>
-            <strong className="text-gray-200">Analisi lattato</strong> — Stima quanto carburante (carboidrati) usi a una certa intensità,
-            quanto ne assorbi e quanto ne riconverti. Serve a capire come alimentarti durante gli sforzi lunghi.
-          </p>
-          <p>
-            <strong className="text-gray-200">Capacità ossidativa</strong> — Misura quanto a fondo riesci a usare l&apos;ossigeno e dove sta
-            il limite (cuore/sangue, muscolo, o tetto aerobico). Utile per gli sforzi aerobici prolungati.
-          </p>
-          <p className="text-xs text-gray-500">
-            I numeri si aggiornano da soli quando cambi gli input; lo storico conserva ogni analisi che salvi, così puoi confrontare i progressi.
-          </p>
-        </div>
-      </Pro2Accordion>
-
-      {canAccessValidationConsole ? (
-        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <small className="text-xs text-gray-400">Validation console interna (visibile solo a coach/staff).</small>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
-              onClick={() => setShowValidationConsole((s) => !s)}
-            >
-              {showValidationConsole ? "Nascondi validazione" : "Mostra validazione"}
-            </Pro2Button>
-          </div>
-        </div>
-      ) : null}
-      {canAccessValidationConsole && showValidationConsole ? (
-      <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
-              Lactate reliability:{" "}
-              <strong className="font-mono tabular-nums" style={{ color: reliabilityBadge(lactateReliability).color }}>{lactateReliability}%</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
-              MaxOx reliability:{" "}
-              <strong className="font-mono tabular-nums" style={{ color: reliabilityBadge(maxOxReliability).color }}>{maxOxReliability}%</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
-              Lactate uncertainty: <strong className="font-mono tabular-nums">±{lactateUncertaintyPct}%</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
-              MaxOx uncertainty: <strong className="font-mono tabular-nums">±{maxOxResolved.uncertaintyPct}%</strong>
-            </span>
-          </div>
-          <Pro2Button type="button" variant="primary" onClick={runEvidenceCheck} disabled={evidenceLoading}>
-            {evidenceLoading ? "Checking evidence..." : "Validate with PubMed"}
-          </Pro2Button>
-        </div>
-        {evidenceError && <div className="alert-error" style={{ marginTop: "10px", marginBottom: 0 }}>{evidenceError}</div>}
-        {evidenceItems.length > 0 && (
-          <div className="mt-2.5 grid gap-2">
-            {evidenceItems.slice(0, 5).map((item) => (
-              <a
-                key={item.pmid}
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-gray-200 no-underline transition-colors hover:border-emerald-500/40 hover:bg-white/[0.05]"
-              >
-                <strong className="mb-0.5 block text-white">{item.title}</strong>
-                <small className="text-gray-500">
-                  {item.journal ?? "Journal n/a"} · {item.pub_date ?? "date n/a"} · PMID {item.pmid}
-                </small>
-              </a>
-            ))}
-          </div>
-        )}
-        {(
-          <div className="mt-3">
-            <h4 className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
-              Pro Check · source + literature alignment
-            </h4>
-            <div className="mb-2 grid gap-2 sm:grid-cols-2">
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
-                <strong className="text-emerald-300">Aligned (published): {alignedRows.length}</strong>
-                <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {alignedRows.length === 0 ? <span>Nessun valore allineato.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3">
-                <strong className="text-rose-300">Blocked (not published): {blockedRows.length}</strong>
-                <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {blockedRows.length === 0 ? <span>Tutti i valori sono allineati.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
-                </div>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-xs">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Value</th>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Source</th>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Study range</th>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Evidence</th>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {proCheckRows.map((row) => (
-                    <tr key={row.key} className="transition-colors hover:bg-white/[0.03]">
-                      <td className="px-3 py-2 text-gray-300">
-                        <strong className="text-white">{row.label}</strong>
-                        <div className="mt-0.5 font-mono text-[0.7rem] tabular-nums text-gray-400">{row.valueText}</div>
-                      </td>
-                      <td className="px-3 py-2 text-gray-300">{row.source}</td>
-                      <td className="px-3 py-2 text-gray-300">
-                        {row.rangeText} {row.inRange ? "✓" : "✕"}
-                      </td>
-                      <td className="px-3 py-2 text-gray-300">{row.evidenceReady ? "synced" : "missing"}</td>
-                      <td className={cn("px-3 py-2 font-bold", row.aligned ? "text-emerald-300" : "text-rose-300")}>
-                        {row.aligned ? "ALIGNED" : "BLOCKED"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Regola: un valore e pubblicabile solo se source-check valido + range fisiologico in letteratura + evidenza disponibile.
-            </p>
-          </div>
-        )}
-      </div>
-      ) : null}
-
-      {showTech ? (
-      <Pro2SectionCard
-        accent="slate"
-        icon={Layers}
-        title="Storico Metabolic Lab"
-        subtitle="Elenco snapshot + import negli input — dettaglio tecnico sotto"
-      >
-        <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          I KPI nella pagina usano il <strong>motore attuale</strong> (
-          <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">{METABOLIC_CP_ENGINE_REVISION}</code>
-          ). Qui sotto è lo <strong>snapshot congelato</strong> al salvataggio.
-        </p>
-        {historyLoading ? (
-          <p className="text-sm text-gray-500">Caricamento storico…</p>
-        ) : history.length === 0 ? (
-          <p className="text-sm text-gray-500">Nessuno snapshot salvato.</p>
-        ) : (
-          <>
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <label className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Archivio snapshot
-                <select
-                  className="w-full max-w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                  value={selectedHistoryId ?? ""}
-                  onChange={(e) => setSelectedHistoryId(e.target.value ? e.target.value : null)}
-                >
-                  <option value="">Seleziona uno snapshot…</option>
-                  {history.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {new Date(row.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })} ·{" "}
-                      {labHistorySectionTitle(row.section)} · {row.model_version}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex flex-wrap gap-2 pb-0.5">
-                <Pro2Button
-                  type="button"
-                  variant="primary"
-                  className="text-xs"
-                  disabled={!selectedHistoryRow}
-                  onClick={() => {
-                    if (selectedHistoryRow) importHistoryRowToForms(selectedHistoryRow);
-                  }}
-                >
-                  Importa negli input
-                </Pro2Button>
-                <Pro2Button
-                  type="button"
-                  variant="secondary"
-                  className="text-xs"
-                  disabled={!selectedHistoryRow}
-                  onClick={() => setSelectedHistoryId(null)}
-                >
-                  Deseleziona
-                </Pro2Button>
-              </div>
-            </div>
-            {selectedHistoryRow ? (
-              <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs text-gray-400">
-                    <span className="font-semibold text-gray-200">
-                      {labHistorySectionTitle(selectedHistoryRow.section)}
-                    </span>
-                    {" · "}
-                    {new Date(selectedHistoryRow.created_at).toLocaleString("it-IT")}
-                    {" · "}
-                    <span className="font-mono">{selectedHistoryRow.model_version}</span>
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">input_payload</p>
-                    <pre className="max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-gray-300">
-                      {JSON.stringify(selectedHistoryRow.input_payload ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">output_payload</p>
-                    <pre className="max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[0.7rem] leading-relaxed text-gray-300">
-                      {JSON.stringify(selectedHistoryRow.output_payload ?? {}, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
-      </Pro2SectionCard>
-      ) : null}
-
-      {showTech ? (
-        <p className="text-xs text-gray-600">
-          Contesto: {role === "coach" ? "Coach" : "Privato"} · Atleta {athleteId.slice(0, 8)}…
-        </p>
-      ) : null}
-        </div>
+        <MetabolicLabDetailsSection
+          athleteId={athleteId}
+          showTech={showTech}
+          role={role}
+          showValidationConsole={showValidationConsole}
+          onToggleValidationConsole={() => setShowValidationConsole((s) => !s)}
+          lactateReliability={lactateReliability}
+          maxOxReliability={maxOxReliability}
+          lactateUncertaintyPct={lactateUncertaintyPct}
+          maxOxUncertaintyPct={maxOxResolved.uncertaintyPct}
+          evidenceLoading={evidenceLoading}
+          evidenceError={evidenceError}
+          evidenceItems={evidenceItems}
+          onRunEvidenceCheck={runEvidenceCheck}
+          proCheckRows={proCheckRows}
+          alignedRows={alignedRows}
+          blockedRows={blockedRows}
+          history={history}
+          historyLoading={historyLoading}
+          selectedHistoryId={selectedHistoryId}
+          onSelectHistoryId={setSelectedHistoryId}
+          selectedHistoryRow={selectedHistoryRow}
+          onImportHistoryRow={importHistoryRowToForms}
+        />
       ) : null}
       </div>
     </Pro2ModulePageShell>
