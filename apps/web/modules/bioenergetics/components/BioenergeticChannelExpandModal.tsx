@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { BioenergeticMonitoringChannel24 } from "@/api/bioenergetics/contracts";
 import {
-  BioenergeticChannelChart,
   channelAxisNote,
   fusionSummary,
   governanceIt,
@@ -13,6 +12,7 @@ import {
   planeLabel,
   prepareBioenergeticChannel,
 } from "./BioenergeticChannelChart";
+import { BioenergeticChannelChartLazy } from "./BioenergeticChannelChartLazy";
 
 /**
  * Modale d'espansione di un singolo grafico "Striscia 24 h": grafico in grande,
@@ -87,7 +87,9 @@ export function BioenergeticChannelExpandModal({
 
         <p className="mb-2 text-[0.65rem] text-gray-500">{channelAxisNote(channel, prepared.isStream, showTech)}</p>
 
-        <BioenergeticChannelChart channel={channel} prepared={prepared} height={420} />
+        <div className="w-full min-w-0" style={{ height: 420 }}>
+          <BioenergeticChannelChartLazy channel={channel} prepared={prepared} height={420} />
+        </div>
       </div>
     </div>,
     document.body,

@@ -1,20 +1,19 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type {
   BioenergeticChannelCurveResolutionV1,
   BioenergeticMonitoringChannel24,
   BioenergeticMonitoringDataPlane,
 } from "@/api/bioenergetics/contracts";
 import type { BioenergeticCurveGovernanceHintV1 } from "@empathy/contracts";
-import { CHART_AXIS, CHART_GRID, CHART_SIGNAL, chartTooltipStyle } from "@/lib/ui/chart-theme";
+import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
- * Renderer condiviso del singolo canale "Striscia 24 h": stesso grafico usato
- * dalla card compatta in griglia e dal modale d'espansione (DRY). `prepare…`
- * normalizza stream vs orario; `BioenergeticChannelChart` disegna a un'altezza
- * arbitraria. Helper di presentazione (piano dato / fusione / nota assi)
- * esportati per riuso.
+ * Base condivisa (recharts-FREE) del canale "Striscia 24 h": tipi, normalizzazione
+ * (`prepareBioenergeticChannel`), helper di presentazione e la sparkline SVG leggera.
+ * Il grafico ricco recharts vive in BioenergeticChannelChartRecharts.tsx e si carica
+ * con `next/dynamic` (BioenergeticChannelChartLazy), così recharts NON entra nel
+ * bundle di chi importa solo questa base (es. dashboard mobile in modalità sparkline).
  */
 
 export type StreamChartRow = {
@@ -45,7 +44,7 @@ export const STROKE_BY_CHANNEL_ID: Record<string, string> = {
   leptin: "#fbbf24",
 };
 
-const DEFAULT_STROKE = CHART_SIGNAL.glucose;
+export const DEFAULT_STROKE = CHART_SIGNAL.glucose;
 
 export function planeLabel(plane: BioenergeticMonitoringDataPlane): string {
   if (plane === "measured_stream") return "Stream";
@@ -145,10 +144,6 @@ function streamChartRows(
     .filter((r) => Number.isFinite(r.tsMs) && streamValuePlausible(channelId, r.v));
 }
 
-function formatStreamAxisTick(ms: number): string {
-  return new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
-}
-
 export type PreparedChannel = {
   streamRows: StreamChartRow[] | null;
   rows: HourlyRow[];
@@ -186,114 +181,63 @@ export function prepareBioenergeticChannel(ch: BioenergeticMonitoringChannel24):
   return { streamRows, rows, hasData, isStream, yDomain };
 }
 
-/** Grafico del singolo canale, ad altezza arbitraria (card compatta o modale). */
-export function BioenergeticChannelChart({
+/**
+ * Sparkline SVG leggera (zero recharts / zero ResizeObserver) per la griglia in
+ * modalità `lite` (dashboard mobile): mostra solo l'andamento. Il grafico ricco
+ * (assi/tooltip recharts) resta nel modale d'espansione, montato una sola volta.
+ */
+export function BioenergeticSparkline({
   channel: ch,
   prepared,
-  height,
+  height = 52,
 }: {
   channel: BioenergeticMonitoringChannel24;
   prepared: PreparedChannel;
-  height: number;
+  height?: number;
 }) {
-  const { streamRows, rows, yDomain } = prepared;
+  const { streamRows, rows, isStream } = prepared;
+  const values = isStream
+    ? (streamRows ?? []).map((r) => r.v)
+    : rows.map((r) => r.v).filter((v): v is number => v != null);
   const stroke = STROKE_BY_CHANNEL_ID[ch.id] ?? DEFAULT_STROKE;
+  const W = 100;
+  const H = height;
+
+  if (values.length < 2) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
+        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={stroke} strokeOpacity={0.5} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      </svg>
+    );
+  }
+
+  let mn = Math.min(...values);
+  let mx = Math.max(...values);
+  if (mn === mx) {
+    mn -= 1;
+    mx += 1;
+  }
+  const pad = 4;
+  const n = values.length;
+  const points = values
+    .map((v, i) => {
+      const x = (i / (n - 1)) * W;
+      const y = pad + (H - 2 * pad) * (1 - (v - mn) / (mx - mn));
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
 
   return (
-    <div className="w-full min-w-0" style={{ height }}>
-      <ResponsiveContainer width="100%" height={height} debounce={50}>
-        {streamRows?.length ? (
-          <LineChart data={streamRows} margin={{ top: 6, right: 4, left: 2, bottom: 22 }}>
-            <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
-            <XAxis
-              type="number"
-              dataKey="tsMs"
-              domain={["dataMin", "dataMax"]}
-              scale="time"
-              tickFormatter={formatStreamAxisTick}
-              tick={{ fill: CHART_AXIS.tick, fontSize: 8 }}
-              axisLine={{ stroke: CHART_AXIS.line }}
-              tickLine={false}
-              minTickGap={32}
-              height={18}
-            />
-            <YAxis
-              width={36}
-              tick={{ fill: CHART_AXIS.tick, fontSize: 9 }}
-              domain={yDomain}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={chartTooltipStyle("bioenergetics")}
-              formatter={(value) => {
-                const v = typeof value === "number" ? value : Number(value);
-                return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, ch.labelIt] : ["—", ch.labelIt];
-              }}
-              labelFormatter={(_label, payload) => {
-                const row = payload?.[0]?.payload as { tsMs?: number } | undefined;
-                if (row && typeof row.tsMs === "number" && Number.isFinite(row.tsMs)) {
-                  return new Date(row.tsMs).toLocaleString("it-IT");
-                }
-                return "Orario";
-              }}
-            />
-            <Line
-              type="linear"
-              dataKey="v"
-              stroke={stroke}
-              strokeWidth={1.5}
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        ) : (
-          <LineChart data={rows} margin={{ top: 6, right: 2, left: 2, bottom: 18 }}>
-            <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
-            <XAxis
-              dataKey="hourLabel"
-              tick={{ fill: CHART_AXIS.tick, fontSize: 8 }}
-              axisLine={{ stroke: CHART_AXIS.line }}
-              tickLine={false}
-              interval={3}
-              height={16}
-            />
-            <YAxis
-              width={36}
-              tick={{ fill: CHART_AXIS.tick, fontSize: 9 }}
-              domain={yDomain}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={chartTooltipStyle("bioenergetics")}
-              formatter={(value) => {
-                const v = typeof value === "number" ? value : Number(value);
-                return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, "Valore"] : ["—", ch.labelIt];
-              }}
-              labelFormatter={(_label, payload) => {
-                const row = payload?.[0]?.payload as
-                  | { hour?: number; hourLabel?: string; hourEndLabel?: string }
-                  | undefined;
-                if (row && typeof row.hour === "number") {
-                  return `Finestra: ${row.hourLabel}–${row.hourEndLabel}`;
-                }
-                return "Orario";
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="v"
-              stroke={stroke}
-              strokeWidth={2}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
-            />
-          </LineChart>
-        )}
-      </ResponsiveContainer>
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }

@@ -7,7 +7,7 @@ import type {
   BioenergeticMetricTileCategory,
 } from "@/api/bioenergetics/contracts";
 import {
-  BioenergeticChannelChart,
+  BioenergeticSparkline,
   channelAxisNote,
   fusionSummary,
   governanceIt,
@@ -15,6 +15,7 @@ import {
   planeLabel,
   prepareBioenergeticChannel,
 } from "./BioenergeticChannelChart";
+import { BioenergeticChannelChartLazy } from "./BioenergeticChannelChartLazy";
 import { BioenergeticChannelExpandModal } from "./BioenergeticChannelExpandModal";
 
 const CATEGORY_ORDER: BioenergeticMetricTileCategory[] = [
@@ -30,11 +31,14 @@ type Props = {
   monitoring: BioenergeticContinuousMonitoringDay;
   /** Vista atleta (false) nasconde governance/policy, pesi fusione e riferimenti motore/AI. */
   showTech?: boolean;
+  /** Modalità leggera (dashboard mobile): sparkline SVG invece di recharts (zero ResizeObserver). */
+  lite?: boolean;
 };
 
 const CHART_H = 92;
+const CHART_H_LITE = 52;
 
-export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = false }: Props) {
+export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = false, lite = false }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const sorted = [...monitoring.channels].sort(
@@ -88,15 +92,23 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
                   ) : null}
                 </div>
               </div>
-              {showTech && ch.curveResolution ? (
+              {!lite && showTech && ch.curveResolution ? (
                 <p className="mb-2 text-[0.58rem] leading-snug text-gray-400">
                   {fusionSummary(ch.curveResolution)}
                   <span className="text-gray-500"> · </span>
                   <span className="text-gray-400">{governanceIt(ch.curveResolution.governance)}</span>
                 </p>
               ) : null}
-              <p className="mb-1 text-[0.6rem] text-gray-500">{channelAxisNote(ch, prepared.isStream, showTech)}</p>
-              <BioenergeticChannelChart channel={ch} prepared={prepared} height={CHART_H} />
+              {!lite ? (
+                <p className="mb-1 text-[0.6rem] text-gray-500">{channelAxisNote(ch, prepared.isStream, showTech)}</p>
+              ) : null}
+              {lite ? (
+                <BioenergeticSparkline channel={ch} prepared={prepared} height={CHART_H_LITE} />
+              ) : (
+                <div className="w-full min-w-0" style={{ height: CHART_H }}>
+                  <BioenergeticChannelChartLazy channel={ch} prepared={prepared} height={CHART_H} />
+                </div>
+              )}
             </div>
           );
         })}

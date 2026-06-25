@@ -66,7 +66,7 @@ function writeBioDayCache(key: string, vm: BioenergeticsDayViewModel): void {
   }
 }
 
-export function DashboardBioenergeticStrip() {
+export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean }) {
   const { athleteId, loading: athleteLoading, adminScoped, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const date = toIsoDate(new Date());
@@ -189,7 +189,7 @@ export function DashboardBioenergeticStrip() {
             </p>
           ) : null}
           {vm.continuousMonitoring.channels.length > 0 ? (
-            <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} showTech={showTech} />
+            <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} showTech={showTech} lite={lite} />
           ) : null}
         </div>
       ) : (

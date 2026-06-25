@@ -66,7 +66,7 @@ export function MobileDashboardView() {
       <div className="mt-4 space-y-6">
         <MobileHeroSection score={readiness.score} label={readiness.label} />
         <MobileTwinSection areas={data?.areas ?? []} />
-        <DashboardBioenergeticStrip />
+        <DashboardBioenergeticStrip lite />
         <MobileTrendsSection areas={data?.areas ?? []} />
         <MobileProfileSection kpis={data?.kpis ?? EMPTY_KPIS} />
         <DashboardSystemStatus pct={systemStatus.pct} label={systemStatus.label} trend={systemStatus.trend} />

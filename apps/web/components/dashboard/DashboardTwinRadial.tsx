@@ -169,7 +169,7 @@ export function DashboardTwinRadial({
           .twin-spin{transform-origin:${CX}px ${CY}px;animation:twinSpin 48s linear infinite}
           .twin-spin-rev{transform-origin:${CX}px ${CY}px;animation:twinSpinRev 72s linear infinite}
           .twin-twinkle{animation:twinTwinkle 4.5s ease-in-out infinite}
-          @media(prefers-reduced-motion:reduce){.twin-breathe,.twin-spin,.twin-spin-rev,.twin-twinkle{animation:none}}
+          @media(prefers-reduced-motion:reduce),(pointer:coarse){.twin-breathe,.twin-spin,.twin-spin-rev,.twin-twinkle{animation:none}}
         `}</style>
 
         {/* Alone colore + luce dal basso (sfumati con blur ampio) */}
