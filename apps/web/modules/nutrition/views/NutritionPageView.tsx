@@ -9,8 +9,6 @@ import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
 import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
 import { Pro2Accordion } from "@/components/ui/empathy";
-import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
-import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
 import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
 import type {
   AdaptationGuidance,
@@ -53,6 +51,7 @@ import { PredictorSection } from "@/modules/nutrition/views/sections/PredictorSe
 import { DiarySection } from "@/modules/nutrition/views/sections/DiarySection";
 import { FuelingSection } from "@/modules/nutrition/views/sections/FuelingSection";
 import { IntegrationSection, type IntegrationProductCardProduct } from "@/modules/nutrition/views/sections/IntegrationSection";
+import { MealPlanSection } from "@/modules/nutrition/views/sections/MealPlanSection";
 import {
   mergeNutritionProfileForSolver,
   mergePhysioForSolver,
@@ -174,10 +173,7 @@ import {
   type NutritionAdaptationSectorPillContext,
 } from "@/lib/nutrition/nutrition-adaptation-sector-strip";
 import {
-  NutritionMealPlanDailyTargets,
   type NutritionMealPlanEnergyLedger,
-  NutritionMealPlanLeadPanels,
-  NutritionMealPlanWorkspace,
 } from "@/modules/nutrition/views/NutritionMealPlanView";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import { fetchIntelligentMealPlan } from "@/modules/nutrition/services/intelligent-meal-plan-api";
@@ -3045,86 +3041,52 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           </section>
 
           {/* PRIMARY JOB sopra la piega: scegli il giorno e genera il piano pasti — UNA sola CTA primaria. */}
-          {subRoute === "meal-plan" && athleteId ? (
-            <section
-              id="mod-azione-giorno"
-              className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
-              style={{ marginBottom: "12px" }}
-            >
-              <h2 className="viz-title text-base">Piano pasti del giorno</h2>
-              <p className="mt-1 text-sm text-gray-400">
-                Scegli il giorno e genera il piano pasti calibrato su profilo, allenamenti e segnali della giornata.
-              </p>
-              <div className="mt-3 flex flex-col gap-3">
-                <NutritionPlanDatePicker
-                  value={selectedPlanDate}
-                  onChange={setSelectedPlanDate}
-                  minOffsetDays={-400}
-                  maxOffsetDays={400}
-                  className="w-full"
-                />
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                  {/* Generazione piano: azione riservata allo staff (admin). Nascosta ad atleta e coach. */}
-                  {platformAdminView ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-nutrition-cta"
-                        disabled={
-                          intelligentMealLoading ||
-                          !(mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady)
-                        }
-                        onClick={() => void handleGenerateIntelligentMealPlan()}
-                      >
-                        {intelligentMealLoading ? "Generazione piano…" : "Genera il mio piano pasti"}
-                      </button>
-                      {intelligentMealPlan ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
-                          onClick={() => {
-                            setIntelligentMealPlan(null);
-                            setCoachMealRemovalKeys(new Set());
-                            setCoachSessionFoodExclusions([]);
-                          }}
-                        >
-                          Rigenera piano
-                        </button>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
-                      Generato dal motore pasti
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              {lowMealsBudgetWarning ? (
-                <div
-                  className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
-                  role="status"
-                >
-                  <strong className="font-semibold">Attenzione — budget pasti solver molto basso.</strong>{" "}
-                  Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
-                  {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
-                  (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
-                  controlla <span className="font-medium">Profilo</span> e rigenera il piano dopo il salvataggio.
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-
-          {/* Ancore reali della pagina meal plan (le altre aree hanno una sezione sola). */}
           {subRoute === "meal-plan" ? (
-            <Pro2StickyAnchorSubnav
-              accent={MODULE_PILL_AMBER}
-              items={[
-                { id: "mod-target-giorno", label: "Target del giorno" },
-                { id: "nutrition-meal-plan", label: "Piano pasti" },
-                { id: "mod-approfondimenti", label: "Approfondimenti" },
-                { id: "mod-dettagli-motore", label: "Dettagli e motore" },
-              ]}
+            <MealPlanSection
+              athleteId={athleteId}
+              role={role}
+              selectedPlanDate={selectedPlanDate}
+              setSelectedPlanDate={setSelectedPlanDate}
+              platformAdminView={platformAdminView}
+              intelligentMealLoading={intelligentMealLoading}
+              intelligentMealError={intelligentMealError}
+              intelligentMealPlan={intelligentMealPlan}
+              setIntelligentMealPlan={setIntelligentMealPlan}
+              intelligentMealPlanRequest={intelligentMealPlanRequest}
+              mealPlanGenerationReady={mealPlanGenerationReady}
+              handleGenerateIntelligentMealPlan={handleGenerateIntelligentMealPlan}
+              mealRows={mealRows}
+              lowMealsBudgetWarning={lowMealsBudgetWarning}
+              setCoachMealRemovalKeys={setCoachMealRemovalKeys}
+              setCoachSessionFoodExclusions={setCoachSessionFoodExclusions}
+              coachMealRemovalKeys={coachMealRemovalKeys}
+              coachSessionFoodExclusions={coachSessionFoodExclusions}
+              complianceOverview={complianceOverview}
+              selectedPlanDateLabel={selectedPlanDateLabel}
+              hydrationPlan={hydrationPlan}
+              selectedExecutedKj={selectedExecutedKj}
+              nutritionDayModel={nutritionDayModel}
+              effectiveDayContext={effectiveDayContext}
+              mealPlanEnergyLedger={mealPlanEnergyLedger}
+              mealPlanWorkspaceRows={mealPlanWorkspaceRows}
+              mealDisplayByKey={mealDisplayByKey}
+              mealPathwayBySlot={mealPathwayBySlot}
+              pathwayModulation={pathwayModulation}
+              nutritionApplicationDirective={nutritionApplicationDirective}
+              effectiveFunctionalMealSelector={effectiveFunctionalMealSelector}
+              raceDayPreRaceContext={raceDayPreRaceContext}
+              suppressedSnackSlots={suppressedSnackSlots}
+              effectiveMealCountMode={effectiveMealCountMode}
+              resolvedDietDay={resolvedDietDay}
+              removeCoachMealPlanItem={removeCoachMealPlanItem}
+              persistFoodExclusionToProfile={persistFoodExclusionToProfile}
+              profileFoodExcludeBusy={profileFoodExcludeBusy}
+              mealTabMicronutrientProps={mealTabMicronutrientProps}
+              nutritionStateCards={nutritionStateCards}
+              saving={saving}
+              handleSaveNutrition={handleSaveNutrition}
+              nutritionSectorBoxes={nutritionSectorBoxes}
+              functionalFoodRecommendations={functionalFoodRecommendations}
             />
           ) : null}
 
@@ -3144,94 +3106,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   className="w-full"
                 />
               </div>
-            </section>
-          ) : null}
-
-          {/* Macro/kcal del giorno: UN dato in UN solo posto. */}
-          {subRoute === "meal-plan" ? (
-            <section id="mod-target-giorno" className="viz-card builder-panel scroll-mt-28" style={{ marginBottom: "12px" }}>
-              <NutritionMealPlanDailyTargets
-                complianceTargets={{
-                  kcal: complianceOverview.target.kcal,
-                  carbs: complianceOverview.target.carbs,
-                  protein: complianceOverview.target.protein,
-                  fat: complianceOverview.target.fat,
-                }}
-                dateLabel={selectedPlanDateLabel}
-                hydrationMinDailyMl={hydrationPlan.minDailyMl}
-                selectedExecutedKj={selectedExecutedKj}
-                sessionLoadKcalEstimate={Math.max(
-                  nutritionDayModel?.training.kcal ?? 0,
-                  effectiveDayContext.summary.totalKcal,
-                )}
-                round={round}
-                energyLedger={mealPlanEnergyLedger}
-              />
-            </section>
-          ) : null}
-
-          {subRoute === "meal-plan" && athleteId ? (
-            <NutritionMealPlanWorkspace
-              athleteId={athleteId}
-              role={role}
-              mealPlanDisplayRows={mealPlanWorkspaceRows}
-              mealDisplayByKey={mealDisplayByKey}
-              mealPathwayBySlot={mealPathwayBySlot}
-              pathwayModulation={pathwayModulation}
-              nutritionApplicationDirective={nutritionApplicationDirective}
-              functionalMealSelectorNotes={effectiveFunctionalMealSelector?.notes ?? null}
-              intelligentMealPlan={intelligentMealPlan}
-              intelligentMealLoading={intelligentMealLoading}
-              intelligentMealError={intelligentMealError}
-              canRequestIntelligentPlan={
-                mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady
-              }
-              mealPathwayCatalogPending={
-                Boolean(intelligentMealPlanRequest) && !mealPlanGenerationReady
-              }
-              raceDayPreRaceNotice={
-                raceDayPreRaceContext
-                  ? `Giornata gara: pasto pre-gara (${raceDayPreRaceContext.mealSlot === "breakfast" ? "colazione" : "pranzo"}) alle ${raceDayPreRaceContext.lunchTimeLocal} — pasta/riso ${raceDayPreRaceContext.rule.carbsPerKgG} g CHO/kg, grana, olio 15 g. Pasti prima/durante gara → Fueling; solidi nel pomeriggio/post gara.`
-                  : null
-              }
-              dietDayNotice={
-                mealRows.length > 0
-                  ? [
-                      suppressedSnackSlots.length > 0
-                        ? `Spuntini in finestra allenamento (${suppressedSnackSlots.join(", ")}) → carbo in seduta nel modulo Fueling, non come pasto solido extra.`
-                        : null,
-                      mealRows.length < 6 && effectiveMealCountMode === "6"
-                        ? "Attesi 6 pasti: salva Profile → Diet (martedì) con tre % spuntino e rigenera il piano."
-                        : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
-                          ? "Piano generato con meno slot del Diet: usa «Rigenera piano» per ricalcolare."
-                          : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")
-                  : `Nessuna ripartizione % leggibile per ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) con 6 pasti e tre % spuntino, poi Salva profilo.`
-              }
-              coachMealRemovalKeys={coachMealRemovalKeys}
-              coachSessionFoodExclusions={coachSessionFoodExclusions}
-              onCoachShowAllItems={() => setCoachMealRemovalKeys(new Set())}
-              onCoachClearSessionExclusions={() => setCoachSessionFoodExclusions([])}
-              removeCoachMealPlanItem={removeCoachMealPlanItem}
-              persistFoodExclusionToProfile={persistFoodExclusionToProfile}
-              profileFoodExcludeBusy={profileFoodExcludeBusy}
-              mealTabMicronutrientProps={mealTabMicronutrientProps}
-              nutritionStateCards={nutritionStateCards}
-              saving={saving}
-              onSaveNutrition={handleSaveNutrition}
-            />
-          ) : null}
-
-          {/* Approfondimenti del giorno: sezioni avanzate collassate di default. */}
-          {subRoute === "meal-plan" && athleteId ? (
-            <section id="mod-approfondimenti" className="scroll-mt-28" style={{ marginBottom: "12px" }}>
-              <NutritionMealPlanLeadPanels
-                nutritionSectorBoxes={nutritionSectorBoxes}
-                pathwayModulation={pathwayModulation}
-                functionalFoodRecommendations={functionalFoodRecommendations}
-              />
             </section>
           ) : null}
 
