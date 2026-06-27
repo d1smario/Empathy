@@ -4,31 +4,12 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import {
-  Activity,
-  Bike,
-  CalendarRange,
-  Clock,
-  Flame,
-  Heart,
-  Sparkles,
-  Timer,
-} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachWorkoutLibraryPanel } from "@/components/training/CoachWorkoutLibraryPanel";
-import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
-import { BuilderGymManualComposer } from "@/components/training/BuilderGymManualComposer";
-import { BuilderLifestyleManualComposer } from "@/components/training/BuilderLifestyleManualComposer";
-import { BuilderManualComposer } from "@/components/training/BuilderManualComposer";
-import { BuilderTechnicalManualComposer } from "@/components/training/BuilderTechnicalManualComposer";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
-import { ResearchTraceScientificPanel } from "@/components/training/ResearchTraceScientificPanel";
-import { ReplicateStatusStrip } from "@/components/training/ReplicateStatusStrip";
-import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { Pro2Accordion, Pro2Button } from "@/components/ui/empathy";
 import {
   buildPro2BuilderSessionContract,
   defaultManualPlanBlock,
@@ -55,27 +36,16 @@ import {
   type Pro2TechnicalManualRow,
 } from "@/lib/training/builder/pro2-technical-manual-plan";
 import { buildPro2GymManualRowsFromEngine } from "@/lib/training/builder/build-pro2-gym-rows-from-engine";
-import { PRO2_GYM_EXECUTION_STYLES } from "@/lib/training/builder/gym-execution-styles";
 import { pro2PaletteSportToBlock1SportTag } from "@/lib/training/domain-blocks/block1-strength-functional";
 import { fetchUnifiedBuilderExercises } from "@/modules/training/services/training-builder-catalog-api";
-import { macroIdForSport, SPORT_MACRO_SECTORS, type SportMacroId } from "@/lib/training/builder/sport-macro-palette";
+import { macroIdForSport, SPORT_MACRO_SECTORS } from "@/lib/training/builder/sport-macro-palette";
 import { trainingDomainForPaletteSport } from "@/lib/training/sport-domain-map";
 import { estimateTssFromSegments } from "@/lib/training/builder/tss-estimate";
 import { serializePro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { hydrateBuilderStateFromLibraryContract } from "@/lib/training/library/hydrate-builder-from-library-contract";
 import { buildPro2ContractFromEngineGeneration } from "@/lib/training/builder/engine-session-contract-for-calendar";
-import { GymExerciseMediaThumb } from "@/components/training/GymExerciseMediaThumb";
-import {
-  TECHNICAL_ATHLETIC_QUALITY_OPTIONS,
-  type AdaptationTarget,
-  type GymContractionEmphasis,
-  type GymEquipmentChannel,
-  type GymGenerationProfile,
-  type TechnicalAthleticQualityId,
-  type TechnicalGameContext,
-  type TechnicalWorkPhase,
-} from "@/lib/training/engine";
+import { type AdaptationTarget, type GymContractionEmphasis, type GymEquipmentChannel, type GymGenerationProfile, type TechnicalAthleticQualityId, type TechnicalGameContext, type TechnicalWorkPhase } from "@/lib/training/engine";
 import { sessionBlocksToChartSegments } from "@/lib/training/engine/block-chart-segments";
 import { generateBuilderSession } from "@/modules/training/services/training-engine-api";
 import { invalidatePlannedWindowCacheForAthlete } from "@/lib/training/planned-window-client-cache";
@@ -96,73 +66,15 @@ import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverag
 import { fetchNutritionViewModel } from "@/modules/nutrition/services/nutrition-api";
 import { fetchProfileViewModel } from "@/modules/profile/services/profile-api";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import {
-  initialManualPlanBlocks,
-  localCalendarDateString,
-  normalizeCalendarTargetDay,
-  builderPlannedWindowRange,
-  WindowErr,
-  sumPlannedTss,
-  sumExecutedTss,
-  sumMinutesPlanned,
-  sumMinutesExecuted,
-  ACCENT_KPI,
-  ADAPTATION_OPTIONS,
-  ADAPTATION_BY_MACRO,
-  defaultAdaptationForMacro,
-  defaultSessionMinutesForMacro,
-  EngineQuickPreset,
-  ENGINE_QUICK_GYM,
-  GYM_EQUIPMENT_CHIPS,
-  GYM_CONTRACTION_CHIPS,
-  ENGINE_QUICK_TECHNICAL,
-  ENGINE_QUICK_LIFESTYLE,
-  EngineGenerateOverrides,
-  BuilderWindowCacheEntry,
-} from "@/lib/training/training-builder-rich-kit";
+import { initialManualPlanBlocks, localCalendarDateString, normalizeCalendarTargetDay, builderPlannedWindowRange, WindowErr, sumPlannedTss, sumExecutedTss, sumMinutesPlanned, sumMinutesExecuted, ADAPTATION_BY_MACRO, defaultAdaptationForMacro, defaultSessionMinutesForMacro, EngineGenerateOverrides, BuilderWindowCacheEntry } from "@/lib/training/training-builder-rich-kit";
 import { BuilderViryaEntryBanner } from "@/modules/training/views/sections/BuilderViryaEntryBanner";
 import { BuilderDayAdaptationPanel } from "@/modules/training/views/sections/BuilderDayAdaptationPanel";
 import { BuilderSportMacroSectorPicker } from "@/modules/training/views/sections/BuilderSportMacroSectorPicker";
 import { BuilderUpcomingPlannedSection } from "@/modules/training/views/sections/BuilderUpcomingPlannedSection";
+import { BuilderEngineGenerateSection } from "@/modules/training/views/sections/BuilderEngineGenerateSection";
+import { BuilderManualComposerSwitch } from "@/modules/training/views/sections/BuilderManualComposerSwitch";
+import { BuilderDetailsEngineAccordion } from "@/modules/training/views/sections/BuilderDetailsEngineAccordion";
 
-function KpiCard({
-  label,
-  value,
-  hint,
-  accent,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  accent: keyof typeof ACCENT_KPI;
-  icon: typeof Activity;
-}) {
-  const a = ACCENT_KPI[accent];
-  return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border p-4 backdrop-blur-sm ${a.border} ${a.bg} ${a.ring} ${a.glow}`}
-    >
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r opacity-95 ${a.bar}`}
-        aria-hidden
-      />
-      <div className="relative pt-1">
-        <div className="flex items-start justify-between gap-2">
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</p>
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${a.iconWrap}`}
-            aria-hidden
-          >
-            <Icon className={`h-5 w-5 ${a.icon}`} strokeWidth={2.35} />
-          </div>
-        </div>
-        <p className={`mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight ${a.value}`}>{value}</p>
-        {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
-      </div>
-    </div>
-  );
-}
 
 let builderWindowCacheKey: string | null = null;
 let builderWindowCache: BuilderWindowCacheEntry | null = null;
@@ -1190,682 +1102,52 @@ export default function TrainingBuilderRichPageView() {
           setSport={setSport}
         />
 
-        <section
-          aria-label="Genera sessione (builder engine)"
-          className={`rounded-2xl border p-4 sm:p-5 lg:p-6 ${
-            activeMacroId === "strength"
-              ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
-              : activeMacroId === "technical"
-                ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
-                : activeMacroId === "lifestyle"
-                  ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
-                  : "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
-          }`}
-        >
-          <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-              2
-            </span>
-            Genera sessione
-          </h2>
-          {activeMacroId === "strength" ? (
-            <p className="mt-1 text-sm text-gray-400">
-              Il motore propone la struttura (nomi esercizio), poi si materializza la{" "}
-              <span className="text-orange-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini.
-              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
-            </p>
-          ) : activeMacroId === "technical" ? (
-            <p className="mt-1 text-sm text-gray-400">
-              Concentrati su tecnica, tattica, schemi e moduli: la parte aerobico-pura resta in A · Aerobico.
-              Il builder stima un <span className="text-orange-200/95">TSS</span> da confrontare con RPE / carico interno.
-              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
-            </p>
-          ) : activeMacroId === "lifestyle" ? (
-            <p className="mt-1 text-sm text-gray-400">
-              Preset per mobilità, recovery, qualità movimento e lavoro aerobico leggero (mind-body).
-              Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-gray-400">
-              Macro aerobica: input compatti. Output: blocchi + esercizi dalla libreria, calibrati su profilo
-              fisiologico e digital twin dell&apos;atleta quando disponibili.
-            </p>
-          )}
-
-          {activeMacroId === "strength" ? (
-            <div className="mt-4 flex flex-col gap-3">
-              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
-              <div className="flex flex-wrap gap-2">
-                {ENGINE_QUICK_GYM.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    disabled={!athleteId || genBusy}
-                    onClick={() => void runGenerate({ adaptation: p.adaptation, sessionMinutes: p.minutes, phase: p.phase })}
-                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-orange-400/35 bg-gradient-to-br from-orange-600/90 to-amber-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(251,146,60,0.2)] transition hover:brightness-110 disabled:opacity-40"
-                  >
-                    <Sparkles className="mb-1 h-4 w-4 text-amber-100 opacity-90" aria-hidden />
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <div className="rounded-xl border border-orange-500/20 bg-black/25 p-3">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Attrezzi · filtro libreria</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Pesi, corpo libero, cavi, elastici, macchinari. Nessun chip = nessun filtro stretto.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {GYM_EQUIPMENT_CHIPS.map((ch) => {
-                    const on = gymEquipChannels.includes(ch.id);
-                    return (
-                      <button
-                        key={ch.id}
-                        type="button"
-                        onClick={() =>
-                          setGymEquipChannels((prev) =>
-                            prev.includes(ch.id) ? prev.filter((x) => x !== ch.id) : [...prev, ch.id],
-                          )
-                        }
-                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                          on
-                            ? "border-orange-400 bg-orange-500/30 text-white"
-                            : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
-                        }`}
-                      >
-                        {ch.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                  Contrazione / stile
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {GYM_CONTRACTION_CHIPS.map((ch) => {
-                    const sel = gymContraction === ch.id;
-                    return (
-                      <button
-                        key={ch.id}
-                        type="button"
-                        onClick={() => setGymContraction(ch.id)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                          sel
-                            ? "border-amber-300 bg-amber-500/25 text-amber-50"
-                            : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
-                        }`}
-                      >
-                        {ch.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <label className="mt-3 flex max-w-lg flex-col gap-1 text-[0.65rem] text-gray-400">
-                  Stile esecuzione nella scheda generata
-                  <select
-                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                    value={gymAutoExecutionStyle}
-                    onChange={(e) => setGymAutoExecutionStyle(e.target.value)}
-                  >
-                    <option value="">Standard · usa solo prescrizione deterministica</option>
-                    {PRO2_GYM_EXECUTION_STYLES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <details className="rounded-xl border border-white/10 bg-black/30">
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-                  <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
-                </summary>
-                <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Adattamento
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={adaptation}
-                        onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
-                      >
-                        {ADAPTATION_OPTIONS.filter((o) => adaptationAllowed.includes(o.value)).map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
-                    <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Fase
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={phase}
-                        onChange={(e) => setPhase(e.target.value as typeof phase)}
-                      >
-                        <option value="base">base</option>
-                        <option value="build">build</option>
-                        <option value="peak">peak</option>
-                        <option value="taper">taper</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Min
-                      <input
-                        type="number"
-                        min={20}
-                        max={180}
-                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={sessionMinutes}
-                        onChange={(e) => setSessionMinutes(Number(e.target.value))}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </details>
-              <Pro2Button
-                type="button"
-                variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
-                disabled={!athleteId || genBusy}
-                onClick={() => void runGenerate()}
-              >
-                <Flame className="h-4 w-4 text-amber-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.55)]" aria-hidden />
-                {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
-              </Pro2Button>
-            </div>
-          ) : activeMacroId === "technical" ? (
-            <div className="mt-4 flex flex-col gap-3">
-              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
-              <div className="flex flex-wrap gap-2">
-                {ENGINE_QUICK_TECHNICAL.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    disabled={!athleteId || genBusy}
-                    onClick={() => void runGenerate({ adaptation: p.adaptation, sessionMinutes: p.minutes, phase: p.phase })}
-                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-orange-400/35 bg-gradient-to-br from-orange-600/90 to-amber-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(251,146,60,0.2)] transition hover:brightness-110 disabled:opacity-40"
-                  >
-                    <Sparkles className="mb-1 h-4 w-4 text-amber-100 opacity-90" aria-hidden />
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.07] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                  Struttura modulare · Macro C
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Allinea fase di lavoro, contesto di gioco e qualità atletica: il motore arricchisce cue e traccia (come obiettivi V1:
-                  fase offensiva/difensiva, schemi, modulo tecnico).
-                </p>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fase di lavoro</p>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      {(
-                        [
-                          { id: "technique" as const, label: "Tecnica" },
-                          { id: "tactics" as const, label: "Tattica" },
-                        ] as const
-                      ).map((opt) => {
-                        const sel = techWorkPhase === opt.id;
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => setTechWorkPhase(opt.id)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              sel
-                                ? "border-orange-400 bg-orange-500/30 text-white"
-                                : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Contesto</p>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      {(
-                        [
-                          { id: "defensive" as const, label: "Difensivo" },
-                          { id: "build_up" as const, label: "Impostazione" },
-                          { id: "offensive" as const, label: "Offensivo" },
-                        ] as const
-                      ).map((opt) => {
-                        const sel = techGameContext === opt.id;
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => setTechGameContext(opt.id)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              sel
-                                ? "border-orange-400 bg-orange-500/30 text-white"
-                                : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Qualità atletica (multipla)</p>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      {TECHNICAL_ATHLETIC_QUALITY_OPTIONS.map((q) => {
-                        const on = techQualities.includes(q.id);
-                        return (
-                          <button
-                            key={q.id}
-                            type="button"
-                            onClick={() =>
-                              setTechQualities((prev) =>
-                                prev.includes(q.id) ? prev.filter((x) => x !== q.id) : [...prev, q.id],
-                              )
-                            }
-                            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                              on
-                                ? "border-orange-400 bg-orange-500/30 text-white"
-                                : "border-white/15 bg-black/40 text-gray-400 hover:border-white/25"
-                            }`}
-                          >
-                            {q.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <details className="rounded-xl border border-white/10 bg-black/30">
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-                  <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
-                </summary>
-                <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Adattamento
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={adaptation}
-                        onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
-                      >
-                        {ADAPTATION_OPTIONS.filter((o) => adaptationAllowed.includes(o.value)).map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
-                    <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Fase
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={phase}
-                        onChange={(e) => setPhase(e.target.value as typeof phase)}
-                      >
-                        <option value="base">base</option>
-                        <option value="build">build</option>
-                        <option value="peak">peak</option>
-                        <option value="taper">taper</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Min
-                      <input
-                        type="number"
-                        min={20}
-                        max={180}
-                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={sessionMinutes}
-                        onChange={(e) => setSessionMinutes(Number(e.target.value))}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </details>
-              <Pro2Button
-                type="button"
-                variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
-                disabled={!athleteId || genBusy}
-                onClick={() => void runGenerate()}
-              >
-                <Flame className="h-4 w-4 text-amber-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]" aria-hidden />
-                {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
-              </Pro2Button>
-            </div>
-          ) : activeMacroId === "lifestyle" ? (
-            <div className="mt-4 flex flex-col gap-3">
-              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi · Lifestyle</p>
-              <div className="flex flex-wrap gap-2">
-                {ENGINE_QUICK_LIFESTYLE.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    disabled={!athleteId || genBusy}
-                    onClick={() => void runGenerate({ adaptation: p.adaptation, sessionMinutes: p.minutes, phase: p.phase })}
-                    className="min-w-[10rem] flex-1 rounded-2xl border-2 border-orange-400/35 bg-gradient-to-br from-orange-600/90 to-amber-700/90 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_0_20px_rgba(251,146,60,0.2)] transition hover:brightness-110 disabled:opacity-40"
-                  >
-                    <Sparkles className="mb-1 h-4 w-4 text-amber-100 opacity-90" aria-hidden />
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <details className="rounded-xl border border-white/10 bg-black/30">
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-                  <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-                  <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
-                </summary>
-                <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
-                  <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
-                    <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Adattamento
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={adaptation}
-                        onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
-                      >
-                        {ADAPTATION_OPTIONS.filter((o) => adaptationAllowed.includes(o.value)).map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-teal-500/35 bg-teal-500/10 p-3">
-                    <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Fase
-                      <select
-                        className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={phase}
-                        onChange={(e) => setPhase(e.target.value as typeof phase)}
-                      >
-                        <option value="base">base</option>
-                        <option value="build">build</option>
-                        <option value="peak">peak</option>
-                        <option value="taper">taper</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="flex min-w-[6.5rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:w-[6.5rem] sm:flex-none">
-                    <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                    <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                      Min
-                      <input
-                        type="number"
-                        min={20}
-                        max={180}
-                        className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                        value={sessionMinutes}
-                        onChange={(e) => setSessionMinutes(Number(e.target.value))}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </details>
-              <Pro2Button
-                type="button"
-                variant="primary"
-                className="!inline-flex !w-full !items-center !justify-center !gap-2 sm:!w-auto"
-                disabled={!athleteId || genBusy}
-                onClick={() => void runGenerate()}
-              >
-                <Flame className="h-4 w-4" aria-hidden />
-                {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
-              </Pro2Button>
-            </div>
-          ) : (
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
-                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Adattamento
-                  <select
-                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                    value={adaptation}
-                    onChange={(e) => setAdaptation(e.target.value as AdaptationTarget)}
-                  >
-                    {ADAPTATION_OPTIONS.filter((o) => adaptationAllowed.includes(o.value)).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
-                <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
-                <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Fase
-                  <select
-                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                    value={phase}
-                    onChange={(e) => setPhase(e.target.value as typeof phase)}
-                  >
-                    <option value="base">base</option>
-                    <option value="build">build</option>
-                    <option value="peak">peak</option>
-                    <option value="taper">taper</option>
-                  </select>
-                </label>
-              </div>
-              <div className="flex w-[6.5rem] items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3">
-                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Min
-                  <input
-                    type="number"
-                    min={20}
-                    max={180}
-                    className="w-full rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                    value={sessionMinutes}
-                    onChange={(e) => setSessionMinutes(Number(e.target.value))}
-                  />
-                </label>
-              </div>
-              <div className="flex min-w-[9rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[8rem]">
-                <Bike className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
-                <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Sport
-                  <input
-                    type="text"
-                    className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
-                    value={sport}
-                    onChange={(e) => setSport(e.target.value)}
-                  />
-                </label>
-              </div>
-              <Pro2Button
-                type="button"
-                variant="primary"
-                className="!inline-flex !items-center !gap-2"
-                disabled={!athleteId || genBusy}
-                onClick={() => void runGenerate()}
-              >
-                <Flame className="h-4 w-4" aria-hidden />
-                {genBusy ? "Generazione…" : "Genera sessione"}
-              </Pro2Button>
-            </div>
-          )}
-          {genErr ? (
-            <p className="mt-4 text-sm text-amber-300" role="alert">
-              {genErr}
-            </p>
-          ) : null}
-          {genResult && "ok" in genResult && genResult.ok && genResult.operationalScaling?.applied ? (
-            <div
-              className="mt-4 rounded-xl border border-amber-500/35 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/95"
-              role="status"
-            >
-              <p className="font-semibold text-amber-200">
-                Adattamento giornaliero · {genResult.operationalScaling.loadScalePct}% del target pianificato
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
-                {genResult.operationalScaling.guidance} Il piano VIRYA resta invariato; questa seduta è scalata da recovery, twin e
-                bioenergetica.
-              </p>
-            </div>
-          ) : null}
-          {genResult && "ok" in genResult && genResult.ok ? (
-            <div className="mt-6 space-y-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm">
-              {activeMacroId === "strength" ? (
-                <div className="space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4">
-                  <p className="text-sm font-semibold text-white">
-                    Scheda generata ({gymManualRows.length} esercizi) · TSS stimato ~{manualTssPreview}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Nomi proposti dal motore, abbinati al catalogo EMPATHY. Affina serie e carichi nel composer sotto.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {gymManualRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 shadow-inner"
-                      >
-                        <GymExerciseMediaThumb
-                          src={row.mediaUrl}
-                          alt={row.name}
-                          catalogExerciseId={row.exerciseId}
-                          fallbackLabel={row.name}
-                          className="h-28 w-28 shrink-0 rounded-xl border border-orange-500/20 object-cover"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold leading-snug text-white">{row.name}</p>
-                          <p className="mt-2 font-mono text-xs text-orange-100/90">
-                            {row.sets}×{row.reps}
-                            {row.loadKg != null && row.loadKg > 0 ? ` · ${row.loadKg} kg` : ""}
-                            {row.pct1Rm != null && row.pct1Rm > 0 ? ` · ~${row.pct1Rm}% 1RM` : ""} · rec {row.restSec}s
-                            {(row.chainLabel ?? "").trim() ? ` · gruppo ${(row.chainLabel ?? "").trim()}` : ""}
-                          </p>
-                          {row.quickIncomplete ? (
-                            <p className="mt-1 text-[0.65rem] text-orange-300/90">Scheda veloce (incompleta)</p>
-                          ) : null}
-                          {row.executionStyle ? (
-                            <p className="mt-1 text-[0.65rem] text-gray-400">{row.executionStyle}</p>
-                          ) : null}
-                          {(row.notes ?? "").trim() ? (
-                            <p className="mt-1 line-clamp-2 text-[0.65rem] text-gray-400">{row.notes}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className={`rounded-xl border p-3 ${
-                    activeMacroId === "lifestyle"
-                      ? "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
-                      : activeMacroId === "technical"
-                        ? "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
-                        : "border-orange-500/25 bg-gradient-to-br from-orange-950/20 to-black/45"
-                  }`}
-                >
-                  <SessionBlockIntensityChart
-                    segments={genChartSegments}
-                    title="Grafico sessione (auto)"
-                    estimatedTss={genTssPreview}
-                  />
-                </div>
-              )}
-              <div className="flex flex-wrap items-end gap-3 border-b border-white/10 pb-4">
-                <label className="flex flex-col gap-1 text-xs text-gray-500">
-                  Data calendario (manuale e generato)
-                  <input
-                    type="date"
-                    className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-                    value={plannedDate}
-                    onChange={(e) => setPlannedDate(e.target.value)}
-                  />
-                </label>
-                <Pro2Button
-                  type="button"
-                  variant="secondary"
-                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-                  disabled={saveBusy || wahooPushBusy}
-                  onClick={() => void saveToCalendar(plannedDate)}
-                >
-                  {saveBusy ? "Salvataggio…" : "Salva nel calendario"}
-                </Pro2Button>
-                <Pro2Button
-                  type="button"
-                  variant="secondary"
-                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-                  disabled={!wahooPushEligible || saveBusy || wahooPushBusy}
-                  title={
-                    !wahooPushEligible
-                      ? "Serve sessione endurance con blocchi, FTP/FC valide e account Wahoo collegato (Profilo)."
-                      : undefined
-                  }
-                  onClick={() => void pushSessionToWahooCloud()}
-                >
-                  {wahooPushBusy ? "Wahoo…" : "Invia a Wahoo"}
-                </Pro2Button>
-              </div>
-              {saveErr ? (
-                <p className="text-sm text-amber-300" role="alert">
-                  {saveErr}
-                </p>
-              ) : null}
-              {wahooPushErr ? (
-                <p className="text-sm text-amber-300" role="alert">
-                  Wahoo: {wahooPushErr}
-                </p>
-              ) : null}
-              {wahooPushOk ? <p className="text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
-              {saveOkId ? (
-                <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={saveOkId} />
-              ) : null}
-              {showTech ? <p className="font-mono text-[0.65rem] text-gray-500">{genResult.source}</p> : null}
-              <p className="text-gray-300">
-                Profilo fisiologico: {genResult.physiologyPresent ? "sì" : "no"} · Twin: {genResult.twinPresent ? "sì" : "no"}
-              </p>
-              {activeMacroId !== "strength" ? (
-                <ul className="space-y-3">
-                  {(genResult.blockExercises as Array<{ order: number; label: string; exercises: Array<{ name?: string }> }>).map(
-                    (b) => (
-                      <li key={b.order} className="border-b border-white/5 pb-3 last:border-0">
-                        <span className="font-bold text-white">
-                          {b.order}. {b.label}
-                        </span>
-                        <ul className="mt-1 list-disc pl-5 text-gray-400">
-                          {b.exercises.map((ex) => (
-                            <li key={ex.name}>{ex.name ?? "—"}</li>
-                          ))}
-                        </ul>
-                      </li>
-                    ),
-                  )}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+        <BuilderEngineGenerateSection
+          activeMacroId={activeMacroId}
+          currentSportLabel={currentSportLabel}
+          athleteId={athleteId}
+          genBusy={genBusy}
+          runGenerate={runGenerate}
+          gymEquipChannels={gymEquipChannels}
+          setGymEquipChannels={setGymEquipChannels}
+          gymContraction={gymContraction}
+          setGymContraction={setGymContraction}
+          gymAutoExecutionStyle={gymAutoExecutionStyle}
+          setGymAutoExecutionStyle={setGymAutoExecutionStyle}
+          adaptation={adaptation}
+          setAdaptation={setAdaptation}
+          adaptationAllowed={adaptationAllowed}
+          phase={phase}
+          setPhase={setPhase}
+          sessionMinutes={sessionMinutes}
+          setSessionMinutes={setSessionMinutes}
+          sport={sport}
+          setSport={setSport}
+          techWorkPhase={techWorkPhase}
+          setTechWorkPhase={setTechWorkPhase}
+          techGameContext={techGameContext}
+          setTechGameContext={setTechGameContext}
+          techQualities={techQualities}
+          setTechQualities={setTechQualities}
+          genErr={genErr}
+          genResult={genResult}
+          gymManualRows={gymManualRows}
+          manualTssPreview={manualTssPreview}
+          genChartSegments={genChartSegments}
+          genTssPreview={genTssPreview}
+          plannedDate={plannedDate}
+          setPlannedDate={setPlannedDate}
+          saveBusy={saveBusy}
+          saveToCalendar={saveToCalendar}
+          wahooPushBusy={wahooPushBusy}
+          wahooPushEligible={wahooPushEligible}
+          pushSessionToWahooCloud={pushSessionToWahooCloud}
+          saveErr={saveErr}
+          wahooPushErr={wahooPushErr}
+          wahooPushOk={wahooPushOk}
+          saveOkId={saveOkId}
+          showTech={showTech}
+        />
 
         <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
@@ -1877,113 +1159,49 @@ export default function TrainingBuilderRichPageView() {
           </p>
         </div>
 
-        <div id="builder-manual-editor">
-        {activeMacroId === "strength" ? (
-          <BuilderGymManualComposer
-            athleteId={athleteId}
-            physioHint={physioHint}
-            gymRows={gymManualRows}
-            setGymRows={setGymManualRows}
-            manualSessionName={manualSessionName}
-            setManualSessionName={setManualSessionName}
-            manualChartSegments={manualChartSegments}
-            manualPlannedDate={plannedDate}
-            setManualPlannedDate={setPlannedDate}
-            manualSessionDurationMinutes={manualSessionDurationMinutes}
-            setManualSessionDurationMinutes={setManualSessionDurationMinutes}
-            paletteSport={sport}
-            currentSportLabel={currentSportLabel}
-            manualSaveBusy={manualSaveBusy}
-            onSaveManual={(date) => void saveManualToCalendar(date)}
-            manualSaveErr={manualSaveErr}
-            manualSaveOkId={manualSaveOkId}
-            canSave={Boolean(manualSession)}
-            estimatedTss={manualTssPreview}
-          />
-        ) : activeMacroId === "technical" ? (
-          <BuilderTechnicalManualComposer
-            athleteId={athleteId}
-            physioHint={physioHint}
-            paletteSport={sport}
-            currentSportLabel={currentSportLabel}
-            technicalManualRows={technicalManualRows}
-            setTechnicalManualRows={setTechnicalManualRows}
-            technicalModuleFocus={{
-              workPhase: techWorkPhase,
-              gameContext: techGameContext,
-              athleticQualities: techQualities,
-            }}
-            manualSessionName={manualSessionName}
-            setManualSessionName={setManualSessionName}
-            manualChartSegments={manualChartSegments}
-            manualPlannedDate={plannedDate}
-            setManualPlannedDate={setPlannedDate}
-            manualSessionDurationMinutes={manualSessionDurationMinutes}
-            setManualSessionDurationMinutes={setManualSessionDurationMinutes}
-            manualSaveBusy={manualSaveBusy}
-            onSaveManual={(date) => void saveManualToCalendar(date)}
-            manualSaveErr={manualSaveErr}
-            manualSaveOkId={manualSaveOkId}
-            canSave={Boolean(manualSession)}
-            estimatedTss={manualTssPreview}
-          />
-        ) : activeMacroId === "lifestyle" ? (
-          <BuilderLifestyleManualComposer
-            athleteId={athleteId}
-            physioHint={physioHint}
-            lifestyleRows={lifestyleManualRows}
-            setLifestyleRows={setLifestyleManualRows}
-            manualSessionName={manualSessionName}
-            setManualSessionName={setManualSessionName}
-            manualChartSegments={manualChartSegments}
-            manualPlannedDate={plannedDate}
-            setManualPlannedDate={setPlannedDate}
-            manualSessionDurationMinutes={manualSessionDurationMinutes}
-            setManualSessionDurationMinutes={setManualSessionDurationMinutes}
-            paletteSport={sport}
-            currentSportLabel={currentSportLabel}
-            manualSaveBusy={manualSaveBusy}
-            onSaveManual={(date) => void saveManualToCalendar(date)}
-            manualSaveErr={manualSaveErr}
-            manualSaveOkId={manualSaveOkId}
-            canSave={Boolean(manualSession)}
-            estimatedTss={manualTssPreview}
-          />
-        ) : (
-          <BuilderManualComposer
-            athleteId={athleteId}
-            macroFamily={activeMacroId}
-            physioHint={physioHint}
-            manualPlanBlocks={manualPlanBlocks}
-            setManualPlanBlocks={setManualPlanBlocks}
-            activeIndex={manualActiveIndex}
-            setActiveIndex={setManualActiveIndex}
-            intensityUnit={intensityUnit}
-            setIntensityUnit={setIntensityUnit}
-            ftpW={ftpW}
-            setFtpW={setFtpW}
-            hrMax={hrMax}
-            setHrMax={setHrMax}
-            lengthMode={lengthMode}
-            setLengthMode={setLengthMode}
-            speedRefKmh={speedRefKmh}
-            setSpeedRefKmh={setSpeedRefKmh}
-            manualSessionName={manualSessionName}
-            setManualSessionName={setManualSessionName}
-            manualChartSegments={manualChartSegments}
-            manualPlannedDate={plannedDate}
-            setManualPlannedDate={setPlannedDate}
-            manualSaveBusy={manualSaveBusy}
-            onSaveManual={(date) => void saveManualToCalendar(date)}
-            manualSaveErr={manualSaveErr}
-            manualSaveOkId={manualSaveOkId}
-            canSave={Boolean(manualSession)}
-            estimatedTss={manualTssPreview}
-            manualSessionDurationMinutes={manualSessionDurationMinutes}
-            setManualSessionDurationMinutes={setManualSessionDurationMinutes}
-          />
-        )}
-        </div>
+        <BuilderManualComposerSwitch
+          activeMacroId={activeMacroId}
+          athleteId={athleteId}
+          physioHint={physioHint}
+          gymManualRows={gymManualRows}
+          setGymManualRows={setGymManualRows}
+          technicalManualRows={technicalManualRows}
+          setTechnicalManualRows={setTechnicalManualRows}
+          lifestyleManualRows={lifestyleManualRows}
+          setLifestyleManualRows={setLifestyleManualRows}
+          manualPlanBlocks={manualPlanBlocks}
+          setManualPlanBlocks={setManualPlanBlocks}
+          manualActiveIndex={manualActiveIndex}
+          setManualActiveIndex={setManualActiveIndex}
+          intensityUnit={intensityUnit}
+          setIntensityUnit={setIntensityUnit}
+          ftpW={ftpW}
+          setFtpW={setFtpW}
+          hrMax={hrMax}
+          setHrMax={setHrMax}
+          lengthMode={lengthMode}
+          setLengthMode={setLengthMode}
+          speedRefKmh={speedRefKmh}
+          setSpeedRefKmh={setSpeedRefKmh}
+          manualSessionName={manualSessionName}
+          setManualSessionName={setManualSessionName}
+          manualChartSegments={manualChartSegments}
+          plannedDate={plannedDate}
+          setPlannedDate={setPlannedDate}
+          manualSessionDurationMinutes={manualSessionDurationMinutes}
+          setManualSessionDurationMinutes={setManualSessionDurationMinutes}
+          sport={sport}
+          currentSportLabel={currentSportLabel}
+          techWorkPhase={techWorkPhase}
+          techGameContext={techGameContext}
+          techQualities={techQualities}
+          manualSaveBusy={manualSaveBusy}
+          saveManualToCalendar={saveManualToCalendar}
+          manualSaveErr={manualSaveErr}
+          manualSaveOkId={manualSaveOkId}
+          manualSession={manualSession}
+          manualTssPreview={manualTssPreview}
+        />
 
         <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
@@ -2016,88 +1234,17 @@ export default function TrainingBuilderRichPageView() {
         />
 
         {/* In fondo: accordion unico «Dettagli e motore» — contesto generativo e KPI finestra. */}
-        <Pro2Accordion
-          id="mod-dettagli-motore"
-          title="Dettagli e motore"
-          subtitle="Contesto generativo, asset e KPI della finestra calendario"
-          accent="orange"
-        >
-          <div className="space-y-6">
-            <section
-              aria-label="Contesto generativo e asset"
-              className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5 shadow-inner"
-            >
-              <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                Builder · contesto generativo
-              </p>
-              <p className="mt-1 max-w-3xl text-xs text-gray-500">
-                Knowledge library e asset esterni sono di supporto e audit: il motore sessione resta deterministico; nessun redirect o
-                blocco se i dati mancano (fallback locale in-modulo).
-              </p>
-              {!athleteId ? (
-                <p className="mt-3 text-sm text-gray-500">Seleziona un atleta attivo per caricare tracce e contesto nutrizione.</p>
-              ) : (
-                <div className="mt-4 space-y-4">
-                  <ResearchTraceScientificPanel athleteId={athleteId} limit={16} traceSurface="latest_primary" />
-                  <ReplicateStatusStrip />
-                  <div className="rounded-xl border border-orange-500/25 bg-orange-950/10 p-3 sm:p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Nutrizione · giorno seduta engine</p>
-                        <p className="mt-0.5 font-mono text-[0.7rem] text-gray-500">{plannedDate}</p>
-                      </div>
-                      <Pro2Button
-                        type="button"
-                        variant="secondary"
-                        disabled={nutritionBusy}
-                        className="border-orange-500/30 bg-orange-500/10 text-xs text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-                        onClick={() => void refreshNutritionContext()}
-                      >
-                        {nutritionBusy ? "Lettura…" : "Aggiorna sintesi"}
-                      </Pro2Button>
-                    </div>
-                    {nutritionErr ? <p className="mt-2 text-xs text-amber-200/90">{nutritionErr}</p> : null}
-                    {nutritionLine ? (
-                      <p className="mt-2 text-sm text-gray-200">{nutritionLine}</p>
-                    ) : !nutritionErr && !nutritionBusy ? (
-                      <p className="mt-2 text-xs text-gray-500">Solo lettura API nutrizione — utile per allineare fueling mentale al giorno scelto.</p>
-                    ) : null}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <section aria-label="KPI finestra" className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
-              <KpiCard
-                label="TSS pianificato"
-                value={showData ? Math.round(stats.pTss).toString() : "—"}
-                hint={range ? `${range.from} → ${range.to}` : undefined}
-                accent="orange"
-                icon={Flame}
-              />
-              <KpiCard
-                label="TSS eseguito"
-                value={showData ? Math.round(stats.eTss).toString() : "—"}
-                hint="Nella stessa finestra"
-                accent="orange"
-                icon={Activity}
-              />
-              <KpiCard
-                label="Sessioni (pian. / eseg.)"
-                value={showData ? `${stats.sessionsPlanned} / ${stats.sessionsExecuted}` : "—"}
-                accent="orange"
-                icon={Timer}
-              />
-              <KpiCard
-                label="Minuti totali"
-                value={showData ? `${Math.round(stats.pMin + stats.eMin)}` : "—"}
-                hint="Pianificato + eseguito (somma grezza)"
-                accent="orange"
-                icon={Heart}
-              />
-            </section>
-          </div>
-        </Pro2Accordion>
+        <BuilderDetailsEngineAccordion
+          athleteId={athleteId}
+          plannedDate={plannedDate}
+          nutritionBusy={nutritionBusy}
+          nutritionErr={nutritionErr}
+          nutritionLine={nutritionLine}
+          refreshNutritionContext={refreshNutritionContext}
+          showData={showData}
+          stats={stats}
+          range={range}
+        />
     </Pro2ModulePageShell>
   );
 }
