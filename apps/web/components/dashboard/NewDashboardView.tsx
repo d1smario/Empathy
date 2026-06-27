@@ -7,14 +7,33 @@
  * `DashboardTwinRadial` e l'hook `useDashboardScores`.
  */
 
+import dynamic from "next/dynamic";
+
 import { DashboardTwinRadial } from "@/components/dashboard/DashboardTwinRadial";
 import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
 import { DashboardKpiGrid } from "@/components/dashboard/DashboardKpiGrid";
 import { DashboardSystemStatus } from "@/components/dashboard/DashboardSystemStatus";
-import { DashboardLongevityPanels } from "@/components/dashboard/DashboardLongevityPanels";
-import { DashboardBioenergeticStrip } from "@/components/dashboard/DashboardBioenergeticStrip";
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+
+// Sezioni below-the-fold e pesanti: caricate in chunk separati (no SSR) per
+// alleggerire il primo paint post-login. La striscia bioenergetica trascina i
+// grafici recharts (griglia monitoraggio continuo); i pannelli longevità sono un
+// blocco grande con stato/fetch proprio. Twin, header readiness, KPI e system
+// status restano EAGER (above-the-fold / contenuto principale).
+const placeholder = (
+  <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-500">
+    Caricamento…
+  </p>
+);
+const DashboardBioenergeticStrip = dynamic(
+  () => import("@/components/dashboard/DashboardBioenergeticStrip").then((m) => m.DashboardBioenergeticStrip),
+  { ssr: false, loading: () => placeholder },
+);
+const DashboardLongevityPanels = dynamic(
+  () => import("@/components/dashboard/DashboardLongevityPanels").then((m) => m.DashboardLongevityPanels),
+  { ssr: false, loading: () => placeholder },
+);
 
 const EMPTY_KPIS = {
   weightKg: null,

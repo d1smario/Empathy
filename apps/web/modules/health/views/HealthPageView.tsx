@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, HeartPulse, Microscope, Wrench } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
@@ -40,8 +41,6 @@ import {
 import { HealthImportSection } from "@/modules/health/views/sections/HealthImportSection";
 import { HealthScoreSummary } from "@/modules/health/views/sections/HealthScoreSummary";
 import { HealthLatestPanelsSection } from "@/modules/health/views/sections/HealthLatestPanelsSection";
-import { HealthBloodTrendSection } from "@/modules/health/views/sections/HealthBloodTrendSection";
-import { HealthAreaCharts } from "@/modules/health/views/sections/HealthAreaCharts";
 import {
   HealthLongitudinalTables,
   type BloodMatrixColumn,
@@ -49,6 +48,21 @@ import {
 } from "@/modules/health/views/sections/HealthLongitudinalTables";
 import { HealthSystemMapPanel } from "@/modules/health/views/sections/HealthSystemMapPanel";
 import { HealthArchiveSection } from "@/modules/health/views/sections/HealthArchiveSection";
+
+// Sezioni recharts (radar/anelli/trend): caricate in chunk separati e solo quando
+// il tab che le contiene è attivo (no SSR, presentazionali su props già pronte).
+// Tiene fuori recharts dal bundle iniziale della pagina Health.
+const healthChartFallback = (
+  <div className="h-48 rounded-2xl border border-white/10 bg-black/20" aria-hidden />
+);
+const HealthAreaCharts = dynamic(
+  () => import("@/modules/health/views/sections/HealthAreaCharts").then((m) => m.HealthAreaCharts),
+  { ssr: false, loading: () => healthChartFallback },
+);
+const HealthBloodTrendSection = dynamic(
+  () => import("@/modules/health/views/sections/HealthBloodTrendSection").then((m) => m.HealthBloodTrendSection),
+  { ssr: false, loading: () => healthChartFallback },
+);
 
 type HealthTabId = "aree" | "stato" | "dettagli";
 

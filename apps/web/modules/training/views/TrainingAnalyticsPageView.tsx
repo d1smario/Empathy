@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import type {
   TrainingAdaptationLoopViewModel,
   TrainingBioenergeticModulationViewModel,
@@ -25,7 +26,18 @@ import {
   valueForMetric,
 } from "@/lib/training/analytics/executed-metric-aggregates";
 import type { CrossChannelSessionVm } from "@/lib/training/analytics/cross-channel-session";
-import { TrainingAnalyzerCrossChannelSection } from "@/components/training/TrainingAnalyzerCrossChannelSection";
+// Sezione cross-channel (recharts) renderizzata in fondo alla pagina analytics:
+// chunk separato, no SSR, fuori dal bundle iniziale del modulo Training.
+const TrainingAnalyzerCrossChannelSection = dynamic(
+  () =>
+    import("@/components/training/TrainingAnalyzerCrossChannelSection").then(
+      (m) => m.TrainingAnalyzerCrossChannelSection,
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 rounded-2xl border border-white/10 bg-black/20" aria-hidden />,
+  },
+);
 import { CalendarDaySessionDetail } from "@/components/training/CalendarDaySessionDetail";
 import { TrainingCalendarAnalyzer } from "@/components/training/TrainingCalendarAnalyzer";
 import { workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";

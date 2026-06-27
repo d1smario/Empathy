@@ -9,8 +9,18 @@ import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Button } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { ViryaAnnualPlanOrchestrator } from "@/modules/training/components/ViryaAnnualPlanOrchestrator";
+import dynamic from "next/dynamic";
 import { fetchTrainingPlannerContext, persistTrainingResearchPlans } from "@/modules/training/services/training-virya-api";
+
+// Lazy-load: l'orchestrator (+ libraries.ts ~48KB + 20 sezioni + kit) è il chunk
+// più pesante della route; differirlo alleggerisce il bundle iniziale della pagina.
+const ViryaAnnualPlanOrchestrator = dynamic(
+  () => import("@/modules/training/components/ViryaAnnualPlanOrchestrator").then((m) => m.ViryaAnnualPlanOrchestrator),
+  {
+    ssr: false,
+    loading: () => <div className="py-12 text-center text-sm text-gray-500">Caricamento pianificatore annuale…</div>,
+  },
+);
 
 function planTriggerLine(p: ResearchPlan): string {
   const t = p.trigger;
