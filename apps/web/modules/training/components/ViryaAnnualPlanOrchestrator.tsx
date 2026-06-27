@@ -48,16 +48,7 @@ import {
   replaceTrainingPlannerCalendar,
   type ViryaCalendarPlanSummary,
 } from "@/modules/training/services/training-planned-api";
-import {
-  activeGymModulesForWeek,
-  buildGymDayModules,
-  ensureGymWeekModules,
-  formatGymDistrictsLabel,
-  GYM_WEEK_DAY_SLOTS,
-  gymModuleDistricts,
-  toggleGymDistrict,
-  type GymDayModule,
-} from "@/lib/training/virya/gym-day-modules";
+import { activeGymModulesForWeek, buildGymDayModules, ensureGymWeekModules, formatGymDistrictsLabel, gymModuleDistricts, type GymDayModule } from "@/lib/training/virya/gym-day-modules";
 import { buildViryaBuilderSessionBrief } from "@/lib/training/virya/build-virya-session-brief";
 import {
   deriveViryaBuilderInstructions,
@@ -74,67 +65,16 @@ import type {
   LifestyleDayModule,
   TechnicalDayModule,
 } from "@/lib/training/virya/virya-day-module-types";
-import {
-  PhaseType,
-  RaceType,
-  WeekObjectiveKey,
-  ViryaRetuneProposalWeek,
-  ViryaRetuneProposal,
-  WEEK_FOCUS_OPTIONS,
-  WEEK_FOCUS_CHIP_STYLES,
-  SportFamily,
-  GymPrimaryGoal,
-  GymMacroObjective,
-  PhasePlan,
-  RacePlan,
-  MultiSportTarget,
-  VIRYA_LOAD_LABEL,
-  VIRYA_LOAD_SHORT,
-  phaseLabels,
-  sportFamilies,
-  gymGoalLabels,
-  gymMacroObjectiveLabels,
-  gymDistrictOptions,
-  gymDistrictObjectiveOptions,
-  gymExerciseTypeOptions,
-  gymMethodologyOptions,
-  technicalObjectiveOptions,
-  technicalExerciseTypeOptions,
-  technicalIntensityOptions,
-  technicalMethodologyOptions,
-  lifestyleObjectiveOptions,
-  lifestylePracticeOptions,
-  lifestyleBreathingOptions,
-  lifestyleHoldFlowOptions,
-  lifestyleMethodologyOptions,
-  sportIcon,
-  isoToday,
-  addDays,
-  weeksBetween,
-  planWindowEndForWeeks,
-  aerobicPhasesMatchWindow,
-  phaseColor,
-  phaseRowBackground,
-  phaseCellBorder,
-  tssColor,
-  clamp,
-  demandScore,
-  targetSummary,
-  emptyTargetSport,
-  aggregateGoalTargets,
-  buildAerobicClassicPhases,
-  defaultPhases,
-  phasesCoverGymWindow,
-  buildTechnicalDayModules,
-  buildLifestyleDayModules,
-  buildGymMacroPhases,
-  DEFAULT_AEROBIC_PLAN_WEEKS,
-} from "@/lib/training/virya/virya-annual-plan-kit";
+import { PhaseType, RaceType, WeekObjectiveKey, ViryaRetuneProposalWeek, ViryaRetuneProposal, WEEK_FOCUS_OPTIONS, WEEK_FOCUS_CHIP_STYLES, SportFamily, GymPrimaryGoal, GymMacroObjective, PhasePlan, RacePlan, MultiSportTarget, VIRYA_LOAD_LABEL, VIRYA_LOAD_SHORT, phaseLabels, sportFamilies, gymMacroObjectiveLabels, sportIcon, isoToday, addDays, weeksBetween, planWindowEndForWeeks, aerobicPhasesMatchWindow, phaseColor, phaseRowBackground, phaseCellBorder, tssColor, clamp, demandScore, targetSummary, emptyTargetSport, aggregateGoalTargets, buildAerobicClassicPhases, defaultPhases, phasesCoverGymWindow, buildTechnicalDayModules, buildLifestyleDayModules, buildGymMacroPhases, DEFAULT_AEROBIC_PLAN_WEEKS } from "@/lib/training/virya/virya-annual-plan-kit";
 import { ViryaHeroHeader } from "@/modules/training/views/sections/ViryaHeroHeader";
 import { ViryaStatusBanners } from "@/modules/training/views/sections/ViryaStatusBanners";
 import { ViryaPhaseRecapGrid } from "@/modules/training/views/sections/ViryaPhaseRecapGrid";
 import { ViryaAnnualLoadProjectionCard } from "@/modules/training/views/sections/ViryaAnnualLoadProjectionCard";
 import { ViryaMasterPlanCard } from "@/modules/training/views/sections/ViryaMasterPlanCard";
+import { ViryaAerobicNote } from "@/modules/training/views/sections/ViryaAerobicNote";
+import { ViryaStrengthConfigBlock } from "@/modules/training/views/sections/ViryaStrengthConfigBlock";
+import { ViryaTechnicalConfigBlock } from "@/modules/training/views/sections/ViryaTechnicalConfigBlock";
+import { ViryaLifestyleConfigBlock } from "@/modules/training/views/sections/ViryaLifestyleConfigBlock";
 
 
 export type ViryaAnnualPlanOrchestratorProps = {
@@ -3133,691 +3073,58 @@ export function ViryaAnnualPlanOrchestrator({
             <span className="mt-1 block text-[0.7rem] text-slate-500">Modificabile in qualsiasi momento; viene propagato nelle note di generazione.</span>
           </label>
           {sportFamily === "aerobic" ? (
-            <p className="mt-4 rounded-xl border border-orange-400/25 bg-orange-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-orange-100/90">
-              Ogni piano Virya è <span className="font-semibold text-pink-200">mono-disciplina</span>: per più sport crea piani separati (stesso flusso guidato). La disciplina attiva è quella scelta al passo 2; la generazione Calendar usa solo quella.
-            </p>
+            <ViryaAerobicNote />
           ) : sportFamily === "strength" ? (
-            <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">1 · Intervallo periodo</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Data inizio piano</span>
-                    <input className="form-input" type="date" value={gymPlanStart} onChange={(e) => setGymPlanStart(e.target.value)} />
-                  </label>
-                  <label className="form-field">
-                    <span>Data fine piano</span>
-                    <input className="form-input" type="date" value={gymPlanEnd} onChange={(e) => setGymPlanEnd(e.target.value)} />
-                  </label>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">2 · Macrofasi</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Numero macrofasi</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={8}
-                      value={gymMacroPhaseCount}
-                      onChange={(e) => setGymMacroPhaseCount(Math.max(1, Math.min(8, Number(e.target.value) || 1)))}
-                    />
-                  </label>
-                  <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
-                    <button type="button" className="btn-secondary" onClick={regenerateGymMacroPlan}>
-                      Genera macrofasi automatiche
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">3 · Modulo settimanale coach</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Settimana da customizzare</span>
-                    <select className="form-select" value={selectedGymWeekStart} onChange={(e) => setSelectedGymWeekStart(e.target.value)}>
-                      {programWeekRows.slice(0, 52).map((w) => (
-                        <option key={`gym-week-opt-${w.weekStart}`} value={w.weekStart}>
-                          Settimana {w.week} · {new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Giorni allenamento / week</span>
-                    <select
-                      className="form-select"
-                      value={selectedWeekConfig().sessionsPerWeek}
-                      onChange={(e) => {
-                        const nextDays = Math.max(1, Math.min(GYM_WEEK_DAY_SLOTS, Number(e.target.value) || 1));
-                        updateSelectedWeekConfig({
-                          sessionsPerWeek: nextDays,
-                          modules: ensureGymWeekModules(selectedWeekConfig().modules),
-                        });
-                        setGymTrainingDaysPerWeek(nextDays);
-                      }}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                        <option key={`gym-days-${d}`} value={d}>
-                          {d} giorni
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Volume settimana (% vs {VIRYA_LOAD_SHORT.toLowerCase()} macrofase)</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={50}
-                      max={180}
-                      value={selectedWeekConfig().loadPct}
-                      onChange={(e) => {
-                        const pct = Math.max(50, Math.min(180, Number(e.target.value) || 100));
-                        updateSelectedWeekConfig({ loadPct: pct });
-                      }}
-                    />
-                  </label>
-                  <label className="form-field">
-                    <span>Obiettivo Gym annuale</span>
-                    <select className="form-select" value={gymPrimaryGoal} onChange={(e) => setGymPrimaryGoal(e.target.value as GymPrimaryGoal)}>
-                      {gymGoalLabels.map((g) => (
-                        <option key={`gym-goal-select-${g.id}`} value={g.id}>
-                          {g.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
-                  <span className="builder-zone-chip">
-                    Stato volume: {loadStatusLabel(selectedWeekConfig().loadPct)} ({selectedWeekConfig().loadPct}%)
-                  </span>
-                  <Link href={`/training/calendar?date=${selectedGymWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-                    Apri settimana in Calendar →
-                  </Link>
-                </div>
-                <small style={{ color: "var(--empathy-text-muted)" }}>
-                  Regola volume: Scarico 50-99% · Stabile 100% · Carico 101-180%. Configura fino a {GYM_WEEK_DAY_SLOTS}{" "}
-                  giorni; in generazione Calendar si usano i primi {selectedWeekConfig().sessionsPerWeek} giorni della tabella.
-                </small>
-                <div style={{ marginTop: "8px", overflowX: "auto" }}>
-                  <table className="table-shell">
-                    <thead>
-                      <tr>
-                        <th>Giorno</th>
-                        <th>Distretti allenati (multipli)</th>
-                        <th>Obiettivo distretto</th>
-                        <th>Tipo esercizio</th>
-                        <th>Metodologia</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ensureGymWeekModules(selectedWeekConfig().modules).map((row) => {
-                        const active = row.dayIndex <= selectedWeekConfig().sessionsPerWeek;
-                        return (
-                        <tr
-                          key={`gym-day-module-${row.dayIndex}`}
-                          style={active ? undefined : { opacity: 0.45 }}
-                          title={
-                            active
-                              ? undefined
-                              : "Giorno oltre le sedute/settimana — non usato in generazione finché non aumenti i giorni allenamento"
-                          }
-                        >
-                          <td>
-                            Giorno {row.dayIndex}
-                            {!active ? <span className="ml-1 text-[0.65rem] text-slate-500">(riserva)</span> : null}
-                          </td>
-                          <td>
-                            <div className="flex max-w-[420px] flex-wrap gap-1">
-                              {gymDistrictOptions.map((opt) => {
-                                const on = gymModuleDistricts(row).includes(opt);
-                                return (
-                                  <button
-                                    key={`district-chip-${row.dayIndex}-${opt}`}
-                                    type="button"
-                                    className={cn(
-                                      "rounded-md border px-1.5 py-0.5 text-[0.65rem] font-semibold transition",
-                                      on
-                                        ? "border-fuchsia-400/60 bg-fuchsia-500/25 text-fuchsia-50"
-                                        : "border-white/15 bg-black/40 text-slate-400 hover:border-fuchsia-400/35 hover:text-fuchsia-100",
-                                    )}
-                                    onClick={() =>
-                                      updateSelectedWeekConfig({
-                                        modules: ensureGymWeekModules(selectedWeekConfig().modules).map((m) =>
-                                          m.dayIndex === row.dayIndex ? toggleGymDistrict(m, opt) : m,
-                                        ),
-                                      })
-                                    }
-                                  >
-                                    {opt}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.districtObjective}
-                              onChange={(e) =>
-                                updateSelectedWeekConfig({
-                                  modules: selectedWeekConfig().modules.map((m) => (m.dayIndex === row.dayIndex ? { ...m, districtObjective: e.target.value } : m)),
-                                })
-                              }
-                            >
-                              {gymDistrictObjectiveOptions.map((opt) => (
-                                <option key={`district-obj-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.exerciseType}
-                              onChange={(e) =>
-                                updateSelectedWeekConfig({
-                                  modules: selectedWeekConfig().modules.map((m) => (m.dayIndex === row.dayIndex ? { ...m, exerciseType: e.target.value } : m)),
-                                })
-                              }
-                            >
-                              {gymExerciseTypeOptions.map((opt) => (
-                                <option key={`ex-type-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.methodology}
-                              onChange={(e) =>
-                                updateSelectedWeekConfig({
-                                  modules: selectedWeekConfig().modules.map((m) => (m.dayIndex === row.dayIndex ? { ...m, methodology: e.target.value } : m)),
-                                })
-                              }
-                            >
-                              {gymMethodologyOptions.map((opt) => (
-                                <option key={`method-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <ViryaStrengthConfigBlock
+              gymPlanStart={gymPlanStart}
+              setGymPlanStart={setGymPlanStart}
+              gymPlanEnd={gymPlanEnd}
+              setGymPlanEnd={setGymPlanEnd}
+              gymMacroPhaseCount={gymMacroPhaseCount}
+              setGymMacroPhaseCount={setGymMacroPhaseCount}
+              regenerateGymMacroPlan={regenerateGymMacroPlan}
+              selectedGymWeekStart={selectedGymWeekStart}
+              setSelectedGymWeekStart={setSelectedGymWeekStart}
+              programWeekRows={programWeekRows}
+              selectedWeekConfig={selectedWeekConfig}
+              updateSelectedWeekConfig={updateSelectedWeekConfig}
+              setGymTrainingDaysPerWeek={setGymTrainingDaysPerWeek}
+              gymPrimaryGoal={gymPrimaryGoal}
+              setGymPrimaryGoal={setGymPrimaryGoal}
+              loadStatusLabel={loadStatusLabel}
+            />
           ) : sportFamily === "technical" ? (
-            <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">1 · Intervallo periodo</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Data inizio piano</span>
-                    <input className="form-input" type="date" value={technicalPlanStart} onChange={(e) => setTechnicalPlanStart(e.target.value)} />
-                  </label>
-                  <label className="form-field">
-                    <span>Data fine piano</span>
-                    <input className="form-input" type="date" value={technicalPlanEnd} onChange={(e) => setTechnicalPlanEnd(e.target.value)} />
-                  </label>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">2 · Macrofasi</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Numero macrofasi</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={8}
-                      value={technicalMacroPhaseCount}
-                      onChange={(e) => setTechnicalMacroPhaseCount(Math.max(1, Math.min(8, Number(e.target.value) || 1)))}
-                    />
-                  </label>
-                  <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
-                    <button type="button" className="btn-secondary" onClick={regenerateTechnicalMacroPlan}>
-                      Genera macrofasi automatiche
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">3 · Modulo settimanale coach</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Settimana da customizzare</span>
-                    <select className="form-select" value={selectedTechnicalWeekStart} onChange={(e) => setSelectedTechnicalWeekStart(e.target.value)}>
-                      {programWeekRows.slice(0, 52).map((w) => (
-                        <option key={`tech-week-opt-${w.weekStart}`} value={w.weekStart}>
-                          Settimana {w.week} · {new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Giorni allenamento / week</span>
-                    <select
-                      className="form-select"
-                      value={selectedTechnicalWeekConfig().sessionsPerWeek}
-                      onChange={(e) => {
-                        const nextDays = Math.max(1, Math.min(7, Number(e.target.value) || 1));
-                        const baseModules = selectedTechnicalWeekConfig().modules.slice(0, nextDays);
-                        const modules = baseModules.length ? baseModules : buildTechnicalDayModules(nextDays);
-                        while (modules.length < nextDays) {
-                          const day = modules.length + 1;
-                          modules.push({
-                            dayIndex: day,
-                            objectives: ["Condizione fisica", "Tecnica con modulo"],
-                            exerciseType: "Lavoro tattico a reparti",
-                            intensity: "Media",
-                            methodology: "Progressivo",
-                          });
-                        }
-                        updateSelectedTechnicalWeekConfig({ sessionsPerWeek: nextDays, modules });
-                      }}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                        <option key={`tech-days-${d}`} value={d}>
-                          {d} giorni
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Volume settimana (% vs TSS macrofase)</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={50}
-                      max={180}
-                      value={selectedTechnicalWeekConfig().loadPct}
-                      onChange={(e) => {
-                        const pct = Math.max(50, Math.min(180, Number(e.target.value) || 100));
-                        updateSelectedTechnicalWeekConfig({ loadPct: pct });
-                      }}
-                    />
-                  </label>
-                </div>
-                <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
-                  <span className="builder-zone-chip">
-                    Stato volume: {loadStatusLabel(selectedTechnicalWeekConfig().loadPct)} ({selectedTechnicalWeekConfig().loadPct}%)
-                  </span>
-                  <Link href={`/training/calendar?date=${selectedTechnicalWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-                    Apri settimana in Calendar →
-                  </Link>
-                </div>
-                <small style={{ color: "var(--empathy-text-muted)" }}>
-                  Regola volume: Scarico 50-99% · Stabile 100% · Carico 101-180%.
-                </small>
-                <div style={{ marginTop: "8px", overflowX: "auto" }}>
-                  <table className="table-shell">
-                    <thead>
-                      <tr>
-                        <th>Giorno</th>
-                        <th>Obiettivo del giorno (sequenza)</th>
-                        <th>Tipo esercizio</th>
-                        <th>Intensita</th>
-                        <th>Metodo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedTechnicalWeekConfig().modules.slice(0, selectedTechnicalWeekConfig().sessionsPerWeek).map((row) => (
-                        <tr key={`tech-day-module-${row.dayIndex}`}>
-                          <td>Giorno {row.dayIndex}</td>
-                          <td>
-                            <div className="builder-zone-legend" style={{ marginBottom: "6px" }}>
-                              {row.objectives.map((obj, idx) => (
-                                <span key={`obj-seq-${row.dayIndex}-${idx}`} className="builder-zone-chip">
-                                  {idx + 1}. {obj}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="builder-zone-legend">
-                              {technicalObjectiveOptions.map((obj) => (
-                                <button
-                                  key={`obj-opt-${row.dayIndex}-${obj}`}
-                                  type="button"
-                                  className={`builder-zone-chip ${row.objectives.includes(obj) ? "builder-chip-active" : ""}`}
-                                  onClick={() => {
-                                    const current = selectedTechnicalWeekConfig().modules;
-                                    updateSelectedTechnicalWeekConfig({
-                                      modules: current.map((m) =>
-                                        m.dayIndex === row.dayIndex
-                                          ? {
-                                              ...m,
-                                              objectives: m.objectives.includes(obj)
-                                                ? m.objectives.filter((x) => x !== obj)
-                                                : [...m.objectives, obj],
-                                            }
-                                          : m,
-                                      ),
-                                    });
-                                  }}
-                                >
-                                  {obj}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.exerciseType}
-                              onChange={(e) =>
-                                updateSelectedTechnicalWeekConfig({
-                                  modules: selectedTechnicalWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, exerciseType: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {technicalExerciseTypeOptions.map((opt) => (
-                                <option key={`tech-ex-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.intensity}
-                              onChange={(e) =>
-                                updateSelectedTechnicalWeekConfig({
-                                  modules: selectedTechnicalWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, intensity: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {technicalIntensityOptions.map((opt) => (
-                                <option key={`tech-int-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.methodology}
-                              onChange={(e) =>
-                                updateSelectedTechnicalWeekConfig({
-                                  modules: selectedTechnicalWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, methodology: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {technicalMethodologyOptions.map((opt) => (
-                                <option key={`tech-method-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <ViryaTechnicalConfigBlock
+              technicalPlanStart={technicalPlanStart}
+              setTechnicalPlanStart={setTechnicalPlanStart}
+              technicalPlanEnd={technicalPlanEnd}
+              setTechnicalPlanEnd={setTechnicalPlanEnd}
+              technicalMacroPhaseCount={technicalMacroPhaseCount}
+              setTechnicalMacroPhaseCount={setTechnicalMacroPhaseCount}
+              regenerateTechnicalMacroPlan={regenerateTechnicalMacroPlan}
+              selectedTechnicalWeekStart={selectedTechnicalWeekStart}
+              setSelectedTechnicalWeekStart={setSelectedTechnicalWeekStart}
+              programWeekRows={programWeekRows}
+              selectedTechnicalWeekConfig={selectedTechnicalWeekConfig}
+              updateSelectedTechnicalWeekConfig={updateSelectedTechnicalWeekConfig}
+              loadStatusLabel={loadStatusLabel}
+            />
           ) : (
-            <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">1 · Intervallo periodo</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Data inizio piano</span>
-                    <input className="form-input" type="date" value={lifestylePlanStart} onChange={(e) => setLifestylePlanStart(e.target.value)} />
-                  </label>
-                  <label className="form-field">
-                    <span>Data fine piano</span>
-                    <input className="form-input" type="date" value={lifestylePlanEnd} onChange={(e) => setLifestylePlanEnd(e.target.value)} />
-                  </label>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">2 · Macrofasi</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Numero macrofasi</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={8}
-                      value={lifestyleMacroPhaseCount}
-                      onChange={(e) => setLifestyleMacroPhaseCount(Math.max(1, Math.min(8, Number(e.target.value) || 1)))}
-                    />
-                  </label>
-                  <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
-                    <button type="button" className="btn-secondary" onClick={regenerateLifestyleMacroPlan}>
-                      Genera macrofasi automatiche
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="profile-subpanel">
-                <div className="session-title-copy">3 · Modulo settimanale coach</div>
-                <div className="form-grid-two">
-                  <label className="form-field">
-                    <span>Settimana da customizzare</span>
-                    <select className="form-select" value={selectedLifestyleWeekStart} onChange={(e) => setSelectedLifestyleWeekStart(e.target.value)}>
-                      {programWeekRows.slice(0, 52).map((w) => (
-                        <option key={`life-week-opt-${w.weekStart}`} value={w.weekStart}>
-                          Settimana {w.week} · {new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Giorni allenamento / week</span>
-                    <select
-                      className="form-select"
-                      value={selectedLifestyleWeekConfig().sessionsPerWeek}
-                      onChange={(e) => {
-                        const nextDays = Math.max(1, Math.min(7, Number(e.target.value) || 1));
-                        const baseModules = selectedLifestyleWeekConfig().modules.slice(0, nextDays);
-                        const modules = baseModules.length ? baseModules : buildLifestyleDayModules(nextDays);
-                        while (modules.length < nextDays) {
-                          const day = modules.length + 1;
-                          modules.push({
-                            dayIndex: day,
-                            objective: "Recupero attivo",
-                            practiceType: "Yoga flow",
-                            intensityRpe: 4,
-                            breathingCadence: "4-2-6",
-                            holdOrFlow: "Flow continuo",
-                            methodology: "Respirazione guidata",
-                          });
-                        }
-                        updateSelectedLifestyleWeekConfig({ sessionsPerWeek: nextDays, modules });
-                      }}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                        <option key={`life-days-${d}`} value={d}>
-                          {d} giorni
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Volume settimana (% vs TSS macrofase)</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={50}
-                      max={180}
-                      value={selectedLifestyleWeekConfig().loadPct}
-                      onChange={(e) => {
-                        const pct = Math.max(50, Math.min(180, Number(e.target.value) || 100));
-                        updateSelectedLifestyleWeekConfig({ loadPct: pct });
-                      }}
-                    />
-                  </label>
-                </div>
-                <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
-                  <span className="builder-zone-chip">
-                    Stato volume: {loadStatusLabel(selectedLifestyleWeekConfig().loadPct)} ({selectedLifestyleWeekConfig().loadPct}%)
-                  </span>
-                  <Link href={`/training/calendar?date=${selectedLifestyleWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-                    Apri settimana in Calendar →
-                  </Link>
-                </div>
-                <small style={{ color: "var(--empathy-text-muted)" }}>
-                  Regola volume: Scarico 50-99% · Stabile 100% · Carico 101-180%.
-                </small>
-                <div style={{ marginTop: "8px", overflowX: "auto" }}>
-                  <table className="table-shell">
-                    <thead>
-                      <tr>
-                        <th>Giorno</th>
-                        <th>Obiettivo</th>
-                        <th>Tipo di pratica</th>
-                        <th>Intensita RPE</th>
-                        <th>Cadenza respiratoria</th>
-                        <th>Tenuta / Flow</th>
-                        <th>Metodologia</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedLifestyleWeekConfig().modules.slice(0, selectedLifestyleWeekConfig().sessionsPerWeek).map((row) => (
-                        <tr key={`life-day-module-${row.dayIndex}`}>
-                          <td>Giorno {row.dayIndex}</td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.objective}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, objective: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {lifestyleObjectiveOptions.map((opt) => (
-                                <option key={`life-obj-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.practiceType}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, practiceType: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {lifestylePracticeOptions.map((opt) => (
-                                <option key={`life-practice-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <input
-                              className="form-input"
-                              type="number"
-                              min={1}
-                              max={10}
-                              step={1}
-                              value={row.intensityRpe}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, intensityRpe: Math.max(1, Math.min(10, Number(e.target.value) || 1)) } : m,
-                                  ),
-                                })
-                              }
-                            />
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.breathingCadence}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, breathingCadence: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {lifestyleBreathingOptions.map((opt) => (
-                                <option key={`life-breath-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.holdOrFlow}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, holdOrFlow: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {lifestyleHoldFlowOptions.map((opt) => (
-                                <option key={`life-hold-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              className="form-select"
-                              value={row.methodology}
-                              onChange={(e) =>
-                                updateSelectedLifestyleWeekConfig({
-                                  modules: selectedLifestyleWeekConfig().modules.map((m) =>
-                                    m.dayIndex === row.dayIndex ? { ...m, methodology: e.target.value } : m,
-                                  ),
-                                })
-                              }
-                            >
-                              {lifestyleMethodologyOptions.map((opt) => (
-                                <option key={`life-method-${row.dayIndex}-${opt}`} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <ViryaLifestyleConfigBlock
+              lifestylePlanStart={lifestylePlanStart}
+              setLifestylePlanStart={setLifestylePlanStart}
+              lifestylePlanEnd={lifestylePlanEnd}
+              setLifestylePlanEnd={setLifestylePlanEnd}
+              lifestyleMacroPhaseCount={lifestyleMacroPhaseCount}
+              setLifestyleMacroPhaseCount={setLifestyleMacroPhaseCount}
+              regenerateLifestyleMacroPlan={regenerateLifestyleMacroPlan}
+              selectedLifestyleWeekStart={selectedLifestyleWeekStart}
+              setSelectedLifestyleWeekStart={setSelectedLifestyleWeekStart}
+              programWeekRows={programWeekRows}
+              selectedLifestyleWeekConfig={selectedLifestyleWeekConfig}
+              updateSelectedLifestyleWeekConfig={updateSelectedLifestyleWeekConfig}
+              loadStatusLabel={loadStatusLabel}
+            />
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
