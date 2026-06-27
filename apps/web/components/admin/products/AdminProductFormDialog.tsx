@@ -51,6 +51,8 @@ const COPY = {
   isActive: "Prodotto attivo (vendibile)",
   isHidden: "Nascosto dalla pagina pubblica",
   isHiddenHint: "Non compare nei piani pubblici: vendibile solo tramite codice promo di sblocco.",
+  isHiddenInactiveWarn:
+    "Attenzione: un prodotto nascosto e disattivo non è vendibile nemmeno tramite codice di sblocco. Attivalo per renderlo riscattabile.",
   sortOrder: "Ordinamento",
   // Errori
   errCodeRequired: "Il codice è obbligatorio.",
@@ -558,6 +560,11 @@ export function AdminProductFormDialog({
                 <span className="mt-0.5 block text-xs text-gray-500">{COPY.isHiddenHint}</span>
               </span>
             </label>
+            {draft.is_hidden && !draft.is_active ? (
+              <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                {COPY.isHiddenInactiveWarn}
+              </p>
+            ) : null}
           </section>
         </div>
 
