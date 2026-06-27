@@ -81,10 +81,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/access?error=auth`);
   }
   const meta = user.user_metadata as Record<string, unknown>;
-  if (pending) {
+  const coachCodeFromMeta = typeof meta?.coach_code === "string" ? meta.coach_code : null;
+  // Bootstrap del profilo: serve se c'è un ruolo `pending` (signup stesso device) OPPURE se
+  // arriva un codice coach. Quest'ultimo caso è critico: con la conferma email aperta su un
+  // browser/device diverso il cookie pending non c'è, ma il link coach richiede comunque
+  // `athlete_id` → senza bootstrap la RPC fallirebbe e il collegamento andrebbe perso in
+  // silenzio. bootstrapAppUserProfile è idempotente e resolveBootstrapRole non declassa un
+  // coach esistente, quindi è sicuro chiamarlo anche qui col ruolo atleta di default.
+  if (pending || coachCodeFromMeta) {
     await bootstrapAppUserProfile(supabase, {
       userId: user.id,
-      role: pending,
+      role: pending ?? "private",
       email: user.email ?? null,
       firstName: typeof meta?.first_name === "string" ? meta.first_name : null,
       lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
@@ -92,13 +99,15 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Codice coach (opzionale) propagato via options.data.coach_code a registrazione
-  // con conferma email: lo rileggiamo da user_metadata (come first_name) e
-  // colleghiamo l'atleta al coach (ESCLUSIVO) tramite l'unico punto server-side.
-  // La RPC risolve l'atleta da auth.uid(); il bootstrap sopra ha già garantito athlete_id.
-  const coachCodeFromMeta = typeof meta?.coach_code === "string" ? meta.coach_code : null;
+  // Codice coach (opzionale) propagato via options.data.coach_code a registrazione con
+  // conferma email: lo rileggiamo da user_metadata e colleghiamo l'atleta al coach
+  // (ESCLUSIVO) tramite l'unico punto server-side. La RPC risolve l'atleta da auth.uid();
+  // il bootstrap sopra ha già garantito athlete_id (anche nel ramo cross-device).
   if (coachCodeFromMeta) {
-    await linkAthleteByCoachCode(supabase, coachCodeFromMeta);
+    const link = await linkAthleteByCoachCode(supabase, coachCodeFromMeta);
+    if (link.attempted && !link.ok) {
+      console.warn("[auth/callback] coach-code link failed", link.error ?? "unknown");
+    }
   }
 
   const admin = createSupabaseAdminClient();

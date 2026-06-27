@@ -109,9 +109,16 @@ export async function POST(req: Request) {
 
   // Codice coach (opzionale) inserito a registrazione: collegamento ESCLUSIVO via RPC.
   // Solo per atleti con athlete_id già pronto; un fallimento non blocca il signup.
+  // Fallback: se il caller non passa coachCode (es. retry shell dopo conferma email),
+  // lo recuperiamo da user_metadata.coach_code, dove viene persistito a signup → così
+  // il collegamento è recuperabile anche se il primo tentativo nel callback è fallito.
+  const metaCoachCodeRaw = (user.user_metadata as Record<string, unknown>)?.coach_code;
+  const metaCoachCode = typeof metaCoachCodeRaw === "string" ? metaCoachCodeRaw : null;
+  const bodyCoachCode = typeof body.coachCode === "string" && body.coachCode.trim() ? body.coachCode : null;
+  const effectiveCoachCode = bodyCoachCode ?? metaCoachCode;
   let coachLinked = false;
-  if (effectiveRole === "private" && resolvedAthleteId) {
-    const link = await linkAthleteByCoachCode(supabase, body.coachCode);
+  if (effectiveRole === "private" && resolvedAthleteId && effectiveCoachCode) {
+    const link = await linkAthleteByCoachCode(supabase, effectiveCoachCode);
     coachLinked = link.ok;
   }
 
