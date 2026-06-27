@@ -1,18 +1,6 @@
 "use client";
 
-import {
-  Activity,
-  BookMarked,
-  CalendarRange,
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Flag,
-  Layers,
-  LineChart,
-  TableProperties,
-  Target,
-} from "lucide-react";
+import { Activity, CalendarRange, ChevronLeft, ChevronRight, Dumbbell, Flag, Layers, LineChart, Target } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
@@ -65,7 +53,7 @@ import type {
   LifestyleDayModule,
   TechnicalDayModule,
 } from "@/lib/training/virya/virya-day-module-types";
-import { PhaseType, RaceType, WeekObjectiveKey, ViryaRetuneProposalWeek, ViryaRetuneProposal, WEEK_FOCUS_OPTIONS, WEEK_FOCUS_CHIP_STYLES, SportFamily, GymPrimaryGoal, GymMacroObjective, PhasePlan, RacePlan, MultiSportTarget, VIRYA_LOAD_LABEL, VIRYA_LOAD_SHORT, phaseLabels, sportFamilies, gymMacroObjectiveLabels, sportIcon, isoToday, addDays, weeksBetween, planWindowEndForWeeks, aerobicPhasesMatchWindow, phaseColor, phaseRowBackground, phaseCellBorder, tssColor, clamp, demandScore, targetSummary, emptyTargetSport, aggregateGoalTargets, buildAerobicClassicPhases, defaultPhases, phasesCoverGymWindow, buildTechnicalDayModules, buildLifestyleDayModules, buildGymMacroPhases, DEFAULT_AEROBIC_PLAN_WEEKS } from "@/lib/training/virya/virya-annual-plan-kit";
+import { PhaseType, RaceType, WeekObjectiveKey, ViryaRetuneProposalWeek, ViryaRetuneProposal, SportFamily, GymPrimaryGoal, GymMacroObjective, PhasePlan, RacePlan, MultiSportTarget, VIRYA_LOAD_SHORT, phaseLabels, sportFamilies, gymMacroObjectiveLabels, sportIcon, isoToday, addDays, weeksBetween, planWindowEndForWeeks, aerobicPhasesMatchWindow, phaseColor, tssColor, clamp, demandScore, targetSummary, emptyTargetSport, aggregateGoalTargets, buildAerobicClassicPhases, defaultPhases, phasesCoverGymWindow, buildTechnicalDayModules, buildLifestyleDayModules, buildGymMacroPhases, DEFAULT_AEROBIC_PLAN_WEEKS } from "@/lib/training/virya/virya-annual-plan-kit";
 import { ViryaHeroHeader } from "@/modules/training/views/sections/ViryaHeroHeader";
 import { ViryaStatusBanners } from "@/modules/training/views/sections/ViryaStatusBanners";
 import { ViryaPhaseRecapGrid } from "@/modules/training/views/sections/ViryaPhaseRecapGrid";
@@ -75,6 +63,11 @@ import { ViryaAerobicNote } from "@/modules/training/views/sections/ViryaAerobic
 import { ViryaStrengthConfigBlock } from "@/modules/training/views/sections/ViryaStrengthConfigBlock";
 import { ViryaTechnicalConfigBlock } from "@/modules/training/views/sections/ViryaTechnicalConfigBlock";
 import { ViryaLifestyleConfigBlock } from "@/modules/training/views/sections/ViryaLifestyleConfigBlock";
+import { ViryaApprovedDecisionsCard } from "@/modules/training/views/sections/ViryaApprovedDecisionsCard";
+import { ViryaWeeklyProgramTable } from "@/modules/training/views/sections/ViryaWeeklyProgramTable";
+import { ViryaMicrocyclePreviewCard } from "@/modules/training/views/sections/ViryaMicrocyclePreviewCard";
+import { ViryaSaveToCalendarCard } from "@/modules/training/views/sections/ViryaSaveToCalendarCard";
+import { ViryaSaveWeekToLibraryCard } from "@/modules/training/views/sections/ViryaSaveWeekToLibraryCard";
 
 
 export type ViryaAnnualPlanOrchestratorProps = {
@@ -2582,118 +2575,14 @@ export function ViryaAnnualPlanOrchestrator({
           ) : null}
 
           {viryaApprovedPatches.length > 0 ? (
-            <Pro2SectionCard
-              accent="cyan"
-              title="Decisioni approvate · input VIRYA"
-              subtitle="Patch validate dalla Reasoning Dashboard: influenzano il retune, ma la sessione resta materializzata dal Builder."
-              icon={LineChart}
-            >
-              {viryaRetuneDirective ? (
-                <div className="mb-3 rounded-xl border border-cyan-500/25 bg-cyan-950/10 p-3">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/80">
-                    Retune directive · {viryaRetuneDirective.recommendedMode.replaceAll("_", " ")}
-                  </div>
-                  <div className="mt-2 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
-                    <div>Applied {viryaRetuneDirective.appliedCount}</div>
-                    <div>Pending {viryaRetuneDirective.pendingCount}</div>
-                    <div>Builder: single-session only</div>
-                  </div>
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-400">
-                    {viryaRetuneDirective.rationale.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {viryaRetuneProposalVm ? (
-                <div className="mb-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-violet-200/80">
-                    Proposta retune server (strutturata)
-                  </div>
-                  <div className="mt-2 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
-                    <div>Mode {viryaRetuneProposalVm.recommendedMode.replaceAll("_", " ")}</div>
-                    <div>Load ×{viryaRetuneProposalVm.loadScaleSuggestion.toFixed(2)}</div>
-                    <div>Session Δ {viryaRetuneProposalVm.sessionDeltaSuggestion}</div>
-                  </div>
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-400">
-                    {viryaRetuneProposalVm.rationaleLines.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                  {viryaRetuneProposalVm.linkedCoachTraceIds.length ? (
-                    <p className="mt-2 font-mono text-[0.62rem] text-slate-600">
-                      Coach traces: {viryaRetuneProposalVm.linkedCoachTraceIds.join(", ")}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              {viryaRetuneProposal?.targetWeeks.length ? (
-                <div className="mb-3 rounded-xl border border-amber-500/25 bg-amber-950/10 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-amber-200/80">
-                        Adattamento automatico microciclo · {viryaRetuneProposal.mode.replaceAll("_", " ")}
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                        Se il recupero e' inefficiente, VIRYA adatta automaticamente il programma secondo la percentuale coach. Calendar viene scritto solo quando salvi.
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-black/30 p-2">
-                      <div className="mb-2 text-[0.62rem] font-bold uppercase tracking-wider text-slate-500">
-                        Coach adaptation control
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {([0, 50, 70, 100] as const).map((pct) => (
-                          <button
-                            key={pct}
-                            type="button"
-                            onClick={() => setAdaptationControlPct(pct)}
-                            className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
-                              adaptationControlPct === pct
-                                ? "border-amber-300 bg-amber-400/25 text-amber-50"
-                                : "border-white/10 bg-black/35 text-slate-300 hover:border-amber-300/45"
-                            }`}
-                          >
-                            {pct === 0 ? "Mantieni piano" : `${pct}%`}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid gap-2 md:grid-cols-2">
-                    {viryaRetuneProposal.targetWeeks.map((week) => (
-                      <div key={week.weekStart} className="rounded-lg border border-white/10 bg-black/30 p-2">
-                        <div className="font-mono text-[0.62rem] text-slate-500">
-                          Week {week.week} · {week.weekStart} · {week.phase}
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white">
-                          TSS {week.currentTss} → {week.proposedTss} · sedute {week.currentSessions} → {week.proposedSessions}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          Focus: {week.objectives.length ? week.objectives.join(" · ") : "invariato"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="grid gap-3 md:grid-cols-2">
-                {viryaApprovedPatches.slice(0, 6).map((patch) => (
-                  <div key={patch.id} className="rounded-xl border border-cyan-500/20 bg-black/30 p-3">
-                    <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/80">
-                      {patch.target} · {patch.confidence != null ? `${Math.round(patch.confidence * 100)}%` : "n/d"}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-white">{patch.action.replaceAll("_", " ")}</div>
-                    {typeof patch.reason === "string" && patch.reason.trim() ? (
-                      <p className="mt-2 text-xs leading-relaxed text-slate-400">{patch.reason}</p>
-                    ) : null}
-                    {patch.stagingRunId ? (
-                      <p className="mt-2 font-mono text-[0.62rem] text-slate-600">staging: {patch.stagingRunId}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </Pro2SectionCard>
+            <ViryaApprovedDecisionsCard
+              viryaApprovedPatches={viryaApprovedPatches}
+              viryaRetuneDirective={viryaRetuneDirective}
+              viryaRetuneProposalVm={viryaRetuneProposalVm}
+              viryaRetuneProposal={viryaRetuneProposal}
+              adaptationControlPct={adaptationControlPct}
+              setAdaptationControlPct={setAdaptationControlPct}
+            />
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-fuchsia-500/30 bg-fuchsia-950/15 px-4 py-3 text-sm">
@@ -2723,307 +2612,39 @@ export function ViryaAnnualPlanOrchestrator({
             </button>
           </div>
 
-          <Pro2SectionCard
-            accent="violet"
-            className="!border-pink-500/35 !bg-black bg-none from-transparent via-transparent to-transparent shadow-[inset_0_1px_0_rgba(251,113,133,0.12)]"
-            title="5 · Programma settimanale"
-            subtitle={`${programWeekRows.length} settimane (periodo passo 3: ${planWindowWeekCount || "—"}) · ${VIRYA_LOAD_LABEL}, sedute, ore e focus — usati in Calendar`}
-            icon={TableProperties}
-          >
-            <div className="max-h-[min(520px,60vh)] overflow-auto rounded-xl border border-pink-500/20 bg-black">
-              <table className="w-full min-w-[800px] border-collapse text-left text-xs text-slate-200">
-                <thead className="sticky top-0 z-10 border-b border-pink-500/25 bg-black backdrop-blur-sm">
-                  <tr>
-                    <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">#</th>
-                    <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Inizio sett.</th>
-                    <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Fase</th>
-                    <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">{VIRYA_LOAD_SHORT}</th>
-                    <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Sedute</th>
-                    <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Ore sett.</th>
-                    <th className="min-w-[260px] p-2 font-semibold text-pink-200/80">Obiettivi (multipli)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {programWeekRows.map((row) => {
-                    const pc = phaseColor(row.phaseType);
-                    const rowBg = phaseRowBackground(row.phaseType);
-                    const bdr = phaseCellBorder(row.phaseType);
-                    return (
-                    <tr
-                      key={row.weekStart}
-                      className="border-b border-white/[0.04]"
-                      style={{ backgroundColor: rowBg }}
-                    >
-                      <td className="p-2 font-mono font-semibold" style={{ color: pc }}>
-                        {row.week}
-                      </td>
-                      <td className="p-2 font-mono text-[0.7rem]" style={{ color: `${pc}dd` }}>
-                        {row.weekStart}
-                      </td>
-                      <td className="p-2 font-bold" style={{ color: pc }}>
-                        {row.phase}
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          min={0}
-                          className="w-20 rounded-lg border px-2 py-1 font-mono font-bold outline-none transition focus:ring-2"
-                          style={{
-                            borderColor: bdr,
-                            backgroundColor: `${pc}24`,
-                            color: pc,
-                            boxShadow: `inset 0 0 0 1px ${pc}20`,
-                          }}
-                          value={row.displayTss}
-                          onChange={(e) =>
-                            patchWeeklyOverride(row.weekStart, {
-                              weeklyTss: Math.max(0, Math.round(Number(e.target.value) || 0)),
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          min={1}
-                          max={7}
-                          className="w-14 rounded-lg border px-2 py-1 font-mono font-semibold outline-none transition focus:ring-2"
-                          style={{
-                            borderColor: bdr,
-                            backgroundColor: `${pc}20`,
-                            color: "#f8fafc",
-                          }}
-                          value={row.displaySessions}
-                          onChange={(e) =>
-                            patchWeeklyOverride(row.weekStart, {
-                              sessionsPerWeek: clamp(Math.round(Number(e.target.value) || 1), 1, 7),
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.5}
-                          placeholder="—"
-                          className="w-16 rounded-lg border px-2 py-1 font-mono outline-none transition focus:ring-2"
-                          style={{
-                            borderColor: bdr,
-                            backgroundColor: `${pc}18`,
-                            color: "#e2e8f0",
-                          }}
-                          value={row.hoursPerWeek ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value.trim();
-                            if (v === "") clearWeeklyHours(row.weekStart);
-                            else patchWeeklyOverride(row.weekStart, { hoursPerWeek: Math.max(0, Number(v) || 0) });
-                          }}
-                        />
-                      </td>
-                      <td className="p-2" style={{ backgroundColor: `${pc}0c` }}>
-                        <div className="flex flex-wrap gap-1">
-                          {WEEK_FOCUS_OPTIONS.map((opt) => {
-                            const on = row.objectives.includes(opt.id);
-                            const st = WEEK_FOCUS_CHIP_STYLES[opt.id];
-                            return (
-                              <button
-                                key={`${row.weekStart}-${opt.id}`}
-                                type="button"
-                                onClick={() => toggleWeekObjective(row.weekStart, opt.id)}
-                                className={cn(
-                                  "rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold transition",
-                                  on ? st.on : st.off,
-                                )}
-                              >
-                                {opt.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Valori iniziali dalle fasi; modifiche qui hanno priorità sulla generazione. Le ore settimanali (macro aerobico)
-              ripartiscono la durata media per seduta.
-            </p>
-          </Pro2SectionCard>
+          <ViryaWeeklyProgramTable
+            programWeekRows={programWeekRows}
+            planWindowWeekCount={planWindowWeekCount}
+            patchWeeklyOverride={patchWeeklyOverride}
+            clearWeeklyHours={clearWeeklyHours}
+            toggleWeekObjective={toggleWeekObjective}
+          />
 
-          <Pro2SectionCard
-            accent="violet"
-            title="Microciclo · anteprima Builder"
-            subtitle="Pattern giorni, polarizzazione Q/V e istruzioni che riceverà generateBuilderSession (prima settimana fase 1)"
-            icon={Layers}
-          >
-            <div className="mb-4 flex flex-wrap items-end gap-4">
-              <label className="flex flex-col gap-1 text-sm text-slate-300">
-                <span className="text-xs font-semibold uppercase tracking-wide text-violet-200/80">
-                  Pattern settimanale
-                </span>
-                <select
-                  className="rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-violet-400/50"
-                  value={viryaWeekdayPattern}
-                  onChange={(e) =>
-                    setViryaWeekdayPattern(
-                      e.target.value === "auto" ? "auto" : (e.target.value as ViryaWeekdayPatternId),
-                    )
-                  }
-                >
-                  <option value="auto">Auto (da giorni/settimana)</option>
-                  <option value="3d">3d · Lun Mer Ven</option>
-                  <option value="4d">4d · Lun Mer Ven Dom</option>
-                  <option value="5d">5d · Lun Mar Gio Ven Dom</option>
-                  <option value="6d">6d · Lun–Sab</option>
-                </select>
-              </label>
-              {microcyclePreviewRows.length > 0 ? (
-                <p className="text-xs text-slate-400">
-                  Somma carico anteprima:{" "}
-                  <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.loadSum ?? "—"}</span> · pattern{" "}
-                  <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.patternId ?? "—"}</span>
-                </p>
-              ) : null}
-            </div>
-            {microcyclePreviewRows.length === 0 ? (
-              <p className="text-sm text-slate-500">Aggiungi almeno una fase per vedere l&apos;anteprima settimana.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-400">
-                      <th className="p-2">Giorno</th>
-                      <th className="p-2">Ruolo</th>
-                      <th className="p-2">Carico</th>
-                      <th className="p-2">Adattamento Builder</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {microcyclePreviewRows.map((row, i) => (
-                      <tr key={`micro-preview-${i}`} className="border-b border-white/5 text-slate-200">
-                        <td className="p-2 font-medium text-white">{row.day}</td>
-                        <td className="p-2">
-                          <span
-                            className={cn(
-                              "rounded-full border px-2 py-0.5 text-xs font-semibold",
-                              row.role === "quality"
-                                ? "border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100"
-                                : row.role === "recovery"
-                                  ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-100"
-                                  : "border-orange-400/30 bg-orange-500/15 text-orange-100",
-                            )}
-                          >
-                            {row.role}
-                          </span>
-                        </td>
-                        <td className="p-2 font-mono">{row.load}</td>
-                        <td className="p-2 font-mono text-xs text-violet-200/90">{row.adapt}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Pro2SectionCard>
+          <ViryaMicrocyclePreviewCard
+            viryaWeekdayPattern={viryaWeekdayPattern}
+            setViryaWeekdayPattern={setViryaWeekdayPattern}
+            microcyclePreviewRows={microcyclePreviewRows}
+          />
 
-          <Pro2SectionCard
-            accent="cyan"
-            title="Salva sul Calendar"
-            subtitle="Salva in blocco le sedute del piano sul Calendar"
-            icon={CalendarRange}
-          >
-            <p className="mb-3 text-sm text-slate-300">
-              Piano <strong className="text-white">«{planName.trim() || "Senza nome"}»</strong> · tag{" "}
-              <code className="rounded bg-black/40 px-1 text-cyan-200">{viryaPlanTag(planName)}</code>.{" "}
-              <strong className="text-amber-200">
-                Configurare mag–giu in VIRYA non scrive sul Calendar: serve questo pulsante.
-              </strong>{" "}
-              Dopo il successo, apri Calendar sulle date indicate (es. maggio–giugno).
-            </p>
-            <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-slate-200">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-white/20 bg-black/40"
-                checked={replacePrevious}
-                onChange={(e) => setReplacePrevious(e.target.checked)}
-              />
-              <span>
-                Sostituisci sessioni VIRYA già salvate nello stesso intervallo di date del piano (marker{" "}
-                <code className="rounded bg-black/40 px-1">[VIRYA:…]</code> nelle note)
-              </span>
-            </label>
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                className="rounded-xl border border-cyan-500/50 bg-cyan-500/20 px-5 py-3 text-sm font-semibold text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.12)] hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => void generateOnCalendar()}
-                disabled={saving || !selectedAthleteId || phases.length === 0}
-                title={
-                  !selectedAthleteId
-                    ? "Seleziona / carica contesto atleta"
-                    : phases.length === 0
-                      ? "Aggiungi fasi (passo 4) prima di generare"
-                      : undefined
-                }
-              >
-                {saving ? "Generazione in corso…" : "Genera piano annuale su Calendar"}
-              </button>
-              <Link
-                href="/training/calendar"
-                className="text-sm font-semibold text-cyan-300 underline decoration-cyan-500/40 hover:text-cyan-200"
-              >
-                Apri Calendar →
-              </Link>
-            </div>
-          </Pro2SectionCard>
+          <ViryaSaveToCalendarCard
+            planName={planName}
+            replacePrevious={replacePrevious}
+            setReplacePrevious={setReplacePrevious}
+            generateOnCalendar={generateOnCalendar}
+            saving={saving}
+            selectedAthleteId={selectedAthleteId}
+            phases={phases}
+          />
 
-          <Pro2SectionCard
-            accent="violet"
-            title="Salva settimana in libreria"
-            subtitle="Export VIRYA → N template coach (contratto Builder, stessa materializzazione del Calendar)"
-            icon={BookMarked}
-          >
-            <p className="mb-3 text-sm text-slate-300">
-              Esporta una <strong className="text-white">settimana tipo</strong> come template riusabili nella libreria
-              coach — senza scrivere sul Calendar. Stessa pipeline di materializzazione del batch Calendar.
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1 text-xs text-slate-400">
-                Settimana
-                <select
-                  className="min-w-[200px] rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-                  value={libraryWeekStart}
-                  onChange={(e) => setLibraryWeekStart(e.target.value)}
-                  disabled={savingLibrary || !programWeekRows.length}
-                >
-                  {programWeekRows.map((w) => (
-                    <option key={w.weekStart} value={w.weekStart}>
-                      W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} sed · TSS {w.displayTss}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="rounded-xl border border-violet-500/50 bg-violet-500/20 px-5 py-3 text-sm font-semibold text-violet-50 shadow-[0_0_24px_rgba(139,92,246,0.12)] hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => void saveWeekToLibrary()}
-                disabled={savingLibrary || saving || !selectedAthleteId || !libraryWeekStart}
-                title={
-                  !selectedAthleteId
-                    ? "Seleziona / carica contesto atleta"
-                    : !libraryWeekStart
-                      ? "Nessuna settimana nel piano"
-                      : undefined
-                }
-              >
-                {savingLibrary ? "Materializzazione…" : "Salva settimana in libreria"}
-              </button>
-            </div>
-          </Pro2SectionCard>
+          <ViryaSaveWeekToLibraryCard
+            libraryWeekStart={libraryWeekStart}
+            setLibraryWeekStart={setLibraryWeekStart}
+            savingLibrary={savingLibrary}
+            programWeekRows={programWeekRows}
+            saveWeekToLibrary={saveWeekToLibrary}
+            saving={saving}
+            selectedAthleteId={selectedAthleteId}
+          />
 
           <div className="flex justify-start">
             <button
