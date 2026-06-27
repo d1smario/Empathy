@@ -78,7 +78,13 @@ test("materializeViryaAerobicFromCatalog: valid contract with catalog metadata",
   assert.equal(contract!.discipline, "Cycling");
   assert.ok((contract!.blocks?.length ?? 0) >= 3);
   assert.equal(contract!.plannedSessionDurationMinutes, 75);
-  assert.equal(contract!.summary?.tss, 82);
+  // Il TSS è ricomputato da resolvePlannedSessionMetrics sul contratto scalato (non l'esatto
+  // target grezzo): i blocchi preset hanno forma fissa, quindi lo scaling approssima il target.
+  const recomputedTss = contract!.summary?.tss ?? 0;
+  assert.ok(
+    recomputedTss >= 70 && recomputedTss <= 94,
+    `TSS ricomputato ${recomputedTss} fuori dalla banda attesa ~82 (±15%)`,
+  );
   assert.ok(
     (contract!.blocks ?? []).some(
       (b) => b.kind === "pyramid" || b.kind === "interval2" || b.kind === "interval3" || b.kind === "ramp",

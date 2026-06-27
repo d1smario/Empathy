@@ -1390,7 +1390,7 @@ export function ViryaAnnualPlanOrchestrator({
             patternId: viryaPatternForSessions(),
           });
           for (const slot of weekPlan.slots) {
-            const module = modules[slot.slotIndex % modules.length]!;
+            const slotModule = modules[slot.slotIndex % modules.length]!;
             const phaseObj = phase.macroObjective ?? gymPrimaryGoal;
             const sessionName = `${planName.trim() || "VIRYA"} · ${phaseLabels[phase.phase]} · Gym · ${weekdayLabel(slot.weekdayOffset)}`;
             const brief = buildViryaBuilderSessionBrief({
@@ -1406,12 +1406,12 @@ export function ViryaAnnualPlanOrchestrator({
               phaseLabel: phaseLabels[phase.phase],
               sessionName,
               objective: String(phaseObj),
-              methodology: module.methodology,
+              methodology: slotModule.methodology,
               weekObjectives: wm.objectives,
               gymPrimaryGoal,
               contextHint: contextHint || undefined,
             });
-            const derived = deriveViryaBuilderInstructions({ brief, gymModule: module });
+            const derived = deriveViryaBuilderInstructions({ brief, gymModule: slotModule });
             const serializedContract = await materializeViryaSessionContract({
               family: "strength",
               discipline: "Gym",
@@ -1421,15 +1421,15 @@ export function ViryaAnnualPlanOrchestrator({
               tss: derived.tss,
               kcal: derived.kcal,
               objective: String(phaseObj),
-              methodology: module.methodology,
-              gymModule: module,
+              methodology: slotModule.methodology,
+              gymModule: slotModule,
               builderInstructions: derived,
               sessionIndexInWeek: slot.slotIndex,
               sessionsInWeek: weekPlan.slots.length,
             });
             if (serializedContract.includes("catalogExerciseId")) gymSchedaSessions += 1;
             const briefMeta = formatViryaBriefMetaLine(brief, derived, weekPlan.loadSum);
-            const viryaMeta = `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · GymGoal ${gymPrimaryGoal} · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${module.dayIndex} distretti=${formatGymDistrictsLabel(module)} obiettivo=${module.districtObjective} esercizio=${module.exerciseType} metodologia=${module.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`;
+            const viryaMeta = `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · GymGoal ${gymPrimaryGoal} · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${slotModule.dayIndex} distretti=${formatGymDistrictsLabel(slotModule)} obiettivo=${slotModule.districtObjective} esercizio=${slotModule.exerciseType} metodologia=${slotModule.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`;
             rows.push({
               athlete_id: athleteId,
               date: addDays(weekStart, slot.weekdayOffset),
@@ -1458,9 +1458,9 @@ export function ViryaAnnualPlanOrchestrator({
             patternId: viryaPatternForSessions(),
           });
           for (const slot of weekPlan.slots) {
-            const module = modules[slot.slotIndex % modules.length]!;
+            const slotModule = modules[slot.slotIndex % modules.length]!;
             const phaseObj = phase.macroObjective ?? "tecnico";
-            const sequence = module.objectives.length ? module.objectives.join(" > ") : "N/A";
+            const sequence = slotModule.objectives.length ? slotModule.objectives.join(" > ") : "N/A";
             const sessionName = `${planName || "VIRYA"} · ${phaseLabels[phase.phase]} · ${discipline} · ${weekdayLabel(slot.weekdayOffset)}`;
             const brief = buildViryaBuilderSessionBrief({
               weekStart,
@@ -1475,11 +1475,11 @@ export function ViryaAnnualPlanOrchestrator({
               phaseLabel: phaseLabels[phase.phase],
               sessionName,
               objective: sequence,
-              methodology: module.methodology,
+              methodology: slotModule.methodology,
               weekObjectives: wm.objectives,
               contextHint: contextHint || undefined,
             });
-            const derived = deriveViryaBuilderInstructions({ brief, technicalModule: module });
+            const derived = deriveViryaBuilderInstructions({ brief, technicalModule: slotModule });
             const serializedContract = await materializeViryaSessionContract({
               family: "technical",
               discipline,
@@ -1489,8 +1489,8 @@ export function ViryaAnnualPlanOrchestrator({
               tss: derived.tss,
               kcal: derived.kcal,
               objective: sequence,
-              methodology: module.methodology,
-              technicalModule: module,
+              methodology: slotModule.methodology,
+              technicalModule: slotModule,
               builderInstructions: derived,
               sessionIndexInWeek: slot.slotIndex,
               sessionsInWeek: weekPlan.slots.length,
@@ -1505,7 +1505,7 @@ export function ViryaAnnualPlanOrchestrator({
               kcal_target: derived.kcal,
               notes: [
                 serializedContract,
-                `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · Modulo C Tecnico-Tattico · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${module.dayIndex} obiettivi=${sequence} esercizio=${module.exerciseType} intensita=${module.intensity} metodo=${module.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`,
+                `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · Modulo C Tecnico-Tattico · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${slotModule.dayIndex} obiettivi=${sequence} esercizio=${slotModule.exerciseType} intensita=${slotModule.intensity} metodo=${slotModule.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`,
               ].join("\n"),
             });
           }
@@ -1527,7 +1527,7 @@ export function ViryaAnnualPlanOrchestrator({
             patternId: viryaPatternForSessions(),
           });
           for (const slot of weekPlan.slots) {
-            const module = modules[slot.slotIndex % modules.length]!;
+            const slotModule = modules[slot.slotIndex % modules.length]!;
             const phaseObj = phase.macroObjective ?? "lifestyle";
             const sessionName = `${planName || "VIRYA"} · ${phaseLabels[phase.phase]} · ${discipline} · ${weekdayLabel(slot.weekdayOffset)}`;
             const brief = buildViryaBuilderSessionBrief({
@@ -1542,12 +1542,12 @@ export function ViryaAnnualPlanOrchestrator({
               planName: planName.trim() || "VIRYA",
               phaseLabel: phaseLabels[phase.phase],
               sessionName,
-              objective: module.objective,
-              methodology: module.methodology,
+              objective: slotModule.objective,
+              methodology: slotModule.methodology,
               weekObjectives: wm.objectives,
               contextHint: contextHint || undefined,
             });
-            const derived = deriveViryaBuilderInstructions({ brief, lifestyleModule: module });
+            const derived = deriveViryaBuilderInstructions({ brief, lifestyleModule: slotModule });
             const serializedContract = await materializeViryaSessionContract({
               family: "lifestyle",
               discipline,
@@ -1556,9 +1556,9 @@ export function ViryaAnnualPlanOrchestrator({
               durationMinutes: derived.sessionMinutes,
               tss: derived.tss,
               kcal: derived.kcal,
-              objective: module.objective,
-              methodology: module.methodology,
-              lifestyleModule: module,
+              objective: slotModule.objective,
+              methodology: slotModule.methodology,
+              lifestyleModule: slotModule,
               builderInstructions: derived,
               sessionIndexInWeek: slot.slotIndex,
               sessionsInWeek: weekPlan.slots.length,
@@ -1573,7 +1573,7 @@ export function ViryaAnnualPlanOrchestrator({
               kcal_target: derived.kcal,
               notes: [
                 serializedContract,
-                `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · Modulo D Lifestyle · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${module.dayIndex} objective=${module.objective} pratica=${module.practiceType} RPE=${module.intensityRpe} breathing=${module.breathingCadence} holdFlow=${module.holdOrFlow} method=${module.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`,
+                `${tag} ${phaseLabels[phase.phase]} · ${phase.mesocycle} · ${objective} · Modulo D Lifestyle · MacroObjective ${phaseObj} · LoadWeek ${loadPct}% (${loadStatusLabel(loadPct)}) · Giorno${slotModule.dayIndex} objective=${slotModule.objective} pratica=${slotModule.practiceType} RPE=${slotModule.intensityRpe} breathing=${slotModule.breathingCadence} holdFlow=${slotModule.holdOrFlow} method=${slotModule.methodology} · ${objNote} · Hints: ${contextHint || "none"} · ${viryaStructureTag()} · ${briefMeta}`,
               ].join("\n"),
             });
           }
