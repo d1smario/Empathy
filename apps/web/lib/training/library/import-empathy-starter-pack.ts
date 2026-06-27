@@ -3,8 +3,9 @@ import { denormalizedFieldsFromContract } from "@/lib/training/library/library-i
 import {
   EMPATHY_AEROBIC_STARTER_FOLDER_NAME,
   EMPATHY_AEROBIC_STARTER_PACK_ID,
-  empathyAerobicStarterContracts,
+  empathyAerobicStarterContractsFrom,
 } from "@/lib/training/library/starter-pack-aerobic";
+import { loadAerobicStarterPresetsFromDb } from "@/lib/training/library/starter-pack-aerobic-db";
 
 export type ImportStarterPackResult = {
   folderId: string | null;
@@ -88,7 +89,8 @@ export async function importEmpathyAerobicStarterPack(input: {
 }): Promise<ImportStarterPackResult> {
   const folderId = await ensureStarterFolder(input.db, input.coachUserId, input.orgId);
   const have = await existingPresetIds(input.db, input.coachUserId);
-  const templates = empathyAerobicStarterContracts();
+  const presets = await loadAerobicStarterPresetsFromDb();
+  const templates = empathyAerobicStarterContractsFrom(presets);
 
   let imported = 0;
   let updated = 0;

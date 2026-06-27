@@ -371,12 +371,22 @@ export const STARTER_PACK_TEMPLATE_COUNT = AEROBIC_STARTER_PRESETS.length;
 /** Obiettivo crescita progressiva del catalogo (import incrementale per presetId). */
 export { AEROBIC_CATALOG_GROWTH_TARGET } from "@/lib/training/library/starter-pack-aerobic-helpers";
 
+/** Costruisce i contratti da un pool di preset arbitrario (DB-first o statico). */
+export function empathyAerobicStarterContractsFrom(
+  presets: AerobicStarterPreset[],
+): Array<{
+  preset: AerobicStarterPreset;
+  contract: Pro2BuilderSessionContract;
+}> {
+  return presets.map((preset) => ({
+    preset,
+    contract: buildStarterContractFromPreset(preset),
+  }));
+}
+
 export function empathyAerobicStarterContracts(): Array<{
   preset: AerobicStarterPreset;
   contract: Pro2BuilderSessionContract;
 }> {
-  return AEROBIC_STARTER_PRESETS.map((preset) => ({
-    preset,
-    contract: buildStarterContractFromPreset(preset),
-  }));
+  return empathyAerobicStarterContractsFrom(AEROBIC_STARTER_PRESETS);
 }

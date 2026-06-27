@@ -185,24 +185,32 @@ function scorePreset(preset: AerobicStarterPreset, rule: ViryaCatalogMatchRule, 
   return score;
 }
 
-function presetsByCatalogDiscipline(catalogDiscipline: string): AerobicStarterPreset[] {
-  return AEROBIC_STARTER_PRESETS.filter((p) => presetMatchesDiscipline(p, catalogDiscipline));
+function presetsByCatalogDiscipline(
+  catalogDiscipline: string,
+  presets: AerobicStarterPreset[] = AEROBIC_STARTER_PRESETS,
+): AerobicStarterPreset[] {
+  return presets.filter((p) => presetMatchesDiscipline(p, catalogDiscipline));
 }
 
 /**
  * Sceglie un template catalogo per archetipo VIRYA + disciplina + slot settimanale (rotazione).
+ * `presets` opzionale: default al catalogo statico, ma i chiamanti DB-first possono iniettare
+ * il pool letto da `aerobic_starter_presets` (vedi starter-pack-aerobic-db.ts).
  */
-export function resolveViryaCatalogPreset(input: {
-  archetypeId: string;
-  discipline: string;
-  sessionIndexInWeek: number;
-}): AerobicStarterPreset | null {
+export function resolveViryaCatalogPreset(
+  input: {
+    archetypeId: string;
+    discipline: string;
+    sessionIndexInWeek: number;
+  },
+  presets: AerobicStarterPreset[] = AEROBIC_STARTER_PRESETS,
+): AerobicStarterPreset | null {
   const catalogDiscipline = viryaDisciplineToCatalogDiscipline(input.discipline);
   const rule =
     VIRYA_ARCHETYPE_CATALOG_MATCH[input.archetypeId] ??
     VIRYA_ARCHETYPE_CATALOG_MATCH.base_z2_volume;
 
-  const pool = presetsByCatalogDiscipline(catalogDiscipline);
+  const pool = presetsByCatalogDiscipline(catalogDiscipline, presets);
   if (!pool.length) return null;
 
   const ranked = pool

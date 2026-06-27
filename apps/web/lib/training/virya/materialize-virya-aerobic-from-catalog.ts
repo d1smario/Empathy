@@ -2,7 +2,7 @@ import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-ses
 import { serializePro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { preparePro2BuilderSessionContractForPersist } from "@/lib/training/builder/pro2-session-interpretation";
 import type { AerobicViryaPrescription } from "@/lib/training/engine/aerobic-virya-prescription";
-import { buildStarterContractFromPreset } from "@/lib/training/library/starter-pack-aerobic-helpers";
+import { buildStarterContractFromPreset, type AerobicStarterPreset } from "@/lib/training/library/starter-pack-aerobic-helpers";
 import { scaleLibraryContract } from "@/lib/training/library/scale-library-contract";
 import { viryaDisciplineToCatalogDiscipline } from "@/lib/training/virya/virya-catalog-discipline";
 import { resolveViryaCatalogPreset } from "@/lib/training/virya/virya-catalog-preset-resolver";
@@ -89,12 +89,18 @@ export type MaterializeViryaAerobicFromCatalogInput = {
  * Materializza seduta aerobica VIRYA dal catalogo Empathy (stesso pack libreria coach),
  * scalando durata/carico sullo slot microciclo.
  */
-export function materializeViryaAerobicFromCatalog(input: MaterializeViryaAerobicFromCatalogInput): string | null {
-  const preset = resolveViryaCatalogPreset({
-    archetypeId: input.prescription.archetypeId,
-    discipline: input.discipline,
-    sessionIndexInWeek: input.sessionIndexInWeek,
-  });
+export function materializeViryaAerobicFromCatalog(
+  input: MaterializeViryaAerobicFromCatalogInput,
+  presets?: AerobicStarterPreset[],
+): string | null {
+  const preset = resolveViryaCatalogPreset(
+    {
+      archetypeId: input.prescription.archetypeId,
+      discipline: input.discipline,
+      sessionIndexInWeek: input.sessionIndexInWeek,
+    },
+    presets,
+  );
   if (!preset) return null;
 
   const catalogDiscipline = viryaDisciplineToCatalogDiscipline(input.discipline);
