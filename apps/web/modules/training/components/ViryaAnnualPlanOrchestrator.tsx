@@ -1,9 +1,8 @@
 "use client";
 
-import { Activity, CalendarRange, ChevronLeft, ChevronRight, Dumbbell, Flag, Layers, LineChart, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight, Target } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { cn } from "@/lib/cn";
 import { addIsoDays, mondayOfIsoWeek } from "@/lib/dates/iso-day-arithmetic";
 import { COACH_APPLICATION_EVIDENCE_SOURCE } from "@/lib/memory/coach-application-traces";
@@ -30,12 +29,7 @@ import { resolveAerobicViryaPrescription } from "@/lib/training/engine/aerobic-v
 import { materializeViryaAerobicFromCatalog } from "@/lib/training/virya/materialize-virya-aerobic-from-catalog";
 import { generateBuilderSession } from "@/modules/training/services/training-engine-api";
 import { importViryaWeekToLibrary } from "@/modules/training/services/training-library-api";
-import {
-  deleteViryaCalendarPlan,
-  fetchViryaCalendarPlans,
-  replaceTrainingPlannerCalendar,
-  type ViryaCalendarPlanSummary,
-} from "@/modules/training/services/training-planned-api";
+import { fetchViryaCalendarPlans, replaceTrainingPlannerCalendar, type ViryaCalendarPlanSummary } from "@/modules/training/services/training-planned-api";
 import { activeGymModulesForWeek, buildGymDayModules, ensureGymWeekModules, formatGymDistrictsLabel, gymModuleDistricts, type GymDayModule } from "@/lib/training/virya/gym-day-modules";
 import { buildViryaBuilderSessionBrief } from "@/lib/training/virya/build-virya-session-brief";
 import {
@@ -53,7 +47,7 @@ import type {
   LifestyleDayModule,
   TechnicalDayModule,
 } from "@/lib/training/virya/virya-day-module-types";
-import { PhaseType, RaceType, WeekObjectiveKey, ViryaRetuneProposalWeek, ViryaRetuneProposal, SportFamily, GymPrimaryGoal, GymMacroObjective, PhasePlan, RacePlan, MultiSportTarget, VIRYA_LOAD_SHORT, phaseLabels, sportFamilies, gymMacroObjectiveLabels, sportIcon, isoToday, addDays, weeksBetween, planWindowEndForWeeks, aerobicPhasesMatchWindow, phaseColor, tssColor, clamp, demandScore, targetSummary, emptyTargetSport, aggregateGoalTargets, buildAerobicClassicPhases, defaultPhases, phasesCoverGymWindow, buildTechnicalDayModules, buildLifestyleDayModules, buildGymMacroPhases, DEFAULT_AEROBIC_PLAN_WEEKS } from "@/lib/training/virya/virya-annual-plan-kit";
+import { PhaseType, WeekObjectiveKey, ViryaRetuneProposalWeek, ViryaRetuneProposal, SportFamily, GymPrimaryGoal, GymMacroObjective, PhasePlan, RacePlan, MultiSportTarget, phaseLabels, sportFamilies, isoToday, addDays, weeksBetween, planWindowEndForWeeks, aerobicPhasesMatchWindow, clamp, demandScore, targetSummary, emptyTargetSport, aggregateGoalTargets, buildAerobicClassicPhases, defaultPhases, phasesCoverGymWindow, buildTechnicalDayModules, buildLifestyleDayModules, buildGymMacroPhases, DEFAULT_AEROBIC_PLAN_WEEKS } from "@/lib/training/virya/virya-annual-plan-kit";
 import { ViryaHeroHeader } from "@/modules/training/views/sections/ViryaHeroHeader";
 import { ViryaStatusBanners } from "@/modules/training/views/sections/ViryaStatusBanners";
 import { ViryaPhaseRecapGrid } from "@/modules/training/views/sections/ViryaPhaseRecapGrid";
@@ -68,6 +62,16 @@ import { ViryaWeeklyProgramTable } from "@/modules/training/views/sections/Virya
 import { ViryaMicrocyclePreviewCard } from "@/modules/training/views/sections/ViryaMicrocyclePreviewCard";
 import { ViryaSaveToCalendarCard } from "@/modules/training/views/sections/ViryaSaveToCalendarCard";
 import { ViryaSaveWeekToLibraryCard } from "@/modules/training/views/sections/ViryaSaveWeekToLibraryCard";
+import { ViryaCalendarPlansCard } from "@/modules/training/views/sections/ViryaCalendarPlansCard";
+import { ViryaMacroFamilyStep } from "@/modules/training/views/sections/ViryaMacroFamilyStep";
+import { ViryaSportDisciplineStep } from "@/modules/training/views/sections/ViryaSportDisciplineStep";
+import { ViryaPlanPeriodStep } from "@/modules/training/views/sections/ViryaPlanPeriodStep";
+import { ViryaSeasonObjectiveStep } from "@/modules/training/views/sections/ViryaSeasonObjectiveStep";
+import { ViryaEventsCard } from "@/modules/training/views/sections/ViryaEventsCard";
+import { ViryaMacroPeriodsCard } from "@/modules/training/views/sections/ViryaMacroPeriodsCard";
+import { ViryaContextKpiCard } from "@/modules/training/views/sections/ViryaContextKpiCard";
+import { ViryaOperationalModulationCard } from "@/modules/training/views/sections/ViryaOperationalModulationCard";
+import { ViryaPhasesTable } from "@/modules/training/views/sections/ViryaPhasesTable";
 
 
 export type ViryaAnnualPlanOrchestratorProps = {
@@ -2078,80 +2082,16 @@ export function ViryaAnnualPlanOrchestrator({
       />
 
       {selectedAthleteId ? (
-        <Pro2SectionCard
-          accent="cyan"
-          className="!border-cyan-500/30"
-          title="Piani VIRYA su Calendar"
-          subtitle="Sedute con tag [VIRYA:…] per l’atleta attivo — elimina un piano intero prima di ripubblicare"
-          icon={CalendarRange}
-        >
-          {viryaPlansLoading ? (
-            <p className="text-sm text-slate-400">Caricamento piani…</p>
-          ) : viryaCalendarPlans.length === 0 ? (
-            <p className="text-sm text-slate-500">Nessun piano VIRYA in Calendar per questo atleta.</p>
-          ) : (
-            <ul className="space-y-2">
-              {viryaCalendarPlans.map((plan) => (
-                <li
-                  key={plan.tag}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
-                >
-                  <div>
-                    <span className="font-semibold text-white">{plan.planName}</span>
-                    <span className="mt-0.5 block font-mono text-[0.7rem] text-slate-500">
-                      {plan.dateMin} → {plan.dateMax} · {plan.sessionCount} sedute
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/training/calendar?date=${plan.dateMin}`}
-                      className="rounded-lg border border-sky-500/35 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-500/20"
-                    >
-                      Apri in Calendar
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-100 hover:bg-rose-500/20 disabled:opacity-50"
-                      disabled={viryaPlanDeletingTag === plan.tag}
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            `Eliminare tutte le ${plan.sessionCount} sedute del piano «${plan.planName}» (${plan.dateMin} → ${plan.dateMax})?`,
-                          )
-                        ) {
-                          return;
-                        }
-                        void (async () => {
-                          if (!selectedAthleteId) return;
-                          setViryaPlanDeletingTag(plan.tag);
-                          setError(null);
-                          try {
-                            const n = await deleteViryaCalendarPlan({ athleteId: selectedAthleteId, tag: plan.tag });
-                            setSuccess(`Piano «${plan.planName}» rimosso: ${n} sedute eliminate.`);
-                            await refreshViryaCalendarPlans();
-                          } catch (e) {
-                            setError(e instanceof Error ? e.message : "Eliminazione piano non riuscita.");
-                          } finally {
-                            setViryaPlanDeletingTag(null);
-                          }
-                        })();
-                      }}
-                    >
-                      {viryaPlanDeletingTag === plan.tag ? "Eliminazione…" : "Elimina piano"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <button
-            type="button"
-            className="mt-3 text-xs font-semibold text-cyan-300 hover:text-cyan-200"
-            onClick={() => void refreshViryaCalendarPlans()}
-          >
-            Aggiorna elenco
-          </button>
-        </Pro2SectionCard>
+        <ViryaCalendarPlansCard
+          viryaPlansLoading={viryaPlansLoading}
+          viryaCalendarPlans={viryaCalendarPlans}
+          viryaPlanDeletingTag={viryaPlanDeletingTag}
+          selectedAthleteId={selectedAthleteId}
+          setViryaPlanDeletingTag={setViryaPlanDeletingTag}
+          setError={setError}
+          setSuccess={setSuccess}
+          refreshViryaCalendarPlans={refreshViryaCalendarPlans}
+        />
       ) : null}
 
       <nav className="flex flex-wrap gap-2 border-b border-white/10 pb-4" aria-label="Passi Virya">
@@ -2183,306 +2123,58 @@ export function ViryaAnnualPlanOrchestrator({
       </nav>
 
       {viryaStep === 1 ? (
-        <Pro2SectionCard
-          accent="violet"
-          title="1 · Macro famiglia"
-          subtitle="Aerobico, Gym, Tecnico-tattico o Lifestyle — una sola guida la struttura annuale"
-          icon={Layers}
-        >
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sportFamilies.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => {
-                  setSportFamily(f.id);
-                  setDiscipline(f.sports[0]);
-                  setSportTargetValue(0, "sport", f.sports[0]);
-                  if (f.id === "strength") setDiscipline("Gym");
-                }}
-                className={cn(
-                  "flex flex-col gap-2 rounded-2xl border p-4 text-left transition",
-                  sportFamily === f.id
-                    ? "border-cyan-400/55 bg-cyan-500/10 shadow-[0_0_24px_rgba(34,211,238,0.12)]"
-                    : "border-white/10 bg-black/35 hover:border-white/25",
-                )}
-              >
-                <span className="text-2xl" aria-hidden>
-                  {f.id === "aerobic" ? "⚡" : f.id === "strength" ? "🏋️" : f.id === "technical" ? "🎯" : "🧘"}
-                </span>
-                <span className="text-sm font-semibold text-white">{f.label}</span>
-                <span className="text-xs text-slate-500">
-                  {f.sports.slice(0, 5).join(", ")}
-                  {f.sports.length > 5 ? "…" : ""}
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="mt-5 flex justify-end">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
-              onClick={() => setViryaStep(2)}
-            >
-              Continua <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        </Pro2SectionCard>
+        <ViryaMacroFamilyStep
+          sportFamily={sportFamily}
+          setSportFamily={setSportFamily}
+          setDiscipline={setDiscipline}
+          setSportTargetValue={setSportTargetValue}
+          setViryaStep={setViryaStep}
+        />
       ) : null}
 
       {viryaStep === 2 ? (
-        <Pro2SectionCard
-          accent="cyan"
-          title="2 · Sport e disciplina"
-          subtitle="Scegli la disciplina operativa coerente con la macro"
-          icon={Dumbbell}
-        >
-          <p className="mb-3 text-xs text-slate-400">
-            Macro attiva:{" "}
-            <span className="font-semibold text-cyan-200">
-              {sportFamilies.find((x) => x.id === sportFamily)?.label ?? sportFamily}
-            </span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {familySports.map((sport) => (
-              <button
-                key={sport}
-                type="button"
-                onClick={() => {
-                  setDiscipline(sport);
-                  setSportTargetValue(0, "sport", sport);
-                }}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition",
-                  discipline === sport
-                    ? "border-fuchsia-400/55 bg-fuchsia-500/15 text-fuchsia-50"
-                    : "border-white/15 bg-black/35 text-slate-300 hover:border-white/30",
-                )}
-              >
-                <span aria-hidden>{sportIcon(sport)}</span>
-                {sport}
-              </button>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap justify-between gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
-              onClick={() => setViryaStep(1)}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden /> Indietro
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
-              onClick={() => setViryaStep(3)}
-            >
-              Continua <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        </Pro2SectionCard>
+        <ViryaSportDisciplineStep
+          sportFamily={sportFamily}
+          familySports={familySports}
+          discipline={discipline}
+          setDiscipline={setDiscipline}
+          setSportTargetValue={setSportTargetValue}
+          setViryaStep={setViryaStep}
+        />
       ) : null}
 
       {viryaStep === 3 ? (
-        <Pro2SectionCard
-          accent="amber"
-          title="3 · Periodo del piano"
-          subtitle="Intervallo stagionale; al passo successivo obiettivo cardine, eventi e macro-fasi"
-          icon={CalendarRange}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                Data inizio
-              </span>
-              <input
-                type="date"
-                className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white"
-                value={planWindowStart}
-                onChange={(e) => setPlanWindowStart(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                Data fine
-              </span>
-              <input
-                type="date"
-                className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white"
-                value={planWindowEnd}
-                onChange={(e) => setPlanWindowEnd(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="mt-4 flex flex-col gap-2">
-            <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Preset durata</span>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { w: 12, label: "12 settimane" },
-                { w: 24, label: "24 settimane" },
-                { w: 52, label: "52 settimane (annuale)" },
-              ].map((p) => (
-                <button
-                  key={p.w}
-                  type="button"
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs font-medium transition",
-                    planWindowWeekCount === p.w
-                      ? "border-amber-400/60 bg-amber-500/20 text-amber-50"
-                      : "border-white/15 bg-white/5 text-slate-300 hover:border-amber-400/45 hover:bg-amber-500/10",
-                  )}
-                  onClick={() => applyPlanWindowPreset(p.w)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-500/20"
-              onClick={applyPlanPeriod}
-            >
-              Applica periodo alle fasi
-            </button>
-            <span className="text-xs text-slate-500">
-              Durata attiva:{" "}
-              <span className="font-mono font-semibold text-amber-100">
-                {planWindowWeekCount > 0 ? `${planWindowWeekCount} sett.` : "—"}
-              </span>
-              . Preset, date o «Continua» riallineano subito fasi e griglia settimanale (base · costruzione · rifinitura · forma).
-            </span>
-          </div>
-          <div className="mt-5 flex flex-wrap justify-between gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
-              onClick={() => setViryaStep(2)}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden /> Indietro
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
-              onClick={() => {
-                if (applyPlanPeriod()) setViryaStep(4);
-              }}
-            >
-              Obiettivo, eventi e fasi <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        </Pro2SectionCard>
+        <ViryaPlanPeriodStep
+          planWindowStart={planWindowStart}
+          setPlanWindowStart={setPlanWindowStart}
+          planWindowEnd={planWindowEnd}
+          setPlanWindowEnd={setPlanWindowEnd}
+          planWindowWeekCount={planWindowWeekCount}
+          applyPlanWindowPreset={applyPlanWindowPreset}
+          applyPlanPeriod={applyPlanPeriod}
+          setViryaStep={setViryaStep}
+        />
       ) : null}
 
       {viryaStep === 4 ? (
         <div className="space-y-6">
-          <Pro2SectionCard
-            accent="rose"
-            title="4 · Obiettivo cardine"
-            subtitle="La ragione della stagione — guida hint, copy piano e note in calendario"
-            icon={Target}
-          >
-            <label className="block">
-              <span className="mb-2 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-                Obiettivo cardine
-              </span>
-              <textarea
-                className="min-h-[100px] w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
-                rows={4}
-                value={objective}
-                onChange={(e) => setObjective(e.target.value)}
-                placeholder="Es. doppio picco su gare X/Y, soglia e VO2, gestione lattato in chiave 40k…"
-              />
-            </label>
-          </Pro2SectionCard>
+          <ViryaSeasonObjectiveStep
+            objective={objective}
+            setObjective={setObjective}
+          />
 
-          <Pro2SectionCard
-            accent="cyan"
-            title="Eventi e date intermedie"
-            subtitle="Gare, test, milestone — ancorano taper e picco"
-            icon={Flag}
-          >
-            <div className="mb-3 flex justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20"
-                onClick={addRace}
-              >
-                + Aggiungi evento
-              </button>
-            </div>
-            <div className="space-y-2">
-              {races.map((race) => (
-                <div
-                  key={race.id}
-                  className="grid gap-2 rounded-xl border border-white/10 bg-black/30 p-3 sm:grid-cols-[140px_1fr_140px_100px_40px] sm:items-center"
-                >
-                  <input
-                    className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
-                    type="date"
-                    value={race.date}
-                    onChange={(e) => updateRace(race.id, { date: e.target.value })}
-                  />
-                  <input
-                    className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
-                    value={race.name}
-                    onChange={(e) => updateRace(race.id, { name: e.target.value })}
-                    placeholder="Nome evento"
-                  />
-                  <select
-                    className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
-                    value={race.raceType}
-                    onChange={(e) => updateRace(race.id, { raceType: e.target.value as RaceType })}
-                  >
-                    <option value="warmup">Warm-up</option>
-                    <option value="milestone">Milestone / intermedio</option>
-                    <option value="test">Test</option>
-                    <option value="goal">Gara obiettivo</option>
-                  </select>
-                  <select
-                    className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
-                    value={race.priority}
-                    onChange={(e) => updateRace(race.id, { priority: e.target.value as "A" | "B" | "C" })}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-slate-300 hover:bg-white/10"
-                    onClick={() => removeRace(race.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Pro2SectionCard>
+          <ViryaEventsCard
+            races={races}
+            addRace={addRace}
+            updateRace={updateRace}
+            removeRace={removeRace}
+          />
 
-          <Pro2SectionCard
-            accent="violet"
-            title="Macro-periodi di preparazione"
-            subtitle="Base, costruzione, rifinitura, forma — quattro fasi sulla durata scelta al passo 3"
-            icon={CalendarRange}
-          >
-            <p className="mb-3 text-xs text-slate-400">
-              Il template ripartisce la finestra <span className="font-mono text-slate-300">{planWindowStart}</span> →{" "}
-              <span className="font-mono text-slate-300">{planWindowEnd}</span> in quattro blocchi coerenti. Puoi
-              rifinire date e TSS nel passo successivo (tabella fasi e griglia settimanale).
-            </p>
-            <button
-              type="button"
-              className="rounded-xl border border-violet-500/45 bg-violet-500/15 px-4 py-2.5 text-sm font-semibold text-violet-100 hover:bg-violet-500/25"
-              onClick={applyClassicPeriodization}
-            >
-              Genera fasi classiche (base · costruzione · rifinitura · forma)
-            </button>
-            <p className="mt-2 text-[0.7rem] text-slate-500">
-              Sovrascrive l’elenco fasi attuale e azzera le personalizzazioni settimanali finché non le reimposti al passo 5.
-            </p>
-          </Pro2SectionCard>
+          <ViryaMacroPeriodsCard
+            planWindowStart={planWindowStart}
+            planWindowEnd={planWindowEnd}
+            applyClassicPeriodization={applyClassicPeriodization}
+          />
 
           <div className="flex flex-wrap justify-between gap-2">
             <button
@@ -2505,73 +2197,17 @@ export function ViryaAnnualPlanOrchestrator({
 
       {viryaStep === 5 ? (
         <div className="space-y-6">
-          <Pro2SectionCard
-            accent="slate"
-            title="Contesto · KPI"
-            subtitle="Goal, readiness, loop adattamento (da memoria atleta)"
-            icon={Activity}
-          >
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {viryaSummaryCards.map((card) => (
-                <div key={card.label} className="rounded-xl border border-white/10 bg-black/35 px-3 py-2.5">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">{card.label}</div>
-                  <div className="mt-0.5 text-sm font-semibold text-white">{card.value}</div>
-                </div>
-              ))}
-            </div>
-          </Pro2SectionCard>
+          <ViryaContextKpiCard
+            viryaSummaryCards={viryaSummaryCards}
+          />
 
           {operationalContext ? (
-            <Pro2SectionCard
-              accent="emerald"
-              title="Modulazione operativa"
-              subtitle="Carico scalato, recovery, segnali bio e piano vs reale"
-              icon={LineChart}
-            >
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Carico</div>
-                  <div className="mt-1 text-lg font-semibold text-white">{operationalContext.loadScalePct}%</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Modalità</div>
-                  <div className="mt-1 text-sm text-slate-200">{operationalContext.headline}</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Recovery</div>
-                  <div className="mt-1 text-sm text-slate-200">
-                    {recoverySummary
-                      ? [
-                          recoverySummary.status,
-                          recoverySummary.sleepDurationHours != null ? `${recoverySummary.sleepDurationHours}h` : null,
-                          recoverySummary.hrvMs != null ? `HRV ${recoverySummary.hrvMs}` : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "—"
-                      : "—"}
-                  </div>
-                </div>
-                {bioenergeticModulation ? (
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2 lg:col-span-1">
-                    <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetica</div>
-                    <div className="mt-1 text-sm text-slate-200">
-                      {bioenergeticModulation.mitochondrialReadinessScore}/100 · copertura{" "}
-                      {bioenergeticModulation.signalCoveragePct}% · ±{bioenergeticModulation.inputUncertaintyPct}%
-                    </div>
-                  </div>
-                ) : null}
-                {adaptationLoop ? (
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2">
-                    <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Piano / reale</div>
-                    <div className="mt-1 text-sm text-slate-200">
-                      {adaptationLoop.executionCompliancePct.toFixed(0)}% compliance · Δ
-                      {adaptationLoop.executionDeltaTss > 0 ? "+" : ""}
-                      {adaptationLoop.executionDeltaTss.toFixed(0)} TSS · {adaptationLoop.nextAction}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </Pro2SectionCard>
+            <ViryaOperationalModulationCard
+              operationalContext={operationalContext}
+              recoverySummary={recoverySummary}
+              bioenergeticModulation={bioenergeticModulation}
+              adaptationLoop={adaptationLoop}
+            />
           ) : null}
 
           {viryaApprovedPatches.length > 0 ? (
@@ -2764,104 +2400,14 @@ export function ViryaAnnualPlanOrchestrator({
 
       </section>
 
-      <section className="viz-card builder-panel" style={{ marginBottom: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
-          <h3 className="viz-title" style={{ margin: 0 }}>Fasi, mesocicli, carico/scarico</h3>
-          <button type="button" className="btn-primary" onClick={addPhase}>+ Fase</button>
-        </div>
-        <table className="table-shell">
-          <thead>
-            <tr>
-              <th>Inizio</th>
-              <th>Fine</th>
-              <th>Fase</th>
-              {(sportFamily === "strength" || sportFamily === "technical" || sportFamily === "lifestyle") && <th>Obiettivo macrofase</th>}
-              <th>Mesociclo</th>
-              <th>{VIRYA_LOAD_SHORT}/w</th>
-              <th>Sedute/w</th>
-              <th>Note</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {phases.map((p) => (
-              <tr key={p.id} style={{ background: `${phaseColor(p.phase)}14` }}>
-                <td><input className="form-input" type="date" value={p.start} onChange={(e) => updatePhase(p.id, { start: e.target.value })} /></td>
-                <td><input className="form-input" type="date" value={p.end} onChange={(e) => updatePhase(p.id, { end: e.target.value })} /></td>
-                <td>
-                  <select
-                    className="form-select"
-                    value={p.phase}
-                    style={{ borderColor: phaseColor(p.phase), color: phaseColor(p.phase) }}
-                    onChange={(e) => updatePhase(p.id, { phase: e.target.value as PhaseType })}
-                  >
-                    <option value="base">Base</option>
-                    <option value="build">Costruzione</option>
-                    <option value="refine">Rifinitura</option>
-                    <option value="peak">Forma</option>
-                    <option value="deload">Scarico</option>
-                    <option value="second_peak">Secondo picco</option>
-                  </select>
-                </td>
-                {(sportFamily === "strength" || sportFamily === "technical" || sportFamily === "lifestyle") && (
-                  <td>
-                    <select
-                      className="form-select"
-                      value={
-                        p.macroObjective ??
-                        (sportFamily === "strength"
-                          ? "forza"
-                          : sportFamily === "technical"
-                            ? "tecnico_tattico"
-                            : "lifestyle_balance")
-                      }
-                      onChange={(e) => updatePhase(p.id, { macroObjective: e.target.value })}
-                    >
-                      {sportFamily === "strength"
-                        ? gymMacroObjectiveLabels.map((g) => (
-                            <option key={`macro-obj-${p.id}-${g.id}`} value={g.id}>
-                              {g.label}
-                            </option>
-                          ))
-                        : sportFamily === "technical"
-                          ? [
-                            <option key={`macro-obj-${p.id}-tecnico_tattico`} value="tecnico_tattico">Tecnico-tattico</option>,
-                            <option key={`macro-obj-${p.id}-offensiva`} value="offensiva">Offensiva</option>,
-                            <option key={`macro-obj-${p.id}-difensiva`} value="difensiva">Difensiva</option>,
-                            <option key={`macro-obj-${p.id}-mista`} value="mista">Mista</option>,
-                          ]
-                          : [
-                              <option key={`macro-obj-${p.id}-lifestyle_balance`} value="lifestyle_balance">Balance</option>,
-                              <option key={`macro-obj-${p.id}-respirazione`} value="respirazione">Respirazione</option>,
-                              <option key={`macro-obj-${p.id}-mobilita`} value="mobilita">Mobilita</option>,
-                              <option key={`macro-obj-${p.id}-recovery`} value="recovery">Recovery</option>,
-                            ]}
-                    </select>
-                  </td>
-                )}
-                <td><input className="form-input" value={p.mesocycle} onChange={(e) => updatePhase(p.id, { mesocycle: e.target.value })} /></td>
-                <td>
-                  <input
-                    className="form-input"
-                    type="number"
-                    value={p.weeklyTss}
-                    title={
-                      sportFamily === "strength" && strengthPhaseLoadHints.get(p.id)
-                        ? `Media dal programma settimanale (passo 5): ${strengthPhaseLoadHints.get(p.id)!.avgLoad} ${VIRYA_LOAD_SHORT.toLowerCase()} · ${strengthPhaseLoadHints.get(p.id)!.avgSessions} sedute`
-                        : undefined
-                    }
-                    style={{ borderColor: tssColor(p.weeklyTss), color: tssColor(p.weeklyTss) }}
-                    onChange={(e) => updatePhase(p.id, { weeklyTss: Number(e.target.value) || 0 })}
-                  />
-                </td>
-                <td><input className="form-input" type="number" value={p.sessionsPerWeek} onChange={(e) => updatePhase(p.id, { sessionsPerWeek: Number(e.target.value) || 0 })} /></td>
-                <td><input className="form-input" value={p.notes} onChange={(e) => updatePhase(p.id, { notes: e.target.value })} /></td>
-                <td><button type="button" className="btn-primary" style={{ background: "rgba(255,255,255,0.12)" }} onClick={() => removePhase(p.id)}>×</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <ViryaPhasesTable
+        phases={phases}
+        sportFamily={sportFamily}
+        strengthPhaseLoadHints={strengthPhaseLoadHints}
+        addPhase={addPhase}
+        updatePhase={updatePhase}
+        removePhase={removePhase}
+      />
 
       <section className="viz-grid">
         <ViryaAnnualLoadProjectionCard

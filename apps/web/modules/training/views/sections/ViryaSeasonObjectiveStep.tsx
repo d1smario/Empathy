@@ -1,0 +1,42 @@
+"use client";
+
+import type { Dispatch, SetStateAction } from "react";
+import { Target } from "lucide-react";
+import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
+
+/**
+ * Card "4 · Obiettivo cardine" del render di ViryaAnnualPlanOrchestrator
+ * (decomposizione del God-component). Render-only: stato/handler nel padre,
+ * passati via props. JSX verbatim.
+ */
+export type ViryaSeasonObjectiveStepProps = {
+  objective: string;
+  setObjective: Dispatch<SetStateAction<string>>;
+};
+
+export function ViryaSeasonObjectiveStep({
+  objective,
+  setObjective,
+}: ViryaSeasonObjectiveStepProps) {
+  return (
+    <Pro2SectionCard
+      accent="rose"
+      title="4 · Obiettivo cardine"
+      subtitle="La ragione della stagione — guida hint, copy piano e note in calendario"
+      icon={Target}
+    >
+      <label className="block">
+        <span className="mb-2 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+          Obiettivo cardine
+        </span>
+        <textarea
+          className="min-h-[100px] w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
+          rows={4}
+          value={objective}
+          onChange={(e) => setObjective(e.target.value)}
+          placeholder="Es. doppio picco su gare X/Y, soglia e VO2, gestione lattato in chiave 40k…"
+        />
+      </label>
+    </Pro2SectionCard>
+  );
+}
