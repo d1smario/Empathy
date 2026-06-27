@@ -1161,12 +1161,18 @@ export function getLifestyleProtocolMediaUrl(protocol: LifestyleProtocol): strin
     </svg>`);
 }
 
-export function getTechnicalDrillsForDiscipline(discipline: string): TechnicalDrill[] {
+export function getTechnicalDrillsForDiscipline(
+  discipline: string,
+  drills: TechnicalDrill[] = TEAM_SPORT_DRILL_LIBRARY,
+): TechnicalDrill[] {
   const target = normalizeLabel(discipline);
-  return TEAM_SPORT_DRILL_LIBRARY.filter((drill) => normalizeLabel(drill.sport) === target);
+  return drills.filter((drill) => normalizeLabel(drill.sport) === target);
 }
 
-export function getLifestyleProtocolsForDiscipline(discipline: string): LifestyleProtocol[] {
+export function getLifestyleProtocolsForDiscipline(
+  discipline: string,
+  protocols: LifestyleProtocol[] = LIFESTYLE_PROTOCOL_LIBRARY,
+): LifestyleProtocol[] {
   const target = normalizeLabel(discipline);
-  return LIFESTYLE_PROTOCOL_LIBRARY.filter((item) => normalizeLabel(item.sport) === target);
+  return protocols.filter((item) => normalizeLabel(item.sport) === target);
 }

@@ -20,7 +20,8 @@ import {
 } from "@/lib/training/builder/engine-blocks-to-session-contract";
 import { finalizeViryaPro2ContractAsBuilderFile } from "@/lib/training/builder/finalize-virya-pro2-contract-as-builder-file";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
-import { getLifestyleProtocolMediaUrl, getLifestyleProtocolsForDiscipline, getTechnicalDrillMediaUrl, getTechnicalDrillsForDiscipline } from "@/lib/training/libraries";
+import { getLifestyleProtocolMediaUrl, getLifestyleProtocolsForDiscipline, getTechnicalDrillMediaUrl, getTechnicalDrillsForDiscipline, LIFESTYLE_PROTOCOL_LIBRARY, TEAM_SPORT_DRILL_LIBRARY, type LifestyleProtocol, type TechnicalDrill } from "@/lib/training/libraries";
+import { loadLifestyleProtocolsClient, loadTechnicalDrillsClient } from "@/lib/training/libraries-client";
 import type { AdaptationTarget, SessionGoalRequest, TrainingDomain } from "@/lib/training/engine";
 import type { BuilderSessionOperationalScalingViewModel } from "@/api/training/contracts";
 import { materializeViryaGymBuilderSession } from "@/lib/training/virya/materialize-virya-gym-builder-session";
@@ -158,9 +159,16 @@ export function ViryaAnnualPlanOrchestrator({
     >
   >({});
 
+  const [technicalDrills, setTechnicalDrills] = useState<TechnicalDrill[]>(TEAM_SPORT_DRILL_LIBRARY);
+  const [lifestyleProtocols, setLifestyleProtocols] = useState<LifestyleProtocol[]>(LIFESTYLE_PROTOCOL_LIBRARY);
+  useEffect(() => {
+    loadTechnicalDrillsClient().then(setTechnicalDrills).catch(() => {});
+    loadLifestyleProtocolsClient().then(setLifestyleProtocols).catch(() => {});
+  }, []);
+
   const familySports = sportFamilies.find((f) => f.id === sportFamily)?.sports ?? [];
-  const defaultTechnicalDrill = useMemo(() => getTechnicalDrillsForDiscipline(discipline)[0] ?? null, [discipline]);
-  const defaultLifestyleProtocol = useMemo(() => getLifestyleProtocolsForDiscipline(discipline)[0] ?? null, [discipline]);
+  const defaultTechnicalDrill = useMemo(() => getTechnicalDrillsForDiscipline(discipline, technicalDrills)[0] ?? null, [discipline, technicalDrills]);
+  const defaultLifestyleProtocol = useMemo(() => getLifestyleProtocolsForDiscipline(discipline, lifestyleProtocols)[0] ?? null, [discipline, lifestyleProtocols]);
   const operationalContext = viryaContext?.operationalContext ?? null;
   const recoverySummary = viryaContext?.recoverySummary ?? null;
   const adaptationLoop = viryaContext?.adaptationLoop ?? null;
@@ -1256,7 +1264,7 @@ export function ViryaAnnualPlanOrchestrator({
       ];
     }
     if (input.family === "technical" && input.technicalModule) {
-      const drill = getTechnicalDrillsForDiscipline(input.discipline)[0] ?? defaultTechnicalDrill;
+      const drill = getTechnicalDrillsForDiscipline(input.discipline, technicalDrills)[0] ?? defaultTechnicalDrill;
       const mediaUrl = drill ? getTechnicalDrillMediaUrl(drill) : undefined;
       return [
         {
@@ -1276,7 +1284,7 @@ export function ViryaAnnualPlanOrchestrator({
       ];
     }
     if (input.family === "lifestyle" && input.lifestyleModule) {
-      const protocol = getLifestyleProtocolsForDiscipline(input.discipline)[0] ?? defaultLifestyleProtocol;
+      const protocol = getLifestyleProtocolsForDiscipline(input.discipline, lifestyleProtocols)[0] ?? defaultLifestyleProtocol;
       const mediaUrl = protocol ? getLifestyleProtocolMediaUrl(protocol) : undefined;
       return [
         {
