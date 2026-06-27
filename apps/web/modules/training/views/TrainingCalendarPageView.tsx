@@ -43,7 +43,10 @@ export default function TrainingCalendarPageView() {
       title="Calendario allenamenti"
       description="Le tue sedute pianificate ed eseguite, giorno per giorno."
     >
-      <div className="scroll-mt-28">
+      <div
+        className={`scroll-mt-28${cal.adminScoped ? " pointer-events-none opacity-50" : ""}`}
+        title={cal.adminScoped ? "Disponibile nella scheda dedicata (v2)" : undefined}
+      >
         {isMobileApp ? null : <TrainingSubnav />}
       </div>
 
@@ -78,11 +81,16 @@ export default function TrainingCalendarPageView() {
         <p className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100" role="status">
           {cal.fetchDiag!.executedHiddenByPreference}{" "}
           {cal.fetchDiag!.executedHiddenByPreference === 1 ? "attività eseguita nascosta" : "attività eseguite nascoste"} dal
-          calendario in base alle preferenze sorgente dati.{" "}
-          <Pro2Link href="/settings" className="text-amber-50 underline underline-offset-2">
-            Apri Impostazioni
-          </Pro2Link>{" "}
-          per includere altri provider (Garmin, Strava, …).
+          calendario in base alle preferenze sorgente dati.
+          {cal.adminScoped ? null : (
+            <>
+              {" "}
+              <Pro2Link href="/settings" className="text-amber-50 underline underline-offset-2">
+                Apri Impostazioni
+              </Pro2Link>{" "}
+              per includere altri provider (Garmin, Strava, …).
+            </>
+          )}
         </p>
       ) : null}
 
