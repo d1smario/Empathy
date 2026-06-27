@@ -1,20 +1,16 @@
 "use client";
 
 import {
-  formatExecutedWorkoutSummary,
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
 import {
   Activity,
   Bike,
-  CalendarDays,
-  CalendarOff,
   CalendarRange,
   Clock,
   Flame,
   Heart,
-  LayoutGrid,
   Sparkles,
   Timer,
 } from "lucide-react";
@@ -26,14 +22,13 @@ import { BuilderGymManualComposer } from "@/components/training/BuilderGymManual
 import { BuilderLifestyleManualComposer } from "@/components/training/BuilderLifestyleManualComposer";
 import { BuilderManualComposer } from "@/components/training/BuilderManualComposer";
 import { BuilderTechnicalManualComposer } from "@/components/training/BuilderTechnicalManualComposer";
-import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { ResearchTraceScientificPanel } from "@/components/training/ResearchTraceScientificPanel";
 import { ReplicateStatusStrip } from "@/components/training/ReplicateStatusStrip";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
-import { Pro2Accordion, Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { Pro2Accordion, Pro2Button } from "@/components/ui/empathy";
 import {
   buildPro2BuilderSessionContract,
   defaultManualPlanBlock,
@@ -101,7 +96,6 @@ import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverag
 import { fetchNutritionViewModel } from "@/modules/nutrition/services/nutrition-api";
 import { fetchProfileViewModel } from "@/modules/profile/services/profile-api";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { formatPlannedWorkoutCardTitle } from "@/lib/training/planned/format-planned-workout-title";
 import {
   initialManualPlanBlocks,
   localCalendarDateString,
@@ -117,7 +111,6 @@ import {
   ADAPTATION_BY_MACRO,
   defaultAdaptationForMacro,
   defaultSessionMinutesForMacro,
-  sportBelongsToMacro,
   EngineQuickPreset,
   ENGINE_QUICK_GYM,
   GYM_EQUIPMENT_CHIPS,
@@ -127,6 +120,10 @@ import {
   EngineGenerateOverrides,
   BuilderWindowCacheEntry,
 } from "@/lib/training/training-builder-rich-kit";
+import { BuilderViryaEntryBanner } from "@/modules/training/views/sections/BuilderViryaEntryBanner";
+import { BuilderDayAdaptationPanel } from "@/modules/training/views/sections/BuilderDayAdaptationPanel";
+import { BuilderSportMacroSectorPicker } from "@/modules/training/views/sections/BuilderSportMacroSectorPicker";
+import { BuilderUpcomingPlannedSection } from "@/modules/training/views/sections/BuilderUpcomingPlannedSection";
 
 function KpiCard({
   label,
@@ -1159,27 +1156,11 @@ export default function TrainingBuilderRichPageView() {
           <TrainingSubnav />
         </div>
 
-        {viryaEntry && !dismissViryaEntryBanner ? (
-          <div
-            className="rounded-xl border border-orange-500/35 bg-orange-950/20 px-4 py-3 text-sm text-orange-100/95 shadow-[inset_0_1px_0_rgba(251,146,60,0.12)]"
-            role="status"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="max-w-3xl leading-relaxed">
-                Percorso da <strong className="text-orange-200">VIRYA</strong>: qui materializzi la{" "}
-                <strong className="text-orange-200">singola sessione</strong> col motore builder. Il calendario si aggiorna solo dopo
-                salvataggio esplicito.
-              </p>
-              <button
-                type="button"
-                className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-xs text-gray-300 hover:border-white/30 hover:text-white"
-                onClick={() => setDismissViryaEntryBanner(true)}
-              >
-                Chiudi
-              </button>
-            </div>
-          </div>
-        ) : null}
+        <BuilderViryaEntryBanner
+          viryaEntry={viryaEntry}
+          dismissViryaEntryBanner={dismissViryaEntryBanner}
+          setDismissViryaEntryBanner={setDismissViryaEntryBanner}
+        />
 
         {athleteId && readSpineCoverage ? (
           <TrainingPlannedWindowContextStrip
@@ -1192,188 +1173,22 @@ export default function TrainingBuilderRichPageView() {
           />
         ) : null}
 
-        {athleteId ? (
-          <section
-            aria-label="Adattamento giornaliero guidato"
-            className="mb-4 rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 sm:p-5 shadow-inner"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  Adattamento giorno · {plannedDate}
-                </p>
-                {dayAdaptationBusy ? (
-                  <p className="mt-2 text-sm text-gray-400">Lettura score twin e seduta pianificata…</p>
-                ) : dayAdaptationErr ? (
-                  <p className="mt-2 text-sm text-amber-200/90" role="alert">
-                    {dayAdaptationErr}
-                  </p>
-                ) : dayAdaptation?.ok ? (
-                  <>
-                    <p className="mt-2 text-lg font-bold text-white">
-                      {dayAdaptation.loadAdaptation.headline} ·{" "}
-                      <span
-                        className={
-                          dayAdaptation.loadAdaptation.direction === "reduce"
-                            ? "text-amber-300"
-                            : dayAdaptation.loadAdaptation.direction === "increase"
-                              ? "text-emerald-300"
-                              : "text-gray-200"
-                        }
-                      >
-                        {dayAdaptation.loadAdaptation.adjustmentPct > 0
-                          ? `+${dayAdaptation.loadAdaptation.adjustmentPct}%`
-                          : `${dayAdaptation.loadAdaptation.adjustmentPct}%`}{" "}
-                        carico
-                      </span>
-                    </p>
-                    <p className="mt-1 text-xs leading-relaxed text-gray-400">
-                      Score {dayAdaptation.loadAdaptation.scorePct}% ({dayAdaptation.loadAdaptation.trafficLight}) · target seduta ~
-                      {dayAdaptation.loadAdaptation.loadScalePct}% del piano VIRYA.
-                      {dayAdaptation.loadAdaptation.unwantedSupercompensation
-                        ? " Supercompensazione non assorbita: riduzione consigliata."
-                        : null}
-                    </p>
-                    {dayAdaptation.targetPlanned ? (
-                      <p className="mt-2 font-mono text-xs tabular-nums text-orange-100/85">
-                        {dayAdaptation.targetPlanned.baselineDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.baselineTssTarget} →{" "}
-                        {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.adaptedTssTarget}
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-xs text-gray-500">Nessuna seduta pianificata in questo giorno: genera da zero con lo score corrente.</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="mt-2 text-sm text-gray-500">Apri con data calendario per guidare durata e TSS.</p>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Pro2Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!athleteId || genBusy || dayAdaptationBusy}
-                  className="border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-                  onClick={() => void runGenerate()}
-                >
-                  {genBusy ? "Generazione…" : "Genera con adattamento"}
-                </Pro2Button>
-                {replacePlannedIdFromQuery ? (
-                  <Pro2Link
-                    href={`/training/calendar?date=${encodeURIComponent(plannedDate)}`}
-                    variant="ghost"
-                    className="border border-white/15 text-xs"
-                  >
-                    Calendario
-                  </Pro2Link>
-                ) : null}
-              </div>
-            </div>
-            {dayAdaptation?.ok ? (
-              <p className="mt-3 text-xs leading-relaxed text-gray-500">{dayAdaptation.loadAdaptation.guidance}</p>
-            ) : null}
-          </section>
-        ) : null}
+        <BuilderDayAdaptationPanel
+          athleteId={athleteId}
+          plannedDate={plannedDate}
+          dayAdaptationBusy={dayAdaptationBusy}
+          dayAdaptationErr={dayAdaptationErr}
+          dayAdaptation={dayAdaptation}
+          genBusy={genBusy}
+          runGenerate={runGenerate}
+          replacePlannedIdFromQuery={replacePlannedIdFromQuery}
+        />
 
-        <section
-          aria-label="Famiglie sessione"
-          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
-        >
-          <div className="mb-5 flex flex-wrap items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
-              <LayoutGrid className="h-5 w-5" strokeWidth={2.35} aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-                  1
-                </span>
-                Sport per settore (A → D)
-              </h2>
-              <p className="mt-1 text-sm text-gray-400">
-                Prima scegli macro e disciplina; dominio motore (endurance / gym / hyrox / crossfit / team_sport / combat /
-                mind_body) alimenta generazione engine e builder manuale sotto.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            {SPORT_MACRO_SECTORS.map((m) => {
-              const sel = activeMacroId === m.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  aria-pressed={sel}
-                  onClick={() => {
-                    if (!sportBelongsToMacro(sport, m.id)) {
-                      setSport(m.sports[0]?.sport ?? sport);
-                    }
-                  }}
-                  className={`flex w-full min-h-[11rem] flex-col justify-between gap-4 rounded-2xl border-2 px-4 py-4 text-left transition sm:min-h-[12rem] sm:px-5 sm:py-5 ${m.macroIdle} ${sel ? m.macroActive : "opacity-95 hover:brightness-110 hover:opacity-100"}`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-base font-black leading-tight tracking-tight text-white sm:text-lg">{m.shortLabel}</p>
-                    <p className="mt-1 line-clamp-2 text-[0.68rem] font-medium leading-snug text-white/80 sm:text-xs">{m.title}</p>
-                  </div>
-                  <div className="-mx-1 flex flex-row flex-nowrap items-center gap-2 overflow-x-auto border-t border-white/20 pt-3 [scrollbar-width:thin]">
-                    {m.sports.map((s) => (
-                      <span
-                        key={s.sport}
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/25 p-0.5 shadow-inner ring-1 ring-white/10 sm:h-11 sm:w-11"
-                        title={s.label}
-                        aria-hidden
-                      >
-                        <SportDisciplineGlyph glyph={s.glyph} className="h-8 w-8 sm:h-9 sm:w-9" />
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {(() => {
-            const sector = SPORT_MACRO_SECTORS.find((x) => x.id === activeMacroId) ?? SPORT_MACRO_SECTORS[0];
-            return (
-              <div
-                className={`mt-5 rounded-2xl border-2 border-white/10 bg-black/50 p-4 sm:p-5 ${
-                  sector.id === "aerobic"
-                    ? "shadow-[inset_0_0_40px_rgba(34,211,238,0.06)]"
-                    : sector.id === "strength"
-                      ? "shadow-[inset_0_0_40px_rgba(251,146,60,0.06)]"
-                      : sector.id === "technical"
-                        ? "shadow-[inset_0_0_40px_rgba(192,132,252,0.07)]"
-                        : "shadow-[inset_0_0_40px_rgba(52,211,153,0.06)]"
-                }`}
-              >
-                <p className="text-sm font-bold text-white">{sector.title}</p>
-                <p className="mt-1 text-xs text-gray-500">{sector.blurb}</p>
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-5 lg:grid-cols-6">
-                  {sector.sports.map((chip) => {
-                    const active = sport.trim().toLowerCase() === chip.sport.trim().toLowerCase();
-                    return (
-                      <button
-                        key={`${sector.id}-${chip.label}`}
-                        type="button"
-                        onClick={() => setSport(chip.sport)}
-                        className={`group flex flex-col items-center gap-2 rounded-xl border border-transparent p-2 transition hover:border-white/15 hover:bg-white/[0.04] ${
-                          active ? "border-white/25 bg-white/[0.08] ring-2 ring-white/30" : ""
-                        }`}
-                      >
-                        <span
-                          className={`flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-2xl border-2 bg-black/20 shadow-inner transition group-hover:scale-[1.04] ${chip.iconRing}`}
-                        >
-                          <SportDisciplineGlyph glyph={chip.glyph} className="h-9 w-9" />
-                        </span>
-                        <span className="text-center text-[0.65rem] font-bold leading-tight text-white">{chip.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-        </section>
+        <BuilderSportMacroSectorPicker
+          activeMacroId={activeMacroId}
+          sport={sport}
+          setSport={setSport}
+        />
 
         <section
           aria-label="Genera sessione (builder engine)"
@@ -2191,79 +2006,14 @@ export default function TrainingBuilderRichPageView() {
           onLoadInBuilder={loadLibraryContractInBuilder}
         />
 
-        <section
-          aria-label="Prossime sessioni pianificate"
-          className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
-        >
-          <div className="mb-4 flex flex-wrap items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-orange-400/45 bg-orange-500/35 text-orange-50 shadow-[0_0_16px_rgba(251,146,60,0.35)]">
-              <CalendarDays className="h-5 w-5" strokeWidth={2.35} aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-white">Prossime pianificate</h2>
-              <p className="mt-1 text-sm text-gray-400">Ordinate per data, dalla finestra API.</p>
-            </div>
-          </div>
-          {ctxLoading || loading ? (
-            <div className="mt-4 h-10 w-full max-w-xs animate-pulse rounded-full bg-orange-500/15" />
-          ) : null}
-          {err ? (
-            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" role="alert">
-              {err}
-            </p>
-          ) : null}
-          {showData && upcoming.length === 0 ? (
-            <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-10 text-center">
-              <CalendarOff className="h-8 w-8 text-orange-400" aria-hidden />
-              <p className="mt-5 text-base font-semibold text-white">Nessuna sessione futura nella finestra</p>
-              <p className="mt-2 max-w-sm text-sm text-gray-500">
-                Pianifica dal builder sopra o attendi il refresh del calendario: qui vedrai le prossime sedute come card colorate.
-              </p>
-            </div>
-          ) : null}
-          {showData && upcoming.length > 0 ? (
-            <ul className="mt-4 flex flex-col gap-2">
-              {upcoming.map((w) => (
-                <li
-                  key={w.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 transition-colors hover:border-orange-500/40 hover:bg-white/[0.05]"
-                >
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 font-mono text-xs font-semibold text-orange-300">
-                    <CalendarDays className="h-3.5 w-3.5 text-orange-300" aria-hidden />
-                    {w.date}
-                  </span>
-                  <span className="min-w-0 flex-1 text-sm font-medium text-white">{formatPlannedWorkoutCardTitle(w)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {showData && executed.length > 0 ? (
-            <div className="mt-8 border-t border-orange-500/20 pt-6">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-orange-100">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-orange-400/40 bg-orange-500/25 text-orange-200 shadow-[0_0_10px_rgba(251,146,60,0.25)]">
-                  <Activity className="h-4 w-4" strokeWidth={2.35} aria-hidden />
-                </span>
-                Ultime eseguite (max 5)
-              </h3>
-              <ul className="mt-3 flex flex-col gap-2">
-                {[...executed]
-                  .sort((a, b) => b.date.localeCompare(a.date))
-                  .slice(0, 5)
-                  .map((w) => (
-                    <li
-                      key={w.id}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-gradient-to-r from-orange-950/25 to-black/50 px-3 py-2.5 text-sm"
-                    >
-                      <span className="inline-flex rounded-full border border-orange-400/40 bg-orange-500/15 px-2.5 py-0.5 font-mono text-xs text-orange-100">
-                        {w.date}
-                      </span>
-                      <span className="text-gray-200">{formatExecutedWorkoutSummary(w)}</span>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ) : null}
-        </section>
+        <BuilderUpcomingPlannedSection
+          ctxLoading={ctxLoading}
+          loading={loading}
+          err={err}
+          showData={showData}
+          upcoming={upcoming}
+          executed={executed}
+        />
 
         {/* In fondo: accordion unico «Dettagli e motore» — contesto generativo e KPI finestra. */}
         <Pro2Accordion

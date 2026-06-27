@@ -1,0 +1,117 @@
+"use client";
+
+import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import type { EngineGenerateOverrides } from "@/lib/training/training-builder-rich-kit";
+import type { BuilderDayAdaptationResponse } from "@/modules/training/services/training-builder-day-adaptation-api";
+
+/**
+ * Pannello "Adattamento giorno" del builder seduta (decomposizione del God-component
+ * TrainingBuilderRichPageView). Render-only: stato nel padre, passato via props.
+ */
+export type BuilderDayAdaptationPanelProps = {
+  athleteId: string | null;
+  plannedDate: string;
+  dayAdaptationBusy: boolean;
+  dayAdaptationErr: string | null;
+  dayAdaptation: BuilderDayAdaptationResponse | null;
+  genBusy: boolean;
+  runGenerate: (overrides?: EngineGenerateOverrides) => Promise<void>;
+  replacePlannedIdFromQuery: string | null;
+};
+
+export function BuilderDayAdaptationPanel({
+  athleteId,
+  plannedDate,
+  dayAdaptationBusy,
+  dayAdaptationErr,
+  dayAdaptation,
+  genBusy,
+  runGenerate,
+  replacePlannedIdFromQuery,
+}: BuilderDayAdaptationPanelProps) {
+  return (
+    <>
+        {athleteId ? (
+          <section
+            aria-label="Adattamento giornaliero guidato"
+            className="mb-4 rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 sm:p-5 shadow-inner"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
+                  Adattamento giorno · {plannedDate}
+                </p>
+                {dayAdaptationBusy ? (
+                  <p className="mt-2 text-sm text-gray-400">Lettura score twin e seduta pianificata…</p>
+                ) : dayAdaptationErr ? (
+                  <p className="mt-2 text-sm text-amber-200/90" role="alert">
+                    {dayAdaptationErr}
+                  </p>
+                ) : dayAdaptation?.ok ? (
+                  <>
+                    <p className="mt-2 text-lg font-bold text-white">
+                      {dayAdaptation.loadAdaptation.headline} ·{" "}
+                      <span
+                        className={
+                          dayAdaptation.loadAdaptation.direction === "reduce"
+                            ? "text-amber-300"
+                            : dayAdaptation.loadAdaptation.direction === "increase"
+                              ? "text-emerald-300"
+                              : "text-gray-200"
+                        }
+                      >
+                        {dayAdaptation.loadAdaptation.adjustmentPct > 0
+                          ? `+${dayAdaptation.loadAdaptation.adjustmentPct}%`
+                          : `${dayAdaptation.loadAdaptation.adjustmentPct}%`}{" "}
+                        carico
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-gray-400">
+                      Score {dayAdaptation.loadAdaptation.scorePct}% ({dayAdaptation.loadAdaptation.trafficLight}) · target seduta ~
+                      {dayAdaptation.loadAdaptation.loadScalePct}% del piano VIRYA.
+                      {dayAdaptation.loadAdaptation.unwantedSupercompensation
+                        ? " Supercompensazione non assorbita: riduzione consigliata."
+                        : null}
+                    </p>
+                    {dayAdaptation.targetPlanned ? (
+                      <p className="mt-2 font-mono text-xs tabular-nums text-orange-100/85">
+                        {dayAdaptation.targetPlanned.baselineDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.baselineTssTarget} →{" "}
+                        {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.adaptedTssTarget}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-500">Nessuna seduta pianificata in questo giorno: genera da zero con lo score corrente.</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">Apri con data calendario per guidare durata e TSS.</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!athleteId || genBusy || dayAdaptationBusy}
+                  className="border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
+                  onClick={() => void runGenerate()}
+                >
+                  {genBusy ? "Generazione…" : "Genera con adattamento"}
+                </Pro2Button>
+                {replacePlannedIdFromQuery ? (
+                  <Pro2Link
+                    href={`/training/calendar?date=${encodeURIComponent(plannedDate)}`}
+                    variant="ghost"
+                    className="border border-white/15 text-xs"
+                  >
+                    Calendario
+                  </Pro2Link>
+                ) : null}
+              </div>
+            </div>
+            {dayAdaptation?.ok ? (
+              <p className="mt-3 text-xs leading-relaxed text-gray-500">{dayAdaptation.loadAdaptation.guidance}</p>
+            ) : null}
+          </section>
+        ) : null}
+    </>
+  );
+}
