@@ -27,6 +27,7 @@ import { materializeViryaGymBuilderSession } from "@/lib/training/virya/material
 import { isGenericViryaPlanName, suggestedViryaPlanName, viryaPlanTag } from "@/lib/training/virya/virya-plan-name";
 import { resolveAerobicViryaPrescription } from "@/lib/training/engine/aerobic-virya-prescription";
 import { materializeViryaAerobicFromCatalog } from "@/lib/training/virya/materialize-virya-aerobic-from-catalog";
+import { loadAerobicStarterPresetsClient } from "@/lib/training/library/aerobic-starter-presets-client";
 import { generateBuilderSession } from "@/modules/training/services/training-engine-api";
 import { importViryaWeekToLibrary } from "@/modules/training/services/training-library-api";
 import { fetchViryaCalendarPlans, replaceTrainingPlannerCalendar, type ViryaCalendarPlanSummary } from "@/modules/training/services/training-planned-api";
@@ -1092,20 +1093,24 @@ export function ViryaAnnualPlanOrchestrator({
       const physiologyEarly = viryaContext?.physiologyState;
       const ftpEarly = Number(physiologyEarly?.physiologicalProfile.ftpWatts ?? 0);
       const hrEarly = Number(physiologyEarly?.performanceProfile.maxHrBpm ?? 0);
-      const catalogSerialized = materializeViryaAerobicFromCatalog({
-        prescription,
-        discipline: input.discipline,
-        sessionName: input.sessionName,
-        phase: input.phase,
-        targetDurationMinutes: input.durationMinutes,
-        targetTss: input.tss,
-        targetKcal: input.kcal,
-        sessionIndexInWeek: input.sessionIndexInWeek ?? 0,
-        ftpW: Number.isFinite(ftpEarly) && ftpEarly > 0 ? ftpEarly : 250,
-        hrMax: Number.isFinite(hrEarly) && hrEarly > 0 ? hrEarly : 185,
-        viryaStructureTag: viryaStructureTag(),
-        methodology: input.methodology,
-      });
+      const aerobicPresets = await loadAerobicStarterPresetsClient();
+      const catalogSerialized = materializeViryaAerobicFromCatalog(
+        {
+          prescription,
+          discipline: input.discipline,
+          sessionName: input.sessionName,
+          phase: input.phase,
+          targetDurationMinutes: input.durationMinutes,
+          targetTss: input.tss,
+          targetKcal: input.kcal,
+          sessionIndexInWeek: input.sessionIndexInWeek ?? 0,
+          ftpW: Number.isFinite(ftpEarly) && ftpEarly > 0 ? ftpEarly : 250,
+          hrMax: Number.isFinite(hrEarly) && hrEarly > 0 ? hrEarly : 185,
+          viryaStructureTag: viryaStructureTag(),
+          methodology: input.methodology,
+        },
+        aerobicPresets,
+      );
       if (catalogSerialized) {
         return catalogSerialized;
       }
