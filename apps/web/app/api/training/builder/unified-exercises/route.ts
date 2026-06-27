@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveExerciseMediaUrl } from "@/lib/training/builder/exercise-media";
-import { loadUnifiedExerciseCatalog } from "@/lib/training/exercise-library/catalog-loader";
+import { loadUnifiedExerciseCatalogFromDb } from "@/lib/training/exercise-library/catalog-db";
 import { describeBlock1Taxonomy } from "@/lib/training/exercise-library/block1-taxonomy";
 import { filterByBlock1MusclePreset, selectExercises } from "@/lib/training/exercise-library/selector";
 import type { Block1MusclePreset } from "@/lib/training/exercise-library/types";
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const limitParam = Number(req.nextUrl.searchParams.get("limit") ?? 220);
     const limit = Math.max(1, Math.min(400, Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 220));
 
-    const catalog = loadUnifiedExerciseCatalog();
+    const catalog = await loadUnifiedExerciseCatalogFromDb();
     let rows = selectExercises(catalog, { sportTag, limit: 800 });
     rows = filterByBlock1MusclePreset(rows, muscle);
 
