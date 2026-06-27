@@ -154,8 +154,9 @@ export function pickExercisesForBlock(
     gymProfile?: GymGenerationProfile;
   },
   limit = 3,
+  library: ExerciseLibraryItem[] = TRAINING_EXERCISE_LIBRARY,
 ): ExerciseLibraryItem[] {
-  const byDomain = TRAINING_EXERCISE_LIBRARY.filter((item) => {
+  const byDomain = library.filter((item) => {
     if (item.domain === params.domain) return true;
     return METHOD_TO_LIBRARY_DOMAIN[params.method].includes(item.domain);
   });

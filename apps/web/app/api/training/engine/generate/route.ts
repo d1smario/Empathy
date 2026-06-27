@@ -7,11 +7,11 @@ import { resolveCanonicalPhysiologyState } from "@/lib/physiology/profile-resolv
 import { resolveCanonicalTwinState } from "@/lib/twin/athlete-state-resolver";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyBuilderOperationalScaling } from "@/lib/training/builder/apply-builder-operational-scaling";
+import { loadTrainingExerciseLibraryFromDb } from "@/lib/training/engine/exercise-library-db";
 import {
   coerceTechnicalModuleFocus,
   generateTrainingSession,
   inferDomainFromSport,
-  TRAINING_EXERCISE_LIBRARY,
   type AdaptationTarget,
   type AthleteMetabolicState,
   type ExerciseLibraryItem,
@@ -527,7 +527,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let generated = generateTrainingSession(requestNormalized, athleteState);
+  const exerciseLibrary = await loadTrainingExerciseLibraryFromDb();
+  let generated = generateTrainingSession(requestNormalized, athleteState, exerciseLibrary);
   let operationalScaling = null;
   let operationalContext = null;
   let adaptationLoop = null;
@@ -566,7 +567,7 @@ export async function POST(req: NextRequest) {
     order: block.order,
     label: block.label,
     exercises: block.exerciseIds
-      .map((id) => TRAINING_EXERCISE_LIBRARY.find((item) => item.id === id))
+      .map((id) => exerciseLibrary.find((item) => item.id === id))
       .filter((item): item is NonNullable<typeof item> => item != null),
   }));
 

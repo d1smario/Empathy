@@ -8,6 +8,7 @@ import {
 import type {
   AdaptationTarget,
   AthleteMetabolicState,
+  ExerciseLibraryItem,
   GeneratedSession,
   GymContractionEmphasis,
   SessionBlock,
@@ -77,6 +78,7 @@ function tssHintForLoad(loadBand: GeneratedSession["expectedLoad"]["loadBand"], 
 export function generateTrainingSession(
   request: SessionGoalRequest,
   athlete: AthleteMetabolicState,
+  library?: ExerciseLibraryItem[],
 ): GeneratedSession {
   const requestEffective = mergeTechnicalFocusIntoGoalRequest(request);
   const rule = ADAPTATION_RULES[requestEffective.adaptationTarget];
@@ -143,6 +145,7 @@ export function generateTrainingSession(
         gymProfile,
       },
       /serie principali|main block|blocco principale/i.test(tmpl.label) ? 4 : 2,
+      library,
     );
     const mainCue =
       tmpl.method === "flow_recovery"
