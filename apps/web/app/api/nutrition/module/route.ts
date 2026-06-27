@@ -12,6 +12,7 @@ import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver"
 import { resolveLatestRecoverySummary } from "@/lib/reality/recovery-summary";
 import { buildMetabolicEfficiencyGenerativeModel } from "@/lib/bioenergetics/metabolic-efficiency-generative-model";
 import { buildFunctionalFoodRecommendationsViewModel } from "@/lib/nutrition/functional-food-recommendations";
+import { loadFunctionalNutrientCatalogFromDb } from "@/lib/nutrition/functional-food-recommendations-db";
 import { buildFunctionalMealSelectorViewModel } from "@/lib/nutrition/functional-meal-selector";
 import { buildNutritionPathwayModulationViewModel } from "@/lib/nutrition/pathway-modulation-model";
 import { buildHealthLabPathwayBridge } from "@/lib/nutrition/health-lab-pathway-bridge";
@@ -318,7 +319,11 @@ export async function GET(req: NextRequest) {
         evidenceBridge,
         multiscaleBridge,
       });
-      functionalFoodRecommendations = buildFunctionalFoodRecommendationsViewModel(pathwayModulation.pathways);
+      const functionalCatalog = await loadFunctionalNutrientCatalogFromDb();
+      functionalFoodRecommendations = buildFunctionalFoodRecommendationsViewModel(
+        pathwayModulation.pathways,
+        functionalCatalog,
+      );
       functionalMealSelector = buildFunctionalMealSelectorViewModel({
         date: pathwayDateParam,
         pathwayModulation,

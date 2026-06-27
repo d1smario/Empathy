@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFunctionalNutrientCatalogEntry } from "@/lib/nutrition/functional-food-recommendations";
+import { loadFunctionalNutrientCatalogFromDb } from "@/lib/nutrition/functional-food-recommendations-db";
 import { catalogIdToNutrientTargetId } from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
 import { rankFoodsForNutrient } from "@/lib/nutrition/usda-nutrient-density-ranker";
 import { fetchUsdaRichFoodsMerged } from "@/lib/nutrition/usda-rich-foods-search";
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const sp = req.nextUrl.searchParams;
+    const functionalCatalog = await loadFunctionalNutrientCatalogFromDb();
     const catalogId = (sp.get("catalogId") ?? "").trim();
     const catalogIds = parseCatalogIdsParam(sp.get("catalogIds"));
     let fdcNutrientId = Number(sp.get("fdcNutrientId"));
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
       const foodsByCatalog: UsdaRichFoodItemViewModel[] = [];
       let firstError: string | null = null;
       for (const id of catalogIds) {
-        const entry = getFunctionalNutrientCatalogEntry(id);
+        const entry = getFunctionalNutrientCatalogEntry(id, functionalCatalog);
         if (!entry?.usdaRichSearch) {
           firstError = firstError ?? `catalogId sconosciuto o senza mappatura USDA ricca: ${id}`;
           continue;
@@ -99,7 +101,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (catalogId) {
-      const entry = getFunctionalNutrientCatalogEntry(catalogId);
+      const entry = getFunctionalNutrientCatalogEntry(catalogId, functionalCatalog);
       if (!entry?.usdaRichSearch) {
         return NextResponse.json(
           { error: "catalogId sconosciuto o senza mappatura USDA ricca.", foods: [] },

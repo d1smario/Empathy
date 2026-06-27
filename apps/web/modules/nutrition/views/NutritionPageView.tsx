@@ -25,7 +25,12 @@ import {
   type PathwayMealSlotKey,
 } from "@/lib/nutrition/pathway-meal-usda-slots";
 import { fetchUsdaFoodsForCatalogIds } from "@/modules/nutrition/services/pathway-meal-usda-client";
-import { buildFunctionalFoodRecommendationsViewModel } from "@/lib/nutrition/functional-food-recommendations";
+import {
+  buildFunctionalFoodRecommendationsViewModel,
+  FUNCTIONAL_NUTRIENT_CATALOG,
+  type FunctionalNutrientCatalogEntry,
+} from "@/lib/nutrition/functional-food-recommendations";
+import { loadFunctionalNutrientCatalogClient } from "@/lib/nutrition/functional-food-recommendations-client";
 import { buildFunctionalMealSelectorViewModel } from "@/lib/nutrition/functional-meal-selector";
 import {
   BRAND_ALIASES,
@@ -954,8 +959,15 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     return cards;
   }, [pathwayModulation, nutritionPerformanceIntegration]);
 
+  const [functionalCatalog, setFunctionalCatalog] = useState<FunctionalNutrientCatalogEntry[]>(FUNCTIONAL_NUTRIENT_CATALOG);
+  useEffect(() => {
+    loadFunctionalNutrientCatalogClient()
+      .then(setFunctionalCatalog)
+      .catch(() => {});
+  }, []);
+
   const functionalFoodRecommendations = useMemo((): FunctionalFoodRecommendationsViewModel =>
-    buildFunctionalFoodRecommendationsViewModel(pathwayModulation?.pathways ?? null), [pathwayModulation]);
+    buildFunctionalFoodRecommendationsViewModel(pathwayModulation?.pathways ?? null, functionalCatalog), [pathwayModulation, functionalCatalog]);
 
   const effectiveFunctionalMealSelector = useMemo(
     (): FunctionalMealSelectorViewModel | null =>

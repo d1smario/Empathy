@@ -23,8 +23,11 @@ export type FunctionalNutrientCatalogEntry = {
   usdaRichSearch?: UsdaRichFoodSearchSpecViewModel;
 };
 
-export function getFunctionalNutrientCatalogEntry(id: string): FunctionalNutrientCatalogEntry | undefined {
-  return FUNCTIONAL_NUTRIENT_CATALOG.find((e) => e.id === id);
+export function getFunctionalNutrientCatalogEntry(
+  id: string,
+  catalog: FunctionalNutrientCatalogEntry[] = FUNCTIONAL_NUTRIENT_CATALOG,
+): FunctionalNutrientCatalogEntry | undefined {
+  return catalog.find((e) => e.id === id);
 }
 
 /**
@@ -260,10 +263,13 @@ function textBlob(pw: NutritionPathwaySupportItem): string {
   return `${pw.pathwayLabel} ${pw.substrates.join(" ")} ${pw.cofactors.join(" ")}`.toLowerCase();
 }
 
-function pickTargetsForPathway(pw: NutritionPathwaySupportItem): FunctionalNutrientCatalogEntry[] {
+function pickTargetsForPathway(
+  pw: NutritionPathwaySupportItem,
+  catalog: FunctionalNutrientCatalogEntry[],
+): FunctionalNutrientCatalogEntry[] {
   const out: FunctionalNutrientCatalogEntry[] = [];
   const blob = textBlob(pw);
-  for (const entry of FUNCTIONAL_NUTRIENT_CATALOG) {
+  for (const entry of catalog) {
     if (entry.pathwayIds.includes(pw.id)) {
       out.push(entry);
       continue;
@@ -312,10 +318,12 @@ function catalogEntryToQuietDayTarget(e: FunctionalNutrientCatalogEntry): Functi
   };
 }
 
-function buildQuietDayDefaultTargets(): FunctionalFoodTargetViewModel[] {
+function buildQuietDayDefaultTargets(
+  catalog: FunctionalNutrientCatalogEntry[],
+): FunctionalFoodTargetViewModel[] {
   const out: FunctionalFoodTargetViewModel[] = [];
   for (const id of QUIET_DAY_CATALOG_IDS) {
-    const e = FUNCTIONAL_NUTRIENT_CATALOG.find((c) => c.id === id);
+    const e = catalog.find((c) => c.id === id);
     if (!e?.usdaRichSearch) continue;
     out.push(catalogEntryToQuietDayTarget(e));
   }
@@ -327,10 +335,11 @@ function buildQuietDayDefaultTargets(): FunctionalFoodTargetViewModel[] {
  */
 export function buildFunctionalFoodRecommendationsViewModel(
   pathways: NutritionPathwaySupportItem[] | null | undefined,
+  catalog: FunctionalNutrientCatalogEntry[] = FUNCTIONAL_NUTRIENT_CATALOG,
 ): FunctionalFoodRecommendationsViewModel {
   const list = pathways ?? [];
   if (!list.length) {
-    const targets = buildQuietDayDefaultTargets();
+    const targets = buildQuietDayDefaultTargets(catalog);
     return {
       modelVersion: 1,
       layer: "deterministic_food_bridge",
@@ -345,7 +354,7 @@ export function buildFunctionalFoodRecommendationsViewModel(
   const byNutrient = new Map<string, FunctionalFoodTargetViewModel>();
 
   for (const pw of list) {
-    const entries = dedupeEntries(pickTargetsForPathway(pw));
+    const entries = dedupeEntries(pickTargetsForPathway(pw, catalog));
     for (const e of entries) {
       const prev = byNutrient.get(e.id);
       if (!prev) {
