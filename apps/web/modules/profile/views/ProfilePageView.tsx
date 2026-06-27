@@ -7,7 +7,6 @@ import {
   profileSectionTitleToAccent,
 } from "@/components/profile/ProfilePro2KpiCard";
 import { InviteCoachCard } from "@/components/profile/InviteCoachCard";
-import { SettingsLocalePreference } from "@/components/settings/SettingsLocalePreference";
 import { SettingsBuildPhasesCard } from "@/components/settings/SettingsBuildPhasesCard";
 import { SettingsAuthSessionDiagnostics } from "@/components/settings/SettingsAuthSessionDiagnostics";
 import { SettingsAthleteContextDiagnostics } from "@/components/settings/SettingsAthleteContextDiagnostics";
@@ -23,13 +22,14 @@ import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { createProfilePayload, fetchProfileViewModel, updateProfilePayload } from "@/modules/profile/services/profile-api";
 import { ProfileDevicesSection } from "@/modules/profile/views/sections/ProfileDevicesSection";
+import { ProfilePersonalSection } from "@/modules/profile/views/sections/ProfilePersonalSection";
+import { ProfilePhysicalSection } from "@/modules/profile/views/sections/ProfilePhysicalSection";
+import { ProfileRoutineSection } from "@/modules/profile/views/sections/ProfileRoutineSection";
+import { ProfileNutritionSection } from "@/modules/profile/views/sections/ProfileNutritionSection";
 import {
-  findSupplementCategory,
   normalizeSupplementCategoryId,
   normalizeSupplementToken,
   normalizeSupplementTokensCsv,
-  SUPPLEMENT_BRANDS,
-  SUPPLEMENT_CATEGORIES,
 } from "@/lib/profile/supplement-category-catalog";
 import { resolveSixMealSnackPercentages } from "@/lib/nutrition/diet-meal-slot-budgets";
 import { Activity, Dna, Flame, GaugeCircle, Heart, Layers, PencilLine, Settings2, UserCheck, X } from "lucide-react";
@@ -39,7 +39,6 @@ import {
   WeekDay,
   RoutineDayConfig,
   DietDayConfig,
-  dietOptions,
   weekDays,
   mapAthleteMemoryToProfileRow,
   mapAthleteMemoryToPhysiologyRow,
@@ -49,7 +48,6 @@ import {
   defaultDietWeek,
   parseCsvList,
   joinUnique,
-  toggleCsvToken,
   hasDisplayValue,
   toRecord,
   classifyAthleteType,
@@ -1001,24 +999,7 @@ export default function ProfilePage({
         </div>
         <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} p-4 sm:p-5`}>
           <div className="pt-4 sm:pt-5">
-          {activeSection === "personal" && (
-            <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />Dati personali</h3>
-              <div className="profile-editor-grid">
-              <div className="form-group"><label className="form-label">Nome</label><input type="text" className="form-input" value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Cognome</label><input type="text" className="form-input" value={form.last_name} onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Data nascita</label><input type="date" className="form-input" value={form.birth_date} onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Genere</label><select className="form-select" value={form.sex} onChange={(e) => setForm((f) => ({ ...f, sex: e.target.value }))}><option value="">—</option><option value="male">Uomo</option><option value="female">Donna</option><option value="other">Altro</option></select></div>
-              <div className="form-group"><label className="form-label">Livello attivita</label><select className="form-select" value={form.activity_level} onChange={(e) => setForm((f) => ({ ...f, activity_level: e.target.value }))}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option><option value="elite">Elite</option></select></div>
-              <div className="form-group"><label className="form-label">Lifestyle</label><select className="form-select" value={form.lifestyle_activity_class} onChange={(e) => setForm((f) => ({ ...f, lifestyle_activity_class: e.target.value }))}><option value="sedentary">Sedentary +15%</option><option value="moderate">Moderate +20%</option><option value="active">Active +30%</option><option value="very_active">Very active +40%</option></select></div>
-              <div className="form-group"><label className="form-label">Fuso orario</label><input type="text" className="form-input" value={form.timezone} onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))} /></div>
-              </div>
-              <div style={{ marginTop: "12px" }}>
-                <SettingsLocalePreference />
-              </div>
-            </div>
-          )}
+          {activeSection === "personal" && <ProfilePersonalSection form={form} setForm={setForm} />}
 
           <ProfileDevicesSection
             activeAthleteId={activeAthleteId}
@@ -1026,233 +1007,34 @@ export default function ProfilePage({
             active={activeSection === "devices"}
           />
 
-          {activeSection === "physical" && (
-            <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("physical")}`}><span className="profile-kpi-dot" />Misure fisiche</h3>
-              <div className="profile-editor-grid">
-              <div className="form-group"><label className="form-label">Height (cm)</label><input className="form-input" type="number" value={form.height_cm} onChange={(e) => setForm((f) => ({ ...f, height_cm: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Weight (kg)</label><input className="form-input" type="number" step="0.1" value={form.weight_kg} onChange={(e) => setForm((f) => ({ ...f, weight_kg: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Body Fat (%)</label><input className="form-input" type="number" step="0.1" value={form.body_fat_pct} onChange={(e) => setForm((f) => ({ ...f, body_fat_pct: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">Muscle Mass (kg)</label><input className="form-input" type="number" step="0.1" value={form.muscle_mass_kg} onChange={(e) => setForm((f) => ({ ...f, muscle_mass_kg: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">FC Riposo</label><input className="form-input" type="number" value={form.resting_hr_bpm} onChange={(e) => setForm((f) => ({ ...f, resting_hr_bpm: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">FC Massima</label><input className="form-input" type="number" value={form.max_hr_bpm} onChange={(e) => setForm((f) => ({ ...f, max_hr_bpm: e.target.value }))} /></div>
-              <div className="form-group"><label className="form-label">FC Soglia</label><input className="form-input" type="number" value={form.threshold_hr_bpm} onChange={(e) => setForm((f) => ({ ...f, threshold_hr_bpm: e.target.value }))} /></div>
-              </div>
-            </div>
-          )}
+          {activeSection === "physical" && <ProfilePhysicalSection form={form} setForm={setForm} />}
 
           {activeSection === "routine" && (
-            <div>
-              <h3 className={`profile-section-band tone-${profileToneForEditorSection("routine")}`}><span className="profile-kpi-dot" />Routine settimanale</h3>
-              <div className="profile-day-strip">
-                {weekDays.map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`profile-day-chip ${activeRoutineDay === day ? "active" : ""}`}
-                    onClick={() => setActiveRoutineDay(day)}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-              <div className="profile-subpanel tone-green" style={{ marginBottom: "12px" }}>
-                <div className="profile-editor-grid profile-editor-grid-compact">
-                  <div className="form-group"><label className="form-label">Sveglia</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].wake_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { wake_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Colazione</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].breakfast_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { breakfast_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Spuntino</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].snack_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { snack_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Pranzo</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].lunch_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { lunch_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Merenda</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].afternoon_snack_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { afternoon_snack_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Cena</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].dinner_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { dinner_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Notte</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].night_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { night_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Tipo giorno</label><select className="form-select profile-dark-select" value={routineWeekPlan[activeRoutineDay].day_mode} onChange={(e) => updateRoutineDay(activeRoutineDay, { day_mode: e.target.value as RoutineDayConfig["day_mode"] })}><option value="training">Training</option><option value="recovery">Recovery</option><option value="race">Gara</option></select></div>
-                </div>
-              </div>
-              <div className="profile-subpanel tone-green" style={{ marginBottom: "12px" }}>
-                <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Sessioni allenamento del giorno</h4>
-                <div className="profile-editor-grid profile-editor-grid-compact">
-                  <div className="form-group"><label className="form-label">Training previsto</label><select className="form-select profile-dark-select" value={String(routineWeekPlan[activeRoutineDay].has_training)} onChange={(e) => updateRoutineDay(activeRoutineDay, { has_training: e.target.value === "true" })}><option value="true">Si</option><option value="false">No</option></select></div>
-                  <div className="form-group"><label className="form-label">Training 1 inizio</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].training1_start_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { training1_start_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Training 1 durata (min)</label><input className="form-input" type="number" min={0} value={routineWeekPlan[activeRoutineDay].training1_duration_minutes} onChange={(e) => updateRoutineDay(activeRoutineDay, { training1_duration_minutes: Number(e.target.value || 0) })} /></div>
-                  <div className="form-group"><label className="form-label">Training 2 previsto</label><select className="form-select profile-dark-select" value={String(routineWeekPlan[activeRoutineDay].has_training2)} onChange={(e) => updateRoutineDay(activeRoutineDay, { has_training2: e.target.value === "true" })}><option value="false">No</option><option value="true">Si</option></select></div>
-                  <div className="form-group"><label className="form-label">Training 2 inizio</label><input className="form-input" type="time" value={routineWeekPlan[activeRoutineDay].training2_start_time} onChange={(e) => updateRoutineDay(activeRoutineDay, { training2_start_time: e.target.value })} /></div>
-                  <div className="form-group"><label className="form-label">Training 2 durata (min)</label><input className="form-input" type="number" min={0} value={routineWeekPlan[activeRoutineDay].training2_duration_minutes} onChange={(e) => updateRoutineDay(activeRoutineDay, { training2_duration_minutes: Number(e.target.value || 0) })} /></div>
-                  <div className="form-group"><label className="form-label">Mobility/Stretching %</label><input className="form-input" type="number" min={0} max={100} value={routineWeekPlan[activeRoutineDay].mobility_stretching_pct} onChange={(e) => updateRoutineDay(activeRoutineDay, { mobility_stretching_pct: Number(e.target.value || 0) })} /></div>
-                </div>
-              </div>
-              <div className="form-group"><label className="form-label">Routine notes</label><textarea className="form-textarea" value={form.routine_summary} onChange={(e) => setForm((f) => ({ ...f, routine_summary: e.target.value }))} /></div>
-            </div>
+            <ProfileRoutineSection
+              form={form}
+              setForm={setForm}
+              routineWeekPlan={routineWeekPlan}
+              setRoutineWeekPlan={setRoutineWeekPlan}
+              activeRoutineDay={activeRoutineDay}
+              setActiveRoutineDay={setActiveRoutineDay}
+              updateRoutineDay={updateRoutineDay}
+            />
           )}
 
           {activeSection === "nutrition" && (
-            <div>
-              <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "24px" }}>
-                <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>Dieta</button>
-                <button type="button" className={`page-tab ${activeNutritionTab === "intolerances" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("intolerances")}>Intolleranze</button>
-                <button type="button" className={`page-tab ${activeNutritionTab === "supplements" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("supplements")}>Integratori</button>
-              </div>
-
-              {activeNutritionTab === "diet" && (
-                <div>
-                  <div className="form-group"><label className="form-label">Tipo alimentazione</label><select className="form-select profile-dark-select" value={form.diet_type} onChange={(e) => setForm((f) => ({ ...f, diet_type: e.target.value }))}>{dietOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></div>
-                  <div className="form-group"><label className="form-label">Cucine preferite</label></div>
-                  <div className="profile-chip-grid">
-                    {["mediterranea", "asiatica", "thai", "messicana", "nordic"].map((c) => {
-                      const selected = form.cuisines.split(",").map((s) => s.trim()).filter(Boolean).includes(c);
-                      return (
-                        <button key={c} type="button" className={`profile-black-chip ${selected ? "active" : ""}`} onClick={() => setForm((f) => ({ ...f, cuisines: toggleCsvToken(f.cuisines, c) }))}>
-                          {c}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="profile-day-strip" style={{ marginTop: "12px" }}>
-                    {weekDays.map((day) => (
-                      <button key={day} type="button" className={`profile-day-chip ${activeDietDay === day ? "active" : ""}`} onClick={() => setActiveDietDay(day)}>{day}</button>
-                    ))}
-                  </div>
-
-                  <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-                    <div className="profile-editor-grid">
-                      <div className="form-group"><label className="form-label">Numero pasti / fasting</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].meal_count_mode} onChange={(e) => {
-                        const meal_count_mode = e.target.value as DietDayConfig["meal_count_mode"];
-                        if (meal_count_mode === "6") {
-                          const c = dietWeekPlan[activeDietDay].caloric_distribution;
-                          const r = resolveSixMealSnackPercentages(c);
-                          updateDietDay(activeDietDay, {
-                            meal_count_mode,
-                            caloric_distribution: {
-                              ...c,
-                              snack_am: r.snack_am,
-                              snack_pm: r.snack_pm,
-                              snack_evening: r.snack_evening,
-                              snacks: r.snacksTotal,
-                            },
-                          });
-                        } else {
-                          updateDietDay(activeDietDay, { meal_count_mode });
-                        }
-                      }}><option value="1">1 pasto</option><option value="2">2 pasti</option><option value="3">3 pasti</option><option value="4">4 pasti</option><option value="5">5 pasti</option><option value="6">6 pasti</option><option value="fasting">Digiuno</option><option value="semi-8-16">Semi digiuno 8-16</option><option value="semi-6-18">Semi digiuno 6-18</option><option value="semi-4-20">Semi digiuno 4-20</option></select></div>
-                      <div className="form-group"><label className="form-label">Tipologia giorno</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].day_type} onChange={(e) => updateDietDay(activeDietDay, { day_type: e.target.value as DietDayConfig["day_type"] })}><option value="fasting-0">Digiuno 0% cal</option><option value="severe-15-30">Restrizione severa 15-30%</option><option value="catabolic-50-99">Catabolico 50-99%</option><option value="normocaloric-100">Normocalorica 100%</option><option value="anabolic-101-130">Ipercalorica / anabolico 101-130%</option></select></div>
-                      <div className="form-group"><label className="form-label">% calorie rispetto fabbisogno</label><input className="form-input" type="number" min={0} max={130} value={dietWeekPlan[activeDietDay].day_type_pct} onChange={(e) => updateDietDay(activeDietDay, { day_type_pct: Number(e.target.value || 0) })} /></div>
-                    </div>
-                  </div>
-
-                  <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-                    <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Distribuzione calorica pasti (%)</h4>
-                    <div className="profile-editor-grid profile-editor-grid-compact">
-                      <div className="form-group"><label className="form-label">Colazione</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.breakfast} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, breakfast: Number(e.target.value || 0) } })} /></div>
-                      <div className="form-group"><label className="form-label">Pranzo</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.lunch} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, lunch: Number(e.target.value || 0) } })} /></div>
-                      <div className="form-group"><label className="form-label">Cena</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.dinner} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, dinner: Number(e.target.value || 0) } })} /></div>
-                      {dietWeekPlan[activeDietDay].meal_count_mode === "6" ? (
-                        <>
-                          <div className="form-group"><label className="form-label">Spuntino · mattina</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10} onChange={(e) => {
-                            const snack_am = Number(e.target.value || 0);
-                            const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
-                            const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
-                            updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                          }} /></div>
-                          <div className="form-group"><label className="form-label">Spuntino · pomeriggio</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10} onChange={(e) => {
-                            const snack_pm = Number(e.target.value || 0);
-                            const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
-                            const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
-                            updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                          }} /></div>
-                          <div className="form-group"><label className="form-label">Spuntino · serale</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10} onChange={(e) => {
-                            const snack_evening = Number(e.target.value || 0);
-                            const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
-                            const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
-                            updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                          }} /></div>
-                          <p className="col-span-full text-[11px] text-slate-400">6 pasti: tre spuntini separati (es. 10+10+10 = 30% totale spuntini). Σ giorno: {Math.round(dietWeekPlan[activeDietDay].caloric_distribution.breakfast + dietWeekPlan[activeDietDay].caloric_distribution.lunch + dietWeekPlan[activeDietDay].caloric_distribution.dinner + dietWeekPlan[activeDietDay].caloric_distribution.snacks)}%</p>
-                        </>
-                      ) : (
-                        <div className="form-group"><label className="form-label">Spuntini</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snacks} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snacks: Number(e.target.value || 0) } })} /></div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-                    <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Macro nutrienti giornalieri (%)</h4>
-                    <div className="profile-editor-grid profile-editor-grid-compact">
-                      <div className="form-group"><label className="form-label">CHO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.cho_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, cho_pct: Number(e.target.value || 0) } })} /></div>
-                      <div className="form-group"><label className="form-label">PRO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.pro_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, pro_pct: Number(e.target.value || 0) } })} /></div>
-                      <div className="form-group"><label className="form-label">FAT</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.fat_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, fat_pct: Number(e.target.value || 0) } })} /></div>
-                    </div>
-                  </div>
-
-                  <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-                    <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Custom macro singolo pasto (%)</h4>
-                    <div className="profile-meal-macro-grid">
-                      {(["breakfast", "lunch", "dinner", "snacks"] as const).map((meal) => (
-                        <div key={meal} className="profile-meal-macro-card">
-                          <strong>{meal}</strong>
-                          <div className="form-group"><label className="form-label">CHO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].cho_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], cho_pct: Number(e.target.value || 0) } } })} /></div>
-                          <div className="form-group"><label className="form-label">PRO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].pro_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], pro_pct: Number(e.target.value || 0) } } })} /></div>
-                          <div className="form-group"><label className="form-label">FAT</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].fat_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], fat_pct: Number(e.target.value || 0) } } })} /></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="form-group"><label className="form-label">Preferenze alimentari (csv)</label><input className="form-input" type="text" value={form.food_preferences} onChange={(e) => setForm((f) => ({ ...f, food_preferences: e.target.value }))} /></div>
-                </div>
-              )}
-
-              {activeNutritionTab === "intolerances" && (
-                <div>
-                  <div className="form-group"><label className="form-label">Intolleranze (csv)</label><input className="form-input" type="text" value={form.intolerances} onChange={(e) => setForm((f) => ({ ...f, intolerances: e.target.value }))} /></div>
-                  <div className="form-group"><label className="form-label">Allergie (csv)</label><input className="form-input" type="text" value={form.allergies} onChange={(e) => setForm((f) => ({ ...f, allergies: e.target.value }))} /></div>
-                  <div className="form-group"><label className="form-label">Alimenti esclusi (csv)</label><input className="form-input" type="text" value={form.food_exclusions} onChange={(e) => setForm((f) => ({ ...f, food_exclusions: e.target.value }))} /></div>
-                  <div className="alert-warning">Informazioni critiche per suggerimenti alimentari sicuri.</div>
-                </div>
-              )}
-
-              {activeNutritionTab === "supplements" && (
-                <div>
-                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Categoria</h4>
-                  <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "28px" }}>
-                    {SUPPLEMENT_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className={`page-tab ${normalizeSupplementCategoryId(activeSupplementCategory) === cat.id ? "page-tab-active" : ""}`}
-                        onClick={() => setActiveSupplementCategory(cat.id)}
-                      >
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Integratori disponibili</h4>
-                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "28px" }}>
-                    {(findSupplementCategory(activeSupplementCategory)?.items ?? []).map((item) => {
-                      const categoryId = normalizeSupplementCategoryId(activeSupplementCategory);
-                      const token = `${categoryId}:${item}`;
-                      const selected = form.supplements.split(",").map((s) => s.trim()).filter(Boolean).includes(token);
-                      return (
-                        <button key={item} type="button" className={`profile-black-chip ${selected ? "active" : ""}`} onClick={() => setForm((f) => ({ ...f, supplements: toggleCsvToken(f.supplements, token) }))}>
-                          {item}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <h4 className="section-title" style={{ fontSize: "13px", opacity: 0.75, marginBottom: "10px" }}>Brand preferiti (40)</h4>
-                  <div className="profile-chip-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "28px" }}>
-                    {SUPPLEMENT_BRANDS.map((brand) => {
-                      const selected = form.supplement_brands.split(",").map((s) => s.trim()).filter(Boolean).includes(brand);
-                      return (
-                        <button key={brand} type="button" className={`profile-black-chip ${selected ? "active" : ""}`} onClick={() => setForm((f) => ({ ...f, supplement_brands: toggleCsvToken(f.supplement_brands, brand) }))}>
-                          {brand}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="form-group"><label className="form-label">Integratori selezionati (csv)</label><textarea className="form-textarea" value={form.supplements} onChange={(e) => setForm((f) => ({ ...f, supplements: e.target.value }))} /></div>
-                  <div className="form-group"><label className="form-label">Brand selezionati (csv)</label><textarea className="form-textarea" value={form.supplement_brands} onChange={(e) => setForm((f) => ({ ...f, supplement_brands: e.target.value }))} /></div>
-                </div>
-              )}
-            </div>
+            <ProfileNutritionSection
+              form={form}
+              setForm={setForm}
+              dietWeekPlan={dietWeekPlan}
+              setDietWeekPlan={setDietWeekPlan}
+              activeDietDay={activeDietDay}
+              setActiveDietDay={setActiveDietDay}
+              activeNutritionTab={activeNutritionTab}
+              setActiveNutritionTab={setActiveNutritionTab}
+              activeSupplementCategory={activeSupplementCategory}
+              setActiveSupplementCategory={setActiveSupplementCategory}
+              updateDietDay={updateDietDay}
+            />
           )}
           </div>
 
