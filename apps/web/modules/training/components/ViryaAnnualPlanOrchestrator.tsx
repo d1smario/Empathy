@@ -33,17 +33,9 @@ import {
 } from "@/lib/training/builder/engine-blocks-to-session-contract";
 import { finalizeViryaPro2ContractAsBuilderFile } from "@/lib/training/builder/finalize-virya-pro2-contract-as-builder-file";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
-import {
-  getLifestyleProtocolMediaUrl,
-  getLifestyleProtocolsForDiscipline,
-  getTechnicalDrillMediaUrl,
-  LIFESTYLE_DISCIPLINES,
-  TECHNICAL_SPORT_DISCIPLINES,
-  getTechnicalDrillsForDiscipline,
-} from "@/lib/training/libraries";
+import { getLifestyleProtocolMediaUrl, getLifestyleProtocolsForDiscipline, getTechnicalDrillMediaUrl, getTechnicalDrillsForDiscipline } from "@/lib/training/libraries";
 import type { AdaptationTarget, SessionGoalRequest, TrainingDomain } from "@/lib/training/engine";
 import type { BuilderSessionOperationalScalingViewModel } from "@/api/training/contracts";
-import { materializePro2BlocksFromEngine } from "@/lib/training/virya/materialize-pro2-blocks-from-engine";
 import { materializeViryaGymBuilderSession } from "@/lib/training/virya/materialize-virya-gym-builder-session";
 import { isGenericViryaPlanName, suggestedViryaPlanName, viryaPlanTag } from "@/lib/training/virya/virya-plan-name";
 import { resolveAerobicViryaPrescription } from "@/lib/training/engine/aerobic-virya-prescription";
@@ -138,6 +130,11 @@ import {
   buildGymMacroPhases,
   DEFAULT_AEROBIC_PLAN_WEEKS,
 } from "@/lib/training/virya/virya-annual-plan-kit";
+import { ViryaHeroHeader } from "@/modules/training/views/sections/ViryaHeroHeader";
+import { ViryaStatusBanners } from "@/modules/training/views/sections/ViryaStatusBanners";
+import { ViryaPhaseRecapGrid } from "@/modules/training/views/sections/ViryaPhaseRecapGrid";
+import { ViryaAnnualLoadProjectionCard } from "@/modules/training/views/sections/ViryaAnnualLoadProjectionCard";
+import { ViryaMasterPlanCard } from "@/modules/training/views/sections/ViryaMasterPlanCard";
 
 
 export type ViryaAnnualPlanOrchestratorProps = {
@@ -2135,55 +2132,17 @@ export function ViryaAnnualPlanOrchestrator({
 
   return (
     <div id="virya-orchestrator" className="mt-6 scroll-mt-24 space-y-6">
-      <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/25 via-black/50 to-black/80 p-5 shadow-inner">
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Virya · Pro 2</p>
-        <h2 className="text-xl font-semibold tracking-tight text-white">Piano annuale</h2>
-        <p className="mt-1 max-w-2xl text-sm text-slate-400">
-          Percorso in cinque passi — stesso motore sessione del builder. Gli obiettivi focali settimanali (stimoli) sono
-          al passo 5, colonna «Obiettivi (multipli)». Deploy batch su Calendar da lì quando sei pronto.
-        </p>
-        <div className="mt-4 max-w-xl">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-fuchsia-300/90">
-            Nome piano annuale
-          </label>
-          <input
-            className="mt-1.5 w-full rounded-xl border border-fuchsia-500/35 bg-black/50 px-3 py-2.5 text-sm text-white outline-none ring-fuchsia-500/20 focus:ring-2"
-            value={planName}
-            onChange={(e) => setPlanName(e.target.value)}
-            placeholder="Es. Gym 2026 · Forza · Running primavera"
-          />
-          <p className="mt-1.5 font-mono text-[0.68rem] text-slate-500">
-            Tag Calendar: <span className="text-cyan-300/90">{viryaPlanTag(planName)}</span> — usalo per distinguere Gym,
-            Running, ecc. nell’elenco piani sotto.
-          </p>
-        </div>
-        {viryaHeroStats.length ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {viryaHeroStats.map((s) => (
-              <span
-                key={s.label}
-                className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-slate-300"
-              >
-                <span className="text-slate-500">{s.label}:</span> {s.value}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      <ViryaHeroHeader
+        planName={planName}
+        setPlanName={setPlanName}
+        viryaHeroStats={viryaHeroStats}
+      />
 
-      {error ? (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
-      ) : null}
-      {success ? (
-        <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          {success}
-        </div>
-      ) : null}
-      {contextLoading ? (
-        <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Sincronizzazione contesto atleta (recovery / operativo)…
-        </div>
-      ) : null}
+      <ViryaStatusBanners
+        error={error}
+        success={success}
+        contextLoading={contextLoading}
+      />
 
       {selectedAthleteId ? (
         <Pro2SectionCard
@@ -3869,40 +3828,10 @@ export function ViryaAnnualPlanOrchestrator({
               Auto-tune fasi dal target
             </button>
           </div>
-          <div className="mt-5">
-            <div className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-pink-300">Resoconto fasi</div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {phases.map((p) => (
-                <div
-                  key={p.id}
-                  className="overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-[0_0_0_1px_rgba(251,113,133,0.08)]"
-                >
-                  <div className="h-1.5 w-full" style={{ background: phaseColor(p.phase) }} />
-                  <div className="p-3">
-                    <div className="text-sm font-bold text-white">{phaseLabels[p.phase]}</div>
-                    <div className="mt-1 font-mono text-[0.7rem] text-slate-400">
-                      {p.start} → {p.end}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="rounded-md border border-orange-400/40 bg-orange-500/15 px-2 py-0.5 text-[0.65rem] font-semibold text-orange-100">
-                        {VIRYA_LOAD_SHORT} {p.weeklyTss}/sett.
-                        {strengthPhaseLoadHints.get(p.id) ? (
-                          <span className="ml-1 text-[0.6rem] font-normal text-slate-500">
-                            (prog. {strengthPhaseLoadHints.get(p.id)!.avgLoad})
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="rounded-md border border-pink-400/40 bg-pink-500/15 px-2 py-0.5 text-[0.65rem] font-semibold text-pink-100">
-                        {p.sessionsPerWeek} sedute/sett.
-                      </span>
-                    </div>
-                    {p.mesocycle ? <div className="mt-2 text-[0.65rem] text-slate-500">{p.mesocycle}</div> : null}
-                    {p.notes ? <div className="mt-1 text-[0.62rem] leading-snug text-slate-600">{p.notes}</div> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ViryaPhaseRecapGrid
+            phases={phases}
+            strengthPhaseLoadHints={strengthPhaseLoadHints}
+          />
         </article>
 
       </section>
@@ -4007,85 +3936,13 @@ export function ViryaAnnualPlanOrchestrator({
       </section>
 
       <section className="viz-grid">
-        <article className="viz-card builder-panel">
-          <h3 className="viz-title">Annual Load Projection</h3>
-          <div className="annual-grid">
-            {annualLoad.map((tss, idx) => {
-              const intensity = tss / maxAnnual;
-              const bg =
-                intensity > 0.78
-                  ? "rgba(251,191,36,0.85)"
-                  : intensity > 0.55
-                    ? "rgba(255,106,0,0.8)"
-                    : intensity > 0.3
-                      ? "rgba(4,190,129,0.65)"
-                      : intensity > 0
-                        ? "rgba(255,255,255,0.15)"
-                        : "rgba(255,255,255,0.06)";
-              return <div key={idx} className="annual-cell" style={{ background: bg }} title={`Week ${idx + 1} · TSS ${tss}`} />;
-            })}
-          </div>
-          <div className="builder-zone-legend" style={{ marginTop: "10px" }}>
-            <span className="builder-zone-chip" style={{ borderColor: "#00e08d", color: "#00e08d", backgroundColor: "#00e08d22" }}>Low</span>
-            <span className="builder-zone-chip" style={{ borderColor: "#ffd60a", color: "#ffd60a", backgroundColor: "#ffd60a22" }}>Medium</span>
-            <span className="builder-zone-chip" style={{ borderColor: "#ff9e00", color: "#ff9e00", backgroundColor: "#ff9e0022" }}>High</span>
-            <span className="builder-zone-chip" style={{ borderColor: "#ff00a8", color: "#ff00a8", backgroundColor: "#ff00a822" }}>Peak</span>
-          </div>
-          <p style={{ marginTop: "10px", color: "var(--empathy-text-muted)", fontSize: "12px" }}>
-            Piano annuale pronto per il loop dinamico: Calendar → Analyzer → Adaptation.
-          </p>
-        </article>
-        <article className="viz-card builder-panel">
-          <h3 className="viz-title">Master plan annuale (week/day navigator)</h3>
-          <div style={{ maxHeight: "340px", overflowY: "auto" }}>
-            <table className="table-shell">
-              <thead>
-                <tr>
-                  <th>Week</th>
-                  <th>Start</th>
-                  <th>Phase</th>
-                  <th>Sessions</th>
-                  <th>TSS</th>
-                  <th>Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {programWeekRows.slice(0, 52).map((w) => {
-                  const pc = phaseColor(w.phaseType);
-                  return (
-                  <tr key={`${w.week}-${w.weekStart}`} style={{ backgroundColor: phaseRowBackground(w.phaseType) }}>
-                    <td style={{ color: pc, fontWeight: 700 }}>W{w.week}</td>
-                    <td style={{ color: `${pc}cc` }}>{new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}</td>
-                    <td>
-                      <span
-                        className="builder-zone-chip"
-                        style={{
-                          borderColor: pc,
-                          color: pc,
-                          backgroundColor: `${pc}28`,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {w.phase}
-                      </span>
-                    </td>
-                    <td style={{ color: "#f1f5f9", fontWeight: 600 }}>{w.displaySessions}</td>
-                    <td style={{ color: pc, fontWeight: 800 }}>{w.displayTss}</td>
-                    <td>
-                      <Link href={`/training/calendar?date=${w.weekStart}`} style={{ color: pc, textDecoration: "none", fontWeight: 600 }}>
-                        Week/Day →
-                      </Link>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p style={{ marginTop: "10px", color: "var(--empathy-text-muted)", fontSize: "12px" }}>
-            Apri una week specifica in Calendar e modifica/sostituisci la singola seduta direttamente dal giorno.
-          </p>
-        </article>
+        <ViryaAnnualLoadProjectionCard
+          annualLoad={annualLoad}
+          maxAnnual={maxAnnual}
+        />
+        <ViryaMasterPlanCard
+          programWeekRows={programWeekRows}
+        />
         <article className="viz-card builder-panel">
           <h3 className="viz-title">Deploy piano su Calendar</h3>
           <p style={{ margin: "0 0 10px 0", color: "var(--empathy-text-muted)", fontSize: "13px" }}>
