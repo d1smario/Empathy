@@ -14,6 +14,7 @@ import { Pro2AthleteRequiredGate } from "@/components/shell/Pro2AthleteRequiredG
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Accordion, Pro2Button, Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
+import { coachAthleteStagingHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   fetchAerodynamicsTests,
@@ -131,7 +132,7 @@ function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
 }
 
 export default function AerodynamicsPageView() {
-  const { athleteId, loading: athleteLoading, adminScoped, role } = useActiveAthlete();
+  const { athleteId, loading: athleteLoading, adminScoped, platformAdminView, role } = useActiveAthlete();
   const [cameraMode, setCameraMode] = useState<AerodynamicsCameraMode>("side");
   const [file, setFile] = useState<File | null>(null);
   const [tests, setTests] = useState<AerodynamicsTestSessionV1[]>([]);
@@ -296,14 +297,21 @@ export default function AerodynamicsPageView() {
                 {showTech && (reviewStagingRunId ?? latestJobStaging?.id) ? (
                   <>
                     {" "}
-                    {adminScoped ? (
-                      <span className="font-semibold underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
-                        Apri review →
-                      </span>
-                    ) : (
+                    {!adminScoped ? (
                       <Link href={`/aerodynamics/staging/${reviewStagingRunId ?? latestJobStaging?.id}`} className="font-semibold underline">
                         Apri review →
                       </Link>
+                    ) : !platformAdminView && athleteId ? (
+                      <Link
+                        href={coachAthleteStagingHref(athleteId, "aerodynamics", String(reviewStagingRunId ?? latestJobStaging?.id))}
+                        className="font-semibold underline"
+                      >
+                        Apri review →
+                      </Link>
+                    ) : (
+                      <span className="font-semibold underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
+                        Apri review →
+                      </span>
                     )}
                   </>
                 ) : null}
@@ -346,14 +354,18 @@ export default function AerodynamicsPageView() {
             {showTech && pendingStaging.length ? (
               <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 {pendingStaging.length} proposte da validare —{" "}
-                {adminScoped ? (
-                  <span className="underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
-                    apri validazione
-                  </span>
-                ) : (
+                {!adminScoped ? (
                   <Link href={`/aerodynamics/staging/${pendingStaging[0]!.id}`} className="underline">
                     apri validazione
                   </Link>
+                ) : !platformAdminView && athleteId ? (
+                  <Link href={coachAthleteStagingHref(athleteId, "aerodynamics", pendingStaging[0]!.id)} className="underline">
+                    apri validazione
+                  </Link>
+                ) : (
+                  <span className="underline cursor-default opacity-50" title="Disponibile nella scheda dedicata (v2)">
+                    apri validazione
+                  </span>
                 )}
               </div>
             ) : null}

@@ -7,6 +7,7 @@ import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { ModulePillSubnav, type ModulePillAnchorItem } from "@/components/navigation/ModulePillSubnav";
 import { MODULE_PILL_ROSE } from "@/components/navigation/module-pill-styles";
+import { scopedReviewUrl } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   analyzePanelWithAi,
@@ -77,7 +78,7 @@ let healthTimelineCache: {
 } | null = null;
 
 export default function HealthPageView() {
-  const { athleteId, loading: ctxLoading, adminScoped, role } = useActiveAthlete();
+  const { athleteId, loading: ctxLoading, adminScoped, platformAdminView, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const [panels, setPanels] = useState<HealthPanelTimelineRow[]>([]);
   const [systemMap, setSystemMap] = useState<HealthSystemMapViewModel>({
@@ -428,14 +429,16 @@ export default function HealthPageView() {
       }
       setToast(res.message ?? "Caricamento registrato.");
       void loadTimeline();
-      /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma. */
+      /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma
+       *  (in scope coach resta dentro la scheda atleta: /athletes/[id]/health/staging/[runId]). */
       if (res.reviewUrl) {
+        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView });
         setTimeout(() => {
-          window.location.assign(res.reviewUrl as string);
+          window.location.assign(url);
         }, 600);
       }
     },
-    [athleteId, sampleDate, loadTimeline],
+    [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView],
   );
 
   const onAnalyzePanelWithAi = useCallback(
@@ -452,12 +455,13 @@ export default function HealthPageView() {
       setToast(res.message ?? "Analisi AI avviata.");
       void loadTimeline();
       if (res.reviewUrl) {
+        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView });
         setTimeout(() => {
-          window.location.assign(res.reviewUrl as string);
+          window.location.assign(url);
         }, 600);
       }
     },
-    [athleteId, loadTimeline],
+    [athleteId, loadTimeline, adminScoped, platformAdminView],
   );
 
   const onBulkReanalyze = useCallback(async () => {

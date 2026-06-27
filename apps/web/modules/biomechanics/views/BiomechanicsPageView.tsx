@@ -24,6 +24,7 @@ import {
   type Pro2ButtonVariant,
 } from "@/components/ui/empathy";
 import { cn } from "@/lib/cn";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   fetchBiomechanicsSessions,
@@ -107,8 +108,9 @@ const ADMIN_SCOPE_LINK_TITLE = "Disponibile nella scheda dedicata (v2)";
 
 /** Link verso rotte della shell coach: inerte quando la vista è montata nelle schede admin. */
 function ShellLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
-  const { adminScoped } = useActiveAthlete();
-  if (adminScoped) {
+  const { athleteId, adminScoped, platformAdminView } = useActiveAthlete();
+  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView });
+  if (resolved === null) {
     return (
       <span className={cn(className, "cursor-default opacity-50")} title={ADMIN_SCOPE_LINK_TITLE}>
         {children}
@@ -116,7 +118,7 @@ function ShellLink({ href, className, children }: { href: string; className?: st
     );
   }
   return (
-    <Link href={href} className={className}>
+    <Link href={resolved} className={className}>
       {children}
     </Link>
   );
@@ -134,8 +136,9 @@ function ShellPro2Link({
   className?: string;
   children: ReactNode;
 }) {
-  const { adminScoped } = useActiveAthlete();
-  if (adminScoped) {
+  const { athleteId, adminScoped, platformAdminView } = useActiveAthlete();
+  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView });
+  if (resolved === null) {
     return (
       <span className={cn(pro2ButtonClassName(variant, className), "cursor-default opacity-50")} title={ADMIN_SCOPE_LINK_TITLE}>
         {children}
@@ -143,7 +146,7 @@ function ShellPro2Link({
     );
   }
   return (
-    <Pro2Link href={href} variant={variant} className={className}>
+    <Pro2Link href={resolved} variant={variant} className={className}>
       {children}
     </Pro2Link>
   );

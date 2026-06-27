@@ -6,6 +6,7 @@ import { ArrowLeft, Check, X } from "lucide-react";
 import type { AerodynamicsScenarioCompareV1 } from "@empathy/contracts";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link, pro2ButtonClassName } from "@/components/ui/empathy";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   applyAerodynamicsStagingRun,
@@ -18,8 +19,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export default function AerodynamicsStagingReviewView({ runId }: { runId: string }) {
-  const { adminScoped, role } = useActiveAthlete();
+  const { adminScoped, role, athleteId, platformAdminView } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
+  // Back-link al modulo: scoped in scope coach, globale per l'atleta, inerte in scope admin.
+  const backHref = scopedShellHref("/aerodynamics", { athleteId, adminScoped, platformAdminView });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "confirm" | "reject">(null);
@@ -93,8 +96,13 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
           : "Abbiamo ricostruito alcuni scenari della tua posizione in sella. Sono in attesa di validazione dal coach."
       }
       headerActions={
-        adminScoped ? (
-          // In scheda admin il link cross-shell è inerte (v2)
+        backHref ? (
+          <Pro2Link href={backHref} variant="secondary" className="justify-center border border-white/15">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Aerodynamics
+          </Pro2Link>
+        ) : (
+          // Scope admin: lo staging scoped admin non esiste ancora → link inerte
           <span
             className={pro2ButtonClassName("secondary", "justify-center border border-white/15 cursor-default opacity-50")}
             title="Disponibile nella scheda dedicata (v2)"
@@ -102,11 +110,6 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
             <ArrowLeft className="mr-2 h-4 w-4" />
             Aerodynamics
           </span>
-        ) : (
-          <Pro2Link href="/aerodynamics" variant="secondary" className="justify-center border border-white/15">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Aerodynamics
-          </Pro2Link>
         )
       }
     >

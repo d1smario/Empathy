@@ -7,6 +7,7 @@ import type { BiomechanicsJointAngleSample, BiomechanicsLandmark3D } from "@empa
 import { computeBiomechanicsEfficiencyScores } from "@empathy/domain-biomechanics";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { parseBiomechPoseProposal, type BiomechanicsReportData } from "@/lib/biomechanics/biomech-report-utils";
 import { resolveOverlayLandmarks } from "@/lib/biomechanics/biomech-skeleton-overlay";
@@ -50,8 +51,10 @@ function parseCameraPlaneFromBundle(bundle: Record<string, unknown> | null): Bio
 }
 
 export default function BiomechanicsStagingReviewView({ runId }: { runId: string }) {
-  const { role, adminScoped } = useActiveAthlete();
+  const { role, adminScoped, athleteId, platformAdminView } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
+  // Back-link al modulo: scoped in scope coach, globale per l'atleta, inerte in scope admin.
+  const backHref = scopedShellHref("/biomechanics", { athleteId, adminScoped, platformAdminView });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveHint, setSaveHint] = useState<string | null>(null);
@@ -182,10 +185,20 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
           : "I tuoi dati sono stati registrati e sono in attesa di validazione dal coach."
       }
       headerActions={
-        <Pro2Link href="/biomechanics" variant="secondary" className="justify-center border border-white/15">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Biomechanics
-        </Pro2Link>
+        backHref ? (
+          <Pro2Link href={backHref} variant="secondary" className="justify-center border border-white/15">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Biomechanics
+          </Pro2Link>
+        ) : (
+          <span
+            className="inline-flex cursor-default items-center justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm opacity-50"
+            title="Disponibile nella scheda dedicata (v2)"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Biomechanics
+          </span>
+        )
       }
     >
       {loading ? (

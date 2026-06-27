@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ShieldCheck, Sparkles, X } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
+import { coachAthleteModuleHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { biomarkerLabelIt, humanizePayloadKey } from "@/modules/health/lib/health-panel-readers";
 import {
@@ -94,10 +95,17 @@ function formatPanelTitle(panel: HealthStagingPanelSnapshot | null): string {
 }
 
 export default function HealthStagingReviewView({ runId }: { runId: string }) {
-  const { adminScoped, role } = useActiveAthlete();
+  const { adminScoped, role, athleteId, platformAdminView } = useActiveAthlete();
   // Atleta: role "private" + adminScoped false → showTech false.
   // Coach/admin (showTech true) vedono i dettagli tecnici e i bottoni di validazione.
   const showTech = role === "coach" || adminScoped;
+  // Back-link scope-aware: atleta → /health; coach → scheda atleta scoped (resta nello scope);
+  // admin → inert (lo staging scoped admin è separato, l'URL è chiavato su userId).
+  const backToHealthHref = !adminScoped
+    ? "/health"
+    : !platformAdminView && athleteId
+      ? coachAthleteModuleHref(athleteId, "health")
+      : null;
   const [run, setRun] = useState<HealthStagingRunDetail | null>(null);
   const [panel, setPanel] = useState<HealthStagingPanelSnapshot | null>(null);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -225,21 +233,21 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
-        {adminScoped ? (
-          // Link cross-shell inerte nelle schede admin
+        {backToHealthHref ? (
+          <Link
+            href={backToHealthHref}
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 transition hover:border-fuchsia-500/40 hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
+          </Link>
+        ) : (
+          // Scope admin: lo staging scoped admin non esiste ancora → link inerte
           <span
             title="Disponibile nella scheda dedicata (v2)"
             className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 opacity-50 transition"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
           </span>
-        ) : (
-          <Link
-            href="/health"
-            className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 transition hover:border-fuchsia-500/40 hover:text-white"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
-          </Link>
         )}
         {showTech && vlmProvider ? (
           <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-950/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-violet-200">
@@ -446,18 +454,17 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
 
             {done ? (
               <div className="mt-4 text-right">
-                {adminScoped ? (
-                  // Link cross-shell inerte nelle schede admin
+                {backToHealthHref ? (
+                  <Pro2Link href={backToHealthHref} className="text-[11px] uppercase tracking-wider text-fuchsia-200 hover:text-white">
+                    → Torna all&apos;archivio Health
+                  </Pro2Link>
+                ) : (
                   <span
                     title="Disponibile nella scheda dedicata (v2)"
                     className="cursor-default text-[11px] uppercase tracking-wider text-fuchsia-200 opacity-50"
                   >
                     → Torna all&apos;archivio Health
                   </span>
-                ) : (
-                  <Pro2Link href="/health" className="text-[11px] uppercase tracking-wider text-fuchsia-200 hover:text-white">
-                    → Torna all&apos;archivio Health
-                  </Pro2Link>
                 )}
               </div>
             ) : null}
