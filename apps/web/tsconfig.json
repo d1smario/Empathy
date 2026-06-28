@@ -26,6 +26,7 @@
     "node_modules",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "scripts/**"
+    "scripts/**",
+    "supabase/functions/**"
   ]
 }

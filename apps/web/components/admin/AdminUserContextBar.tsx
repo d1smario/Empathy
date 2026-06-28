@@ -8,6 +8,7 @@ import {
   Calendar,
   Cpu,
   Heart,
+  LayoutDashboard,
   type LucideIcon,
   Move,
   UserRound,
@@ -15,10 +16,11 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { ADMIN_USER_MODULE_NAV, adminUserModuleHref, type AdminNavIconKey } from "@/core/navigation/admin-nav";
+import { SCOPED_ATHLETE_TABS, type ProductNavIconKey } from "@/core/navigation/module-registry";
 import { cn } from "@/lib/cn";
 
-const ICONS: Partial<Record<AdminNavIconKey, LucideIcon>> = {
+const ICONS: Partial<Record<ProductNavIconKey, LucideIcon>> = {
+  chart: LayoutDashboard,
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
@@ -32,8 +34,9 @@ const ICONS: Partial<Record<AdminNavIconKey, LucideIcon>> = {
 /**
  * Barra contestuale dell'utente selezionato, montata dal layout su TUTTE le
  * rotte /admin/utenti/[id]/...: identità ("Vista admin · email"), tab dei
- * moduli del cliente una accanto all'altra (Panoramica + 8 schede) e ✕ per
- * togliere la selezione. I moduli azienda restano SOLO nella sidebar.
+ * moduli del cliente (Panoramica + le STESSE schede dell'atleta: Dashboard +
+ * 6 moduli, da SCOPED_ATHLETE_TABS) e ✕ per togliere la selezione. Le FUNZIONI
+ * admin restano nella sidebar/Panoramica; i TAB rispecchiano ciò che vede l'atleta.
  */
 export function AdminUserContextBar({ userId, email }: { userId: string; email: string | null }) {
   const pathname = usePathname() ?? "";
@@ -41,11 +44,11 @@ export function AdminUserContextBar({ userId, email }: { userId: string; email: 
 
   const pills: { key: string; label: string; href: string; icon: LucideIcon }[] = [
     { key: "overview", label: "Panoramica", href: base, icon: UserRound },
-    ...ADMIN_USER_MODULE_NAV.map((m) => ({
-      key: m.key,
-      label: m.label,
-      href: adminUserModuleHref(userId, m.key),
-      icon: ICONS[m.icon] ?? UserRound,
+    ...SCOPED_ATHLETE_TABS.map((tab) => ({
+      key: tab.module,
+      label: tab.label,
+      href: `${base}/${tab.module}`,
+      icon: ICONS[tab.icon] ?? UserRound,
     })),
   ];
 

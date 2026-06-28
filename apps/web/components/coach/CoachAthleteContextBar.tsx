@@ -8,6 +8,7 @@ import {
   Calendar,
   Cpu,
   Heart,
+  LayoutDashboard,
   type LucideIcon,
   Move,
   UserRound,
@@ -15,10 +16,11 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { PRODUCT_MODULE_NAV, type ProductNavIconKey } from "@/core/navigation/module-registry";
+import { SCOPED_ATHLETE_TABS, type ProductNavIconKey } from "@/core/navigation/module-registry";
 import { cn } from "@/lib/cn";
 
 const ICONS: Partial<Record<ProductNavIconKey, LucideIcon>> = {
+  chart: LayoutDashboard,
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
@@ -47,11 +49,11 @@ export function CoachAthleteContextBar({
   const pathname = usePathname() ?? "";
   const base = `/athletes/${athleteId}`;
 
-  const pills = PRODUCT_MODULE_NAV.filter((m) => m.scope === "athlete").map((m) => ({
-    key: m.module,
-    label: m.label,
-    href: `${base}/${m.module}`,
-    icon: ICONS[m.icon] ?? UserRound,
+  const pills = SCOPED_ATHLETE_TABS.map((tab) => ({
+    key: tab.module,
+    label: tab.label,
+    href: `${base}/${tab.module}`,
+    icon: ICONS[tab.icon] ?? UserRound,
   }));
 
   return (

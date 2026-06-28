@@ -82,3 +82,27 @@ export function getProductNavItemByModule(module: ProductModuleId): ProductModul
 export function pathSegmentFromHref(href: string): string {
   return href.replace(/^\//, "");
 }
+
+/**
+ * Schede mostrate quando si guarda un ATLETA specifico (coach in /athletes/[id]/*,
+ * admin in /admin/utenti/[id]/*). UNICA fonte di verità → coach, admin e atleta vedono
+ * gli STESSI tab: la Dashboard (overview/twin, dove vivono Bioenergetica e Longevity) +
+ * i 6 moduli atleta. Le FUNZIONI differiscono per ruolo (showTech, azioni staff), i TAB no.
+ * Modificando i moduli atleta in PRODUCT_MODULE_NAV, coach e admin si allineano da soli.
+ */
+export type ScopedAthleteTab = { module: ProductModuleId; label: string; icon: ProductNavIconKey };
+
+export const SCOPED_ATHLETE_TABS: ScopedAthleteTab[] = [
+  { module: "dashboard", label: "Dashboard", icon: "chart" },
+  ...PRODUCT_MODULE_NAV.filter((item) => item.scope === "athlete").map((item) => ({
+    module: item.module,
+    label: item.label,
+    icon: item.icon,
+  })),
+];
+
+export const SCOPED_ATHLETE_TAB_MODULES: ProductModuleId[] = SCOPED_ATHLETE_TABS.map((tab) => tab.module);
+
+export function isScopedAthleteTab(module: string): module is ProductModuleId {
+  return SCOPED_ATHLETE_TAB_MODULES.includes(module as ProductModuleId);
+}

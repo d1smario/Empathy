@@ -19,20 +19,23 @@ const LOADING = (
   </div>
 );
 
+const NewDashboardView = dynamic(
+  () => import("@/components/dashboard/NewDashboardView").then((m) => m.NewDashboardView),
+  { ssr: false, loading: () => LOADING },
+);
 const TrainingHubPageView = dynamic(() => import("@/modules/training/views/TrainingHubPageView"), { ssr: false, loading: () => LOADING });
 const TrainingCalendarPageView = dynamic(() => import("@/modules/training/views/TrainingCalendarPageView"), { ssr: false, loading: () => LOADING });
-const BioenergeticsPageView = dynamic(() => import("@/modules/bioenergetics/views/BioenergeticsPageView"), { ssr: false, loading: () => LOADING });
-const LongevityFitnessPageView = dynamic(() => import("@/modules/longevity/views/LongevityFitnessPageView"), { ssr: false, loading: () => LOADING });
 const HealthPageView = dynamic(() => import("@/modules/health/views/HealthPageView"), { ssr: false, loading: () => LOADING });
 const BiomechanicsPageView = dynamic(() => import("@/modules/biomechanics/views/BiomechanicsPageView"), { ssr: false, loading: () => LOADING });
 const AerodynamicsPageView = dynamic(() => import("@/modules/aerodynamics/views/AerodynamicsPageView"), { ssr: false, loading: () => LOADING });
 const NutritionPageView = dynamic(() => import("@/modules/nutrition/views/NutritionPageView"), { ssr: false, loading: () => LOADING });
 const PhysiologyPageView = dynamic(() => import("@/modules/physiology/views/PhysiologyPageView"), { ssr: false, loading: () => LOADING });
 
+// Bioenergetica e Longevity NON sono schede a sé: l'atleta le vede dentro la Dashboard
+// (strisce/pannelli in NewDashboardView), quindi coach e admin le vedono lì pure.
 const VIEWS: Record<string, ComponentType> = {
+  dashboard: NewDashboardView,
   training: TrainingHubPageView,
-  bioenergetics: BioenergeticsPageView,
-  longevity: LongevityFitnessPageView,
   health: HealthPageView,
   biomechanics: BiomechanicsPageView,
   aerodynamics: AerodynamicsPageView,

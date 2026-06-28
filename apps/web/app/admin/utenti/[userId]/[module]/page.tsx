@@ -4,7 +4,7 @@ import { UserRound } from "lucide-react";
 import { ScopedAthleteModuleView } from "@/components/athlete-scope/ScopedAthleteModuleView";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { ADMIN_USER_MODULE_NAV } from "@/core/navigation/admin-nav";
+import { SCOPED_ATHLETE_TABS } from "@/core/navigation/module-registry";
 import { getAdminSelectedUser } from "@/lib/admin/selected-user";
 
 export const dynamic = "force-dynamic";
@@ -12,18 +12,19 @@ export const dynamic = "force-dynamic";
 type PageProps = { params: { userId: string; module: string } };
 
 export function generateMetadata({ params }: PageProps): Metadata {
-  const m = ADMIN_USER_MODULE_NAV.find((x) => x.key === params.module);
-  return { title: m ? `${m.label} · Utente · Admin` : "Utente · Admin" };
+  const tab = SCOPED_ATHLETE_TABS.find((x) => x.module === params.module);
+  return { title: tab ? `${tab.label} · Utente · Admin` : "Utente · Admin" };
 }
 
 /**
- * Scheda modulo dell'utente selezionato: monta la STESSA vista del coach
- * ("fotocopia") nello scope dell'atleta preso dall'URL. Identità e tab vivono
- * nella barra contestuale (layout). L'admin legge e modifica tutto: policy DB
- * `platform_admin_all` (078) + gate API `canAccessAthleteData` (ramo admin).
+ * Scheda modulo dell'utente selezionato: monta la STESSA vista del coach/atleta
+ * ("fotocopia") nello scope dell'atleta preso dall'URL. I tab provengono da
+ * SCOPED_ATHLETE_TABS (Dashboard + 6 moduli) → identici a quelli dell'atleta.
+ * Identità e tab vivono nella barra contestuale (layout). L'admin legge e modifica
+ * tutto: policy DB `platform_admin_all` (078) + gate API `canAccessAthleteData`.
  */
 export default async function AdminSelectedUserModulePage({ params }: PageProps) {
-  const moduleItem = ADMIN_USER_MODULE_NAV.find((x) => x.key === params.module);
+  const moduleItem = SCOPED_ATHLETE_TABS.find((x) => x.module === params.module);
   if (!moduleItem) notFound();
 
   const user = await getAdminSelectedUser(params.userId);
@@ -53,5 +54,5 @@ export default async function AdminSelectedUserModulePage({ params }: PageProps)
     );
   }
 
-  return <ScopedAthleteModuleView module={moduleItem.key} athleteId={user.athleteId} />;
+  return <ScopedAthleteModuleView module={moduleItem.module} athleteId={user.athleteId} />;
 }

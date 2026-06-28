@@ -51,23 +51,7 @@ export const ADMIN_ACCOUNT_NAV: AdminNavItem[] = [
   { key: "profilo", href: "/admin/profilo", label: "Profilo", icon: "user" },
 ];
 
-/**
- * Colonne dell'utente selezionato — stesse del coach, montate sotto
- * `/admin/utenti/[id]/<key>`. Non ancora renderizzate dalla sidebar (passo successivo).
- */
-export type AdminUserModuleItem = { key: string; label: string; icon: AdminNavIconKey };
-
-export const ADMIN_USER_MODULE_NAV: AdminUserModuleItem[] = [
-  { key: "health", label: "Health & Bio", icon: "heart" },
-  { key: "physiology", label: "Physiology", icon: "activity" },
-  { key: "training", label: "Training", icon: "calendar" },
-  { key: "nutrition", label: "Nutrition", icon: "utensils" },
-  { key: "biomechanics", label: "Biomechanics", icon: "motion" },
-  { key: "aerodynamics", label: "Aerodynamics", icon: "wind" },
-  { key: "bioenergetics", label: "BioEnergetic Intelligence", icon: "pulse" },
-  { key: "longevity", label: "Longevity & Fitness", icon: "award" },
-];
-
-export function adminUserModuleHref(userId: string, moduleKey: string): string {
-  return `/admin/utenti/${userId}/${moduleKey}`;
-}
+// Le colonne dell'utente selezionato (Dashboard + 6 moduli) provengono ora da
+// SCOPED_ATHLETE_TABS (core/navigation/module-registry): UNICA fonte condivisa con
+// coach e atleta, così i TAB non possono divergere. La AdminUserContextBar le legge
+// da lì; qui restano solo le voci account dell'admin (ADMIN_ACCOUNT_NAV).

@@ -31,6 +31,7 @@ export function scopedReviewUrl(
 }
 
 const ATHLETE_MODULE_SLUGS = new Set([
+  "dashboard",
   "health",
   "physiology",
   "training",
@@ -40,6 +41,14 @@ const ATHLETE_MODULE_SLUGS = new Set([
   "bioenergetics",
   "longevity",
 ]);
+
+// Bioenergetica e Longevity sono assorbite nella Dashboard: un link scoped a quei
+// moduli atterra sulla Dashboard dell'atleta (dove vivono), non su una rotta rimossa.
+const ABSORBED_INTO_DASHBOARD = new Set(["bioenergetics", "longevity"]);
+
+function normalizeScopedModule(slug: string): string {
+  return ABSORBED_INTO_DASHBOARD.has(slug) ? "dashboard" : slug;
+}
 
 /**
  * Risolve un href cross-shell verso lo scope corrente per i link riusati (back-link e CTA
@@ -61,7 +70,7 @@ export function scopedShellHref(
   }
   const root = href.match(/^\/([^/?#]+)\/?$/);
   if (root && ATHLETE_MODULE_SLUGS.has(root[1]!)) {
-    return coachAthleteModuleHref(opts.athleteId, root[1]!);
+    return coachAthleteModuleHref(opts.athleteId, normalizeScopedModule(root[1]!));
   }
   return null;
 }
