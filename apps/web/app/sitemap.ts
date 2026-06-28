@@ -14,7 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const base = getCanonicalSiteOrigin();
   const now = new Date();
-  const paths = ["/", "/access", "/pricing", "/privacy"];
+  const paths = ["/", "/access", "/pricing", "/privacy", "/termini"];
 
   return paths.map((path) => ({
     url: `${base}${path === "/" ? "" : path}`,

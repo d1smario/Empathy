@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Link } from "@/components/ui/empathy";
+import { empathyTermsLastUpdated, empathyTermsSections } from "@/lib/legal/empathy-terms-sections";
 
 export const metadata: Metadata = {
   title: "Termini di Servizio — Empathy",
-  description: "Termini e condizioni d'uso della piattaforma EMPATHY (Day One Sciences Sagl).",
+  description: "Termini e condizioni d'uso della piattaforma EMPATHY (Day One Sagl).",
   robots: { index: true, follow: true },
 };
 
 /**
- * Pagina pubblica Termini di Servizio. Placeholder: testo definitivo in arrivo.
- * Linkata dal consenso in fase di registrazione (`/registrati`).
+ * Pagina pubblica Termini di Servizio. Linkata dal consenso in registrazione (`/registrati`)
+ * e dal footer. Testo GENERICO di base (vedi lib/legal/empathy-terms-sections.ts): sarà
+ * sostituito dal testo legale definitivo del Titolare.
  */
 export default function TerminiPage() {
   return (
@@ -37,10 +39,12 @@ export default function TerminiPage() {
             Condizioni d&apos;uso della piattaforma EMPATHY.
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/85 md:text-base">
-            Questa pagina raccoglierà i termini e le condizioni d&apos;uso del servizio: oggetto del contratto,
-            account e responsabilità dell&apos;utente, abbonamenti e pagamenti, limitazioni di responsabilità,
-            recesso e foro competente. Il testo definitivo è in fase di redazione.
+            I presenti Termini disciplinano l&apos;accesso e l&apos;utilizzo del Servizio: oggetto del contratto,
+            account e responsabilità dell&apos;utente, ruolo del coach, abbonamenti e pagamenti, proprietà
+            intellettuale, limitazioni di responsabilità, recesso e foro competente. Vanno letti insieme
+            all&apos;Informativa Privacy.
           </p>
+          <p className="mt-3 text-xs text-white/55">Ultimo aggiornamento: {empathyTermsLastUpdated}</p>
         </section>
 
         <section
@@ -50,7 +54,7 @@ export default function TerminiPage() {
           <h2 className="text-xl font-semibold text-white">Riferimenti</h2>
           <ul className="mt-4 grid gap-2 text-sm text-white/90">
             <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <strong className="text-white">Titolare:</strong> Day One Sciences Sagl, Via Nassa 15, 6900 Lugano, Svizzera
+              <strong className="text-white">Titolare:</strong> Day One Sagl, Via Nassa 15, 6900 Lugano, Svizzera
             </li>
             <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
               <strong className="text-white">Informativa privacy:</strong>{" "}
@@ -61,10 +65,29 @@ export default function TerminiPage() {
           </ul>
         </section>
 
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {empathyTermsSections.map((section) => (
+            <article
+              key={section.title}
+              className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-[rgba(8,9,13,0.98)] p-5 md:p-6"
+            >
+              <h3 className="text-lg font-semibold leading-snug text-white">{section.title}</h3>
+              <div className="mt-3 grid gap-2.5">
+                {section.body.map((paragraph, i) => (
+                  <p key={`${section.title}-${i}`} className="text-sm leading-relaxed text-white/90">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
+
         <section className="rounded-xl border border-dashed border-white/20 bg-white/[0.02] p-5">
           <p className="text-xs leading-relaxed text-white/75 md:text-sm">
-            Nota: EMPATHY PRO non è un dispositivo medico e non fornisce diagnosi cliniche. Documento soggetto ad
-            aggiornamenti.
+            Nota: EMPATHY non è un dispositivo medico e non fornisce diagnosi cliniche. Le informazioni hanno
+            finalità informative e di supporto alla performance; consulta un medico prima di intraprendere o
+            modificare un programma di allenamento o alimentare. Documento soggetto ad aggiornamenti.
           </p>
         </section>
       </main>
