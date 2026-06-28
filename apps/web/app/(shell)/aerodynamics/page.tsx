@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { redirectCoachToRoster } from "@/lib/auth/redirect-coach-to-roster";
 import AerodynamicsPageView from "@/modules/aerodynamics/views/AerodynamicsPageView";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Capture foto e video per pipeline aerodinamica Pro 2 con CdA deterministico.",
 };
 
-export default function AerodynamicsPage() {
+export default async function AerodynamicsPage() {
+  await redirectCoachToRoster();
   return (
     <Suspense
       fallback={

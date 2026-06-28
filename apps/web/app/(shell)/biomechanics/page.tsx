@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { redirectCoachToRoster } from "@/lib/auth/redirect-coach-to-roster";
 import BiomechanicsPageView from "@/modules/biomechanics/views/BiomechanicsPageView";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Capture video e foto per pipeline biomeccanica Pro 2 con staging e twin biomeccanico.",
 };
 
-export default function BiomechanicsPage() {
+export default async function BiomechanicsPage() {
+  await redirectCoachToRoster();
   return (
     <Suspense
       fallback={
