@@ -78,7 +78,7 @@ let healthTimelineCache: {
 } | null = null;
 
 export default function HealthPageView() {
-  const { athleteId, loading: ctxLoading, adminScoped, platformAdminView, role } = useActiveAthlete();
+  const { athleteId, loading: ctxLoading, adminScoped, platformAdminView, scopeOwnerUserId, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const [panels, setPanels] = useState<HealthPanelTimelineRow[]>([]);
   const [systemMap, setSystemMap] = useState<HealthSystemMapViewModel>({
@@ -432,13 +432,13 @@ export default function HealthPageView() {
       /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma
        *  (in scope coach resta dentro la scheda atleta: /athletes/[id]/health/staging/[runId]). */
       if (res.reviewUrl) {
-        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView });
+        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
         setTimeout(() => {
           window.location.assign(url);
         }, 600);
       }
     },
-    [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView],
+    [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId],
   );
 
   const onAnalyzePanelWithAi = useCallback(
@@ -455,13 +455,13 @@ export default function HealthPageView() {
       setToast(res.message ?? "Estrazione referto avviata.");
       void loadTimeline();
       if (res.reviewUrl) {
-        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView });
+        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
         setTimeout(() => {
           window.location.assign(url);
         }, 600);
       }
     },
-    [athleteId, loadTimeline, adminScoped, platformAdminView],
+    [athleteId, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId],
   );
 
   const onBulkReanalyze = useCallback(async () => {

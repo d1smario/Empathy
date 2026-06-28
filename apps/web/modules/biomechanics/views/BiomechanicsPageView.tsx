@@ -106,10 +106,10 @@ function formatDateTime(value: string | undefined): string {
 
 const ADMIN_SCOPE_LINK_TITLE = "Disponibile nella scheda dedicata (v2)";
 
-/** Link verso rotte della shell coach: inerte quando la vista è montata nelle schede admin. */
+/** Link verso rotte modulo: riscritto nello scope coach/admin, inerte solo se non scopabile. */
 function ShellLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
-  const { athleteId, adminScoped, platformAdminView } = useActiveAthlete();
-  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView });
+  const { athleteId, adminScoped, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
+  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   if (resolved === null) {
     return (
       <span className={cn(className, "cursor-default opacity-50")} title={ADMIN_SCOPE_LINK_TITLE}>
@@ -136,8 +136,8 @@ function ShellPro2Link({
   className?: string;
   children: ReactNode;
 }) {
-  const { athleteId, adminScoped, platformAdminView } = useActiveAthlete();
-  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView });
+  const { athleteId, adminScoped, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
+  const resolved = scopedShellHref(href, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   if (resolved === null) {
     return (
       <span className={cn(pro2ButtonClassName(variant, className), "cursor-default opacity-50")} title={ADMIN_SCOPE_LINK_TITLE}>

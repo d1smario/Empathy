@@ -19,10 +19,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export default function AerodynamicsStagingReviewView({ runId }: { runId: string }) {
-  const { adminScoped, role, athleteId, platformAdminView } = useActiveAthlete();
+  const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
-  // Back-link al modulo: scoped in scope coach, globale per l'atleta, inerte in scope admin.
-  const backHref = scopedShellHref("/aerodynamics", { athleteId, adminScoped, platformAdminView });
+  // Back-link al modulo: scoped in scope coach/admin, globale per l'atleta.
+  const backHref = scopedShellHref("/aerodynamics", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "confirm" | "reject">(null);

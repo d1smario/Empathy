@@ -1,11 +1,11 @@
 /**
- * URL delle schede atleta in scope COACH (selezione nell'URL /athletes/[athleteId]/...).
- * Usati dalle viste riusate (staging/review e module views) per navigare restando nello
- * scope atleta invece di uscire nella shell globale del coach.
+ * URL delle schede atleta in scope COACH (/athletes/[athleteId]/...) e ADMIN
+ * (/admin/utenti/[userId]/...). Usati dalle viste riusate (staging/review e module views)
+ * per navigare restando nello scope invece di uscire nella shell globale.
  *
- * NB: lo scope ADMIN (/admin/utenti/[userId]/...) è chiavato su userId, non athleteId, quindi
- * non è ricostruibile da queste viste (che conoscono solo athleteId) → l'admin resta gestito
- * a parte.
+ * Coach: chiavato su athleteId (già nel context). Admin: chiavato su userId, che le viste
+ * NON conoscono di per sé → il context lo espone come `scopeOwnerUserId` (vedi
+ * ActiveAthleteScopeProvider), così anche lo scope admin è ricostruibile (parità con il coach).
  */
 export function coachAthleteModuleHref(athleteId: string, module: string): string {
   return `/athletes/${athleteId}/${module}`;
@@ -15,19 +15,36 @@ export function coachAthleteStagingHref(athleteId: string, module: string, runId
   return `/athletes/${athleteId}/${module}/staging/${runId}`;
 }
 
+export function adminUserModuleHref(userId: string, module: string): string {
+  return `/admin/utenti/${userId}/${module}`;
+}
+
+export function adminUserStagingHref(userId: string, module: string, runId: string): string {
+  return `/admin/utenti/${userId}/${module}/staging/${runId}`;
+}
+
+type ScopeHrefOpts = {
+  athleteId: string | null;
+  adminScoped: boolean;
+  platformAdminView: boolean;
+  /** userId dell'utente selezionato (scope admin): richiesto per ricostruire gli href admin. */
+  scopeOwnerUserId?: string | null;
+};
+
 /**
- * Riscrive un reviewUrl globale (`/<module>/staging/<runId>`) nella variante scoped coach
- * (`/athletes/<athleteId>/<module>/staging/<runId>`) quando si sta operando dentro la scheda
- * di un atleta. Fuori scope coach (atleta proprio, o admin) ritorna l'URL invariato.
+ * Riscrive un reviewUrl globale (`/<module>/staging/<runId>`) nella variante scoped del
+ * chiamante (coach: /athletes/<id>/...; admin: /admin/utenti/<userId>/...). Fuori scope
+ * (atleta proprio) ritorna l'URL invariato; in scope admin senza scopeOwnerUserId ritorna
+ * l'URL invariato (impossibile ricostruire).
  */
-export function scopedReviewUrl(
-  reviewUrl: string,
-  opts: { athleteId: string | null; adminScoped: boolean; platformAdminView: boolean },
-): string {
-  if (!opts.adminScoped || opts.platformAdminView || !opts.athleteId) return reviewUrl;
+export function scopedReviewUrl(reviewUrl: string, opts: ScopeHrefOpts): string {
+  if (!opts.adminScoped) return reviewUrl;
   const m = reviewUrl.match(/^\/([^/]+)\/staging\/([^/?#]+)/);
   if (!m) return reviewUrl;
-  return coachAthleteStagingHref(opts.athleteId, m[1]!, m[2]!);
+  if (opts.platformAdminView) {
+    return opts.scopeOwnerUserId ? adminUserStagingHref(opts.scopeOwnerUserId, m[1]!, m[2]!) : reviewUrl;
+  }
+  return opts.athleteId ? coachAthleteStagingHref(opts.athleteId, m[1]!, m[2]!) : reviewUrl;
 }
 
 const ATHLETE_MODULE_SLUGS = new Set([
@@ -51,26 +68,30 @@ function normalizeScopedModule(slug: string): string {
 }
 
 /**
- * Risolve un href cross-shell verso lo scope corrente per i link riusati (back-link e CTA
- * staging). Ritorna:
+ * Risolve un href cross-shell verso lo scope corrente per i link riusati (back-link e CTA).
+ * Ritorna:
  *  - l'href invariato fuori scope (atleta proprio),
- *  - la variante coach scoped (`/athletes/<id>/<module>[/staging/<runId>]`) in scope coach,
- *  - `null` quando il link non è scopabile o si è in scope admin → il chiamante rende inerte.
+ *  - la variante scoped coach (/athletes/<id>/...) o admin (/admin/utenti/<userId>/...),
+ *  - `null` quando il link non è scopabile o manca l'id per ricostruirlo → il chiamante rende inerte.
  * Riconosce solo `/<module>` e `/<module>/staging/<runId>` per moduli atleta noti.
  */
-export function scopedShellHref(
-  href: string,
-  opts: { athleteId: string | null; adminScoped: boolean; platformAdminView: boolean },
-): string | null {
+export function scopedShellHref(href: string, opts: ScopeHrefOpts): string | null {
   if (!opts.adminScoped) return href;
-  if (opts.platformAdminView || !opts.athleteId) return null;
+
   const staging = href.match(/^\/([^/?#]+)\/staging\/([^/?#]+)/);
-  if (staging && ATHLETE_MODULE_SLUGS.has(staging[1]!)) {
-    return coachAthleteStagingHref(opts.athleteId, staging[1]!, staging[2]!);
-  }
   const root = href.match(/^\/([^/?#]+)\/?$/);
-  if (root && ATHLETE_MODULE_SLUGS.has(root[1]!)) {
-    return coachAthleteModuleHref(opts.athleteId, normalizeScopedModule(root[1]!));
+  const stagingSlug = staging && ATHLETE_MODULE_SLUGS.has(staging[1]!) ? staging[1]! : null;
+  const rootSlug = root && ATHLETE_MODULE_SLUGS.has(root[1]!) ? root[1]! : null;
+
+  if (opts.platformAdminView) {
+    if (!opts.scopeOwnerUserId) return null;
+    if (staging && stagingSlug) return adminUserStagingHref(opts.scopeOwnerUserId, stagingSlug, staging[2]!);
+    if (root && rootSlug) return adminUserModuleHref(opts.scopeOwnerUserId, normalizeScopedModule(rootSlug));
+    return null;
   }
+
+  if (!opts.athleteId) return null;
+  if (staging && stagingSlug) return coachAthleteStagingHref(opts.athleteId, stagingSlug, staging[2]!);
+  if (root && rootSlug) return coachAthleteModuleHref(opts.athleteId, normalizeScopedModule(rootSlug));
   return null;
 }

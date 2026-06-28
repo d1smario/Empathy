@@ -54,5 +54,7 @@ export default async function AdminSelectedUserModulePage({ params }: PageProps)
     );
   }
 
-  return <ScopedAthleteModuleView module={moduleItem.module} athleteId={user.athleteId} />;
+  return (
+    <ScopedAthleteModuleView module={moduleItem.module} athleteId={user.athleteId} scopeOwnerUserId={user.userId} />
+  );
 }

@@ -51,10 +51,10 @@ function parseCameraPlaneFromBundle(bundle: Record<string, unknown> | null): Bio
 }
 
 export default function BiomechanicsStagingReviewView({ runId }: { runId: string }) {
-  const { role, adminScoped, athleteId, platformAdminView } = useActiveAthlete();
+  const { role, adminScoped, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
-  // Back-link al modulo: scoped in scope coach, globale per l'atleta, inerte in scope admin.
-  const backHref = scopedShellHref("/biomechanics", { athleteId, adminScoped, platformAdminView });
+  // Back-link al modulo: scoped in scope coach/admin, globale per l'atleta.
+  const backHref = scopedShellHref("/biomechanics", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveHint, setSaveHint] = useState<string | null>(null);

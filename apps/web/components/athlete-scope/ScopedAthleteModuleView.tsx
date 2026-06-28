@@ -47,10 +47,13 @@ export function ScopedAthleteModuleView({
   module,
   athleteId,
   scope = "admin",
+  scopeOwnerUserId = null,
 }: {
   module: string;
   athleteId: string;
   scope?: "admin" | "coach";
+  /** userId dell'utente selezionato (scope admin): per ricostruire gli href admin. */
+  scopeOwnerUserId?: string | null;
 }) {
   let content: React.ReactNode = null;
   if (module === "nutrition") {
@@ -62,5 +65,9 @@ export function ScopedAthleteModuleView({
     if (!View) return null;
     content = <View />;
   }
-  return <ActiveAthleteScopeProvider athleteId={athleteId} scope={scope}>{content}</ActiveAthleteScopeProvider>;
+  return (
+    <ActiveAthleteScopeProvider athleteId={athleteId} scope={scope} scopeOwnerUserId={scopeOwnerUserId}>
+      {content}
+    </ActiveAthleteScopeProvider>
+  );
 }

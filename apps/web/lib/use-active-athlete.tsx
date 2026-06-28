@@ -70,6 +70,13 @@ export type ActiveAthleteContextValue = {
   adminScoped: boolean;
   /** true SOLO in scope admin: distingue l'admin dal coach (entrambi hanno adminScoped=true). Per azioni riservate allo staff (es. generazione piano pasti). */
   platformAdminView: boolean;
+  /**
+   * userId dell'utente SELEZIONATO in scope admin (chiave dell'URL /admin/utenti/[userId]/...),
+   * non l'admin loggato (che è in `userId`). Le rotte admin sono chiavate su userId, quindi
+   * serve per ricostruire gli href admin (/admin/utenti/[userId]/<module>[/staging/<runId>])
+   * dalle viste riusate, che conoscono solo l'athleteId. `null` fuori dallo scope admin.
+   */
+  scopeOwnerUserId: string | null;
 };
 
 const ActiveAthleteContext = createContext<ActiveAthleteContextValue | null>(null);
@@ -103,10 +110,13 @@ export function useActiveAthlete(): ActiveAthleteContextValue {
 export function ActiveAthleteScopeProvider({
   athleteId,
   scope = "coach",
+  scopeOwnerUserId = null,
   children,
 }: {
   athleteId: string;
   scope?: "admin" | "coach";
+  /** userId dell'utente selezionato (solo scope admin): serve a ricostruire gli href admin. */
+  scopeOwnerUserId?: string | null;
   children: ReactNode;
 }) {
   const [athletes, setAthletes] = useState<AthleteOption[]>([]);
@@ -168,6 +178,7 @@ export function ActiveAthleteScopeProvider({
     refresh,
     adminScoped: true,
     platformAdminView: scope === "admin",
+    scopeOwnerUserId: scope === "admin" ? scopeOwnerUserId : null,
   };
 
   return <ActiveAthleteContext.Provider value={value}>{children}</ActiveAthleteContext.Provider>;
@@ -479,5 +490,6 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
     refresh,
     adminScoped: false,
     platformAdminView: false,
+    scopeOwnerUserId: null,
   };
 }

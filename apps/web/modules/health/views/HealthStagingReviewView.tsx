@@ -6,7 +6,7 @@ import { ArrowLeft, Check, ShieldCheck, X } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
-import { coachAthleteModuleHref } from "@/lib/athlete-scope/scoped-athlete-href";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { biomarkerLabelIt, humanizePayloadKey } from "@/modules/health/lib/health-panel-readers";
 import {
@@ -95,17 +95,13 @@ function formatPanelTitle(panel: HealthStagingPanelSnapshot | null): string {
 }
 
 export default function HealthStagingReviewView({ runId }: { runId: string }) {
-  const { adminScoped, role, athleteId, platformAdminView } = useActiveAthlete();
+  const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   // Atleta: role "private" + adminScoped false → showTech false.
   // Coach/admin (showTech true) vedono i dettagli tecnici e i bottoni di validazione.
   const showTech = role === "coach" || adminScoped;
-  // Back-link scope-aware: atleta → /health; coach → scheda atleta scoped (resta nello scope);
-  // admin → inert (lo staging scoped admin è separato, l'URL è chiavato su userId).
-  const backToHealthHref = !adminScoped
-    ? "/health"
-    : !platformAdminView && athleteId
-      ? coachAthleteModuleHref(athleteId, "health")
-      : null;
+  // Back-link scope-aware: atleta → /health; coach → /athletes/[id]/health; admin →
+  // /admin/utenti/[userId]/health (resta nello scope); null solo se non ricostruibile.
+  const backToHealthHref = scopedShellHref("/health", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   const [run, setRun] = useState<HealthStagingRunDetail | null>(null);
   const [panel, setPanel] = useState<HealthStagingPanelSnapshot | null>(null);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
