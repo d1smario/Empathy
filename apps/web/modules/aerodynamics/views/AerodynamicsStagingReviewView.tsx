@@ -102,7 +102,8 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
             Aerodynamics
           </Pro2Link>
         ) : (
-          // Scope admin: lo staging scoped admin non esiste ancora → link inerte
+          // Fallback inerte: solo se l'href scoped non è ricostruibile (scope coach senza
+          // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
             className={pro2ButtonClassName("secondary", "justify-center border border-white/15 cursor-default opacity-50")}
             title="Disponibile nella scheda dedicata (v2)"

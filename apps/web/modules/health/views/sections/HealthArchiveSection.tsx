@@ -6,6 +6,7 @@ import type {
   HealthTimelineFetchDiagnostics,
 } from "@/modules/health/services/health-module-api";
 import { structuredValuesFieldCount } from "@/modules/health/lib/health-panel-readers";
+import { HealthStagingReviewLink } from "@/modules/health/views/sections/HealthStagingReviewLink";
 
 export interface HealthArchiveDiagnostics {
   total: number;
@@ -26,7 +27,6 @@ export interface HealthArchiveSectionProps {
   timelineDiag: HealthTimelineFetchDiagnostics | null;
   archiveDiagnostics: HealthArchiveDiagnostics;
   pendingVlmRunByPanelId: Map<string, string>;
-  adminScoped: boolean;
   bulkBusy: boolean;
   analyzeBusyPanelId: string | null;
   expandedPanelId: string | null;
@@ -45,7 +45,6 @@ export function HealthArchiveSection({
   timelineDiag,
   archiveDiagnostics,
   pendingVlmRunByPanelId,
-  adminScoped,
   bulkBusy,
   analyzeBusyPanelId,
   expandedPanelId,
@@ -278,24 +277,7 @@ export function HealthArchiveSection({
                   >
                     {expanded ? "Chiudi" : "Apri"}
                   </button>
-                  {reviewRunId ? (
-                    adminScoped ? (
-                      // Link cross-shell inerte nelle schede admin
-                      <span
-                        title="Disponibile nella scheda dedicata (v2)"
-                        className="cursor-default rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-100 opacity-50 transition"
-                      >
-                        Apri review
-                      </span>
-                    ) : (
-                      <a
-                        href={`/health/staging/${reviewRunId}`}
-                        className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-100 transition-colors hover:border-fuchsia-400/50 hover:bg-fuchsia-500/20"
-                      >
-                        Apri review
-                      </a>
-                    )
-                  ) : null}
+                  {reviewRunId ? <HealthStagingReviewLink runId={reviewRunId} /> : null}
                   {canAnalyzeWithAi ? (
                     <button
                       type="button"

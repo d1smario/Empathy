@@ -237,7 +237,8 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
             <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
           </Link>
         ) : (
-          // Scope admin: lo staging scoped admin non esiste ancora → link inerte
+          // Fallback inerte: solo se l'href scoped non è ricostruibile (scope coach senza
+          // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
             title="Disponibile nella scheda dedicata (v2)"
             className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 opacity-50 transition"

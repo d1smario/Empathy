@@ -656,7 +656,6 @@ export default function HealthPageView() {
               <HealthSystemMapPanel
                 systemMap={systemMap}
                 systemMapErr={systemMapErr}
-                adminScoped={adminScoped}
                 stagingBusy={stagingBusy}
                 onPatchStagingRun={onPatchStagingRun}
               />
@@ -668,7 +667,6 @@ export default function HealthPageView() {
                 timelineDiag={timelineDiag}
                 archiveDiagnostics={archiveDiagnostics}
                 pendingVlmRunByPanelId={pendingVlmRunByPanelId}
-                adminScoped={adminScoped}
                 bulkBusy={bulkBusy}
                 analyzeBusyPanelId={analyzeBusyPanelId}
                 expandedPanelId={expandedPanelId}

@@ -4,11 +4,11 @@ import type {
   HealthStagingRunAction,
   HealthSystemMapViewModel,
 } from "@/modules/health/services/health-module-api";
+import { HealthStagingReviewLink } from "@/modules/health/views/sections/HealthStagingReviewLink";
 
 export interface HealthSystemMapPanelProps {
   systemMap: HealthSystemMapViewModel;
   systemMapErr: string | null;
-  adminScoped: boolean;
   stagingBusy: string | null;
   onPatchStagingRun: (runId: string, status: HealthStagingRunAction) => void;
 }
@@ -17,7 +17,6 @@ export interface HealthSystemMapPanelProps {
 export function HealthSystemMapPanel({
   systemMap,
   systemMapErr,
-  adminScoped,
   stagingBusy,
   onPatchStagingRun,
 }: HealthSystemMapPanelProps) {
@@ -114,24 +113,7 @@ export function HealthSystemMapPanel({
                     </div>
                     {runId ? (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {isVlmReview ? (
-                          adminScoped ? (
-                            // Link cross-shell inerte nelle schede admin
-                            <span
-                              title="Disponibile nella scheda dedicata (v2)"
-                              className="cursor-default rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-100 opacity-50 transition"
-                            >
-                              Apri review
-                            </span>
-                          ) : (
-                            <a
-                              href={`/health/staging/${runId}`}
-                              className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-100 transition-colors hover:border-fuchsia-400/50 hover:bg-fuchsia-500/20"
-                            >
-                              Apri review
-                            </a>
-                          )
-                        ) : null}
+                        {isVlmReview ? <HealthStagingReviewLink runId={runId} /> : null}
                         {[
                           { status: "committed" as const, label: "Valida" },
                           { status: "rejected" as const, label: "Scarta" },
