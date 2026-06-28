@@ -124,11 +124,13 @@ function ScaleRow({
   hint,
   value,
   onChange,
+  readOnly = false,
 }: {
   label: string;
   hint: string;
   value: number | null;
   onChange: (v: number) => void;
+  readOnly?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -141,13 +143,15 @@ function ScaleRow({
           <button
             key={n}
             type="button"
-            onClick={() => onChange(n)}
+            onClick={readOnly ? undefined : () => onChange(n)}
+            disabled={readOnly}
             aria-pressed={value === n}
             className={cn(
               "h-10 min-w-0 flex-1 rounded-xl border text-sm font-bold transition",
               value === n
                 ? "border-transparent bg-gradient-to-r from-fuchsia-600 to-orange-500 text-white shadow-lg shadow-fuchsia-500/25"
-                : "border-white/15 bg-black/40 text-gray-400 hover:border-fuchsia-500/40 hover:text-white",
+                : "border-white/15 bg-black/40 text-gray-400",
+              readOnly ? "cursor-default opacity-80" : value === n ? "" : "hover:border-fuchsia-500/40 hover:text-white",
             )}
           >
             {n}
@@ -161,6 +165,10 @@ function ScaleRow({
 export function DashboardLongevityPanels() {
   const { athleteId, adminScoped, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
+  // In scope coach/admin (adminScoped) il check-in è in SOLA LETTURA: è un dato
+  // soggettivo dell'atleta, lo staff lo consulta ma non lo registra al suo posto
+  // (eviterebbe di falsare l'attribuzione self_report e l'indice EPI).
+  const scoped = adminScoped;
   const [data, setData] = useState<LongevityFitnessPayload | null>(() =>
     athleteId ? readLongevityCache(longevityCacheKey(athleteId, adminScoped)) : null,
   );
@@ -231,7 +239,7 @@ export function DashboardLongevityPanels() {
   }, []);
 
   const saveCheckin = useCallback(async () => {
-    if (!athleteId) return;
+    if (!athleteId || scoped) return;
     setSaving(true);
     setError(null);
     try {
@@ -248,7 +256,7 @@ export function DashboardLongevityPanels() {
     } finally {
       setSaving(false);
     }
-  }, [athleteId, form, symptoms, note, loadIndex]);
+  }, [athleteId, scoped, form, symptoms, note, loadIndex]);
 
   const epi = data?.epi ?? null;
 
@@ -260,7 +268,12 @@ export function DashboardLongevityPanels() {
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
       ) : null}
 
-      <Pro2SectionCard accent="fuchsia" title="Check-in di oggi" subtitle="Come ti senti · segnala eventuali malesseri" icon={Activity}>
+      <Pro2SectionCard
+        accent="fuchsia"
+        title="Check-in di oggi"
+        subtitle={scoped ? "Come si sente l'atleta · sola lettura" : "Come ti senti · segnala eventuali malesseri"}
+        icon={Activity}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           {SCALES.map((s) => (
             <ScaleRow
@@ -269,6 +282,7 @@ export function DashboardLongevityPanels() {
               hint={s.hint}
               value={form[s.key]}
               onChange={(v) => setForm((prev) => ({ ...prev, [s.key]: v }))}
+              readOnly={scoped}
             />
           ))}
         </div>
@@ -280,13 +294,19 @@ export function DashboardLongevityPanels() {
               <button
                 key={s}
                 type="button"
-                onClick={() => toggleSymptom(s)}
+                onClick={scoped ? undefined : () => toggleSymptom(s)}
+                disabled={scoped}
                 aria-pressed={symptoms.includes(s)}
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-xs font-medium transition",
                   symptoms.includes(s)
                     ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
-                    : "border-white/15 bg-black/30 text-gray-400 hover:border-amber-500/40 hover:text-amber-100",
+                    : "border-white/15 bg-black/30 text-gray-400",
+                  scoped
+                    ? "cursor-default opacity-80"
+                    : symptoms.includes(s)
+                      ? ""
+                      : "hover:border-amber-500/40 hover:text-amber-100",
                 )}
               >
                 {SYMPTOM_LABELS[s]}
@@ -303,17 +323,25 @@ export function DashboardLongevityPanels() {
             id="longevity-note"
             value={note}
             onChange={(e) => setNote(e.target.value.slice(0, 500))}
+            readOnly={scoped}
             rows={2}
-            placeholder="Es. notte agitata, dolore al ginocchio…"
-            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            placeholder={scoped ? "Nessuna nota" : "Es. notte agitata, dolore al ginocchio…"}
+            className={cn(
+              "w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-gray-500",
+              scoped ? "cursor-default opacity-80" : "focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500",
+            )}
           />
         </div>
 
-        <div className="mt-5 flex justify-end">
-          <Pro2Button onClick={saveCheckin} disabled={saving || !athleteId}>
-            {saving ? "Salvataggio…" : "Salva check-in"}
-          </Pro2Button>
-        </div>
+        {scoped ? (
+          <p className="mt-5 text-xs text-gray-500">Il check-in è soggettivo dell&apos;atleta: lo consulti, non lo registri al suo posto.</p>
+        ) : (
+          <div className="mt-5 flex justify-end">
+            <Pro2Button onClick={saveCheckin} disabled={saving || !athleteId}>
+              {saving ? "Salvataggio…" : "Salva check-in"}
+            </Pro2Button>
+          </div>
+        )}
       </Pro2SectionCard>
 
       <Pro2SectionCard accent="fuchsia" title="Indice Longevità & Fitness" subtitle="Calcolato dai tuoi dati reali e dal check-in" icon={HeartPulse}>

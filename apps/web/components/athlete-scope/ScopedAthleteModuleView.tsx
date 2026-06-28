@@ -9,9 +9,10 @@ import { ActiveAthleteScopeProvider } from "@/lib/use-active-athlete";
  * coach /athletes/[id]/*): monta la vista modulo dentro lo scope imposto
  * dall'URL (ActiveAthleteScopeProvider). next/dynamic: un chunk per modulo.
  *
- * `scope` distingue il chiamante: in scope COACH la scheda training monta il
- * CALENDARIO (lo strumento di lavoro) invece dell'hub di link, che con la
- * navigazione cross-shell disattivata sarebbe una pagina morta (audit B2).
+ * In scope (coach E admin) la scheda training monta il CALENDARIO (lo strumento
+ * di lavoro) invece dell'hub di link: con la navigazione cross-shell disattivata
+ * l'hub sarebbe una pagina morta di link inerti (audit B2). L'hub resta solo per
+ * l'atleta sul proprio /training (provider globale, adminScoped=false).
  */
 const LOADING = (
   <div className="px-6 py-16 text-center font-mono text-[0.65rem] uppercase tracking-[0.3em] text-gray-600">
@@ -54,7 +55,7 @@ export function ScopedAthleteModuleView({
   let content: React.ReactNode = null;
   if (module === "nutrition") {
     content = <NutritionPageView subRoute="meal-plan" />;
-  } else if (module === "training" && scope === "coach") {
+  } else if (module === "training") {
     content = <TrainingCalendarPageView />;
   } else {
     const View = VIEWS[module];
