@@ -685,7 +685,7 @@ export function BuilderEngineGenerateSection({
                 Scheda generata ({gymManualRows.length} esercizi) · TSS stimato ~{manualTssPreview}
               </p>
               <p className="text-xs text-gray-500">
-                Nomi proposti dal motore, abbinati al catalogo EMPATHY. Affina serie e carichi nel composer sotto.
+                Nomi proposti e abbinati al catalogo EMPATHY. Affina serie e carichi nell&apos;editor sotto.
               </p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {gymManualRows.map((row) => (

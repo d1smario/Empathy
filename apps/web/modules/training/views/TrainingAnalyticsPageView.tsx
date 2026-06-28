@@ -811,7 +811,7 @@ export default function TrainingAnalyticsPageView() {
           {crossModuleDynamicsLines.length ? (
             <details className="mb-6 rounded-2xl border border-orange-500/25 bg-orange-950/20 p-4 text-sm text-gray-300">
               <summary className="cursor-pointer text-sm font-bold text-orange-100">
-                Dinamica incrociata (Training → Nutrition / fueling) · {crossModuleDynamicsLines.length}
+                Dinamica incrociata (Training → Nutrition / rifornimento) · {crossModuleDynamicsLines.length}
               </summary>
               <p className="mt-2 text-xs text-gray-500">
                 Ponte deterministico: adattamento, carico operativo, loop calendario, dial nutrizione.

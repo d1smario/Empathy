@@ -91,7 +91,7 @@ export function HealthAreaCharts({
         <div>
           <div className="mb-1 flex items-center gap-2">
             <Dna className="h-5 w-5 text-violet-400" />
-            <h3 className="text-lg font-bold text-white">Epigenetica · metilazione e pathway</h3>
+            <h3 className="text-lg font-bold text-white">Epigenetica · metilazione e vie metaboliche</h3>
           </div>
           <p className="text-sm text-gray-400">
             Anelli percentuali, radar sintetico e trend temporale.
@@ -146,7 +146,7 @@ export function HealthAreaCharts({
 
           <div>
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Pathway · radar
+              Vie metaboliche · radar
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {epigeneticRadar.rows.length === 0 ? (

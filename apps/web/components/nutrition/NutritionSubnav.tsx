@@ -31,7 +31,7 @@ const ITEMS: ModulePillLinkItem[] = [
   {
     key: "fueling",
     href: NUTRITION_SUBNAV_PATHS.fueling,
-    label: "Fueling",
+    label: "Rifornimento",
     icon: Flame,
     style: MODULE_PILL_AMBER,
   },
@@ -45,7 +45,7 @@ const ITEMS: ModulePillLinkItem[] = [
   {
     key: "predictor",
     href: NUTRITION_SUBNAV_PATHS.predictor,
-    label: "Predictor",
+    label: "Previsione",
     icon: Activity,
     style: MODULE_PILL_AMBER,
   },

@@ -2771,7 +2771,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         label: "% FTP sostenibile",
         value: `${predictor.maxSustainablePct}`,
         unit: "%",
-        sub: "Con fueling corrente",
+        sub: "Con rifornimento corrente",
         tone: nutritionToneForLabel("% FTP sostenibile"),
       },
     ],
@@ -2887,7 +2887,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       });
       setNutritionContextVersion((v) => v + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Salvataggio conferma fueling fallito");
+      setError(err instanceof Error ? err.message : "Salvataggio conferma rifornimento fallito");
     }
     setFuelingConfirmBusy(false);
   }
@@ -3207,7 +3207,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
             <Pro2Accordion
               accent="amber"
-              title="Dettagli e motore"
+              title="Come funziona"
               subtitle="Come nascono i numeri di questa pagina, parametri e diagnostica tecnica"
             >
               <div className="space-y-5 text-sm text-gray-300">
@@ -3220,7 +3220,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         allenamenti del giorno selezionato. La quota destinata ai pasti viene ripartita secondo le
                         percentuali del tuo profilo (Profilo → Diet) e ogni pasto è assemblato con alimenti reali del
                         database USDA, rispettando esclusioni, preferenze e vie metaboliche attive della giornata. La
-                        parte pre/intra/post seduta vive nell&apos;area Fueling, non nei pasti.
+                        parte pre/intra/post seduta vive nell&apos;area Rifornimento, non nei pasti.
                       </p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
@@ -3246,11 +3246,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
                 {subRoute === "fueling" ? (
                   <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce il piano fueling</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce il piano rifornimento</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
                       Il piano pre/intra/post parte dalla seduta del giorno: prima quella pianificata nel calendario, in
                       mancanza l&apos;eseguito importato. Durata e intensità stimata determinano carboidrati orari, fluidi e
-                      sodio; il motore stima inoltre assorbimento intestinale, ritorno di Cori e deplezione del glicogeno
+                      sodio; stimiamo inoltre assorbimento intestinale, ritorno di Cori e deplezione del glicogeno
                       per costruire gli step e i grafici della seduta.
                     </p>
                   </div>
@@ -3262,7 +3262,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                       <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce l&apos;integrazione</p>
                       <p className="mt-1 leading-relaxed text-gray-400">
                         I suggerimenti partono dalle vie metaboliche attive del giorno (seduta, segnali, diario) e dalle
-                        leve del solver nutrizione. Il catalogo prodotti è filtrato sui marchi e sugli integratori del tuo
+                        leve della nutrizione. Il catalogo prodotti è filtrato sui marchi e sugli integratori del tuo
                         profilo; il timing è espresso in classi qualitative di emivita, non in dosaggi medici.
                       </p>
                     </div>
@@ -3271,7 +3271,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         Brand e token catalogo ({profileSupplements.length ? `${profileSupplements.length} voci` : "set predefinito"})
                       </summary>
                       <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
-                        Integratori e marchi dal profilo (CSV + supplement_config). Usati per matching deterministico al catalogo fueling.
+                        Integratori e marchi dal profilo (CSV + supplement_config). Usati per matching deterministico al catalogo rifornimento.
                       </p>
                       {profileSupplements.length ? (
                         <ul
@@ -3300,8 +3300,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   <div>
                     <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Come nasce la stima</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
-                      Il predictor stima il consumo energetico da sport, durata e intensità (% FTP del tuo profilo
-                      fisiologico), lo confronta con il fueling impostato e calcola il rischio di esaurimento del
+                      La previsione stima il consumo energetico da sport, durata e intensità (% FTP del tuo profilo
+                      fisiologico), lo confronta con il rifornimento impostato e calcola il rischio di esaurimento del
                       glicogeno prima della fine dell&apos;evento, con il ritmo massimo sostenibile suggerito.
                     </p>
                   </div>

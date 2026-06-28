@@ -56,11 +56,11 @@ export function PredictorSection({
   return (
     <section id="nutrition-predictor" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Predictor</h2>
+        <h2 className="text-lg font-bold text-white">Previsione</h2>
         <p className="mt-1 text-sm text-gray-400">Stima consumo energetico, CHO e rischio deplezione glicogeno.</p>
       </header>
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-        <h3 className="viz-title">Performance Predictor · consumo e rischio esaurimento energetico</h3>
+        <h3 className="viz-title">Previsione performance · consumo e rischio esaurimento energetico</h3>
         <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
           <button
             type="button"
@@ -123,12 +123,12 @@ export function PredictorSection({
           ))}
         </div>
         <details className="collapsible-card">
-          <summary>Predictor notes</summary>
+          <summary>Note previsione</summary>
           <div className="alert-warning" style={{ marginBottom: 0 }}>
-            Energia evento: {round(predictor.totalEnergy)} kcal · Fueling totale suggerito: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
+            Energia evento: {round(predictor.totalEnergy)} kcal · Rifornimento totale suggerito: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
             {predictor.exhaustionHours < predictor.eventHours
-              ? ` Rischio esaurimento prima del termine: riduci ritmo verso ${predictor.maxSustainablePct}% FTP o aumenta fueling.`
-              : " Ritmo sostenibile con il fueling impostato."}
+              ? ` Rischio esaurimento prima del termine: riduci ritmo verso ${predictor.maxSustainablePct}% FTP o aumenta rifornimento.`
+              : " Ritmo sostenibile con il rifornimento impostato."}
           </div>
         </details>
       </section>

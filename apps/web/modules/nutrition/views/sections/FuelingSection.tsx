@@ -107,7 +107,7 @@ export function FuelingSection({
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Fueling</h2>
+        <h2 className="text-lg font-bold text-white">Rifornimento</h2>
         <p className="mt-1 text-sm text-gray-300">
           Piano pre, intra e post per la seduta del giorno (priorità pianificato Builder; se manca, usa durata/TSS
           dell&apos;eseguito importato). Numeri sintetici prima, dettagli apribili quando servono.
@@ -118,7 +118,7 @@ export function FuelingSection({
           className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
           style={{ marginBottom: 12 }}
         >
-          <h3 className="viz-title text-base">Assunzione fueling</h3>
+          <h3 className="viz-title text-base">Assunzione rifornimento</h3>
           <p className="mt-1 text-sm text-gray-400">
             Conferma che hai seguito il piano (pre / intra / post) per{" "}
             <strong className="text-white">{selectedPlanDate}</strong>. La conferma viene salvata e può supportare
@@ -135,7 +135,7 @@ export function FuelingSection({
                 ? "Salvataggio…"
                 : fuelingConfirmedForSelectedDate
                   ? "Annulla conferma questo giorno"
-                  : "Confermo assunzione fueling questo giorno"}
+                  : "Confermo assunzione rifornimento questo giorno"}
             </button>
             {fuelingConfirmedForSelectedDate ? (
               <span className="text-xs text-emerald-300">
@@ -152,7 +152,7 @@ export function FuelingSection({
       ) : null}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
-          <h3 className="viz-title">Fueling Plan · pre / intra / post</h3>
+          <h3 className="viz-title">Piano rifornimento · pre / intra / post</h3>
         </div>
         {!fuelingReadiness.ready ? (
           <div className="alert-warning" style={{ marginBottom: 0 }}>
@@ -170,8 +170,8 @@ export function FuelingSection({
               <>
                 {fuelingReadiness.hasProfileOrPhysiologyGap ? (
                   <p className="m-0 text-sm leading-relaxed opacity-95">
-                    Senza gli elementi sopra (profilo e fisiologia per il fueling) non stimiamo CHO/h e il motore
-                    lattato con numeri inventati. Compila in <strong>Profilo</strong> e <strong>Physiology</strong>.
+                    Senza gli elementi sopra (profilo e fisiologia per il rifornimento) non stimiamo CHO/h e il lattato
+                    con numeri inventati. Compila in <strong>Profilo</strong> e <strong>Physiology</strong>.
                   </p>
                 ) : null}
                 {fuelingReadiness.dayTrainingAlsoMissing ? (
@@ -217,11 +217,11 @@ export function FuelingSection({
             ) : null}
             {recoverySummary?.status === "poor" || recoverySummary?.status === "moderate" ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Recovery notes</summary>
+                <summary>Note recupero</summary>
                 <div className="alert-warning" style={{ marginBottom: 0 }}>
                   {recoverySummary.status === "poor"
-                    ? "Recovery bassa: privilegia fueling piu' semplice e progressivo, controlla tolleranza GI e evita aggressivita' inutile nella giornata."
-                    : "Recovery intermedia: mantieni attenzione a densita' del fueling, idratazione e finestra post-workout."}
+                    ? "Recupero basso: privilegia un rifornimento piu' semplice e progressivo, controlla tolleranza GI e evita aggressivita' inutile nella giornata."
+                    : "Recupero intermedio: mantieni attenzione a densita' del rifornimento, idratazione e finestra post-workout."}
                 </div>
               </details>
             ) : null}
@@ -321,7 +321,7 @@ export function FuelingSection({
             ) : null}
             {knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Knowledge-driven fueling context</summary>
+                <summary>Contesto rifornimento dalle evidenze</summary>
                 <div style={{ display: "grid", gap: 8 }}>
                   {knowledgeFuelingHints.intents.length ? (
                     <div className="session-sub-copy">
@@ -492,7 +492,7 @@ export function FuelingSection({
                   </details>
 
                   <section className="fueling-visual-report">
-                    <h4>Fueling Visual Report · {pkg.title}</h4>
+                    <h4>Report rifornimento · {pkg.title}</h4>
                     <div className="fueling-metric-grid">
                       {pkg.visualMetrics.map((metric) => (
                         <article key={`${pkg.id}-${metric.label}`} className="fueling-metric-card">

@@ -429,7 +429,7 @@ export default function AerodynamicsPageView() {
 
         <section id="gen-focus" className="scroll-mt-28">
           <Pro2Accordion
-            title="Dettagli e motore"
+            title="Come funziona"
             subtitle="Come leggere i numeri e come nasce la stima del CdA."
             accent="sky"
           >

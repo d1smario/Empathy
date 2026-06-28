@@ -1155,7 +1155,7 @@ export default function TrainingBuilderRichPageView() {
           </span>
           <p className="text-sm font-bold text-white">
             Rifinisci{" "}
-            <span className="font-normal text-gray-400">— adatta blocchi, esercizi, durata e nome della seduta nel composer qui sotto.</span>
+            <span className="font-normal text-gray-400">— adatta blocchi, esercizi, durata e nome della seduta nell&apos;editor qui sotto.</span>
           </p>
         </div>
 
@@ -1210,7 +1210,7 @@ export default function TrainingBuilderRichPageView() {
           <p className="text-sm font-bold text-white">
             Salva{" "}
             <span className="font-normal text-gray-400">
-              — usa «Salva nel calendario» nella seduta generata o nel composer: la seduta appare in «Prossime pianificate» e nel Calendario.
+              — usa «Salva nel calendario» nella seduta generata o nell&apos;editor: la seduta appare in «Prossime pianificate» e nel Calendario.
             </span>
           </p>
         </div>

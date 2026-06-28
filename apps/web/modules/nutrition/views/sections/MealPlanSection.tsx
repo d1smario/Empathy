@@ -183,7 +183,7 @@ export function MealPlanSection({
               ) : null}
               {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
-                  Generato dal motore pasti
+                  Piano pasti generato
                 </span>
               ) : null}
             </div>
@@ -193,7 +193,7 @@ export function MealPlanSection({
               className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
               role="status"
             >
-              <strong className="font-semibold">Attenzione — budget pasti solver molto basso.</strong>{" "}
+              <strong className="font-semibold">Attenzione — budget pasti molto basso.</strong>{" "}
               Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
               {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
               (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
@@ -210,7 +210,7 @@ export function MealPlanSection({
           { id: "mod-target-giorno", label: "Target del giorno" },
           { id: "nutrition-meal-plan", label: "Piano pasti" },
           { id: "mod-approfondimenti", label: "Approfondimenti" },
-          { id: "mod-dettagli-motore", label: "Dettagli e motore" },
+          { id: "mod-dettagli-motore", label: "Come funziona" },
         ]}
       />
 

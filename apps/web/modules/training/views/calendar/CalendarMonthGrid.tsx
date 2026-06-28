@@ -286,7 +286,7 @@ export function CalendarMonthGrid({
                               <SportGlyph type={w.type} />
                             )}
                           </span>
-                          <span>PLAN</span>
+                          <span>Pianificato</span>
                           <span
                             className={`tc2-calendar-chip-sport-badge ${
                               chip.family === "strength"
@@ -316,7 +316,7 @@ export function CalendarMonthGrid({
                     const importedFile = pickText(tr, ["imported_file_name"]);
                     return (
                       <div key={w.id} className="tc2-calendar-chip tc2-calendar-chip-exec">
-                        <div className="font-bold">✅ EXEC</div>
+                        <div className="font-bold">✅ Eseguito</div>
                         <div>
                           {w.durationMinutes}m · {LOAD_CHIP_LABEL}{" "}
                           {resolveExecutedTrainingLoad({

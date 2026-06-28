@@ -671,7 +671,7 @@ export default function BiomechanicsPageView() {
         <section id="gen-focus" className="scroll-mt-28">
           <Pro2Accordion
             accent="teal"
-            title="Dettagli e motore"
+            title="Come funziona"
             subtitle="Come leggere i numeri e come funziona l'analisi."
           >
             <div className="space-y-4 text-sm leading-relaxed text-gray-300">

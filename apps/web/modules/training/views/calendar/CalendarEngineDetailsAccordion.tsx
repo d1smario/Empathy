@@ -30,7 +30,7 @@ export function CalendarEngineDetailsAccordion({
   return (
     <Pro2Accordion
       id="mod-dettagli-motore"
-      title="Dettagli e motore"
+      title="Come funziona"
       subtitle="Spostamenti, formati di import e finestra dati del calendario"
       accent="orange"
     >

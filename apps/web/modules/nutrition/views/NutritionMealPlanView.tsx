@@ -574,7 +574,7 @@ export function NutritionMealPlanWorkspace({
             <div className="empathy-meal-plan-expo-shell">
               <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
                 {intelligentMealLoading
-                  ? "Sto generando il piano pasti allineato al tuo profilo (solver deterministico + USDA)…"
+                  ? "Sto generando il piano pasti allineato al tuo profilo (calcolo deterministico + USDA)…"
                   : canRequestIntelligentPlan
                     ? "Pronto a generare il piano. Auto-generazione in corso…"
                     : mealPathwayCatalogPending
@@ -589,7 +589,7 @@ export function NutritionMealPlanWorkspace({
                   const slotKey = meal.key as PathwayMealSlotKey;
                   const bundle = mealPathwayBySlot[slotKey];
                   const subline = !bundle || bundle.loading
-                    ? `${meal.time} · caricamento pathway`
+                    ? `${meal.time} · caricamento vie metaboliche`
                     : intelligentMealLoading
                       ? `${meal.time} · generazione in corso`
                       : meal.time;
@@ -610,7 +610,7 @@ export function NutritionMealPlanWorkspace({
               </div>
               <EmpathyMealPlanGlycemicLegend />
               <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
-                Pathway, USDA e ricerca FDC:{" "}
+                Vie metaboliche e database alimenti USDA:{" "}
                 <button
                   type="button"
                   className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 align-middle text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
@@ -660,7 +660,7 @@ export function NutritionMealPlanWorkspace({
             {saving ? "Salvataggio..." : "Salva configurazione nutrizione"}
           </button>
           <span className="text-xs text-gray-500">
-            Salva nel profilo ripartizione pasti, fueling e predictor (non rigenera il piano).
+            Salva nel profilo ripartizione pasti, rifornimento e previsione (non rigenera il piano).
           </span>
         </div>
       </section>

@@ -32,7 +32,7 @@ export function CalendarFileImportSection({
       <Pro2SectionCard
         accent="orange"
         title="Import da file"
-        subtitle="Auto: FIT workout → calendario (PLAN); attività → EXEC. Calendario: ZWO/ERG/MRC/CSV. Eseguito: traccia registrata."
+        subtitle="Auto: FIT workout → calendario (Pianificato); attività → Eseguito. Calendario: ZWO/ERG/MRC/CSV. Eseguito: traccia registrata."
         icon={FileUp}
       >
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
@@ -101,10 +101,10 @@ export function CalendarFileImportSection({
             />
             <span className="mt-1 block font-sans font-normal normal-case tracking-normal text-gray-500">
               {fileImportForm.mode === "auto"
-                ? "Auto: FIT/ZWO/ERG/MRC workout → chip PLAN (export Zwift/Rouvy); FIT/TCX/GPX attività → EXEC. Giorno = cella selezionata."
+                ? "Auto: FIT/ZWO/ERG/MRC workout → chip Pianificato (export Zwift/Rouvy); FIT/TCX/GPX attività → Eseguito. Giorno = cella selezionata."
                 : fileImportForm.mode === "executed"
                   ? "Solo tracce registrate (Analyzer). Il giorno è quello selezionato in griglia."
-                  : "Programma tabellare o seduta strutturata su questo giorno (PLAN)."}
+                  : "Programma tabellare o seduta strutturata su questo giorno (Pianificato)."}
             </span>
           </label>
           <label className="block font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">

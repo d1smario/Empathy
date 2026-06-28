@@ -466,7 +466,7 @@ export function CalendarPlannedBuilderDetail({
             variant="ghost"
             className="border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-100"
           >
-            Fueling JSON
+            Rifornimento JSON
           </Pro2Link>
         </div>
       ) : null}
@@ -515,7 +515,7 @@ export function CalendarPlannedBuilderDetail({
                   rows={stepRows}
                   ftpW={chartFtpW}
                   compact
-                  title="Workout details"
+                  title="Dettagli seduta"
                 />
               ) : null}
               <SessionMultilevelAnalysisStrip

@@ -2433,7 +2433,7 @@ export function ViryaAnnualPlanOrchestrator({
         <article className="viz-card builder-panel">
           <h3 className="viz-title">Deploy piano su Calendar</h3>
           <p style={{ margin: "0 0 10px 0", color: "var(--empathy-text-muted)", fontSize: "13px" }}>
-            VIRYA genera le sedute previste. Dopo esecuzione reale, EMPATHY confronta previsto/eseguito e riadatta training + nutrition + fueling.
+            VIRYA genera le sedute previste. Dopo esecuzione reale, EMPATHY confronta previsto/eseguito e riadatta training + nutrition + rifornimento.
           </p>
           <label className="form-field" style={{ marginBottom: "10px" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>

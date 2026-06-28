@@ -223,14 +223,14 @@ export function IntegrationSection({
           <section id="nutrition-integration" className="scroll-mt-28 mb-10 space-y-4">
             <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <h2 className="text-lg font-bold text-white">Integrazione</h2>
-              <p className="mt-1 text-sm text-gray-400">Modello pathway, KPI, USDA e prodotti — stessi segnali del modulo.</p>
+              <p className="mt-1 text-sm text-gray-400">Vie metaboliche, KPI, USDA e prodotti — stessi segnali del modulo.</p>
             </header>
             <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-              <h3 className="viz-title">Integration Stack</h3>
+              <h3 className="viz-title">Integrazione</h3>
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Overview integrazione · modello pathway + solver</summary>
+                <summary>Panoramica integrazione · vie metaboliche</summary>
                 <p className="nutrition-muted" style={{ fontSize: "0.82rem", marginTop: "8px", marginBottom: 0 }}>
-                  I numeri sotto derivano dalle stesse leve del fueling: pathway attive, segnali del giorno, diary insight e
+                  I numeri sotto derivano dalle stesse leve del rifornimento: vie metaboliche attive, segnali del giorno, diary insight e
                   vincoli operativi. Timing espresso come classi qualitative di emivita.
                 </p>
               </details>
@@ -241,7 +241,7 @@ export function IntegrationSection({
                       {card.label}
                     </div>
                     <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
-                    <div className="fueling-main-kpi-sub">Pathway + solver</div>
+                    <div className="fueling-main-kpi-sub">Vie metaboliche</div>
                   </div>
                 ))}
               </div>
@@ -265,7 +265,7 @@ export function IntegrationSection({
                   style={{ marginBottom: "10px", padding: "10px 12px", borderColor: "rgba(251,191,36,0.35)" }}
                 >
                   <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                    Integrazione performance · leve solver ({nutritionPerformanceIntegration.rationale.length})
+                    Integrazione performance · leve ({nutritionPerformanceIntegration.rationale.length})
                   </summary>
                   <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.85rem", lineHeight: 1.45 }}>
                     {nutritionPerformanceIntegration.rationale.map((line) => (
@@ -337,7 +337,7 @@ export function IntegrationSection({
                   ) : null}
                   {applicationPlaybook.fuelingAdvice ? (
                     <p className="nutrition-muted mb-0 text-[0.72rem] leading-snug">
-                      Fueling · {applicationPlaybook.fuelingAdvice.sessionLabel}:{" "}
+                      Rifornimento · {applicationPlaybook.fuelingAdvice.sessionLabel}:{" "}
                       {applicationPlaybook.fuelingAdvice.protocolNotes.join(" · ")}
                     </p>
                   ) : null}
@@ -464,7 +464,7 @@ export function IntegrationSection({
                         <tr>
                           <td className="border border-white/10 bg-white/[0.03] px-3 py-3 text-[0.82rem] text-gray-300" colSpan={4}>
                             Nessuna via calcolata per <strong className="text-white">{selectedPlanDateLabel}</strong>: aggiungi una seduta pianificata
-                            o verifica twin/fisiologia. I template engine (glicogeno, redox, gut) compaiono quando ci sono
+                            o verifica twin/fisiologia. I modelli (glicogeno, redox, intestino) compaiono quando ci sono
                             stimoli o segnali.
                           </td>
                         </tr>
@@ -728,7 +728,7 @@ export function IntegrationSection({
                       {
                         key: "intra" as const,
                         title: "Intra workout",
-                        subtitle: "Gel, barrette e drink durante seduta (tolleranza + solver)",
+                        subtitle: "Gel, barrette e drink durante seduta (tolleranza)",
                       },
                       {
                         key: "post" as const,

@@ -84,7 +84,7 @@ export function BuilderDetailsEngineAccordion({
   return (
         <Pro2Accordion
           id="mod-dettagli-motore"
-          title="Dettagli e motore"
+          title="Come funziona"
           subtitle="Contesto generativo, asset e KPI della finestra calendario"
           accent="orange"
         >

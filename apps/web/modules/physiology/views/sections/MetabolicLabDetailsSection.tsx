@@ -85,7 +85,7 @@ export function MetabolicLabDetailsSection({
 
       <Pro2Accordion
         id="mod-dettagli-motore"
-        title="Dettagli e motore"
+        title="Come funziona"
         subtitle="Come leggere le tre analisi e cosa salviamo per te"
         accent="slate"
       >

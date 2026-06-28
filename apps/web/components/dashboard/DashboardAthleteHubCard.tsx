@@ -228,7 +228,7 @@ export function DashboardAthleteHubCard() {
           variant="secondary"
           className="shrink-0 border border-emerald-500/35 bg-emerald-500/10 text-xs hover:bg-emerald-500/15"
         >
-          Trasparenza · ledger
+          Trasparenza
         </Pro2Link>
       </div>
       <p className="mt-1 text-xs text-gray-500">
@@ -297,7 +297,7 @@ export function DashboardAthleteHubCard() {
                   sub="non riduce il fabbisogno energetico"
                 />
                 <HubOpCell
-                  label="CHO fueling"
+                  label="CHO rifornimento"
                   value={`×${hub.operationalSignals.nutritionPerformanceIntegration.fuelingChoScale.toFixed(2)}`}
                   tone="violet"
                 />

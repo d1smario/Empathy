@@ -13,7 +13,7 @@ export function StructuredWorkoutStepTable({
   rows,
   ftpW,
   compact = false,
-  title = "Workout details",
+  title = "Dettagli seduta",
 }: {
   rows: StructuredIntervalRow[];
   ftpW?: number;
