@@ -583,7 +583,7 @@ export function FoodDiaryPanel({
           }
           const e = j.estimate;
           if (!e) {
-            setActionError("Nessuna stima dal modello vision.");
+            setActionError("Nessuna stima dalla foto.");
             return;
           }
           setManualLabel(e.label_it);

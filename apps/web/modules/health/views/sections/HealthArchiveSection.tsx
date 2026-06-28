@@ -80,7 +80,7 @@ export function HealthArchiveSection({
             </span>
             <span>
               <span className="text-fuchsia-300">{archiveDiagnostics.withProposalsOnly}</span>
-              <span className="text-gray-500"> con proposte VLM (shadow)</span>
+              <span className="text-gray-500"> con valori proposti</span>
             </span>
             <span>
               <span className="text-amber-300">{archiveDiagnostics.importOnly}</span>
@@ -116,20 +116,20 @@ export function HealthArchiveSection({
               }
             >
               {bulkBusy
-                ? "Analizzo in corso…"
+                ? "Elaborazione in corso…"
                 : archiveDiagnostics.bulkCandidates > 0
-                  ? `Trasforma ${archiveDiagnostics.bulkCandidates} file in proposte VLM`
-                  : "Trasforma file in proposte VLM (0 candidati)"}
+                  ? `Trasforma ${archiveDiagnostics.bulkCandidates} file in valori proposti`
+                  : "Trasforma file in valori proposti (0 candidati)"}
             </button>
             <span className="text-[10px] text-gray-500">
               {archiveDiagnostics.bulkCandidates > 0
-                ? "Convoglia i referti senza valori sulla pipeline canonica (Claude/GPT-4o vision); i numeri arrivano nei grafici come «shadow» e restano in attesa di conferma in review."
+                ? "Convoglia i referti senza valori sulla pipeline canonica; i numeri arrivano nei grafici come «proposti» e restano in attesa di conferma in review."
                 : archiveDiagnostics.importOnlyNoStorage > 0
                   ? `${archiveDiagnostics.importOnlyNoStorage} referti non hanno il file in Storage (caricati prima che il bucket fosse configurato, o upload fallito). Per analizzarli, ri-carica il file dal modulo «Carica esame» qui sopra.`
                   : archiveDiagnostics.importOnlyUnsupported > 0
-                    ? `${archiveDiagnostics.importOnlyUnsupported} referti hanno un formato non supportato (solo image/* o application/pdf passano dal VLM).`
+                    ? `${archiveDiagnostics.importOnlyUnsupported} referti hanno un formato non supportato (solo image/* o application/pdf possono essere elaborati).`
                     : archiveDiagnostics.importOnly === 0
-                      ? "Tutti i referti hanno già valori canonici o proposte VLM: niente da rielaborare."
+                      ? "Tutti i referti hanno già valori canonici o valori proposti: niente da rielaborare."
                       : "Nessun candidato per il bulk (verifica che i referti abbiano un file image/pdf in Storage)."}
             </span>
           </div>
@@ -230,7 +230,7 @@ export function HealthArchiveSection({
                   <span className="font-semibold capitalize text-white">{p.type.replace(/_/g, " ")}</span>
                   {isPendingVlm ? (
                     <span className="inline-flex items-center rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-300">
-                      VLM pending
+                      In attesa
                     </span>
                   ) : null}
                   {nFields > 0 ? (
@@ -303,7 +303,7 @@ export function HealthArchiveSection({
                       onClick={() => onAnalyzePanelWithAi(p.id)}
                       className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-100 transition-colors hover:border-rose-400/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {analyzing ? "Analizzo…" : "Analizza con AI"}
+                      {analyzing ? "Estrazione…" : "Estrai dal referto"}
                     </button>
                   ) : null}
                 </div>
@@ -313,7 +313,7 @@ export function HealthArchiveSection({
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                     {valueEntries.length === 0 ? (
                       <p className="text-xs text-gray-500">
-                        Nessun valore strutturato in questo pannello. Se hai un file in storage, prova «Analizza con AI».
+                        Nessun valore strutturato in questo pannello. Se hai un file in storage, prova «Estrai dal referto».
                       </p>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-4">
@@ -331,7 +331,7 @@ export function HealthArchiveSection({
                     )}
                     {Array.isArray(vals?.vlm_proposals) && (vals?.vlm_proposals as unknown[]).length > 0 ? (
                       <p className="mt-3 text-[11px] text-fuchsia-300">
-                        {(vals?.vlm_proposals as unknown[]).length} proposte VLM da confermare. Apri la review per accettarle.
+                        {(vals?.vlm_proposals as unknown[]).length} valori proposti da confermare. Apri la review per accettarle.
                       </p>
                     ) : null}
                   </div>

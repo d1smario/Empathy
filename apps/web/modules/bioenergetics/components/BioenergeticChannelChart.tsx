@@ -49,7 +49,7 @@ export const DEFAULT_STROKE = CHART_SIGNAL.glucose;
 export function planeLabel(plane: BioenergeticMonitoringDataPlane): string {
   if (plane === "measured_stream") return "Stream";
   if (plane === "sparse_lab_hold") return "Lab tenuto";
-  if (plane === "ai_from_inputs") return "AI da input";
+  if (plane === "ai_from_inputs") return "Stima da input";
   return "Modello";
 }
 
@@ -64,7 +64,7 @@ export function planeBadgeClass(plane: BioenergeticMonitoringDataPlane): string 
 export function governanceIt(g: BioenergeticCurveGovernanceHintV1): string {
   if (g === "measurement_wins") return "Policy: vince la misura Empathy";
   if (g === "deterministic_engine_wins") return "Policy: motore / pareggio (contesto ricco vs sim)";
-  return "Policy: fase iniziale — prevale curva AI supervisionata (sim come fallback oggi)";
+  return "Policy: fase iniziale — prevale curva stimata (sim come fallback oggi)";
 }
 
 export function fusionSummary(res: BioenergeticChannelCurveResolutionV1): string {
@@ -88,7 +88,7 @@ export function channelAxisNote(
   }
   if (ch.dataPlane === "ai_from_inputs") {
     return showTech
-      ? "Asse: tempo reale (passo 5 min; curva da OpenAI sugli input giornata — non è CGM né sim diurno v1)."
+      ? "Asse: tempo reale (passo 5 min; curva generata dai dati della giornata — non è CGM né sim diurno v1)."
       : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo.";
   }
   return showTech

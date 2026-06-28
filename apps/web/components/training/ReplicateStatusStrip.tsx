@@ -23,7 +23,7 @@ export function ReplicateStatusStrip() {
         if (!cancelled) setData(j);
       })
       .catch(() => {
-        if (!cancelled) setErr("Impossibile contattare lo stato Replicate.");
+        if (!cancelled) setErr("Impossibile contattare lo stato degli asset esercizi.");
       });
     return () => {
       cancelled = true;
@@ -39,12 +39,12 @@ export function ReplicateStatusStrip() {
 
   const label =
     data == null
-      ? "Replicate"
+      ? "Asset esercizi"
       : data.configured && data.reachable === true
-        ? "Replicate · collegata"
+        ? "Asset esercizi · collegati"
         : data.configured
-          ? "Replicate · token / rete"
-          : "Replicate · non configurata";
+          ? "Asset esercizi · token / rete"
+          : "Asset esercizi · non configurati";
 
   return (
     <div

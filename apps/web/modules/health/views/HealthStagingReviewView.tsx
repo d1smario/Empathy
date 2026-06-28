@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, ShieldCheck, X } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
@@ -175,7 +175,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     const res = await applyHealthStagingPatches({
       runId: run.id,
       confirmedPatches: confirmed,
-      reason: "Conferma review VLM",
+      reason: "Conferma review referto",
     });
     setBusy(null);
     if (!res.ok) {
@@ -249,12 +249,6 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
             <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
           </span>
         )}
-        {showTech && vlmProvider ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-950/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-violet-200">
-            <Sparkles className="h-3.5 w-3.5" /> {vlmProvider === "anthropic" ? "Claude" : "GPT-4o"}
-            {vlmModel ? ` · ${vlmModel}` : null}
-          </span>
-        ) : null}
         {showTech && detectedProvider ? (
           <span className="rounded-md border border-fuchsia-500/30 bg-fuchsia-950/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-fuchsia-200">
             Lab rilevato: {detectedProvider}
@@ -312,7 +306,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
           <section className="rounded-2xl border border-fuchsia-500/30 bg-black/40 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wider text-fuchsia-200">
-                {showTech ? `Proposte AI · ${fields.length} campi` : `Valori letti · ${fields.length} parametri`}
+                {showTech ? `Valori proposti · ${fields.length} campi` : `Valori letti · ${fields.length} parametri`}
               </h2>
               {showTech ? <span className="text-[11px] text-zinc-500">{enabledCount} attivi</span> : null}
             </div>

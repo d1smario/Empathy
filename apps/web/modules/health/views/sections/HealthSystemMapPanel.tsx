@@ -108,7 +108,6 @@ export function HealthSystemMapPanel({
                   >
                     <div className={`font-semibold ${isVlmReview ? "text-fuchsia-100" : "text-rose-100"}`}>
                       {String(s.domain ?? "domain")} · {String(s.status ?? "status")}
-                      {isVlmReview ? <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.16em] text-fuchsia-300">VLM</span> : null}
                     </div>
                     <div className={isVlmReview ? "text-fuchsia-200/80" : "text-rose-200/80"}>
                       conf {typeof s.confidence === "number" ? s.confidence.toFixed(2) : "n/d"} · {String(s.created_at ?? "n/d")}

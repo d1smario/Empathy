@@ -126,7 +126,7 @@ export function EmpathyProMarketingDemo() {
       icon: Brain,
     },
     {
-      title: "AI Analysis",
+      title: "Analisi avanzata",
       value: "98.7%",
       status: "Active",
       color: "from-pink-500 to-rose-500",

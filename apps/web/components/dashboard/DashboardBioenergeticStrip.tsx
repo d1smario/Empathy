@@ -184,7 +184,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           {vm.continuousMonitoring.channels.length === 0 && vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
             <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
               {showTech
-                ? "Nessuna curva generata: verifica configurazione OpenAI e risposta JSON (vedi disclaimer)."
+                ? "Nessuna curva generata: verifica configurazione del generatore di curve e risposta JSON (vedi disclaimer)."
                 : "Curve non disponibili per questa giornata: prova ad aggiornare più tardi."}
             </p>
           ) : null}

@@ -449,10 +449,10 @@ export default function HealthPageView() {
       const res = await analyzePanelWithAi({ panelId, athleteId });
       setAnalyzeBusyPanelId(null);
       if (!res.ok) {
-        setToast(res.error ?? "Analisi AI fallita");
+        setToast(res.error ?? "Estrazione referto fallita");
         return;
       }
-      setToast(res.message ?? "Analisi AI avviata.");
+      setToast(res.message ?? "Estrazione referto avviata.");
       void loadTimeline();
       if (res.reviewUrl) {
         const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView });
