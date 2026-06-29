@@ -19,14 +19,9 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import {
-  EMPATHY_DESKTOP_COOKIE,
-  getMobileMenuSections,
-  type MobileMenuItem,
-} from "@/core/navigation/mobile-module-registry";
+import { getMobileMenuSections, type MobileMenuItem } from "@/core/navigation/mobile-module-registry";
 import type { ProductNavIconKey } from "@/core/navigation/module-registry";
 import type { AppRole } from "@/lib/app-session";
-import { Pro2Button } from "@/components/ui/empathy";
 
 type MobileModuleDrawerProps = {
   role?: AppRole;
@@ -50,11 +45,6 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   settings: Settings,
 };
 
-function setDesktopPreferenceCookie() {
-  const maxAge = 60 * 60 * 24 * 365;
-  document.cookie = `${EMPATHY_DESKTOP_COOKIE}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
-}
-
 function ModuleTile({
   item,
   onClose,
@@ -63,25 +53,6 @@ function ModuleTile({
   onClose: () => void;
 }) {
   const Icon = ICONS[item.icon];
-
-  if (item.desktopOnly && item.key === "desktop") {
-    return (
-      <Pro2Button
-        type="button"
-        variant="secondary"
-        className="flex h-full min-h-[5.25rem] w-full flex-col items-start justify-between gap-2 rounded-2xl border-white/15 bg-white/5 p-3 text-left"
-        onClick={() => {
-          setDesktopPreferenceCookie();
-          window.location.href = "/dashboard";
-        }}
-      >
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300">
-          <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
-        </span>
-        <span className="text-xs font-semibold leading-tight text-gray-200">{item.label}</span>
-      </Pro2Button>
-    );
-  }
 
   return (
     <Link
@@ -93,9 +64,6 @@ function ModuleTile({
         <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
       </span>
       <span className="text-xs font-semibold leading-tight text-gray-200">{item.label}</span>
-      {item.desktopOnly ? (
-        <span className="font-mono text-[0.55rem] uppercase tracking-wide text-gray-500">Desktop</span>
-      ) : null}
     </Link>
   );
 }

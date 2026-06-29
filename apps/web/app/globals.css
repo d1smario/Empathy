@@ -315,38 +315,39 @@ body {
    La griglia desktop forza min-width 1280px+ con scroll orizzontale.
    Su mobile collassa al viewport: 7 colonne scalate, celle/chip compatti. */
 @media (max-width: 640px) {
+  /* Su mobile NON strizziamo i 7 giorni nello schermo (illeggibili): teniamo le colonne
+     larghe e lasciamo scorrere il calendario orizzontalmente (.tc2-calendar-scroll). */
   .tc2-calendar-frame {
-    min-width: auto;
-    width: 100%;
+    min-width: 980px;
   }
 
   .tc2-calendar-weekdays,
   .tc2-calendar-grid {
-    gap: 4px;
+    gap: 6px;
   }
 
   .tc2-calendar-weekday-label {
-    font-size: 9px;
-    letter-spacing: 0.02em;
+    font-size: 10px;
+    letter-spacing: 0.04em;
   }
 
   .tc2-calendar-day,
   .tc2-calendar-grid-pad {
-    min-height: 96px;
+    min-height: 160px;
   }
 
   .tc2-calendar-day {
     gap: 4px;
-    padding: 6px;
+    padding: 8px;
   }
 
   .tc2-calendar-day-num {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .tc2-calendar-chip {
     padding: 5px 6px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.3;
   }
 }

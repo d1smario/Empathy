@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  getMobileBottomNav,
   getMobileMenuSections,
   isMobileAppPath,
   stripMobileAppPrefix,
@@ -27,20 +26,20 @@ test("toMobilePath: builder e coach restano null", () => {
   assert.equal(toMobilePath("/admin"), null);
 });
 
-test("nav per ruolo: coach = account-nav, atleta = moduli", () => {
-  const coachKeys = getMobileBottomNav("coach").map((i) => i.key);
+test("drawer per ruolo, derivato dalla sidebar desktop", () => {
+  // Atleta: account (dashboard) + moduli, IDENTICO al desktop; niente voci extra.
+  const athleteKeys = getMobileMenuSections("private").flatMap((s) => s.items.map((i) => i.key));
+  assert.ok(athleteKeys.includes("dashboard"));
+  assert.ok(athleteKeys.includes("health"));
+  assert.ok(athleteKeys.includes("aerodynamics"));
+  assert.ok(!athleteKeys.includes("athletes")); // voce coach
+  assert.ok(!athleteKeys.includes("desktop")); // niente "Versione desktop"
+
+  // Coach: account con home mobile reale; i moduli atleta NON sono nella nav globale.
+  const coachKeys = getMobileMenuSections("coach").flatMap((s) => s.items.map((i) => i.key));
   assert.ok(coachKeys.includes("athletes"));
   assert.ok(coachKeys.includes("commissioni"));
-  assert.ok(!coachKeys.includes("today"));
-
-  const athleteKeys = getMobileBottomNav("private").map((i) => i.key);
-  assert.ok(athleteKeys.includes("today"));
-  assert.ok(!athleteKeys.includes("athletes"));
-
-  // Drawer coach: voci account, NON le schede modulo atleta (vivono nella barra contestuale).
-  const coachDrawerKeys = getMobileMenuSections("coach").flatMap((s) => s.items.map((i) => i.key));
-  assert.ok(coachDrawerKeys.includes("athletes"));
-  assert.ok(!coachDrawerKeys.includes("health"));
+  assert.ok(!coachKeys.includes("health"));
 });
 
 test("stripMobileAppPrefix e toDesktopPath roundtrip", () => {

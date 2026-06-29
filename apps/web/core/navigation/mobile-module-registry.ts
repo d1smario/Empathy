@@ -1,6 +1,6 @@
 import type { ProductModuleId } from "@empathy/contracts";
 import type { AppRole } from "@/lib/app-session";
-import type { ProductNavIconKey } from "@/core/navigation/module-registry";
+import { PRODUCT_MODULE_NAV, type ProductModuleNavItem, type ProductNavIconKey } from "@/core/navigation/module-registry";
 
 /** Prefisso route app mobile — parallelo a `(shell)` desktop, stesso deploy. */
 export const MOBILE_APP_PREFIX = "/m";
@@ -11,33 +11,12 @@ export const EMPATHY_DESKTOP_COOKIE = "empathy_desktop";
 /** Cookie opt-in: forza shell mobile (es. recupero da opt-out o link `?app=1`). */
 export const EMPATHY_MOBILE_COOKIE = "empathy_mobile";
 
-export type MobileBottomNavItem = {
-  key: string;
-  module: ProductModuleId;
-  href: `${typeof MOBILE_APP_PREFIX}/${string}`;
-  label: string;
-  icon: ProductNavIconKey;
-  /** Tab che apre il drawer moduli invece di navigare. */
-  action?: "open-menu";
-};
-
-/** Tab bar principale atleta. */
-export const MOBILE_BOTTOM_NAV: MobileBottomNavItem[] = [
-  { key: "today", module: "dashboard", href: "/m/dashboard", label: "Oggi", icon: "chart" },
-  { key: "training", module: "training", href: "/m/training/calendar", label: "Training", icon: "calendar" },
-  { key: "nutrition", module: "nutrition", href: "/m/nutrition", label: "Nutrition", icon: "utensils" },
-  { key: "profile", module: "profile", href: "/m/profile", label: "Profile", icon: "user" },
-  { key: "modules", module: "settings", href: "/m/settings", label: "Moduli", icon: "settings", action: "open-menu" },
-];
-
 export type MobileMenuItem = {
   key: string;
   module?: ProductModuleId;
   href: `${typeof MOBILE_APP_PREFIX}/${string}` | `/${string}`;
   label: string;
   icon: ProductNavIconKey;
-  /** Route desktop: apre fuori shell mobile (builder, coach, ecc.). */
-  desktopOnly?: boolean;
 };
 
 export type MobileMenuSection = {
@@ -46,101 +25,72 @@ export type MobileMenuSection = {
   items: MobileMenuItem[];
 };
 
-/** Menu moduli completo (drawer) — griglia a sezioni. */
-export const MOBILE_MODULE_MENU_SECTIONS: MobileMenuSection[] = [
-  {
-    key: "hub",
-    title: "Operativo",
-    items: [
-      { key: "dashboard", module: "dashboard", href: "/m/dashboard", label: "Oggi", icon: "chart" },
-      { key: "training", module: "training", href: "/m/training/calendar", label: "Training", icon: "calendar" },
-      { key: "nutrition", module: "nutrition", href: "/m/nutrition", label: "Nutrition", icon: "utensils" },
-      { key: "profile", module: "profile", href: "/m/profile", label: "Profile", icon: "user" },
-    ],
-  },
-  {
-    key: "health",
-    title: "Salute & performance",
-    items: [
-      { key: "health", module: "health", href: "/m/health", label: "Health & Bio", icon: "heart" },
-      { key: "physiology", module: "physiology", href: "/m/physiology", label: "Physiology", icon: "activity" },
-      // BioEnergetics ("Striscia 24 h") e Longevity & Fitness assorbiti nella Dashboard
-      // (/m/dashboard): niente voce in tendina (/m/bioenergetics, /m/longevity → /m/dashboard).
-    ],
-  },
-  {
-    key: "lab",
-    title: "Lab & motion",
-    items: [
-      { key: "biomechanics", module: "biomechanics", href: "/m/biomechanics", label: "Biomechanics", icon: "motion" },
-      { key: "aerodynamics", module: "aerodynamics", href: "/m/aerodynamics", label: "Aerodynamics", icon: "wind" },
-    ],
-  },
-  {
-    // Allineato alla sidebar desktop dell'atleta (Dashboard, Profilo + 6 moduli):
-    // niente "Impostazioni" come voce separata (vive nel Profilo, come desktop) né
-    // "Atleti" (voce coach). Resta solo l'utility mobile per passare alla shell desktop.
-    key: "system",
-    title: "Sistema",
-    items: [
-      { key: "desktop", href: "/dashboard", label: "Versione desktop", icon: "chart", desktopOnly: true },
-    ],
-  },
-];
+/**
+ * Modulo → rotta mobile equivalente. SOLO i moduli con una rotta `/m/` reale: il drawer
+ * mostra esattamente le voci della sidebar desktop (PRODUCT_MODULE_NAV) con gli href su
+ * `/m/`. Calendario/Builder/staging ecc. non hanno (ancora) una home mobile.
+ */
+const MOBILE_HREF: Partial<Record<ProductModuleId, `${typeof MOBILE_APP_PREFIX}/${string}`>> = {
+  dashboard: "/m/dashboard",
+  profile: "/m/profile",
+  health: "/m/health",
+  physiology: "/m/physiology",
+  training: "/m/training/calendar",
+  nutrition: "/m/nutrition",
+  biomechanics: "/m/biomechanics",
+  aerodynamics: "/m/aerodynamics",
+  athletes: "/m/athletes",
+  commissioni: "/m/commissioni",
+};
+
+function toMobileMenuItem(item: ProductModuleNavItem): MobileMenuItem {
+  return {
+    key: item.module,
+    module: item.module,
+    href: MOBILE_HREF[item.module]!,
+    label: item.label,
+    icon: item.icon,
+  };
+}
+
+/** Tutte le voci con rotta mobile (per il lookup del titolo della top bar). */
+const ALL_MOBILE_ITEMS: MobileMenuItem[] = PRODUCT_MODULE_NAV.filter(
+  (i) => i.area === "main" && MOBILE_HREF[i.module],
+).map(toMobileMenuItem);
 
 /**
- * Tab bar COACH — rispecchia l'account-nav desktop del coach (Atleti, Commissioni, Profilo):
- * il coach opera per atleta selezionato, le colonne atleta vivono nella barra contestuale
- * per-atleta (non nella nav globale), esattamente come la sidebar desktop.
+ * Sezioni del drawer per ruolo, DERIVATE da PRODUCT_MODULE_NAV — la STESSA fonte della
+ * sidebar desktop (vedi ProductSidebar): voci ed etichette IDENTICHE al desktop, con gli
+ * href su `/m/`. Nessuna voce extra (niente "Versione desktop"). È l'UNICA navigazione
+ * mobile (niente bottom nav): si apre dall'hamburger.
+ *  - atleta: account (Dashboard, Profilo) + moduli (Health … Aerodynamics).
+ *  - coach: account con home mobile reale (Atleti, Commissioni, Profilo); i moduli atleta
+ *    vivono nella barra contestuale per-atleta, non nella nav globale (come desktop).
  */
-export const MOBILE_COACH_BOTTOM_NAV: MobileBottomNavItem[] = [
-  { key: "athletes", module: "athletes", href: "/m/athletes", label: "Atleti", icon: "users" },
-  { key: "commissioni", module: "commissioni", href: "/m/commissioni", label: "Commissioni", icon: "wallet" },
-  { key: "profile", module: "profile", href: "/m/profile", label: "Profilo", icon: "user" },
-  { key: "modules", module: "settings", href: "/m/settings", label: "Moduli", icon: "settings", action: "open-menu" },
-];
-
-/** Drawer COACH — voci account (Atleti, Commissioni, Profilo) + utility desktop. */
-export const MOBILE_COACH_MENU_SECTIONS: MobileMenuSection[] = [
-  {
-    key: "account",
-    title: "Coach",
-    items: [
-      { key: "athletes", module: "athletes", href: "/m/athletes", label: "Atleti", icon: "users" },
-      { key: "commissioni", module: "commissioni", href: "/m/commissioni", label: "Commissioni", icon: "wallet" },
-      { key: "profile", module: "profile", href: "/m/profile", label: "Profilo", icon: "user" },
-    ],
-  },
-  {
-    key: "system",
-    title: "Sistema",
-    items: [
-      { key: "desktop", href: "/dashboard", label: "Versione desktop", icon: "chart", desktopOnly: true },
-    ],
-  },
-];
-
-/** Bottom nav per ruolo: coach = account-nav coach, altrimenti tab atleta. */
-export function getMobileBottomNav(role: AppRole): MobileBottomNavItem[] {
-  return role === "coach" ? MOBILE_COACH_BOTTOM_NAV : MOBILE_BOTTOM_NAV;
-}
-
-/** Sezioni drawer per ruolo. */
 export function getMobileMenuSections(role: AppRole): MobileMenuSection[] {
-  return role === "coach" ? MOBILE_COACH_MENU_SECTIONS : MOBILE_MODULE_MENU_SECTIONS;
+  const visible = PRODUCT_MODULE_NAV.filter(
+    (i) => i.area === "main" && (!i.roles || i.roles.includes(role)) && MOBILE_HREF[i.module],
+  );
+  if (role === "coach") {
+    const account = visible.filter((i) => i.scope === "account" && i.module !== "dashboard");
+    return [{ key: "account", title: "Coach", items: account.map(toMobileMenuItem) }];
+  }
+  const account = visible.filter((i) => i.scope === "account");
+  const modules = visible.filter((i) => i.scope === "athlete");
+  return [
+    { key: "account", title: "Account", items: account.map(toMobileMenuItem) },
+    { key: "modules", title: "Moduli", items: modules.map(toMobileMenuItem) },
+  ];
 }
 
-/** @deprecated Usare MOBILE_MODULE_MENU_SECTIONS */
-export const MOBILE_DRAWER_LINKS = MOBILE_MODULE_MENU_SECTIONS.flatMap((section) => section.items);
-
+/** Voce corrispondente al path mobile (per il titolo della top bar). */
 export function getMobileMenuItemForPath(pathname: string): MobileMenuItem | undefined {
   const n = normalizePathname(pathname);
-  for (const section of MOBILE_MODULE_MENU_SECTIONS) {
-    for (const item of section.items) {
-      if (n === item.href || n.startsWith(`${item.href}/`)) return item;
-      if (item.module === "training" && n.startsWith("/m/training")) return item;
-      if (item.module === "nutrition" && n.startsWith("/m/nutrition")) return item;
-    }
+  for (const item of ALL_MOBILE_ITEMS) {
+    if (n === item.href || n.startsWith(`${item.href}/`)) return item;
+    if (item.module === "training" && n.startsWith("/m/training")) return item;
+    if (item.module === "nutrition" && n.startsWith("/m/nutrition")) return item;
+    if (item.module === "athletes" && n.startsWith("/m/athletes")) return item;
   }
   return undefined;
 }

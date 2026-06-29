@@ -16,66 +16,122 @@ import type { DashboardArea, DashboardAreaKey } from "@/lib/dashboard/dashboard-
 
 /**
  * Centro dashboard: corpo "digital twin" = immagine X-ray (public/brand/
- * empathy-twin-body.png) RICOLORATA col gradiente brand via maschera di
- * luminanza SVG. Attorno: backdrop HUD/radar (anelli concentrici, tacche, anelli
- * tratteggiati rotanti, campo particellare), luce dal basso sfumata (gradienti
- * multi-stop + blur, niente stacchi) e i 9 contatori-area come badge HTML.
- * Posizioni badge in % allineate al viewBox 680×540.
+ * empathy-twin-body.png) RICOLORATA col gradiente brand via maschera di luminanza SVG.
+ * Attorno: backdrop HUD/radar (anelli concentrici, tacche, anelli tratteggiati rotanti,
+ * campo particellare), luce dal basso e i 9 contatori-area come badge HTML, collegati al
+ * corpo da connettori tratteggiati.
+ *
+ * Due layout, STESSA struttura (il contenitore ha lo stesso aspect-ratio del viewBox, così
+ * i badge HTML e i connettori SVG restano allineati):
+ *  - landscape (680×540): desktop.
+ *  - portrait (660×720): mobile — disposizione più circolare, corpo centrato, badge con
+ *    respiro verticale (niente sovrapposizioni). I connettori RESTANO (allineati).
  */
 
-const VB_W = 680;
-const VB_H = 540;
-// Riquadro del corpo nel viewBox (l'immagine è 1080×1920, ratio ~0.5625).
-// Compatto verso l'alto: corpo + luce + anelli stanno tutti dentro il viewBox 540
-// (niente taglio in basso), umanoide vicino alla fonte di luce ai piedi.
-const BODY = { x: 223, y: 52, w: 234, h: 416 };
-// Centro del radar (centro corpo).
-const CX = 340;
-const CY = 282;
-
 type Anchor = { x: number; y: number };
-type Slot = { color: string; icon: LucideIcon; bx: number; by: number; anchor: Anchor };
-
-const SLOTS: Record<DashboardAreaKey, Slot> = {
-  performance: { color: "#ec4899", icon: Activity, bx: 50, by: 7, anchor: { x: 340, y: 95 } },
-  stress: { color: "#a855f7", icon: Zap, bx: 20, by: 24, anchor: { x: 300, y: 165 } },
-  biomarkers: { color: "#f59e0b", icon: FlaskConical, bx: 14, by: 44, anchor: { x: 280, y: 245 } },
-  nutrition: { color: "#84cc16", icon: Apple, bx: 16, by: 64, anchor: { x: 318, y: 285 } },
-  microbiome: { color: "#f472b6", icon: Bug, bx: 24, by: 84, anchor: { x: 326, y: 390 } },
-  recovery: { color: "#8b5cf6", icon: BatteryCharging, bx: 80, by: 24, anchor: { x: 380, y: 165 } },
-  sleep: { color: "#3b82f6", icon: Moon, bx: 86, by: 44, anchor: { x: 400, y: 245 } },
-  hormones: { color: "#14b8a6", icon: Flame, bx: 84, by: 64, anchor: { x: 362, y: 285 } },
-  longevity: { color: "#f97316", icon: InfinityIcon, bx: 76, by: 84, anchor: { x: 354, y: 390 } },
+type SlotPos = { bx: number; by: number; anchor: Anchor };
+type TwinLayout = {
+  vbW: number;
+  vbH: number;
+  body: { x: number; y: number; w: number; h: number };
+  cx: number;
+  cy: number;
+  feetY: number;
+  auraY: number;
+  vLine: { y1: number; y2: number };
+  hLine: { x1: number; x2: number };
+  pos: Record<DashboardAreaKey, SlotPos>;
 };
-const SLOT_KEYS = Object.keys(SLOTS) as DashboardAreaKey[];
 
-// Campo particellare deterministico (no Math.random → coerente SSR/hydration):
-// spirale a passo "aureo" attorno al centro, colori dal gradiente brand.
+const SLOT_META: Record<DashboardAreaKey, { color: string; icon: LucideIcon }> = {
+  performance: { color: "#ec4899", icon: Activity },
+  stress: { color: "#a855f7", icon: Zap },
+  biomarkers: { color: "#f59e0b", icon: FlaskConical },
+  nutrition: { color: "#84cc16", icon: Apple },
+  microbiome: { color: "#f472b6", icon: Bug },
+  recovery: { color: "#8b5cf6", icon: BatteryCharging },
+  sleep: { color: "#3b82f6", icon: Moon },
+  hormones: { color: "#14b8a6", icon: Flame },
+  longevity: { color: "#f97316", icon: InfinityIcon },
+};
+const SLOT_KEYS = Object.keys(SLOT_META) as DashboardAreaKey[];
+
+const LANDSCAPE: TwinLayout = {
+  vbW: 680,
+  vbH: 540,
+  body: { x: 223, y: 52, w: 234, h: 416 },
+  cx: 340,
+  cy: 282,
+  feetY: 466,
+  auraY: 232,
+  vLine: { y1: 48, y2: 520 },
+  hLine: { x1: 86, x2: 594 },
+  pos: {
+    performance: { bx: 50, by: 7, anchor: { x: 340, y: 95 } },
+    stress: { bx: 20, by: 24, anchor: { x: 300, y: 165 } },
+    biomarkers: { bx: 14, by: 44, anchor: { x: 280, y: 245 } },
+    nutrition: { bx: 16, by: 64, anchor: { x: 318, y: 285 } },
+    microbiome: { bx: 24, by: 84, anchor: { x: 326, y: 390 } },
+    recovery: { bx: 80, by: 24, anchor: { x: 380, y: 165 } },
+    sleep: { bx: 86, by: 44, anchor: { x: 400, y: 245 } },
+    hormones: { bx: 84, by: 64, anchor: { x: 362, y: 285 } },
+    longevity: { bx: 76, by: 84, anchor: { x: 354, y: 390 } },
+  },
+};
+
+// Portrait: corpo centrato (cy 360) e 9 badge su un cerchio attorno → forma "rotonda",
+// performance in alto ma non troppo (10%), respiro verticale per le etichette.
+const PORTRAIT: TwinLayout = {
+  vbW: 660,
+  vbH: 720,
+  body: { x: 213, y: 152, w: 234, h: 416 },
+  cx: 330,
+  cy: 360,
+  feetY: 568,
+  auraY: 344,
+  vLine: { y1: 124, y2: 600 },
+  hLine: { x1: 92, x2: 568 },
+  pos: {
+    performance: { bx: 50, by: 10, anchor: { x: 330, y: 178 } },
+    stress: { bx: 23, by: 19, anchor: { x: 294, y: 240 } },
+    recovery: { bx: 77, by: 19, anchor: { x: 366, y: 240 } },
+    biomarkers: { bx: 9, by: 43, anchor: { x: 298, y: 320 } },
+    sleep: { bx: 91, by: 43, anchor: { x: 362, y: 320 } },
+    nutrition: { bx: 14, by: 70, anchor: { x: 306, y: 408 } },
+    hormones: { bx: 86, by: 70, anchor: { x: 354, y: 408 } },
+    microbiome: { bx: 36, by: 88, anchor: { x: 320, y: 492 } },
+    longevity: { bx: 64, by: 88, anchor: { x: 348, y: 492 } },
+  },
+};
+
+// Campo particellare deterministico (no Math.random): spirale a passo aureo attorno al centro.
 const DOT_PALETTE = ["#a78bfa", "#ec4899", "#fb923c", "#22d3ee", "#5eead4", "#60a5fa", "#f472b6", "#facc15"];
-const RADAR_DOTS = Array.from({ length: 44 }, (_, i) => {
-  const a = i * 137.5 * (Math.PI / 180);
-  const r = 96 + ((i * 57) % 148);
-  return {
-    x: CX + r * Math.cos(a),
-    y: CY + r * Math.sin(a),
-    s: 0.7 + (i % 3) * 0.55,
-    c: DOT_PALETTE[i % DOT_PALETTE.length],
-    o: 0.28 + (i % 5) * 0.11,
-  };
-});
-
-// Tacche radiali sull'anello esterno (look radar/compasso).
-const RADAR_TICKS = Array.from({ length: 24 }, (_, i) => {
-  const a = i * 15 * (Math.PI / 180);
-  const rOut = 228;
-  const rIn = i % 2 === 0 ? 216 : 222;
-  return {
-    x1: CX + rOut * Math.cos(a),
-    y1: CY + rOut * Math.sin(a),
-    x2: CX + rIn * Math.cos(a),
-    y2: CY + rIn * Math.sin(a),
-  };
-});
+function makeDots(cx: number, cy: number) {
+  return Array.from({ length: 44 }, (_, i) => {
+    const a = i * 137.5 * (Math.PI / 180);
+    const r = 96 + ((i * 57) % 148);
+    return {
+      x: cx + r * Math.cos(a),
+      y: cy + r * Math.sin(a),
+      s: 0.7 + (i % 3) * 0.55,
+      c: DOT_PALETTE[i % DOT_PALETTE.length],
+      o: 0.28 + (i % 5) * 0.11,
+    };
+  });
+}
+function makeTicks(cx: number, cy: number) {
+  return Array.from({ length: 24 }, (_, i) => {
+    const a = i * 15 * (Math.PI / 180);
+    const rOut = 228;
+    const rIn = i % 2 === 0 ? 216 : 222;
+    return {
+      x1: cx + rOut * Math.cos(a),
+      y1: cy + rOut * Math.sin(a),
+      x2: cx + rIn * Math.cos(a),
+      y2: cy + rIn * Math.sin(a),
+    };
+  });
+}
 
 function statusText(a: DashboardArea | undefined, on: boolean): string {
   if (!on || !a) return "in attesa";
@@ -93,11 +149,14 @@ export function DashboardTwinRadial({
 }: {
   areas: DashboardArea[];
   badgeSize?: "sm" | "md";
-  /** Mobile: contenitore più alto (aspetto verticale) così le etichette dei badge
-   *  hanno respiro e non si sovrappongono; i connettori (che con l'art centrato
-   *  risulterebbero sfalsati) vengono nascosti. */
+  /** Mobile: layout verticale/circolare (vedi PORTRAIT). */
   portrait?: boolean;
 }) {
+  const cfg = portrait ? PORTRAIT : LANDSCAPE;
+  const { vbW, vbH, body, cx, cy, feetY, auraY } = cfg;
+  const dots = makeDots(cx, cy);
+  const ticks = makeTicks(cx, cy);
+
   const byKey = new Map(areas.map((a) => [a.key, a]));
   const sm = badgeSize === "sm";
   const wCls = sm ? "w-16" : "w-24";
@@ -107,11 +166,8 @@ export function DashboardTwinRadial({
   const scoreCls = sm ? "text-sm" : "text-lg";
   const statusCls = sm ? "text-[0.52rem]" : "text-[0.6rem]";
   return (
-    <div
-      className="relative mx-auto w-full max-w-3xl"
-      style={{ aspectRatio: portrait ? "5 / 6" : `${VB_W} / ${VB_H}` }}
-    >
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full" aria-hidden>
+    <div className="relative mx-auto w-full max-w-3xl" style={{ aspectRatio: `${vbW} / ${vbH}` }}>
+      <svg viewBox={`0 0 ${vbW} ${vbH}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full" aria-hidden>
         <defs>
           <linearGradient id="twinGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#a855f7" />
@@ -119,13 +175,11 @@ export function DashboardTwinRadial({
             <stop offset="60%" stopColor="#fb7a3c" />
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
-          {/* Halo colore dietro il corpo (alone caldo/freddo diffuso). */}
           <radialGradient id="twinAura" cx="50%" cy="42%" r="60%">
             <stop offset="0%" stopColor="#ec4899" stopOpacity="0.16" />
             <stop offset="45%" stopColor="#8b5cf6" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
           </radialGradient>
-          {/* Luce dal basso: molti stop con calo dolce fino a 0 → niente bordo netto. */}
           <radialGradient id="twinUplight" cx="50%" cy="50%" r="72%">
             <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.5" />
             <stop offset="22%" stopColor="#a78bfa" stopOpacity="0.34" />
@@ -133,7 +187,6 @@ export function DashboardTwinRadial({
             <stop offset="74%" stopColor="#6d28d9" stopOpacity="0.05" />
             <stop offset="100%" stopColor="#6d28d9" stopOpacity="0" />
           </radialGradient>
-          {/* Piattaforma luminosa ai piedi: core brillante che sfuma su ciano. */}
           <radialGradient id="twinPlatform" cx="50%" cy="50%" r="55%">
             <stop offset="0%" stopColor="#f0e9ff" stopOpacity="0.95" />
             <stop offset="22%" stopColor="#c4b5fd" stopOpacity="0.6" />
@@ -147,14 +200,7 @@ export function DashboardTwinRadial({
             <stop offset="100%" stopColor="#f472b6" />
           </linearGradient>
           <mask id="twinBodyMask">
-            <image
-              href="/brand/empathy-twin-body.png"
-              x={BODY.x}
-              y={BODY.y}
-              width={BODY.w}
-              height={BODY.h}
-              preserveAspectRatio="xMidYMid meet"
-            />
+            <image href="/brand/empathy-twin-body.png" x={body.x} y={body.y} width={body.w} height={body.h} preserveAspectRatio="xMidYMid meet" />
           </mask>
           <filter id="twinGlow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="7" result="b" />
@@ -163,7 +209,6 @@ export function DashboardTwinRadial({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Blur ampio per le luci: elimina ogni stacco netto dei bordi. */}
           <filter id="softBlur" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="18" />
           </filter>
@@ -174,85 +219,78 @@ export function DashboardTwinRadial({
           @keyframes twinSpinRev{to{transform:rotate(-360deg)}}
           @keyframes twinTwinkle{0%,100%{opacity:.45}50%{opacity:.9}}
           .twin-breathe{animation:twinBreathe 5.5s ease-in-out infinite}
-          .twin-spin{transform-origin:${CX}px ${CY}px;animation:twinSpin 48s linear infinite}
-          .twin-spin-rev{transform-origin:${CX}px ${CY}px;animation:twinSpinRev 72s linear infinite}
+          .twin-spin{transform-origin:${cx}px ${cy}px;animation:twinSpin 48s linear infinite}
+          .twin-spin-rev{transform-origin:${cx}px ${cy}px;animation:twinSpinRev 72s linear infinite}
           .twin-twinkle{animation:twinTwinkle 4.5s ease-in-out infinite}
-          @media(prefers-reduced-motion:reduce),(pointer:coarse){.twin-breathe,.twin-spin,.twin-spin-rev,.twin-twinkle{animation:none}}
+          @media(prefers-reduced-motion:reduce){.twin-breathe,.twin-spin,.twin-spin-rev,.twin-twinkle{animation:none}}
         `}</style>
 
-        {/* Alone colore + luce dal basso (sfumati con blur ampio) */}
-        <ellipse cx={CX} cy="232" rx="236" ry="224" fill="url(#twinAura)" filter="url(#softBlur)" />
-        <ellipse cx={CX} cy="466" rx="236" ry="72" fill="url(#twinUplight)" filter="url(#softBlur)" />
+        <ellipse cx={cx} cy={auraY} rx="236" ry={portrait ? 250 : 224} fill="url(#twinAura)" filter="url(#softBlur)" />
+        <ellipse cx={cx} cy={feetY} rx="236" ry="72" fill="url(#twinUplight)" filter="url(#softBlur)" />
 
-        {/* Backdrop HUD / radar */}
         <g fill="none">
-          <circle cx={CX} cy={CY} r="78" stroke="#5eead4" strokeWidth="0.6" opacity="0.16" />
-          <circle cx={CX} cy={CY} r="116" stroke="#8b5cf6" strokeWidth="0.6" opacity="0.13" />
-          <circle cx={CX} cy={CY} r="156" stroke="#5eead4" strokeWidth="0.6" opacity="0.1" />
-          <circle cx={CX} cy={CY} r="198" stroke="#8b5cf6" strokeWidth="0.6" opacity="0.08" />
-          <circle cx={CX} cy={CY} r="238" stroke="url(#twinRing)" strokeWidth="0.8" opacity="0.2" />
-          <line x1={CX} y1="48" x2={CX} y2="520" stroke="#a78bfa" strokeWidth="0.5" opacity="0.06" />
-          <line x1="86" y1={CY} x2="594" y2={CY} stroke="#a78bfa" strokeWidth="0.5" opacity="0.06" />
-          <circle className="twin-spin" cx={CX} cy={CY} r="222" stroke="#22d3ee" strokeWidth="0.8" strokeDasharray="2 11" opacity="0.32" />
-          <circle className="twin-spin-rev" cx={CX} cy={CY} r="186" stroke="#f472b6" strokeWidth="0.7" strokeDasharray="1 15" opacity="0.22" />
-          {RADAR_TICKS.map((tk, i) => (
+          <circle cx={cx} cy={cy} r="78" stroke="#5eead4" strokeWidth="0.6" opacity="0.16" />
+          <circle cx={cx} cy={cy} r="116" stroke="#8b5cf6" strokeWidth="0.6" opacity="0.13" />
+          <circle cx={cx} cy={cy} r="156" stroke="#5eead4" strokeWidth="0.6" opacity="0.1" />
+          <circle cx={cx} cy={cy} r="198" stroke="#8b5cf6" strokeWidth="0.6" opacity="0.08" />
+          <circle cx={cx} cy={cy} r="238" stroke="url(#twinRing)" strokeWidth="0.8" opacity="0.2" />
+          <line x1={cx} y1={cfg.vLine.y1} x2={cx} y2={cfg.vLine.y2} stroke="#a78bfa" strokeWidth="0.5" opacity="0.06" />
+          <line x1={cfg.hLine.x1} y1={cy} x2={cfg.hLine.x2} y2={cy} stroke="#a78bfa" strokeWidth="0.5" opacity="0.06" />
+          <circle className="twin-spin" cx={cx} cy={cy} r="222" stroke="#22d3ee" strokeWidth="0.8" strokeDasharray="2 11" opacity="0.32" />
+          <circle className="twin-spin-rev" cx={cx} cy={cy} r="186" stroke="#f472b6" strokeWidth="0.7" strokeDasharray="1 15" opacity="0.22" />
+          {ticks.map((tk, i) => (
             <line key={`tk-${i}`} x1={tk.x1} y1={tk.y1} x2={tk.x2} y2={tk.y2} stroke="#5eead4" strokeWidth="0.9" opacity="0.2" />
           ))}
         </g>
 
-        {/* Campo particellare */}
         <g className="twin-twinkle">
-          {RADAR_DOTS.map((d, i) => (
+          {dots.map((d, i) => (
             <circle key={`d-${i}`} cx={d.x} cy={d.y} r={d.s} fill={d.c} opacity={d.o} />
           ))}
         </g>
 
-        {/* Piattaforma luminosa ai piedi (sfumata, niente stacco) */}
-        <ellipse cx={CX} cy="468" rx="148" ry="24" fill="url(#twinPlatform)" filter="url(#softBlur)" />
+        <ellipse cx={cx} cy={feetY + 2} rx="148" ry="24" fill="url(#twinPlatform)" filter="url(#softBlur)" />
 
-        {/* Connettori badge → corpo: tratteggiati + nodo luminoso sull'ancora.
-            In portrait i badge sono spaziati oltre la banda dell'art (centrata): i
-            connettori risulterebbero sfalsati → niente connettori su mobile. */}
-        {!portrait &&
-          SLOT_KEYS.map((k) => {
-            const s = SLOTS[k];
-            const a = byKey.get(k);
-            const on = Boolean(a?.hasData && a?.score != null);
-            return (
-              <g key={`c-${k}`}>
-                <line
-                  x1={(s.bx / 100) * VB_W}
-                  y1={(s.by / 100) * VB_H}
-                  x2={s.anchor.x}
-                  y2={s.anchor.y}
-                  stroke={s.color}
-                  strokeWidth={1.1}
-                  strokeDasharray="1.5 5"
-                  opacity={on ? 0.6 : 0.34}
-                />
-                <circle cx={s.anchor.x} cy={s.anchor.y} r={on ? 2.6 : 2} fill={s.color} opacity={on ? 0.95 : 0.65} />
-              </g>
-            );
-          })}
+        {/* Connettori badge → corpo: allineati perché il contenitore ha lo stesso aspect del viewBox. */}
+        {SLOT_KEYS.map((k) => {
+          const p = cfg.pos[k];
+          const s = SLOT_META[k];
+          const a = byKey.get(k);
+          const on = Boolean(a?.hasData && a?.score != null);
+          return (
+            <g key={`c-${k}`}>
+              <line
+                x1={(p.bx / 100) * vbW}
+                y1={(p.by / 100) * vbH}
+                x2={p.anchor.x}
+                y2={p.anchor.y}
+                stroke={s.color}
+                strokeWidth={1.1}
+                strokeDasharray="1.5 5"
+                opacity={on ? 0.6 : 0.34}
+              />
+              <circle cx={p.anchor.x} cy={p.anchor.y} r={on ? 2.6 : 2} fill={s.color} opacity={on ? 0.95 : 0.65} />
+            </g>
+          );
+        })}
 
-        {/* corpo X-ray ricolorato col gradiente brand (maschera di luminanza) */}
         <rect
           className="twin-breathe"
-          x={BODY.x}
-          y={BODY.y}
-          width={BODY.w}
-          height={BODY.h}
+          x={body.x}
+          y={body.y}
+          width={body.w}
+          height={body.h}
           fill="url(#twinGrad)"
           mask="url(#twinBodyMask)"
           filter="url(#twinGlow)"
         />
-        {/* Burst di luce centrale ai piedi */}
-        <ellipse cx={CX} cy="468" rx="46" ry="12" fill="url(#twinPlatform)" opacity="0.9" />
-        <circle cx={CX} cy="466" r="3.4" fill="#ffffff" filter="url(#twinGlow)" />
+        <ellipse cx={cx} cy={feetY + 2} rx="46" ry="12" fill="url(#twinPlatform)" opacity="0.9" />
+        <circle cx={cx} cy={feetY} r="3.4" fill="#ffffff" filter="url(#twinGlow)" />
       </svg>
 
       {SLOT_KEYS.map((k) => {
-        const s = SLOTS[k];
+        const p = cfg.pos[k];
+        const s = SLOT_META[k];
         const a = byKey.get(k);
         const on = Boolean(a?.hasData && a?.score != null);
         const Icon = s.icon;
@@ -260,11 +298,8 @@ export function DashboardTwinRadial({
           <div
             key={`b-${k}`}
             className={`absolute ${wCls} -translate-x-1/2 -translate-y-1/2 text-center`}
-            style={{ left: `${s.bx}%`, top: `${s.by}%` }}
+            style={{ left: `${p.bx}%`, top: `${p.by}%` }}
           >
-            {/* Ring, icona ed etichetta SEMPRE luminosi (come il badge "acceso"):
-                lo stato dei dati si legge solo dal punteggio ("—" finché assente) e
-                dallo stato ("in attesa"), che restano comunque leggibili. */}
             <div
               className={`truncate font-mono ${labelCls} uppercase tracking-wider`}
               style={{ color: s.color, opacity: 0.95, textShadow: `0 0 8px ${s.color}66` }}
@@ -290,10 +325,7 @@ export function DashboardTwinRadial({
             >
               {on ? Math.round(a!.score as number) : "—"}
             </div>
-            <div
-              className={`${statusCls} leading-tight`}
-              style={{ color: on ? s.color : "#cbd5e1", opacity: on ? 1 : 0.85 }}
-            >
+            <div className={`${statusCls} leading-tight`} style={{ color: on ? s.color : "#cbd5e1", opacity: on ? 1 : 0.85 }}>
               {statusText(a, on)}
             </div>
           </div>
