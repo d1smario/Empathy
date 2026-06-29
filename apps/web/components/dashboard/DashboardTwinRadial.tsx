@@ -84,12 +84,14 @@ const LANDSCAPE: TwinLayout = {
 const PORTRAIT: TwinLayout = {
   vbW: 660,
   vbH: 720,
-  body: { x: 213, y: 152, w: 234, h: 416 },
+  // Corpo ingrandito ~15% e ricentrato (cx330/cy360): la silhouette raggiunge i nodi
+  // dei connettori, così i puntini "toccano" la figura invece di restarne fuori.
+  body: { x: 196, y: 121, w: 269, h: 478 },
   cx: 330,
   cy: 360,
-  feetY: 568,
-  auraY: 344,
-  vLine: { y1: 124, y2: 600 },
+  feetY: 599,
+  auraY: 360,
+  vLine: { y1: 124, y2: 612 },
   hLine: { x1: 92, x2: 568 },
   pos: {
     performance: { bx: 50, by: 10, anchor: { x: 330, y: 178 } },
