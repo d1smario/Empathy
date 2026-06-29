@@ -21,13 +21,15 @@ import {
 } from "lucide-react";
 import {
   EMPATHY_DESKTOP_COOKIE,
-  MOBILE_MODULE_MENU_SECTIONS,
+  getMobileMenuSections,
   type MobileMenuItem,
 } from "@/core/navigation/mobile-module-registry";
 import type { ProductNavIconKey } from "@/core/navigation/module-registry";
+import type { AppRole } from "@/lib/app-session";
 import { Pro2Button } from "@/components/ui/empathy";
 
 type MobileModuleDrawerProps = {
+  role?: AppRole;
   open: boolean;
   onClose: () => void;
 };
@@ -98,8 +100,9 @@ function ModuleTile({
   );
 }
 
-export function MobileModuleDrawer({ open, onClose }: MobileModuleDrawerProps) {
+export function MobileModuleDrawer({ role = "private", open, onClose }: MobileModuleDrawerProps) {
   if (!open) return null;
+  const sections = getMobileMenuSections(role);
 
   return (
     <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Menu moduli">
@@ -126,7 +129,7 @@ export function MobileModuleDrawer({ open, onClose }: MobileModuleDrawerProps) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-2">
-          {MOBILE_MODULE_MENU_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <section key={section.key} className="mb-5 last:mb-2">
               <p className="mb-2 px-1 font-mono text-[0.6rem] uppercase tracking-[0.25em] text-gray-500">
                 {section.title}

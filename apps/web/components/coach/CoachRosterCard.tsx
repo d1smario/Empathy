@@ -29,10 +29,10 @@ let rosterCache: { role: "private" | "coach"; athletes: CanonicalAthleteRow[]; c
 
 /**
  * Roster coach: la selezione vive nell'URL (stesso pattern dell'admin) —
- * "Apri schede" porta a /athletes/[id]/health con la barra contestuale sopra.
- * Niente più selezione in context/localStorage.
+ * "Apri schede" porta a `${basePath}/[id]/dashboard` con la barra contestuale sopra.
+ * `basePath` = `/athletes` su desktop, `/m/athletes` nella shell mobile coach.
  */
-export function CoachRosterCard() {
+export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string }) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<"private" | "coach">("private");
   const [athletes, setAthletes] = useState<CanonicalAthleteRow[]>([]);
@@ -147,7 +147,7 @@ export function CoachRosterCard() {
                   {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}
                 </div>
                 <Link
-                  href={`/athletes/${a.id}/health`}
+                  href={`${basePath}/${a.id}/dashboard`}
                   className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden />

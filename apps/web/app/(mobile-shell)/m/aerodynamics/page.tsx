@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import AerodynamicsPageView from "@/modules/aerodynamics/views/AerodynamicsPageView";
+import { redirectCoachToMobileRoster } from "@/lib/auth/redirect-coach-to-mobile-roster";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title: "Aerodynamics",
 };
 
-export default function MobileAerodynamicsPage() {
+export default async function MobileAerodynamicsPage() {
+  await redirectCoachToMobileRoster();
   return (
     <Suspense
       fallback={

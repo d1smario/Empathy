@@ -1,4 +1,5 @@
 import type { ProductModuleId } from "@empathy/contracts";
+import type { AppRole } from "@/lib/app-session";
 import type { ProductNavIconKey } from "@/core/navigation/module-registry";
 
 /** Prefisso route app mobile — parallelo a `(shell)` desktop, stesso deploy. */
@@ -86,6 +87,48 @@ export const MOBILE_MODULE_MENU_SECTIONS: MobileMenuSection[] = [
     ],
   },
 ];
+
+/**
+ * Tab bar COACH — rispecchia l'account-nav desktop del coach (Atleti, Commissioni, Profilo):
+ * il coach opera per atleta selezionato, le colonne atleta vivono nella barra contestuale
+ * per-atleta (non nella nav globale), esattamente come la sidebar desktop.
+ */
+export const MOBILE_COACH_BOTTOM_NAV: MobileBottomNavItem[] = [
+  { key: "athletes", module: "athletes", href: "/m/athletes", label: "Atleti", icon: "users" },
+  { key: "commissioni", module: "commissioni", href: "/m/commissioni", label: "Commissioni", icon: "wallet" },
+  { key: "profile", module: "profile", href: "/m/profile", label: "Profilo", icon: "user" },
+  { key: "modules", module: "settings", href: "/m/settings", label: "Moduli", icon: "settings", action: "open-menu" },
+];
+
+/** Drawer COACH — voci account (Atleti, Commissioni, Profilo) + utility desktop. */
+export const MOBILE_COACH_MENU_SECTIONS: MobileMenuSection[] = [
+  {
+    key: "account",
+    title: "Coach",
+    items: [
+      { key: "athletes", module: "athletes", href: "/m/athletes", label: "Atleti", icon: "users" },
+      { key: "commissioni", module: "commissioni", href: "/m/commissioni", label: "Commissioni", icon: "wallet" },
+      { key: "profile", module: "profile", href: "/m/profile", label: "Profilo", icon: "user" },
+    ],
+  },
+  {
+    key: "system",
+    title: "Sistema",
+    items: [
+      { key: "desktop", href: "/dashboard", label: "Versione desktop", icon: "chart", desktopOnly: true },
+    ],
+  },
+];
+
+/** Bottom nav per ruolo: coach = account-nav coach, altrimenti tab atleta. */
+export function getMobileBottomNav(role: AppRole): MobileBottomNavItem[] {
+  return role === "coach" ? MOBILE_COACH_BOTTOM_NAV : MOBILE_BOTTOM_NAV;
+}
+
+/** Sezioni drawer per ruolo. */
+export function getMobileMenuSections(role: AppRole): MobileMenuSection[] {
+  return role === "coach" ? MOBILE_COACH_MENU_SECTIONS : MOBILE_MODULE_MENU_SECTIONS;
+}
 
 /** @deprecated Usare MOBILE_MODULE_MENU_SECTIONS */
 export const MOBILE_DRAWER_LINKS = MOBILE_MODULE_MENU_SECTIONS.flatMap((section) => section.items);

@@ -18,7 +18,7 @@ function Pill({ children, className }: { children: ReactNode; className: string 
 /**
  * Modulo **Coach · Atleti**: stato account, roster, inviti (copy essenziale, senza dettagli tecnici).
  */
-export function CoachAthletesModulePanel() {
+export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?: string }) {
   const { role, coachOperationalApproved, platformCoachStatus, loading, signedIn } = useActiveAthlete();
 
   const showStatus = !loading && signedIn;
@@ -55,7 +55,7 @@ export function CoachAthletesModulePanel() {
           </div>
         ) : null}
 
-        <CoachRosterCard />
+        <CoachRosterCard basePath={basePath} />
         <div className="grid gap-6 sm:grid-cols-2">
           <CoachInviteLinksCard />
           <CoachCodeCard />

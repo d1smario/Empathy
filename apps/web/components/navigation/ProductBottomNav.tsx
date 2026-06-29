@@ -18,8 +18,9 @@ import {
   Wallet,
   Wind,
 } from "lucide-react";
-import { MOBILE_BOTTOM_NAV } from "@/core/navigation/mobile-module-registry";
+import { getMobileBottomNav } from "@/core/navigation/mobile-module-registry";
 import type { ProductNavIconKey } from "@/core/navigation/module-registry";
+import type { AppRole } from "@/lib/app-session";
 
 const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   chart: LayoutDashboard,
@@ -38,6 +39,7 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
 };
 
 type ProductBottomNavProps = {
+  role?: AppRole;
   onOpenModuleMenu?: () => void;
   moduleMenuOpen?: boolean;
 };
@@ -63,8 +65,9 @@ function isExtendedModuleActive(pathname: string): boolean {
   );
 }
 
-export function ProductBottomNav({ onOpenModuleMenu, moduleMenuOpen }: ProductBottomNavProps) {
+export function ProductBottomNav({ role = "private", onOpenModuleMenu, moduleMenuOpen }: ProductBottomNavProps) {
   const pathname = usePathname() ?? "/m/dashboard";
+  const bottomNav = getMobileBottomNav(role);
 
   return (
     <nav
@@ -72,7 +75,7 @@ export function ProductBottomNav({ onOpenModuleMenu, moduleMenuOpen }: ProductBo
       aria-label="Navigazione app mobile"
     >
       <div className="mx-auto flex w-full max-w-2xl items-stretch justify-around px-0.5 pt-1">
-        {MOBILE_BOTTOM_NAV.map((item) => {
+        {bottomNav.map((item) => {
           const active =
             item.action === "open-menu"
               ? moduleMenuOpen || isExtendedModuleActive(pathname)
