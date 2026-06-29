@@ -89,9 +89,14 @@ function statusText(a: DashboardArea | undefined, on: boolean): string {
 export function DashboardTwinRadial({
   areas,
   badgeSize = "md",
+  portrait = false,
 }: {
   areas: DashboardArea[];
   badgeSize?: "sm" | "md";
+  /** Mobile: contenitore più alto (aspetto verticale) così le etichette dei badge
+   *  hanno respiro e non si sovrappongono; i connettori (che con l'art centrato
+   *  risulterebbero sfalsati) vengono nascosti. */
+  portrait?: boolean;
 }) {
   const byKey = new Map(areas.map((a) => [a.key, a]));
   const sm = badgeSize === "sm";
@@ -102,7 +107,10 @@ export function DashboardTwinRadial({
   const scoreCls = sm ? "text-sm" : "text-lg";
   const statusCls = sm ? "text-[0.52rem]" : "text-[0.6rem]";
   return (
-    <div className="relative mx-auto w-full max-w-3xl" style={{ aspectRatio: `${VB_W} / ${VB_H}` }}>
+    <div
+      className="relative mx-auto w-full max-w-3xl"
+      style={{ aspectRatio: portrait ? "5 / 6" : `${VB_W} / ${VB_H}` }}
+    >
       <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full" aria-hidden>
         <defs>
           <linearGradient id="twinGrad" x1="0" y1="0" x2="0" y2="1">
@@ -202,27 +210,30 @@ export function DashboardTwinRadial({
         {/* Piattaforma luminosa ai piedi (sfumata, niente stacco) */}
         <ellipse cx={CX} cy="468" rx="148" ry="24" fill="url(#twinPlatform)" filter="url(#softBlur)" />
 
-        {/* Connettori badge → corpo: tratteggiati + nodo luminoso sull'ancora */}
-        {SLOT_KEYS.map((k) => {
-          const s = SLOTS[k];
-          const a = byKey.get(k);
-          const on = Boolean(a?.hasData && a?.score != null);
-          return (
-            <g key={`c-${k}`}>
-              <line
-                x1={(s.bx / 100) * VB_W}
-                y1={(s.by / 100) * VB_H}
-                x2={s.anchor.x}
-                y2={s.anchor.y}
-                stroke={s.color}
-                strokeWidth={1.1}
-                strokeDasharray="1.5 5"
-                opacity={on ? 0.6 : 0.34}
-              />
-              <circle cx={s.anchor.x} cy={s.anchor.y} r={on ? 2.6 : 2} fill={s.color} opacity={on ? 0.95 : 0.65} />
-            </g>
-          );
-        })}
+        {/* Connettori badge → corpo: tratteggiati + nodo luminoso sull'ancora.
+            In portrait i badge sono spaziati oltre la banda dell'art (centrata): i
+            connettori risulterebbero sfalsati → niente connettori su mobile. */}
+        {!portrait &&
+          SLOT_KEYS.map((k) => {
+            const s = SLOTS[k];
+            const a = byKey.get(k);
+            const on = Boolean(a?.hasData && a?.score != null);
+            return (
+              <g key={`c-${k}`}>
+                <line
+                  x1={(s.bx / 100) * VB_W}
+                  y1={(s.by / 100) * VB_H}
+                  x2={s.anchor.x}
+                  y2={s.anchor.y}
+                  stroke={s.color}
+                  strokeWidth={1.1}
+                  strokeDasharray="1.5 5"
+                  opacity={on ? 0.6 : 0.34}
+                />
+                <circle cx={s.anchor.x} cy={s.anchor.y} r={on ? 2.6 : 2} fill={s.color} opacity={on ? 0.95 : 0.65} />
+              </g>
+            );
+          })}
 
         {/* corpo X-ray ricolorato col gradiente brand (maschera di luminanza) */}
         <rect

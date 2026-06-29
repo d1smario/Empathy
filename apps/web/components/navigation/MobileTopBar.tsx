@@ -15,7 +15,6 @@ export function MobileTopBar({ title = "Empathy", onOpenDrawer }: MobileTopBarPr
           <p className="truncate bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-sm font-black tracking-tight text-transparent">
             {title}
           </p>
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Pro 2 · App</p>
         </div>
         <button
           type="button"

@@ -11,7 +11,6 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { ShellMainFrame } from "@/components/shell/ShellMainFrame";
 import { MobileTopBar } from "@/components/navigation/MobileTopBar";
-import { ProductBottomNav } from "@/components/navigation/ProductBottomNav";
 import { MobileModuleDrawer } from "@/components/navigation/MobileModuleDrawer";
 import { MobileInstallPrompt } from "@/components/shell/MobileInstallPrompt";
 import { MobileDashboardHeader } from "@/modules/mobile/components/MobileDashboardHeader";
@@ -45,8 +44,9 @@ export function MobileShellWithAdaptiveBackdrop({
   const athleteGate = requiresResolvedAthleteForPath(pathname);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const title = useMemo(() => mobileTitleForPath(pathname, role), [pathname, role]);
-  // La dashboard usa l'header brandizzato (EMPATHY OS), le altre schermate la top bar
-  // generica: in ENTRAMBE il controllo in alto a destra è l'hamburger che apre il drawer.
+  // Navigazione UNICA: il drawer aperto dall'hamburger. La dashboard usa l'header
+  // brandizzato (logo Empathy), le altre la top bar generica — in ENTRAMBE l'unico
+  // controllo è l'hamburger. Niente bottom nav (rimossa: era una seconda navigazione).
   const isDashboard = pathname === "/m/dashboard" || pathname.startsWith("/m/dashboard/");
 
   return (
@@ -60,12 +60,11 @@ export function MobileShellWithAdaptiveBackdrop({
         <ShellMainFrame
           generative={generative}
           athleteGate={athleteGate}
-          className="min-w-0 flex-1 scroll-mt-0 outline-none pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]"
+          className="min-w-0 flex-1 scroll-mt-0 outline-none pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
         >
           <MobileInstallPrompt />
           {children}
         </ShellMainFrame>
-        <ProductBottomNav role={role} onOpenModuleMenu={() => setDrawerOpen(true)} moduleMenuOpen={drawerOpen} />
         <MobileModuleDrawer role={role} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
     </BrutalistAppBackdrop>

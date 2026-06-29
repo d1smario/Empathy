@@ -116,7 +116,7 @@ export function MobileModuleDrawer({ role = "private", open, onClose }: MobileMo
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-white">Moduli Empathy</p>
-            <p className="truncate text-[0.65rem] text-gray-500">Hub operativo, salute, lab e impostazioni</p>
+            <p className="truncate text-[0.65rem] text-gray-500">Tutte le sezioni in un posto</p>
           </div>
           <button
             type="button"
