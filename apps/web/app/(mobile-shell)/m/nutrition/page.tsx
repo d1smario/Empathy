@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import MobileNutritionHubView from "@/modules/mobile/views/MobileNutritionHubView";
-import { redirectCoachToMobileRoster } from "@/lib/auth/redirect-coach-to-mobile-roster";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +8,7 @@ export const metadata: Metadata = {
   description: "Meal plan e diario — app mobile.",
 };
 
-export default async function MobileNutritionPage() {
-  await redirectCoachToMobileRoster();
+// Il confinamento coach → roster è nel layout (copre indice + meal-plan + diary).
+export default function MobileNutritionPage() {
   return <MobileNutritionHubView />;
 }

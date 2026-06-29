@@ -57,7 +57,7 @@ export function MobileCoachAthleteContextBar({
   }));
 
   return (
-    <div className="sticky top-0 z-30 border-b border-fuchsia-500/20 bg-[#120a14]/95 backdrop-blur-md">
+    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 border-b border-fuchsia-500/20 bg-[#120a14]/95 backdrop-blur-md">
       <div className="flex items-center justify-between gap-3 px-4 pt-2.5">
         <p className="truncate font-mono text-[0.6rem] uppercase tracking-[0.2em] text-fuchsia-200/90">
           Atleta · {label}
