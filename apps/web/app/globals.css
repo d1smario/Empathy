@@ -349,6 +349,25 @@ body {
     padding: 5px 6px;
     font-size: 10px;
     line-height: 1.3;
+    min-width: 0;
+  }
+
+  /* Celle strette su mobile: il chip non deve traboccare la cella.
+     L'header (icona + "Pianificato" + badge sport) va a capo invece di
+     sforare a destra; testo e parole lunghe si spezzano nel box. */
+  .tc2-calendar-chip > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .tc2-calendar-chip > div:first-child {
+    flex-wrap: wrap;
+  }
+
+  .tc2-calendar-chip-sport-badge {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -3331,6 +3350,21 @@ body {
 
   .profile-page .profile-editor-grid.profile-editor-grid-compact {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  /* Su schermo stretto le celle (input time/number e select hanno un min-content
+     intrinseco) non devono sforare la traccia/il subpanel: abbassiamo il floor di
+     shrink. Gli input sono gia' width:100% con box-sizing:border-box, quindi qui
+     non cambia nulla su desktop. */
+  .profile-page .profile-editor-grid > .form-group,
+  .profile-page .profile-subpanel .form-group {
+    min-width: 0;
+  }
+
+  .profile-page .form-input,
+  .profile-page .form-select,
+  .profile-page .form-textarea {
+    min-width: 0;
   }
 }
 

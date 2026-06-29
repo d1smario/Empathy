@@ -53,13 +53,13 @@ export function DashboardKpiGrid({ kpis, columns = 3 }: DashboardKpiGridProps) {
         return (
           <div
             key={kpi.key}
-            className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2.5 transition hover:border-white/15"
+            className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2.5 transition hover:border-white/15 min-w-0"
           >
-            <div className="flex items-center gap-1.5 text-[0.55rem] uppercase tracking-wider text-gray-500">
-              <Icon className="h-3 w-3" aria-hidden />
+            <div className="flex items-center gap-1.5 text-[0.55rem] uppercase tracking-wider text-gray-500 min-w-0 [overflow-wrap:anywhere]">
+              <Icon className="h-3 w-3 shrink-0" aria-hidden />
               {kpi.label}
             </div>
-            <div className="mt-1 text-lg font-bold tabular-nums text-white">
+            <div className="mt-1 flex flex-wrap items-baseline text-lg font-bold tabular-nums text-white [overflow-wrap:anywhere]">
               {value}
               {value !== "—" && kpi.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{kpi.unit}</span> : null}
             </div>

@@ -990,7 +990,7 @@ export default function ProfilePage({
                 title="Editor profilo"
                 subtitle="Modifica i tuoi dati"
               >
-        <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/85 p-2 backdrop-blur">
+        <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/85 max-sm:bg-black p-2 backdrop-blur">
           <button type="button" className={editorTabClass(activeSection === "personal", "violet")} onClick={() => goToEditorSection("personal")}>Personale</button>
           <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>Fisico</button>
           <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
