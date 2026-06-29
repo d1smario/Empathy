@@ -12,6 +12,7 @@ import { MobileTopBar } from "@/components/navigation/MobileTopBar";
 import { ProductBottomNav } from "@/components/navigation/ProductBottomNav";
 import { MobileModuleDrawer } from "@/components/navigation/MobileModuleDrawer";
 import { MobileInstallPrompt } from "@/components/shell/MobileInstallPrompt";
+import { MobileDashboardHeader } from "@/modules/mobile/components/MobileDashboardHeader";
 
 function mobileTitleForPath(pathname: string): string {
   const item = MOBILE_BOTTOM_NAV.find((nav) => pathname === nav.href || pathname.startsWith(`${nav.href}/`));
@@ -33,13 +34,18 @@ export function MobileShellWithAdaptiveBackdrop({ children }: { children: React.
   const athleteGate = requiresResolvedAthleteForPath(pathname);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const title = useMemo(() => mobileTitleForPath(pathname), [pathname]);
-  // La dashboard mobile ha il proprio header in stile riferimento; nascondiamo la top bar di shell.
-  const showTopBar = pathname !== "/m/dashboard" && !pathname.startsWith("/m/dashboard/");
+  // La dashboard usa l'header brandizzato (EMPATHY OS), le altre schermate la top bar
+  // generica: in ENTRAMBE il controllo in alto a destra è l'hamburger che apre il drawer.
+  const isDashboard = pathname === "/m/dashboard" || pathname.startsWith("/m/dashboard/");
 
   return (
     <BrutalistAppBackdrop matrix={false}>
       <div className="flex min-h-screen flex-col">
-        {showTopBar ? <MobileTopBar title={title} onOpenDrawer={() => setDrawerOpen(true)} /> : null}
+        {isDashboard ? (
+          <MobileDashboardHeader onOpenDrawer={() => setDrawerOpen(true)} />
+        ) : (
+          <MobileTopBar title={title} onOpenDrawer={() => setDrawerOpen(true)} />
+        )}
         <ShellMainFrame
           generative={generative}
           athleteGate={athleteGate}

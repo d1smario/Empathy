@@ -1,7 +1,6 @@
 "use client";
 
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
-import { MobileDashboardHeader } from "@/modules/mobile/components/MobileDashboardHeader";
 import { MobileHeroSection } from "@/modules/mobile/components/MobileHeroSection";
 import { MobileTwinSection } from "@/modules/mobile/components/MobileTwinSection";
 import { MobileTrendsSection } from "@/modules/mobile/components/MobileTrendsSection";
@@ -61,9 +60,8 @@ export function MobileDashboardView() {
   const systemStatus = data?.systemStatus ?? { pct: null, label: null, trend: [] };
 
   return (
-    <div className="relative min-h-screen bg-black px-4 pb-28 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]">
-      <MobileDashboardHeader />
-      <div className="mt-4 space-y-6">
+    <div className="relative min-h-screen bg-black px-4 pb-28 pt-4">
+      <div className="space-y-6">
         <MobileHeroSection score={readiness.score} label={readiness.label} />
         <MobileTwinSection areas={data?.areas ?? []} />
         <DashboardBioenergeticStrip lite />

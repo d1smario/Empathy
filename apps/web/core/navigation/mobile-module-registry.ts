@@ -76,11 +76,12 @@ export const MOBILE_MODULE_MENU_SECTIONS: MobileMenuSection[] = [
     ],
   },
   {
+    // Allineato alla sidebar desktop dell'atleta (Dashboard, Profilo + 6 moduli):
+    // niente "Impostazioni" come voce separata (vive nel Profilo, come desktop) né
+    // "Atleti" (voce coach). Resta solo l'utility mobile per passare alla shell desktop.
     key: "system",
     title: "Sistema",
     items: [
-      { key: "settings", module: "settings", href: "/m/settings", label: "Impostazioni", icon: "settings" },
-      { key: "athletes", module: "athletes", href: "/athletes", label: "Atleti", icon: "users", desktopOnly: true },
       { key: "desktop", href: "/dashboard", label: "Versione desktop", icon: "chart", desktopOnly: true },
     ],
   },
