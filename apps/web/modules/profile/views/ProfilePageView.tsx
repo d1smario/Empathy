@@ -522,6 +522,23 @@ export default function ProfilePage({
   }
 
   const currentProfile = profiles[0] ?? null;
+
+  // Ritorno OAuth device (es. /profile?garmin=server_config → su mobile /m/profile?...):
+  // apri l'editor sul tab Devices così l'esito (collegato ✓ / errore con la causa) è
+  // VISIBILE. Senza questo il redirect d'errore della authorize sembra "tornare alla
+  // home" senza alcuna spiegazione (l'editor è un modale, di default chiuso e su "personal").
+  const oauthReturnHandledRef = useRef(false);
+  useEffect(() => {
+    if (oauthReturnHandledRef.current || typeof window === "undefined" || !currentProfile) return;
+    const q = new URLSearchParams(window.location.search);
+    const hasDeviceReturn = ["garmin", "whoop", "strava", "polar", "wahoo", "suunto", "karoo"].some((k) => q.get(k));
+    if (!hasDeviceReturn) return;
+    oauthReturnHandledRef.current = true;
+    startEditProfile(currentProfile);
+    setActiveSection("devices");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProfile]);
+
   const currentPhysio = currentProfile ? physioMap[currentProfile.id] : null;
   const resolvedFtp =
     currentPhysio?.ftp_watts ??

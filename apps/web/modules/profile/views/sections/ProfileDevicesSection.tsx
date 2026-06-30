@@ -356,7 +356,15 @@ export function ProfileDevicesSection({
           <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Garmin collegato ✓</p>
         ) : null}
         {garminReturn && garminReturn !== "connected" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
+            {garminReturn === "server_config"
+              ? "Integrazione Garmin non ancora configurata sul server (credenziali OAuth mancanti)."
+              : garminReturn === "forbidden"
+                ? "Non hai accesso ai dati di questo atleta."
+                : garminReturn === "missing_athlete"
+                  ? "Nessun atleta selezionato."
+                  : "Collegamento non riuscito, riprova."}
+          </p>
         ) : null}
         {whoopReturn === "ok" ? (
           <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>WHOOP collegato ✓</p>
