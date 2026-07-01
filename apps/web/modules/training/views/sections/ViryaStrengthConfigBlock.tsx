@@ -67,23 +67,23 @@ export function ViryaStrengthConfigBlock({
   return (
     <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
       <div className="profile-subpanel">
-        <div className="session-title-copy">1 · Intervallo periodo</div>
+        <div className="session-title-copy">1 · Period range</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Data inizio piano</span>
+            <span>Plan start date</span>
             <input className="form-input" type="date" value={gymPlanStart} onChange={(e) => setGymPlanStart(e.target.value)} />
           </label>
           <label className="form-field">
-            <span>Data fine piano</span>
+            <span>Plan end date</span>
             <input className="form-input" type="date" value={gymPlanEnd} onChange={(e) => setGymPlanEnd(e.target.value)} />
           </label>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">2 · Macrofasi</div>
+        <div className="session-title-copy">2 · Macro-phases</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Numero macrofasi</span>
+            <span>Number of macro-phases</span>
             <input
               className="form-input"
               type="number"
@@ -95,26 +95,26 @@ export function ViryaStrengthConfigBlock({
           </label>
           <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
             <button type="button" className="btn-secondary" onClick={regenerateGymMacroPlan}>
-              Genera macrofasi automatiche
+              Generate automatic macro-phases
             </button>
           </div>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">3 · Modulo settimanale coach</div>
+        <div className="session-title-copy">3 · Coach weekly module</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Settimana da customizzare</span>
+            <span>Week to customize</span>
             <select className="form-select" value={selectedGymWeekStart} onChange={(e) => setSelectedGymWeekStart(e.target.value)}>
               {programWeekRows.slice(0, 52).map((w) => (
                 <option key={`gym-week-opt-${w.weekStart}`} value={w.weekStart}>
-                  Settimana {w.week} · {new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                  Week {w.week} · {new Date(w.weekStart).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })}
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Giorni allenamento / week</span>
+            <span>Training days / week</span>
             <select
               className="form-select"
               value={selectedWeekConfig().sessionsPerWeek}
@@ -129,13 +129,13 @@ export function ViryaStrengthConfigBlock({
             >
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <option key={`gym-days-${d}`} value={d}>
-                  {d} giorni
+                  {d} days
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Volume settimana (% vs {VIRYA_LOAD_SHORT.toLowerCase()} macrofase)</span>
+            <span>Week volume (% vs {VIRYA_LOAD_SHORT.toLowerCase()} macro-phase)</span>
             <input
               className="form-input"
               type="number"
@@ -149,7 +149,7 @@ export function ViryaStrengthConfigBlock({
             />
           </label>
           <label className="form-field">
-            <span>Obiettivo Gym annuale</span>
+            <span>Annual Gym goal</span>
             <select className="form-select" value={gymPrimaryGoal} onChange={(e) => setGymPrimaryGoal(e.target.value as GymPrimaryGoal)}>
               {gymGoalLabels.map((g) => (
                 <option key={`gym-goal-select-${g.id}`} value={g.id}>
@@ -161,25 +161,25 @@ export function ViryaStrengthConfigBlock({
         </div>
         <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
           <span className="builder-zone-chip">
-            Stato volume: {loadStatusLabel(selectedWeekConfig().loadPct)} ({selectedWeekConfig().loadPct}%)
+            Volume status: {loadStatusLabel(selectedWeekConfig().loadPct)} ({selectedWeekConfig().loadPct}%)
           </span>
           <Link href={`/training/calendar?date=${selectedGymWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-            Apri settimana in Calendar →
+            Open week in Calendar →
           </Link>
         </div>
         <small style={{ color: "var(--empathy-text-muted)" }}>
-          Regola volume: Scarico 50-99% · Stabile 100% · Carico 101-180%. Configura fino a {GYM_WEEK_DAY_SLOTS}{" "}
-          giorni; in generazione Calendar si usano i primi {selectedWeekConfig().sessionsPerWeek} giorni della tabella.
+          Volume rule: Unload 50-99% · Stable 100% · Load 101-180%. Configure up to {GYM_WEEK_DAY_SLOTS}{" "}
+          days; during Calendar generation the first {selectedWeekConfig().sessionsPerWeek} days of the table are used.
         </small>
         <div style={{ marginTop: "8px", overflowX: "auto" }}>
           <table className="table-shell">
             <thead>
               <tr>
-                <th>Giorno</th>
-                <th>Distretti allenati (multipli)</th>
-                <th>Obiettivo distretto</th>
-                <th>Tipo esercizio</th>
-                <th>Metodologia</th>
+                <th>Day</th>
+                <th>Trained districts (multiple)</th>
+                <th>District objective</th>
+                <th>Exercise type</th>
+                <th>Methodology</th>
               </tr>
             </thead>
             <tbody>
@@ -192,12 +192,12 @@ export function ViryaStrengthConfigBlock({
                   title={
                     active
                       ? undefined
-                      : "Giorno oltre le sedute/settimana — non usato in generazione finché non aumenti i giorni allenamento"
+                      : "Day beyond the sessions/week — not used in generation until you increase the training days"
                   }
                 >
                   <td>
-                    Giorno {row.dayIndex}
-                    {!active ? <span className="ml-1 text-[0.65rem] text-slate-500">(riserva)</span> : null}
+                    Day {row.dayIndex}
+                    {!active ? <span className="ml-1 text-[0.65rem] text-slate-500">(reserve)</span> : null}
                   </td>
                   <td>
                     <div className="flex max-w-[420px] flex-wrap gap-1">

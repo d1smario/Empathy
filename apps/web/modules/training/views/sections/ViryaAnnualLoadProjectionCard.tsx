@@ -35,7 +35,7 @@ export function ViryaAnnualLoadProjectionCard({
             <span className="builder-zone-chip" style={{ borderColor: "#ff00a8", color: "#ff00a8", backgroundColor: "#ff00a822" }}>Peak</span>
           </div>
           <p style={{ marginTop: "10px", color: "var(--empathy-text-muted)", fontSize: "12px" }}>
-            Piano annuale pronto per il loop dinamico: Calendar → Analyzer → Adaptation.
+            Annual plan ready for the dynamic loop: Calendar → Analyzer → Adaptation.
           </p>
         </article>
   );

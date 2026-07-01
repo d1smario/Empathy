@@ -54,8 +54,8 @@ export function ViryaWeeklyProgramTable({
     <Pro2SectionCard
       accent="violet"
       className="!border-pink-500/35 !bg-black bg-none from-transparent via-transparent to-transparent shadow-[inset_0_1px_0_rgba(251,113,133,0.12)]"
-      title="5 · Programma settimanale"
-      subtitle={`${programWeekRows.length} settimane (periodo passo 3: ${planWindowWeekCount || "—"}) · ${VIRYA_LOAD_LABEL}, sedute, ore e focus — usati in Calendar`}
+      title="5 · Weekly program"
+      subtitle={`${programWeekRows.length} weeks (step 3 window: ${planWindowWeekCount || "—"}) · ${VIRYA_LOAD_LABEL}, sessions, hours and focus — used in Calendar`}
       icon={TableProperties}
     >
       <div className="max-h-[min(520px,60vh)] overflow-auto rounded-xl border border-pink-500/20 bg-black">
@@ -63,12 +63,12 @@ export function ViryaWeeklyProgramTable({
           <thead className="sticky top-0 z-10 border-b border-pink-500/25 bg-black backdrop-blur-sm">
             <tr>
               <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">#</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Inizio sett.</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Fase</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Week start</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Phase</th>
               <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">{VIRYA_LOAD_SHORT}</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Sedute</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Ore sett.</th>
-              <th className="min-w-[260px] p-2 font-semibold text-pink-200/80">Obiettivi (multipli)</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Sessions</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Weekly hours</th>
+              <th className="min-w-[260px] p-2 font-semibold text-pink-200/80">Goals (multiple)</th>
             </tr>
           </thead>
           <tbody>
@@ -177,8 +177,8 @@ export function ViryaWeeklyProgramTable({
         </table>
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Valori iniziali dalle fasi; modifiche qui hanno priorità sulla generazione. Le ore settimanali (macro aerobico)
-        ripartiscono la durata media per seduta.
+        Initial values from the phases; changes here take priority over generation. Weekly hours (aerobic macro)
+        distribute the average duration per session.
       </p>
     </Pro2SectionCard>
   );

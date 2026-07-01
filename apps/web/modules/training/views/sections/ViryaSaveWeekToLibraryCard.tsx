@@ -39,17 +39,17 @@ export function ViryaSaveWeekToLibraryCard({
   return (
     <Pro2SectionCard
       accent="violet"
-      title="Salva settimana in libreria"
-      subtitle="Export VIRYA → N template coach (contratto Builder, stessa materializzazione del Calendar)"
+      title="Save week to library"
+      subtitle="Export VIRYA → N coach templates (Builder contract, same materialization as the Calendar)"
       icon={BookMarked}
     >
       <p className="mb-3 text-sm text-slate-300">
-        Esporta una <strong className="text-white">settimana tipo</strong> come template riusabili nella libreria
-        coach — senza scrivere sul Calendar. Stessa pipeline di materializzazione del batch Calendar.
+        Export a <strong className="text-white">sample week</strong> as reusable templates in the coach
+        library — without writing to the Calendar. Same materialization pipeline as the Calendar batch.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-slate-400">
-          Settimana
+          Week
           <select
             className="min-w-[200px] rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
             value={libraryWeekStart}
@@ -58,7 +58,7 @@ export function ViryaSaveWeekToLibraryCard({
           >
             {programWeekRows.map((w) => (
               <option key={w.weekStart} value={w.weekStart}>
-                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} sed · TSS {w.displayTss}
+                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} sess · TSS {w.displayTss}
               </option>
             ))}
           </select>
@@ -70,13 +70,13 @@ export function ViryaSaveWeekToLibraryCard({
           disabled={savingLibrary || saving || !selectedAthleteId || !libraryWeekStart}
           title={
             !selectedAthleteId
-              ? "Seleziona / carica contesto atleta"
+              ? "Select / load athlete context"
               : !libraryWeekStart
-                ? "Nessuna settimana nel piano"
+                ? "No week in the plan"
                 : undefined
           }
         >
-          {savingLibrary ? "Materializzazione…" : "Salva settimana in libreria"}
+          {savingLibrary ? "Materializing…" : "Save week to library"}
         </button>
       </div>
     </Pro2SectionCard>

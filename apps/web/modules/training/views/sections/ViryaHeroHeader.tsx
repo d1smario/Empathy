@@ -17,24 +17,24 @@ export function ViryaHeroHeader({
   return (
       <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/25 via-black/50 to-black/80 p-5 shadow-inner">
         <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Virya · Pro 2</p>
-        <h2 className="text-xl font-semibold tracking-tight text-white">Piano annuale</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-white">Annual plan</h2>
         <p className="mt-1 max-w-2xl text-sm text-slate-400">
-          Percorso in cinque passi — stesso motore sessione del builder. Gli obiettivi focali settimanali (stimoli) sono
-          al passo 5, colonna «Obiettivi (multipli)». Deploy batch su Calendar da lì quando sei pronto.
+          Five-step path — same session engine as the builder. Weekly focal goals (stimuli) are
+          at step 5, column «Goals (multiple)». Batch deploy to Calendar from there when you&apos;re ready.
         </p>
         <div className="mt-4 max-w-xl">
           <label className="block text-xs font-semibold uppercase tracking-wider text-fuchsia-300/90">
-            Nome piano annuale
+            Annual plan name
           </label>
           <input
             className="mt-1.5 w-full rounded-xl border border-fuchsia-500/35 bg-black/50 px-3 py-2.5 text-sm text-white outline-none ring-fuchsia-500/20 focus:ring-2"
             value={planName}
             onChange={(e) => setPlanName(e.target.value)}
-            placeholder="Es. Gym 2026 · Forza · Running primavera"
+            placeholder="E.g. Gym 2026 · Strength · Spring running"
           />
           <p className="mt-1.5 font-mono text-[0.68rem] text-slate-500">
-            Tag Calendar: <span className="text-cyan-300/90">{viryaPlanTag(planName)}</span> — usalo per distinguere Gym,
-            Running, ecc. nell’elenco piani sotto.
+            Calendar tag: <span className="text-cyan-300/90">{viryaPlanTag(planName)}</span> — use it to tell Gym,
+            Running, etc. apart in the plan list below.
           </p>
         </div>
         {viryaHeroStats.length ? (

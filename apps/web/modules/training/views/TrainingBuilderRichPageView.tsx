@@ -155,7 +155,7 @@ export default function TrainingBuilderRichPageView() {
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
-      setErr("Seleziona un atleta attivo (coach) o completa il profilo.");
+      setErr("Select an active athlete (coach) or complete the profile.");
       setLoading(false);
       return;
     }
@@ -203,7 +203,7 @@ export default function TrainingBuilderRichPageView() {
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
-          setErr(("error" in json && json.error) || "Lettura calendario non riuscita.");
+          setErr(("error" in json && json.error) || "Failed to read the calendar.");
           return;
         }
         const entry: BuilderWindowCacheEntry = {
@@ -225,7 +225,7 @@ export default function TrainingBuilderRichPageView() {
         builderWindowCacheKey = cacheKey;
       } catch {
         if (!c && !cached) {
-          setErr("Errore di rete.");
+          setErr("Network error.");
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
@@ -489,13 +489,13 @@ export default function TrainingBuilderRichPageView() {
         if (typeof p.lt2HeartRate === "number" && p.lt2HeartRate > 0) {
           const hm = Math.min(220, Math.max(155, Math.round(p.lt2HeartRate / 0.88)));
           setHrMax(hm);
-          hint.push(`FC max ~${hm} bpm`);
+          hint.push(`HR max ~${hm} bpm`);
         } else if (typeof p.lt1HeartRate === "number" && p.lt1HeartRate > 0) {
           const hm = Math.min(220, Math.max(155, Math.round(p.lt1HeartRate / 0.72)));
           setHrMax(hm);
-          hint.push(`FC max ~${hm} bpm`);
+          hint.push(`HR max ~${hm} bpm`);
         }
-        setPhysioHint(hint.length ? `Da fisiologia: ${hint.join(" · ")}` : null);
+        setPhysioHint(hint.length ? `From physiology: ${hint.join(" · ")}` : null);
       } catch {
         if (!c) setPhysioHint(null);
       }
@@ -556,7 +556,7 @@ export default function TrainingBuilderRichPageView() {
         });
         if (catErr || catalogRows.length === 0) {
           setGenBusy(false);
-          setGenErr(catErr ?? "Catalogo EMPATHY non disponibile per materializzare la scheda.");
+          setGenErr(catErr ?? "EMPATHY catalog not available to materialize the plan.");
           setGenResult(null);
           return;
         }
@@ -570,7 +570,7 @@ export default function TrainingBuilderRichPageView() {
         if (built.length === 0) {
           setGenBusy(false);
           setGenErr(
-            "Il motore ha proposto una struttura ma nessun esercizio del catalogo risulta compatibile. Prova altro adattamento o disciplina.",
+            "The engine proposed a structure but no catalog exercise is compatible. Try a different adaptation or discipline.",
           );
           setGenResult(null);
           return;
@@ -637,7 +637,7 @@ export default function TrainingBuilderRichPageView() {
     if (!athleteId || !genResult || !("ok" in genResult) || !genResult.ok) return;
     const day = normalizeCalendarTargetDay(targetDate);
     if (!day) {
-      setSaveErr("Data calendario non valida.");
+      setSaveErr("Invalid calendar date.");
       return;
     }
     setSaveBusy(true);
@@ -663,7 +663,7 @@ export default function TrainingBuilderRichPageView() {
       });
       if (!scheda) {
         setSaveBusy(false);
-        setSaveErr("Scheda vuota: rigenera o applica esercizi dal catalogo.");
+        setSaveErr("Empty plan: regenerate or apply exercises from the catalog.");
         return;
       }
       session = scheda;
@@ -710,7 +710,7 @@ export default function TrainingBuilderRichPageView() {
         await deletePlannedWorkout({ id: replacePlannedIdFromQuery, athleteId });
       } catch (e) {
         setSaveBusy(false);
-        setSaveErr(e instanceof Error ? e.message : "Impossibile sostituire la seduta pianificata.");
+        setSaveErr(e instanceof Error ? e.message : "Unable to replace the planned session.");
         return;
       }
     }
@@ -775,11 +775,11 @@ export default function TrainingBuilderRichPageView() {
     });
     setWahooPushBusy(false);
     if (!r.ok) {
-      setWahooPushErr([r.error, r.phase ? `fase: ${r.phase}` : null].filter(Boolean).join(" · "));
+      setWahooPushErr([r.error, r.phase ? `phase: ${r.phase}` : null].filter(Boolean).join(" · "));
       return;
     }
     setWahooPushOk(
-      r.plan_id != null ? `Piano Wahoo #${r.plan_id} e workout pianificato creati.` : "Piano inviato a Wahoo Cloud.",
+      r.plan_id != null ? `Wahoo plan #${r.plan_id} and planned workout created.` : "Plan sent to Wahoo Cloud.",
     );
   }, [
     athleteId,
@@ -796,7 +796,7 @@ export default function TrainingBuilderRichPageView() {
     if (!athleteId || !manualSession) return;
     const day = normalizeCalendarTargetDay(targetDate);
     if (!day) {
-      setManualSaveErr("Data calendario non valida.");
+      setManualSaveErr("Invalid calendar date.");
       return;
     }
     setManualSaveBusy(true);
@@ -1034,16 +1034,16 @@ export default function TrainingBuilderRichPageView() {
       const p = vm.plan;
       const src =
         vm.planSource === "calendar_training_solver"
-          ? "da calendario"
+          ? "from calendar"
           : vm.planSource === "nutrition_plans"
-            ? "da piano nutrizione"
-            : "nessun allenamento in calendario per questo giorno";
+            ? "from nutrition plan"
+            : "no training in the calendar for this day";
       setNutritionLine(
         `${p.calories} kcal · CHO ${p.carbsG}g · PRO ${p.proteinsG}g · FAT ${p.fatsG}g · H₂O ${p.hydrationMl}ml · ${src}` +
-          (typeof vm.plannedSessionsCount === "number" ? ` · sedute pianific. ${vm.plannedSessionsCount}` : ""),
+          (typeof vm.plannedSessionsCount === "number" ? ` · planned sessions ${vm.plannedSessionsCount}` : ""),
       );
     } catch (e) {
-      setNutritionErr(e instanceof Error ? e.message : "Errore lettura nutrizione");
+      setNutritionErr(e instanceof Error ? e.message : "Error reading nutrition");
       setNutritionLine(null);
     } finally {
       setNutritionBusy(false);
@@ -1059,10 +1059,10 @@ export default function TrainingBuilderRichPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Allenamento"
+      eyebrow="Training"
       eyebrowClassName="text-orange-400"
-      title="Crea la tua seduta"
-      description="Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario in quattro passi."
+      title="Create your session"
+      description="Choose the sport, generate the session, refine it, and save it to the calendar in four steps."
     >
         <div className="scroll-mt-28">
           <TrainingSubnav />
@@ -1154,8 +1154,8 @@ export default function TrainingBuilderRichPageView() {
             3
           </span>
           <p className="text-sm font-bold text-white">
-            Rifinisci{" "}
-            <span className="font-normal text-gray-400">— adatta blocchi, esercizi, durata e nome della seduta nell&apos;editor qui sotto.</span>
+            Refine{" "}
+            <span className="font-normal text-gray-400">— adjust blocks, exercises, duration, and session name in the editor below.</span>
           </p>
         </div>
 
@@ -1208,9 +1208,9 @@ export default function TrainingBuilderRichPageView() {
             4
           </span>
           <p className="text-sm font-bold text-white">
-            Salva{" "}
+            Save{" "}
             <span className="font-normal text-gray-400">
-              — usa «Salva nel calendario» nella seduta generata o nell&apos;editor: la seduta appare in «Prossime pianificate» e nel Calendario.
+              — use «Save to calendar» in the generated session or in the editor: the session appears in «Upcoming planned» and in the Calendar.
             </span>
           </p>
         </div>

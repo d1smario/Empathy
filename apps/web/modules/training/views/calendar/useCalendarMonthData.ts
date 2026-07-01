@@ -411,11 +411,11 @@ export function useCalendarMonthData() {
         }
       } catch (e) {
         if (!isEnrichStale()) {
-          setViryaPlansLoadErr(e instanceof Error ? e.message : "Errore piani VIRYA");
+          setViryaPlansLoadErr(e instanceof Error ? e.message : "Error loading VIRYA plans");
           setViryaReappearWarning(
             e instanceof Error
-              ? `Piano VIRYA eliminato in precedenza ma ancora presente sul server: ${e.message}`
-              : "Piano VIRYA eliminato in precedenza ma ancora presente sul server.",
+              ? `VIRYA plan previously deleted but still present on the server: ${e.message}`
+              : "VIRYA plan previously deleted but still present on the server.",
           );
         }
       } finally {
@@ -439,7 +439,7 @@ export function useCalendarMonthData() {
         setPlanned([]);
         setExecuted([]);
         setPlannedProvenanceSummary(null);
-        setErr("Nessun atleta attivo.");
+        setErr("No active athlete.");
         setLoading(false);
         calendarReadyRef.current = false;
         setCalendarReady(false);
@@ -522,7 +522,7 @@ export function useCalendarMonthData() {
             executedN: 0,
             apiError: ("error" in json && json.error) || res.statusText,
           });
-          setErr(("error" in json && json.error) || "Lettura calendario non riuscita.");
+          setErr(("error" in json && json.error) || "Failed to read calendar.");
           return;
         }
         const core = json as TrainingPlannedWindowOkViewModel;
@@ -531,7 +531,7 @@ export function useCalendarMonthData() {
         const stillPresent = p.filter((row) => removed.has(row.id));
         if (stillPresent.length > 0) {
           setViryaReappearWarning(
-            `Il server ha ancora ${stillPresent.length} seduta/e appena eliminate (id duplicato o refresh in ritardo). Usa «Tutto il piano VIRYA» se è un piano annuale, oppure attendi e riprova.`,
+            `The server still has ${stillPresent.length} just-deleted session(s) (duplicate id or delayed refresh). Use "Entire VIRYA plan" if it is an annual plan, or wait and retry.`,
           );
         } else {
           setViryaReappearWarning(null);
@@ -566,7 +566,7 @@ export function useCalendarMonthData() {
         if (isStale()) return;
         /** Refresh in background fallito su cache hit: preserva i chip già mostrati. */
         if (gridCacheHit) return;
-        setErr("Errore di rete.");
+        setErr("Network error.");
         setPlanned([]);
         setExecuted([]);
         setPlannedProvenanceSummary(null);
@@ -622,7 +622,7 @@ export function useCalendarMonthData() {
       if (!athleteId || !targetDate || !sourceDate || workoutId.trim() === "") return;
       if (targetDate === sourceDate) return;
       if (plannedMoveInFlightRef.current > 0) {
-        setErr("Attendi il termine dello spostamento precedente, poi riprova.");
+        setErr("Wait for the previous move to finish, then retry.");
         return;
       }
 
@@ -646,13 +646,13 @@ export function useCalendarMonthData() {
           athleteId,
           patch: { date: targetDate },
         });
-        setSuccess(`Seduta spostata al ${targetDate}.`);
+        setSuccess(`Session moved to ${targetDate}.`);
         invalidatePlannedWindowCacheForAthlete(athleteId);
         await loadMonth({ anchorDay: targetDate });
         setSelectedDayRefreshTick((t) => t + 1);
       } catch (e) {
         setPlanned(previous);
-        setErr(e instanceof Error ? e.message : "Spostamento seduta non riuscito");
+        setErr(e instanceof Error ? e.message : "Failed to move session");
         invalidatePlannedWindowCacheForAthlete(athleteId);
         await loadMonth({ anchorDay: sourceDate });
         setSelectedDayRefreshTick((t) => t + 1);
@@ -750,7 +750,7 @@ export function useCalendarMonthData() {
     return parsePro2BuilderSessionFromNotes(first.notes ?? null);
   }, [dayPlanned]);
 
-  const monthLabel = monthCursor.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+  const monthLabel = monthCursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   async function handleFileImportSubmit(e: FormEvent) {
     e.preventDefault();
@@ -771,18 +771,18 @@ export function useCalendarMonthData() {
           date: normalizeDateKey(fileImportForm.date) || selectedDate,
         });
         if (json.structured) {
-          const sf = typeof json.structuredFormat === "string" ? json.structuredFormat : "strutturato";
+          const sf = typeof json.structuredFormat === "string" ? json.structuredFormat : "structured";
           const sc = json.structuredCompanion as
             | { status: string; message?: string; mode?: string; reason?: string }
             | undefined;
           let companionHint = "";
           if (sc?.status === "ok") {
             companionHint =
-              " È stata creata anche una traccia EXEC companion (durata/TSS coerenti con la seduta) per l’Analyzer.";
+              " A companion EXEC trace was also created (duration/TSS consistent with the session) for the Analyzer.";
           } else if (sc?.status === "error" && typeof sc.message === "string" && sc.message.trim()) {
-            companionHint = ` Nota traccia companion: ${sc.message.trim()}`;
+            companionHint = ` Companion trace note: ${sc.message.trim()}`;
           } else if (sc?.status === "skipped" && typeof sc.reason === "string" && sc.reason.trim()) {
-            companionHint = ` Traccia companion non creata: ${sc.reason.trim()}`;
+            companionHint = ` Companion trace not created: ${sc.reason.trim()}`;
           }
           const nRows =
             Array.isArray(json.intervalLadder) && json.intervalLadder.length > 0
@@ -790,15 +790,15 @@ export function useCalendarMonthData() {
               : null;
           const ladderHint =
             nRows != null
-              ? ` Scala intervalli: ${nRows} righe (durata + watt per blocco).`
+              ? ` Interval ladder: ${nRows} rows (duration + watts per block).`
               : "";
           setSuccess(
-            `Seduta pianificata importata (${sf}) con grafico a blocchi come nel Builder; apri la seduta su quel giorno per rivederla.${ladderHint}${companionHint}`,
+            `Planned session imported (${sf}) with block chart as in the Builder; open the session on that day to review it.${ladderHint}${companionHint}`,
           );
         } else {
           const n = typeof json.importedCount === "number" ? json.importedCount : 0;
           setSuccess(
-            `Programmazione importata: ${n} sedute. Compaiono come chip PLAN (tipo, durata, TSS). Per curve ZWO/ERG/MRC o FIT workout usa un file dedicato: viene creata una seduta con struttura Builder.`,
+            `Program imported: ${n} sessions. They appear as PLAN chips (type, duration, TSS). For ZWO/ERG/MRC curves or FIT workouts use a dedicated file: a session with Builder structure is created.`,
           );
         }
         const fd = json.firstDate;
@@ -825,13 +825,13 @@ export function useCalendarMonthData() {
           importIntent,
         });
         if (json.structured) {
-          const sf = typeof json.structuredFormat === "string" ? json.structuredFormat.toUpperCase() : "STRUTTURATO";
+          const sf = typeof json.structuredFormat === "string" ? json.structuredFormat.toUpperCase() : "STRUCTURED";
           const fallbackNote =
             json.routeReason === "auto_fallback_empty_executed_fit_workout"
-              ? " Rilevato programma FIT (non attività): salvato come PLAN con blocchi Builder."
+              ? " FIT program detected (not an activity): saved as PLAN with Builder blocks."
               : "";
           setSuccess(
-            `Seduta in calendario (PLAN · ${sf}) per atleta attivo · giorno ${effectiveDate}.${fallbackNote} Apri il giorno per grafico a blocchi e export ZWO/FIT.`,
+            `Session in calendar (PLAN · ${sf}) for active athlete · day ${effectiveDate}.${fallbackNote} Open the day for the block chart and ZWO/FIT export.`,
           );
           const fd = json.firstDate;
           if (fd && /^\d{4}-\d{2}-\d{2}$/.test(fd)) {
@@ -847,7 +847,7 @@ export function useCalendarMonthData() {
             json.parsed && typeof json.parsed.format === "string"
               ? String(json.parsed.format).toUpperCase()
               : "FILE";
-          setSuccess(`Workout eseguito (EXEC · ${fmt}) · giorno ${effectiveDate}.`);
+          setSuccess(`Executed workout (EXEC · ${fmt}) · day ${effectiveDate}.`);
           const imp = json.imported as { date?: string } | null | undefined;
           const impDate =
             (imp && typeof imp.date === "string" ? imp.date : null) ??
@@ -874,7 +874,7 @@ export function useCalendarMonthData() {
        *  e' uguale a anchorKey: senza tick l'useEffect non parte. */
       setSelectedDayRefreshTick((t) => t + 1);
     } catch (x) {
-      const msg = x instanceof Error ? x.message : "Errore in fase di import.";
+      const msg = x instanceof Error ? x.message : "Error during import.";
       if (
         fileImportForm.mode === "planned" &&
         fileImportForm.fallbackExecutedOnPlannedError &&
@@ -892,7 +892,7 @@ export function useCalendarMonthData() {
           });
           setErr(null);
           setSuccess(
-            `Import programmato non riuscito (${msg}). Stesso file salvato come workout eseguito nel giorno scelto: apri la sezione Analyzer sotto per le serie (come da import eseguito).`,
+            `Planned import failed (${msg}). Same file saved as executed workout on the chosen day: open the Analyzer section below for the series (as with executed import).`,
           );
           const key = effectiveExecutedDate.slice(0, 10);
           if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
@@ -905,7 +905,7 @@ export function useCalendarMonthData() {
           setFileImportForm((f) => ({ ...f, file: null }));
         } catch (fb) {
           setErr(
-            `${msg} — fallback Analyzer (import eseguito): ${fb instanceof Error ? fb.message : "non riuscito"}.`,
+            `${msg} — Analyzer fallback (executed import): ${fb instanceof Error ? fb.message : "failed"}.`,
           );
         }
       } else {
@@ -958,10 +958,10 @@ export function useCalendarMonthData() {
       }
       setPlanned((prev) => prev.filter((x) => normalizeDateKey(x.date) !== selectedDate));
       setDayDeleteAllConfirm(false);
-      setSuccess(`Rimosse ${r.deletedOnDateCount} sedute pianificate del ${selectedDate}.`);
+      setSuccess(`Removed ${r.deletedOnDateCount} planned sessions on ${selectedDate}.`);
       await loadMonth();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Eliminazione giorno non riuscita");
+      setErr(e instanceof Error ? e.message : "Failed to delete day");
     } finally {
       setDayDeleteAllBusy(false);
     }

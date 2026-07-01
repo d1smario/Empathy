@@ -30,17 +30,17 @@ export function ViryaOperationalModulationCard({
   return (
     <Pro2SectionCard
       accent="emerald"
-      title="Modulazione operativa"
-      subtitle="Carico scalato, recovery, segnali bio e piano vs reale"
+      title="Operational modulation"
+      subtitle="Scaled load, recovery, bio signals and plan vs actual"
       icon={LineChart}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Carico</div>
+          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Load</div>
           <div className="mt-1 text-lg font-semibold text-white">{operationalContext.loadScalePct}%</div>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Modalità</div>
+          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Mode</div>
           <div className="mt-1 text-sm text-slate-200">{operationalContext.headline}</div>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
@@ -59,16 +59,16 @@ export function ViryaOperationalModulationCard({
         </div>
         {bioenergeticModulation ? (
           <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2 lg:col-span-1">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetica</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetics</div>
             <div className="mt-1 text-sm text-slate-200">
-              {bioenergeticModulation.mitochondrialReadinessScore}/100 · copertura{" "}
+              {bioenergeticModulation.mitochondrialReadinessScore}/100 · coverage{" "}
               {bioenergeticModulation.signalCoveragePct}% · ±{bioenergeticModulation.inputUncertaintyPct}%
             </div>
           </div>
         ) : null}
         {adaptationLoop ? (
           <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Piano / reale</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Plan / actual</div>
             <div className="mt-1 text-sm text-slate-200">
               {adaptationLoop.executionCompliancePct.toFixed(0)}% compliance · Δ
               {adaptationLoop.executionDeltaTss > 0 ? "+" : ""}

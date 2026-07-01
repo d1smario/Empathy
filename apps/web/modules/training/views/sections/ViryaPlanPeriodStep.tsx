@@ -34,14 +34,14 @@ export function ViryaPlanPeriodStep({
   return (
     <Pro2SectionCard
       accent="amber"
-      title="3 · Periodo del piano"
-      subtitle="Intervallo stagionale; al passo successivo obiettivo cardine, eventi e macro-fasi"
+      title="3 · Plan period"
+      subtitle="Seasonal interval; in the next step key goal, events and macro-phases"
       icon={CalendarRange}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-            Data inizio
+            Start date
           </span>
           <input
             type="date"
@@ -52,7 +52,7 @@ export function ViryaPlanPeriodStep({
         </label>
         <label className="block">
           <span className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-            Data fine
+            End date
           </span>
           <input
             type="date"
@@ -63,12 +63,12 @@ export function ViryaPlanPeriodStep({
         </label>
       </div>
       <div className="mt-4 flex flex-col gap-2">
-        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Preset durata</span>
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Duration preset</span>
         <div className="flex flex-wrap gap-2">
           {[
-            { w: 12, label: "12 settimane" },
-            { w: 24, label: "24 settimane" },
-            { w: 52, label: "52 settimane (annuale)" },
+            { w: 12, label: "12 weeks" },
+            { w: 24, label: "24 weeks" },
+            { w: 52, label: "52 weeks (annual)" },
           ].map((p) => (
             <button
               key={p.w}
@@ -92,14 +92,14 @@ export function ViryaPlanPeriodStep({
           className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-500/20"
           onClick={applyPlanPeriod}
         >
-          Applica periodo alle fasi
+          Apply period to phases
         </button>
         <span className="text-xs text-slate-500">
-          Durata attiva:{" "}
+          Active duration:{" "}
           <span className="font-mono font-semibold text-amber-100">
-            {planWindowWeekCount > 0 ? `${planWindowWeekCount} sett.` : "—"}
+            {planWindowWeekCount > 0 ? `${planWindowWeekCount} wk` : "—"}
           </span>
-          . Preset, date o «Continua» riallineano subito fasi e griglia settimanale (base · costruzione · rifinitura · forma).
+          . Presets, dates or «Continue» instantly realign phases and the weekly grid (base · build · taper · peak).
         </span>
       </div>
       <div className="mt-5 flex flex-wrap justify-between gap-2">
@@ -108,7 +108,7 @@ export function ViryaPlanPeriodStep({
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
           onClick={() => setViryaStep(2)}
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden /> Indietro
+          <ChevronLeft className="h-4 w-4" aria-hidden /> Back
         </button>
         <button
           type="button"
@@ -117,7 +117,7 @@ export function ViryaPlanPeriodStep({
             if (applyPlanPeriod()) setViryaStep(4);
           }}
         >
-          Obiettivo, eventi e fasi <ChevronRight className="h-4 w-4" aria-hidden />
+          Goal, events and phases <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
     </Pro2SectionCard>

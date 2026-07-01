@@ -23,7 +23,7 @@ export async function verifyPlannedWorkoutReadable(input: {
   const day = input.date.trim().slice(0, 10);
   const id = input.plannedWorkoutId?.trim();
   if (!id || id === "ok") {
-    return { ok: false, error: "Salvataggio completato ma senza id riga: impossibile allineare il calendario." };
+    return { ok: false, error: "Save completed but without a row id: unable to align the calendar." };
   }
   const headers = await buildSupabaseAuthHeaders();
   const q = new URLSearchParams({
@@ -43,13 +43,13 @@ export async function verifyPlannedWorkoutReadable(input: {
   });
   const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; planned?: Array<{ id?: string }> };
   if (!res.ok || json.ok !== true) {
-    return { ok: false, error: json.error ?? "Lettura calendario non riuscita dopo il salvataggio." };
+    return { ok: false, error: json.error ?? "Calendar read failed after saving." };
   }
   const planned = Array.isArray(json.planned) ? json.planned : [];
   if (!planned.some((row) => row.id === id)) {
     return {
       ok: false,
-      error: `Riga creata (id ${id.slice(0, 8)}…) ma non leggibile dal calendario per il ${day}. Verifica l’atleta attivo e riprova.`,
+      error: `Row created (id ${id.slice(0, 8)}…) but not readable from the calendar for ${day}. Check the active athlete and try again.`,
     };
   }
   return { ok: true };
@@ -128,7 +128,7 @@ export async function patchPlannedWorkout(input: {
   });
   const json = (await res.json().catch(() => ({}))) as { error?: string };
   if (!res.ok) {
-    throw new Error(json.error ?? "Aggiornamento seduta pianificata non riuscito");
+    throw new Error(json.error ?? "Planned session update failed");
   }
 }
 
@@ -139,7 +139,7 @@ export async function deletePlannedWorkoutsOnDate(input: {
   const athleteId = input.athleteId.trim();
   const date = input.date.trim().slice(0, 10);
   if (!athleteId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new Error("athleteId e data (YYYY-MM-DD) richiesti per eliminare il giorno.");
+    throw new Error("athleteId and date (YYYY-MM-DD) required to delete the day.");
   }
   const headers = await buildSupabaseAuthHeaders({ "Content-Type": "application/json" });
   const res = await fetch("/api/training/planned", {
@@ -157,7 +157,7 @@ export async function deletePlannedWorkoutsOnDate(input: {
   };
   if (!res.ok) {
     const extra = [json.errorCode, json.deleteHints ? JSON.stringify(json.deleteHints) : ""].filter(Boolean).join(" · ");
-    throw new Error([json.error ?? "Eliminazione giorno non riuscita", extra].filter(Boolean).join(" — "));
+    throw new Error([json.error ?? "Day deletion failed", extra].filter(Boolean).join(" — "));
   }
   return { deletedOnDateCount: json.deletedOnDateCount ?? 0 };
 }
@@ -176,7 +176,7 @@ export async function deletePlannedWorkout(input: {
 }> {
   const hint = input.athleteId.trim();
   if (!hint) {
-    throw new Error("athleteId mancante: impossibile allineare DELETE a planned-window.");
+    throw new Error("athleteId missing: unable to align DELETE with planned-window.");
   }
   const headers = await buildSupabaseAuthHeaders({ "Content-Type": "application/json" });
   const res = await fetch("/api/training/planned", {
@@ -206,7 +206,7 @@ export async function deletePlannedWorkout(input: {
         ? JSON.stringify(json.deleteHints)
         : "";
     const extra = [json.errorCode, probe, hints].filter(Boolean).join(" · ");
-    throw new Error([json.error ?? "Eliminazione seduta pianificata non riuscita", extra].filter(Boolean).join(" — "));
+    throw new Error([json.error ?? "Planned session deletion failed", extra].filter(Boolean).join(" — "));
   }
   const payload = json as {
     purgedViryaDayDuplicates?: number;
@@ -238,7 +238,7 @@ export async function fetchViryaCalendarPlans(athleteId: string): Promise<ViryaC
     cache: "no-store",
   });
   const json = (await res.json().catch(() => ({}))) as { plans?: ViryaCalendarPlanSummary[]; error?: string };
-  if (!res.ok) throw new Error(json.error ?? "Caricamento piani VIRYA non riuscito");
+  if (!res.ok) throw new Error(json.error ?? "Loading VIRYA plans failed");
   return json.plans ?? [];
 }
 
@@ -252,7 +252,7 @@ export async function deleteViryaCalendarPlan(input: { athleteId: string; tag: s
     cache: "no-store",
   });
   const json = (await res.json().catch(() => ({}))) as { deletedCount?: number; error?: string };
-  if (!res.ok) throw new Error(json.error ?? "Eliminazione piano VIRYA non riuscita");
+  if (!res.ok) throw new Error(json.error ?? "VIRYA plan deletion failed");
   return json.deletedCount ?? 0;
 }
 

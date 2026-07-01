@@ -34,17 +34,17 @@ export function ViryaSaveToCalendarCard({
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="Salva sul Calendar"
-      subtitle="Salva in blocco le sedute del piano sul Calendar"
+      title="Save to Calendar"
+      subtitle="Bulk-save the plan's sessions to the Calendar"
       icon={CalendarRange}
     >
       <p className="mb-3 text-sm text-slate-300">
-        Piano <strong className="text-white">«{planName.trim() || "Senza nome"}»</strong> · tag{" "}
+        Plan <strong className="text-white">«{planName.trim() || "Untitled"}»</strong> · tag{" "}
         <code className="rounded bg-black/40 px-1 text-cyan-200">{viryaPlanTag(planName)}</code>.{" "}
         <strong className="text-amber-200">
-          Configurare mag–giu in VIRYA non scrive sul Calendar: serve questo pulsante.
+          Configuring May–Jun in VIRYA does not write to the Calendar: this button is required.
         </strong>{" "}
-        Dopo il successo, apri Calendar sulle date indicate (es. maggio–giugno).
+        After success, open Calendar on the indicated dates (e.g. May–June).
       </p>
       <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-slate-200">
         <input
@@ -54,8 +54,8 @@ export function ViryaSaveToCalendarCard({
           onChange={(e) => setReplacePrevious(e.target.checked)}
         />
         <span>
-          Sostituisci sessioni VIRYA già salvate nello stesso intervallo di date del piano (marker{" "}
-          <code className="rounded bg-black/40 px-1">[VIRYA:…]</code> nelle note)
+          Replace VIRYA sessions already saved in the same date range as the plan (marker{" "}
+          <code className="rounded bg-black/40 px-1">[VIRYA:…]</code> in the notes)
         </span>
       </label>
       <div className="flex flex-wrap items-center gap-3">
@@ -66,19 +66,19 @@ export function ViryaSaveToCalendarCard({
           disabled={saving || !selectedAthleteId || phases.length === 0}
           title={
             !selectedAthleteId
-              ? "Seleziona / carica contesto atleta"
+              ? "Select / load athlete context"
               : phases.length === 0
-                ? "Aggiungi fasi (passo 4) prima di generare"
+                ? "Add phases (step 4) before generating"
                 : undefined
           }
         >
-          {saving ? "Generazione in corso…" : "Genera piano annuale su Calendar"}
+          {saving ? "Generating…" : "Generate annual plan on Calendar"}
         </button>
         <Link
           href="/training/calendar"
           className="text-sm font-semibold text-cyan-300 underline decoration-cyan-500/40 hover:text-cyan-200"
         >
-          Apri Calendar →
+          Open Calendar →
         </Link>
       </div>
     </Pro2SectionCard>

@@ -21,20 +21,20 @@ export function ViryaSeasonObjectiveStep({
   return (
     <Pro2SectionCard
       accent="rose"
-      title="4 · Obiettivo cardine"
-      subtitle="La ragione della stagione — guida hint, copy piano e note in calendario"
+      title="4 · Key objective"
+      subtitle="The reason for the season — drives hints, plan copy and calendar notes"
       icon={Target}
     >
       <label className="block">
         <span className="mb-2 block text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
-          Obiettivo cardine
+          Key objective
         </span>
         <textarea
           className="min-h-[100px] w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
           rows={4}
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
-          placeholder="Es. doppio picco su gare X/Y, soglia e VO2, gestione lattato in chiave 40k…"
+          placeholder="E.g. double peak on races X/Y, threshold and VO2, lactate management for 40k…"
         />
       </label>
     </Pro2SectionCard>

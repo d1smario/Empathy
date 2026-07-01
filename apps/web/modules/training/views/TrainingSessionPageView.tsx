@@ -76,7 +76,7 @@ export default function TrainingSessionPageView() {
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
-      setErr("Nessun atleta attivo.");
+      setErr("No active athlete.");
       return;
     }
 
@@ -108,7 +108,7 @@ export default function TrainingSessionPageView() {
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | WindowErr;
         if (cancelled) return;
         if (!res.ok || !json.ok) {
-          const errMsg = ("error" in json && json.error) || "Lettura non riuscita.";
+          const errMsg = ("error" in json && json.error) || "Read failed.";
           setPlanned([]);
           setExecuted([]);
           setReadSpineCoverage(null);
@@ -146,7 +146,7 @@ export default function TrainingSessionPageView() {
         };
       } catch {
         if (!cancelled && !cached) {
-          setErr("Errore di rete.");
+          setErr("Network error.");
           setPlanned([]);
           setExecuted([]);
           setReadSpineCoverage(null);
@@ -166,7 +166,7 @@ export default function TrainingSessionPageView() {
   const titleDate = useMemo(() => {
     if (!dateValid) return "—";
     try {
-      return new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
+      return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -179,16 +179,16 @@ export default function TrainingSessionPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Giornata"
+      eyebrow="Training · Day"
       eyebrowClassName="text-orange-400"
-      title={dateValid ? titleDate : "Data non valida"}
+      title={dateValid ? titleDate : "Invalid date"}
       description={
         dateValid ? (
           <span>
-            Giornata <code className="text-orange-200/80">{date}</code> — stessi dati del calendario.
+            Day <code className="text-orange-200/80">{date}</code> — same data as the calendar.
           </span>
         ) : (
-          "Indirizzo non valido: la data deve avere il formato YYYY-MM-DD (es. 2025-04-02)."
+          "Invalid address: the date must be in YYYY-MM-DD format (e.g. 2025-04-02)."
         )
       }
     >
@@ -205,7 +205,7 @@ export default function TrainingSessionPageView() {
       {dateValid && readSpineCoverage && athleteId ? (
         <TrainingPlannedWindowContextStrip
           className="mb-4"
-          label="Giornata"
+          label="Day"
           readSpineCoverage={readSpineCoverage}
           twinContextStrip={twinContextStrip}
           athleteId={athleteId}
@@ -214,9 +214,9 @@ export default function TrainingSessionPageView() {
       ) : null}
 
       {!dateValid ? (
-        <Pro2SectionCard accent="slate" title="Data non valida" subtitle="Formato data" icon={CalendarDays}>
+        <Pro2SectionCard accent="slate" title="Invalid date" subtitle="Date format" icon={CalendarDays}>
           <p className="text-sm text-gray-400">
-            La data nell&apos;URL deve essere <strong className="text-gray-200">YYYY-MM-DD</strong>.
+            The date in the URL must be <strong className="text-gray-200">YYYY-MM-DD</strong>.
           </p>
         </Pro2SectionCard>
       ) : null}
@@ -225,8 +225,8 @@ export default function TrainingSessionPageView() {
         <>
           <Pro2SectionCard
             accent="cyan"
-            title="Pianificato"
-            subtitle={ctxLoading || loading ? "Caricamento…" : err ? undefined : `${planned.length} in questa giornata`}
+            title="Planned"
+            subtitle={ctxLoading || loading ? "Loading…" : err ? undefined : `${planned.length} on this day`}
             icon={CalendarDays}
           >
             {err ? (
@@ -235,7 +235,7 @@ export default function TrainingSessionPageView() {
               </p>
             ) : null}
             {!ctxLoading && !loading && !err && planned.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessun workout pianificato per questa data.</p>
+              <p className="text-sm text-gray-500">No workout planned for this date.</p>
             ) : null}
             {!ctxLoading && !loading && !err && planned.length > 0 ? (
               <ul className="space-y-4">
@@ -250,12 +250,12 @@ export default function TrainingSessionPageView() {
 
           <Pro2SectionCard
             accent="emerald"
-            title="Eseguito"
-            subtitle={!loading && !err ? `${executed.length} registrazioni` : undefined}
+            title="Executed"
+            subtitle={!loading && !err ? `${executed.length} recordings` : undefined}
             icon={ClipboardList}
           >
             {!ctxLoading && !loading && !err && executed.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessuna esecuzione in questa giornata.</p>
+              <p className="text-sm text-gray-500">No execution on this day.</p>
             ) : null}
             {!ctxLoading && !loading && !err && executed.length > 0 ? (
               <ul className="space-y-2">
@@ -273,13 +273,13 @@ export default function TrainingSessionPageView() {
 
           <Pro2SectionCard
             accent="violet"
-            title="Twin e recovery"
-            subtitle="Stessi dati usati da Builder e Nutrizione"
+            title="Twin and recovery"
+            subtitle="Same data used by Builder and Nutrition"
             icon={Heart}
           >
             <p className="text-sm text-gray-400">
-              Readiness, carico interno e recupero vivono nel <strong className="text-gray-200">digital twin</strong> dell&apos;atleta.
-              Apri Profile per lo snapshot; Physiology per il dettaglio dei segnali.
+              Readiness, internal load and recovery live in the athlete&apos;s <strong className="text-gray-200">digital twin</strong>.
+              Open Profile for the snapshot; Physiology for the signal detail.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pro2Link
@@ -299,10 +299,10 @@ export default function TrainingSessionPageView() {
             </div>
           </Pro2SectionCard>
 
-          <Pro2SectionCard accent="amber" title="Prossimi passi" subtitle="In arrivo" icon={Wrench}>
+          <Pro2SectionCard accent="amber" title="Next steps" subtitle="Coming soon" icon={Wrench}>
             <p className="text-sm text-gray-400">
-              Registrazione <strong className="text-gray-200">completa sessione</strong>, modifica carico coach e note builder strutturate
-              arriveranno nelle prossime versioni.
+              <strong className="text-gray-200">Complete session</strong> recording, coach load editing and structured builder notes
+              will arrive in upcoming releases.
             </p>
           </Pro2SectionCard>
         </>

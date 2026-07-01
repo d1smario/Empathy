@@ -32,7 +32,7 @@ export function BuilderUpcomingPlannedSection({
 }: BuilderUpcomingPlannedSectionProps) {
   return (
         <section
-          aria-label="Prossime sessioni pianificate"
+          aria-label="Upcoming planned sessions"
           className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
         >
           <div className="mb-4 flex flex-wrap items-start gap-3">
@@ -40,8 +40,8 @@ export function BuilderUpcomingPlannedSection({
               <CalendarDays className="h-5 w-5" strokeWidth={2.35} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-white">Prossime pianificate</h2>
-              <p className="mt-1 text-sm text-gray-400">Ordinate per data, dalla finestra API.</p>
+              <h2 className="text-lg font-bold text-white">Upcoming planned</h2>
+              <p className="mt-1 text-sm text-gray-400">Sorted by date, from the API window.</p>
             </div>
           </div>
           {ctxLoading || loading ? (
@@ -55,9 +55,9 @@ export function BuilderUpcomingPlannedSection({
           {showData && upcoming.length === 0 ? (
             <div className="mt-4 flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-10 text-center">
               <CalendarOff className="h-8 w-8 text-orange-400" aria-hidden />
-              <p className="mt-5 text-base font-semibold text-white">Nessuna sessione futura nella finestra</p>
+              <p className="mt-5 text-base font-semibold text-white">No future sessions in the window</p>
               <p className="mt-2 max-w-sm text-sm text-gray-500">
-                Pianifica dal builder sopra o attendi il refresh del calendario: qui vedrai le prossime sedute come card colorate.
+                Plan from the builder above or wait for the calendar refresh: here you&apos;ll see upcoming sessions as colored cards.
               </p>
             </div>
           ) : null}
@@ -83,7 +83,7 @@ export function BuilderUpcomingPlannedSection({
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-orange-400/40 bg-orange-500/25 text-orange-200 shadow-[0_0_10px_rgba(251,146,60,0.25)]">
                   <Activity className="h-4 w-4" strokeWidth={2.35} aria-hidden />
                 </span>
-                Ultime eseguite (max 5)
+                Last executed (max 5)
               </h3>
               <ul className="mt-3 flex flex-col gap-2">
                 {[...executed]

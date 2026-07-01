@@ -80,12 +80,12 @@ function rangeEndingOnAnchor(anchorYmd: string, daysInclusive: number): { from: 
 }
 
 const WINDOW_PRESETS: Array<{ id: number; label: string }> = [
-  { id: 1, label: "1g" },
-  { id: 7, label: "7g" },
-  { id: 28, label: "28g" },
-  { id: 90, label: "90g" },
-  { id: 120, label: "120g" },
-  { id: 365, label: "365g" },
+  { id: 1, label: "1d" },
+  { id: 7, label: "7d" },
+  { id: 28, label: "28d" },
+  { id: 90, label: "90d" },
+  { id: 120, label: "120d" },
+  { id: 365, label: "365d" },
 ];
 
 function polyline(values: number[], width: number, height: number) {
@@ -373,12 +373,12 @@ export default function TrainingAnalyticsPageView() {
 
   const adaptationStatus =
     divergenceScore > 45
-      ? "Divergenza alta: il carico reale è lontano dal pianificato"
+      ? "High divergence: actual load is far from planned"
       : coupling7 > 1.15
-        ? "Attenzione: carico interno alto rispetto all'esterno"
+        ? "Warning: internal load high relative to external"
         : coupling7 < 0.85
-          ? "Coupling basso: verifica sottocarico o contesto"
-          : "Coupling equilibrato";
+          ? "Low coupling: check for underload or context"
+          : "Balanced coupling";
   const adaptabilityScore = Math.max(0, Math.min(100, Math.round(100 - divergenceScore * 1.7)));
   const operationalSuggestedLoad7d = useMemo(() => {
     if (!operationalContext) return null;
@@ -477,10 +477,10 @@ export default function TrainingAnalyticsPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Allenamento"
+      eyebrow="Training"
       eyebrowClassName="text-orange-400"
-      title="Analisi del carico"
-      description="Quanto ti stai allenando davvero: carico pianificato ed eseguito, tendenze e analisi del giorno."
+      title="Load analysis"
+      description="How much you're really training: planned and executed load, trends, and day analysis."
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />
@@ -489,14 +489,14 @@ export default function TrainingAnalyticsPageView() {
       {athleteId ? (
         <section
           className="mb-6 rounded-2xl border border-orange-500/25 bg-black/35 p-4"
-          aria-label="Finestra temporale analisi"
+          aria-label="Analysis time window"
         >
           <p className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-            Periodo analisi
+            Analysis period
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
-              <span className="font-semibold text-gray-300">Data fine finestra (giorno incluso)</span>
+              <span className="font-semibold text-gray-300">Window end date (day included)</span>
               <input
                 type="date"
                 value={anchorDate}
@@ -509,7 +509,7 @@ export default function TrainingAnalyticsPageView() {
               />
             </label>
             <div className="flex flex-1 flex-col gap-1">
-              <span className="text-xs font-semibold text-gray-300">Ampiezza</span>
+              <span className="text-xs font-semibold text-gray-300">Range</span>
               <div className="flex flex-wrap gap-2">
                 {WINDOW_PRESETS.map((p) => (
                   <button
@@ -529,11 +529,11 @@ export default function TrainingAnalyticsPageView() {
             </div>
           </div>
           <p className="mt-3 font-mono text-[0.7rem] text-gray-500">
-            Periodo: <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
-            {windowDays === 1 ? " · un solo giorno (dettaglio giornaliero)" : null}
+            Period: <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
+            {windowDays === 1 ? " · single day (daily detail)" : null}
           </p>
           <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
-            <span className="font-semibold text-gray-300">Giorno analisi dettagliata</span>
+            <span className="font-semibold text-gray-300">Detailed analysis day</span>
             <input
               type="date"
               value={focusDay}
@@ -570,10 +570,10 @@ export default function TrainingAnalyticsPageView() {
       {showTech && readSpineCoverage && athleteId && !error ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-gray-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
-            Spina lettura (athlete-memory) · {readSpineCoverage.spineScore}%
+            Read spine (athlete-memory) · {readSpineCoverage.spineScore}%
           </summary>
           <p className="mt-2 text-xs text-gray-500">
-            Stesso riepilogo della dashboard hub: copertura aggregata su profilo, fisiologia, twin, nutrizione, health,
+            Same summary as the hub dashboard: aggregate coverage across profile, physiology, twin, nutrition, health,
             ingest, evidence.
           </p>
         </details>
@@ -588,38 +588,38 @@ export default function TrainingAnalyticsPageView() {
       {!athleteId && !athleteLoading ? (
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
           {role === "coach"
-            ? "Imposta atleta attivo dal contesto profilo/coach per analizzare il carico."
-            : "Profilo atleta non disponibile."}
+            ? "Set the active athlete from the profile/coach context to analyze load."
+            : "Athlete profile not available."}
         </div>
       ) : loading ? (
-        <p className="text-sm text-gray-500">Caricamento…</p>
+        <p className="text-sm text-gray-500">Loading…</p>
       ) : !series.length && !plannedRows.length ? (
         <p className="text-sm text-gray-500">
-          Nessun dato planned/executed nel periodo {bounds.from} → {bounds.to}. Prova un intervallo più ampio o un altro giorno di finestra.
+          No planned/executed data in the period {bounds.from} → {bounds.to}. Try a wider range or a different window day.
         </p>
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7g</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7d</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{refKpis7d.tss.toFixed(0)}</div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · 7g</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · 7d</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {refKpis7d.kcal.toFixed(0)}
                 <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Watt medi</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg watts</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {refKpis7d.wattAvg != null ? refKpis7d.wattAvg.toFixed(0) : "—"}
                 {refKpis7d.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tempo tot · 7g</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Total time · 7d</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {formatDurationTotal(refKpis7d.totalMinutes)}
               </div>
@@ -627,7 +627,7 @@ export default function TrainingAnalyticsPageView() {
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="mb-3 text-sm font-bold text-white">Progressione settimanale · carico esterno (6×7g)</h2>
+            <h2 className="mb-3 text-sm font-bold text-white">Weekly progression · external load (6×7d)</h2>
             <svg viewBox="0 0 400 120" width="100%" height="120" className="max-h-[28vh]">
               <defs>
                 <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
@@ -643,7 +643,7 @@ export default function TrainingAnalyticsPageView() {
                   <g key={i}>
                     <rect x={x} y={100 - barH} width={40} height={barH} rx={4} fill="url(#wkGrad)" opacity={0.92} />
                     <text x={x + 20} y={112} textAnchor="middle" fill={CHART_AXIS.tick} fontSize={9}>
-                      S{i + 1}
+                      W{i + 1}
                     </text>
                     <text x={x + 20} y={Math.max(12, 94 - barH)} textAnchor="middle" fill="#e5e7eb" fontSize={9}>
                       {Math.round(v)}
@@ -656,15 +656,15 @@ export default function TrainingAnalyticsPageView() {
 
           <section className="mb-8 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 to-black/40 p-4 shadow-inner shadow-orange-950/20">
             <h2 className="mb-1 text-base font-bold text-white">
-              Analisi giorno ·{" "}
-              {new Date(`${focusDay}T12:00:00`).toLocaleDateString("it-IT", {
+              Day analysis ·{" "}
+              {new Date(`${focusDay}T12:00:00`).toLocaleDateString("en-US", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
               })}
             </h2>
             <p className="mb-4 text-xs text-gray-400">
-              GPS, telemetria, min/max, profili esagonali potenza · FC · VAM (5s–60′). Stesso pannello del Calendario.
+              GPS, telemetry, min/max, hexagonal power profiles · HR · VAM (5s–60′). Same panel as the Calendar.
             </p>
             {realityDiagBanner ? (
               <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
@@ -672,7 +672,7 @@ export default function TrainingAnalyticsPageView() {
               </p>
             ) : null}
             {focusDayExecuted.length === 0 && focusDayPlanned.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessuna seduta in questo giorno nel range caricato.</p>
+              <p className="text-sm text-gray-500">No session on this day in the loaded range.</p>
             ) : (
               <div className="space-y-8">
                 {focusDayExecuted.length > 0 ? (
@@ -694,16 +694,16 @@ export default function TrainingAnalyticsPageView() {
           </section>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {kpiCard("Carico esterno 7g", external7.toFixed(0))}
-            {kpiCard("Carico interno 7g", internal7.toFixed(0))}
-            {kpiCard("Pianificato / reale 7g", plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
+            {kpiCard("External load 7d", external7.toFixed(0))}
+            {kpiCard("Internal load 7d", internal7.toFixed(0))}
+            {kpiCard("Planned / actual 7d", plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
             {kpiCard(
-              "Compliance esecuzione 7g",
+              "Execution compliance 7d",
               `${compliance7.toFixed(0)}%`,
               compliance7 < 70 || compliance7 > 130 ? "text-amber-200" : "text-emerald-200",
             )}
             {kpiCard(
-              "Coupling 7g",
+              "Coupling 7d",
               <>
                 <span style={{ color: couplingColor(coupling7) }}>{coupling7.toFixed(2)}</span>
                 <span className="ml-2 text-xs font-normal text-gray-500">
@@ -722,19 +722,19 @@ export default function TrainingAnalyticsPageView() {
               latest ? `${latest.iCtl.toFixed(1)} / ${latest.iAtl.toFixed(1)}` : "—",
             )}
             {kpiCard(
-              "Readiness / fatica",
+              "Readiness / fatigue",
               twinState
                 ? `${(twinState.readiness ?? 0).toFixed(1)} / ${(twinState.fatigueAcute ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Glicogeno / adattamento",
+              "Glycogen / adaptation",
               twinState
                 ? `${(twinState.glycogenStatus ?? 0).toFixed(1)} / ${(twinState.adaptationScore ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Divergenza / intervento",
+              "Divergence / intervention",
               `${divergenceScore.toFixed(1)} / ${interventionScore.toFixed(1)}`,
               adaptationToneClass,
             )}
@@ -745,7 +745,7 @@ export default function TrainingAnalyticsPageView() {
             style={{ borderLeft: `3px solid ${couplingColor(coupling7)}` }}
           >
             <summary className={`cursor-pointer font-semibold ${couplingToneClass}`}>
-              Adattabilità {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
+              Adaptability {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
             </summary>
             <p className={`mt-2 font-semibold ${couplingToneClass}`}>{adaptationStatus}</p>
             <p className="mt-2 text-xs text-gray-500">
@@ -764,18 +764,18 @@ export default function TrainingAnalyticsPageView() {
               }`}
             >
               <summary className="cursor-pointer">
-                <strong>{operationalContext.headline}</strong> · carico operativo ~{operationalContext.loadScalePct}% del piano
+                <strong>{operationalContext.headline}</strong> · operational load ~{operationalContext.loadScalePct}% of plan
               </summary>
               <p className="mt-2">{operationalContext.guidance}</p>
               {operationalSuggestedLoad7d != null ? (
                 <p className="mt-2">
-                  Finestra 7d: piano {Math.round(adaptationLoop?.expectedLoad7d ?? 0)} → operativo ~{operationalSuggestedLoad7d}.
+                  7d window: plan {Math.round(adaptationLoop?.expectedLoad7d ?? 0)} → operational ~{operationalSuggestedLoad7d}.
                 </p>
               ) : null}
               {recoverySummary ? (
                 <p className="mt-2">
                   Recovery {recoverySummary.status}
-                  {recoverySummary.sleepDurationHours != null ? ` · sonno ${recoverySummary.sleepDurationHours} h` : ""}
+                  {recoverySummary.sleepDurationHours != null ? ` · sleep ${recoverySummary.sleepDurationHours} h` : ""}
                   {recoverySummary.hrvMs != null ? ` · HRV ${recoverySummary.hrvMs} ms` : ""}
                   {recoverySummary.strainScore != null ? ` · strain ${recoverySummary.strainScore}` : ""}.
                 </p>
@@ -796,7 +796,7 @@ export default function TrainingAnalyticsPageView() {
                 {bioenergeticModulation.mitochondrialReadinessScore.toFixed(0)}/100
               </summary>
               <p className="mt-2">
-                stato {bioenergeticModulation.state} · copertura {bioenergeticModulation.signalCoveragePct.toFixed(0)}%.
+                state {bioenergeticModulation.state} · coverage {bioenergeticModulation.signalCoveragePct.toFixed(0)}%.
               </p>
               <p className="mt-2">{bioenergeticModulation.guidance}</p>
               {!!bioenergeticModulation.missingSignals.length ? (
@@ -811,10 +811,10 @@ export default function TrainingAnalyticsPageView() {
           {crossModuleDynamicsLines.length ? (
             <details className="mb-6 rounded-2xl border border-orange-500/25 bg-orange-950/20 p-4 text-sm text-gray-300">
               <summary className="cursor-pointer text-sm font-bold text-orange-100">
-                Dinamica incrociata (Training → Nutrition / rifornimento) · {crossModuleDynamicsLines.length}
+                Cross-module dynamics (Training → Nutrition / refueling) · {crossModuleDynamicsLines.length}
               </summary>
               <p className="mt-2 text-xs text-gray-500">
-                Ponte deterministico: adattamento, carico operativo, loop calendario, dial nutrizione.
+                Deterministic bridge: adaptation, operational load, calendar loop, nutrition dial.
               </p>
               <ul className="mt-2 list-inside list-disc text-xs leading-relaxed text-gray-400">
                 {crossModuleDynamicsLines.map((line, i) => (
@@ -828,7 +828,7 @@ export default function TrainingAnalyticsPageView() {
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-sm font-bold text-white">
                 <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
-                Confronto normalizzato (metriche sovrapposte)
+                Normalized comparison (overlaid metrics)
               </h2>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -840,7 +840,7 @@ export default function TrainingAnalyticsPageView() {
                     setOverlayOn(o);
                   }}
                 >
-                  Attiva tutte
+                  Enable all
                 </button>
                 <button
                   type="button"
@@ -853,17 +853,17 @@ export default function TrainingAnalyticsPageView() {
                     setOverlayOn(o);
                   }}
                 >
-                  Solo carico
+                  Load only
                 </button>
               </div>
             </div>
             <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
               <summary className="cursor-pointer text-gray-300">
-                Note metriche overlay · {Object.values(overlayOn).filter(Boolean).length} attive
+                Overlay metrics notes · {Object.values(overlayOn).filter(Boolean).length} active
               </summary>
               <p className="mt-2">
-                Ogni serie usa il proprio min/max sui 42 giorni e viene portata su 0-100 per sovrapporre FC, smO2,
-                glucosio, VO2/VCO2, temperatura e carichi nello stesso grafico.
+                Each series uses its own min/max over the 42 days and is scaled to 0-100 to overlay HR, smO2,
+                glucose, VO2/VCO2, temperature, and loads in the same chart.
               </p>
             </details>
             <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -903,27 +903,27 @@ export default function TrainingAnalyticsPageView() {
               })}
             </svg>
             <div className="mt-2 text-[0.65rem] text-gray-500">
-              Asse X: ultimi 42 giorni. Serie a valori nulli o costanti restano sulla linea centrale.
+              X axis: last 42 days. Series with null or constant values stay on the center line.
             </div>
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold text-white">
               <Hexagon className="h-4 w-4 text-orange-400" aria-hidden />
-              Confronto esagonale · una metrica vs storico
+              Hexagonal comparison · one metric vs history
             </h2>
             <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
               <summary className="cursor-pointer text-gray-300">
-                Guida esagono · metrica {hexMetric}
+                Hexagon guide · metric {hexMetric}
               </summary>
               <p className="mt-2">
-                Sei vertici = media settimanale (7 giorni) nell&apos;ultima finestra di 42 giorni; tratteggiato = stessa
-                struttura sulle 6 settimane precedenti (richiede almeno 84 giorni).
+                Six vertices = weekly average (7 days) in the last 42-day window; dashed = same
+                structure over the previous 6 weeks (requires at least 84 days).
               </p>
             </details>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="text-xs text-gray-400">
-                Metrica
+                Metric
                 <select
                   className="ml-2 rounded-xl border border-white/15 bg-black/40 px-2 py-1 text-sm text-white"
                   value={hexMetric}
@@ -978,7 +978,7 @@ export default function TrainingAnalyticsPageView() {
                   const lr = 172;
                   const tx = cx + lr * Math.cos(t);
                   const ty = cy + lr * Math.sin(t);
-                  const label = `S${i + 1}`;
+                  const label = `W${i + 1}`;
                   return (
                     <text
                       key={i}
@@ -996,16 +996,16 @@ export default function TrainingAnalyticsPageView() {
               </svg>
               <div className="max-w-md text-xs text-gray-400">
                 <p className="mb-2">
-                  <span className="inline-block h-2 w-4 rounded-sm bg-orange-400/90" /> <strong className="text-gray-300">Ultime 6 settimane</strong> — forma del profilo
-                  recente per la metrica scelta.
+                  <span className="inline-block h-2 w-4 rounded-sm bg-orange-400/90" /> <strong className="text-gray-300">Last 6 weeks</strong> — recent profile
+                  shape for the chosen metric.
                 </p>
                 <p>
                   <span className="inline-block h-0.5 w-4 border-t-2 border-dotted border-violet-400" />{" "}
-                  <strong className="text-gray-300">Periodo precedente</strong> — stessa granularità, da confrontare
-                  a colpo d’occhio.
+                  <strong className="text-gray-300">Previous period</strong> — same granularity, to compare
+                  at a glance.
                 </p>
                 {compareSeries.length < 84 ? (
-                  <p className="mt-3 text-amber-200/90">Estendi il range (serve almeno ~84 giorni) per riempire il poligono tratteggiato.</p>
+                  <p className="mt-3 text-amber-200/90">Extend the range (needs at least ~84 days) to fill the dashed polygon.</p>
                 ) : null}
               </div>
             </div>
@@ -1014,7 +1014,7 @@ export default function TrainingAnalyticsPageView() {
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
               <BarChart3 className="h-4 w-4 text-orange-400" aria-hidden />
-              Trend 42g · Planned vs real vs internal
+              Trend 42d · Planned vs real vs internal
             </h2>
             <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[30vh] sm:max-h-[40vh]">
               <polyline fill="none" stroke={TRAINING_SERIES[1]} strokeWidth="2" points={plannedPolyline} />
@@ -1025,13 +1025,13 @@ export default function TrainingAnalyticsPageView() {
             </svg>
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[1] }} /> Pianificato
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[1] }} /> Planned
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[0] }} /> Esterno
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[0] }} /> External
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[2] }} /> Interno
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[2] }} /> Internal
               </span>
               <span className="inline-flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[3] }} /> {EMPATHY_LOAD_LABELS_IT.fitness4}
@@ -1045,14 +1045,14 @@ export default function TrainingAnalyticsPageView() {
           <TrainingAnalyzerCrossChannelSection sessions={crossChannelSessions} />
 
           <div className="mb-6 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="mb-3 text-sm font-bold text-white">Pianificato vs reale · finestre</h2>
+            <h2 className="mb-3 text-sm font-bold text-white">Planned vs real · windows</h2>
             <table className="w-full min-w-[520px] text-sm text-gray-300">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Finestra</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Pianificato</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Reale</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Interno</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Window</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Planned</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Real</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Internal</th>
                   <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Compliance</th>
                   <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Coupling</th>
                 </tr>
@@ -1060,7 +1060,7 @@ export default function TrainingAnalyticsPageView() {
               <tbody className="divide-y divide-white/5">
                 {[
                   {
-                    label: "Ultimi 7g",
+                    label: "Last 7d",
                     planned: plan7?.planned ?? 0,
                     ext: plan7?.executed ?? external7,
                     int: plan7?.internal ?? internal7,
@@ -1068,7 +1068,7 @@ export default function TrainingAnalyticsPageView() {
                     coupling: coupling7,
                   },
                   {
-                    label: "Ultimi 28g",
+                    label: "Last 28d",
                     planned: plan28?.planned ?? 0,
                     ext: plan28?.executed ?? external28,
                     int: plan28?.internal ?? internal28,
@@ -1106,7 +1106,7 @@ export default function TrainingAnalyticsPageView() {
           <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <summary className="mb-3 flex cursor-pointer items-center gap-2 text-sm font-bold text-white">
               <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
-              Adaptation loop · adattabilità {adaptabilityScore}/100
+              Adaptation loop · adaptability {adaptabilityScore}/100
             </summary>
             <table className="w-full text-sm text-gray-300">
               <tbody className="divide-y divide-white/5">

@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { BarChart3, CalendarClock, CalendarDays, CalendarRange, HeartPulse, Sparkles } from "lucide-react";
 
-const ADMIN_SCOPED_TITLE = "Disponibile nella scheda dedicata (v2)";
+const ADMIN_SCOPED_TITLE = "Available in the dedicated tab (v2)";
 
 /** Link hub: nelle schede admin diventa inerte (span) verso le rotte shell coach. */
 function HubLink({
@@ -46,10 +46,10 @@ export default function TrainingHubPageView() {
   const { adminScoped } = useActiveAthlete();
   return (
     <Pro2ModulePageShell
-      eyebrow="Allenamento"
+      eyebrow="Training"
       eyebrowClassName="text-orange-400"
-      title="Allenamento"
-      description="Il punto di partenza: crea le tue sedute, consulta il calendario, analizza i dati e segui il piano annuale."
+      title="Training"
+      description="The starting point: create your sessions, check the calendar, analyze the data and follow the annual plan."
     >
       {/* Subnav condivisa: nelle schede admin i suoi link restano visibili ma inerti */}
       <div
@@ -61,14 +61,14 @@ export default function TrainingHubPageView() {
 
       <Pro2SectionCard
         accent="orange"
-        title="Percorsi"
-        subtitle="Quattro viste prodotto + Virya (piano annuale)"
+        title="Paths"
+        subtitle="Four product views + Virya (annual plan)"
         icon={Sparkles}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <HubLink href="/training/builder" variant="primary" className="justify-center py-4">
             <Sparkles className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-            Builder sessione
+            Session builder
           </HubLink>
           <HubLink
             href="/training/calendar"
@@ -84,7 +84,7 @@ export default function TrainingHubPageView() {
             className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
             <CalendarClock className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
-            Giornata training
+            Training day
           </HubLink>
           <HubLink
             href="/physiology/daily"
@@ -92,7 +92,7 @@ export default function TrainingHubPageView() {
             className="justify-center border-orange-500/30 bg-orange-500/10 py-4 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
           >
             <HeartPulse className="mr-2 h-4 w-4 shrink-0 text-orange-300" aria-hidden />
-            Wellness giornaliero
+            Daily wellness
           </HubLink>
           <HubLink
             href="/training/analytics"

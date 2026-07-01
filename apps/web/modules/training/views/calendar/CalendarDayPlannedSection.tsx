@@ -49,15 +49,15 @@ export function CalendarDayPlannedSection({
     <div id="calendar-day-planned-detail" className="mb-8 scroll-mt-24 w-full min-w-0">
       <Pro2SectionCard
         accent="orange"
-        title="Sedute pianificate"
-        subtitle={`${selectedDate} · ${dayPlanned.length} in giornata — scheda gym / struttura builder`}
+        title="Planned sessions"
+        subtitle={`${selectedDate} · ${dayPlanned.length} on this day — gym card / builder structure`}
         icon={CalendarDays}
       >
         {dayPlanned.length >= 2 && athleteId ? (
           <div className="mb-4 rounded-xl border border-amber-400/35 bg-amber-950/30 px-3 py-3">
             <p className="text-xs leading-relaxed text-amber-100/95">
-              Su questo giorno ci sono <strong>{dayPlanned.length}</strong> sedute pianificate distinte.
-              Eliminarne una sola lascia le altre visibili (non è un ripristino automatico).
+              On this day there are <strong>{dayPlanned.length}</strong> distinct planned sessions.
+              Deleting just one leaves the others visible (it is not an automatic restore).
             </p>
             {dayDeleteAllConfirm ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -67,7 +67,7 @@ export function CalendarDayPlannedSection({
                   className="rounded-full border border-rose-300/50 bg-rose-500/25 px-2.5 py-1 text-xs font-bold text-white hover:bg-rose-500/40 disabled:opacity-40"
                   onClick={() => void onDeleteAllDay()}
                 >
-                  {dayDeleteAllBusy ? "Elimino…" : `Conferma: elimina tutte (${dayPlanned.length})`}
+                  {dayDeleteAllBusy ? "Deleting…" : `Confirm: delete all (${dayPlanned.length})`}
                 </button>
                 <button
                   type="button"
@@ -75,7 +75,7 @@ export function CalendarDayPlannedSection({
                   className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-gray-300 hover:bg-white/10"
                   onClick={() => setDayDeleteAllConfirm(false)}
                 >
-                  Annulla
+                  Cancel
                 </button>
               </div>
             ) : (
@@ -84,7 +84,7 @@ export function CalendarDayPlannedSection({
                 className="mt-2 rounded-full border border-rose-400/45 bg-rose-500/15 px-2.5 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/25"
                 onClick={() => setDayDeleteAllConfirm(true)}
               >
-                Elimina tutte le sedute di questo giorno
+                Delete all sessions on this day
               </button>
             )}
           </div>
@@ -114,13 +114,13 @@ export function CalendarDayPlannedSection({
                 className={`mb-2 flex cursor-grab flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 px-3 py-2 text-xs text-orange-100 active:cursor-grabbing ${
                   dragPlannedId === w.id ? "ring-1 ring-orange-400/60" : ""
                 }`}
-                title="Trascina su un giorno del calendario sopra"
+                title="Drag onto a calendar day above"
               >
                 <span aria-hidden className="text-orange-300/80">
                   ⋮⋮
                 </span>
                 <span className="min-w-0 break-words">
-                  Trascina su un altro giorno ·{" "}
+                  Drag onto another day ·{" "}
                   {plannedCalendarChipViewModel(w, { athleteFtpWatts }).sportLabel}
                 </span>
               </div>

@@ -19,7 +19,7 @@ export async function deleteExecutedWorkout(input: {
   });
   const payload = (await response.json().catch(() => ({}))) as { error?: string };
   if (!response.ok) {
-    throw new Error(payload.error ?? "Eliminazione eseguito non riuscita");
+    throw new Error(payload.error ?? "Failed to delete executed workout");
   }
   return payload as { status?: string; deletedCount?: number; deletedIds?: string[] };
 }

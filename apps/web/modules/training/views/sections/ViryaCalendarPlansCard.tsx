@@ -39,14 +39,14 @@ export function ViryaCalendarPlansCard({
     <Pro2SectionCard
       accent="cyan"
       className="!border-cyan-500/30"
-      title="Piani VIRYA su Calendar"
-      subtitle="Sedute con tag [VIRYA:…] per l’atleta attivo — elimina un piano intero prima di ripubblicare"
+      title="VIRYA Plans on Calendar"
+      subtitle="Sessions tagged [VIRYA:…] for the active athlete — delete an entire plan before republishing"
       icon={CalendarRange}
     >
       {viryaPlansLoading ? (
-        <p className="text-sm text-slate-400">Caricamento piani…</p>
+        <p className="text-sm text-slate-400">Loading plans…</p>
       ) : viryaCalendarPlans.length === 0 ? (
-        <p className="text-sm text-slate-500">Nessun piano VIRYA in Calendar per questo atleta.</p>
+        <p className="text-sm text-slate-500">No VIRYA plan in Calendar for this athlete.</p>
       ) : (
         <ul className="space-y-2">
           {viryaCalendarPlans.map((plan) => (
@@ -57,7 +57,7 @@ export function ViryaCalendarPlansCard({
               <div>
                 <span className="font-semibold text-white">{plan.planName}</span>
                 <span className="mt-0.5 block font-mono text-[0.7rem] text-slate-500">
-                  {plan.dateMin} → {plan.dateMax} · {plan.sessionCount} sedute
+                  {plan.dateMin} → {plan.dateMax} · {plan.sessionCount} sessions
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -65,7 +65,7 @@ export function ViryaCalendarPlansCard({
                   href={`/training/calendar?date=${plan.dateMin}`}
                   className="rounded-lg border border-sky-500/35 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-500/20"
                 >
-                  Apri in Calendar
+                  Open in Calendar
                 </Link>
                 <button
                   type="button"
@@ -74,7 +74,7 @@ export function ViryaCalendarPlansCard({
                   onClick={() => {
                     if (
                       !window.confirm(
-                        `Eliminare tutte le ${plan.sessionCount} sedute del piano «${plan.planName}» (${plan.dateMin} → ${plan.dateMax})?`,
+                        `Delete all ${plan.sessionCount} sessions of the plan «${plan.planName}» (${plan.dateMin} → ${plan.dateMax})?`,
                       )
                     ) {
                       return;
@@ -85,17 +85,17 @@ export function ViryaCalendarPlansCard({
                       setError(null);
                       try {
                         const n = await deleteViryaCalendarPlan({ athleteId: selectedAthleteId, tag: plan.tag });
-                        setSuccess(`Piano «${plan.planName}» rimosso: ${n} sedute eliminate.`);
+                        setSuccess(`Plan «${plan.planName}» removed: ${n} sessions deleted.`);
                         await refreshViryaCalendarPlans();
                       } catch (e) {
-                        setError(e instanceof Error ? e.message : "Eliminazione piano non riuscita.");
+                        setError(e instanceof Error ? e.message : "Plan deletion failed.");
                       } finally {
                         setViryaPlanDeletingTag(null);
                       }
                     })();
                   }}
                 >
-                  {viryaPlanDeletingTag === plan.tag ? "Eliminazione…" : "Elimina piano"}
+                  {viryaPlanDeletingTag === plan.tag ? "Deleting…" : "Delete plan"}
                 </button>
               </div>
             </li>
@@ -107,7 +107,7 @@ export function ViryaCalendarPlansCard({
         className="mt-3 text-xs font-semibold text-cyan-300 hover:text-cyan-200"
         onClick={() => void refreshViryaCalendarPlans()}
       >
-        Aggiorna elenco
+        Refresh list
       </button>
     </Pro2SectionCard>
   );

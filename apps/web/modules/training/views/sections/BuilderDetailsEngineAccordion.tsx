@@ -84,24 +84,24 @@ export function BuilderDetailsEngineAccordion({
   return (
         <Pro2Accordion
           id="mod-dettagli-motore"
-          title="Come funziona"
-          subtitle="Contesto generativo, asset e KPI della finestra calendario"
+          title="How it works"
+          subtitle="Generative context, assets and calendar window KPIs"
           accent="orange"
         >
           <div className="space-y-6">
             <section
-              aria-label="Contesto generativo e asset"
+              aria-label="Generative context and assets"
               className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5 shadow-inner"
             >
               <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                Builder · contesto generativo
+                Builder · generative context
               </p>
               <p className="mt-1 max-w-3xl text-xs text-gray-500">
-                Knowledge library e asset esterni sono di supporto e audit: il motore sessione resta deterministico; nessun redirect o
-                blocco se i dati mancano (fallback locale in-modulo).
+                Knowledge library and external assets are for support and audit: the session engine stays deterministic; no redirect or
+                block if data is missing (local in-module fallback).
               </p>
               {!athleteId ? (
-                <p className="mt-3 text-sm text-gray-500">Seleziona un atleta attivo per caricare tracce e contesto nutrizione.</p>
+                <p className="mt-3 text-sm text-gray-500">Select an active athlete to load traces and nutrition context.</p>
               ) : (
                 <div className="mt-4 space-y-4">
                   <ResearchTraceScientificPanel athleteId={athleteId} limit={16} traceSurface="latest_primary" />
@@ -109,7 +109,7 @@ export function BuilderDetailsEngineAccordion({
                   <div className="rounded-xl border border-orange-500/25 bg-orange-950/10 p-3 sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Nutrizione · giorno seduta engine</p>
+                        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Nutrition · engine session day</p>
                         <p className="mt-0.5 font-mono text-[0.7rem] text-gray-500">{plannedDate}</p>
                       </div>
                       <Pro2Button
@@ -119,45 +119,45 @@ export function BuilderDetailsEngineAccordion({
                         className="border-orange-500/30 bg-orange-500/10 text-xs text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
                         onClick={() => void refreshNutritionContext()}
                       >
-                        {nutritionBusy ? "Lettura…" : "Aggiorna sintesi"}
+                        {nutritionBusy ? "Reading…" : "Refresh summary"}
                       </Pro2Button>
                     </div>
                     {nutritionErr ? <p className="mt-2 text-xs text-amber-200/90">{nutritionErr}</p> : null}
                     {nutritionLine ? (
                       <p className="mt-2 text-sm text-gray-200">{nutritionLine}</p>
                     ) : !nutritionErr && !nutritionBusy ? (
-                      <p className="mt-2 text-xs text-gray-500">Solo lettura API nutrizione — utile per allineare fueling mentale al giorno scelto.</p>
+                      <p className="mt-2 text-xs text-gray-500">Read-only nutrition API — useful to align mental fueling to the chosen day.</p>
                     ) : null}
                   </div>
                 </div>
               )}
             </section>
 
-            <section aria-label="KPI finestra" className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
+            <section aria-label="Window KPIs" className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
               <KpiCard
-                label="TSS pianificato"
+                label="Planned TSS"
                 value={showData ? Math.round(stats.pTss).toString() : "—"}
                 hint={range ? `${range.from} → ${range.to}` : undefined}
                 accent="orange"
                 icon={Flame}
               />
               <KpiCard
-                label="TSS eseguito"
+                label="Executed TSS"
                 value={showData ? Math.round(stats.eTss).toString() : "—"}
-                hint="Nella stessa finestra"
+                hint="In the same window"
                 accent="orange"
                 icon={Activity}
               />
               <KpiCard
-                label="Sessioni (pian. / eseg.)"
+                label="Sessions (plan. / exec.)"
                 value={showData ? `${stats.sessionsPlanned} / ${stats.sessionsExecuted}` : "—"}
                 accent="orange"
                 icon={Timer}
               />
               <KpiCard
-                label="Minuti totali"
+                label="Total minutes"
                 value={showData ? `${Math.round(stats.pMin + stats.eMin)}` : "—"}
-                hint="Pianificato + eseguito (somma grezza)"
+                hint="Planned + executed (raw sum)"
                 accent="orange"
                 icon={Heart}
               />

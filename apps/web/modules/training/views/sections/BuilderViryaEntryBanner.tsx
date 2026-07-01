@@ -27,16 +27,16 @@ export function BuilderViryaEntryBanner({
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <p className="max-w-3xl leading-relaxed">
-                Percorso da <strong className="text-orange-200">VIRYA</strong>: qui materializzi la{" "}
-                <strong className="text-orange-200">singola sessione</strong> col motore builder. Il calendario si aggiorna solo dopo
-                salvataggio esplicito.
+                Path from <strong className="text-orange-200">VIRYA</strong>: here you materialize the{" "}
+                <strong className="text-orange-200">single session</strong> with the builder engine. The calendar updates only after
+                explicit save.
               </p>
               <button
                 type="button"
                 className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-xs text-gray-300 hover:border-white/30 hover:text-white"
                 onClick={() => setDismissViryaEntryBanner(true)}
               >
-                Chiudi
+                Close
               </button>
             </div>
           </div>

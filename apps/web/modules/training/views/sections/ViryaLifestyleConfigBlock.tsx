@@ -53,23 +53,23 @@ export function ViryaLifestyleConfigBlock({
   return (
     <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
       <div className="profile-subpanel">
-        <div className="session-title-copy">1 · Intervallo periodo</div>
+        <div className="session-title-copy">1 · Period range</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Data inizio piano</span>
+            <span>Plan start date</span>
             <input className="form-input" type="date" value={lifestylePlanStart} onChange={(e) => setLifestylePlanStart(e.target.value)} />
           </label>
           <label className="form-field">
-            <span>Data fine piano</span>
+            <span>Plan end date</span>
             <input className="form-input" type="date" value={lifestylePlanEnd} onChange={(e) => setLifestylePlanEnd(e.target.value)} />
           </label>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">2 · Macrofasi</div>
+        <div className="session-title-copy">2 · Macro-phases</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Numero macrofasi</span>
+            <span>Number of macro-phases</span>
             <input
               className="form-input"
               type="number"
@@ -81,26 +81,26 @@ export function ViryaLifestyleConfigBlock({
           </label>
           <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
             <button type="button" className="btn-secondary" onClick={regenerateLifestyleMacroPlan}>
-              Genera macrofasi automatiche
+              Generate automatic macro-phases
             </button>
           </div>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">3 · Modulo settimanale coach</div>
+        <div className="session-title-copy">3 · Coach weekly module</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Settimana da customizzare</span>
+            <span>Week to customize</span>
             <select className="form-select" value={selectedLifestyleWeekStart} onChange={(e) => setSelectedLifestyleWeekStart(e.target.value)}>
               {programWeekRows.slice(0, 52).map((w) => (
                 <option key={`life-week-opt-${w.weekStart}`} value={w.weekStart}>
-                  Settimana {w.week} · {new Date(w.weekStart).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })}
+                  Week {w.week} · {new Date(w.weekStart).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })}
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Giorni allenamento / week</span>
+            <span>Training days / week</span>
             <select
               className="form-select"
               value={selectedLifestyleWeekConfig().sessionsPerWeek}
@@ -125,13 +125,13 @@ export function ViryaLifestyleConfigBlock({
             >
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <option key={`life-days-${d}`} value={d}>
-                  {d} giorni
+                  {d} days
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Volume settimana (% vs TSS macrofase)</span>
+            <span>Week volume (% vs macro-phase TSS)</span>
             <input
               className="form-input"
               type="number"
@@ -147,32 +147,32 @@ export function ViryaLifestyleConfigBlock({
         </div>
         <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
           <span className="builder-zone-chip">
-            Stato volume: {loadStatusLabel(selectedLifestyleWeekConfig().loadPct)} ({selectedLifestyleWeekConfig().loadPct}%)
+            Volume status: {loadStatusLabel(selectedLifestyleWeekConfig().loadPct)} ({selectedLifestyleWeekConfig().loadPct}%)
           </span>
           <Link href={`/training/calendar?date=${selectedLifestyleWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-            Apri settimana in Calendar →
+            Open week in Calendar →
           </Link>
         </div>
         <small style={{ color: "var(--empathy-text-muted)" }}>
-          Regola volume: Scarico 50-99% · Stabile 100% · Carico 101-180%.
+          Volume rule: Deload 50-99% · Stable 100% · Load 101-180%.
         </small>
         <div style={{ marginTop: "8px", overflowX: "auto" }}>
           <table className="table-shell">
             <thead>
               <tr>
-                <th>Giorno</th>
-                <th>Obiettivo</th>
-                <th>Tipo di pratica</th>
-                <th>Intensita RPE</th>
-                <th>Cadenza respiratoria</th>
-                <th>Tenuta / Flow</th>
-                <th>Metodologia</th>
+                <th>Day</th>
+                <th>Objective</th>
+                <th>Practice type</th>
+                <th>RPE intensity</th>
+                <th>Breathing cadence</th>
+                <th>Hold / Flow</th>
+                <th>Methodology</th>
               </tr>
             </thead>
             <tbody>
               {selectedLifestyleWeekConfig().modules.slice(0, selectedLifestyleWeekConfig().sessionsPerWeek).map((row) => (
                 <tr key={`life-day-module-${row.dayIndex}`}>
-                  <td>Giorno {row.dayIndex}</td>
+                  <td>Day {row.dayIndex}</td>
                   <td>
                     <select
                       className="form-select"

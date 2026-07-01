@@ -61,7 +61,7 @@ export async function pushBuilderSessionToWahoo(
   if (!res.ok || json.ok !== true) {
     return {
       ok: false,
-      error: typeof json.error === "string" ? json.error : "Wahoo push fallito",
+      error: typeof json.error === "string" ? json.error : "Wahoo push failed",
       code: typeof json.code === "string" ? json.code : undefined,
       phase: typeof json.phase === "string" ? json.phase : undefined,
       status: typeof json.status === "number" ? json.status : res.status,

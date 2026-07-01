@@ -16,7 +16,7 @@ import {
   type PlannedDragPayload,
 } from "./useCalendarMonthData";
 
-const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"] as const;
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -217,7 +217,7 @@ export function CalendarMonthGrid({
                     {hasExecuted ? (
                       <span
                         className="tc2-calendar-exec-dot"
-                        title={`${eList.length} eseguit${eList.length === 1 ? "o" : "i"}`}
+                        title={`${eList.length} executed`}
                         aria-hidden
                       />
                     ) : null}
@@ -225,7 +225,7 @@ export function CalendarMonthGrid({
                   {pList.length > 0 ? (
                     <div
                       className="tc2-calendar-day-glyphs flex flex-wrap items-center justify-center gap-0.5 py-0.5"
-                      aria-label="Sport pianificati"
+                      aria-label="Planned sports"
                     >
                       {uniquePlannedSportGlyphs(pList, 5).map((glyph) => (
                         <SportDisciplineGlyph key={glyph} glyph={glyph} className="h-4 w-4 text-orange-200/95" />
@@ -276,7 +276,7 @@ export function CalendarMonthGrid({
                         className={`tc2-calendar-chip tc2-calendar-chip--draggable ${chip.chipClass} ${
                           dragPlannedId === w.id ? "tc2-calendar-chip--dragging" : ""
                         } ${moving ? "opacity-50" : ""}`}
-                        title="Trascina su un altro giorno del calendario"
+                        title="Drag to another day of the calendar"
                       >
                         <div className="flex items-center gap-1.5 font-bold">
                           <span className={`tc2-calendar-chip-icon tc2-calendar-chip-icon--${chip.family}`}>
@@ -286,7 +286,7 @@ export function CalendarMonthGrid({
                               <SportGlyph type={w.type} />
                             )}
                           </span>
-                          <span>Pianificato</span>
+                          <span>Planned</span>
                           <span
                             className={`tc2-calendar-chip-sport-badge ${
                               chip.family === "strength"
@@ -307,7 +307,7 @@ export function CalendarMonthGrid({
                     );
                   })}
                   {pList.length > 2 ? (
-                    <div className="text-[10px] font-semibold text-orange-200/90">+{pList.length - 2} pianif.</div>
+                    <div className="text-[10px] font-semibold text-orange-200/90">+{pList.length - 2} planned</div>
                   ) : null}
                   {eList.slice(0, 2).map((w) => {
                     const tr = traceRecord(w);
@@ -316,7 +316,7 @@ export function CalendarMonthGrid({
                     const importedFile = pickText(tr, ["imported_file_name"]);
                     return (
                       <div key={w.id} className="tc2-calendar-chip tc2-calendar-chip-exec">
-                        <div className="font-bold">✅ Eseguito</div>
+                        <div className="font-bold">✅ Executed</div>
                         <div>
                           {w.durationMinutes}m · {LOAD_CHIP_LABEL}{" "}
                           {resolveExecutedTrainingLoad({
@@ -339,7 +339,7 @@ export function CalendarMonthGrid({
                     );
                   })}
                   {eList.length > 2 ? (
-                    <div className="text-[10px] font-semibold text-gray-300">+{eList.length - 2} eseguiti</div>
+                    <div className="text-[10px] font-semibold text-gray-300">+{eList.length - 2} executed</div>
                   ) : null}
                 </button>
               );

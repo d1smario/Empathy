@@ -34,14 +34,14 @@ export function ViryaMicrocyclePreviewCard({
   return (
     <Pro2SectionCard
       accent="violet"
-      title="Microciclo · anteprima Builder"
-      subtitle="Pattern giorni, polarizzazione Q/V e istruzioni che riceverà generateBuilderSession (prima settimana fase 1)"
+      title="Microcycle · Builder preview"
+      subtitle="Day pattern, Q/V polarization and instructions that generateBuilderSession will receive (first week of phase 1)"
       icon={Layers}
     >
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm text-slate-300">
           <span className="text-xs font-semibold uppercase tracking-wide text-violet-200/80">
-            Pattern settimanale
+            Weekly pattern
           </span>
           <select
             className="rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-violet-400/50"
@@ -52,32 +52,32 @@ export function ViryaMicrocyclePreviewCard({
               )
             }
           >
-            <option value="auto">Auto (da giorni/settimana)</option>
-            <option value="3d">3d · Lun Mer Ven</option>
-            <option value="4d">4d · Lun Mer Ven Dom</option>
-            <option value="5d">5d · Lun Mar Gio Ven Dom</option>
-            <option value="6d">6d · Lun–Sab</option>
+            <option value="auto">Auto (from days/week)</option>
+            <option value="3d">3d · Mon Wed Fri</option>
+            <option value="4d">4d · Mon Wed Fri Sun</option>
+            <option value="5d">5d · Mon Tue Thu Fri Sun</option>
+            <option value="6d">6d · Mon–Sat</option>
           </select>
         </label>
         {microcyclePreviewRows.length > 0 ? (
           <p className="text-xs text-slate-400">
-            Somma carico anteprima:{" "}
+            Preview load sum:{" "}
             <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.loadSum ?? "—"}</span> · pattern{" "}
             <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.patternId ?? "—"}</span>
           </p>
         ) : null}
       </div>
       {microcyclePreviewRows.length === 0 ? (
-        <p className="text-sm text-slate-500">Aggiungi almeno una fase per vedere l&apos;anteprima settimana.</p>
+        <p className="text-sm text-slate-500">Add at least one phase to see the week preview.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-400">
-                <th className="p-2">Giorno</th>
-                <th className="p-2">Ruolo</th>
-                <th className="p-2">Carico</th>
-                <th className="p-2">Adattamento Builder</th>
+                <th className="p-2">Day</th>
+                <th className="p-2">Role</th>
+                <th className="p-2">Load</th>
+                <th className="p-2">Builder adaptation</th>
               </tr>
             </thead>
             <tbody>

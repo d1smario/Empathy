@@ -25,8 +25,8 @@ export function ViryaEventsCard({
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="Eventi e date intermedie"
-      subtitle="Gare, test, milestone — ancorano taper e picco"
+      title="Events and intermediate dates"
+      subtitle="Races, tests, milestones — they anchor taper and peak"
       icon={Flag}
     >
       <div className="mb-3 flex justify-end">
@@ -35,7 +35,7 @@ export function ViryaEventsCard({
           className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20"
           onClick={addRace}
         >
-          + Aggiungi evento
+          + Add event
         </button>
       </div>
       <div className="space-y-2">
@@ -54,7 +54,7 @@ export function ViryaEventsCard({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
               value={race.name}
               onChange={(e) => updateRace(race.id, { name: e.target.value })}
-              placeholder="Nome evento"
+              placeholder="Event name"
             />
             <select
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
@@ -62,9 +62,9 @@ export function ViryaEventsCard({
               onChange={(e) => updateRace(race.id, { raceType: e.target.value as RaceType })}
             >
               <option value="warmup">Warm-up</option>
-              <option value="milestone">Milestone / intermedio</option>
+              <option value="milestone">Milestone / intermediate</option>
               <option value="test">Test</option>
-              <option value="goal">Gara obiettivo</option>
+              <option value="goal">Goal race</option>
             </select>
             <select
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"

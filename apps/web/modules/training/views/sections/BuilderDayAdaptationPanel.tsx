@@ -33,16 +33,16 @@ export function BuilderDayAdaptationPanel({
     <>
         {athleteId ? (
           <section
-            aria-label="Adattamento giornaliero guidato"
+            aria-label="Guided daily adaptation"
             className="mb-4 rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 sm:p-5 shadow-inner"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  Adattamento giorno · {plannedDate}
+                  Day adaptation · {plannedDate}
                 </p>
                 {dayAdaptationBusy ? (
-                  <p className="mt-2 text-sm text-gray-400">Lettura score twin e seduta pianificata…</p>
+                  <p className="mt-2 text-sm text-gray-400">Reading twin score and planned session…</p>
                 ) : dayAdaptationErr ? (
                   <p className="mt-2 text-sm text-amber-200/90" role="alert">
                     {dayAdaptationErr}
@@ -63,14 +63,14 @@ export function BuilderDayAdaptationPanel({
                         {dayAdaptation.loadAdaptation.adjustmentPct > 0
                           ? `+${dayAdaptation.loadAdaptation.adjustmentPct}%`
                           : `${dayAdaptation.loadAdaptation.adjustmentPct}%`}{" "}
-                        carico
+                        load
                       </span>
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-gray-400">
-                      Score {dayAdaptation.loadAdaptation.scorePct}% ({dayAdaptation.loadAdaptation.trafficLight}) · target seduta ~
-                      {dayAdaptation.loadAdaptation.loadScalePct}% del piano VIRYA.
+                      Score {dayAdaptation.loadAdaptation.scorePct}% ({dayAdaptation.loadAdaptation.trafficLight}) · session target ~
+                      {dayAdaptation.loadAdaptation.loadScalePct}% of the VIRYA plan.
                       {dayAdaptation.loadAdaptation.unwantedSupercompensation
-                        ? " Supercompensazione non assorbita: riduzione consigliata."
+                        ? " Unabsorbed supercompensation: reduction recommended."
                         : null}
                     </p>
                     {dayAdaptation.targetPlanned ? (
@@ -79,11 +79,11 @@ export function BuilderDayAdaptationPanel({
                         {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.adaptedTssTarget}
                       </p>
                     ) : (
-                      <p className="mt-2 text-xs text-gray-500">Nessuna seduta pianificata in questo giorno: genera da zero con lo score corrente.</p>
+                      <p className="mt-2 text-xs text-gray-500">No session planned for this day: generate from scratch with the current score.</p>
                     )}
                   </>
                 ) : (
-                  <p className="mt-2 text-sm text-gray-500">Apri con data calendario per guidare durata e TSS.</p>
+                  <p className="mt-2 text-sm text-gray-500">Open with a calendar date to guide duration and TSS.</p>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export function BuilderDayAdaptationPanel({
                   className="border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
                   onClick={() => void runGenerate()}
                 >
-                  {genBusy ? "Generazione…" : "Genera con adattamento"}
+                  {genBusy ? "Generating…" : "Generate with adaptation"}
                 </Pro2Button>
                 {replacePlannedIdFromQuery ? (
                   <Pro2Link
@@ -102,7 +102,7 @@ export function BuilderDayAdaptationPanel({
                     variant="ghost"
                     className="border border-white/15 text-xs"
                   >
-                    Calendario
+                    Calendar
                   </Pro2Link>
                 ) : null}
               </div>

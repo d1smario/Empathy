@@ -431,7 +431,7 @@ export function ViryaAnnualPlanOrchestrator({
       { label: "Family", value: sportFamilyLabel },
       { label: "Discipline", value: discipline },
       { label: "Phases", value: String(phases.length) },
-      { label: `Carico annuo`, value: String(totalTss) },
+      { label: `Annual load`, value: String(totalTss) },
     ],
     [discipline, phases.length, sportFamilyLabel, totalTss],
   );
@@ -439,11 +439,11 @@ export function ViryaAnnualPlanOrchestrator({
     Array<{ label: string; value: string; tone: "cyan" | "green" | "amber" | "rose" | "slate" }>
   >(
     () => [
-      { label: "Goal date", value: goalRaceDate ? new Date(`${goalRaceDate}T00:00:00`).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "Open", tone: "amber" },
+      { label: "Goal date", value: goalRaceDate ? new Date(`${goalRaceDate}T00:00:00`).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "Open", tone: "amber" },
       { label: "Sessions", value: String(totalSessions), tone: "cyan" },
       { label: "Demand", value: objectiveDemand.toFixed(2), tone: objectiveDemand >= 1.2 ? "rose" : objectiveDemand >= 0.9 ? "amber" : "green" },
       { label: "Readiness", value: physiologyDrive.readiness != null ? `${physiologyDrive.readiness.toFixed(0)}%` : "—", tone: "green" },
-      { label: "Bioenergetica", value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan" },
+      { label: "Bioenergetics", value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan" },
       { label: "Loop", value: adaptationLoop ? adaptationLoop.status : "stable", tone: adaptationLoop?.status === "regenerate" ? "rose" : adaptationLoop?.status === "watch" ? "amber" : "slate" },
     ],
     [adaptationLoop, bioenergeticModulation, goalRaceDate, objectiveDemand, physiologyDrive.readiness, totalSessions],
@@ -1658,11 +1658,11 @@ export function ViryaAnnualPlanOrchestrator({
     setError(null);
     setSuccess(null);
     if (!selectedAthleteId) {
-      setError("Atleta non disponibile per la generazione.");
+      setError("Athlete not available for generation.");
       return;
     }
     if (!phases.length) {
-      setError("Aggiungi almeno una fase.");
+      setError("Add at least one phase.");
       return;
     }
     setSaving(true);
@@ -1670,7 +1670,7 @@ export function ViryaAnnualPlanOrchestrator({
 
     if (rows.length === 0) {
       setError(
-        "Nessuna seduta generata: controlla date mag–giu (passo 3 → Applica periodo alle fasi), macro-fasi al passo 4/5 e giorni/settimana gym, poi riprova.",
+        "No session generated: check the dates (step 3 -> Apply period to phases), macro-phases at step 4/5 and gym days/week, then retry.",
       );
       setSaving(false);
       return;
@@ -1708,24 +1708,24 @@ export function ViryaAnnualPlanOrchestrator({
       const maxD = rowDates[rowDates.length - 1] ?? "";
       const rangeHint =
         minD && maxD
-          ? ` Intervallo ${minD} → ${maxD}: in Calendar usa le frecce o apri una data nel range (la vista iniziale mostra solo poche settimane).`
+          ? ` Range ${minD} → ${maxD}: in Calendar use the arrows or open a date in the range (the initial view only shows a few weeks).`
           : "";
       const gymHint =
         sportFamily === "strength" && gymSchedaSessions < rows.length
-          ? ` Attenzione: ${rows.length - gymSchedaSessions} sedute senza scheda catalogo (fallback leggero) — verifica distretti o ripubblica dopo deploy.`
+          ? ` Warning: ${rows.length - gymSchedaSessions} sessions without a catalog sheet (light fallback) — check districts or republish after deploy.`
           : sportFamily === "strength"
-            ? ` Schede palestra Builder: ${gymSchedaSessions}/${rows.length}.`
+            ? ` Builder gym sheets: ${gymSchedaSessions}/${rows.length}.`
             : "";
       const dedupeHint =
         (result.dedupeSkippedCount ?? 0) > 0
-          ? ` Attenzione: ${result.dedupeSkippedCount} righe saltate (già presenti stesso giorno/fingerprint) — apri Calendar e verifica tutte le date.`
+          ? ` Warning: ${result.dedupeSkippedCount} rows skipped (already present same day/fingerprint) — open Calendar and check all dates.`
           : "";
       setSuccess(
-        `Piano «${planName.trim() || "Annual"}» (${tag}): ${rows.length} sessioni generate.${dedupeHint}${gymHint}${rangeHint}`,
+        `Plan «${planName.trim() || "Annual"}» (${tag}): ${rows.length} sessions generated.${dedupeHint}${gymHint}${rangeHint}`,
       );
       void refreshViryaCalendarPlans();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Errore inatteso durante la generazione.";
+      const message = e instanceof Error ? e.message : "Unexpected error during generation.";
       setError(message);
     } finally {
       setSaving(false);
@@ -1736,12 +1736,12 @@ export function ViryaAnnualPlanOrchestrator({
     setError(null);
     setSuccess(null);
     if (!selectedAthleteId) {
-      setError("Atleta non disponibile: serve il contesto atleta per materializzare le sedute.");
+      setError("Athlete not available: the athlete context is required to materialize the sessions.");
       return;
     }
     const weekStart = libraryWeekStart.trim();
     if (!weekStart) {
-      setError("Seleziona la settimana da esportare in libreria.");
+      setError("Select the week to export to the library.");
       return;
     }
     const weekRow = programWeekRows.find((r) => r.weekStart === weekStart);
@@ -1749,7 +1749,7 @@ export function ViryaAnnualPlanOrchestrator({
     try {
       const { rows } = await buildViryaPlannedRows(weekStart);
       if (!rows.length) {
-        setError(`Nessuna seduta materializzata per la settimana ${weekStart}.`);
+        setError(`No session materialized for the week ${weekStart}.`);
         return;
       }
       const sessions: Array<{
@@ -1770,7 +1770,7 @@ export function ViryaAnnualPlanOrchestrator({
         });
       }
       if (!sessions.length) {
-        setError("Contratti Builder non trovati nelle sedute materializzate.");
+        setError("Builder contracts not found in the materialized sessions.");
         return;
       }
       const r = await importViryaWeekToLibrary({
@@ -1785,16 +1785,16 @@ export function ViryaAnnualPlanOrchestrator({
       if (!r.ok) {
         setError(
           r.error === "coach_only" || r.error === "coach_not_approved"
-            ? "Export libreria riservato ai coach approvati."
-            : (r.error ?? "Export libreria fallito"),
+            ? "Library export reserved for approved coaches."
+            : (r.error ?? "Library export failed"),
         );
         return;
       }
       setSuccess(
-        `Settimana ${weekStart}: ${r.imported ?? sessions.length} sedute salvate in libreria coach (cartella VIRYA · settimane tipo).`,
+        `Week ${weekStart}: ${r.imported ?? sessions.length} sessions saved to the coach library (VIRYA folder · template weeks).`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Export libreria fallito");
+      setError(e instanceof Error ? e.message : "Library export failed");
     } finally {
       setSavingLibrary(false);
     }
@@ -1804,7 +1804,7 @@ export function ViryaAnnualPlanOrchestrator({
     const s = planWindowStart.trim();
     const e = planWindowEnd.trim();
     if (!s || !e || new Date(e) < new Date(s)) {
-      setError("Intervallo date non valido (fine prima dell’inizio).");
+      setError("Invalid date range (end before start).");
       return false;
     }
     setError(null);
@@ -1842,7 +1842,7 @@ export function ViryaAnnualPlanOrchestrator({
     }
     const next = buildAerobicClassicPhases(s, e);
     if (!next.length) {
-      setError("Intervallo date non valido (fine prima dell’inizio).");
+      setError("Invalid date range (end before start).");
       return false;
     }
     setPhases(next);
@@ -1853,7 +1853,7 @@ export function ViryaAnnualPlanOrchestrator({
     const s = planWindowStart.trim();
     const e = planWindowEnd.trim();
     if (!s || !e || new Date(e) < new Date(s)) {
-      setError("Imposta date inizio/fine valide al passo 3 prima di generare le fasi.");
+      setError("Set valid start/end dates at step 3 before generating the phases.");
       return;
     }
     setError(null);
@@ -2107,14 +2107,14 @@ export function ViryaAnnualPlanOrchestrator({
         />
       ) : null}
 
-      <nav className="flex flex-wrap gap-2 border-b border-white/10 pb-4" aria-label="Passi Virya">
+      <nav className="flex flex-wrap gap-2 border-b border-white/10 pb-4" aria-label="Virya steps">
         {(
           [
             { n: 1 as const, label: "Macro", desc: "A · B · C · D" },
-            { n: 2 as const, label: "Sport", desc: "Disciplina" },
-            { n: 3 as const, label: "Periodo", desc: "Date piano" },
-            { n: 4 as const, label: "Stagione", desc: "Cardine · eventi · fasi" },
-            { n: 5 as const, label: "Settimane", desc: "Stimoli · griglia · Calendar" },
+            { n: 2 as const, label: "Sport", desc: "Discipline" },
+            { n: 3 as const, label: "Period", desc: "Plan dates" },
+            { n: 4 as const, label: "Season", desc: "Key event · events · phases" },
+            { n: 5 as const, label: "Weeks", desc: "Stimuli · grid · Calendar" },
           ] as const
         ).map((s) => (
           <button
@@ -2128,7 +2128,7 @@ export function ViryaAnnualPlanOrchestrator({
                 : "border-white/10 bg-black/25 hover:border-white/20",
             )}
           >
-            <span className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-500">Passo {s.n}</span>
+            <span className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-500">Step {s.n}</span>
             <span className="text-sm font-semibold text-white">{s.label}</span>
             <span className="text-[0.7rem] leading-tight text-slate-500">{s.desc}</span>
           </button>
@@ -2195,14 +2195,14 @@ export function ViryaAnnualPlanOrchestrator({
               className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
               onClick={() => setViryaStep(3)}
             >
-              <ChevronLeft className="h-4 w-4" aria-hidden /> Indietro
+              <ChevronLeft className="h-4 w-4" aria-hidden /> Back
             </button>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
               onClick={() => setViryaStep(5)}
             >
-              Griglia settimanale e Calendar <ChevronRight className="h-4 w-4" aria-hidden />
+              Weekly grid and Calendar <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>
@@ -2235,7 +2235,7 @@ export function ViryaAnnualPlanOrchestrator({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-fuchsia-500/30 bg-fuchsia-950/15 px-4 py-3 text-sm">
-            <span className="font-semibold text-fuchsia-200">Riepilogo passi 1–4</span>
+            <span className="font-semibold text-fuchsia-200">Steps 1–4 summary</span>
             <span className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-slate-200">
               {sportFamilies.find((x) => x.id === sportFamily)?.label ?? sportFamily}
             </span>
@@ -2250,14 +2250,14 @@ export function ViryaAnnualPlanOrchestrator({
               href="/training/builder?src=virya"
               className="text-xs font-semibold text-pink-300 underline-offset-2 hover:text-pink-200 hover:underline"
             >
-              Builder sessione
+              Session builder
             </Link>
             <button
               type="button"
               className="ml-auto text-xs font-semibold text-cyan-300 hover:text-cyan-200"
               onClick={() => setViryaStep(1)}
             >
-              Modifica flusso guidato
+              Edit guided flow
             </button>
           </div>
 
@@ -2301,27 +2301,27 @@ export function ViryaAnnualPlanOrchestrator({
               className="text-xs font-semibold text-slate-400 underline decoration-white/20 hover:text-cyan-300"
               onClick={() => setViryaStep(4)}
             >
-              ← Torna a obiettivo cardine, eventi e macro-fasi
+              ← Back to key goal, events and macro-phases
             </button>
           </div>
 
       <section className="viz-grid">
         <article className="viz-card builder-panel rounded-2xl !border-pink-500/30 !bg-black p-5 text-white shadow-[inset_0_1px_0_rgba(251,146,60,0.08)]">
-          <h3 className="viz-title">Piano annuale</h3>
+          <h3 className="viz-title">Annual plan</h3>
           <div className="form-grid-two">
             <label className="form-field">
-              <span>Nome piano</span>
+              <span>Plan name</span>
               <input className="form-input" value={planName} onChange={(e) => setPlanName(e.target.value)} />
             </label>
             <label className="form-field">
-              <span>{sportFamily === "strength" ? "Modulo" : "Disciplina"}</span>
+              <span>{sportFamily === "strength" ? "Module" : "Discipline"}</span>
               <input
                 className="form-input"
                 value={
                   sportFamily === "strength"
                     ? "B · Gym & Performance"
                     : sportFamily === "technical"
-                      ? "C · Sport tecnici/tattici"
+                      ? "C · Technical/tactical sports"
                       : sportFamily === "lifestyle"
                         ? "D · Lifestyle"
                         : discipline
@@ -2332,15 +2332,15 @@ export function ViryaAnnualPlanOrchestrator({
             </label>
           </div>
           <label className="form-field" style={{ marginTop: "10px" }}>
-            <span>Obiettivo piano annuale (coach)</span>
+            <span>Annual plan goal (coach)</span>
             <textarea
               className="form-textarea min-h-[5rem] w-full rounded-xl border border-pink-500/25 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30"
               rows={4}
-              placeholder="Descrivi l’obiettivo cardine della stagione per l’atleta…"
+              placeholder="Describe the key goal of the season for the athlete…"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
             />
-            <span className="mt-1 block text-[0.7rem] text-slate-500">Modificabile in qualsiasi momento; viene propagato nelle note di generazione.</span>
+            <span className="mt-1 block text-[0.7rem] text-slate-500">Editable at any time; it is propagated into the generation notes.</span>
           </label>
           {sportFamily === "aerobic" ? (
             <ViryaAerobicNote />
@@ -2402,7 +2402,7 @@ export function ViryaAnnualPlanOrchestrator({
               className="rounded-lg border border-orange-400/50 bg-orange-500/15 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-500/25"
               onClick={autoTuneFromGoal}
             >
-              Auto-tune fasi dal target
+              Auto-tune phases from target
             </button>
           </div>
           <ViryaPhaseRecapGrid
@@ -2431,14 +2431,14 @@ export function ViryaAnnualPlanOrchestrator({
           programWeekRows={programWeekRows}
         />
         <article className="viz-card builder-panel">
-          <h3 className="viz-title">Deploy piano su Calendar</h3>
+          <h3 className="viz-title">Deploy plan to Calendar</h3>
           <p style={{ margin: "0 0 10px 0", color: "var(--empathy-text-muted)", fontSize: "13px" }}>
-            VIRYA genera le sedute previste. Dopo esecuzione reale, EMPATHY confronta previsto/eseguito e riadatta training + nutrition + rifornimento.
+            VIRYA generates the planned sessions. After actual execution, EMPATHY compares planned/executed and re-adapts training + nutrition + fueling.
           </p>
           <label className="form-field" style={{ marginBottom: "10px" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <input type="checkbox" checked={replacePrevious} onChange={(e) => setReplacePrevious(e.target.checked)} />
-              Sostituisci sessioni VIRYA già sul calendario nello stesso intervallo di date (cancella marker [VIRYA:…] prima di reinserire)
+              Replace VIRYA sessions already on the calendar in the same date range (removes the [VIRYA:…] marker before reinserting)
             </span>
           </label>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -2449,16 +2449,16 @@ export function ViryaAnnualPlanOrchestrator({
               disabled={saving || !selectedAthleteId || phases.length === 0}
               title={
                 !selectedAthleteId
-                  ? "Seleziona / carica contesto atleta"
+                  ? "Select / load athlete context"
                   : phases.length === 0
-                    ? "Aggiungi fasi (passo 4) prima di generare"
+                    ? "Add phases (step 4) before generating"
                     : undefined
               }
             >
-              {saving ? "Generazione..." : "Genera piano annuale"}
+              {saving ? "Generating..." : "Generate annual plan"}
             </button>
             <Link href="/training/calendar" style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-              Apri Calendar →
+              Open Calendar →
             </Link>
           </div>
         </article>

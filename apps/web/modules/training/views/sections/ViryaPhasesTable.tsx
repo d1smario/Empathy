@@ -35,20 +35,20 @@ export function ViryaPhasesTable({
   return (
     <section className="viz-card builder-panel" style={{ marginBottom: "16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
-        <h3 className="viz-title" style={{ margin: 0 }}>Fasi, mesocicli, carico/scarico</h3>
-        <button type="button" className="btn-primary" onClick={addPhase}>+ Fase</button>
+        <h3 className="viz-title" style={{ margin: 0 }}>Phases, mesocycles, load/deload</h3>
+        <button type="button" className="btn-primary" onClick={addPhase}>+ Phase</button>
       </div>
       <table className="table-shell">
         <thead>
           <tr>
-            <th>Inizio</th>
-            <th>Fine</th>
-            <th>Fase</th>
-            {(sportFamily === "strength" || sportFamily === "technical" || sportFamily === "lifestyle") && <th>Obiettivo macrofase</th>}
-            <th>Mesociclo</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Phase</th>
+            {(sportFamily === "strength" || sportFamily === "technical" || sportFamily === "lifestyle") && <th>Macrophase goal</th>}
+            <th>Mesocycle</th>
             <th>{VIRYA_LOAD_SHORT}/w</th>
-            <th>Sedute/w</th>
-            <th>Note</th>
+            <th>Sessions/w</th>
+            <th>Notes</th>
             <th />
           </tr>
         </thead>
@@ -65,11 +65,11 @@ export function ViryaPhasesTable({
                   onChange={(e) => updatePhase(p.id, { phase: e.target.value as PhaseType })}
                 >
                   <option value="base">Base</option>
-                  <option value="build">Costruzione</option>
-                  <option value="refine">Rifinitura</option>
-                  <option value="peak">Forma</option>
-                  <option value="deload">Scarico</option>
-                  <option value="second_peak">Secondo picco</option>
+                  <option value="build">Build</option>
+                  <option value="refine">Refine</option>
+                  <option value="peak">Peak</option>
+                  <option value="deload">Deload</option>
+                  <option value="second_peak">Second peak</option>
                 </select>
               </td>
               {(sportFamily === "strength" || sportFamily === "technical" || sportFamily === "lifestyle") && (
@@ -94,15 +94,15 @@ export function ViryaPhasesTable({
                         ))
                       : sportFamily === "technical"
                         ? [
-                          <option key={`macro-obj-${p.id}-tecnico_tattico`} value="tecnico_tattico">Tecnico-tattico</option>,
-                          <option key={`macro-obj-${p.id}-offensiva`} value="offensiva">Offensiva</option>,
-                          <option key={`macro-obj-${p.id}-difensiva`} value="difensiva">Difensiva</option>,
-                          <option key={`macro-obj-${p.id}-mista`} value="mista">Mista</option>,
+                          <option key={`macro-obj-${p.id}-tecnico_tattico`} value="tecnico_tattico">Technical-tactical</option>,
+                          <option key={`macro-obj-${p.id}-offensiva`} value="offensiva">Offense</option>,
+                          <option key={`macro-obj-${p.id}-difensiva`} value="difensiva">Defense</option>,
+                          <option key={`macro-obj-${p.id}-mista`} value="mista">Mixed</option>,
                         ]
                         : [
                             <option key={`macro-obj-${p.id}-lifestyle_balance`} value="lifestyle_balance">Balance</option>,
-                            <option key={`macro-obj-${p.id}-respirazione`} value="respirazione">Respirazione</option>,
-                            <option key={`macro-obj-${p.id}-mobilita`} value="mobilita">Mobilita</option>,
+                            <option key={`macro-obj-${p.id}-respirazione`} value="respirazione">Breathing</option>,
+                            <option key={`macro-obj-${p.id}-mobilita`} value="mobilita">Mobility</option>,
                             <option key={`macro-obj-${p.id}-recovery`} value="recovery">Recovery</option>,
                           ]}
                   </select>
@@ -116,7 +116,7 @@ export function ViryaPhasesTable({
                   value={p.weeklyTss}
                   title={
                     sportFamily === "strength" && strengthPhaseLoadHints.get(p.id)
-                      ? `Media dal programma settimanale (passo 5): ${strengthPhaseLoadHints.get(p.id)!.avgLoad} ${VIRYA_LOAD_SHORT.toLowerCase()} · ${strengthPhaseLoadHints.get(p.id)!.avgSessions} sedute`
+                      ? `Average from weekly program (step 5): ${strengthPhaseLoadHints.get(p.id)!.avgLoad} ${VIRYA_LOAD_SHORT.toLowerCase()} · ${strengthPhaseLoadHints.get(p.id)!.avgSessions} sessions`
                       : undefined
                   }
                   style={{ borderColor: tssColor(p.weeklyTss), color: tssColor(p.weeklyTss) }}

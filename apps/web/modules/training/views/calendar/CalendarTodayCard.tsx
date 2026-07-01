@@ -26,7 +26,7 @@ export function CalendarTodayCard({
   builderReplacePlanned,
 }: CalendarTodayCardProps) {
   const selectedSessionHref = useProductHref(`/training/session/${selectedDate}`);
-  const dayLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("it-IT", {
+  const dayLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -39,8 +39,8 @@ export function CalendarTodayCard({
         title={dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}
         subtitle={
           dayPlanned.length > 0
-            ? "Adatta la seduta pianificata o creane una nuova"
-            : "Crea la seduta di questo giorno"
+            ? "Adapt the planned session or create a new one"
+            : "Create this day's session"
         }
         icon={LayoutGrid}
       >
@@ -50,7 +50,7 @@ export function CalendarTodayCard({
             variant="primary"
             className="w-full justify-center sm:w-auto"
           >
-            Crea o adatta la seduta nel Builder
+            Create or adapt the session in the Builder
           </Pro2Link>
           {builderReplacePlanned ? (
             <Pro2Link
@@ -58,7 +58,7 @@ export function CalendarTodayCard({
               variant="ghost"
               className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
             >
-              Sostituisci seduta
+              Replace session
             </Pro2Link>
           ) : null}
           <Pro2Link
@@ -67,7 +67,7 @@ export function CalendarTodayCard({
             className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
           >
             <LineChart className="mr-1 inline h-4 w-4" aria-hidden />
-            Giornata
+            Day
           </Pro2Link>
           <Pro2Link
             href={`/physiology/daily/${encodeURIComponent(selectedDate)}`}
@@ -75,20 +75,20 @@ export function CalendarTodayCard({
             className="w-full justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 sm:w-auto"
           >
             <Heart className="mr-1 inline h-4 w-4" aria-hidden />
-            Fisiologia
+            Physiology
           </Pro2Link>
         </div>
 
         <div className="mt-4 space-y-2">
-          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Pianificato</p>
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Planned</p>
           {dayPlanned.length === 0 ? (
             <p className="text-sm text-gray-500">
-              Nessuna seduta pianificata: il Builder è il percorso consigliato per creare la seduta di questo giorno.
+              No planned session: the Builder is the recommended path to create this day&apos;s session.
             </p>
           ) : (
             <>
               <p className="text-sm text-gray-300">
-                {dayPlanned.length} seduta{dayPlanned.length === 1 ? "" : "e"} — scheda e dettaglio nella sezione Piano.
+                {dayPlanned.length} session{dayPlanned.length === 1 ? "" : "s"} — card and detail in the Plan section.
               </p>
               <button
                 type="button"
@@ -100,7 +100,7 @@ export function CalendarTodayCard({
                   })
                 }
               >
-                Vai alle sedute pianificate ↓
+                Go to planned sessions ↓
               </button>
             </>
           )}
@@ -109,10 +109,10 @@ export function CalendarTodayCard({
         <div className="mt-6 space-y-3 border-t border-white/10 pt-6">
           <p className="flex items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
             <Activity className="h-3.5 w-3.5" aria-hidden />
-            Eseguito
+            Completed
           </p>
           {dayExecuted.length === 0 ? (
-            <p className="text-sm text-gray-500">Nessun eseguito in questo giorno.</p>
+            <p className="text-sm text-gray-500">Nothing completed on this day.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {dayExecuted.map((w) => (
@@ -127,7 +127,7 @@ export function CalendarTodayCard({
                       variant="ghost"
                       className="shrink-0 border border-orange-500/30 px-2 py-1 text-xs text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
                     >
-                      Apri
+                      Open
                     </Pro2Link>
                   </div>
                 </li>

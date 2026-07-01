@@ -18,7 +18,7 @@ const ViryaAnnualPlanOrchestrator = dynamic(
   () => import("@/modules/training/components/ViryaAnnualPlanOrchestrator").then((m) => m.ViryaAnnualPlanOrchestrator),
   {
     ssr: false,
-    loading: () => <div className="py-12 text-center text-sm text-gray-500">Caricamento pianificatore annuale…</div>,
+    loading: () => <div className="py-12 text-center text-sm text-gray-500">Loading annual planner…</div>,
   },
 );
 
@@ -67,7 +67,7 @@ export default function TrainingViryaPageView() {
     if (ctxLoading) return;
     if (!athleteId) {
       setCtx(null);
-      setErr("Nessun atleta attivo.");
+      setErr("No active athlete.");
       setLoading(false);
       return;
     }
@@ -94,7 +94,7 @@ export default function TrainingViryaPageView() {
       viryaContextCacheId = athleteId;
     } catch (e) {
       if (!cached) {
-        setErr(e instanceof Error ? e.message : "Caricamento contesto non riuscito.");
+        setErr(e instanceof Error ? e.message : "Failed to load context.");
         setCtx(null);
       }
     } finally {
@@ -109,12 +109,12 @@ export default function TrainingViryaPageView() {
     try {
       const res = await persistTrainingResearchPlans(ctx.researchPlans);
       if (!res.ok) {
-        setErr(res.error ?? "Persistenza trace non riuscita.");
+        setErr(res.error ?? "Failed to persist traces.");
       } else {
         await load();
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Persistenza trace non riuscita.");
+      setErr(e instanceof Error ? e.message : "Failed to persist traces.");
     } finally {
       setPersistingTraces(false);
     }
@@ -136,8 +136,8 @@ export default function TrainingViryaPageView() {
     <Pro2ModulePageShell
       eyebrow="Training · Virya"
       eyebrowClassName="text-violet-400"
-      title="Virya · contesto e piano annuale"
-      description="Con atleta attivo l’orchestratore annuale è in cima alla pagina (stimoli al passo 5, deploy su Calendar). Le schede di contesto canonico compaiono sotto al caricamento della memoria atleta."
+      title="Virya · context and annual plan"
+      description="With an active athlete, the annual orchestrator is at the top of the page (stimuli at step 5, deploy to Calendar). The canonical context cards appear below once athlete memory loads."
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />
@@ -146,11 +146,11 @@ export default function TrainingViryaPageView() {
       {showTech && ctx?.readSpineCoverage && !err ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-violet-300/90">
-            Spina lettura (athlete-memory) · {ctx.readSpineCoverage.spineScore}%
+            Read spine (athlete-memory) · {ctx.readSpineCoverage.spineScore}%
           </summary>
           <p className="mt-2 text-xs text-slate-500">
-            Allineato alla dashboard hub: verifica rapida di profilo, fisiologia, twin e moduli collegati prima di
-            pianificare con Virya.
+            Aligned with the hub dashboard: a quick check of profile, physiology, twin and connected modules before
+            planning with Virya.
           </p>
         </details>
       ) : null}
@@ -178,41 +178,41 @@ export default function TrainingViryaPageView() {
 
       {!loading && !ctxLoading && ctx ? (
         <div className="grid gap-6 lg:grid-cols-2">
-          <Pro2SectionCard accent="violet" title="Fisiologia · sintesi" subtitle="Da memoria atleta canonica" icon={Sparkles}>
+          <Pro2SectionCard accent="violet" title="Physiology · summary" subtitle="From canonical athlete memory" icon={Sparkles}>
             <dl className="grid gap-2 text-sm text-slate-300">
               <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
                 <dt className="text-slate-500">FTP</dt>
                 <dd className="font-mono tabular-nums text-white">{ftp != null ? `${Math.round(ftp)} W` : "—"}</dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                <dt className="text-slate-500">Moduli collegati</dt>
+                <dt className="text-slate-500">Connected modules</dt>
                 <dd className="text-right text-xs text-slate-400">
-                  Profilo {ctx.connectedModules?.profile ? "sì" : "no"} · Fisiologia{" "}
-                  {ctx.connectedModules?.physiology ? "sì" : "no"} · Salute {ctx.connectedModules?.health ? "sì" : "no"}
+                  Profile {ctx.connectedModules?.profile ? "yes" : "no"} · Physiology{" "}
+                  {ctx.connectedModules?.physiology ? "yes" : "no"} · Health {ctx.connectedModules?.health ? "yes" : "no"}
                   {" · "}
-                  Twin {ctx.twinState ? "sì" : "no"}
+                  Twin {ctx.twinState ? "yes" : "no"}
                 </dd>
               </div>
               {!ctx.twinState ? (
                 <p className="text-xs text-amber-200/80">
-                  Digital twin non ancora disponibile: la modulazione bioenergetica si attiva quando c&apos;è uno stato
-                  twin per l&apos;atleta.
+                  Digital twin not yet available: bioenergetic modulation activates once there is a twin state for the
+                  athlete.
                 </p>
               ) : null}
               {ctx.operationalContext ? (
                 <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-slate-400">
-                  <p className="font-semibold text-violet-200/90">Contesto operativo giorno</p>
+                  <p className="font-semibold text-violet-200/90">Day operational context</p>
                   <p className="mt-1">{ctx.operationalContext.headline}</p>
                   <p className="mt-1 opacity-90">{ctx.operationalContext.guidance}</p>
                   <p className="mt-2 font-mono text-[0.65rem] text-slate-500">
-                    scala carico {Math.round(ctx.operationalContext.loadScalePct)}% · modo {ctx.operationalContext.mode}
+                    load scale {Math.round(ctx.operationalContext.loadScalePct)}% · mode {ctx.operationalContext.mode}
                   </p>
                 </div>
               ) : null}
             </dl>
           </Pro2SectionCard>
 
-          <Pro2SectionCard accent="amber" title="Strategia · hint" subtitle="Flags + derive V1" icon={Brain}>
+          <Pro2SectionCard accent="amber" title="Strategy · hints" subtitle="Flags + V1 derivations" icon={Brain}>
             <div className="flex flex-wrap gap-2">
               {(ctx.strategyHints ?? []).map((h) => (
                 <span
@@ -226,7 +226,7 @@ export default function TrainingViryaPageView() {
             {showTech ? (
               flagsList.length ? (
                 <div className="mt-4">
-                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Flags attivi</p>
+                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Active flags</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-rose-200/90">
                     {flagsList.map(([k]) => (
                       <li key={k}>{k}</li>
@@ -234,16 +234,16 @@ export default function TrainingViryaPageView() {
                   </ul>
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-slate-500">Nessun flag di vincolo attivo.</p>
+                <p className="mt-3 text-xs text-slate-500">No active constraint flag.</p>
               )
             ) : null}
           </Pro2SectionCard>
 
           {ctx.adaptationLoop ? (
-            <Pro2SectionCard accent="cyan" title="Adattamento · loop" subtitle="7–28g pianificato vs eseguito" icon={LineChart}>
+            <Pro2SectionCard accent="cyan" title="Adaptation · loop" subtitle="7–28d planned vs executed" icon={LineChart}>
               <dl className="space-y-2 text-sm text-slate-300">
                 <div className="flex justify-between">
-                  <dt className="text-slate-500">Stato</dt>
+                  <dt className="text-slate-500">Status</dt>
                   <dd className="font-semibold text-cyan-100">{ctx.adaptationLoop.status}</dd>
                 </div>
                 <div className="flex justify-between">
@@ -256,17 +256,17 @@ export default function TrainingViryaPageView() {
           ) : null}
 
           {ctx.bioenergeticModulation ? (
-            <Pro2SectionCard accent="fuchsia" title="Bioenergetica" subtitle="Modulazione carico" icon={CalendarRange}>
+            <Pro2SectionCard accent="fuchsia" title="Bioenergetics" subtitle="Load modulation" icon={CalendarRange}>
               <p className="text-sm text-slate-300">{ctx.bioenergeticModulation.headline}</p>
               <p className="mt-2 text-xs text-slate-500">{ctx.bioenergeticModulation.guidance}</p>
               <p className="mt-2 font-mono text-[0.65rem] text-slate-500">
-                scala {Math.round(ctx.bioenergeticModulation.loadScalePct)}% · {ctx.bioenergeticModulation.state}
+                scale {Math.round(ctx.bioenergeticModulation.loadScalePct)}% · {ctx.bioenergeticModulation.state}
               </p>
             </Pro2SectionCard>
           ) : null}
 
           {ctx.crossModuleDynamicsLines?.length ? (
-            <Pro2SectionCard accent="cyan" title="Dinamica Nutrition ↔ Training" subtitle="Ponte deterministico cross-modulo" icon={LineChart}>
+            <Pro2SectionCard accent="cyan" title="Nutrition ↔ Training dynamics" subtitle="Deterministic cross-module bridge" icon={LineChart}>
               <ul className="list-inside list-disc space-y-1 text-xs leading-relaxed text-slate-400">
                 {ctx.crossModuleDynamicsLines.map((line, i) => (
                   <li key={i}>{line}</li>
@@ -276,18 +276,18 @@ export default function TrainingViryaPageView() {
           ) : null}
 
           {ctx.knowledgeModulation ? (
-            <Pro2SectionCard accent="emerald" title="Knowledge · modulazione attiva" subtitle="Dominio training/bio/nutrition da memoria" icon={ScrollText}>
+            <Pro2SectionCard accent="emerald" title="Knowledge · active modulation" subtitle="Training/bio/nutrition domain from memory" icon={ScrollText}>
               <dl className="space-y-2 text-sm text-slate-300">
                 <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                  <dt className="text-slate-500">Dominio</dt>
+                  <dt className="text-slate-500">Domain</dt>
                   <dd className="font-semibold text-emerald-100">{ctx.knowledgeModulation.domain}</dd>
                 </div>
                 <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                  <dt className="text-slate-500">Vincolo</dt>
+                  <dt className="text-slate-500">Constraint</dt>
                   <dd className="text-right text-xs">{ctx.knowledgeModulation.constraintLevel}</dd>
                 </div>
                 <div className="flex justify-between gap-4 border-b border-white/10 pb-2">
-                  <dt className="text-slate-500">Confidenza</dt>
+                  <dt className="text-slate-500">Confidence</dt>
                   <dd className="font-mono tabular-nums">{(ctx.knowledgeModulation.confidence * 100).toFixed(0)}%</dd>
                 </div>
                 {ctx.knowledgeModulation.reasoningSummary ? (
@@ -308,7 +308,7 @@ export default function TrainingViryaPageView() {
           ) : null}
 
           {showTech && (ctx.researchPlans?.length ?? 0) > 0 ? (
-            <Pro2SectionCard accent="cyan" title="Research plans (Virya)" subtitle="Generati dagli hint · persistenza knowledge canonica" icon={FlaskConical}>
+            <Pro2SectionCard accent="cyan" title="Research plans (Virya)" subtitle="Generated from hints · canonical knowledge persistence" icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchPlans ?? []).map((p) => (
                   <li key={p.planId} className="rounded-xl border border-cyan-500/20 bg-black/35 px-3 py-2 text-xs">
@@ -331,17 +331,17 @@ export default function TrainingViryaPageView() {
           {showTech && (ctx.researchPlans?.length ?? 0) > 0 && (ctx.researchTraces?.length ?? 0) === 0 ? (
             <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-100/90">
               <p className="mb-2">
-                Nessun trace in risposta (es. contesto letto con <code className="rounded bg-black/40 px-1">persistResearchTraces=0</code> o
-                foundation knowledge assente). Puoi eseguire la stessa persistenza del GET tramite POST batch unico.
+                No trace in the response (e.g. context read with <code className="rounded bg-black/40 px-1">persistResearchTraces=0</code> or
+                foundation knowledge missing). You can run the same GET persistence via a single POST batch.
               </p>
               <Pro2Button type="button" variant="secondary" disabled={persistingTraces} onClick={() => void handlePersistResearchTraces()}>
-                {persistingTraces ? "Sincronizzazione…" : "Sincronizza trace (POST batch)"}
+                {persistingTraces ? "Syncing…" : "Sync traces (POST batch)"}
               </Pro2Button>
             </div>
           ) : null}
 
           {showTech && (ctx.researchTraces?.length ?? 0) > 0 ? (
-            <Pro2SectionCard accent="orange" title="Trace salvati (canonical)" subtitle="Stato hop / link documenti dopo persistenza" icon={FlaskConical}>
+            <Pro2SectionCard accent="orange" title="Saved traces (canonical)" subtitle="Hop status / document links after persistence" icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchTraces ?? []).map((t: KnowledgeResearchTraceSummary) => (
                   <li key={t.traceId} className="rounded-xl border border-orange-500/25 bg-black/35 px-3 py-2 text-xs">
@@ -350,8 +350,8 @@ export default function TrainingViryaPageView() {
                       <span className={`font-semibold ${traceStatusClass(t.status)}`}>{t.status}</span>
                     </div>
                     <p className="mt-1 text-slate-400">
-                      Hop: {t.hopCounts.complete}/{t.hopCounts.total} completati · doc {t.linkCounts.documents} ·
-                      asserzioni {t.linkCounts.assertions}
+                      Hop: {t.hopCounts.complete}/{t.hopCounts.total} completed · doc {t.linkCounts.documents} ·
+                      assertions {t.linkCounts.assertions}
                     </p>
                     {t.latestResultSummary ? (
                       <p className="mt-1 text-slate-300">{t.latestResultSummary}</p>
@@ -365,13 +365,13 @@ export default function TrainingViryaPageView() {
       ) : null}
 
       {showTech ? (
-        <Pro2SectionCard accent="orange" title="Pipeline" subtitle="Riepilogo" icon={Sparkles} className="mt-8">
+        <Pro2SectionCard accent="orange" title="Pipeline" subtitle="Summary" icon={Sparkles} className="mt-8">
           <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
-            <li>Builder = generazione singola sessione; Virya = batch annuale che chiama lo stesso endpoint engine.</li>
-            <li>Research plans/trace restano knowledge — non sostituiscono il motore deterministico.</li>
+            <li>Builder = single-session generation; Virya = annual batch that calls the same engine endpoint.</li>
+            <li>Research plans/traces stay knowledge — they do not replace the deterministic engine.</li>
             <li>
-              Persistenza trace: <code className="text-slate-300">GET …/virya-context?persistResearchTraces=1</code> (default) e
-              <code className="text-slate-300"> POST /api/knowledge/research-traces</code> con <code className="text-slate-300">plans[]</code> usano lo stesso
+              Trace persistence: <code className="text-slate-300">GET …/virya-context?persistResearchTraces=1</code> (default) and
+              <code className="text-slate-300"> POST /api/knowledge/research-traces</code> with <code className="text-slate-300">plans[]</code> use the same
               <code className="text-slate-300"> syncResearchTracePlans</code> in <code className="text-slate-300">lib/knowledge/virya-research-trace-sync.ts</code>.
             </li>
           </ol>

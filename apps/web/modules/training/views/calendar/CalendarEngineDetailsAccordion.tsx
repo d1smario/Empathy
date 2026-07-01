@@ -30,31 +30,31 @@ export function CalendarEngineDetailsAccordion({
   return (
     <Pro2Accordion
       id="mod-dettagli-motore"
-      title="Come funziona"
-      subtitle="Spostamenti, formati di import e finestra dati del calendario"
+      title="How it works"
+      subtitle="Moves, import formats and calendar data window"
       accent="orange"
     >
       <div className="space-y-4 text-sm text-gray-300">
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Spostare una seduta</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Move a session</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            Trascina una chip <strong className="text-orange-200">PLAN</strong> su un altro giorno della griglia per
-            spostare la seduta (stessa struttura Builder, nuova data). I workout eseguiti (EXEC) non si spostano.
+            Drag a <strong className="text-orange-200">PLAN</strong> chip onto another day in the grid to
+            move the session (same Builder structure, new date). Executed workouts (EXEC) do not move.
           </p>
         </div>
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Formati di import</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Import formats</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            Modalità Auto: i file FIT workout diventano sedute in calendario (PLAN), le attività registrate diventano
-            EXEC. Sedute strutturate: ZWO, ERG, MRC o FIT workout — una seduta nel giorno scelto con grafico a blocchi
-            come nel Builder. Tracce eseguite: FIT/FIT.GZ, CSV, JSON, TCX, GPX.
+            Auto mode: FIT workout files become calendar sessions (PLAN), recorded activities become
+            EXEC. Structured sessions: ZWO, ERG, MRC or FIT workout — one session on the chosen day with a block chart
+            like in the Builder. Executed tracks: FIT/FIT.GZ, CSV, JSON, TCX, GPX.
           </p>
         </div>
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Finestra dati</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Data window</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            I dati caricati includono alcuni giorni prima e dopo il mese visibile, così le sedute ai bordi non
-            spariscono dalla griglia.
+            The loaded data includes a few days before and after the visible month, so sessions at the edges do not
+            disappear from the grid.
             {showTech ? (
               <span className="mt-1 block font-mono text-[0.65rem] text-gray-500">
                 API: {fetchFrom} → {fetchTo}
@@ -91,10 +91,10 @@ export function CalendarEngineDetailsAccordion({
         {showTech && executedCalendarGap ? (
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             <p className="font-mono text-[0.65rem] uppercase tracking-wide text-amber-300">
-              warning · executed presenti ma non renderizzati in griglia
+              warning · executed present but not rendered in grid
             </p>
             <p className="mt-1 text-amber-100/90">
-              Eseguiti nel mese: {executedCalendarGap.totalRows}. Chip EXEC visibili: {monthExecutedRenderedCount}.
+              Executed in the month: {executedCalendarGap.totalRows}. Visible EXEC chips: {monthExecutedRenderedCount}.
             </p>
             <pre className="mt-2 overflow-x-auto rounded border border-amber-500/25 bg-black/40 p-2 font-mono text-[0.65rem] leading-relaxed text-amber-200/95">
               {JSON.stringify(executedCalendarGap.sample, null, 2)}

@@ -47,10 +47,10 @@ async function requestTrainingImportSignUrl(input: { athleteId: string; file: Fi
     token?: string;
   };
   if (!res.ok) {
-    throw new Error(json.error ?? "Firma upload Storage non riuscita");
+    throw new Error(json.error ?? "Storage upload signing failed");
   }
   if (!json.bucket || !json.path || !json.token) {
-    throw new Error("Risposta sign-upload non valida");
+    throw new Error("Invalid sign-upload response");
   }
   return { bucket: json.bucket, path: json.path, token: json.token };
 }
@@ -68,13 +68,13 @@ async function pushStagingAndImportJson(input: {
 }): Promise<unknown> {
   const sb = createEmpathyBrowserSupabase();
   if (!sb) {
-    throw new Error("Client Supabase non disponibile (env pubblico mancante)");
+    throw new Error("Supabase client unavailable (missing public env)");
   }
   const { error: upErr } = await sb.storage
     .from(input.sign.bucket)
     .uploadToSignedUrl(input.sign.path, input.sign.token, input.file);
   if (upErr) {
-    throw new Error(upErr.message || "Upload Storage fallito");
+    throw new Error(upErr.message || "Storage upload failed");
   }
 
   const res = await fetch("/api/training/import", {
@@ -131,7 +131,7 @@ export async function importExecutedWorkoutFile(input: {
       importIntent: intent,
     })) as { response: Response; json: { error?: string } };
     if (!response.ok) {
-      throw new Error(json.error ?? "Import eseguito non riuscito");
+      throw new Error(json.error ?? "Executed import failed");
     }
     return json as TrainingImportFileResult;
   }
@@ -153,7 +153,7 @@ export async function importExecutedWorkoutFile(input: {
   });
   const json = (await response.json().catch(() => ({}))) as { error?: string };
   if (!response.ok) {
-    throw new Error(json.error ?? "Import eseguito non riuscito");
+    throw new Error(json.error ?? "Executed import failed");
   }
   return json as TrainingImportFileResult;
 }
@@ -179,7 +179,7 @@ export async function importPlannedProgramFile(input: {
       importIntent: "planned",
     })) as { response: Response; json: { error?: string } };
     if (!response.ok) {
-      throw new Error(json.error ?? "Import programma non riuscito");
+      throw new Error(json.error ?? "Program import failed");
     }
     return json as {
       status?: string;
@@ -222,7 +222,7 @@ export async function importPlannedProgramFile(input: {
   });
   const json = (await response.json().catch(() => ({}))) as { error?: string };
   if (!response.ok) {
-    throw new Error(json.error ?? "Import programma non riuscito");
+    throw new Error(json.error ?? "Program import failed");
   }
   return json as {
     status?: string;

@@ -137,7 +137,7 @@ export function BuilderEngineGenerateSection({
 }: BuilderEngineGenerateSectionProps) {
   return (
     <section
-      aria-label="Genera sessione (builder engine)"
+      aria-label="Generate session (builder engine)"
       className={`rounded-2xl border p-4 sm:p-5 lg:p-6 ${
         activeMacroId === "strength"
           ? "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
@@ -152,35 +152,35 @@ export function BuilderEngineGenerateSection({
         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
           2
         </span>
-        Genera sessione
+        Generate session
       </h2>
       {activeMacroId === "strength" ? (
         <p className="mt-1 text-sm text-gray-400">
-          Il motore propone la struttura (nomi esercizio), poi si materializza la{" "}
-          <span className="text-orange-200">scheda sul catalogo EMPATHY</span> con serie, ripetute, recuperi e immagini.
-          Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
+          The engine proposes the structure (exercise names), then the{" "}
+          <span className="text-orange-200">card on the EMPATHY catalog</span> materializes with sets, reps, recoveries and images.
+          Discipline: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
         </p>
       ) : activeMacroId === "technical" ? (
         <p className="mt-1 text-sm text-gray-400">
-          Concentrati su tecnica, tattica, schemi e moduli: la parte aerobico-pura resta in A · Aerobico.
-          Il builder stima un <span className="text-orange-200/95">TSS</span> da confrontare con RPE / carico interno.
-          Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
+          Focus on technique, tactics, patterns and modules: the pure-aerobic part stays in A · Aerobic.
+          The builder estimates a <span className="text-orange-200/95">TSS</span> to compare with RPE / internal load.
+          Discipline: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
         </p>
       ) : activeMacroId === "lifestyle" ? (
         <p className="mt-1 text-sm text-gray-400">
-          Preset per mobilità, recovery, qualità movimento e lavoro aerobico leggero (mind-body).
-          Disciplina: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
+          Presets for mobility, recovery, movement quality and light aerobic work (mind-body).
+          Discipline: <span className="font-semibold text-orange-200">{currentSportLabel}</span>.
         </p>
       ) : (
         <p className="mt-1 text-sm text-gray-400">
-          Macro aerobica: input compatti. Output: blocchi + esercizi dalla libreria, calibrati su profilo
-          fisiologico e digital twin dell&apos;atleta quando disponibili.
+          Aerobic macro: compact inputs. Output: blocks + exercises from the library, calibrated on the athlete&apos;s
+          physiological profile and digital twin when available.
         </p>
       )}
 
       {activeMacroId === "strength" ? (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Generative presets</p>
           <div className="flex flex-wrap gap-2">
             {ENGINE_QUICK_GYM.map((p) => (
               <button
@@ -196,9 +196,9 @@ export function BuilderEngineGenerateSection({
             ))}
           </div>
           <div className="rounded-xl border border-orange-500/20 bg-black/25 p-3">
-            <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Attrezzi · filtro libreria</p>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Equipment · library filter</p>
             <p className="mt-1 text-xs text-gray-500">
-              Pesi, corpo libero, cavi, elastici, macchinari. Nessun chip = nessun filtro stretto.
+              Weights, bodyweight, cables, bands, machines. No chip = no strict filter.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {GYM_EQUIPMENT_CHIPS.map((ch) => {
@@ -224,7 +224,7 @@ export function BuilderEngineGenerateSection({
               })}
             </div>
             <p className="mt-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Contrazione / stile
+              Contraction / style
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {GYM_CONTRACTION_CHIPS.map((ch) => {
@@ -246,13 +246,13 @@ export function BuilderEngineGenerateSection({
               })}
             </div>
             <label className="mt-3 flex max-w-lg flex-col gap-1 text-[0.65rem] text-gray-400">
-              Stile esecuzione nella scheda generata
+              Execution style in the generated card
               <select
                 className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                 value={gymAutoExecutionStyle}
                 onChange={(e) => setGymAutoExecutionStyle(e.target.value)}
               >
-                <option value="">Standard · usa solo prescrizione deterministica</option>
+                <option value="">Standard · use deterministic prescription only</option>
                 {PRO2_GYM_EXECUTION_STYLES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -263,14 +263,14 @@ export function BuilderEngineGenerateSection({
           </div>
           <details className="rounded-xl border border-white/10 bg-black/30">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-              <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
+              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Duration, phase and adaptation</span>
+              <span className="ml-2 text-xs text-gray-500">(optional)</span>
             </summary>
             <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
               <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
                 <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Adattamento
+                  Adaptation
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={adaptation}
@@ -287,7 +287,7 @@ export function BuilderEngineGenerateSection({
               <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
                 <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Fase
+                  Phase
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={phase}
@@ -324,12 +324,12 @@ export function BuilderEngineGenerateSection({
             onClick={() => void runGenerate()}
           >
             <Flame className="h-4 w-4 text-amber-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.55)]" aria-hidden />
-            {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
+            {genBusy ? "Generating…" : "Generate with current settings"}
           </Pro2Button>
         </div>
       ) : activeMacroId === "technical" ? (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Generative presets</p>
           <div className="flex flex-wrap gap-2">
             {ENGINE_QUICK_TECHNICAL.map((p) => (
               <button
@@ -346,20 +346,20 @@ export function BuilderEngineGenerateSection({
           </div>
           <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.07] p-4">
             <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Struttura modulare · Macro C
+              Modular structure · Macro C
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              Allinea fase di lavoro, contesto di gioco e qualità atletica: il motore arricchisce cue e traccia (come obiettivi V1:
-              fase offensiva/difensiva, schemi, modulo tecnico).
+              Align work phase, game context and athletic quality: the engine enriches cue and track (like V1 goals:
+              offensive/defensive phase, patterns, technical module).
             </p>
             <div className="mt-3 space-y-3">
               <div>
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fase di lavoro</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Work phase</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {(
                     [
-                      { id: "technique" as const, label: "Tecnica" },
-                      { id: "tactics" as const, label: "Tattica" },
+                      { id: "technique" as const, label: "Technique" },
+                      { id: "tactics" as const, label: "Tactics" },
                     ] as const
                   ).map((opt) => {
                     const sel = techWorkPhase === opt.id;
@@ -381,13 +381,13 @@ export function BuilderEngineGenerateSection({
                 </div>
               </div>
               <div>
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Contesto</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Context</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {(
                     [
-                      { id: "defensive" as const, label: "Difensivo" },
-                      { id: "build_up" as const, label: "Impostazione" },
-                      { id: "offensive" as const, label: "Offensivo" },
+                      { id: "defensive" as const, label: "Defensive" },
+                      { id: "build_up" as const, label: "Build-up" },
+                      { id: "offensive" as const, label: "Offensive" },
                     ] as const
                   ).map((opt) => {
                     const sel = techGameContext === opt.id;
@@ -409,7 +409,7 @@ export function BuilderEngineGenerateSection({
                 </div>
               </div>
               <div>
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Qualità atletica (multipla)</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Athletic quality (multiple)</p>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {TECHNICAL_ATHLETIC_QUALITY_OPTIONS.map((q) => {
                     const on = techQualities.includes(q.id);
@@ -438,14 +438,14 @@ export function BuilderEngineGenerateSection({
           </div>
           <details className="rounded-xl border border-white/10 bg-black/30">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-              <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
+              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Duration, phase and adaptation</span>
+              <span className="ml-2 text-xs text-gray-500">(optional)</span>
             </summary>
             <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
               <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
                 <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Adattamento
+                  Adaptation
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={adaptation}
@@ -462,7 +462,7 @@ export function BuilderEngineGenerateSection({
               <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
                 <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Fase
+                  Phase
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={phase}
@@ -499,12 +499,12 @@ export function BuilderEngineGenerateSection({
             onClick={() => void runGenerate()}
           >
             <Flame className="h-4 w-4 text-amber-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.45)]" aria-hidden />
-            {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
+            {genBusy ? "Generating…" : "Generate with current settings"}
           </Pro2Button>
         </div>
       ) : activeMacroId === "lifestyle" ? (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Preset generativi · Lifestyle</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Generative presets · Lifestyle</p>
           <div className="flex flex-wrap gap-2">
             {ENGINE_QUICK_LIFESTYLE.map((p) => (
               <button
@@ -521,14 +521,14 @@ export function BuilderEngineGenerateSection({
           </div>
           <details className="rounded-xl border border-white/10 bg-black/30">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 marker:hidden [&::-webkit-details-marker]:hidden">
-              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Durata, fase e adattamento</span>
-              <span className="ml-2 text-xs text-gray-500">(opzionale)</span>
+              <span className="underline decoration-orange-400/50 decoration-1 underline-offset-2">Duration, phase and adaptation</span>
+              <span className="ml-2 text-xs text-gray-500">(optional)</span>
             </summary>
             <div className="flex flex-wrap items-end gap-3 border-t border-white/10 px-4 pb-4 pt-3">
               <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
                 <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Adattamento
+                  Adaptation
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={adaptation}
@@ -545,7 +545,7 @@ export function BuilderEngineGenerateSection({
               <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-teal-500/35 bg-teal-500/10 p-3">
                 <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-teal-300" aria-hidden />
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-                  Fase
+                  Phase
                   <select
                     className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                     value={phase}
@@ -582,7 +582,7 @@ export function BuilderEngineGenerateSection({
             onClick={() => void runGenerate()}
           >
             <Flame className="h-4 w-4" aria-hidden />
-            {genBusy ? "Generazione…" : "Genera con impostazioni attuali"}
+            {genBusy ? "Generating…" : "Generate with current settings"}
           </Pro2Button>
         </div>
       ) : (
@@ -590,7 +590,7 @@ export function BuilderEngineGenerateSection({
           <div className="flex min-w-[11rem] flex-1 items-start gap-2 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 sm:min-w-[10rem]">
             <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-orange-300" aria-hidden />
             <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-              Adattamento
+              Adaptation
               <select
                 className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                 value={adaptation}
@@ -607,7 +607,7 @@ export function BuilderEngineGenerateSection({
           <div className="flex min-w-[8rem] items-start gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
             <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
             <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-gray-400">
-              Fase
+              Phase
               <select
                 className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-white"
                 value={phase}
@@ -654,7 +654,7 @@ export function BuilderEngineGenerateSection({
             onClick={() => void runGenerate()}
           >
             <Flame className="h-4 w-4" aria-hidden />
-            {genBusy ? "Generazione…" : "Genera sessione"}
+            {genBusy ? "Generating…" : "Generate session"}
           </Pro2Button>
         </div>
       )}
@@ -669,11 +669,11 @@ export function BuilderEngineGenerateSection({
           role="status"
         >
           <p className="font-semibold text-amber-200">
-            Adattamento giornaliero · {genResult.operationalScaling.loadScalePct}% del target pianificato
+            Daily adaptation · {genResult.operationalScaling.loadScalePct}% of planned target
           </p>
           <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
-            {genResult.operationalScaling.guidance} Il piano VIRYA resta invariato; questa seduta è scalata da recovery, twin e
-            bioenergetica.
+            {genResult.operationalScaling.guidance} The VIRYA plan stays unchanged; this session is scaled by recovery, twin and
+            bioenergetics.
           </p>
         </div>
       ) : null}
@@ -682,10 +682,10 @@ export function BuilderEngineGenerateSection({
           {activeMacroId === "strength" ? (
             <div className="space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4">
               <p className="text-sm font-semibold text-white">
-                Scheda generata ({gymManualRows.length} esercizi) · TSS stimato ~{manualTssPreview}
+                Generated card ({gymManualRows.length} exercises) · estimated TSS ~{manualTssPreview}
               </p>
               <p className="text-xs text-gray-500">
-                Nomi proposti e abbinati al catalogo EMPATHY. Affina serie e carichi nell&apos;editor sotto.
+                Names proposed and matched to the EMPATHY catalog. Refine sets and loads in the editor below.
               </p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {gymManualRows.map((row) => (
@@ -706,10 +706,10 @@ export function BuilderEngineGenerateSection({
                         {row.sets}×{row.reps}
                         {row.loadKg != null && row.loadKg > 0 ? ` · ${row.loadKg} kg` : ""}
                         {row.pct1Rm != null && row.pct1Rm > 0 ? ` · ~${row.pct1Rm}% 1RM` : ""} · rec {row.restSec}s
-                        {(row.chainLabel ?? "").trim() ? ` · gruppo ${(row.chainLabel ?? "").trim()}` : ""}
+                        {(row.chainLabel ?? "").trim() ? ` · group ${(row.chainLabel ?? "").trim()}` : ""}
                       </p>
                       {row.quickIncomplete ? (
-                        <p className="mt-1 text-[0.65rem] text-orange-300/90">Scheda veloce (incompleta)</p>
+                        <p className="mt-1 text-[0.65rem] text-orange-300/90">Quick card (incomplete)</p>
                       ) : null}
                       {row.executionStyle ? (
                         <p className="mt-1 text-[0.65rem] text-gray-400">{row.executionStyle}</p>
@@ -734,14 +734,14 @@ export function BuilderEngineGenerateSection({
             >
               <SessionBlockIntensityChart
                 segments={genChartSegments}
-                title="Grafico sessione (auto)"
+                title="Session chart (auto)"
                 estimatedTss={genTssPreview}
               />
             </div>
           )}
           <div className="flex flex-wrap items-end gap-3 border-b border-white/10 pb-4">
             <label className="flex flex-col gap-1 text-xs text-gray-500">
-              Data calendario (manuale e generato)
+              Calendar date (manual and generated)
               <input
                 type="date"
                 className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
@@ -756,7 +756,7 @@ export function BuilderEngineGenerateSection({
               disabled={saveBusy || wahooPushBusy}
               onClick={() => void saveToCalendar(plannedDate)}
             >
-              {saveBusy ? "Salvataggio…" : "Salva nel calendario"}
+              {saveBusy ? "Saving…" : "Save to calendar"}
             </Pro2Button>
             <Pro2Button
               type="button"
@@ -765,12 +765,12 @@ export function BuilderEngineGenerateSection({
               disabled={!wahooPushEligible || saveBusy || wahooPushBusy}
               title={
                 !wahooPushEligible
-                  ? "Serve sessione endurance con blocchi, FTP/FC valide e account Wahoo collegato (Profilo)."
+                  ? "Requires an endurance session with blocks, valid FTP/HR and a connected Wahoo account (Profile)."
                   : undefined
               }
               onClick={() => void pushSessionToWahooCloud()}
             >
-              {wahooPushBusy ? "Wahoo…" : "Invia a Wahoo"}
+              {wahooPushBusy ? "Wahoo…" : "Send to Wahoo"}
             </Pro2Button>
           </div>
           {saveErr ? (
@@ -789,7 +789,7 @@ export function BuilderEngineGenerateSection({
           ) : null}
           {showTech ? <p className="font-mono text-[0.65rem] text-gray-500">{genResult.source}</p> : null}
           <p className="text-gray-300">
-            Profilo fisiologico: {genResult.physiologyPresent ? "sì" : "no"} · Twin: {genResult.twinPresent ? "sì" : "no"}
+            Physiological profile: {genResult.physiologyPresent ? "yes" : "no"} · Twin: {genResult.twinPresent ? "yes" : "no"}
           </p>
           {activeMacroId !== "strength" ? (
             <ul className="space-y-3">
