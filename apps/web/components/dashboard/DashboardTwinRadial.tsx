@@ -136,11 +136,11 @@ function makeTicks(cx: number, cy: number) {
 }
 
 function statusText(a: DashboardArea | undefined, on: boolean): string {
-  if (!on || !a) return "in attesa";
-  if (a.status === "ottimale") return "Ottimale";
-  if (a.status === "buona") return "Buona";
-  if (a.status === "attenzione") return "Attenzione";
-  if (a.status === "bassa") return a.higherIsBetter ? "Bassa" : "Ottimale";
+  if (!on || !a) return "Waiting";
+  if (a.status === "ottimale") return "Optimal";
+  if (a.status === "buona") return "Good";
+  if (a.status === "attenzione") return "Attention";
+  if (a.status === "bassa") return a.higherIsBetter ? "Low" : "Optimal";
   return "";
 }
 

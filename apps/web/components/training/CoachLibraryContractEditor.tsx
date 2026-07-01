@@ -37,7 +37,7 @@ function Stepper({
         <button
           type="button"
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/50 text-white hover:bg-white/10"
-          aria-label={`Riduci ${label}`}
+          aria-label={`Decrease ${label}`}
           onClick={() => onChange(Math.max(min, value - step))}
         >
           <Minus className="h-3.5 w-3.5" />
@@ -49,7 +49,7 @@ function Stepper({
         <button
           type="button"
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/50 text-white hover:bg-white/10"
-          aria-label={`Aumenta ${label}`}
+          aria-label={`Increase ${label}`}
           onClick={() => onChange(Math.min(max, value + step))}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -97,7 +97,7 @@ export function CoachLibraryContractEditor({
         <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
           <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-orange-400">
             <Timer className="h-3.5 w-3.5" aria-hidden />
-            Durata calendario
+            Calendar duration
           </span>
           <select
             className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
@@ -112,10 +112,10 @@ export function CoachLibraryContractEditor({
           </select>
         </label>
         <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={() => onChange(scaleLibraryContractTiming(contract, 0.9))}>
-          −10% tempo
+          −10% time
         </Pro2Button>
         <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={() => onChange(scaleLibraryContractTiming(contract, 1.1))}>
-          +10% tempo
+          +10% time
         </Pro2Button>
         {dirty && onReset ? (
           <button
@@ -123,12 +123,12 @@ export function CoachLibraryContractEditor({
             className="text-[0.65rem] font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
             onClick={onReset}
           >
-            Annulla modifiche
+            Discard changes
           </button>
         ) : null}
         {onOpenInBuilder ? (
           <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={onOpenInBuilder}>
-            Apri nel Builder
+            Open in Builder
           </Pro2Button>
         ) : null}
         {onSave ? (
@@ -139,7 +139,7 @@ export function CoachLibraryContractEditor({
             disabled={saveBusy || !dirty}
             onClick={onSave}
           >
-            {saveBusy ? "Salvo…" : "Salva template"}
+            {saveBusy ? "Saving…" : "Save template"}
           </Pro2Button>
         ) : null}
       </div>
@@ -160,7 +160,7 @@ export function CoachLibraryContractEditor({
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <Stepper
-                    label="Durata blocco (min)"
+                    label="Block duration (min)"
                     value={Math.max(1, Math.round(block.durationMinutes || 1))}
                     min={1}
                     max={720}
@@ -170,7 +170,7 @@ export function CoachLibraryContractEditor({
                   {hasInterval && ch ? (
                     <>
                       <Stepper
-                        label="Ripetizioni"
+                        label="Repetitions"
                         value={Math.max(1, ch.repeats || 1)}
                         min={1}
                         max={99}
@@ -178,7 +178,7 @@ export function CoachLibraryContractEditor({
                         onChange={(n) => onChange(patchLibraryContractBlock(contract, block.id, { repeats: n }))}
                       />
                       <Stepper
-                        label="Lavoro"
+                        label="Work"
                         value={Math.max(0, ch.workSeconds || 0)}
                         min={0}
                         max={3600}
@@ -187,7 +187,7 @@ export function CoachLibraryContractEditor({
                         onChange={(n) => onChange(patchLibraryContractBlock(contract, block.id, { workSeconds: n }))}
                       />
                       <Stepper
-                        label="Recupero"
+                        label="Recovery"
                         value={Math.max(0, ch.recoverSeconds || 0)}
                         min={0}
                         max={3600}
@@ -199,7 +199,7 @@ export function CoachLibraryContractEditor({
                   ) : null}
                   {gymSets != null ? (
                     <Stepper
-                      label="Serie"
+                      label="Sets"
                       value={Math.max(1, gymSets)}
                       min={1}
                       max={20}
@@ -213,7 +213,7 @@ export function CoachLibraryContractEditor({
           })}
         </ul>
       ) : (
-        <p className="text-xs text-gray-500">Nessun blocco modificabile in questo template.</p>
+        <p className="text-xs text-gray-500">No editable block in this template.</p>
       )}
 
       <CoachLibraryContractPreview

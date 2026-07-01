@@ -5,7 +5,7 @@ import { GymExerciseMediaThumb } from "@/components/training/GymExerciseMediaThu
 
 function gymRxLine(rx: NonNullable<Pro2BuilderBlockContract["gymRx"]>): string {
   const parts: string[] = [];
-  if (rx.sets != null) parts.push(`${rx.sets} serie`);
+  if (rx.sets != null) parts.push(`${rx.sets} sets`);
   if (rx.reps?.trim()) parts.push(rx.reps.trim());
   if (rx.pct1Rm != null && rx.pct1Rm > 0) parts.push(`${Math.round(rx.pct1Rm)}% 1RM`);
   if (rx.weightKg != null && rx.weightKg > 0) parts.push(`${rx.weightKg} kg`);
@@ -28,8 +28,8 @@ export function Pro2GymSchedaBlockList({
   if (!blocks.length) {
     return (
       <p className="text-sm text-amber-200/90">
-        Nessuna scheda palestra nel contratto (manca <code className="text-amber-100/80">gymRx</code>). Rigenera dal Builder
-        o ripubblica il piano VIRYA gym.
+        No gym program in the contract (missing <code className="text-amber-100/80">gymRx</code>). Regenerate from the Builder
+        or republish the VIRYA gym plan.
       </p>
     );
   }
@@ -38,11 +38,11 @@ export function Pro2GymSchedaBlockList({
     <div className="space-y-3">
       {withCatalog.length > 0 ? (
         <p className="font-mono text-[0.65rem] text-orange-200/80">
-          {withCatalog.length} esercizi catalogo · {contract.sessionName?.trim() || contract.discipline || "Gym"}
+          {withCatalog.length} catalog exercises · {contract.sessionName?.trim() || contract.discipline || "Gym"}
         </p>
       ) : (
         <p className="text-xs text-amber-200/90">
-          Seduta gym senza legame catalogo (immagini non disponibili). Ripubblica da VIRYA o rigenera nel Builder.
+          Gym session with no catalog link (images unavailable). Republish from VIRYA or regenerate in the Builder.
         </p>
       )}
       <ul className={compact ? "flex flex-col gap-2" : "flex flex-col gap-4"}>

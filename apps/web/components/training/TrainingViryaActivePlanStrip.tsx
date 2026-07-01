@@ -77,15 +77,15 @@ export function TrainingViryaActivePlanStrip({
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-orange-200/90">
           <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em]">Piano VIRYA attivo</span>
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em]">Active VIRYA plan</span>
         </div>
-        {plansLoading ? <span className="text-xs text-gray-500">Caricamento piani…</span> : null}
+        {plansLoading ? <span className="text-xs text-gray-500">Loading plans…</span> : null}
         {loadErr ? <span className="text-xs text-amber-300/90">{loadErr}</span> : null}
         {!plansLoading && !loadErr && plans && plans.length === 0 ? (
           <span className="text-sm text-gray-500">
-            Nessun piano VIRYA su Calendar —{" "}
+            No VIRYA plan on Calendar —{" "}
             <Pro2Link href="/training/vyria" variant="ghost" className="!inline text-orange-200/90">
-              crea da VIRYA
+              create from VIRYA
             </Pro2Link>
           </span>
         ) : null}
@@ -103,13 +103,13 @@ export function TrainingViryaActivePlanStrip({
               </p>
               {activePlan ? (
                 <p className="mt-0.5 font-mono text-[0.65rem] text-gray-500">
-                  {activePlan.sessionCount} sedute · {activePlan.dateMin} → {activePlan.dateMax} ·{" "}
+                  {activePlan.sessionCount} sessions · {activePlan.dateMin} → {activePlan.dateMax} ·{" "}
                   <span className="text-orange-300/80">{activePlan.tag}</span>
                 </p>
               ) : null}
             </div>
             <label className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
-              Cambia piano
+              Switch plan
               <select
                 className="min-w-[12rem] rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-white"
                 value={activeTag ?? ""}
@@ -137,8 +137,8 @@ export function TrainingViryaActivePlanStrip({
         ) : null}
         {activeTag && plans && !plans.some((p) => p.tag === activeTag) ? (
           <p className="mt-2 w-full text-xs text-amber-200/90">
-            Il piano VIRYA preferito non ha più sedute in calendario (es. sostituito da Builder). Scegli un altro piano o
-            ripubblica da VIRYA.
+            The preferred VIRYA plan no longer has sessions in the calendar (e.g. replaced by Builder). Choose another plan or
+            republish from VIRYA.
           </p>
         ) : null}
       </div>

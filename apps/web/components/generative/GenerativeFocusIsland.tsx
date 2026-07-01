@@ -31,7 +31,7 @@ export function GenerativeFocusIsland({ module }: { module: ProductModuleId }) {
         {cfg.primaryCtaLabel}
       </Pro2Link>
       <p className="text-center text-[0.65rem] leading-snug text-gray-600">
-        Vai all&apos;hub con il focus selezionato · pipeline deterministiche in arrivo
+        Go to the hub with the selected focus · deterministic pipelines coming soon
       </p>
     </div>
   );

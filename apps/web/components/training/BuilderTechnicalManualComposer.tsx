@@ -114,10 +114,10 @@ function buildSchemaDataUrlFromRow(
     sportLabelV1: sportLabel,
     title: row.name,
     objective: entry?.brief ?? row.coachingCue ?? row.name,
-    methodology: row.coachingCue || row.periodsLabel || "Schema coach",
+    methodology: row.coachingCue || row.periodsLabel || "Coach scheme",
     category: entryTypeToSchemaCategory(row.entryType),
     boardPoints: boardPointsForPaletteSportKey(sk),
-    sourceLabel: "Scheda coach Pro 2",
+    sourceLabel: "Coach sheet Pro 2",
     tags: entry?.schemaTags,
   });
 }
@@ -198,7 +198,7 @@ export function BuilderTechnicalManualComposer({
     setTechnicalManualRows((prev) => [
       ...prev,
       defaultPro2TechnicalManualRow({
-        name: "Blocco libero",
+        name: "Free block",
         sportKeyForSchema: paletteSport,
         visualSchemaKind: "v1_svg",
       }),
@@ -223,26 +223,26 @@ export function BuilderTechnicalManualComposer({
     [presetMinutes, presetPeriods, presetSpace, setTechnicalManualRows],
   );
 
-  const phaseLabel = technicalModuleFocus.workPhase === "tactics" ? "Tattica" : "Tecnica";
+  const phaseLabel = technicalModuleFocus.workPhase === "tactics" ? "Tactics" : "Technique";
   const ctxLabel =
     technicalModuleFocus.gameContext === "defensive"
-      ? "Difensivo"
+      ? "Defensive"
       : technicalModuleFocus.gameContext === "offensive"
-        ? "Offensivo"
-        : "Impostazione";
+        ? "Offensive"
+        : "Build-up";
   const qualityLabels = TECHNICAL_ATHLETIC_QUALITY_OPTIONS.filter((q) =>
     technicalModuleFocus.athleticQualities.includes(q.id),
   ).map((q) => q.label);
 
   return (
-    <section aria-label="Builder manuale scheda tecnici" className={`p-4 sm:p-6 ${panelShell}`}>
+    <section aria-label="Manual builder for technical sheet" className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-white">
-            Manuale · Scheda sport tecnici
+            Manual · Technical sports sheet
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-gray-400">
-            Playbook + <span className="text-orange-300">schema grafico comune</span> (SVG come V1). Componi la giornata con chip come la scheda palestra; immagini esecuzione arriveranno sulla stessa{" "}
+            Playbook + <span className="text-orange-300">shared graphic schema</span> (SVG as V1). Build the day with chips like the gym sheet; execution images will arrive on the same{" "}
             <span className="font-mono text-orange-200/80">visualAssetKey</span>.
           </p>
         </div>
@@ -254,12 +254,12 @@ export function BuilderTechnicalManualComposer({
       </div>
 
       <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/45 p-3">
-        <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Modulo sessione (allineato al generatore)</p>
+        <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Session module (aligned with the generator)</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <span className={chipOnKind}>{phaseLabel}</span>
           <span className={chipOnViolet}>{ctxLabel}</span>
           {qualityLabels.length === 0 ? (
-            <span className={chipOff}>Qualità: —</span>
+            <span className={chipOff}>Qualities: —</span>
           ) : (
             qualityLabels.map((q) => (
               <span key={q} className={chipOnTeal}>
@@ -268,14 +268,14 @@ export function BuilderTechnicalManualComposer({
             ))
           )}
         </div>
-        <p className="mt-2 text-[0.65rem] text-gray-600">Modifica sopra nel pannello viola &quot;Genera sessione&quot;.</p>
+        <p className="mt-2 text-[0.65rem] text-gray-600">Edit above in the violet &quot;Generate session&quot; panel.</p>
       </div>
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
-        <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione (proxy tempo)" estimatedTss={estimatedTss} />
+        <SessionBlockIntensityChart segments={manualChartSegments} title="Session preview (time proxy)" estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-orange-950/25 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">Durata nel calendario</span>
+            <span className="font-bold uppercase tracking-wider text-orange-200/90">Duration in calendar</span>
             <select
               className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
@@ -289,7 +289,7 @@ export function BuilderTechnicalManualComposer({
             </select>
           </label>
           <p className="max-w-sm flex-1 pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            Blocchi playbook ~ <span className="font-mono font-semibold text-orange-200/90">{structureMinutesFromChart} min</span>
+            Playbook blocks ~ <span className="font-mono font-semibold text-orange-200/90">{structureMinutesFromChart} min</span>
           </p>
           <button
             type="button"
@@ -298,7 +298,7 @@ export function BuilderTechnicalManualComposer({
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
           >
             <FileText className="h-4 w-4" aria-hidden />
-            {manualSaveBusy ? "Salvo…" : "Salva scheda"}
+            {manualSaveBusy ? "Saving…" : "Save sheet"}
           </button>
         </div>
       </div>
@@ -306,14 +306,14 @@ export function BuilderTechnicalManualComposer({
       <div className={catalogPanel}>
         <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200">
           <Sparkles className="h-3.5 w-3.5 text-orange-300" aria-hidden />
-          Playbook · filtri (stile scheda palestra)
+          Playbook · filters (gym sheet style)
         </p>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              { id: "all" as const, label: "Tutti" },
+              { id: "all" as const, label: "All" },
               { id: "drill" as const, label: "Drill" },
-              { id: "scheme" as const, label: "Schemi" },
+              { id: "scheme" as const, label: "Schemes" },
             ] as const
           ).map((t) => (
             <button key={t.id} type="button" className={catalogKind === t.id ? chipOnKind : chipOff} onClick={() => setCatalogKind(t.id)}>
@@ -322,21 +322,21 @@ export function BuilderTechnicalManualComposer({
           ))}
         </div>
         <label className="mt-3 flex max-w-md flex-col gap-1 text-[0.65rem] text-gray-400">
-          Cerca
+          Search
           <input
             type="search"
             className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Nome, brief…"
+            placeholder="Name, brief…"
           />
         </label>
 
         {selectedEntry ? (
           <div className="mt-4 space-y-3 rounded-xl border border-orange-500/25 bg-gradient-to-r from-orange-950/25 to-orange-950/20 p-3">
-            <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Presets prima di aggiungere</p>
+            <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Presets before adding</p>
             <div>
-              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Minuti</p>
+              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Minutes</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {MINUTE_CHIP_PRESETS.map((m) => {
                   const eff = presetMinutes ?? selectedEntry.defaultMinutes;
@@ -355,7 +355,7 @@ export function BuilderTechnicalManualComposer({
               </div>
             </div>
             <div>
-              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Periodi</p>
+              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Periods</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {PERIOD_CHIP_PRESETS.map((p) => {
                   const eff = presetPeriods ?? selectedEntry.defaultPeriods;
@@ -374,7 +374,7 @@ export function BuilderTechnicalManualComposer({
               </div>
             </div>
             <div>
-              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Spazio</p>
+              <p className="text-[0.58rem] font-bold uppercase tracking-wider text-gray-500">Space</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 <button
                   type="button"
@@ -383,7 +383,7 @@ export function BuilderTechnicalManualComposer({
                   }
                   onClick={() => setPresetSpace(selectedEntry.defaultSpace)}
                 >
-                  Default voce
+                  Entry default
                 </button>
                 {SPACE_CHIP_PRESETS.map((s) => {
                   const eff = presetSpace ?? selectedEntry.defaultSpace;
@@ -402,7 +402,7 @@ export function BuilderTechnicalManualComposer({
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <div className="max-h-[16rem] overflow-y-auto rounded-lg border border-white/10 bg-black/45 p-1">
             {filteredCatalog.length === 0 ? (
-              <p className="px-2 py-6 text-center text-xs text-gray-500">Nessuna voce con questi filtri.</p>
+              <p className="px-2 py-6 text-center text-xs text-gray-500">No entries with these filters.</p>
             ) : (
               <ul className="flex flex-col gap-0.5">
                 {filteredCatalog.map((e) => {
@@ -440,7 +440,7 @@ export function BuilderTechnicalManualComposer({
                   className="max-w-xl"
                 />
                 <div>
-                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selezionato</p>
+                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selected</p>
                   <p className="mt-1 text-sm font-bold text-white">{selectedEntry.name}</p>
                   <p className="mt-1 text-[0.65rem] leading-relaxed text-gray-400">{selectedEntry.brief}</p>
                 </div>
@@ -451,15 +451,15 @@ export function BuilderTechnicalManualComposer({
                     onClick={() => addFromEntry(selectedEntry)}
                   >
                     <Plus className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
-                    Aggiungi alla scheda
+                    Add to sheet
                   </button>
                   <button type="button" className={`w-full py-2 text-center text-xs ${chipOff}`} onClick={addBlankRow}>
-                    + Blocco libero
+                    + Free block
                   </button>
                 </div>
               </>
             ) : (
-              <p className="text-xs text-gray-500">Nessun elemento playbook per questa disciplina.</p>
+              <p className="text-xs text-gray-500">No playbook item for this discipline.</p>
             )}
           </div>
         </div>
@@ -468,7 +468,7 @@ export function BuilderTechnicalManualComposer({
       <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
         <div className="flex flex-wrap gap-3">
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-[0.65rem] text-gray-400">
-            Nome sessione
+            Session name
             <input
               type="text"
               className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
@@ -477,7 +477,7 @@ export function BuilderTechnicalManualComposer({
             />
           </label>
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            Data
+            Date
             <input
               type="date"
               className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
@@ -490,11 +490,11 @@ export function BuilderTechnicalManualComposer({
 
       <div className="mt-4 space-y-3">
         <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-300 to-orange-200">
-          Scheda giornaliera · {technicalManualRows.length} blocchi
+          Daily sheet · {technicalManualRows.length} blocks
         </p>
         {technicalManualRows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-orange-500/30 bg-orange-950/20 px-4 py-8 text-center text-sm text-gray-500">
-            Aggiungi dal playbook: ogni blocco ha schema V1 + <span className="font-mono text-orange-300">visualAssetKey</span> per le immagini future.
+            Add from the playbook: every block has V1 schema + <span className="font-mono text-orange-300">visualAssetKey</span> for future images.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -530,20 +530,20 @@ export function BuilderTechnicalManualComposer({
                             className={row.entryType === "scheme" ? chipOnViolet : chipOff}
                             onClick={() => updateRow(row.id, { entryType: "scheme" })}
                           >
-                            Schema
+                            Scheme
                           </button>
                           <button
                             type="button"
                             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
                             onClick={() => removeRow(row.id)}
-                            aria-label="Rimuovi blocco"
+                            aria-label="Remove block"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
                       <div>
-                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-orange-200/80">Minuti</p>
+                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-orange-200/80">Minutes</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {MINUTE_CHIP_PRESETS.map((m) => (
                             <button
@@ -558,7 +558,7 @@ export function BuilderTechnicalManualComposer({
                         </div>
                       </div>
                       <div>
-                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-orange-200/80">Periodi</p>
+                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-orange-200/80">Periods</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {PERIOD_CHIP_PRESETS.map((p) => (
                             <button
@@ -574,13 +574,13 @@ export function BuilderTechnicalManualComposer({
                         <input
                           type="text"
                           className="mt-2 w-full rounded-lg border border-white/12 bg-black/45 px-2 py-1.5 text-xs text-white"
-                          placeholder="Periodi (testo libero)"
+                          placeholder="Periods (free text)"
                           value={row.periodsLabel}
                           onChange={(e) => updateRow(row.id, { periodsLabel: e.target.value })}
                         />
                       </div>
                       <div>
-                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-teal-200/80">Spazio</p>
+                        <p className="text-[0.58rem] font-bold uppercase tracking-wider text-teal-200/80">Space</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {SPACE_CHIP_PRESETS.map((s) => (
                             <button
@@ -596,7 +596,7 @@ export function BuilderTechnicalManualComposer({
                         <input
                           type="text"
                           className="mt-2 w-full rounded-lg border border-white/12 bg-black/45 px-2 py-1.5 text-xs text-white"
-                          placeholder="Spazio / numerico (libero)"
+                          placeholder="Space / numeric (free)"
                           value={row.spaceLabel}
                           onChange={(e) => updateRow(row.id, { spaceLabel: e.target.value })}
                         />
@@ -611,7 +611,7 @@ export function BuilderTechnicalManualComposer({
                         />
                       </label>
                       <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-                        Note
+                        Notes
                         <textarea
                           className="min-h-[3rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
                           value={row.notes}
@@ -639,7 +639,7 @@ export function BuilderTechnicalManualComposer({
           className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
         >
           <FileText className="h-4 w-4" aria-hidden />
-          {manualSaveBusy ? "Salvataggio…" : "Salva scheda su calendario"}
+          {manualSaveBusy ? "Saving…" : "Save sheet to calendar"}
         </button>
         {manualSaveErr ? (
           <span className="text-xs text-rose-300" role="alert">

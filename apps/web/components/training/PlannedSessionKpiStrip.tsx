@@ -26,19 +26,19 @@ export function PlannedSessionKpiStrip({
   return (
     <div className={gridClass}>
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata</div>
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Duration</div>
         <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{formatDurationMin(metrics.durationMinutes)}</div>
       </div>
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Carico · TSS</div>
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Load · TSS</div>
         <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.tss > 0 ? metrics.tss.toFixed(0) : "—"}</div>
       </div>
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">kJ · meccanico</div>
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">kJ · mechanical</div>
         <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.kj > 0 ? metrics.kj.toFixed(0) : "—"}</div>
       </div>
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · metabolico</div>
+        <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · metabolic</div>
         <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{metrics.kcal > 0 ? metrics.kcal.toFixed(0) : "—"}</div>
       </div>
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">

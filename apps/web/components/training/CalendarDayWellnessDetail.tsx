@@ -73,14 +73,14 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
         if (!res.ok || !("ok" in json) || !json.ok) {
           setState({
             kind: "error",
-            message: ("error" in json && json.error) || res.statusText || "Errore caricamento.",
+            message: ("error" in json && json.error) || res.statusText || "Loading error.",
           });
           return;
         }
         setState({ kind: "ok", panel: json });
       } catch (err) {
         if (cancelled) return;
-        setState({ kind: "error", message: err instanceof Error ? err.message : "Errore di rete." });
+        setState({ kind: "error", message: err instanceof Error ? err.message : "Network error." });
       }
     })();
     return () => {
@@ -88,7 +88,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
     };
   }, [athleteId, selectedDate]);
 
-  const subtitle = `Sonno · recovery · giornata · ${selectedDate}`;
+  const subtitle = `Sleep · recovery · day · ${selectedDate}`;
 
   if (!athleteId) {
     return null;
@@ -97,8 +97,8 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   if (state.kind === "loading") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title="Giornata · wellness" subtitle={subtitle} icon={Moon}>
-          <p className="text-sm text-gray-500">Carico panel giornata…</p>
+        <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
+          <p className="text-sm text-gray-500">Loading day panel…</p>
         </Pro2SectionCard>
       </div>
     );
@@ -107,8 +107,8 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   if (state.kind === "error") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title="Giornata · wellness" subtitle={subtitle} icon={Moon}>
-          <p className="text-sm text-amber-300/90">Lettura non riuscita: {state.message}</p>
+        <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
+          <p className="text-sm text-amber-300/90">Read failed: {state.message}</p>
         </Pro2SectionCard>
       </div>
     );
@@ -128,10 +128,10 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   const sleepDurH = panel.recovery?.sleepDurationHours ?? totalSleepHours;
 
   const stagesBars = [
-    { key: "deep", label: "Profondo", color: "#22d3ee", value: panel.sleepStages.deepHours },
+    { key: "deep", label: "Deep", color: "#22d3ee", value: panel.sleepStages.deepHours },
     { key: "rem", label: "REM", color: "#a78bfa", value: panel.sleepStages.remHours },
-    { key: "light", label: "Leggero", color: "#34d399", value: panel.sleepStages.lightHours },
-    { key: "awake", label: "Sveglia", color: "#fb923c", value: panel.sleepStages.awakeHours },
+    { key: "light", label: "Light", color: "#34d399", value: panel.sleepStages.lightHours },
+    { key: "awake", label: "Awake", color: "#fb923c", value: panel.sleepStages.awakeHours },
   ];
 
   const hasAnyKpi =
@@ -144,27 +144,27 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
 
   return (
     <div id="day-wellness-detail" className="scroll-mt-24">
-      <Pro2SectionCard accent="orange" title="Giornata · wellness" subtitle={subtitle} icon={Moon}>
+      <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
         {!hasAnyKpi ? (
           <p className="text-sm text-gray-500">
-            Nessun dato giornata disponibile (collega Garmin/Whoop oppure carica un pannello Health con
+            No day data available (connect Garmin/Whoop or upload a Health panel with
             <code className="mx-1 rounded bg-white/5 px-1 py-0.5 font-mono text-xs">sample_date</code>
-            allineato a {selectedDate}).
+            aligned to {selectedDate}).
           </p>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              <KpiCell label="Sonno totale" value={fmtHoursLabel(sleepDurH)} />
+              <KpiCell label="Total sleep" value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
-              <KpiCell label="FC riposo" value={fmtInt(restingHr)} unit="bpm" />
+              <KpiCell label="Resting HR" value={fmtInt(restingHr)} unit="bpm" />
               <KpiCell
                 label="Recovery"
                 value={recoveryScore != null ? fmtInt(recoveryScore) : "—"}
                 unit={recoveryScore != null ? "%" : undefined}
               />
-              <KpiCell label="Passi" value={fmtInt(panel.activity.steps)} />
+              <KpiCell label="Steps" value={fmtInt(panel.activity.steps)} />
               <KpiCell
-                label="Calorie attive"
+                label="Active calories"
                 value={fmtInt(panel.activity.activeCaloriesKcal)}
                 unit="kcal"
               />
@@ -174,7 +174,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
                 unit="rpm"
               />
               <KpiCell
-                label="Temp pelle"
+                label="Skin temp"
                 value={fmtNumber(panel.activity.skinTempC, 1)}
                 unit="°C"
               />
@@ -182,7 +182,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
 
             <div>
               <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Fasi sonno (ore)
+                Sleep stages (hours)
               </p>
               <div className="space-y-2">
                 {stagesBars.map((row) => {
@@ -210,7 +210,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
             {panel.sleepHypnogram.length > 0 ? (
               <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
                 <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  <Heart className="h-3.5 w-3.5" aria-hidden /> Fasi · linea notte
+                  <Heart className="h-3.5 w-3.5" aria-hidden /> Stages · night line
                 </p>
                 <SleepHypnogramChart
                   segments={panel.sleepHypnogram}

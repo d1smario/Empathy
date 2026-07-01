@@ -29,33 +29,33 @@ type LongevityFitnessPayload = {
 };
 
 const SCALES: Array<{ key: keyof CheckinForm; label: string; hint: string }> = [
-  { key: "energy", label: "Energia", hint: "1 scarica · 5 al top" },
-  { key: "mood", label: "Umore", hint: "1 basso · 5 ottimo" },
-  { key: "sleepQuality", label: "Qualità sonno", hint: "1 pessima · 5 eccellente" },
-  { key: "motivation", label: "Motivazione", hint: "1 nulla · 5 alta" },
-  { key: "soreness", label: "Indolenzimento", hint: "1 nessuno · 5 forte" },
-  { key: "stress", label: "Stress", hint: "1 nessuno · 5 forte" },
+  { key: "energy", label: "Energy", hint: "1 drained · 5 peak" },
+  { key: "mood", label: "Mood", hint: "1 low · 5 great" },
+  { key: "sleepQuality", label: "Sleep quality", hint: "1 poor · 5 excellent" },
+  { key: "motivation", label: "Motivation", hint: "1 none · 5 high" },
+  { key: "soreness", label: "Soreness", hint: "1 none · 5 severe" },
+  { key: "stress", label: "Stress", hint: "1 none · 5 severe" },
 ];
 
 const SYMPTOM_LABELS: Record<DailyCheckinSymptom, string> = {
-  fever: "Febbre",
-  headache: "Mal di testa",
-  sore_throat: "Mal di gola",
-  gi_upset: "Disturbi GI",
-  cold_flu: "Raffreddore/influenza",
-  injury: "Infortunio",
-  other: "Altro",
+  fever: "Fever",
+  headache: "Headache",
+  sore_throat: "Sore throat",
+  gi_upset: "GI upset",
+  cold_flu: "Cold/flu",
+  injury: "Injury",
+  other: "Other",
 };
 
 const PILLAR_LABELS: Record<EpiPillarId, string> = {
-  activity_load: "Carico & attività",
-  recovery: "Recupero",
+  activity_load: "Load & activity",
+  recovery: "Recovery",
   hrv: "HRV",
-  sleep: "Sonno",
-  nutrition: "Nutrizione",
-  body_composition: "Composizione corporea",
-  protocol_adherence: "Aderenza protocolli",
-  subjective_wellness: "Benessere soggettivo",
+  sleep: "Sleep",
+  nutrition: "Nutrition",
+  body_composition: "Body composition",
+  protocol_adherence: "Protocol adherence",
+  subjective_wellness: "Subjective wellness",
 };
 
 type CheckinForm = {
@@ -116,7 +116,7 @@ function writeLongevityCache(key: string, payload: LongevityFitnessPayload): voi
 function formatSnapshotDate(iso: string): string {
   const parsed = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  return parsed.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
 }
 
 function ScaleRow({
@@ -215,14 +215,14 @@ export function DashboardLongevityPanels() {
           cache: "no-store",
         });
         const json = (await res.json()) as LongevityFitnessPayload & { error?: string };
-        if (!res.ok) throw new Error(json.error ?? "Errore caricamento");
+        if (!res.ok) throw new Error(json.error ?? "Loading error");
         setData(json);
         hydrateFromCheckin(json.checkin);
         writeLongevityCache(cacheKey, json);
       } catch (err) {
         // Con cache già mostrata teniamo i dati validi a schermo: il banner
         // d'errore avviserebbe a vuoto su un refresh di sfondo fallito.
-        if (!cached) setError(err instanceof Error ? err.message : "Errore caricamento");
+        if (!cached) setError(err instanceof Error ? err.message : "Loading error");
       } finally {
         setLoading(false);
       }
@@ -249,10 +249,10 @@ export function DashboardLongevityPanels() {
         body: JSON.stringify({ athleteId, ...form, illnessFlags: symptoms, note }),
       });
       const json = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Errore salvataggio");
+      if (!res.ok) throw new Error(json.error ?? "Save error");
       await loadIndex(athleteId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore salvataggio");
+      setError(err instanceof Error ? err.message : "Save error");
     } finally {
       setSaving(false);
     }
@@ -270,8 +270,8 @@ export function DashboardLongevityPanels() {
 
       <Pro2SectionCard
         accent="fuchsia"
-        title="Check-in di oggi"
-        subtitle={scoped ? "Come si sente l'atleta · sola lettura" : "Come ti senti · segnala eventuali malesseri"}
+        title="Today's check-in"
+        subtitle={scoped ? "How the athlete feels · read only" : "How you feel · flag any symptoms"}
         icon={Activity}
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -288,7 +288,7 @@ export function DashboardLongevityPanels() {
         </div>
 
         <div className="mt-5">
-          <p className="mb-2 text-xs font-medium text-gray-400">Malessere (opzionale)</p>
+          <p className="mb-2 text-xs font-medium text-gray-400">Symptoms (optional)</p>
           <div className="flex flex-wrap gap-2">
             {DAILY_CHECKIN_SYMPTOMS.map((s) => (
               <button
@@ -317,7 +317,7 @@ export function DashboardLongevityPanels() {
 
         <div className="mt-5">
           <label htmlFor="longevity-note" className="mb-1.5 block text-xs font-medium text-gray-400">
-            Nota (opzionale)
+            Note (optional)
           </label>
           <textarea
             id="longevity-note"
@@ -325,7 +325,7 @@ export function DashboardLongevityPanels() {
             onChange={(e) => setNote(e.target.value.slice(0, 500))}
             readOnly={scoped}
             rows={2}
-            placeholder={scoped ? "Nessuna nota" : "Es. notte agitata, dolore al ginocchio…"}
+            placeholder={scoped ? "No note" : "E.g. restless night, knee pain…"}
             className={cn(
               "w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-gray-500",
               scoped ? "cursor-default opacity-80" : "focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500",
@@ -334,24 +334,24 @@ export function DashboardLongevityPanels() {
         </div>
 
         {scoped ? (
-          <p className="mt-5 text-xs text-gray-500">Il check-in è soggettivo dell&apos;atleta: lo consulti, non lo registri al suo posto.</p>
+          <p className="mt-5 text-xs text-gray-500">The check-in is the athlete&apos;s own subjective input: you review it, you don&apos;t log it on their behalf.</p>
         ) : (
           <div className="mt-5 flex justify-end">
             <Pro2Button onClick={saveCheckin} disabled={saving || !athleteId}>
-              {saving ? "Salvataggio…" : "Salva check-in"}
+              {saving ? "Saving…" : "Save check-in"}
             </Pro2Button>
           </div>
         )}
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="fuchsia" title="Indice Longevità & Fitness" subtitle="Calcolato dai tuoi dati reali e dal check-in" icon={HeartPulse}>
+      <Pro2SectionCard accent="fuchsia" title="Longevity & Fitness Index" subtitle="Computed from your real data and the check-in" icon={HeartPulse}>
         {loading && !epi ? (
-          <p className="text-sm text-gray-400">Calcolo in corso…</p>
+          <p className="text-sm text-gray-400">Calculating…</p>
         ) : epi && (epi.dataTier === "standard" || epi.dataTier === "extended") ? (
           <div className="space-y-5">
             {data?.snapshotDate ? (
               <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Oggi · {formatSnapshotDate(data.snapshotDate)}
+                Today · {formatSnapshotDate(data.snapshotDate)}
               </p>
             ) : null}
 
@@ -364,20 +364,20 @@ export function DashboardLongevityPanels() {
               </div>
               <div className="text-xs text-gray-400">
                 {showTech ? (
-                  <p>Confidenza {Math.round(epi.confidence * 100)}% · copertura {epi.dataTier}</p>
+                  <p>Confidence {Math.round(epi.confidence * 100)}% · coverage {epi.dataTier}</p>
                 ) : null}
                 <p className="mt-1">
                   {epi.efficientDay ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-300">
-                      Giorno efficiente
+                      Efficient day
                     </span>
                   ) : epi.illnessDay ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
-                      Giorno di malessere · obiettivo sospeso
+                      Symptom day · goal suspended
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
-                      Giorno non ancora efficiente
+                      Not an efficient day yet
                     </span>
                   )}
                 </p>
@@ -386,7 +386,7 @@ export function DashboardLongevityPanels() {
 
             {epi.illnessDay ? (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-                Hai segnalato un malessere: nessuna penalità sull&apos;indice, priorità al recupero.
+                You flagged a symptom: no penalty on the index, recovery comes first.
               </div>
             ) : null}
 
@@ -407,17 +407,17 @@ export function DashboardLongevityPanels() {
               ))}
               {!pillars.length ? (
                 <p className="text-xs text-gray-500">
-                  Nessun segnale ancora disponibile. Compila il check-in e collega un device per alimentare l&apos;indice.
+                  No signal available yet. Fill in the check-in and connect a device to feed the index.
                 </p>
               ) : null}
             </div>
           </div>
         ) : (
           <div className="space-y-1">
-            <p className="text-sm text-gray-300">Indice non ancora disponibile.</p>
+            <p className="text-sm text-gray-300">Index not available yet.</p>
             <p className="text-xs text-gray-500">
-              Servono dati reali: fai il check-in di oggi qui sopra e collega un device (sonno, recupero, HRV) per
-              calcolare l&apos;indice. Finché la copertura resta minima non mostriamo un punteggio stimato.
+              Real data is required: complete today&apos;s check-in above and connect a device (sleep, recovery, HRV) to
+              compute the index. While coverage stays minimal we don&apos;t show an estimated score.
             </p>
           </div>
         )}

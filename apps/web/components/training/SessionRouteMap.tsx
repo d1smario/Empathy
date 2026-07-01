@@ -81,7 +81,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
         viewBox={`0 0 ${VIEW_W} ${height}`}
         className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
         role="img"
-        aria-label="Punto di partenza GPS"
+        aria-label="GPS start point"
       >
         <defs>
           <radialGradient id="markerGlow" cx="50%" cy="50%" r="50%">
@@ -116,7 +116,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
       viewBox={`0 0 ${VIEW_W} ${height}`}
       className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
       role="img"
-      aria-label={`Traccia GPS — ${distinct.length} punti`}
+      aria-label={`GPS track — ${distinct.length} points`}
     >
       <defs>
         <linearGradient id="routeStroke" x1="0%" y1="0%" x2="100%" y2="0%">

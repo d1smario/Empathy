@@ -112,7 +112,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           // Con cache già mostrata, non sovrascriverla con un errore di refresh in background.
           if (!cached) {
             setVm(null);
-            setError(json.error ?? "Non è stato possibile caricare la giornata.");
+            setError(json.error ?? "Could not load today's data.");
           }
           return;
         }
@@ -140,7 +140,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
         // Con cache già mostrata, lascia i dati visibili e non mostrare l'errore di rete del refresh.
         if (!cancelled && !cached) {
           setVm(null);
-          setError("Errore di rete durante il caricamento.");
+          setError("Network error while loading.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -165,8 +165,8 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
   return (
     <Pro2SectionCard
       accent="lime"
-      title="Striscia 24 h"
-      subtitle="Andamento della tua giornata, costantemente aggiornato. Quando arriva una misura reale, prende il posto della stima."
+      title="24 h Strip"
+      subtitle="How your day is trending, constantly updated. When a real measurement comes in, it replaces the estimate."
       icon={LineChart}
     >
       {error ? (
@@ -184,8 +184,8 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           {vm.continuousMonitoring.channels.length === 0 && vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
             <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
               {showTech
-                ? "Nessuna curva generata: verifica configurazione del generatore di curve e risposta JSON (vedi disclaimer)."
-                : "Curve non disponibili per questa giornata: prova ad aggiornare più tardi."}
+                ? "No curves generated: check the curve generator configuration and JSON response (see disclaimer)."
+                : "Curves not available for this day: try refreshing later."}
             </p>
           ) : null}
           {vm.continuousMonitoring.channels.length > 0 ? (
@@ -194,7 +194,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
         </div>
       ) : (
         <p className="text-sm text-gray-500">
-          Nessun dato per oggi. La striscia 24 h si popola con misure reali da device, pasti, allenamenti o esami.
+          No data for today. The 24 h strip fills up with real measurements from devices, meals, workouts or tests.
         </p>
       )}
     </Pro2SectionCard>

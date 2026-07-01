@@ -89,23 +89,23 @@ export function SessionMultilevelAnalysisStrip({
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-          Analisi multilivello · deterministico
+          Multilevel analysis · deterministic
         </p>
         {activeCount > 0 ? (
           <span className="font-mono text-[0.6rem] text-gray-500">
-            {activeCount} settori attivi · profilo blocchi + target
+            {activeCount} active sectors · block profile + target
           </span>
         ) : null}
       </div>
       <AdaptationSectorStrip
-        title="Settori · sessione · vie attivate"
+        title="Sectors · session · activated pathways"
         boxes={boxes}
-        emptyHint={vm.notes[0] ?? "Nessun dato strutturato per questa seduta."}
+        emptyHint={vm.notes[0] ?? "No structured data for this session."}
       />
 
       {vm.coachPrompts.length > 0 ? (
         <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/20 px-3 py-2.5">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Domande coach</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Coach questions</p>
           <ul className="mt-2 space-y-1.5">
             {vm.coachPrompts.map((q) => (
               <li key={q} className="text-xs leading-relaxed text-gray-300">
@@ -122,7 +122,7 @@ export function SessionMultilevelAnalysisStrip({
       {vm.facilitationHints.length > 0 ? (
         <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/15 px-3 py-2.5">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-            Stimoli · facilitazioni
+            Stimuli · facilitations
           </p>
           <ul className="mt-2 space-y-1.5">
             {vm.facilitationHints.map((h) => (
@@ -135,7 +135,7 @@ export function SessionMultilevelAnalysisStrip({
       ) : null}
 
       <details className={`rounded-lg border border-white/10 bg-black/30 px-3 py-2 ${compact ? "mt-3" : "mt-4"}`}>
-        <summary className="cursor-pointer text-xs font-semibold text-gray-300">Note modello · elenco facet</summary>
+        <summary className="cursor-pointer text-xs font-semibold text-gray-300">Model notes · facet list</summary>
         <ul className="mt-2 max-h-48 list-disc space-y-1.5 overflow-y-auto pl-4 text-[0.65rem] leading-relaxed text-gray-500">
           {vm.notes.map((n) => (
             <li key={n}>{n}</li>

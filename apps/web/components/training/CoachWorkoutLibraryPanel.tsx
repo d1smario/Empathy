@@ -123,7 +123,7 @@ export function CoachWorkoutLibraryPanel({
     if (error) {
       setErr(
         error === "coach_only" || error === "coach_not_approved"
-          ? "Libreria riservata ai coach approvati."
+          ? "Library reserved for approved coaches."
           : error,
       );
       setItems([]);
@@ -149,26 +149,26 @@ export function CoachWorkoutLibraryPanel({
 
   async function handleSave() {
     if (!contractToSave) {
-      setErr("Nessun contratto seduta da salvare.");
+      setErr("No session contract to save.");
       return;
     }
     setBusy("save");
     setErr(null);
     setOkMsg(null);
-    const title = (saveTitle ?? contractToSave.sessionName ?? "Seduta").trim().slice(0, 200);
+    const title = (saveTitle ?? contractToSave.sessionName ?? "Session").trim().slice(0, 200);
     const r = await saveCoachLibraryItem({ title, contract: contractToSave });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Salvataggio fallito");
+      setErr(r.error ?? "Save failed");
       return;
     }
-    setOkMsg(`Salvata in libreria: ${title}`);
+    setOkMsg(`Saved to library: ${title}`);
     void refresh();
   }
 
   async function handleApply(item: CoachWorkoutLibraryItemView) {
     if (!athleteId) {
-      setErr("Seleziona un atleta.");
+      setErr("Select an athlete.");
       return;
     }
     setBusy(`apply-${item.id}`);
@@ -183,12 +183,12 @@ export function CoachWorkoutLibraryPanel({
     });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Apply fallito");
+      setErr(r.error ?? "Apply failed");
       return;
     }
     const scaleHint =
-      applyScaling && r.loadScalePct != null ? ` (carico ~${r.loadScalePct}%)` : "";
-    setOkMsg(`Applicata «${item.title}» al ${targetDate}${scaleHint}`);
+      applyScaling && r.loadScalePct != null ? ` (load ~${r.loadScalePct}%)` : "";
+    setOkMsg(`Applied «${item.title}» to ${targetDate}${scaleHint}`);
     onApplied?.();
   }
 
@@ -199,11 +199,11 @@ export function CoachWorkoutLibraryPanel({
     const r = await importEmpathyAerobicStarterPack();
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Import pack fallito");
+      setErr(r.error ?? "Pack import failed");
       return;
     }
     setOkMsg(
-      `Pack Empathy: ${r.imported ?? 0} nuovi, ${r.updated ?? 0} aggiornati, ${r.skipped ?? 0} saltati (${r.total ?? STARTER_PACK_TEMPLATE_COUNT} totali).`,
+      `Empathy pack: ${r.imported ?? 0} new, ${r.updated ?? 0} updated, ${r.skipped ?? 0} skipped (${r.total ?? STARTER_PACK_TEMPLATE_COUNT} total).`,
     );
     void refresh();
   }
@@ -214,7 +214,7 @@ export function CoachWorkoutLibraryPanel({
     const r = await fetchCoachLibraryItemContract(item.id);
     setBusy(null);
     if (!r.ok || !r.contract) {
-      setErr(r.error ?? "Export fallito");
+      setErr(r.error ?? "Export failed");
       return;
     }
     try {
@@ -226,9 +226,9 @@ export function CoachWorkoutLibraryPanel({
       a.download = `${(r.title ?? item.title).replace(/[^\w\-]+/g, "_").slice(0, 80)}.zwo`;
       a.click();
       URL.revokeObjectURL(url);
-      setOkMsg(`Export ZWO: ${item.title}`);
+      setOkMsg(`ZWO export: ${item.title}`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Export ZWO fallito");
+      setErr(e instanceof Error ? e.message : "ZWO export failed");
     }
   }
 
@@ -245,11 +245,11 @@ export function CoachWorkoutLibraryPanel({
     });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Salvataggio modifiche fallito");
+      setErr(r.error ?? "Failed to save changes");
       return;
     }
     setPreviewContract(structuredClone(draftContract));
-    setOkMsg("Template aggiornato in libreria.");
+    setOkMsg("Template updated in library.");
     void refresh();
   }
 
@@ -261,10 +261,10 @@ export function CoachWorkoutLibraryPanel({
     const r = await clonePlannedWorkout({ sourceId: sourcePlannedId, athleteId, date: targetDate });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Copia fallita");
+      setErr(r.error ?? "Copy failed");
       return;
     }
-    setOkMsg(`Seduta copiata al ${targetDate}`);
+    setOkMsg(`Session copied to ${targetDate}`);
     onApplied?.();
   }
 
@@ -277,19 +277,19 @@ export function CoachWorkoutLibraryPanel({
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-orange-200">
           <BookMarked className="h-4 w-4" aria-hidden />
-          Libreria sedute coach
+          Coach session library
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
       </button>
       {open ? (
         <div className="space-y-3 border-t border-white/10 px-4 pb-4 pt-3">
           <p className="text-xs text-gray-500">
-            Template riusabili (contratto Builder). Clicca un template per modificarne intervalli, serie e durata; Apply usa le modifiche (salva il template per tenerle in libreria).
+            Reusable templates (Builder contract). Click a template to edit its intervals, sets and duration; Apply uses your edits (save the template to keep them in the library).
           </p>
           <div className="flex flex-wrap gap-2">
             {contractToSave ? (
               <Pro2Button type="button" variant="secondary" disabled={busy != null} onClick={() => void handleSave()}>
-                {busy === "save" ? "Salvo…" : "Salva sessione in libreria"}
+                {busy === "save" ? "Saving…" : "Save session to library"}
               </Pro2Button>
             ) : null}
             <Pro2Button
@@ -298,7 +298,7 @@ export function CoachWorkoutLibraryPanel({
               disabled={busy != null}
               onClick={() => void handleImportStarterPack()}
             >
-              {busy === "starter" ? "Importo…" : `Importa / aggiorna catalogo (${STARTER_PACK_TEMPLATE_COUNT})`}
+              {busy === "starter" ? "Importing…" : `Import / update catalog (${STARTER_PACK_TEMPLATE_COUNT})`}
             </Pro2Button>
             {sourcePlannedId ? (
               <Pro2Button
@@ -307,12 +307,12 @@ export function CoachWorkoutLibraryPanel({
                 disabled={busy != null}
                 onClick={() => void handleCloneSource()}
               >
-                {busy === "clone" ? "Copio…" : "Copia seduta selezionata"}
+                {busy === "clone" ? "Copying…" : "Copy selected session"}
               </Pro2Button>
             ) : null}
             <input
               type="search"
-              placeholder="Cerca titolo, disciplina…"
+              placeholder="Search title, discipline…"
               className="min-w-[140px] flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -326,7 +326,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={disciplineFilter}
               onChange={(e) => setDisciplineFilter(e.target.value)}
-              aria-label="Filtro disciplina"
+              aria-label="Discipline filter"
             >
               {LIBRARY_DISCIPLINE_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -338,7 +338,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              aria-label="Filtro metodologia"
+              aria-label="Methodology filter"
             >
               {LIBRARY_METHODOLOGY_TAG_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -350,7 +350,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={familyFilter}
               onChange={(e) => setFamilyFilter(e.target.value)}
-              aria-label="Filtro famiglia"
+              aria-label="Family filter"
             >
               {LIBRARY_FAMILY_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -362,7 +362,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={viryaPhaseFilter}
               onChange={(e) => setViryaPhaseFilter(e.target.value)}
-              aria-label="Filtro fase VIRYA"
+              aria-label="VIRYA phase filter"
             >
               {LIBRARY_VIRYA_PHASE_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -373,7 +373,7 @@ export function CoachWorkoutLibraryPanel({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Pro2Button type="button" variant="secondary" disabled={loading} onClick={() => void refresh()}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Applica filtri"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply filters"}
             </Pro2Button>
             {hasActiveFilters ? (
               <button
@@ -381,7 +381,7 @@ export function CoachWorkoutLibraryPanel({
                 className="text-xs font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
                 onClick={clearFilters}
               >
-                Reset filtri
+                Reset filters
               </button>
             ) : null}
             <span className="text-[0.65rem] text-gray-500">
@@ -393,7 +393,7 @@ export function CoachWorkoutLibraryPanel({
                 checked={applyScaling}
                 onChange={(e) => setApplyScaling(e.target.checked)}
               />
-              Adatta carico (twin/recovery)
+              Adapt load (twin/recovery)
             </label>
           </div>
           {err ? (
@@ -408,9 +408,9 @@ export function CoachWorkoutLibraryPanel({
           ) : null}
           <div className="max-h-[min(32rem,70vh)] overflow-y-auto rounded-xl border border-white/10">
             {loading && items.length === 0 ? (
-              <p className="p-3 text-xs text-gray-500">Caricamento…</p>
+              <p className="p-3 text-xs text-gray-500">Loading…</p>
             ) : items.length === 0 ? (
-              <p className="p-3 text-xs text-gray-500">Nessun template in libreria.</p>
+              <p className="p-3 text-xs text-gray-500">No templates in the library.</p>
             ) : (
               <ul className="divide-y divide-white/5">
                 {items.map((item) => {
@@ -457,7 +457,7 @@ export function CoachWorkoutLibraryPanel({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onLoadInBuilder(activeContract);
-                                setOkMsg(`«${item.title}» caricata nel Builder — modifica serie, intervalli e durata.`);
+                                setOkMsg(`«${item.title}» loaded into the Builder — edit sets, intervals and duration.`);
                               }}
                             >
                               Builder
@@ -473,7 +473,7 @@ export function CoachWorkoutLibraryPanel({
                               void handleApply(item);
                             }}
                           >
-                            {busy === `apply-${item.id}` ? "…" : "Applica"}
+                            {busy === `apply-${item.id}` ? "…" : "Apply"}
                           </Pro2Button>
                         </div>
                       </div>
@@ -482,7 +482,7 @@ export function CoachWorkoutLibraryPanel({
                           {previewLoading ? (
                             <div className="flex items-center justify-center gap-2 py-6 text-xs text-gray-400">
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                              Carico grafico a blocchi…
+                              Loading block chart…
                             </div>
                           ) : activeContract ? (
                             <CoachLibraryContractEditor
@@ -501,14 +501,14 @@ export function CoachWorkoutLibraryPanel({
                                 onLoadInBuilder
                                   ? () => {
                                       onLoadInBuilder(activeContract);
-                                      setOkMsg(`«${item.title}» caricata nel Builder.`);
+                                      setOkMsg(`«${item.title}» loaded into the Builder.`);
                                     }
                                   : undefined
                               }
                             />
                           ) : (
                             <p className="py-4 text-center text-xs text-amber-200/90">
-                              Struttura non disponibile per questo template.
+                              Structure not available for this template.
                             </p>
                           )}
                         </div>

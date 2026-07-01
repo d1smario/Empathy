@@ -27,7 +27,7 @@ function twinLine(t: TrainingTwinContextStripViewModel): string {
   if (t.adaptationScoreV1 != null) {
     bits.push(`conf ${(t.adaptationScoreV1.confidence * 100).toFixed(0)}%`);
   }
-  return bits.length ? bits.join(" · ") : "Twin presente (metriche parziali).";
+  return bits.length ? bits.join(" · ") : "Twin present (partial metrics).";
 }
 
 /**
@@ -54,17 +54,17 @@ export function TrainingPlannedWindowContextStrip({
       )}
     >
       <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
-        {label} · spina lettura {readSpineCoverage.spineScore}%
+        {label} · read spine {readSpineCoverage.spineScore}%
         {twinContextStrip ? " · twin" : ""}
       </summary>
       {aid ? (
-        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-gray-500" title="athlete_id usato da planned-window">
-          atleta {aid}
+        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-gray-500" title="athlete_id used by planned-window">
+          athlete {aid}
         </p>
       ) : null}
       {showProv ? (
         <p className="mt-1 text-xs text-gray-500">
-          <span className="font-semibold text-gray-400">Origine pianificati · </span>
+          <span className="font-semibold text-gray-400">Planned origin · </span>
           {formatPlannedProvenanceSummaryIt(plannedProvenanceSummary)}
         </p>
       ) : null}
@@ -99,7 +99,7 @@ export function TrainingPlannedWindowContextStrip({
           ) : null}
         </p>
       ) : (
-        <p className="mt-2 text-xs text-amber-200/70">Nessun twin in memoria: solo spina e dati calendario grezzi.</p>
+        <p className="mt-2 text-xs text-amber-200/70">No twin in memory: only spine and raw calendar data.</p>
       )}
     </details>
   );

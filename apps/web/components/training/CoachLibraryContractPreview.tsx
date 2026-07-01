@@ -47,23 +47,23 @@ export function CoachLibraryContractPreview({
   );
 
   const gymScheda = contractHasGymScheda(enriched);
-  const chartTitle = title ? `Struttura · ${title}` : "Struttura seduta";
+  const chartTitle = title ? `Structure · ${title}` : "Session structure";
 
   if (enriched.family === "strength") {
     return (
       <div className="space-y-3">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">Scheda palestra</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">Gym plan</p>
         <Pro2GymSchedaBlockList contract={enriched} />
         {!gymScheda && segments.length > 0 ? (
           <SessionBlockIntensityChart
             segments={segments}
-            title="Proxy tempo / carico"
+            title="Time / load proxy"
             estimatedTss={tssEst}
             compact={compact}
           />
         ) : null}
         {!gymScheda && segments.length === 0 ? (
-          <p className="text-xs text-gray-500">Nessun esercizio in scheda — apri nel Builder per completare.</p>
+          <p className="text-xs text-gray-500">No exercises in the plan — open in the Builder to complete.</p>
         ) : null}
         <SessionMultilevelAnalysisStrip
           contract={enriched}
@@ -79,7 +79,7 @@ export function CoachLibraryContractPreview({
     return (
       <div className="space-y-3">
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-xs text-gray-500">
-          Nessun blocco da visualizzare in questo template.
+          No block to display in this template.
         </p>
         <SessionMultilevelAnalysisStrip
           contract={enriched}

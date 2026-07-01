@@ -19,10 +19,10 @@ export function DashboardPlanBadge({ entitlement }: { entitlement: UserAccessEnt
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs">
       <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-100">
         <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
-        Piano attivo
+        Active plan
       </span>
       <span className="font-semibold text-white">{entitlement.label}</span>
-      {validUntil ? <span className="text-gray-400">· fino al {validUntil}</span> : null}
+      {validUntil ? <span className="text-gray-400">· until {validUntil}</span> : null}
     </span>
   );
 }

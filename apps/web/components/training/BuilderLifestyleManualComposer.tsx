@@ -42,9 +42,9 @@ const BREATH_QUICK_CHIPS: readonly string[] = [
 const PRACTICE_CATEGORY_OPTIONS: { id: LifestylePracticeCategory; label: string }[] = [
   { id: "yoga", label: "Yoga" },
   { id: "pilates", label: "Pilates" },
-  { id: "breath", label: "Respiro" },
-  { id: "meditation", label: "Meditazione" },
-  { id: "mobility", label: "Mobilità" },
+  { id: "breath", label: "Breath" },
+  { id: "meditation", label: "Meditation" },
+  { id: "mobility", label: "Mobility" },
   { id: "stretch", label: "Stretching" },
 ];
 
@@ -149,16 +149,16 @@ export function BuilderLifestyleManualComposer({
   const selectedEntry = visiblePlaybook.find((e) => e.id === selectedPlaybookId) ?? null;
 
   return (
-    <section aria-label="Builder manuale scheda lifestyle" className={`p-4 sm:p-6 ${panelShell}`}>
+    <section aria-label="Manual lifestyle plan builder" className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-white">
-            Manuale · Scheda lifestyle
+            Manual · Lifestyle plan
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-gray-400">
-            Stessa logica della scheda Gym: righe prescrittive con catalogo per{" "}
-            <span className="font-semibold text-orange-300">{currentSportLabel}</span> (playbook macro D), filtri per categoria di
-            pratica, chip round / tenuta-respiro / recupero / RPE — niente blocchi watt/FC.
+            Same logic as the Gym plan: prescriptive rows with a catalog for{" "}
+            <span className="font-semibold text-orange-300">{currentSportLabel}</span> (macro D playbook), filters by practice
+            category, chips for rounds / breath-hold / recovery / RPE — no watt/HR blocks.
           </p>
         </div>
         {physioHint ? (
@@ -169,10 +169,10 @@ export function BuilderLifestyleManualComposer({
       </div>
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
-        <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione (proxy tempo)" estimatedTss={estimatedTss} />
+        <SessionBlockIntensityChart segments={manualChartSegments} title="Session preview (time proxy)" estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-amber-950/25 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">Durata nel calendario</span>
+            <span className="font-bold uppercase tracking-wider text-orange-200/90">Calendar duration</span>
             <select
               className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
@@ -186,8 +186,8 @@ export function BuilderLifestyleManualComposer({
             </select>
           </label>
           <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            Tempo stimato dal grafico: <span className="font-mono font-semibold text-amber-200/90">~{structureMinutesFromChart} min</span>.
-            Il calendario usa la durata selezionata.
+            Time estimated from the chart: <span className="font-mono font-semibold text-amber-200/90">~{structureMinutesFromChart} min</span>.
+            The calendar uses the selected duration.
           </p>
         </div>
       </div>
@@ -195,7 +195,7 @@ export function BuilderLifestyleManualComposer({
       <div className={catalogPanel}>
         <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200">
           <Sparkles className="h-3.5 w-3.5 text-orange-300" aria-hidden />
-          Playbook pratiche · filtra per categoria
+          Practices playbook · filter by category
         </p>
         <div className="flex flex-wrap gap-1.5">
           <button
@@ -203,7 +203,7 @@ export function BuilderLifestyleManualComposer({
             className={catalogCategoryFilter === "" ? chipOnCat : chipOff}
             onClick={() => setCatalogCategoryFilter("")}
           >
-            Tutte
+            All
           </button>
           {PRACTICE_CATEGORY_OPTIONS.map((c) => (
             <button
@@ -220,7 +220,7 @@ export function BuilderLifestyleManualComposer({
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="max-h-[14rem] overflow-y-auto rounded-lg border border-white/10 bg-black/45 p-1">
             {visiblePlaybook.length === 0 ? (
-              <p className="px-2 py-6 text-center text-xs text-gray-500">Nessuna voce in questa selezione.</p>
+              <p className="px-2 py-6 text-center text-xs text-gray-500">No entries in this selection.</p>
             ) : (
               <ul className="flex flex-col gap-0.5">
                 {visiblePlaybook.map((e) => {
@@ -260,11 +260,11 @@ export function BuilderLifestyleManualComposer({
                     className="h-24 w-24 shrink-0 rounded-xl border border-orange-400/25"
                   />
                   <div className="min-w-0">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selezionato</p>
+                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selected</p>
                     <p className="mt-1 text-sm font-bold text-white">{selectedEntry.name}</p>
                     <p className="mt-1 text-[0.65rem] text-gray-500">{selectedEntry.brief}</p>
                     <p className="mt-1 text-[0.55rem] text-orange-500/80">
-                      Anteprima V1:{" "}
+                      V1 preview:{" "}
                       <span className="font-mono text-orange-400/90">
                         {lifestyleV1FallbackImageForCategory(selectedEntry.practiceCategory)}
                       </span>
@@ -278,27 +278,27 @@ export function BuilderLifestyleManualComposer({
                     onClick={() => addFromPlaybook(selectedEntry)}
                   >
                     <Plus className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
-                    Aggiungi alla scheda
+                    Add to plan
                   </button>
                   <button
                     type="button"
                     className="w-full rounded-xl border border-white/15 bg-black/40 py-2 text-xs font-semibold text-gray-300 hover:border-orange-400/35 hover:text-white"
                     onClick={addEmptyRow}
                   >
-                    + Riga libera (nome e prescrizione manuali)
+                    + Free row (manual name and prescription)
                   </button>
                 </div>
               </>
             ) : (
               <div className="flex flex-col gap-3">
-                <p className="text-xs text-gray-500">Seleziona una pratica dalla lista oppure aggiungi una riga vuota.</p>
+                <p className="text-xs text-gray-500">Select a practice from the list or add an empty row.</p>
                 <button
                   type="button"
                   className="rounded-xl border border-amber-400/40 bg-amber-600/25 py-2.5 text-sm font-bold text-amber-100 hover:bg-amber-600/35"
                   onClick={addEmptyRow}
                 >
                   <Plus className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
-                  Riga libera
+                  Free row
                 </button>
               </div>
             )}
@@ -308,7 +308,7 @@ export function BuilderLifestyleManualComposer({
 
       <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
         <label className="flex max-w-xl flex-col gap-1 text-[0.65rem] text-gray-400">
-          Nome sessione
+          Session name
           <input
             type="text"
             className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
@@ -320,12 +320,12 @@ export function BuilderLifestyleManualComposer({
 
       <div className="mt-4 space-y-3">
         <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-300 to-orange-300">
-          Scheda · {lifestyleRows.length} pratiche
+          Plan · {lifestyleRows.length} practices
         </p>
         {lifestyleRows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-orange-500/30 bg-orange-950/20 px-4 py-8 text-center text-sm text-gray-500">
-            Aggiungi voci dal playbook o righe libere. Output: seduta <span className="text-orange-300">flow / recovery</span> nel
-            motore.
+            Add entries from the playbook or free rows. Output: a <span className="text-orange-300">flow / recovery</span> session in the
+            engine.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -360,13 +360,13 @@ export function BuilderLifestyleManualComposer({
                         type="button"
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
                         onClick={() => removeRow(row.id)}
-                        aria-label="Rimuovi pratica"
+                        aria-label="Remove practice"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                     <label className="flex max-w-xs flex-col gap-1 text-[0.65rem] text-gray-500">
-                      Categoria (prescrizione)
+                      Category (prescription)
                       <select
                         className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
                         value={row.practiceCategory}
@@ -380,12 +380,12 @@ export function BuilderLifestyleManualComposer({
                       </select>
                     </label>
                     <label className="flex max-w-lg flex-col gap-1 text-[0.65rem] text-gray-500">
-                      Immagine · URL (opzionale)
+                      Image · URL (optional)
                       <input
                         type="url"
                         inputMode="url"
                         autoComplete="off"
-                        placeholder="https://… oppure scena Spline (in arrivo)"
+                        placeholder="https://… or Spline scene (coming soon)"
                         className="rounded-lg border border-amber-400/25 bg-black/50 px-2 py-2 text-sm text-white placeholder:text-gray-600"
                         value={row.mediaUrl ?? ""}
                         onChange={(e) => {
@@ -394,15 +394,15 @@ export function BuilderLifestyleManualComposer({
                         }}
                       />
                       <span className="text-[0.55rem] leading-snug text-gray-600">
-                        Se vuoto: stesso master SVG Vyria V1 usato in palestra (<span className="font-mono text-gray-500">{lifestyleV1FallbackImageForCategory(row.practiceCategory)}</span>
-                        ). Galleria dedicata + Spline: prossimo step.
+                        If empty: same Vyria V1 master SVG used in the gym (<span className="font-mono text-gray-500">{lifestyleV1FallbackImageForCategory(row.practiceCategory)}</span>
+                        ). Dedicated gallery + Spline: next step.
                       </span>
                     </label>
                   </div>
                 </div>
 
                 <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Round / cicli</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Rounds / cycles</p>
                   <div className="flex flex-wrap gap-1">
                     {ROUND_CHIP_PRESETS.map((n) => (
                       <button
@@ -417,7 +417,7 @@ export function BuilderLifestyleManualComposer({
                     <input
                       type="number"
                       min={1}
-                      aria-label="Round personalizzati"
+                      aria-label="Custom rounds"
                       className="w-14 rounded-full border border-white/15 bg-black/50 px-2 py-1 text-center text-[0.65rem] font-mono text-white"
                       value={row.rounds}
                       onChange={(e) => updateRow(row.id, { rounds: Math.max(1, Number(e.target.value) || 1) })}
@@ -426,19 +426,19 @@ export function BuilderLifestyleManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-amber-300/90">Tenute / respiri / durata</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-amber-300/90">Holds / breaths / duration</p>
                   <input
                     type="text"
                     className="w-full rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
                     value={row.holdOrReps}
                     onChange={(e) => updateRow(row.id, { holdOrReps: e.target.value })}
-                    placeholder="es. 90s tenuta · 5 respiri"
+                    placeholder="e.g. 90s hold · 5 breaths"
                   />
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   <div className="min-w-[8rem] flex-1 space-y-2">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Recupero (s)</p>
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Recovery (s)</p>
                     <div className="flex flex-wrap gap-1">
                       {REST_CHIP_PRESETS.map((s) => (
                         <button
@@ -460,7 +460,7 @@ export function BuilderLifestyleManualComposer({
                     />
                   </div>
                   <div className="min-w-[8rem] flex-1 space-y-2">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">RPE (opz.)</p>
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">RPE (opt.)</p>
                     <div className="flex flex-wrap gap-1">
                       <button
                         type="button"
@@ -484,7 +484,7 @@ export function BuilderLifestyleManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-amber-200/90">Schema respiratorio · scorciatoie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-amber-200/90">Breathing pattern · shortcuts</p>
                   <div className="flex flex-wrap gap-1">
                     {BREATH_QUICK_CHIPS.map((label) => (
                       <button
@@ -500,14 +500,14 @@ export function BuilderLifestyleManualComposer({
                   <input
                     type="text"
                     className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
-                    placeholder="Altro schema…"
+                    placeholder="Other pattern…"
                     value={row.breathPattern}
                     onChange={(e) => updateRow(row.id, { breathPattern: e.target.value })}
                   />
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Stile esecuzione · scorciatoie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Execution style · shortcuts</p>
                   <div className="flex flex-wrap gap-1">
                     {EXECUTION_QUICK_CHIPS.map((label) => (
                       <button
@@ -523,14 +523,14 @@ export function BuilderLifestyleManualComposer({
                   <input
                     type="text"
                     className="w-full rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
-                    placeholder="Esecuzione personalizzata…"
+                    placeholder="Custom execution…"
                     value={row.executionStyle}
                     onChange={(e) => updateRow(row.id, { executionStyle: e.target.value })}
                   />
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Blocco / circuito</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Block / circuit</p>
                   <div className="flex flex-wrap items-center gap-1">
                     {["A", "B", "C", "D"].map((g) => (
                       <button
@@ -544,7 +544,7 @@ export function BuilderLifestyleManualComposer({
                     ))}
                     <input
                       type="text"
-                      placeholder="etichetta"
+                      placeholder="label"
                       className="min-w-[5rem] flex-1 rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[0.7rem] text-white"
                       value={row.chainLabel}
                       onChange={(e) => updateRow(row.id, { chainLabel: e.target.value })}
@@ -553,7 +553,7 @@ export function BuilderLifestyleManualComposer({
                 </div>
 
                 <label className="mt-3 flex flex-col gap-1 text-xs text-gray-500">
-                  Cue tecnico / attenzione
+                  Technique cue / focus
                   <textarea
                     rows={2}
                     className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
@@ -575,13 +575,13 @@ export function BuilderLifestyleManualComposer({
                     }
                   >
                     <FileText className="h-3.5 w-3.5" aria-hidden />
-                    Note aggiuntive
+                    Additional notes
                   </button>
                   {extraNotesOpen[row.id] ? (
                     <textarea
                       rows={3}
                       className="mt-2 w-full rounded-lg border border-orange-400/25 bg-black/50 px-2 py-2 text-sm text-white"
-                      placeholder="Note al coach…"
+                      placeholder="Notes for the coach…"
                       value={row.notes}
                       onChange={(e) => updateRow(row.id, { notes: e.target.value })}
                     />
@@ -595,7 +595,7 @@ export function BuilderLifestyleManualComposer({
 
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
         <label className="flex flex-col gap-1 text-xs text-gray-500">
-          Data
+          Date
           <input
             type="date"
             className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
@@ -609,7 +609,7 @@ export function BuilderLifestyleManualComposer({
           disabled={!athleteId || !canSave || manualSaveBusy}
           onClick={() => onSaveManual(manualPlannedDate)}
         >
-          {manualSaveBusy ? "Salvataggio…" : "Salva nel calendario"}
+          {manualSaveBusy ? "Saving…" : "Save to calendar"}
         </button>
       </div>
       {manualSaveErr ? (

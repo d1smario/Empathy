@@ -71,8 +71,8 @@ export function TrainingAnalyzerCrossChannelSection({
     <div className="mb-6">
       <Pro2SectionCard
         accent="orange"
-        title="Cross-channel intra-sessione"
-        subtitle="Power / FC vs glucosio CGM nello stesso intervallo della sessione"
+        title="Cross-channel intra-session"
+        subtitle="Power / HR vs CGM glucose within the same session interval"
         icon={Activity}
       >
         <div className="mb-3 flex flex-wrap gap-2">
@@ -137,7 +137,7 @@ export function TrainingAnalyzerCrossChannelSection({
                       strokeWidth={CHART_STROKE.thin}
                       dot={false}
                       isAnimationActive={false}
-                      name="FC (bpm)"
+                      name="HR (bpm)"
                     />
                   ) : null}
                   {active.hasGlucose ? (
@@ -146,7 +146,7 @@ export function TrainingAnalyzerCrossChannelSection({
                       dataKey="glucose"
                       fill={CHART_SIGNAL.glucose}
                       shape="circle"
-                      name="Glucosio (mmol/L)"
+                      name="Glucose (mmol/L)"
                     />
                   ) : null}
                 </ComposedChart>
@@ -160,16 +160,16 @@ export function TrainingAnalyzerCrossChannelSection({
               ) : null}
               {active.hasHr ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.hr }} /> FC
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.hr }} /> HR
                 </span>
               ) : null}
               {active.hasGlucose ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.glucose }} /> Glucosio (asse dx)
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.glucose }} /> Glucose (right axis)
                 </span>
               ) : null}
               {!active.hasGlucose ? (
-                <span className="text-amber-300/80">Nessun campione CGM nell&apos;intervallo della sessione.</span>
+                <span className="text-amber-300/80">No CGM sample within the session interval.</span>
               ) : null}
             </div>
           </div>

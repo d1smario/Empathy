@@ -53,7 +53,7 @@ const StravaStyleMap = dynamic(
     ssr: false,
     loading: () => (
       <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-sm text-gray-400">
-        Mappa percorso…
+        Route map…
       </div>
     ),
   },
@@ -306,7 +306,7 @@ export function TrainingCalendarAnalyzer({
 
   const analyzerMetricDefs = useMemo(
     () => [
-      { id: "tss", label: "Carico", color: CHART_SIGNAL.load, values: lineSeries.tss },
+      { id: "tss", label: "Load", color: CHART_SIGNAL.load, values: lineSeries.tss },
       { id: "power", label: "Power", color: CHART_SIGNAL.power, values: lineSeries.power },
       { id: "hr", label: "HR", color: CHART_SIGNAL.hr, values: lineSeries.hr },
       { id: "cadence", label: "Cadence", color: CHART_SIGNAL.cadence, values: lineSeries.cadence },
@@ -541,16 +541,16 @@ export function TrainingCalendarAnalyzer({
       <section className="rounded-2xl border border-orange-500/20 bg-gradient-to-b from-black/45 to-black/30 px-4 py-5 shadow-inner shadow-orange-950/15">
         <h3 className="text-base font-bold text-white">
           Analyzer ·{" "}
-          {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("it-IT", {
+          {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
             weekday: "long",
             day: "numeric",
             month: "long",
           })}
         </h3>
         <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
-          <p className="font-semibold text-gray-200">Nessuna sessione in questo giorno</p>
+          <p className="font-semibold text-gray-200">No session on this day</p>
           <p className="mt-2">
-            Seleziona un altro giorno sul calendario oppure aggiungi una pianificazione / importa un file eseguito.
+            Select another day on the calendar or add a plan / import an executed file.
           </p>
         </div>
       </section>
@@ -570,8 +570,8 @@ export function TrainingCalendarAnalyzer({
 
       {plannedOnly ? (
         <p className="mt-2 rounded-xl border border-orange-400/25 bg-orange-500/10 px-3 py-2 text-sm text-orange-100/90">
-          Solo pianificazione: il grafico mostra carico e durata target (blocchi PLAN). Importa un eseguito per mappa e traccia
-          file.
+          Planning only: the chart shows target load and duration (PLAN blocks). Import an executed workout for the map and file
+          trace.
         </p>
       ) : null}
 
@@ -579,18 +579,18 @@ export function TrainingCalendarAnalyzer({
         <div className="min-w-0 flex-1">
           {plannedOnly ? (
             <div className="flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-black/40 text-center text-sm text-gray-500">
-              Mappa percorso dopo import di un workout eseguito (FIT/GPX/TCX).
+              Route map after importing an executed workout (FIT/GPX/TCX).
             </div>
           ) : (
             <StravaStyleMap route={gpsRoute} height={220} />
           )}
         </div>
         <div className="flex flex-shrink-0 flex-wrap gap-2 text-xs font-semibold text-gray-300 lg:flex-col lg:justify-center">
-          <span className="rounded-lg bg-white/5 px-2 py-1">Distanza {gpsStats.distanceKm.toFixed(1)} km</span>
-          <span className="rounded-lg bg-white/5 px-2 py-1">Dislivello {gpsStats.elevGain.toFixed(0)} m</span>
-          <span className="rounded-lg bg-white/5 px-2 py-1">Durata {gpsStats.durationMin.toFixed(0)} min</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">Distance {gpsStats.distanceKm.toFixed(1)} km</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">Elevation gain {gpsStats.elevGain.toFixed(0)} m</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">Duration {gpsStats.durationMin.toFixed(0)} min</span>
           <span className="rounded-lg bg-white/5 px-2 py-1">
-            Ritmo {gpsStats.paceMinKm > 0 ? gpsStats.paceMinKm.toFixed(2) : "0.00"} min/km
+            Pace {gpsStats.paceMinKm > 0 ? gpsStats.paceMinKm.toFixed(2) : "0.00"} min/km
           </span>
         </div>
       </div>
@@ -598,7 +598,7 @@ export function TrainingCalendarAnalyzer({
       {fitQuality ? (
         <details className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3 text-sm">
           <summary className="cursor-pointer font-semibold text-gray-200">
-            Qualità file {fitQuality.sourceFormat.toUpperCase()}:{" "}
+            File quality {fitQuality.sourceFormat.toUpperCase()}:{" "}
             <span
               className={
                 fitQuality.status === "OK"
@@ -631,7 +631,7 @@ export function TrainingCalendarAnalyzer({
 
       {channelAvailability ? (
         <p className="mt-3 text-xs text-gray-500">
-          Canali file:{" "}
+          File channels:{" "}
           {Object.entries(channelAvailability)
             .map(([k, v]) => `${k}:${v ? "yes" : "no"}`)
             .join(" · ")}
@@ -657,7 +657,7 @@ export function TrainingCalendarAnalyzer({
           File trace mode
         </button>
         <span className="text-xs text-gray-500">
-          Con traccia Garmin/Wahoo: potenza, FC, quota; radar vs picco mese — VAM da quota o vertical_speed (m/h).
+          With Garmin/Wahoo trace: power, HR, altitude; radar vs month peak — VAM from altitude or vertical_speed (m/h).
         </span>
       </div>
 
@@ -665,42 +665,42 @@ export function TrainingCalendarAnalyzer({
         <>
           {dayRefKpis.multiSessionDay ? (
             <p className="mt-3 text-xs text-amber-200/90">
-              KPI sulla seduta principale (mappa/GPS). Totale giornata: {formatDayDurationMin(dayRefKpis.dayTotalMin)} su{" "}
-              {dayExecuted.length} sessioni.
+              KPIs on the main session (map/GPS). Day total: {formatDayDurationMin(dayRefKpis.dayTotalMin)} across{" "}
+              {dayExecuted.length} sessions.
             </p>
           ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Carico · seduta</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Load · session</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{dayRefKpis.tss.toFixed(0)}</div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · seduta</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · session</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.kcal.toFixed(0)}
               <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Watt medi</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg watts</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.wattAvg != null ? dayRefKpis.wattAvg.toFixed(0) : "—"}
               {dayRefKpis.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Durata · seduta</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Duration · session</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {formatDayDurationMin(dayRefKpis.totalMin)}
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">VAM media salita</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg climb VAM</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.vamAvg != null ? dayRefKpis.vamAvg : "—"}
               {dayRefKpis.vamAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-gray-500">dislivello ÷ ore</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">elevation gain ÷ hours</p>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
             <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
@@ -710,7 +710,7 @@ export function TrainingCalendarAnalyzer({
               {dayRefKpis.vamPeak != null ? dayRefKpis.vamPeak.vamMh : "—"}
               {dayRefKpis.vamPeak != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-gray-500">picco finestra</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">window peak</p>
           </div>
         </div>
         </>
@@ -718,8 +718,8 @@ export function TrainingCalendarAnalyzer({
 
       {telemetryRows.length >= 2 ? (
         <div className="mt-4 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-black/80 via-black/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <h4 className="text-sm font-bold text-orange-100/95">Telemetria (stile sessione)</h4>
-          <p className="mb-3 text-xs text-gray-500">Potenza con riempimento gradiente; FC in rosso; quota separata sotto.</p>
+          <h4 className="text-sm font-bold text-orange-100/95">Telemetry (session style)</h4>
+          <p className="mb-3 text-xs text-gray-500">Power with gradient fill; HR in red; altitude shown separately below.</p>
           <TrainingCalendarTelemetryChart data={telemetryRows} />
         </div>
       ) : null}
@@ -727,10 +727,10 @@ export function TrainingCalendarAnalyzer({
       {peakRadarProfiles.length > 0 ? (
         <div className="mt-6 space-y-4">
           <div>
-            <h4 className="text-sm font-bold text-white">Profili · radar vs picco mese</h4>
+            <h4 className="text-sm font-bold text-white">Profiles · radar vs month peak</h4>
             <p className="mt-1 text-xs text-gray-500">
-              Un esagono per ogni canale presente nella registrazione (potenza, FC, cadenza, velocità, VAM, lattato,
-              glucosio, SmO₂, temperatura, VO₂, …) — finestre 5s → 60′ vs picco del mese.
+              One hexagon for each channel present in the recording (power, HR, cadence, speed, VAM, lactate,
+              glucose, SmO₂, temperature, VO₂, …) — windows 5s → 60′ vs the month peak.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -751,11 +751,11 @@ export function TrainingCalendarAnalyzer({
 
       <details open className="group mt-6 rounded-xl border border-white/10 bg-black/20 p-3">
         <summary className="cursor-pointer font-mono text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 group-open:text-gray-300">
-          Confronto normalizzato (tutte le metriche sovrapposte)
+          Normalized comparison (all metrics overlaid)
         </summary>
              <p className="mb-2 mt-2 text-xs text-gray-500">
-               Asse Y 0–100%: ogni serie sul proprio min/max. Attiva/disattiva curve (FC, glucosio, core temp, smO2, VO2,
-               VCO2, …) per sovrapporle.
+               Y axis 0–100%: each series on its own min/max. Toggle curves (HR, glucose, core temp, smO2, VO2,
+               VCO2, …) to overlay them.
              </p>
              <div className="mb-3 flex flex-wrap gap-2">
                <button
@@ -767,7 +767,7 @@ export function TrainingCalendarAnalyzer({
                    setOverlayOn(o);
                  }}
                >
-                 Tutte
+                 All
                </button>
                <button
                  type="button"
@@ -780,7 +780,7 @@ export function TrainingCalendarAnalyzer({
                    setOverlayOn(next);
                  }}
                >
-                 Solo carico · Power · HR
+                 Load · Power · HR only
                </button>
              </div>
              <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -803,7 +803,7 @@ export function TrainingCalendarAnalyzer({
                ))}
              </div>
       {selectedMetricDefs.length === 0 ? (
-        <p className="text-sm text-amber-200/90">Seleziona almeno una metrica per visualizzare il grafico.</p>
+        <p className="text-sm text-amber-200/90">Select at least one metric to display the chart.</p>
       ) : (
       <svg
         viewBox={`0 0 ${analyzerInteractive.width} ${analyzerInteractive.height}`}
@@ -811,7 +811,7 @@ export function TrainingCalendarAnalyzer({
         height={420}
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Grafico analisi metriche allenamento"
+        aria-label="Training metrics analysis chart"
         className="mt-1 block max-h-[min(420px,70vw)] min-h-[280px] w-full text-gray-200"
       >
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -919,7 +919,7 @@ export function TrainingCalendarAnalyzer({
                     PLAN
                   </span>
                   <span>
-                    {c?.sessionName?.trim() || w.type} · {dm}m · carico {ts}
+                    {c?.sessionName?.trim() || w.type} · {dm}m · load {ts}
                   </span>
                 </div>
                 {athleteId ? (
@@ -928,24 +928,24 @@ export function TrainingCalendarAnalyzer({
                     disabled={deletingPlannedId === w.id}
                     className="shrink-0 rounded-full border border-rose-400/40 bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
                     onClick={async () => {
-                      if (!athleteId || !window.confirm("Eliminare questa seduta pianificata?")) return;
+                      if (!athleteId || !window.confirm("Delete this planned session?")) return;
                       setDeletingPlannedId(w.id);
                       try {
                         const aid = (w.athleteId?.trim() || athleteId?.trim() || "").trim();
                         if (!aid) {
-                          window.alert("Manca athleteId: impossibile allineare DELETE a planned-window.");
+                          window.alert("Missing athleteId: cannot align DELETE to planned-window.");
                           return;
                         }
                         await deletePlannedWorkout({ id: w.id, athleteId: aid });
                         onPlannedChanged?.(w.id);
                       } catch (err) {
-                        window.alert(err instanceof Error ? err.message : "Eliminazione non riuscita");
+                        window.alert(err instanceof Error ? err.message : "Deletion failed");
                       } finally {
                         setDeletingPlannedId(null);
                       }
                     }}
                   >
-                    {deletingPlannedId === w.id ? "…" : "Elimina"}
+                    {deletingPlannedId === w.id ? "…" : "Delete"}
                   </button>
                 ) : null}
               </div>
@@ -970,7 +970,7 @@ export function TrainingCalendarAnalyzer({
                   EXEC
                 </span>
                 <span className="ml-2">
-                  {w.durationMinutes}m · carico {w.tss}
+                  {w.durationMinutes}m · load {w.tss}
                   {fn ? (
                     <>
                       {" "}
@@ -988,7 +988,7 @@ export function TrainingCalendarAnalyzer({
                   onClick={async () => {
                     if (
                       !athleteId ||
-                      !window.confirm("Eliminare questo workout eseguito? (V1: rimuove anche duplicati stesso import.)")
+                      !window.confirm("Delete this executed workout? (V1: also removes duplicates from the same import.)")
                     ) {
                       return;
                     }
@@ -1002,13 +1002,13 @@ export function TrainingCalendarAnalyzer({
                       });
                       onExecutedChanged?.();
                     } catch (err) {
-                      window.alert(err instanceof Error ? err.message : "Eliminazione non riuscita");
+                      window.alert(err instanceof Error ? err.message : "Deletion failed");
                     } finally {
                       setDeletingId(null);
                     }
                   }}
                 >
-                  {deletingId === w.id ? "…" : "Elimina"}
+                  {deletingId === w.id ? "…" : "Delete"}
                 </button>
               ) : null}
             </div>

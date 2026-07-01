@@ -22,29 +22,29 @@ const HOP_SECTOR: Record<
   { shortTitle: string; physiologyFunction: string; amplificationFocus: string }
 > = {
   literature_search: {
-    shortTitle: "Stimolo & sistemi",
-    physiologyFunction: "Risposta acuta e cronica al carico; neuro‑endocrino e integrazione sistemica",
-    amplificationFocus: "Fenotipi, ormoni, stress termico/metabolico in letteratura",
+    shortTitle: "Stimulus & systems",
+    physiologyFunction: "Acute and chronic response to load; neuro‑endocrine and systemic integration",
+    amplificationFocus: "Phenotypes, hormones, thermal/metabolic stress in literature",
   },
   entity_lookup: {
-    shortTitle: "Segnale & geni",
-    physiologyFunction: "Trasduzione, fattori di trascrizione, ormoni e recettori",
-    amplificationFocus: "Geni · proteine · vie di segnale (Reactome/GO/Uniprot)",
+    shortTitle: "Signal & genes",
+    physiologyFunction: "Transduction, transcription factors, hormones and receptors",
+    amplificationFocus: "Genes · proteins · signaling pathways (Reactome/GO/Uniprot)",
   },
   pathway_lookup: {
     shortTitle: "Pathway",
-    physiologyFunction: "Processi di rete (via metabolica / segnale)",
-    amplificationFocus: "Pathway curati e relazioni causali tra processi",
+    physiologyFunction: "Network processes (metabolic / signaling pathway)",
+    amplificationFocus: "Curated pathways and causal relationships between processes",
   },
   reaction_lookup: {
-    shortTitle: "Metabolismo & cofattori",
-    physiologyFunction: "Flussi substrati, enzimi, cofattori, micronutrienti",
-    amplificationFocus: "Metaboliti · reazioni · modulatori (HMDB/ChEBI/KEGG)",
+    shortTitle: "Metabolism & cofactors",
+    physiologyFunction: "Substrate fluxes, enzymes, cofactors, micronutrients",
+    amplificationFocus: "Metabolites · reactions · modulators (HMDB/ChEBI/KEGG)",
   },
   projection_review: {
-    shortTitle: "Proiezione moduli",
-    physiologyFunction: "Traduzione in training, nutrizione, recovery, salute",
-    amplificationFocus: "Implicazioni operative cross‑modulo (audit, non decisione automatica)",
+    shortTitle: "Module projection",
+    physiologyFunction: "Translation into training, nutrition, recovery, health",
+    amplificationFocus: "Cross‑module operational implications (audit, not automatic decision)",
   },
 };
 
@@ -59,7 +59,7 @@ function traceFocus(trace: KnowledgeExpansionTrace) {
     trace.trigger.stimulusLabel ??
     trace.trigger.entityLabel ??
     trace.trigger.adaptationTarget?.replaceAll("_", " ") ??
-    "stimolo"
+    "stimulus"
   );
 }
 
@@ -82,8 +82,8 @@ function sortHops(hops: ResearchHopTrace[]): ResearchHopTrace[] {
 function traceSubtitle(trace: KnowledgeExpansionTrace) {
   return (
     <>
-      Modulo {trace.trigger.module ?? "—"} · {trace.trigger.kind}
-      {trace.trigger.adaptationTarget ? ` · adattamento ${trace.trigger.adaptationTarget.replaceAll("_", " ")}` : ""}
+      Module {trace.trigger.module ?? "—"} · {trace.trigger.kind}
+      {trace.trigger.adaptationTarget ? ` · adaptation ${trace.trigger.adaptationTarget.replaceAll("_", " ")}` : ""}
     </>
   );
 }
@@ -133,7 +133,7 @@ export function ResearchTraceScientificPanel({
       researchTracesCacheKey = cacheKey;
     } catch (e) {
       if (!cached) {
-        setError(e instanceof Error ? e.message : "Caricamento tracce fallito");
+        setError(e instanceof Error ? e.message : "Failed to load traces");
         setTraces([]);
       }
     } finally {
@@ -151,15 +151,15 @@ export function ResearchTraceScientificPanel({
     <div
       className={`rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4 sm:p-5 ${className ?? ""}`}
     >
-      <h3 className="text-base font-bold text-white">Traccia scientifica canonica</h3>
+      <h3 className="text-base font-bold text-white">Canonical scientific trace</h3>
       <p className="mt-1 text-[0.7rem] leading-snug text-gray-500">
-        Audit tra motori deterministici e corpus evidenze; non sostituisce la decisione fisiologica del motore (regole Pro 2).
+        Audit between deterministic engines and evidence corpus; does not replace the engine&apos;s physiological decision (Pro 2 rules).
       </p>
 
-      {loading && <p className="mt-3 text-xs text-gray-500">Caricamento tracce…</p>}
+      {loading && <p className="mt-3 text-xs text-gray-500">Loading traces…</p>}
       {error && <p className="mt-3 text-xs text-rose-300/90">{error}</p>}
       {!loading && !traces.length && !error && (
-        <p className="mt-3 text-xs text-gray-500">Nessuna traccia: genera da VIRYA / builder o salva un piano di ricerca.</p>
+        <p className="mt-3 text-xs text-gray-500">No trace: generate from VIRYA / builder or save a research plan.</p>
       )}
 
       {(() => {
@@ -182,7 +182,7 @@ export function ResearchTraceScientificPanel({
                     {hops.map((hop, idx) => {
                       const sector = HOP_SECTOR[hop.kind] ?? {
                         shortTitle: hop.kind,
-                        physiologyFunction: "Espansione knowledge",
+                        physiologyFunction: "Knowledge expansion",
                         amplificationFocus: hop.kind,
                       };
                       const intent = intentForHop(trace, hop);
@@ -199,10 +199,10 @@ export function ResearchTraceScientificPanel({
                           </div>
                           <p className="mt-2 text-xs font-semibold leading-snug text-gray-100">{fnLabel}</p>
                           <p className="mt-2 text-[0.65rem] leading-snug text-gray-400">
-                            Amplifichiamo: {sector.amplificationFocus}
+                            We amplify: {sector.amplificationFocus}
                           </p>
                           <p className="mt-2 text-[0.6rem] text-gray-500">
-                            Entità: {humanizeEntityTypes(hop.expectedEntityTypes)} · {docN} doc · {asN} ass · {hop.status}
+                            Entities: {humanizeEntityTypes(hop.expectedEntityTypes)} · {docN} doc · {asN} assert · {hop.status}
                           </p>
                         </div>
                       );
@@ -215,7 +215,7 @@ export function ResearchTraceScientificPanel({
             {historyTraces.length > 0 ? (
               <details className="mt-4 rounded-xl border border-orange-500/20 bg-orange-950/10 px-3 py-2">
                 <summary className="cursor-pointer text-xs font-semibold text-orange-200/90">
-                  Cronologia tracce salvate ({historyTraces.length}) — stessa struttura a 4 settori, senza ripetere la griglia
+                  Saved traces history ({historyTraces.length}) — same 4‑sector structure, without repeating the grid
                 </summary>
                 <ul className="mt-2 space-y-2 border-t border-white/10 pt-2 text-[0.65rem] leading-snug text-gray-400">
                   {historyTraces.map((t) => (
@@ -236,11 +236,11 @@ export function ResearchTraceScientificPanel({
       })()}
 
       <details className="mt-4 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-        <summary className="cursor-pointer text-sm font-semibold text-gray-200">Approfondimento testuale (audit)</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-200">Textual deep dive (audit)</summary>
         <div className="mt-3 space-y-3 text-xs leading-relaxed text-gray-400">
           <p>
-            <strong className="text-gray-300">Obiettivo operativo:</strong> collegare training e stato fisiologico/twin calcolato
-            dai motori alle evidenze persistite (documenti + assertion). Auditabilità, non LLM che decide la fisiologia.
+            <strong className="text-gray-300">Operational goal:</strong> connect training and the physiological/twin state computed
+            by the engines to persisted evidence (documents + assertions). Auditability, not an LLM deciding the physiology.
           </p>
           {traces.map((trace) => (
             <div key={`txt-${trace.traceId}`}>
@@ -257,20 +257,20 @@ export function ResearchTraceScientificPanel({
                       {sector?.shortTitle ?? hop.kind} — {intent?.label ?? sector?.physiologyFunction}
                     </p>
                     <p className="mt-1">
-                      <strong>Perché:</strong> {intent?.rationale ?? sector?.physiologyFunction}
+                      <strong>Why:</strong> {intent?.rationale ?? sector?.physiologyFunction}
                     </p>
                     <p className="mt-1">
-                      <strong>Domanda operativa:</strong> {hop.question}
+                      <strong>Operational question:</strong> {hop.question}
                     </p>
                     <p className="mt-1 text-[0.65rem] opacity-90">
-                      Fonti previste: {hop.sourceDbs.join(", ") || "—"} · esito: {hop.resultSummary ?? "—"}
+                      Expected sources: {hop.sourceDbs.join(", ") || "—"} · outcome: {hop.resultSummary ?? "—"}
                     </p>
                   </div>
                 );
               })}
             </div>
           ))}
-          {!traces.length && !loading ? <p>Nessun contenuto finché non esistono tracce salvate.</p> : null}
+          {!traces.length && !loading ? <p>No content until saved traces exist.</p> : null}
         </div>
       </details>
     </div>

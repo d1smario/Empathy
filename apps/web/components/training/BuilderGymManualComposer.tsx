@@ -174,16 +174,16 @@ export function BuilderGymManualComposer({
   const selectedExercise = visibleCatalogRows.find((r) => r.id === selectedCatalogId) ?? null;
 
   return (
-    <section aria-label="Builder manuale scheda palestra" className={`p-4 sm:p-6 ${panelShell}`}>
+    <section aria-label="Manual gym plan builder" className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-white">
-            Manuale · Scheda palestra
+            Manual · Gym plan
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-gray-400">
-            Stesso modello di V1: catalogo EMPATHY per disciplina{" "}
-            <span className="font-semibold text-orange-300">{currentSportLabel}</span> (tag {pro2PaletteSportToBlock1SportTag(paletteSport)}), filtri su attrezzi e contrazione, poi prescrizione con chip
-            serie / %1RM / superserie — senza blocchi watt/FC da endurance.
+            Same model as V1: EMPATHY catalog for discipline{" "}
+            <span className="font-semibold text-orange-300">{currentSportLabel}</span> (tag {pro2PaletteSportToBlock1SportTag(paletteSport)}), filters on equipment and contraction, then prescription with chips
+            sets / %1RM / supersets — no watt/HR blocks from endurance.
           </p>
         </div>
         {physioHint ? (
@@ -194,10 +194,10 @@ export function BuilderGymManualComposer({
       </div>
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
-        <SessionBlockIntensityChart segments={manualChartSegments} title="Anteprima sessione (proxy tempo)" estimatedTss={estimatedTss} />
+        <SessionBlockIntensityChart segments={manualChartSegments} title="Session preview (time proxy)" estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-orange-950/25 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">Durata nel calendario</span>
+            <span className="font-bold uppercase tracking-wider text-orange-200/90">Duration in calendar</span>
             <select
               className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
@@ -211,7 +211,7 @@ export function BuilderGymManualComposer({
             </select>
           </label>
           <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            Tempo stimato dal grafico: <span className="font-mono font-semibold text-orange-200/90">~{structureMinutesFromChart} min</span>. Il calendario usa la durata selezionata.
+            Estimated time from chart: <span className="font-mono font-semibold text-orange-200/90">~{structureMinutesFromChart} min</span>. The calendar uses the selected duration.
           </p>
         </div>
       </div>
@@ -219,11 +219,11 @@ export function BuilderGymManualComposer({
       <div className={catalogPanel}>
         <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-wider text-orange-200">
           <Sparkles className="h-3.5 w-3.5 text-orange-300" aria-hidden />
-          Catalogo esercizi (V1 · EMPATHY)
+          Exercise catalog (V1 · EMPATHY)
         </p>
         <MuscleDistrictFilterPopover value={catalogMuscle} onChange={setCatalogMuscle} />
         <div className="mt-3 space-y-2">
-          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Attrezzi · filtro libreria</p>
+          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Equipment · library filter</p>
           <div className="flex flex-wrap gap-1.5">
             {PRO2_GYM_LIBRARY_EQUIPMENT_OPTIONS.map((o) => (
               <button
@@ -238,7 +238,7 @@ export function BuilderGymManualComposer({
           </div>
         </div>
         <div className="mt-3 space-y-2">
-          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Contrazione · filtro libreria</p>
+          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Contraction · library filter</p>
           <div className="flex flex-wrap gap-1.5">
             {PRO2_GYM_CONTRACTION_OPTIONS.map((o) => (
               <button
@@ -257,12 +257,12 @@ export function BuilderGymManualComposer({
             {catalogErr}
           </p>
         ) : null}
-        {catalogLoading ? <p className="mt-2 text-xs text-gray-500">Caricamento catalogo…</p> : null}
+        {catalogLoading ? <p className="mt-2 text-xs text-gray-500">Loading catalog…</p> : null}
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <div className="max-h-[14rem] overflow-y-auto rounded-lg border border-white/10 bg-black/45 p-1">
             {visibleCatalogRows.length === 0 && !catalogLoading ? (
-              <p className="px-2 py-6 text-center text-xs text-gray-500">Nessun esercizio in questa selezione.</p>
+              <p className="px-2 py-6 text-center text-xs text-gray-500">No exercises in this selection.</p>
             ) : (
               <ul className="flex flex-col gap-0.5">
                 {visibleCatalogRows.map((r) => {
@@ -302,7 +302,7 @@ export function BuilderGymManualComposer({
                     className="h-24 w-24 shrink-0 rounded-xl border border-orange-400/25"
                   />
                   <div className="min-w-0">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selezionato</p>
+                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-orange-300/80">Selected</p>
                     <p className="mt-1 text-sm font-bold text-white">{selectedExercise.name}</p>
                     <p className="mt-1 text-[0.65rem] text-gray-500">{selectedExercise.primaryDistrict || selectedExercise.muscleGroup}</p>
                   </div>
@@ -315,11 +315,11 @@ export function BuilderGymManualComposer({
                   }}
                 >
                   <Plus className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
-                  Aggiungi alla scheda
+                  Add to plan
                 </button>
               </>
             ) : (
-              <p className="text-xs text-gray-500">Seleziona un esercizio dalla lista per aggiungerlo.</p>
+              <p className="text-xs text-gray-500">Select an exercise from the list to add it.</p>
             )}
           </div>
         </div>
@@ -327,7 +327,7 @@ export function BuilderGymManualComposer({
 
       <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
         <label className="flex max-w-xl flex-col gap-1 text-[0.65rem] text-gray-400">
-          Nome sessione
+          Session name
           <input
             type="text"
             className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
@@ -339,11 +339,11 @@ export function BuilderGymManualComposer({
 
       <div className="mt-4 space-y-3">
         <p className="text-[0.65rem] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-300 to-orange-300">
-          Scheda · {gymRows.length} esercizi
+          Plan · {gymRows.length} exercises
         </p>
         {gymRows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-orange-500/30 bg-orange-950/20 px-4 py-8 text-center text-sm text-gray-500">
-            Aggiungi esercizi dal catalogo. Nessun blocco “aerobico”: solo scheda strength come in V1.
+            Add exercises from the catalog. No “aerobic” block: strength plan only, as in V1.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -372,7 +372,7 @@ export function BuilderGymManualComposer({
                         type="button"
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
                         onClick={() => removeRow(row.id)}
-                        aria-label="Rimuovi esercizio"
+                        aria-label="Remove exercise"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -386,13 +386,13 @@ export function BuilderGymManualComposer({
                       }`}
                       onClick={() => updateRow(row.id, { quickIncomplete: !row.quickIncomplete })}
                     >
-                      Scheda veloce (incompleta)
+                      Quick plan (incomplete)
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Serie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Sets</p>
                   <div className="flex flex-wrap gap-1">
                     {SET_CHIP_PRESETS.map((n) => (
                       <button
@@ -407,7 +407,7 @@ export function BuilderGymManualComposer({
                     <input
                       type="number"
                       min={1}
-                      aria-label="Serie personalizzate"
+                      aria-label="Custom sets"
                       className="w-14 rounded-full border border-white/15 bg-black/50 px-2 py-1 text-center text-[0.65rem] font-mono text-white"
                       value={row.sets}
                       onChange={(e) => updateRow(row.id, { sets: Math.max(1, Number(e.target.value) || 1) })}
@@ -416,7 +416,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Ripetute</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-300/90">Reps</p>
                   <div className="flex flex-wrap gap-1">
                     {REP_CHIP_PRESETS.map((r) => (
                       <button
@@ -430,7 +430,7 @@ export function BuilderGymManualComposer({
                     ))}
                     <input
                       type="text"
-                      aria-label="Ripetute personalizzate"
+                      aria-label="Custom reps"
                       className="w-[5rem] rounded-full border border-white/15 bg-black/50 px-2 py-1 text-[0.65rem] text-white"
                       value={row.reps}
                       onChange={(e) => updateRow(row.id, { reps: e.target.value })}
@@ -440,7 +440,7 @@ export function BuilderGymManualComposer({
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   <div className="min-w-[8rem] flex-1 space-y-2">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">% 1RM (indicativa)</p>
+                    <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">% 1RM (indicative)</p>
                     <div className="flex flex-wrap gap-1">
                       {PCT_CHIP_PRESETS.map((p) => (
                         <button
@@ -467,7 +467,7 @@ export function BuilderGymManualComposer({
                     />
                   </div>
                   <div className="min-w-[8rem] flex-1 space-y-2">
-                    <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Recupero (s)</p>
+                    <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Rest (s)</p>
                     <div className="flex flex-wrap gap-1">
                       {REST_CHIP_PRESETS.map((s) => (
                         <button
@@ -489,7 +489,7 @@ export function BuilderGymManualComposer({
                     />
                   </div>
                   <label className="flex min-w-[6rem] flex-1 flex-col gap-1 text-[0.65rem] text-gray-500">
-                    Peso (kg)
+                    Weight (kg)
                     <input
                       type="number"
                       step="0.5"
@@ -506,7 +506,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Contrazione (prescrizione)</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Contraction (prescription)</p>
                   <div className="flex flex-wrap gap-1">
                     {PRO2_GYM_CONTRACTION_OPTIONS.filter((o) => o.value !== "").map((o) => (
                       <button
@@ -526,7 +526,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Tipo di esecuzione · scorciatoie</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Execution type · shortcuts</p>
                   <div className="flex flex-wrap gap-1">
                     {EXECUTION_QUICK_CHIPS.map((label) => (
                       <button
@@ -540,13 +540,13 @@ export function BuilderGymManualComposer({
                     ))}
                   </div>
                   <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-gray-500">
-                    Elenco completo
+                    Full list
                     <select
                       className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
                       value={row.executionStyle}
                       onChange={(e) => updateRow(row.id, { executionStyle: e.target.value })}
                     >
-                      <option value="">Standard / non specificato</option>
+                      <option value="">Standard / not specified</option>
                       {PRO2_GYM_EXECUTION_STYLES.map((s) => (
                         <option key={s} value={s}>
                           {s}
@@ -557,7 +557,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Superserie / gruppo</p>
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">Superset / group</p>
                   <div className="flex flex-wrap items-center gap-1">
                     {["A", "B", "C", "D"].map((g) => (
                       <button
@@ -571,7 +571,7 @@ export function BuilderGymManualComposer({
                     ))}
                     <input
                       type="text"
-                      placeholder="es. SS1"
+                      placeholder="e.g. SS1"
                       className="min-w-[5rem] flex-1 rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-[0.7rem] text-white"
                       value={row.chainLabel}
                       onChange={(e) => updateRow(row.id, { chainLabel: e.target.value })}
@@ -580,7 +580,7 @@ export function BuilderGymManualComposer({
                 </div>
 
                 <label className="mt-3 flex flex-col gap-1 text-xs text-gray-500">
-                  Tecnica / cue esecuzione
+                  Technique / execution cue
                   <textarea
                     rows={2}
                     className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
@@ -602,13 +602,13 @@ export function BuilderGymManualComposer({
                     }
                   >
                     <FileText className="h-3.5 w-3.5" aria-hidden />
-                    Note aggiuntive
+                    Additional notes
                   </button>
                   {extraNotesOpen[row.id] ? (
                     <textarea
                       rows={3}
                       className="mt-2 w-full rounded-xl border border-orange-400/25 bg-black/40 px-2 py-2 text-sm text-white"
-                      placeholder="Note al coach, varianti, logging…"
+                      placeholder="Notes for the coach, variations, logging…"
                       value={row.notes}
                       onChange={(e) => updateRow(row.id, { notes: e.target.value })}
                     />
@@ -622,7 +622,7 @@ export function BuilderGymManualComposer({
 
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
         <label className="flex flex-col gap-1 text-xs text-gray-500">
-          Data
+          Date
           <input
             type="date"
             className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
@@ -636,7 +636,7 @@ export function BuilderGymManualComposer({
           disabled={!athleteId || !canSave || manualSaveBusy}
           onClick={() => onSaveManual(manualPlannedDate)}
         >
-          {manualSaveBusy ? "Salvataggio…" : "Salva nel calendario"}
+          {manualSaveBusy ? "Saving…" : "Save to calendar"}
         </button>
       </div>
       {manualSaveErr ? (

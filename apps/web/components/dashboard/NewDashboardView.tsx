@@ -23,7 +23,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 // status restano EAGER (above-the-fold / contenuto principale).
 const placeholder = (
   <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-500">
-    Caricamento…
+    Loading…
   </p>
 );
 const DashboardBioenergeticStrip = dynamic(
@@ -54,7 +54,7 @@ export function NewDashboardView() {
   if (!athleteId && !athleteLoading) {
     return (
       <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-400">
-        {role === "coach" ? "Seleziona un atleta attivo per vedere la dashboard." : "Profilo atleta non disponibile."}
+        {role === "coach" ? "Select an active athlete to view the dashboard." : "Athlete profile not available."}
       </p>
     );
   }
@@ -62,7 +62,7 @@ export function NewDashboardView() {
   if (loading && !data) {
     return (
       <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-500">
-        Caricamento dashboard…
+        Loading dashboard…
       </p>
     );
   }
@@ -80,7 +80,7 @@ export function NewDashboardView() {
   return (
     <div className="space-y-10">
       {/* CORPO + AREE: umanoide point-cloud con i 9 contatori ad arco. */}
-      <section aria-label="Aree fisiologiche" className="relative">
+      <section aria-label="Physiological areas" className="relative">
         <div className="absolute right-0 top-0 z-10">
           <DashboardReadinessHeader />
         </div>
@@ -88,13 +88,13 @@ export function NewDashboardView() {
       </section>
 
       {/* STRISCIA 24 H: box Bioenergetica della giornata (ex modulo /bioenergetics) */}
-      <section aria-label="Striscia 24 h">
+      <section aria-label="24 h strip">
         <DashboardBioenergeticStrip />
       </section>
 
       {/* PROFILO FISIOLOGICO */}
-      <section aria-label="Profilo fisiologico">
-        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Profilo fisiologico</p>
+      <section aria-label="Physiological profile">
+        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Physiological profile</p>
         <DashboardKpiGrid kpis={data?.kpis ?? EMPTY_KPIS} columns={3} />
       </section>
 
@@ -104,7 +104,7 @@ export function NewDashboardView() {
       </section>
 
       {/* LONGEVITÀ & FITNESS: check-in di oggi + indice (ex modulo /longevity) */}
-      <section aria-label="Longevità & Fitness">
+      <section aria-label="Longevity & Fitness">
         <DashboardLongevityPanels />
       </section>
     </div>

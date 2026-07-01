@@ -6,7 +6,7 @@ import type { HostedCheckoutAvailability } from "@/lib/billing/stripe-checkout-a
 import type { EmpathyPlanCatalogItem, EmpathyTrialPolicy } from "@empathy/contracts";
 
 const EMPATHY_PITCH =
-  "Empathy è una piattaforma di performance e physiology adaptation, capace di guidare l'adattamento attraverso timing, stimoli e nutrizione. Misurare il cambiamento e portarti alla vera performance.";
+  "Empathy is a performance and physiology adaptation platform, able to guide adaptation through timing, stimuli and nutrition. Measure the change and take you to real performance.";
 
 type DashboardIntroAndPricingProps = {
   hosted: HostedCheckoutAvailability;
@@ -36,7 +36,7 @@ export function DashboardIntroAndPricing({
   return (
     <section id="dash-intro" className="scroll-mt-28 space-y-8 rounded-2xl border border-white/10 bg-black/20 p-6 sm:p-8">
       <div>
-        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-300/90">Per te</p>
+        <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-300/90">For you</p>
         <p className="mt-3 max-w-3xl text-base leading-relaxed text-gray-300 sm:text-lg">{EMPATHY_PITCH}</p>
       </div>
       <HomeStripePricing

@@ -21,75 +21,75 @@ export function getGenerativeFocusConfig(module: ProductModuleId): GenerativeFoc
     case "training":
       return {
         options: [
-          { value: "session", label: "Sessione (builder)" },
-          { value: "calendar", label: "Calendario" },
-          { value: "plan", label: "Piano" },
+          { value: "session", label: "Session (builder)" },
+          { value: "calendar", label: "Calendar" },
+          { value: "plan", label: "Plan" },
         ],
         defaultValue: "session",
-        primaryCtaLabel: "Continua",
+        primaryCtaLabel: "Continue",
       };
     case "nutrition":
       return {
         options: [
-          { value: "day", label: "Giornata energetica" },
-          { value: "meal", label: "Pasto" },
-          { value: "constraints", label: "Vincoli" },
+          { value: "day", label: "Energy day" },
+          { value: "meal", label: "Meal" },
+          { value: "constraints", label: "Constraints" },
         ],
         defaultValue: "day",
-        primaryCtaLabel: "Calcola",
+        primaryCtaLabel: "Calculate",
       };
     case "bioenergetics":
       return {
         options: [
-          { value: "day_report", label: "Report giornata" },
+          { value: "day_report", label: "Day report" },
           { value: "intra_day", label: "Intra-day" },
-          { value: "pathways", label: "Pathway" },
+          { value: "pathways", label: "Pathways" },
         ],
         defaultValue: "day_report",
-        primaryCtaLabel: "Genera report",
+        primaryCtaLabel: "Generate report",
       };
     case "physiology":
       return {
         options: [
           { value: "snapshot", label: "Snapshot" },
-          { value: "metabolic", label: "Metabolico" },
-          { value: "lactate", label: "Lattato" },
+          { value: "metabolic", label: "Metabolic" },
+          { value: "lactate", label: "Lactate" },
         ],
         defaultValue: "snapshot",
-        primaryCtaLabel: "Aggiorna",
+        primaryCtaLabel: "Update",
       };
     case "health":
       return {
         options: [
           { value: "bio", label: "Bio-layer" },
-          { value: "panels", label: "Pannelli" },
+          { value: "panels", label: "Panels" },
         ],
         defaultValue: "bio",
-        primaryCtaLabel: "Sintetizza",
+        primaryCtaLabel: "Synthesize",
       };
     case "biomechanics":
       return {
         options: [
-          { value: "session", label: "Sessione" },
-          { value: "library", label: "Libreria movimenti" },
+          { value: "session", label: "Session" },
+          { value: "library", label: "Movement library" },
         ],
         defaultValue: "session",
-        primaryCtaLabel: "Analizza",
+        primaryCtaLabel: "Analyze",
       };
     case "aerodynamics":
       return {
         options: [
-          { value: "position", label: "Posa" },
-          { value: "equipment", label: "Equipaggiamento" },
+          { value: "position", label: "Position" },
+          { value: "equipment", label: "Equipment" },
         ],
         defaultValue: "position",
-        primaryCtaLabel: "Simula",
+        primaryCtaLabel: "Simulate",
       };
     default:
       return {
-        options: [{ value: "default", label: "Generativo" }],
+        options: [{ value: "default", label: "Generative" }],
         defaultValue: "default",
-        primaryCtaLabel: "Continua",
+        primaryCtaLabel: "Continue",
       };
   }
 }

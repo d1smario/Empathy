@@ -166,7 +166,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const currentLabel = useMemo(
-    () => BLOCK1_MUSCLE_FILTERS.find((o) => o.value === value)?.label ?? "Distretto",
+    () => BLOCK1_MUSCLE_FILTERS.find((o) => o.value === value)?.label ?? "District",
     [value],
   );
 
@@ -182,7 +182,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
 
   return (
     <div ref={wrapRef} className="relative inline-flex flex-col gap-1" id={id}>
-      <span className="text-[0.65rem] font-medium text-orange-200/80">Filtro distretto</span>
+      <span className="text-[0.65rem] font-medium text-orange-200/80">District filter</span>
       <button
         type="button"
         aria-expanded={open}
@@ -208,7 +208,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
       {open ? (
         <div
           role="listbox"
-          aria-label="Seleziona distretto muscolare"
+          aria-label="Select muscle district"
           className="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-orange-500/35 bg-gradient-to-b from-orange-950/[0.97] via-gray-950/95 to-black/95 py-3 shadow-2xl shadow-orange-950/50 backdrop-blur-md"
         >
           <div className="flex items-start gap-3 border-b border-orange-500/20 px-3 pb-3">
@@ -218,11 +218,11 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
             />
             <div className="min-w-0 pt-0.5">
               <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                Anteprima regione
+                Region preview
               </p>
               <p className="mt-1 text-sm font-semibold leading-snug text-white">{currentLabel}</p>
               <p className="mt-1 text-[0.65rem] leading-relaxed text-gray-500">
-                Gradient viola → fucsia → arancio = distretto attivo. Stessi preset di catalogo V1.
+                Purple → fuchsia → orange gradient = active district. Same presets as catalog V1.
               </p>
             </div>
           </div>

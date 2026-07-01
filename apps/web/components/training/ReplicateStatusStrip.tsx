@@ -23,7 +23,7 @@ export function ReplicateStatusStrip() {
         if (!cancelled) setData(j);
       })
       .catch(() => {
-        if (!cancelled) setErr("Impossibile contattare lo stato degli asset esercizi.");
+        if (!cancelled) setErr("Unable to reach the exercise asset status.");
       });
     return () => {
       cancelled = true;
@@ -39,12 +39,12 @@ export function ReplicateStatusStrip() {
 
   const label =
     data == null
-      ? "Asset esercizi"
+      ? "Exercise assets"
       : data.configured && data.reachable === true
-        ? "Asset esercizi · collegati"
+        ? "Exercise assets · connected"
         : data.configured
-          ? "Asset esercizi · token / rete"
-          : "Asset esercizi · non configurati";
+          ? "Exercise assets · token / network"
+          : "Exercise assets · not configured";
 
   return (
     <div
@@ -54,9 +54,9 @@ export function ReplicateStatusStrip() {
       <p className="font-bold text-gray-200">{label}</p>
       {err ? <p className="mt-1 text-amber-200/90">{err}</p> : null}
       {data && !err ? <p className="mt-1">{data.message}</p> : null}
-      {data == null && !err ? <p className="mt-1 opacity-80">Verifica in corso…</p> : null}
+      {data == null && !err ? <p className="mt-1 opacity-80">Checking…</p> : null}
       <p className="mt-2 text-[0.65rem] opacity-75">
-        Generazione batch PNG: script <code className="text-gray-500">scripts/generate-exercise-images.ps1</code> in locale.
+        PNG batch generation: run the <code className="text-gray-500">scripts/generate-exercise-images.ps1</code> script locally.
       </p>
     </div>
   );

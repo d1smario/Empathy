@@ -40,11 +40,11 @@ function RadarTooltip({
     <div className="rounded-xl border border-orange-500/35 bg-black/95 px-3 py-2 text-xs text-gray-200 shadow-lg">
       <p className="font-bold text-orange-200">{p.subject}</p>
       <p className="mt-1 font-mono tabular-nums">
-        Sessione: {sw != null && sw > 0 ? `${Math.round(sw)} ${p.unit ?? "W"}` : "—"}
+        Session: {sw != null && sw > 0 ? `${Math.round(sw)} ${p.unit ?? "W"}` : "—"}
         <br />
-        Picco mese: {mp != null && mp > 0 ? `${Math.round(mp)} ${p.unit ?? "W"}` : "—"}
+        Month peak: {mp != null && mp > 0 ? `${Math.round(mp)} ${p.unit ?? "W"}` : "—"}
         <br />
-        Indice: {Math.round(p.pct)}%
+        Index: {Math.round(p.pct)}%
       </p>
     </div>
   );
@@ -84,7 +84,7 @@ export function TrainingPowerProfileRadar({ rows, subtitle, valueUnit = "W" }: P
             <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.axisLabel }} />
             <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: CHART_AXIS.tickMuted, fontSize: CHART_FONT.tick }} />
             <Radar
-              name="% vs picco mese"
+              name="% vs month peak"
               dataKey="pct"
               stroke={CHART_SIGNAL.power}
               strokeWidth={CHART_STROKE.base}
