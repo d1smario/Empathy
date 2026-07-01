@@ -96,55 +96,13 @@ export function HomeStripePricing({
     trialDaysConfigured > 0;
 
   async function goCheckout(withTrial: boolean) {
+    void withTrial;
+    // Checkout UNIFICATO (Path A canonico): il flusso reale è /access/plan — piani dal DB
+    // `products`, gate anagrafica, edge stripe-checkout-session. Il checkout hardcoded
+    // Silver/Gold (Path B, /api/billing/checkout-session) è RITIRATO: qui si instrada solo.
     setErr(null);
-    if (!payReady) {
-      setErr(t("errPayNotReady"));
-      return;
-    }
-    setLoading(withTrial ? "trial" : "subscribe");
-    let navigating = false;
-    try {
-      const res = await fetch("/api/billing/checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          basePlanId,
-          ...(coachAddOnId ? { coachAddOnId } : {}),
-          ...(email.trim() ? { email: email.trim() } : {}),
-          withTrial,
-        }),
-      });
-      const data = (await res.json()) as {
-        url?: string;
-        error?: string;
-        hint?: string;
-        stripeKeyKind?: string;
-        alreadySubscribed?: boolean;
-        redirectUrl?: string;
-      };
-      if (res.status === 409 && data.alreadySubscribed && data.redirectUrl) {
-        navigating = true;
-        window.location.assign(data.redirectUrl);
-        return;
-      }
-      if (!res.ok) {
-        const parts = [data.error ?? t("errGenericWithStatus", { status: res.status })];
-        if (data.stripeKeyKind) parts.push(t("errStripeKeyKind", { kind: data.stripeKeyKind }));
-        if (data.hint) parts.push(data.hint);
-        setErr(parts.join(" — "));
-        return;
-      }
-      if (data.url) {
-        navigating = true;
-        window.location.href = data.url;
-        return;
-      }
-      setErr(t("errNoUrl"));
-    } catch {
-      setErr(t("errRequestFailed"));
-    } finally {
-      if (!navigating) setLoading(false);
-    }
+    setLoading("subscribe");
+    window.location.assign("/access/plan");
   }
 
   const showTitle = !hideSectionTitle && !compactIntro;

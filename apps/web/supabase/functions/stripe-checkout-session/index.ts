@@ -154,6 +154,21 @@ async function bumpRedemption(admin: any, promo: PromoRow): Promise<void> {
   if (error) console.error("redeem_promo_code error:", error.message);
 }
 
+/**
+ * Appende il token Stripe `{CHECKOUT_SESSION_ID}` al success_url così che, al
+ * ritorno, la pagina possa fare il sync DETERMINISTICO della sessione per id
+ * (invece di dipendere solo dal webhook / reconcile per email). Rispetta un
+ * eventuale `?` già presente.
+ */
+function withSessionIdParam(url: string): string {
+  if (url.includes("session_id=")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}session_id={CHECKOUT_SESSION_ID}`;
+}
+
+/** Campi anagrafica fatturazione obbligatori per l'acquisto (fattura/ricevuta CH). */
+const BILLING_REQUIRED_FIELDS = ["first_name", "last_name", "address_line1", "postal_code", "city", "country_code"] as const;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS_HEADERS });
@@ -321,12 +336,31 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "STRIPE_SECRET_KEY non configurata." }, 500);
   }
 
+  // Anagrafica fatturazione COMPLETA obbligatoria per i piani a pagamento
+  // (fattura/ricevuta CH). Ri-validazione SERVER-SIDE: il gate client in
+  // SignupPlanCards non basta — l'edge è pubblico e chiamabile direttamente.
+  const { data: billingProfile } = await admin
+    .from("user_billing_profiles")
+    .select("first_name, last_name, address_line1, postal_code, city, country_code")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const bp = (billingProfile ?? null) as Record<string, string | null> | null;
+  const billingComplete = Boolean(
+    bp && BILLING_REQUIRED_FIELDS.every((f) => typeof bp[f] === "string" && (bp[f] as string).trim() !== ""),
+  );
+  if (!billingComplete) {
+    return jsonResponse(
+      { error: "Completa l'anagrafica di fatturazione prima di procedere.", code: "billing_incomplete" },
+      400,
+    );
+  }
+
   const isRecurringBase = base.billing_interval === "month" || base.billing_interval === "year";
   const mode = isRecurringBase ? "subscription" : "payment";
 
   const params = new URLSearchParams();
   params.set("mode", mode);
-  params.set("success_url", successUrl);
+  params.set("success_url", withSessionIdParam(successUrl));
   params.set("cancel_url", cancelUrl);
   if (user.email) params.set("customer_email", user.email);
 
@@ -348,21 +382,19 @@ Deno.serve(async (req: Request) => {
     }
   });
 
-  // Nome/cognome fatturazione (se presenti) → metadata.
-  const { data: billingProfile } = await admin
-    .from("user_billing_profiles")
-    .select("first_name, last_name")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const fullName = [
-    (billingProfile as { first_name?: string | null } | null)?.first_name ?? "",
-    (billingProfile as { last_name?: string | null } | null)?.last_name ?? "",
-  ].join(" ").trim();
+  // Nome/cognome fatturazione → metadata (dalla stessa anagrafica già validata sopra).
+  const fullName = [bp?.first_name ?? "", bp?.last_name ?? ""].join(" ").trim();
 
   const metadata: Record<string, string> = {
     user_id: user.id,
     product_code: base.code,
+    // Alias per il persist/sync Next (readBillingMetadata legge `base_plan_id`): così il
+    // contratto metadata è compatibile SIA con l'edge stripe-webhook (product_code) SIA con
+    // il sync deterministico al ritorno (syncCheckoutSessionById) — l'accesso scatta con
+    // l'etichetta piano corretta, non "unknown".
+    base_plan_id: base.code,
     addon_codes: addons.map((a) => a.code).join(","),
+    coach_addon_id: addons.map((a) => a.code).join(",") || "",
     athlete_id: athleteId ?? "",
   };
   if (fullName) metadata.customer_name = fullName;
