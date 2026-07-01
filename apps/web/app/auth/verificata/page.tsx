@@ -6,7 +6,7 @@ import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Email verificata — Empathy",
+  title: "Email verified — Empathy",
 };
 
 /**
@@ -36,15 +36,15 @@ export default function EmailVerifiedPage() {
           <span className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15">
             <CheckCircle2 className="h-6 w-6 text-emerald-300" aria-hidden />
           </span>
-          <h1 className="text-lg font-bold text-white">Email verificata</h1>
+          <h1 className="text-lg font-bold text-white">Email verified</h1>
           <p className="text-sm leading-relaxed text-gray-300">
-            Il tuo account è attivo. Ora puoi entrare nella piattaforma.
+            Your account is active. You can now enter the platform.
           </p>
           <Link
             href="/access"
             className="empathy-btn-gradient mt-1 w-full rounded-xl px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg shadow-purple-500/25"
           >
-            Entra
+            Enter
           </Link>
         </div>
       </main>

@@ -52,7 +52,7 @@ export default function RootError({
         tabIndex={-1}
         className="relative flex min-h-[70vh] scroll-mt-0 flex-col items-center justify-center px-6 py-16 text-center outline-none"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.35em] text-gray-500">Errore</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.35em] text-gray-500">Error</p>
         <h1 className="mt-3 max-w-md text-3xl font-light tracking-tight text-white sm:text-4xl">
           {classified.titleIt}
         </h1>
@@ -65,7 +65,7 @@ export default function RootError({
         ) : null}
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Pro2Button type="button" variant="primary" className="px-8" onClick={handleRetry}>
-            {classified.suggestHardReload ? "Ricarica app" : "Riprova"}
+            {classified.suggestHardReload ? "Reload app" : "Retry"}
           </Pro2Button>
           <Pro2Link href="/" variant="secondary" className="justify-center px-8">
             Home

@@ -26,17 +26,17 @@ type AcceptOutcome = {
 function acceptErrorMessage(reason: string | undefined): string {
   switch (reason) {
     case "cannot_self":
-      return "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.";
+      return "You can't accept your own invite: this link should be sent to your coach.";
     case "consumed":
-      return "Questo invito è già stato usato da un altro account.";
+      return "This invite has already been used by another account.";
     case "expired":
-      return "Questo invito è scaduto: chiedi all'atleta di generarne uno nuovo dal suo profilo.";
+      return "This invite has expired: ask the athlete to generate a new one from their profile.";
     case "not_found":
-      return "Questo invito non esiste o è stato eliminato.";
+      return "This invite doesn't exist or has been deleted.";
     case "not_authenticated":
-      return "Devi accedere prima di accettare l'invito.";
+      return "You need to sign in before accepting the invite.";
     default:
-      return "Accettazione non riuscita: riprova tra qualche istante.";
+      return "Acceptance failed: please try again in a moment.";
   }
 }
 
@@ -97,7 +97,7 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
     if (busy) return;
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setAcceptError("Supabase non configurato: riprova più tardi.");
+      setAcceptError("Supabase not configured: please try again later.");
       return;
     }
     setBusy(true);
@@ -115,14 +115,14 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
       }
       setAccepted(outcome);
     } catch {
-      setAcceptError("Errore di rete: riprova.");
+      setAcceptError("Network error: please try again.");
     } finally {
       setBusy(false);
     }
   }, [busy, token]);
 
   const expiresLabel = expiresAt
-    ? new Date(expiresAt).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+    ? new Date(expiresAt).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "numeric" })
     : null;
 
   return (
@@ -132,79 +132,79 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
         tabIndex={-1}
         className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-16 text-center outline-none"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Invito coach</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Coach invite</p>
         <h1 className="max-w-md bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-2xl font-light tracking-tight text-transparent sm:text-3xl">
           {status === "valid" && athleteName
-            ? `Sei stato invitato a diventare il coach di ${athleteName} su Empathy`
-            : "Diventa coach su Empathy"}
+            ? `You've been invited to become ${athleteName}'s coach on Empathy`
+            : "Become a coach on Empathy"}
         </h1>
 
-        {status === "loading" ? <p className="max-w-md text-sm text-gray-500">Verifica dell&apos;invito…</p> : null}
+        {status === "loading" ? <p className="max-w-md text-sm text-gray-500">Verifying the invite…</p> : null}
         {status === "misconfigured" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Inviti non disponibili: configurazione Supabase mancante su questo ambiente.
+            Invites unavailable: Supabase configuration missing on this environment.
           </p>
         ) : null}
         {status === "error" ? (
-          <p className="max-w-md text-sm text-amber-300/90">Verifica non riuscita: ricarica la pagina e riprova.</p>
+          <p className="max-w-md text-sm text-amber-300/90">Verification failed: reload the page and try again.</p>
         ) : null}
         {status === "not_found" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Questo link non è valido: controlla di averlo copiato per intero o chiedi all&apos;atleta un nuovo invito.
+            This link isn&apos;t valid: check that you copied it in full, or ask the athlete for a new invite.
           </p>
         ) : null}
         {status === "expired" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Questo invito è scaduto{expiresLabel ? ` (valido fino al ${expiresLabel})` : ""}. Chiedi all&apos;atleta di
-            generarne uno nuovo dal suo profilo.
+            This invite has expired{expiresLabel ? ` (valid until ${expiresLabel})` : ""}. Ask the athlete to
+            generate a new one from their profile.
           </p>
         ) : null}
         {status === "consumed" ? (
-          <p className="max-w-md text-sm text-gray-400">Questo invito è già stato usato.</p>
+          <p className="max-w-md text-sm text-gray-400">This invite has already been used.</p>
         ) : null}
 
         {status === "valid" && !accepted ? (
           <div className="flex max-w-md flex-col items-center gap-4">
             {expiresLabel ? (
-              <p className="text-xs text-gray-500">Invito valido fino al {expiresLabel}.</p>
+              <p className="text-xs text-gray-500">Invite valid until {expiresLabel}.</p>
             ) : null}
             {signedIn === false ? (
               <>
                 <p className="text-sm text-gray-400">
-                  Accedi con il tuo account coach oppure registrati: una volta dentro, l&apos;atleta verrà collegato al tuo
-                  roster e Empathy attiverà il tuo account coach (approvazione admin).
+                  Sign in with your coach account or create one: once you&apos;re in, the athlete will be linked to your
+                  roster and Empathy will activate your coach account (admin approval).
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <Link
                     href={accessHref}
                     className="rounded-full border border-purple-500/40 bg-purple-500/15 px-6 py-2.5 text-sm font-bold text-purple-100 transition hover:border-purple-400/60"
                   >
-                    Accedi
+                    Sign in
                   </Link>
                   <Link
                     href="/registrati"
                     className="rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-bold text-white transition hover:border-purple-500/40 hover:bg-white/10"
                   >
-                    Registrati
+                    Sign up
                   </Link>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Se ti registri ora: dopo la conferma via email riapri questo link per completare il collegamento.
+                  If you sign up now: after confirming via email, reopen this link to complete the connection.
                 </p>
               </>
             ) : null}
             {signedIn === true ? (
               <>
                 <p className="text-sm text-gray-400">
-                  Accettando, {athleteName ?? "l'atleta"} viene collegato al tuo roster. L&apos;attivazione finale del tuo
-                  account coach la fa Empathy (approvazione admin).
+                  By accepting, {athleteName ?? "the athlete"} is linked to your roster. The final activation of your
+                  coach account is handled by Empathy (admin approval).
                 </p>
                 <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
-                  {busy ? "Elaborazione…" : "Accetta l'invito"}
+                  {busy ? "Processing…" : "Accept the invite"}
                 </Pro2Button>
               </>
             ) : null}
-            {signedIn === null ? <p className="text-sm text-gray-500">Verifica sessione…</p> : null}
+            {signedIn === null ? <p className="text-sm text-gray-500">Verifying session…</p> : null}
           </div>
         ) : null}
 
@@ -212,14 +212,14 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
           <div className="flex max-w-md flex-col items-center gap-4">
             <p className="text-sm text-emerald-300/90" role="status">
               {accepted.coachStatus === "pending"
-                ? "Collegato! Il tuo account coach è in attesa di approvazione da parte di Empathy."
-                : "Atleta collegato al tuo roster."}
+                ? "Linked! Your coach account is awaiting approval from Empathy."
+                : "Athlete linked to your roster."}
             </p>
             <Link
               href="/athletes"
               className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-6 py-2.5 text-sm font-bold text-emerald-100 transition hover:border-emerald-400/60"
             >
-              Vai ad Athletes
+              Go to Athletes
             </Link>
           </div>
         ) : null}
@@ -231,7 +231,7 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
         ) : null}
 
         <Link href="/" className="text-xs text-gray-500 underline-offset-4 hover:text-gray-400 hover:underline">
-          ← Torna alla home
+          ← Back to home
         </Link>
       </main>
     </BrutalistAppBackdrop>

@@ -12,11 +12,11 @@ import { Pro2Button } from "@/components/ui/empathy";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/cn";
 
-const CHECKOUT_UNAVAILABLE = "Checkout non ancora attivo su questo ambiente.";
+const CHECKOUT_UNAVAILABLE = "Checkout is not yet active in this environment.";
 const BILLING_INCOMPLETE =
-  "Per acquistare completa prima i tuoi dati di fatturazione — si aprono dall'icona profilo in alto a destra.";
+  "To purchase, first complete your billing details — they open from the profile icon in the top right.";
 
-const PROMO_INVALID = "Codice promo non valido. Controlla e riprova.";
+const PROMO_INVALID = "Invalid promo code. Please check it and try again.";
 
 /** Riga `products` letta dal DB (policy pubblica sui soli prodotti attivi). */
 type ProductRow = {
@@ -65,10 +65,10 @@ type RedeemResponse =
 /** Chip informativi della card, guidati dai flag DB del prodotto. */
 function productChips(p: ProductRow): { label: string; icon: typeof UserPlus }[] {
   const chips: { label: string; icon: typeof UserPlus }[] = [];
-  if (Number(p.price) === 0) chips.push({ label: "Senza carta", icon: CreditCard });
-  if (p.includes_own_coach) chips.push({ label: "Invita il tuo coach", icon: UserPlus });
-  if (p.includes_empathy_coach) chips.push({ label: "Coach Empathy dedicato", icon: UserCheck });
-  if (p.show_addons) chips.push({ label: "Pacchetti coach aggiuntivi", icon: Sparkles });
+  if (Number(p.price) === 0) chips.push({ label: "No card required", icon: CreditCard });
+  if (p.includes_own_coach) chips.push({ label: "Invite your coach", icon: UserPlus });
+  if (p.includes_empathy_coach) chips.push({ label: "Dedicated Empathy coach", icon: UserCheck });
+  if (p.show_addons) chips.push({ label: "Add-on coach packages", icon: Sparkles });
   return chips;
 }
 
@@ -168,7 +168,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
   useEffect(() => {
     const sb = createEmpathyBrowserSupabase();
     if (!sb) {
-      setLoadErr("Configurazione Supabase mancante: impossibile caricare i piani.");
+      setLoadErr("Missing Supabase configuration: unable to load plans.");
       setProducts([]);
       return;
     }
@@ -181,7 +181,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
         .order("sort_order");
       if (cancelled) return;
       if (error) {
-        setLoadErr("Impossibile caricare i piani in questo momento. Riprova più tardi.");
+        setLoadErr("Unable to load plans right now. Please try again later.");
         setProducts([]);
         return;
       }
@@ -227,8 +227,8 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
   function priceSuffix(p: ProductRow): string {
     const parts: string[] = [];
     if (p.billing_interval === "month") parts.push(t("perMonthSuffix"));
-    if (p.billing_interval === "year") parts.push(" / anno");
-    if (p.duration_days != null && p.duration_days > 0) parts.push(` · ${p.duration_days} giorni`);
+    if (p.billing_interval === "year") parts.push(" / year");
+    if (p.duration_days != null && p.duration_days > 0) parts.push(` · ${p.duration_days} days`);
     return parts.join("");
   }
 
@@ -410,11 +410,11 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
       ) : null}
 
       {products === null ? (
-        <p className="py-10 text-center text-sm text-gray-500">Caricamento piani…</p>
+        <p className="py-10 text-center text-sm text-gray-500">Loading plans…</p>
       ) : null}
       {products !== null && basePlans.length === 0 && !loadErr ? (
         <p className="py-10 text-center text-sm text-gray-500">
-          Nessun piano disponibile al momento. Riprova più tardi.
+          No plans available at the moment. Please try again later.
         </p>
       ) : null}
 
@@ -424,7 +424,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
           <div className="flex items-center gap-2">
             <Tag className="h-3.5 w-3.5 text-purple-300" aria-hidden />
             <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-400">
-              Hai un codice promo?
+              Have a promo code?
             </span>
           </div>
           {appliedPromo ? (
@@ -432,15 +432,15 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 {appliedPromo.kind === "unlock"
-                  ? `Codice ${appliedPromo.code} — prodotto sbloccato`
-                  : `Codice ${appliedPromo.code} — sconto ${discountBadgeLabel(appliedPromo.discount)}`}
+                  ? `Code ${appliedPromo.code} — product unlocked`
+                  : `Code ${appliedPromo.code} — ${discountBadgeLabel(appliedPromo.discount)} off`}
               </span>
               <button
                 type="button"
                 onClick={clearPromo}
                 className="text-xs font-medium text-gray-400 underline-offset-2 transition hover:text-gray-200 hover:underline"
               >
-                Rimuovi
+                Remove
               </button>
             </div>
           ) : (
@@ -455,8 +455,8 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
                     void redeemPromo();
                   }
                 }}
-                placeholder="Inserisci il codice"
-                aria-label="Codice promo"
+                placeholder="Enter your code"
+                aria-label="Promo code"
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-mono uppercase tracking-wide text-white placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-600 focus:border-purple-400/60 focus:outline-none sm:max-w-xs"
               />
               <Pro2Button
@@ -466,7 +466,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
                 disabled={promoBusy || !promoInput.trim()}
                 onClick={() => void redeemPromo()}
               >
-                {promoBusy ? "Verifica…" : "Applica"}
+                {promoBusy ? "Checking…" : "Apply"}
               </Pro2Button>
             </div>
           )}
@@ -514,7 +514,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               {isUnlocked ? (
                 <span className="absolute -top-3 left-6 inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-[#1f1710] px-3 py-1 font-mono text-[0.6rem] font-bold uppercase tracking-[0.18em] text-amber-200">
                   <Tag className="h-3 w-3 text-amber-300" aria-hidden />
-                  Sbloccato
+                  Unlocked
                 </span>
               ) : isFree ? (
                 <span className="absolute -top-3 left-6 inline-flex items-center gap-1.5 rounded-full border border-purple-400/50 bg-[#17101f] px-3 py-1 font-mono text-[0.6rem] font-bold uppercase tracking-[0.18em] text-purple-200">
@@ -587,7 +587,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
                   disabled={loading !== false}
                   onClick={() => goCheckout(plan)}
                 >
-                  {loading === plan.code ? t("redirecting") : isFree ? "Attiva il piano gratuito" : t("subscribeCta")}
+                  {loading === plan.code ? t("redirecting") : isFree ? "Activate the free plan" : t("subscribeCta")}
                 </Pro2Button>
               </div>
             </div>
@@ -598,9 +598,9 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
       {/* ── Carrello add-on coach (solo prodotto con show_addons) ────────── */}
       {selectedPlan?.show_addons && addons.length > 0 ? (
         <div className="mt-12">
-          <h3 className="text-lg font-bold text-white">Potenzia con un coach Empathy</h3>
+          <h3 className="text-lg font-bold text-white">Boost it with an Empathy coach</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Aggiungi uno o più livelli di supporto al piano {selectedPlan.name}.
+            Add one or more levels of support to the {selectedPlan.name} plan.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {addons.map((a) => {
@@ -624,7 +624,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
                       checked={checked}
                       onChange={() => toggleAddon(a.code)}
                       className="mt-1 h-4 w-4 shrink-0 accent-purple-500"
-                      aria-label={`Aggiungi ${a.name}`}
+                      aria-label={`Add ${a.name}`}
                     />
                   </span>
                   <span className="mt-1 block text-sm text-gray-400">
@@ -649,7 +649,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
           {/* Riepilogo carrello */}
           <div className="mt-8 w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.02] p-6">
             <h4 className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-400">
-              Riepilogo carrello
+              Cart summary
             </h4>
             <ul className="mt-4 space-y-2 text-sm">
               <li className="flex items-baseline justify-between gap-4">
@@ -667,7 +667,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               {discountForPlan ? (
                 <li className="flex items-baseline justify-between gap-4">
                   <span className="text-emerald-300">
-                    Codice {appliedPromo?.code} ({discountBadgeLabel(discountForPlan)})
+                    Code {appliedPromo?.code} ({discountBadgeLabel(discountForPlan)})
                   </span>
                   <span className="font-semibold text-emerald-300">
                     -{formatProductPrice(productPrice(selectedPlan) - selectedBasePrice, selectedPlan.currency)}
@@ -685,7 +685,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               ))}
             </ul>
             <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-white/10 pt-4">
-              <span className="text-sm font-bold uppercase tracking-wide text-gray-300">Totale</span>
+              <span className="text-sm font-bold uppercase tracking-wide text-gray-300">Total</span>
               <span className="text-2xl font-black text-white">
                 {formatProductPrice(cartTotal, selectedPlan.currency)}
                 {selectedPlan.billing_interval === "month" ? (
@@ -700,7 +700,7 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
               disabled={loading !== false}
               onClick={() => goCheckout(selectedPlan)}
             >
-              {loading === selectedPlan.code ? t("redirecting") : "Vai al checkout"}
+              {loading === selectedPlan.code ? t("redirecting") : "Go to checkout"}
             </Pro2Button>
           </div>
         </div>

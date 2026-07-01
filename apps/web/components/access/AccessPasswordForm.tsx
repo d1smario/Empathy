@@ -216,7 +216,7 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
       if (waitMatch) {
         const wait = Number(waitMatch[1]) || 60;
         setCooldown(wait);
-        notify(`Attendi ${wait} secondi prima di richiedere un nuovo link.`);
+        notify(`Please wait ${wait} seconds before requesting a new link.`);
         return;
       }
       notify(error.message);
@@ -277,15 +277,15 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
             href="/registrati"
             className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
           >
-            Prima volta? <span className="text-gray-300">Registrati</span>
+            First time here? <span className="text-gray-300">Sign up</span>
           </Link>
         </>
       ) : (
-        <form onSubmit={(e) => void onResetPassword(e)} className="flex flex-col gap-3" aria-label="Reimposta password">
+        <form onSubmit={(e) => void onResetPassword(e)} className="flex flex-col gap-3" aria-label="Reset password">
           <div className="text-left">
-            <h2 className="text-sm font-bold text-white">Reimposta la password</h2>
+            <h2 className="text-sm font-bold text-white">Reset your password</h2>
             <p className="mt-1 text-xs leading-relaxed text-gray-400">
-              Scrivi l&apos;email del tuo account: ti inviamo un link per impostare una nuova password.
+              Enter your account email and we&apos;ll send you a link to set a new password.
             </p>
           </div>
           <label className="text-left">
@@ -302,7 +302,7 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
             />
           </label>
           <Pro2Button type="submit" disabled={busy || cooldown > 0} className="w-full justify-center">
-            {busy ? "Invio…" : cooldown > 0 ? `Riprova tra ${cooldown}s` : "Invia link di reset"}
+            {busy ? "Sending…" : cooldown > 0 ? `Retry in ${cooldown}s` : "Send reset link"}
           </Pro2Button>
           <button
             type="button"
@@ -313,7 +313,7 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
             }}
             className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
           >
-            ← Torna al login
+            ← Back to sign in
           </button>
         </form>
       )}

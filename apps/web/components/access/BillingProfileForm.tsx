@@ -38,17 +38,17 @@ type FieldDef = {
 };
 
 const FIELDS: FieldDef[] = [
-  { key: "first_name", label: "Nome *", autoComplete: "given-name", half: true },
-  { key: "last_name", label: "Cognome *", autoComplete: "family-name", half: true },
-  { key: "company_name", label: "Azienda (opzionale)", autoComplete: "organization", half: true },
-  { key: "vat_number", label: "P. IVA / UID (opzionale)", placeholder: "CHE-...", half: true },
-  { key: "address_line1", label: "Indirizzo *", autoComplete: "address-line1" },
-  { key: "address_line2", label: "Indirizzo — riga 2 (opzionale)", autoComplete: "address-line2" },
-  { key: "postal_code", label: "CAP *", autoComplete: "postal-code", half: true },
-  { key: "city", label: "Città *", autoComplete: "address-level2", half: true },
-  { key: "region", label: "Cantone / Regione (opzionale)", autoComplete: "address-level1", half: true },
-  { key: "country_code", label: "Paese *", placeholder: "CH", autoComplete: "country", half: true },
-  { key: "phone", label: "Telefono (opzionale)", autoComplete: "tel" },
+  { key: "first_name", label: "First name *", autoComplete: "given-name", half: true },
+  { key: "last_name", label: "Last name *", autoComplete: "family-name", half: true },
+  { key: "company_name", label: "Company (optional)", autoComplete: "organization", half: true },
+  { key: "vat_number", label: "VAT / UID (optional)", placeholder: "CHE-...", half: true },
+  { key: "address_line1", label: "Address *", autoComplete: "address-line1" },
+  { key: "address_line2", label: "Address — line 2 (optional)", autoComplete: "address-line2" },
+  { key: "postal_code", label: "Postal code *", autoComplete: "postal-code", half: true },
+  { key: "city", label: "City *", autoComplete: "address-level2", half: true },
+  { key: "region", label: "Canton / Region (optional)", autoComplete: "address-level1", half: true },
+  { key: "country_code", label: "Country *", placeholder: "CH", autoComplete: "country", half: true },
+  { key: "phone", label: "Phone (optional)", autoComplete: "tel" },
 ];
 
 /**
@@ -121,13 +121,13 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
     const sb = createEmpathyBrowserSupabase();
     if (!sb) {
       setMsgTone("warning");
-      setMsg("Configurazione Supabase mancante.");
+      setMsg("Supabase configuration missing.");
       return;
     }
     const missing = BILLING_REQUIRED_FIELDS.filter((f) => !(row[f] ?? "").toString().trim());
     if (missing.length > 0) {
       setMsgTone("warning");
-      setMsg("Compila tutti i campi contrassegnati con * per completare l'anagrafica.");
+      setMsg("Fill in all fields marked with * to complete your billing details.");
       return;
     }
     setSaving(true);
@@ -138,7 +138,7 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       const uid = session?.user?.id;
       if (!uid) {
         setMsgTone("warning");
-        setMsg("Sessione scaduta: accedi di nuovo.");
+        setMsg("Session expired: please sign in again.");
         return;
       }
       const payload: Record<string, unknown> = { user_id: uid, updated_at: new Date().toISOString() };
@@ -149,11 +149,11 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       const { error } = await sb.from("user_billing_profiles").upsert(payload, { onConflict: "user_id" });
       if (error) {
         setMsgTone("warning");
-        setMsg(`Salvataggio non riuscito: ${error.message}`);
+        setMsg(`Save failed: ${error.message}`);
         return;
       }
       setMsgTone("success");
-      setMsg("Anagrafica salvata.");
+      setMsg("Billing details saved.");
     } finally {
       setSaving(false);
     }
@@ -168,14 +168,14 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-cyan-300/80">
-            I tuoi dati · fatturazione
+            Your details · billing
           </p>
           <h3 id="billing-profile-heading" className="mt-1 text-lg font-bold text-white">
-            Completa l&apos;anagrafica
+            Complete your billing details
           </h3>
           <p className="mt-1 max-w-xl text-sm text-gray-400">
-            La compilazione di tutti i campi è necessaria per completare
-            l&apos;acquisto dei piani a pagamento.
+            Filling in all fields is required to complete the purchase of paid
+            plans.
           </p>
         </div>
         <span
@@ -187,12 +187,12 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
           )}
         >
           {complete ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : <CircleAlert className="h-3.5 w-3.5" aria-hidden />}
-          {complete ? "Completa" : "Da completare"}
+          {complete ? "Complete" : "Incomplete"}
         </span>
       </div>
 
       {loading ? (
-        <p className="mt-6 text-xs text-gray-500">Caricamento anagrafica…</p>
+        <p className="mt-6 text-xs text-gray-500">Loading billing details…</p>
       ) : (
         <>
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -213,7 +213,7 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Pro2Button type="button" variant="secondary" className="px-6" disabled={saving} onClick={() => void onSave()}>
-              {saving ? "Salvataggio…" : "Salva anagrafica"}
+              {saving ? "Saving…" : "Save billing details"}
             </Pro2Button>
             {msg ? (
               <p

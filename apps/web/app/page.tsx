@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { EmpathyPublicHome } from "@/components/marketing/EmpathyPublicHome";
 
 export const metadata: Metadata = {
-  title: "Empathy — Piattaforma atleta",
+  title: "Empathy — Athlete platform",
   description:
-    "Performance e physiology adaptation: timing, stimoli, nutrizione. Piani, prova gratuita e accesso all'app.",
+    "Performance and physiology adaptation: timing, stimuli, nutrition. Plans, free trial, and app access.",
   robots: { index: true, follow: true },
 };
 

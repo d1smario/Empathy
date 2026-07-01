@@ -19,7 +19,7 @@ function firstSearchParam(value: string | string[] | undefined): string | undefi
 }
 
 export const metadata: Metadata = {
-  title: "Abbonamento — Empathy",
+  title: "Subscription — Empathy",
   robots: { index: false, follow: false },
 };
 

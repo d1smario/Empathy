@@ -4,8 +4,8 @@ import { CoachInviteTokenClient } from "./CoachInviteTokenClient";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invito coach — Empathy",
-  description: "Un atleta ti ha invitato a diventare il suo coach su Empathy.",
+  title: "Coach invite — Empathy",
+  description: "An athlete has invited you to become their coach on Empathy.",
 };
 
 /**

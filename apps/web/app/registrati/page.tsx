@@ -16,8 +16,8 @@ import { createSupabaseCookieClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Registrati — Empathy",
-  description: "Crea il tuo account Empathy.",
+  title: "Sign up — Empathy",
+  description: "Create your Empathy account.",
 };
 
 /**
@@ -75,7 +75,7 @@ export default async function RegisterPage() {
         className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-12 outline-none sm:py-16"
       >
         <div className="text-center">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">REGISTRATI</p>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">SIGN UP</p>
           <Link
             href="/"
             className="mt-4 inline-block text-2xl font-black tracking-[0.12em] text-white transition-opacity hover:opacity-80 sm:text-3xl"
@@ -86,7 +86,7 @@ export default async function RegisterPage() {
         </div>
         <AccessRegisterForm />
         <Link href="/" className="text-xs text-gray-500 transition-colors hover:text-gray-300">
-          ← Torna alla home
+          ← Back to home
         </Link>
       </main>
     </BrutalistAppBackdrop>

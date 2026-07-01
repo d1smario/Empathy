@@ -75,15 +75,15 @@ export function InviteTokenClient({
       });
       const j = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !j.ok) {
-        setMsg(j.error ?? "Richiesta non riuscita.");
+        setMsg(j.error ?? "Request failed.");
         setBusy(false);
         return;
       }
       setLinked(true);
-      setMsg("Collegamento creato. Puoi aprire il modulo Athletes dal coach.");
+      setMsg("Link created. You can open the Athletes module from your coach.");
       router.refresh();
     } catch {
-      setMsg("Errore di rete.");
+      setMsg("Network error.");
     } finally {
       setBusy(false);
     }
@@ -106,72 +106,72 @@ export function InviteTokenClient({
         id="main-content"
         className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-16 text-center"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Invito coach</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Coach invite</p>
         <h1 className="max-w-md bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-2xl font-light tracking-tight text-transparent sm:text-3xl">
-          Collega il tuo profilo atleta al coach
+          Link your athlete profile to your coach
         </h1>
 
         {status === "misconfigured" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Inviti non disponibili: manca la service role sul server o la tabella non è stata creata.
+            Invites are unavailable: the server is missing the service role or the table has not been created.
           </p>
         ) : null}
         {status === "not_found" ? (
-          <p className="max-w-md text-sm text-amber-300/90">Questo link non è valido.</p>
+          <p className="max-w-md text-sm text-amber-300/90">This link is not valid.</p>
         ) : null}
         {status === "consumed" ? (
-          <p className="max-w-md text-sm text-gray-400">Questo invito è già stato usato.</p>
+          <p className="max-w-md text-sm text-gray-400">This invite has already been used.</p>
         ) : null}
         {status === "expired" ? (
-          <p className="max-w-md text-sm text-amber-300/90">Invito scaduto. Chiedi un nuovo link al coach.</p>
+          <p className="max-w-md text-sm text-amber-300/90">Invite expired. Ask your coach for a new link.</p>
         ) : null}
 
         {status === "valid" ? (
           <div className="flex max-w-md flex-col items-center gap-4">
             {signedIn === false ? (
               <>
-                <p className="text-sm text-gray-400">Accedi con lo stesso account che userai come atleta.</p>
+                <p className="text-sm text-gray-400">Sign in with the same account you will use as an athlete.</p>
                 <Link
                   href={accessHref}
                   className="rounded-full border border-purple-500/40 bg-purple-500/15 px-6 py-2.5 text-sm font-bold text-purple-100 transition hover:border-purple-400/60"
                 >
-                  Vai ad Access / login
+                  Go to Access / login
                 </Link>
               </>
             ) : null}
             {signedIn === true && !linked ? (
               hasAthleteId === null ? (
-                <p className="text-sm text-gray-500">Verifica profilo atleta…</p>
+                <p className="text-sm text-gray-500">Checking athlete profile…</p>
               ) : hasAthleteId === true ? (
                 <p className="text-sm text-gray-400" role="status">
-                  Collegamento in corso al coach che ti ha invitato…
+                  Linking to the coach who invited you…
                 </p>
               ) : (
                 <>
                   <p className="text-sm text-gray-400">
-                    Confermi il collegamento al coach che ti ha inviato il link? Creeremo il tuo profilo atleta se
-                    non esiste ancora.
+                    Do you confirm the link to the coach who sent you this link? We&apos;ll create your athlete profile if
+                    it doesn&apos;t exist yet.
                   </p>
                   <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
-                    {busy ? "Elaborazione…" : "Accetta invito"}
+                    {busy ? "Processing…" : "Accept invite"}
                   </Pro2Button>
                 </>
               )
             ) : null}
             {signedIn === null ? (
-              <p className="text-sm text-gray-500">Verifica sessione…</p>
+              <p className="text-sm text-gray-500">Checking session…</p>
             ) : null}
           </div>
         ) : null}
 
         {msg ? (
-          <p className={`max-w-md text-sm ${msg.includes("Collegamento") ? "text-emerald-300/90" : "text-amber-300/90"}`} role="status">
+          <p className={`max-w-md text-sm ${msg.includes("Link created") ? "text-emerald-300/90" : "text-amber-300/90"}`} role="status">
             {msg}
           </p>
         ) : null}
 
         <Link href="/dashboard" className="text-xs text-gray-500 underline-offset-4 hover:text-gray-400 hover:underline">
-          Torna alla dashboard
+          Back to dashboard
         </Link>
       </main>
     </BrutalistAppBackdrop>

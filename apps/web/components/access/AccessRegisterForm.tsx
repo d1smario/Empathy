@@ -19,16 +19,16 @@ type MsgTone = "info" | "success" | "warning";
 function formatSignupError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes("already registered") || m.includes("already been registered") || m.includes("user already exists")) {
-    return "Questa email è già registrata. Prova ad accedere.";
+    return "This email is already registered. Try signing in.";
   }
   if (m.includes("invalid api key") || m.includes("invalid api")) {
-    return "Chiavi Supabase non valide: contatta il supporto.";
+    return "Invalid Supabase keys: contact support.";
   }
   if (m.includes("redirect") && (m.includes("not allowed") || m.includes("disallowed") || m.includes("url"))) {
-    return "URL di redirect non autorizzato nella configurazione Supabase.";
+    return "Redirect URL not allowed in the Supabase configuration.";
   }
   if (m.includes("password")) {
-    return "Password non valida: usa almeno 8 caratteri.";
+    return "Invalid password: use at least 8 characters.";
   }
   return message;
 }
@@ -72,7 +72,7 @@ export function AccessRegisterForm() {
     setMsg(null);
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      notify("Configurazione Supabase mancante.");
+      notify("Missing Supabase configuration.");
       return;
     }
     const fn = firstName.trim();
@@ -81,23 +81,23 @@ export function AccessRegisterForm() {
     // Codice coach opzionale: normalizziamo a uppercase (la colonna è citext lato DB).
     const coachCodeNorm = coachCode.trim().toUpperCase();
     if (!fn || !ln) {
-      notify("Inserisci nome e cognome.");
+      notify("Enter your first and last name.");
       return;
     }
     if (!em) {
-      notify("Inserisci una email valida.");
+      notify("Enter a valid email.");
       return;
     }
     if (password.length < 8) {
-      notify("La password deve avere almeno 8 caratteri.");
+      notify("The password must be at least 8 characters long.");
       return;
     }
     if (password !== password2) {
-      notify("Le password non coincidono.");
+      notify("The passwords do not match.");
       return;
     }
     if (!consent) {
-      notify("Devi accettare Privacy e Termini di Servizio per registrarti.");
+      notify("You must accept the Privacy Policy and Terms of Service to register.");
       return;
     }
 
@@ -158,19 +158,19 @@ export function AccessRegisterForm() {
         <span className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15">
           <MailCheck className="h-6 w-6 text-emerald-300" aria-hidden />
         </span>
-        <h2 className="text-lg font-bold text-white">Controlla la tua email</h2>
+        <h2 className="text-lg font-bold text-white">Check your email</h2>
         <p className="text-sm leading-relaxed text-gray-300">
-          Abbiamo inviato un link di conferma a <strong className="text-white">{sentTo}</strong>. Aprilo per
-          attivare il tuo account, poi torna ad accedere.
+          We&apos;ve sent a confirmation link to <strong className="text-white">{sentTo}</strong>. Open it to
+          activate your account, then come back to sign in.
         </p>
         <p className="text-xs text-gray-500">
-          Non lo trovi? Controlla nello spam. Il link può richiedere qualche minuto ad arrivare.
+          Can&apos;t find it? Check your spam folder. The link may take a few minutes to arrive.
         </p>
         <Link
           href="/access"
           className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-gray-200 transition-colors hover:border-purple-500/40 hover:text-white"
         >
-          Vai al login
+          Go to login
         </Link>
       </div>
     );
@@ -180,11 +180,11 @@ export function AccessRegisterForm() {
     <form
       onSubmit={onSubmit}
       className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-md"
-      aria-label="Registrazione"
+      aria-label="Registration"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-left">
-          <span className={labelClass}>Nome</span>
+          <span className={labelClass}>First name</span>
           <input
             type="text"
             autoComplete="given-name"
@@ -195,7 +195,7 @@ export function AccessRegisterForm() {
           />
         </label>
         <label className="text-left">
-          <span className={labelClass}>Cognome</span>
+          <span className={labelClass}>Last name</span>
           <input
             type="text"
             autoComplete="family-name"
@@ -216,12 +216,12 @@ export function AccessRegisterForm() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={busy}
           className={inputClass}
-          placeholder="nome@esempio.it"
+          placeholder="name@example.com"
         />
       </label>
 
       <label className="text-left">
-        <span className={labelClass}>Codice coach (opzionale)</span>
+        <span className={labelClass}>Coach code (optional)</span>
         <input
           type="text"
           autoComplete="off"
@@ -229,7 +229,7 @@ export function AccessRegisterForm() {
           onChange={(e) => setCoachCode(e.target.value.toUpperCase())}
           disabled={busy}
           className={`${inputClass} font-mono uppercase tracking-[0.15em]`}
-          placeholder="ES. COACH-7K2P"
+          placeholder="E.G. COACH-7K2P"
         />
       </label>
 
@@ -248,7 +248,7 @@ export function AccessRegisterForm() {
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-200"
           >
@@ -259,7 +259,7 @@ export function AccessRegisterForm() {
       </label>
 
       <label className="text-left">
-        <span className={labelClass}>Conferma password</span>
+        <span className={labelClass}>Confirm password</span>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -273,7 +273,7 @@ export function AccessRegisterForm() {
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-200"
           >
@@ -281,7 +281,7 @@ export function AccessRegisterForm() {
           </button>
         </div>
         {password2 && password !== password2 ? (
-          <span className="mt-1 block text-[0.65rem] text-red-400">Le password non coincidono.</span>
+          <span className="mt-1 block text-[0.65rem] text-red-400">The passwords do not match.</span>
         ) : null}
       </label>
 
@@ -294,27 +294,27 @@ export function AccessRegisterForm() {
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5 accent-purple-500"
         />
         <span>
-          Accetto la{" "}
+          I accept the{" "}
           <Link href="/privacy" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
             Privacy Policy
           </Link>{" "}
-          e i{" "}
+          and the{" "}
           <Link href="/termini" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
-            Termini di Servizio
+            Terms of Service
           </Link>
           .
         </span>
       </label>
 
       <Pro2Button type="submit" disabled={busy || !consent} className="w-full justify-center">
-        {busy ? "Creazione account…" : "Registrati"}
+        {busy ? "Creating account…" : "Sign up"}
       </Pro2Button>
 
       <Link
         href="/access"
         className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
       >
-        Hai già un account? <span className="text-gray-300">Accedi</span>
+        Already have an account? <span className="text-gray-300">Sign in</span>
       </Link>
 
       {msg ? (
