@@ -28,10 +28,10 @@ const DOMAIN_META: Array<{
 }> = [
   {
     id: "wellness_sleep",
-    title: "Sonno",
-    hint: "Ore di sonno, fasi (deep/light/REM), ipnogramma. Solo questo provider scrive il KPI Sonno. Se il device non espone sonno strutturato via Empathy per quel provider, il pannello può restare vuoto.",
+    title: "Sleep",
+    hint: "Sleep hours, stages (deep/light/REM), hypnogram. Only this provider writes the Sleep KPI. If the device does not expose structured sleep via Empathy for that provider, the panel may stay empty.",
     options: [
-      { value: "", label: "Auto (mix tutti i provider)" },
+      { value: "", label: "Auto (mix of all providers)" },
       { value: "whoop", label: "WHOOP" },
       { value: "garmin", label: "Garmin" },
       { value: "wahoo", label: "Wahoo" },
@@ -41,9 +41,9 @@ const DOMAIN_META: Array<{
   {
     id: "wellness_recovery",
     title: "Recovery / HRV",
-    hint: "HRV, frequenza cardiaca a riposo, recovery e readiness score. Stessa nota: serve export Empathy riconosciuto come recovery per quel provider.",
+    hint: "HRV, resting heart rate, recovery and readiness score. Same note: an Empathy export recognized as recovery is required for that provider.",
     options: [
-      { value: "", label: "Auto (mix tutti i provider)" },
+      { value: "", label: "Auto (mix of all providers)" },
       { value: "whoop", label: "WHOOP" },
       { value: "garmin", label: "Garmin" },
       { value: "wahoo", label: "Wahoo" },
@@ -52,10 +52,10 @@ const DOMAIN_META: Array<{
   },
   {
     id: "training_activity",
-    title: "Training (attività)",
-    hint: "Workout eseguiti (corse, bici, gym, …). Filtra calendario, analytics e Core CTL/TSS per prefisso `api_sync:<provider>:`. Se il device reale è Garmin ma qui scegli Strava, le attività restano in DB ma non contano nel carico — usa Auto o il provider corretto.",
+    title: "Training (activity)",
+    hint: "Executed workouts (runs, rides, gym, …). Filters calendar, analytics and Core CTL/TSS by the `api_sync:<provider>:` prefix. If the real device is Garmin but here you choose Strava, activities stay in the DB but do not count toward load — use Auto or the correct provider.",
     options: [
-      { value: "", label: "Auto (mix tutti i provider)" },
+      { value: "", label: "Auto (mix of all providers)" },
       { value: "garmin", label: "Garmin" },
       { value: "wahoo", label: "Wahoo" },
       { value: "strava", label: "Strava" },
@@ -82,13 +82,13 @@ export function SettingsDataSourcePreference() {
       });
       const json = (await res.json()) as { ok?: boolean; preferences?: Preferences; error?: string };
       if (!res.ok || json.ok !== true) {
-        setErr(json.error ?? "Impossibile caricare le preferenze provider.");
+        setErr(json.error ?? "Unable to load provider preferences.");
         setPref(null);
         return;
       }
       setPref(json.preferences ?? {});
     } catch {
-      setErr("Richiesta non riuscita.");
+      setErr("Request failed.");
       setPref(null);
     }
   }, [athleteId]);
@@ -114,12 +114,12 @@ export function SettingsDataSourcePreference() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || json.ok !== true) {
-        setErr(json.error ?? "Salvataggio non riuscito.");
+        setErr(json.error ?? "Save failed.");
         return;
       }
       await load();
     } catch {
-      setErr("Salvataggio non riuscito.");
+      setErr("Save failed.");
     } finally {
       setBusyDomain(null);
     }
@@ -142,7 +142,7 @@ export function SettingsDataSourcePreference() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Scelta provider per dominio"
+      aria-label="Provider choice per domain"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500/80 via-violet-500/80 to-orange-500/80 opacity-70"
@@ -150,14 +150,14 @@ export function SettingsDataSourcePreference() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300">
-          Provider canonico per dominio
+          Canonical provider per domain
         </p>
-        <h3 className="mt-2 text-lg font-semibold text-white">Quale device guida cosa</h3>
+        <h3 className="mt-2 text-lg font-semibold text-white">Which device drives what</h3>
         <p className="mt-2 text-sm text-gray-400">
-          Scegli da quale device prendere ciascun gruppo di dati. Esempio: <em>Sonno → WHOOP</em>,{" "}
-          <em>Training → Garmin</em>. Quando una preferenza è impostata, le altre integrazioni continuano a fare ingest
-          (la memoria atleta resta canonica) ma in lettura i KPI usano solo il provider scelto: niente più mix
-          incoerente tra device.
+          Choose which device to take each data group from. Example: <em>Sleep → WHOOP</em>,{" "}
+          <em>Training → Garmin</em>. When a preference is set, the other integrations keep ingesting
+          (the athlete memory stays canonical) but on read the KPIs use only the chosen provider: no more inconsistent
+          mixing across devices.
         </p>
         <p className="mt-1 text-[0.65rem] text-gray-600">
           API:{" "}
@@ -194,7 +194,7 @@ export function SettingsDataSourcePreference() {
                   <p className="mt-1 text-[0.7rem] leading-snug text-gray-500">{item.hint}</p>
 
                   <label className="mt-3 block text-[0.65rem] uppercase tracking-wide text-gray-500">
-                    Provider scelto
+                    Chosen provider
                   </label>
                   <select
                     aria-label={`Provider ${item.title}`}
@@ -211,13 +211,13 @@ export function SettingsDataSourcePreference() {
                   </select>
 
                   {busy ? (
-                    <p className="mt-2 text-[0.65rem] text-gray-500">Salvataggio…</p>
+                    <p className="mt-2 text-[0.65rem] text-gray-500">Saving…</p>
                   ) : current ? (
                     <p className="mt-2 text-[0.65rem] text-emerald-300/80">
-                      Attivo: i KPI {item.title.toLowerCase()} arrivano solo da <strong>{current}</strong>.
+                      Active: the {item.title.toLowerCase()} KPIs come only from <strong>{current}</strong>.
                     </p>
                   ) : (
-                    <p className="mt-2 text-[0.65rem] text-gray-500">Nessuna scelta: comportamento automatico.</p>
+                    <p className="mt-2 text-[0.65rem] text-gray-500">No choice: automatic behavior.</p>
                   )}
                 </li>
               );

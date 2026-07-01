@@ -10,11 +10,11 @@ type ProviderPayload = {
 };
 
 const STREAM_LABELS: Record<string, string> = {
-  whoop_sleep: "Sonno",
+  whoop_sleep: "Sleep",
   whoop_recovery: "Recovery",
   whoop_workout: "Workout (training)",
   wahoo_workout: "Workout cloud",
-  garmin_activity_summary: "Riepilogo attività (summary)",
+  garmin_activity_summary: "Activity summary",
 };
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -54,13 +54,13 @@ export function SettingsDeviceIngestPolicy() {
       });
       const json = (await res.json()) as { ok?: boolean; providers?: ProviderPayload[]; error?: string };
       if (!res.ok || json.ok !== true || !Array.isArray(json.providers)) {
-        setErr(json.error ?? "Impossibile caricare la policy ingest.");
+        setErr(json.error ?? "Unable to load the ingest policy.");
         setProviders(null);
         return;
       }
       setProviders(json.providers);
     } catch {
-      setErr("Richiesta non riuscita.");
+      setErr("Request failed.");
       setProviders(null);
     }
   }, [athleteId]);
@@ -83,12 +83,12 @@ export function SettingsDeviceIngestPolicy() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || json.ok !== true) {
-        setErr(json.error ?? "Salvataggio non riuscito.");
+        setErr(json.error ?? "Save failed.");
         return;
       }
       await load();
     } catch {
-      setErr("Salvataggio non riuscito.");
+      setErr("Save failed.");
     } finally {
       setBusyKey(null);
     }
@@ -109,7 +109,7 @@ export function SettingsDeviceIngestPolicy() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Policy ingest dispositivi"
+      aria-label="Device ingest policy"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80 opacity-70"
@@ -117,12 +117,12 @@ export function SettingsDeviceIngestPolicy() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-300">
-          Dati da sincronizzare
+          Data to sync
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Scegli quali dati ogni dispositivo può sincronizzare (sonno, recupero, allenamenti). Lascia spento
-          {" "}<strong className="font-normal text-gray-300">«Workout»</strong> su WHOOP/Wahoo se gli allenamenti arrivano
-          già da Garmin o Strava, così eviti doppioni.
+          Choose which data each device can sync (sleep, recovery, workouts). Leave
+          {" "}<strong className="font-normal text-gray-300">«Workout»</strong> off on WHOOP/Wahoo if workouts already
+          come from Garmin or Strava, so you avoid duplicates.
         </p>
 
         {err ? (
@@ -139,7 +139,7 @@ export function SettingsDeviceIngestPolicy() {
         ) : null}
 
         {providers && providers.length === 0 ? (
-          <p className="mt-6 text-sm text-gray-500">Nessun provider collegato (WHOOP, Wahoo o Garmin).</p>
+          <p className="mt-6 text-sm text-gray-500">No provider linked (WHOOP, Wahoo or Garmin).</p>
         ) : null}
 
         {providers && providers.length > 0 ? (
@@ -163,7 +163,7 @@ export function SettingsDeviceIngestPolicy() {
                               : "rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-gray-400 hover:bg-white/10 disabled:opacity-50"
                           }
                         >
-                          {busy ? "…" : on ? "Attivo" : "Off"}
+                          {busy ? "…" : on ? "On" : "Off"}
                         </button>
                       </li>
                     );

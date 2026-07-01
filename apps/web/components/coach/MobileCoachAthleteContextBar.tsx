@@ -60,19 +60,19 @@ export function MobileCoachAthleteContextBar({
     <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 border-b border-fuchsia-500/20 bg-[#120a14]/95 backdrop-blur-md">
       <div className="flex items-center justify-between gap-3 px-4 pt-2.5">
         <p className="truncate font-mono text-[0.6rem] uppercase tracking-[0.2em] text-fuchsia-200/90">
-          Atleta · {label}
+          Athlete · {label}
           {email && email !== label ? <span className="text-fuchsia-200/50"> · {email}</span> : null}
         </p>
         <Link
           href="/m/athletes"
-          title="Togli la selezione"
+          title="Clear selection"
           className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-gray-300 transition hover:border-fuchsia-500/40 hover:text-white"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </div>
       <nav
-        aria-label="Schede atleta selezionato"
+        aria-label="Selected athlete tabs"
         className="flex items-center gap-1.5 overflow-x-auto px-4 pb-2.5 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {pills.map((p) => {

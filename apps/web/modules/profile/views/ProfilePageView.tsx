@@ -516,7 +516,7 @@ export default function ProfilePage({
       profileVmCache = null; // forza il refetch dei dati appena salvati
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore salvataggio profilo");
+      setError(err instanceof Error ? err.message : "Error saving profile");
     }
     setSaving(false);
   }
@@ -781,8 +781,8 @@ export default function ProfilePage({
     <Pro2ModulePageShell
       eyebrow="Athlete · Profile"
       eyebrowClassName={moduleEyebrowClass("profile")}
-      title="Identità e vincoli"
-      description={<span className="text-sm text-gray-400">I tuoi dati, misure e preferenze alimentari.</span>}
+      title="Identity and constraints"
+      description={<span className="text-sm text-gray-400">Your data, measurements and food preferences.</span>}
       headerActions={
         currentProfile ? (
           <Pro2Button
@@ -791,7 +791,7 @@ export default function ProfilePage({
             className="border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
             onClick={() => startEditProfile(currentProfile)}
           >
-            Modifica profilo
+            Edit profile
           </Pro2Button>
         ) : null
       }
@@ -814,7 +814,7 @@ export default function ProfilePage({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                    {[currentProfile.first_name, currentProfile.last_name].filter(Boolean).join(" ") || "Utente"}
+                    {[currentProfile.first_name, currentProfile.last_name].filter(Boolean).join(" ") || "User"}
                   </p>
                   <p className="mt-1 text-sm text-gray-400">
                     {`${currentProfile.activity_level ?? "advanced"}${currentProfile.diet_type ? ` · ${currentProfile.diet_type}` : ""}`}
@@ -836,8 +836,8 @@ export default function ProfilePage({
                 <Pro2SectionCard
                   accent="emerald"
                   icon={UserCheck}
-                  title="Il tuo coach"
-                  subtitle="Coach collegato al tuo profilo"
+                  title="Your coach"
+                  subtitle="Coach linked to your profile"
                 >
                   <div className="flex flex-wrap items-center gap-4">
                     <div
@@ -853,11 +853,11 @@ export default function ProfilePage({
                       ) : null}
                     </div>
                     <span className="inline-flex shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                      Collegato
+                      Linked
                     </span>
                   </div>
                   <p className="mt-3 text-[0.8rem] leading-relaxed text-gray-500">
-                    Hai già un coach collegato: puoi averne uno solo. Per cambiarlo, scrivi al supporto.
+                    You already have a coach linked: you can only have one. To change them, contact support.
                   </p>
                 </Pro2SectionCard>
               ) : (
@@ -869,14 +869,14 @@ export default function ProfilePage({
             <Pro2SectionCard
               accent="orange"
               icon={GaugeCircle}
-              title="Metriche chiave"
-              subtitle="I tuoi valori principali"
+              title="Key metrics"
+              subtitle="Your main values"
             >
               <ProfilePro2KpiGrid items={keyMetricItems} />
               {showTech ? (
                 <p className="mt-3 text-[0.8rem] leading-relaxed text-gray-500">
-                  FTP / indice glicolitico / VO₂max qui sono dall&apos;ultimo dato salvato su Supabase (snapshot Physiology). Per numeri col motore
-                  attuale, apri Physiology → Metabolic Profile e premi &quot;Salva snapshot&quot;.
+                  FTP / glycolytic index / VO₂max here are from the last data saved to Supabase (Physiology snapshot). For numbers from the current
+                  engine, open Physiology → Metabolic Profile and press &quot;Save metabolic profile&quot;.
                 </p>
               ) : null}
             </Pro2SectionCard>
@@ -885,14 +885,14 @@ export default function ProfilePage({
               <Pro2SectionCard
                 accent="cyan"
                 icon={Activity}
-                title="Segnali fisiologici"
-                subtitle="Vista compatta da PhysiologyState in athlete memory"
+                title="Physiological signals"
+                subtitle="Compact view from PhysiologyState in athlete memory"
               >
                 <div className="space-y-6">
                   {physiologySummarySections.map((section) => (
                     <div key={section.title}>
                       <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{section.title}</p>
-                      <p className="text-[0.65rem] text-gray-600">{section.cards.length} segnali</p>
+                      <p className="text-[0.65rem] text-gray-600">{section.cards.length} signals</p>
                       <ProfilePro2KpiGrid
                         columnsClassName="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
                         items={section.cards.map((card) => ({
@@ -912,14 +912,14 @@ export default function ProfilePage({
               <Pro2SectionCard
                 accent="slate"
                 icon={Dna}
-                title="Copertura dataset fisiologico"
-                subtitle="Cosa è presente in memoria per i motori deterministici"
+                title="Physiological dataset coverage"
+                subtitle="What is present in memory for the deterministic engines"
               >
                 <details className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <summary className="cursor-pointer text-sm font-semibold text-gray-300">Fonti e derivazioni</summary>
+                  <summary className="cursor-pointer text-sm font-semibold text-gray-300">Sources and derivations</summary>
                   <div className="mt-3 space-y-2 text-sm text-gray-400">
                     <p>
-                      {`Profilo fisiologico ${physiologyCoverage.physiologicalProfile ? "ok" : "mancante"} · run metabolico ${physiologyCoverage.metabolicRun ? "ok" : "mancante"} · lattato ${physiologyCoverage.lactateRun ? "ok" : "mancante"} · performance ${physiologyCoverage.performanceRun ? "ok" : "mancante"} · bioenergetica ${physiologyCoverage.biomarkerPanel ? "ok" : "mancante"}`}
+                      {`Physiological profile ${physiologyCoverage.physiologicalProfile ? "ok" : "missing"} · metabolic run ${physiologyCoverage.metabolicRun ? "ok" : "missing"} · lactate ${physiologyCoverage.lactateRun ? "ok" : "missing"} · performance ${physiologyCoverage.performanceRun ? "ok" : "missing"} · bioenergetics ${physiologyCoverage.biomarkerPanel ? "ok" : "missing"}`}
                     </p>
                     <p>
                       {`VO2max · ${vo2maxSourceLabel}${derivedVo2max != null ? ` · ${derivedVo2max.toFixed(1)} ml/kg/min` : ""}`}
@@ -936,8 +936,8 @@ export default function ProfilePage({
                 title="Digital twin"
                 subtitle={
                   twinSnapshot.asOf
-                    ? `Aggiornato ${String(twinSnapshot.asOf).slice(0, 10)}`
-                    : "Stato unificato atleta"
+                    ? `Updated ${String(twinSnapshot.asOf).slice(0, 10)}`
+                    : "Unified athlete state"
                 }
               >
                 <ProfilePro2KpiGrid items={twinKpiItems} />
@@ -948,13 +948,13 @@ export default function ProfilePage({
 
       {isCoachWithoutAthlete ? (
         <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 px-5 py-4 text-sm text-slate-200">
-          <p className="font-semibold text-violet-100">Account coach</p>
+          <p className="font-semibold text-violet-100">Coach account</p>
           <p className="mt-1 leading-relaxed text-slate-400">
-            Il profilo atleta non si gestisce da qui. I tuoi atleti sono in Atleti.
+            The athlete profile is not managed from here. Your athletes are in Athletes.
           </p>
           <div className="mt-3">
             <Pro2Link href="/athletes" variant="secondary" className="justify-center border border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15">
-              Vai ad Atleti
+              Go to Athletes
             </Pro2Link>
           </div>
         </div>
@@ -966,7 +966,7 @@ export default function ProfilePage({
             className="border border-white/20 bg-white/5 hover:bg-white/10"
             onClick={() => setShowForm(true)}
           >
-            Crea il tuo profilo
+            Create your profile
           </Pro2Button>
         </div>
       ) : null}
@@ -977,7 +977,7 @@ export default function ProfilePage({
           className="fixed inset-0 z-[120] overflow-y-auto overscroll-contain bg-black/75 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
-          aria-label="Modifica profilo"
+          aria-label="Edit profile"
         >
           {/* Blocca lo scroll della pagina di sfondo mentre il modale è aperto:
               elimina la seconda scrollbar (quella del documento html/body). */}
@@ -992,7 +992,7 @@ export default function ProfilePage({
             <div className="relative mx-auto w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                aria-label="Chiudi editor"
+                aria-label="Close editor"
                 onClick={() => {
                   setShowForm(false);
                   setEditingProfileId(null);
@@ -1004,14 +1004,14 @@ export default function ProfilePage({
               <Pro2SectionCard
                 accent="slate"
                 icon={PencilLine}
-                title="Editor profilo"
-                subtitle="Modifica i tuoi dati"
+                title="Profile editor"
+                subtitle="Edit your data"
               >
         <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-black/85 max-sm:bg-black p-2 backdrop-blur">
-          <button type="button" className={editorTabClass(activeSection === "personal", "violet")} onClick={() => goToEditorSection("personal")}>Personale</button>
-          <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>Fisico</button>
+          <button type="button" className={editorTabClass(activeSection === "personal", "violet")} onClick={() => goToEditorSection("personal")}>Personal</button>
+          <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>Physical</button>
           <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
-          <button type="button" className={editorTabClass(activeSection === "nutrition", "rose")} onClick={() => goToEditorSection("nutrition")}>Alimentazione</button>
+          <button type="button" className={editorTabClass(activeSection === "nutrition", "rose")} onClick={() => goToEditorSection("nutrition")}>Nutrition</button>
           <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
         </div>
         <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} p-4 sm:p-5`}>
@@ -1057,7 +1057,7 @@ export default function ProfilePage({
 
           <div className="mt-4 flex flex-wrap gap-3">
             <Pro2Button type="submit" disabled={saving} variant="primary">
-              {saving ? "Salvataggio…" : editingProfileId ? "Aggiorna profilo" : "Salva profilo"}
+              {saving ? "Saving…" : editingProfileId ? "Update profile" : "Save profile"}
             </Pro2Button>
             <Pro2Button
               type="button"
@@ -1068,7 +1068,7 @@ export default function ProfilePage({
                 setEditingProfileId(null);
               }}
             >
-              Annulla
+              Cancel
             </Pro2Button>
           </div>
         </form>
@@ -1079,20 +1079,20 @@ export default function ProfilePage({
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Caricamento dati profilo…</p>
+        <p className="text-sm text-gray-500">Loading profile data…</p>
       ) : !activeAthleteId ? (
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
-          {role === "coach" ? "Nessun atleta attivo. Selezionalo in Athletes." : "Profilo atleta non disponibile per questo account."}
+          {role === "coach" ? "No active athlete. Select one in Athletes." : "Athlete profile not available for this account."}
         </div>
       ) : profiles.length === 0 ? (
         <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4 text-sm text-amber-100/90">
           {error === "Athlete access denied" ? (
             <span>
-              L&apos;atleta attivo non è associato correttamente all&apos;utente corrente. Riesegui il login da <code className="text-amber-200/80">/access</code> per riallineare il profilo, oppure se sei coach seleziona un assistito valido in <code className="text-amber-200/80">/athletes</code>.
+              The active athlete is not correctly associated with the current user. Log in again from <code className="text-amber-200/80">/access</code> to realign the profile, or if you are a coach select a valid athlete in <code className="text-amber-200/80">/athletes</code>.
             </span>
           ) : (
             <span>
-              Nessun profilo disponibile per l&apos;atleta attivo. Se il problema persiste, verifica il collegamento tra <code className="text-amber-200/80">app_user_profiles</code> e <code className="text-amber-200/80">athlete_profiles</code> in Supabase.
+              No profile available for the active athlete. If the problem persists, check the link between <code className="text-amber-200/80">app_user_profiles</code> and <code className="text-amber-200/80">athlete_profiles</code> in Supabase.
             </span>
           )}
         </div>
@@ -1102,8 +1102,8 @@ export default function ProfilePage({
         <Pro2SectionCard
           accent="slate"
           icon={Settings2}
-          title="Diagnostica · admin"
-          subtitle="Sessione, atleta, integrazioni, billing — visibile solo a operatori piattaforma"
+          title="Diagnostics · admin"
+          subtitle="Session, athlete, integrations, billing — visible only to platform operators"
         >
           <div className="flex flex-col gap-10">
             <SettingsBuildPhasesCard />

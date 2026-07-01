@@ -11,35 +11,35 @@ import { cn } from "@/lib/cn";
 const COPY = {
   eyebrow: "Dashboard · Coach",
   title: "Dashboard",
-  descriptionBase: "Atleti, sessioni della settimana e commissioni in un colpo d’occhio.",
-  loading: "Caricamento dati…",
-  noSupabase: "Configurazione Supabase mancante (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).",
-  noSession: "Sessione non trovata — accedi di nuovo per vedere la tua dashboard.",
-  errPrefix: "Errore",
-  reload: "Ricarica",
-  updatedAt: "Aggiornato alle",
-  cardAthletes: "Atleti",
-  cardAthletesSub: "collegati al tuo account",
-  cardPlanned: "Sessioni pianificate",
-  cardPlannedSub: "questa settimana (lun–dom)",
-  cardExecuted: "Allenamenti eseguiti",
-  cardExecutedSub: "negli ultimi 7 giorni",
-  cardCommissions: "Commissioni maturate",
-  cardCommissionsSubSuffix: "in attesa di richiesta",
-  athletesTitle: "I miei atleti",
-  athletesEmpty: "Nessun atleta assegnato — invita i tuoi atleti o attendi l’assegnazione.",
-  athletePlanned: "pianificate questa settimana",
-  athleteExecuted: "eseguite negli ultimi 7gg",
-  openCards: "Apri schede",
-  commissionsTitle: "Commissioni",
-  commissionsEmpty: "Nessuna commissione registrata — matureranno con le vendite collegate al tuo account.",
-  colDate: "Data",
-  colAmount: "Importo",
-  colStatus: "Stato",
-  colActions: "Azioni",
-  actionRequest: "Richiedi pagamento",
-  actionRequestAll: "Richiedi tutte",
-  actionUnavailable: "Funzione disponibile a breve (DB da aggiornare)",
+  descriptionBase: "Athletes, sessions of the week and commissions at a glance.",
+  loading: "Loading data…",
+  noSupabase: "Missing Supabase configuration (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).",
+  noSession: "Session not found — sign in again to see your dashboard.",
+  errPrefix: "Error",
+  reload: "Reload",
+  updatedAt: "Updated at",
+  cardAthletes: "Athletes",
+  cardAthletesSub: "linked to your account",
+  cardPlanned: "Planned sessions",
+  cardPlannedSub: "this week (Mon–Sun)",
+  cardExecuted: "Completed workouts",
+  cardExecutedSub: "in the last 7 days",
+  cardCommissions: "Accrued commissions",
+  cardCommissionsSubSuffix: "awaiting request",
+  athletesTitle: "My athletes",
+  athletesEmpty: "No athletes assigned — invite your athletes or wait for assignment.",
+  athletePlanned: "planned this week",
+  athleteExecuted: "completed in the last 7d",
+  openCards: "Open cards",
+  commissionsTitle: "Commissions",
+  commissionsEmpty: "No commissions recorded — they will accrue with sales linked to your account.",
+  colDate: "Date",
+  colAmount: "Amount",
+  colStatus: "Status",
+  colActions: "Actions",
+  actionRequest: "Request payment",
+  actionRequestAll: "Request all",
+  actionUnavailable: "Feature available soon (DB to be updated)",
 } as const;
 
 type AthleteRow = {
@@ -66,10 +66,10 @@ type CommissionRow = {
 };
 
 const COMMISSION_STATUS_META: Record<CommissionStatus, { label: string; pill: string }> = {
-  accrued: { label: "Maturata", pill: "border-white/15 bg-white/5 text-gray-300" },
-  requested: { label: "Richiesta", pill: "border-amber-400/40 bg-amber-500/10 text-amber-200" },
-  paid: { label: "Pagata", pill: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" },
-  cancelled: { label: "Annullata", pill: "border-red-400/40 bg-red-500/10 text-red-300" },
+  accrued: { label: "Accrued", pill: "border-white/15 bg-white/5 text-gray-300" },
+  requested: { label: "Requested", pill: "border-amber-400/40 bg-amber-500/10 text-amber-200" },
+  paid: { label: "Paid", pill: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" },
+  cancelled: { label: "Cancelled", pill: "border-red-400/40 bg-red-500/10 text-red-300" },
 };
 
 function fmtDate(iso: string | null | undefined): string {
@@ -295,7 +295,7 @@ export function CoachDashboardView() {
       };
       coachDashboardCacheId = uid;
     } catch {
-      setErr(`${COPY.errPrefix}: richiesta non riuscita.`);
+      setErr(`${COPY.errPrefix}: request failed.`);
     } finally {
       setLoading(false);
     }
@@ -408,7 +408,7 @@ export function CoachDashboardView() {
       eyebrow={COPY.eyebrow}
       eyebrowClassName="text-violet-400"
       title={COPY.title}
-      description={firstName ? `Ciao ${firstName} — ${COPY.descriptionBase.toLowerCase()}` : COPY.descriptionBase}
+      description={firstName ? `Hi ${firstName} — ${COPY.descriptionBase.toLowerCase()}` : COPY.descriptionBase}
       headerActions={
         <button
           type="button"

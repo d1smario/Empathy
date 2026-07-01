@@ -33,7 +33,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Sì" : "No"}
+      {value ? "Yes" : "No"}
     </span>
   );
 }
@@ -62,12 +62,12 @@ export function SettingsBillingDiagnostics() {
         const json = (await res.json()) as CheckoutConfigPayload | { ok?: false; error?: string };
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Impossibile leggere la configurazione billing.");
+          setErr("Unable to read billing configuration.");
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Richiesta non riuscita.");
+        if (!cancelled) setErr("Request failed.");
       }
     })();
     return () => {
@@ -78,7 +78,7 @@ export function SettingsBillingDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Diagnostica billing"
+      aria-label="Billing diagnostics"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-500/80 via-pink-500/80 to-orange-500/80 opacity-70"
@@ -89,7 +89,7 @@ export function SettingsBillingDiagnostics() {
           Billing · Stripe
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Stato locale (env) senza esporre chiavi. Endpoint:{" "}
+          Local status (env) without exposing keys. Endpoint:{" "}
           <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
             /api/billing/checkout-config
           </code>
@@ -110,26 +110,26 @@ export function SettingsBillingDiagnostics() {
 
         {data ? (
           <div className="mt-6 font-mono text-xs">
-            <Row label="Checkout anonimo abilitato (STRIPE_CHECKOUT_ANON_ENABLED)">
+            <Row label="Anonymous checkout enabled (STRIPE_CHECKOUT_ANON_ENABLED)">
               <BoolPill value={data.anonCheckoutEnabled} />
             </Row>
-            <Row label="STRIPE_SECRET_KEY presente">
+            <Row label="STRIPE_SECRET_KEY present">
               <BoolPill value={data.stripeSecretConfigured ?? false} />
             </Row>
-            <Row label="Modalità chiave Stripe (prefisso)">
+            <Row label="Stripe key mode (prefix)">
               <span className="text-gray-300">{data.stripeKeyKind ?? "—"}</span>
             </Row>
-            <Row label="Payment link pubblico">
+            <Row label="Public payment link">
               <BoolPill value={data.paymentLinkConfigured} />
             </Row>
-            <Row label="Webhook secret configurato">
+            <Row label="Webhook secret configured">
               <BoolPill value={data.webhookSecretConfigured} />
             </Row>
-            <Row label="Trial checkout configurato">
+            <Row label="Trial checkout configured">
               <span className="flex items-center gap-2">
                 <BoolPill value={data.trialConfigured} />
                 {data.trialDays != null ? (
-                  <span className="text-gray-500">({data.trialDays} gg)</span>
+                  <span className="text-gray-500">({data.trialDays} d)</span>
                 ) : null}
               </span>
             </Row>
@@ -156,7 +156,7 @@ export function SettingsBillingDiagnostics() {
 
         <div className="mt-8 border-t border-white/10 pt-6">
           <Pro2Link href="/pricing" variant="secondary" className="justify-center">
-            Apri pricing
+Open pricing
           </Pro2Link>
         </div>
       </div>

@@ -12,47 +12,47 @@ const PHASES: Array<{
 }> = [
   {
     id: "p1",
-    title: "Fase 1 — Monorepo, shell, routing moduli",
-    summary: "Workspaces, App Router, sidebar, placeholder generativi / standard.",
+    title: "Phase 1 — Monorepo, shell, module routing",
+    summary: "Workspaces, App Router, sidebar, generative / standard placeholders.",
     status: "done",
   },
   {
     id: "p2",
-    title: "Fase 2 — Billing Stripe (demo)",
-    summary: "checkout-config, checkout-session anonimo opzionale, webhook firma + log.",
+    title: "Phase 2 — Stripe billing (demo)",
+    summary: "checkout-config, optional anonymous checkout-session, webhook signature + log.",
     status: "done",
   },
   {
     id: "p3",
-    title: "Fase 3 — Diagnostica in Settings",
-    summary: "Flag billing e integrazioni senza esporre segreti; comandi terminali sotto.",
+    title: "Phase 3 — Diagnostics in Settings",
+    summary: "Billing and integrations flags without exposing secrets; terminal commands below.",
     status: "done",
   },
   {
     id: "p4",
-    title: "Fase 4 — Auth + contesto atleta (Supabase)",
+    title: "Phase 4 — Auth + athlete context (Supabase)",
     summary:
-      "Login + gate shell; `useActiveAthlete` allineato a V1 (query `athlete_profiles` / `app_user_profiles` / `coach_athletes`, `POST /api/access/ensure-profile` cookie).",
+      "Login + shell gate; `useActiveAthlete` aligned with V1 (query `athlete_profiles` / `app_user_profiles` / `coach_athletes`, `POST /api/access/ensure-profile` cookie).",
     status: "done",
   },
   {
     id: "p5",
-    title: "Fase 5 — Primo modulo con dati reali",
+    title: "Phase 5 — First module with real data",
     summary:
-      "Dashboard `athlete-hub`, Profile `athlete-row`, Training / Nutrition / Physiology / Health (API + card), Athletes `roster`, coach roster filtrato in `useActiveAthlete`. Prossimo: dettaglio sessione o Fase 6 knowledge.",
+      "Dashboard `athlete-hub`, Profile `athlete-row`, Training / Nutrition / Physiology / Health (API + card), Athletes `roster`, coach roster filtered in `useActiveAthlete`. Next: session detail or Phase 6 knowledge.",
     status: "active",
   },
   {
     id: "p6",
-    title: "Fase 6 — Knowledge / traces",
-    summary: "Pipeline evidenza e tracce ricerca collegata al twin e ai moduli.",
+    title: "Phase 6 — Knowledge / traces",
+    summary: "Evidence pipeline and research traces linked to the twin and modules.",
     status: "planned",
   },
 ];
 
 function StatusPill({ status }: { status: PhaseStatus }) {
   const label =
-    status === "done" ? "Fatto" : status === "active" ? "In corso" : "Pianificato";
+    status === "done" ? "Done" : status === "active" ? "In progress" : "Planned";
   const cls =
     status === "done"
       ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
@@ -81,7 +81,7 @@ export function SettingsBuildPhasesCard() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Roadmap build Empathy Pro 2"
+      aria-label="Empathy Pro 2 build roadmap"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500/80 via-fuchsia-500/80 to-rose-500/80 opacity-70"
@@ -91,10 +91,10 @@ export function SettingsBuildPhasesCard() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300">
-              Roadmap · fasi
+              Roadmap · phases
             </p>
             <p className="mt-2 max-w-xl text-sm text-gray-400">
-              Stato ad alto livello dello scaffold Pro 2. Aggiorna le etichette in codice quando chiudi una fase.
+              High-level status of the Pro 2 scaffold. Update the labels in code when you close a phase.
             </p>
           </div>
           <button
@@ -102,7 +102,7 @@ export function SettingsBuildPhasesCard() {
             onClick={() => setOpen((o) => !o)}
             className="rounded-xl border border-white/15 bg-black/30 px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-gray-300 hover:border-white/25"
           >
-            {open ? "Comprimi" : "Espandi"}
+            {open ? "Collapse" : "Expand"}
           </button>
         </div>
 
@@ -125,11 +125,11 @@ export function SettingsBuildPhasesCard() {
 
         <div className="mt-10 border-t border-white/10 pt-8">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-300">
-            Comandi terminal (copia quando torni)
+            Terminal commands (copy when you return)
           </p>
           <p className="mt-2 text-xs text-gray-500">
-            Adatta il path se la repo non è sotto Documenti. Su OneDrive, se la build fallisce con readlink, cancella{" "}
-            <code className="text-gray-400">apps/web/.next</code> prima di <code className="text-gray-400">npm run verify</code>.
+            Adjust the path if the repo is not under Documents. On OneDrive, if the build fails with readlink, delete{" "}
+            <code className="text-gray-400">apps/web/.next</code> before <code className="text-gray-400">npm run verify</code>.
           </p>
           <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-white/10 bg-black/50 p-4 font-mono text-[0.7rem] leading-relaxed text-gray-300 select-all">
             {TERMINAL_SNIPPET}

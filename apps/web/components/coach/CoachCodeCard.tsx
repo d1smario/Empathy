@@ -31,10 +31,10 @@ export function CoachCodeCard() {
         if (res.ok && j.ok) {
           setCode(j.code ?? null);
         } else {
-          setErr(j.error ?? "Impossibile leggere il codice.");
+          setErr(j.error ?? "Unable to read the code.");
         }
       } catch {
-        if (!cancelled) setErr("Errore di rete.");
+        if (!cancelled) setErr("Network error.");
       } finally {
         if (!cancelled) setLoadingCode(false);
       }
@@ -52,12 +52,12 @@ export function CoachCodeCard() {
       const res = await fetch("/api/coach/code", { method: "POST" });
       const j = (await res.json()) as { ok?: boolean; code?: string; error?: string };
       if (!res.ok || !j.ok || !j.code) {
-        setErr(j.error ?? "Impossibile generare il codice.");
+        setErr(j.error ?? "Unable to generate the code.");
         return;
       }
       setCode(j.code);
     } catch {
-      setErr("Errore di rete.");
+      setErr("Network error.");
     } finally {
       setBusy(false);
     }
@@ -70,7 +70,7 @@ export function CoachCodeCard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setErr("Copia non riuscita.");
+      setErr("Copy failed.");
     }
   }, [code]);
 
@@ -81,23 +81,23 @@ export function CoachCodeCard() {
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
-      aria-label="Il tuo codice coach"
+      aria-label="Your coach code"
     >
       <div className="relative">
-        <h2 className="text-lg font-bold text-white">Il tuo codice</h2>
+        <h2 className="text-lg font-bold text-white">Your code</h2>
         <p className="mt-1 text-sm text-gray-500">
           {disabled && role === "coach"
-            ? "Disponibile dopo abilitazione amministratore."
-            : "Condividilo: l’atleta lo inserisce alla registrazione per essere collegato a te."}
+            ? "Available after administrator approval."
+            : "Share it: the athlete enters it at registration to be linked to you."}
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
           <Pro2Button type="button" disabled={busy || disabled || loadingCode} onClick={() => void generate()}>
-            {busy ? "Generazione…" : code ? "Rigenera codice" : "Genera codice"}
+            {busy ? "Generating…" : code ? "Regenerate code" : "Generate code"}
           </Pro2Button>
           {code ? (
             <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
-              {copied ? "Copiato" : "Copia codice"}
+              {copied ? "Copied" : "Copy code"}
             </Pro2Button>
           ) : null}
         </div>
@@ -112,7 +112,7 @@ export function CoachCodeCard() {
           <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
             <p className="font-mono text-lg font-bold uppercase tracking-[0.25em] text-white">{code}</p>
             <p className="mt-2 text-xs text-gray-500">
-              Rigenerare il codice disattiva quello precedente.
+              Regenerating the code deactivates the previous one.
             </p>
           </div>
         ) : null}

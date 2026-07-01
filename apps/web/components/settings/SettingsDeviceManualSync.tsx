@@ -34,7 +34,7 @@ export function SettingsDeviceManualSync() {
       setStrava({ linked: Boolean(jStrava.linked), error: jStrava.error });
       setWahoo({ linked: Boolean(jWahoo.linked), error: jWahoo.error });
     } catch {
-      setErr("Impossibile verificare i collegamenti.");
+      setErr("Unable to verify the connections.");
       setStrava(null);
       setWahoo(null);
     }
@@ -58,7 +58,7 @@ export function SettingsDeviceManualSync() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Sync manuale dispositivi"
+      aria-label="Manual device sync"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500/80 via-rose-500/80 to-fuchsia-500/80 opacity-70"
@@ -66,12 +66,12 @@ export function SettingsDeviceManualSync() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-300">
-          Dispositivi · sync manuale
+          Devices · manual sync
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Scarica le ultime attività dal cloud del provider in{" "}
-          <code className="text-gray-500">executed_workouts</code> (reality training per Core e CTL). Collega OAuth da{" "}
-          <Pro2Link href="/profile">Profilo</Pro2Link> se non ancora fatto.
+          Download the latest activities from the provider cloud into{" "}
+          <code className="text-gray-500">executed_workouts</code> (reality training for Core and CTL). Connect OAuth from{" "}
+          <Pro2Link href="/profile">Profile</Pro2Link> if not done yet.
         </p>
 
         {err ? (
@@ -84,7 +84,7 @@ export function SettingsDeviceManualSync() {
           <li className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <p className="text-sm font-semibold text-white">Strava</p>
             <p className="mt-1 text-xs text-gray-500">
-              Pull ultimi 14 giorni · <code className="text-gray-600">POST /api/integrations/strava/pull/run</code>
+              Pull last 14 days · <code className="text-gray-600">POST /api/integrations/strava/pull/run</code>
             </p>
             {strava?.error ? <p className="mt-2 text-xs text-amber-300/90">{strava.error}</p> : null}
             <ManualIntegrationPullButton
@@ -92,23 +92,23 @@ export function SettingsDeviceManualSync() {
               athleteId={athleteId}
               linked={Boolean(strava?.linked)}
               endpoint="/api/integrations/strava/pull/run"
-              label="Aggiorna attività Strava"
+              label="Update Strava activities"
             />
             {!strava?.linked ? (
-              <p className="mt-2 text-xs text-gray-500">Strava non collegato — usa Profilo → Collega Strava.</p>
+              <p className="mt-2 text-xs text-gray-500">Strava not connected — use Profile → Connect Strava.</p>
             ) : null}
           </li>
 
           <li className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <p className="text-sm font-semibold text-white">Wahoo</p>
-            <p className="mt-1 text-xs text-gray-500">Workout cloud → executed (se policy workout attiva).</p>
+            <p className="mt-1 text-xs text-gray-500">Workout cloud → executed (if workout policy active).</p>
             {wahoo?.error ? <p className="mt-2 text-xs text-amber-300/90">{wahoo.error}</p> : null}
             <ManualIntegrationPullButton
               className="mt-3"
               athleteId={athleteId}
               linked={Boolean(wahoo?.linked)}
               endpoint="/api/integrations/wahoo/pull/run"
-              label="Aggiorna workout Wahoo"
+              label="Update Wahoo workouts"
             />
           </li>
         </ul>

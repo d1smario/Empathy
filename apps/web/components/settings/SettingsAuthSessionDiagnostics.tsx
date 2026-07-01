@@ -23,7 +23,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Sì" : "No"}
+      {value ? "Yes" : "No"}
     </span>
   );
 }
@@ -58,12 +58,12 @@ export function SettingsAuthSessionDiagnostics() {
         const json = (await res.json()) as SessionPayload;
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Impossibile leggere lo stato sessione.");
+          setErr("Unable to read session state.");
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Richiesta non riuscita.");
+        if (!cancelled) setErr("Request failed.");
       }
     })();
     return () => {
@@ -74,7 +74,7 @@ export function SettingsAuthSessionDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Diagnostica auth Supabase"
+      aria-label="Supabase auth diagnostics"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-500/80 via-teal-500/80 to-emerald-500/80 opacity-70"
@@ -82,15 +82,15 @@ export function SettingsAuthSessionDiagnostics() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-teal-300">
-          Auth · sessione (Supabase SSR)
+          Auth · session (Supabase SSR)
         </p>
         <p className="mt-2 text-sm text-gray-400">
           Endpoint:{" "}
           <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
             /api/auth/session
           </code>
-          . Middleware aggiorna i cookie se{" "}
-          <code className="text-gray-500">NEXT_PUBLIC_SUPABASE_*</code> è configurato.
+          . Middleware refreshes cookies when{" "}
+          <code className="text-gray-500">NEXT_PUBLIC_SUPABASE_*</code> is configured.
         </p>
 
         {err ? (
@@ -108,20 +108,20 @@ export function SettingsAuthSessionDiagnostics() {
 
         {data && data.ok ? (
           <div className="mt-6 font-mono text-xs">
-            <Row label="Progetto Supabase configurato (env pubblico)">
+            <Row label="Supabase project configured (public env)">
               <BoolPill value={data.configured} />
             </Row>
-            <Row label="Sessione valida (cookie)">
+            <Row label="Valid session (cookie)">
               <BoolPill value={data.signedIn} />
             </Row>
             {"authError" in data && data.authError ? (
               <p className="mt-3 text-amber-400">
-                Token/cookie non validi o scaduti (prova logout dal client o ricarica dopo login).
+                Invalid or expired token/cookie (try logging out from the client or reload after login).
               </p>
             ) : null}
             {data.signedIn && data.userId ? (
               <p className="mt-3 text-gray-500">
-                User id (mascherato):{" "}
+                User id (masked):{" "}
                 <span className="text-gray-400">{maskUserId(data.userId)}</span>
               </p>
             ) : null}
@@ -130,7 +130,7 @@ export function SettingsAuthSessionDiagnostics() {
 
         <div className="mt-8 border-t border-white/10 pt-6">
           <Pro2Link href="/access" variant="secondary" className="justify-center">
-            Pagina Access
+            Access page
           </Pro2Link>
         </div>
       </div>

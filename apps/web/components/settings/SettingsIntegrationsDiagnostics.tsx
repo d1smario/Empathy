@@ -31,7 +31,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Sì" : "No"}
+      {value ? "Yes" : "No"}
     </span>
   );
 }
@@ -60,12 +60,12 @@ export function SettingsIntegrationsDiagnostics() {
         const json = (await res.json()) as IntegrationFlagsPayload | { ok?: false };
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Impossibile leggere i flag integrazioni.");
+          setErr("Unable to read integration flags.");
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Richiesta non riuscita.");
+        if (!cancelled) setErr("Request failed.");
       }
     })();
     return () => {
@@ -76,7 +76,7 @@ export function SettingsIntegrationsDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Diagnostica integrazioni"
+      aria-label="Integrations diagnostics"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500/80 via-blue-500/80 to-violet-500/80 opacity-70"
@@ -84,16 +84,16 @@ export function SettingsIntegrationsDiagnostics() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-cyan-300">
-          Integrazioni · presenza env
+          Integrations · env presence
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Solo Sì/No (nessun segreto). Endpoint:{" "}
+          Only Yes/No (no secrets). Endpoint:{" "}
           <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
             /api/settings/integration-flags
           </code>
         </p>
         <p className="mt-1 text-[0.65rem] text-gray-600">
-          In produzione, per il dump JSON con Bearer usa{" "}
+          In production, for the JSON dump with Bearer use{" "}
           <code className="text-gray-500">/api/integrations/status</code> e{" "}
           <code className="text-gray-500">INTEGRATIONS_STATUS_SECRET</code>.
         </p>
@@ -125,25 +125,25 @@ export function SettingsIntegrationsDiagnostics() {
             <Row label="Stripe · webhook secret">
               <BoolPill value={data.integrations.stripeWebhook} />
             </Row>
-            <Row label="Stripe · price Silver">
+            <Row label="Stripe · Silver price">
               <BoolPill value={data.integrations.stripePriceSilver} />
             </Row>
-            <Row label="Stripe · price Gold">
+            <Row label="Stripe · Gold price">
               <BoolPill value={data.integrations.stripePriceGold} />
             </Row>
-            <Row label="Stripe · price Coach Elite">
+            <Row label="Stripe · Coach Elite price">
               <BoolPill value={data.integrations.stripeCoachPriceElite} />
             </Row>
-            <Row label="Stripe · price Coach Pro">
+            <Row label="Stripe · Coach Pro price">
               <BoolPill value={data.integrations.stripeCoachPricePro} />
             </Row>
-            <Row label="Stripe · price Coach Olimpic">
+            <Row label="Stripe · Coach Olimpic price">
               <BoolPill value={data.integrations.stripeCoachPriceOlimpic} />
             </Row>
-            <Row label="Payment link pubblico">
+            <Row label="Public payment link">
               <BoolPill value={data.integrations.stripePaymentLinkPublic} />
             </Row>
-            <Row label="Checkout anonimo abilitato">
+            <Row label="Anonymous checkout enabled">
               <BoolPill value={data.integrations.stripeCheckoutAnonEnabled} />
             </Row>
             <Row label="LogMeal">

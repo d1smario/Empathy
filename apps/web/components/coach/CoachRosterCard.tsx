@@ -65,7 +65,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
         if (!res.ok || !json.ok) {
           if (!rosterCache) {
             setAthletes([]);
-            setErr(("error" in json && json.error) || "Impossibile caricare l’elenco.");
+            setErr(("error" in json && json.error) || "Unable to load the list.");
           }
           return;
         }
@@ -79,7 +79,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
           coachActivation: json.coachActivation ?? null,
         };
       } catch {
-        if (!c && !rosterCache) setErr("Errore di rete.");
+        if (!c && !rosterCache) setErr("Network error.");
       } finally {
         if (!c) setLoading(false);
       }
@@ -92,17 +92,17 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
-      aria-label="Atleti"
+      aria-label="Athletes"
     >
       <div className="relative">
-        <h2 className="text-lg font-bold text-white">Atleti</h2>
-        <p className="mt-1 text-sm text-gray-500">Apri le schede dell&apos;atleta con cui stai lavorando.</p>
+        <h2 className="text-lg font-bold text-white">Athletes</h2>
+        <p className="mt-1 text-sm text-gray-500">Open the dashboards of the athlete you&apos;re working with.</p>
 
         {loading ? <div className="mt-6 h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
 
         {!loading && coachActivation === "suspended" ? (
           <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/20 px-3 py-2 text-sm text-rose-100" role="status">
-            Account coach sospeso: roster non disponibile.
+            Coach account suspended: roster unavailable.
           </p>
         ) : null}
 
@@ -114,7 +114,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
 
         {!loading && !err && athletes.length === 0 ? (
           <p className="mt-4 text-sm text-gray-500">
-            {role === "coach" ? "Nessun atleta collegato. Usa «Invita atleta» qui sotto." : "Nessun profilo da mostrare."}
+            {role === "coach" ? "No linked athlete. Use «Invite athlete» below." : "No profile to show."}
           </p>
         ) : null}
 
@@ -125,14 +125,14 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cerca in tutti i campi…"
+              placeholder="Search all fields…"
               className="w-full rounded-xl border border-white/10 bg-black/30 py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
             />
           </div>
         ) : null}
 
         {!loading && !err && athletes.length > 0 && visibleAthletes.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">Nessun atleta per questa ricerca.</p>
+          <p className="mt-4 text-sm text-gray-500">No athlete for this search.</p>
         ) : null}
 
         {!loading && !err && visibleAthletes.length > 0 ? (
@@ -151,7 +151,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
                   className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden />
-                  Apri schede
+                  Open dashboards
                 </Link>
               </li>
             ))}

@@ -8,24 +8,24 @@ import { Pro2Button } from "@/components/ui/empathy";
 import { cn } from "@/lib/cn";
 
 const COPY = {
-  loading: "Caricamento commissioni…",
-  noSupabase: "Configurazione Supabase mancante.",
-  errPrefix: "Errore",
-  reload: "Ricarica",
-  searchPlaceholder: "Cerca in tutti i campi…",
-  cardAccrued: "Maturate",
-  cardRequested: "Richieste",
-  cardPaid: "Pagate",
-  colDate: "Data",
-  colSale: "Vendita",
-  colAmount: "Importo",
-  colStatus: "Stato",
-  colActions: "Azioni",
-  requestOne: "Richiedi pagamento",
-  requestAll: "Richiedi tutte",
-  empty: "Nessuna commissione ancora — matureranno con le vendite collegate al tuo account.",
-  emptyFiltered: "Nessuna commissione per questo filtro.",
-  actionUnavailable: "Operazione non riuscita: riprova più tardi.",
+  loading: "Loading commissions…",
+  noSupabase: "Missing Supabase configuration.",
+  errPrefix: "Error",
+  reload: "Reload",
+  searchPlaceholder: "Search all fields…",
+  cardAccrued: "Accrued",
+  cardRequested: "Requested",
+  cardPaid: "Paid",
+  colDate: "Date",
+  colSale: "Sale",
+  colAmount: "Amount",
+  colStatus: "Status",
+  colActions: "Actions",
+  requestOne: "Request payment",
+  requestAll: "Request all",
+  empty: "No commissions yet — they will accrue with sales linked to your account.",
+  emptyFiltered: "No commissions for this filter.",
+  actionUnavailable: "Operation failed: please try again later.",
   saleUnknown: "—",
 } as const;
 
@@ -51,18 +51,18 @@ type CommissionRow = {
 };
 
 const STATUS_META: Record<CommissionStatus, { label: string; pill: string }> = {
-  accrued: { label: "Maturata", pill: "border-white/15 bg-white/5 text-gray-300" },
-  requested: { label: "Richiesta", pill: "border-amber-400/40 bg-amber-500/10 text-amber-200" },
-  paid: { label: "Pagata", pill: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" },
-  cancelled: { label: "Annullata", pill: "border-red-400/40 bg-red-500/10 text-red-300" },
+  accrued: { label: "Accrued", pill: "border-white/15 bg-white/5 text-gray-300" },
+  requested: { label: "Requested", pill: "border-amber-400/40 bg-amber-500/10 text-amber-200" },
+  paid: { label: "Paid", pill: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" },
+  cancelled: { label: "Cancelled", pill: "border-red-400/40 bg-red-500/10 text-red-300" },
 };
 
 const FILTERS: { key: "tutte" | CommissionStatus; label: string }[] = [
-  { key: "tutte", label: "Tutte" },
-  { key: "accrued", label: "Maturate" },
-  { key: "requested", label: "Richieste" },
-  { key: "paid", label: "Pagate" },
-  { key: "cancelled", label: "Annullate" },
+  { key: "tutte", label: "All" },
+  { key: "accrued", label: "Accrued" },
+  { key: "requested", label: "Requested" },
+  { key: "paid", label: "Paid" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
 function fmtDate(iso: string | null | undefined): string {
@@ -128,7 +128,7 @@ export function CoachCommissionsView() {
       } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) {
-        setErr(`${COPY.errPrefix}: sessione assente.`);
+        setErr(`${COPY.errPrefix}: no active session.`);
         return;
       }
       const { data, error } = await supabase
@@ -343,9 +343,9 @@ export function CoachCommissionsView() {
                             {COPY.requestOne}
                           </Pro2Button>
                         ) : c.status === "requested" ? (
-                          <span className="text-xs text-gray-500">In lavorazione da Empathy</span>
+                          <span className="text-xs text-gray-500">Being processed by Empathy</span>
                         ) : c.status === "paid" ? (
-                          <span className="text-xs text-gray-500">Evasa {fmtDate(c.paid_at)}</span>
+                          <span className="text-xs text-gray-500">Settled {fmtDate(c.paid_at)}</span>
                         ) : (
                           <span className="text-xs text-gray-600">—</span>
                         )}

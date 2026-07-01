@@ -23,7 +23,7 @@ export function ProfileAthleteCard() {
     if (ctxLoading) return;
     if (!athleteId) {
       setProfile(null);
-      setErr("Nessun atleta attivo.");
+      setErr("No active athlete.");
       setLoading(false);
       return;
     }
@@ -48,7 +48,7 @@ export function ProfileAthleteCard() {
         if (c) return;
         if (!res.ok || !json.ok) {
           setProfile(null);
-          const nextErr = ("error" in json && json.error) || "Lettura non riuscita.";
+          const nextErr = ("error" in json && json.error) || "Read failed.";
           setErr(nextErr);
           athleteCardCache = { profile: null, err: nextErr };
           athleteCardCacheId = athleteId;
@@ -59,7 +59,7 @@ export function ProfileAthleteCard() {
         athleteCardCache = { profile: json.profile, err: null };
         athleteCardCacheId = athleteId;
       } catch {
-        if (!c) setErr("Errore di rete.");
+        if (!c) setErr("Network error.");
       } finally {
         if (!c) setLoading(false);
       }
@@ -72,10 +72,10 @@ export function ProfileAthleteCard() {
   return (
     <section
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
-      aria-label="Profilo atleta"
+      aria-label="Athlete profile"
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-violet-300">Profile · dati reali</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Anagrafica & disponibilità</h2>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-violet-300">Profile · real data</p>
+      <h2 className="mt-2 text-lg font-bold text-white">Personal details & availability</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-40 animate-pulse rounded-full bg-white/10" />
@@ -88,7 +88,7 @@ export function ProfileAthleteCard() {
       ) : null}
 
       {!ctxLoading && !loading && !err && !profile ? (
-        <p className="mt-4 text-sm text-gray-500">Nessuna riga in athlete_profiles per questo id.</p>
+        <p className="mt-4 text-sm text-gray-500">No row in athlete_profiles for this id.</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && profile ? (

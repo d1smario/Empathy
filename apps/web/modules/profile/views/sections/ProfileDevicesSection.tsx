@@ -153,7 +153,7 @@ export function ProfileDevicesSection({
 
   async function disconnectGarmin() {
     if (!activeAthleteId || garminDisconnecting) return;
-    if (!window.confirm("Scollegare Garmin da questo atleta? I dati non verranno più sincronizzati da Garmin.")) {
+    if (!window.confirm("Disconnect Garmin from this athlete? Data will no longer be synced from Garmin.")) {
       return;
     }
     setGarminDisconnecting(true);
@@ -164,17 +164,17 @@ export function ProfileDevicesSection({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string; garminPartnerDeregistered?: boolean };
       if (!r.ok) {
-        window.alert(j.error ?? "Scollegamento non riuscito.");
+        window.alert(j.error ?? "Disconnection failed.");
         return;
       }
       if (j.garminPartnerDeregistered === false) {
         window.alert(
-          "Collegamento rimosso in Empathy; se Garmin non ha accettato la revoca, rimuovi il consenso anche da Garmin Connect.",
+          "Link removed in Empathy; if Garmin did not accept the revocation, remove the consent from Garmin Connect as well.",
         );
       }
       setGarminLink({ linked: false });
     } catch {
-      window.alert("Errore di rete durante lo scollegamento.");
+      window.alert("Network error during disconnection.");
     } finally {
       setGarminDisconnecting(false);
     }
@@ -200,14 +200,14 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setWahooPullNotice(
-          `Pull workout completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          `Workout pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
         );
       } else {
-        setWahooPullNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setWahooPullNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setWahooPullNotice("Errore di rete.");
+      setWahooPullNotice("Network error.");
     } finally {
       setWahooPullBusy(false);
     }
@@ -233,14 +233,14 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setWhoopPullNotice(
-          `Pull completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
         );
       } else {
-        setWhoopPullNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setWhoopPullNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setWhoopPullNotice("Errore di rete.");
+      setWhoopPullNotice("Network error.");
     } finally {
       setWhoopPullBusy(false);
     }
@@ -266,14 +266,14 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setPolarPullNotice(
-          `Pull completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
         );
       } else {
-        setPolarPullNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setPolarPullNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setPolarPullNotice("Errore di rete.");
+      setPolarPullNotice("Network error.");
     } finally {
       setPolarPullBusy(false);
     }
@@ -299,14 +299,14 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setSuuntoPullNotice(
-          `Pull completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
         );
       } else {
-        setSuuntoPullNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setSuuntoPullNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setSuuntoPullNotice("Errore di rete.");
+      setSuuntoPullNotice("Network error.");
     } finally {
       setSuuntoPullBusy(false);
     }
@@ -332,14 +332,14 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setKarooPullNotice(
-          `Pull completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
         );
       } else {
-        setKarooPullNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setKarooPullNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setKarooPullNotice("Errore di rete.");
+      setKarooPullNotice("Network error.");
     } finally {
       setKarooPullBusy(false);
     }
@@ -351,51 +351,51 @@ export function ProfileDevicesSection({
     <div>
       <div className="profile-subpanel tone-slate" style={{ marginTop: "12px" }}>
         <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Devices</h4>
-        <p className="muted-copy">Collega i tuoi dispositivi per sincronizzare automaticamente allenamenti e dati di salute.</p>
+        <p className="muted-copy">Connect your devices to automatically sync workouts and health data.</p>
         {garminReturn === "connected" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Garmin collegato ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Garmin connected ✓</p>
         ) : null}
         {garminReturn && garminReturn !== "connected" ? (
           <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
             {garminReturn === "server_config"
-              ? "Integrazione Garmin non ancora configurata sul server (credenziali OAuth mancanti)."
+              ? "Garmin integration is not yet configured on the server (missing OAuth credentials)."
               : garminReturn === "forbidden"
-                ? "Non hai accesso ai dati di questo atleta."
+                ? "You do not have access to this athlete's data."
                 : garminReturn === "missing_athlete"
-                  ? "Nessun atleta selezionato."
-                  : "Collegamento non riuscito, riprova."}
+                  ? "No athlete selected."
+                  : "Connection failed, try again."}
           </p>
         ) : null}
         {whoopReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>WHOOP collegato ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>WHOOP connected ✓</p>
         ) : null}
         {whoopReturn && whoopReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
         ) : null}
         {polarReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Polar collegato ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Polar connected ✓</p>
         ) : null}
         {polarReturn && polarReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
         ) : null}
         {wahooReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Wahoo collegato ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Wahoo connected ✓</p>
         ) : null}
         {wahooReturn && wahooReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
         ) : null}
         {stravaReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Strava collegato ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Strava connected ✓</p>
         ) : null}
         {stravaReturn && stravaReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Collegamento non riuscito, riprova.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
         ) : null}
         {activeAthleteId && garminLink && whoopLink && wahooLink && stravaLink ? (
           <div className="flex flex-col gap-2" style={{ marginTop: 12 }}>
             {garminLink.linked ? (
-              <p className="muted-copy text-sm">Garmin collegato</p>
+              <p className="muted-copy text-sm">Garmin connected</p>
             ) : (
-              <p className="muted-copy text-sm">Garmin non collegato</p>
+              <p className="muted-copy text-sm">Garmin not connected</p>
             )}
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <a
@@ -404,7 +404,7 @@ export function ProfileDevicesSection({
                 rel="noopener noreferrer"
                 className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
               >
-                {garminLink.linked ? "Ricollega Garmin" : "Collega Garmin"}
+                {garminLink.linked ? "Reconnect Garmin" : "Connect Garmin"}
               </a>
               {garminLink.linked ? (
                 <Pro2Button
@@ -414,7 +414,7 @@ export function ProfileDevicesSection({
                   className="border border-rose-500/40 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25"
                   onClick={() => void disconnectGarmin()}
                 >
-                  {garminDisconnecting ? "Scollegamento…" : "Scollega Garmin"}
+                  {garminDisconnecting ? "Disconnecting…" : "Disconnect Garmin"}
                 </Pro2Button>
               ) : null}
             </div>
@@ -428,9 +428,9 @@ export function ProfileDevicesSection({
                 WHOOP
               </h4>
               {whoopLink.linked ? (
-                <p className="muted-copy text-sm">WHOOP collegato</p>
+                <p className="muted-copy text-sm">WHOOP connected</p>
               ) : (
-                <p className="muted-copy text-sm">WHOOP non collegato</p>
+                <p className="muted-copy text-sm">WHOOP not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -439,7 +439,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {whoopLink.linked ? "Ricollega WHOOP" : "Collega WHOOP"}
+                  {whoopLink.linked ? "Reconnect WHOOP" : "Connect WHOOP"}
                 </a>
                 {whoopLink.linked ? (
                   <Pro2Button
@@ -449,7 +449,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runWhoopPullNow()}
                   >
-                    {whoopPullBusy ? "Pull…" : "Aggiorna dati WHOOP"}
+                    {whoopPullBusy ? "Pull…" : "Refresh WHOOP data"}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -467,9 +467,9 @@ export function ProfileDevicesSection({
                 Polar
               </h4>
               {polarLink?.linked ? (
-                <p className="muted-copy text-sm">Polar collegato</p>
+                <p className="muted-copy text-sm">Polar connected</p>
               ) : (
-                <p className="muted-copy text-sm">Polar non collegato</p>
+                <p className="muted-copy text-sm">Polar not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -478,7 +478,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {polarLink?.linked ? "Ricollega Polar" : "Collega Polar"}
+                  {polarLink?.linked ? "Reconnect Polar" : "Connect Polar"}
                 </a>
                 {polarLink?.linked ? (
                   <Pro2Button
@@ -488,7 +488,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runPolarPullNow()}
                   >
-                    {polarPullBusy ? "Pull…" : "Aggiorna dati Polar"}
+                    {polarPullBusy ? "Pull…" : "Refresh Polar data"}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -506,15 +506,15 @@ export function ProfileDevicesSection({
                 Suunto
               </h4>
               {suuntoReturn === "ok" ? (
-                <p className="text-sm text-emerald-300/90">Suunto collegato ✓</p>
+                <p className="text-sm text-emerald-300/90">Suunto connected ✓</p>
               ) : null}
               {suuntoReturn && suuntoReturn !== "ok" ? (
-                <p className="text-sm text-rose-400/90">Collegamento non riuscito, riprova.</p>
+                <p className="text-sm text-rose-400/90">Connection failed, try again.</p>
               ) : null}
               {suuntoLink?.linked ? (
-                <p className="muted-copy text-sm">Suunto collegato</p>
+                <p className="muted-copy text-sm">Suunto connected</p>
               ) : (
-                <p className="muted-copy text-sm">Suunto non collegato</p>
+                <p className="muted-copy text-sm">Suunto not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -523,7 +523,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {suuntoLink?.linked ? "Ricollega Suunto" : "Collega Suunto"}
+                  {suuntoLink?.linked ? "Reconnect Suunto" : "Connect Suunto"}
                 </a>
                 {suuntoLink?.linked ? (
                   <Pro2Button
@@ -533,7 +533,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runSuuntoPullNow()}
                   >
-                    {suuntoPullBusy ? "Pull…" : "Aggiorna dati Suunto"}
+                    {suuntoPullBusy ? "Pull…" : "Refresh Suunto data"}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -551,15 +551,15 @@ export function ProfileDevicesSection({
                 Karoo (Hammerhead)
               </h4>
               {karooReturn === "ok" ? (
-                <p className="text-sm text-emerald-300/90">Karoo collegato ✓</p>
+                <p className="text-sm text-emerald-300/90">Karoo connected ✓</p>
               ) : null}
               {karooReturn && karooReturn !== "ok" ? (
-                <p className="text-sm text-rose-400/90">Collegamento non riuscito, riprova.</p>
+                <p className="text-sm text-rose-400/90">Connection failed, try again.</p>
               ) : null}
               {karooLink?.linked ? (
-                <p className="muted-copy text-sm">Karoo collegato</p>
+                <p className="muted-copy text-sm">Karoo connected</p>
               ) : (
-                <p className="muted-copy text-sm">Karoo non collegato</p>
+                <p className="muted-copy text-sm">Karoo not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -568,7 +568,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {karooLink?.linked ? "Ricollega Karoo" : "Collega Karoo"}
+                  {karooLink?.linked ? "Reconnect Karoo" : "Connect Karoo"}
                 </a>
                 {karooLink?.linked ? (
                   <Pro2Button
@@ -578,7 +578,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runKarooPullNow()}
                   >
-                    {karooPullBusy ? "Pull…" : "Aggiorna dati Karoo"}
+                    {karooPullBusy ? "Pull…" : "Refresh Karoo data"}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -593,10 +593,10 @@ export function ProfileDevicesSection({
             >
               <h4 className="profile-editor-subtitle" style={{ marginBottom: 8 }}>
                 <span className="profile-kpi-dot" />
-                Zepp <span className="text-white/50">· in arrivo</span>
+                Zepp <span className="text-white/50">· coming soon</span>
               </h4>
               <p className="muted-copy text-sm">
-                Integrazione Zepp in arrivo: il collegamento sarà attivato a breve.
+                Zepp integration coming soon: the connection will be enabled shortly.
               </p>
             </div>
 
@@ -609,9 +609,9 @@ export function ProfileDevicesSection({
                 Wahoo Cloud
               </h4>
               {wahooLink.linked ? (
-                <p className="muted-copy text-sm">Wahoo collegato</p>
+                <p className="muted-copy text-sm">Wahoo connected</p>
               ) : (
-                <p className="muted-copy text-sm">Wahoo non collegato</p>
+                <p className="muted-copy text-sm">Wahoo not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -620,7 +620,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {wahooLink.linked ? "Ricollega Wahoo" : "Collega Wahoo"}
+                  {wahooLink.linked ? "Reconnect Wahoo" : "Connect Wahoo"}
                 </a>
                 {wahooLink.linked ? (
                   <Pro2Button
@@ -630,7 +630,7 @@ export function ProfileDevicesSection({
                     className="border border-sky-500/35 bg-sky-500/10 text-sky-50 hover:bg-sky-500/20"
                     onClick={() => void runWahooPullNow()}
                   >
-                    {wahooPullBusy ? "Pull…" : "Aggiorna workout Wahoo"}
+                    {wahooPullBusy ? "Pull…" : "Refresh Wahoo workouts"}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -648,9 +648,9 @@ export function ProfileDevicesSection({
                 Strava
               </h4>
               {stravaLink.linked ? (
-                <p className="muted-copy text-sm">Strava collegato</p>
+                <p className="muted-copy text-sm">Strava connected</p>
               ) : (
-                <p className="muted-copy text-sm">Strava non collegato</p>
+                <p className="muted-copy text-sm">Strava not connected</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -659,13 +659,13 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-orange-500/35 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-50 hover:bg-orange-500/20"
                 >
-                  {stravaLink.linked ? "Ricollega Strava" : "Collega Strava"}
+                  {stravaLink.linked ? "Reconnect Strava" : "Connect Strava"}
                 </a>
                 <ManualIntegrationPullButton
                   athleteId={activeAthleteId}
                   linked={Boolean(stravaLink.linked)}
                   endpoint="/api/integrations/strava/pull/run"
-                  label="Aggiorna attività Strava"
+                  label="Refresh Strava activities"
                 />
               </div>
             </div>
@@ -673,9 +673,9 @@ export function ProfileDevicesSection({
         ) : null}
         {hasActivePlan ? (
           <div className="mt-6 border-t border-white/10 pt-5">
-            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Quali dati prendere dai dispositivi</h4>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Which data to pull from devices</h4>
             <p className="muted-copy" style={{ marginBottom: 8 }}>
-              Scegli da quale dispositivo arrivano sonno, recupero e allenamenti, e quali dati ogni device può sincronizzare.
+              Choose which device provides sleep, recovery and workouts, and which data each device can sync.
             </p>
             <div className="flex flex-col gap-6" style={{ marginTop: 8 }}>
               <SettingsDataSourcePreference />

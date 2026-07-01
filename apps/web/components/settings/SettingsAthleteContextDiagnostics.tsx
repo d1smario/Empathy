@@ -27,7 +27,7 @@ export function SettingsAthleteContextDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Contesto atleta attivo"
+      aria-label="Active athlete context"
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500/80 via-pink-500/80 to-purple-500/80 opacity-70"
@@ -35,12 +35,12 @@ export function SettingsAthleteContextDiagnostics() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-300">
-          Athlete · contesto (Pro 2)
+          Athlete · context (Pro 2)
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Stesso flusso dati di V1 (liste da Supabase, bootstrap <code className="text-gray-500">/api/access/ensure-profile</code>
-          ). Chiave locale coach: <code className="text-pink-300">empathy_active_athlete_id</code>. Merge duplicati email
-          server-side resta su V1 (<code className="text-gray-500">/api/athletes/repair</code>, service role).
+          Same data flow as V1 (lists from Supabase, bootstrap <code className="text-gray-500">/api/access/ensure-profile</code>
+          ). Coach local key: <code className="text-pink-300">empathy_active_athlete_id</code>. Server-side email duplicate merge
+          stays on V1 (<code className="text-gray-500">/api/athletes/repair</code>, service role).
         </p>
 
         {loading ? (
@@ -50,21 +50,21 @@ export function SettingsAthleteContextDiagnostics() {
           </div>
         ) : (
           <div className="mt-6 font-mono text-xs">
-            <Row label="Sessione" value={signedIn ? "attiva" : "assente"} />
-            <Row label="User id (mascherato)" value={maskId(userId)} />
-            <Row label="Ruolo" value={role} />
-            <Row label="Atleta attivo (risolto)" value={maskId(athleteId)} />
-            <Row label="Profili visibili (lista)" value={String(athletes.length)} />
+            <Row label="Session" value={signedIn ? "active" : "absent"} />
+            <Row label="User id (masked)" value={maskId(userId)} />
+            <Row label="Role" value={role} />
+            <Row label="Active athlete (resolved)" value={maskId(athleteId)} />
+            <Row label="Visible profiles (list)" value={String(athletes.length)} />
             {signedIn && role === "private" ? (
               <div className="mt-5 border-t border-white/10 pt-5">
                 <p className="text-left text-sm font-sans text-gray-400">
-                  Sei <strong className="text-gray-200">privato</strong> (atleta collegato al tuo account). Per un account{" "}
-                  <strong className="text-gray-200">coach</strong> serve accedere con scelta <strong className="text-gray-200">Coach</strong>{" "}
-                  in fase di login/registrazione su{" "}
+                  You are <strong className="text-gray-200">private</strong> (athlete linked to your account). For a{" "}
+                  <strong className="text-gray-200">coach</strong> account you need to sign in choosing <strong className="text-gray-200">Coach</strong>{" "}
+                  during login/registration on{" "}
                   <Pro2Link href="/access" variant="secondary" className="inline-flex border border-white/15 px-2 py-0.5 text-xs">
                     /access
                   </Pro2Link>{" "}
-                  (non si cambia ruolo da Impostazioni).
+                  (you cannot change role from Settings).
                 </p>
               </div>
             ) : null}

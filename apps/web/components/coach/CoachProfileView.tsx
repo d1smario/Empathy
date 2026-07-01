@@ -10,29 +10,29 @@ import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { Pro2Button } from "@/components/ui/empathy";
 
 const COPY = {
-  noSupabase: "Configurazione Supabase mancante: profilo non disponibile.",
-  loading: "Caricamento profilo…",
-  noSession: "Nessuna sessione attiva. Accedi di nuovo per vedere il profilo.",
+  noSupabase: "Missing Supabase configuration: profile unavailable.",
+  loading: "Loading profile…",
+  noSession: "No active session. Sign in again to view your profile.",
   accountTitle: "Account",
   email: "Email",
-  registeredAt: "Registrazione",
-  lastSignInAt: "Ultimo accesso",
-  passwordTitle: "Cambio password",
-  passwordIntro: "Imposta una nuova password per il tuo account coach.",
-  newPassword: "Nuova password",
-  confirmPassword: "Conferma password",
-  showPassword: "Mostra password",
-  hidePassword: "Nascondi password",
-  mismatch: "Le password non coincidono.",
-  tooShort: "La password deve avere almeno 8 caratteri.",
-  submit: "Aggiorna password",
-  submitting: "Aggiornamento…",
-  success: "Password aggiornata.",
-  genericError: "Aggiornamento password non riuscito. Riprova.",
-  sessionTitle: "Sessione",
-  sessionIntro: "Chiudi la sessione su questo dispositivo.",
-  signOut: "Esci",
-  signingOut: "Uscita…",
+  registeredAt: "Registration",
+  lastSignInAt: "Last sign-in",
+  passwordTitle: "Change password",
+  passwordIntro: "Set a new password for your coach account.",
+  newPassword: "New password",
+  confirmPassword: "Confirm password",
+  showPassword: "Show password",
+  hidePassword: "Hide password",
+  mismatch: "The passwords do not match.",
+  tooShort: "The password must be at least 8 characters.",
+  submit: "Update password",
+  submitting: "Updating…",
+  success: "Password updated.",
+  genericError: "Password update failed. Try again.",
+  sessionTitle: "Session",
+  sessionIntro: "Sign out of the session on this device.",
+  signOut: "Sign out",
+  signingOut: "Signing out…",
 } as const;
 
 type AccountInfo = {
@@ -59,16 +59,16 @@ function fmtDateTime(iso: string | null | undefined): string {
 function formatUpdateError(message: string): string {
   const m = message.toLowerCase();
   if (m.includes("different from the old password") || m.includes("should be different")) {
-    return "La nuova password deve essere diversa da quella attuale.";
+    return "The new password must be different from the current one.";
   }
   if (m.includes("password") && (m.includes("at least") || m.includes("too short") || m.includes("length"))) {
     return COPY.tooShort;
   }
   if (m.includes("session") || m.includes("not authenticated") || m.includes("jwt")) {
-    return "Sessione scaduta: accedi di nuovo e riprova.";
+    return "Session expired: sign in again and retry.";
   }
   if (m.includes("rate limit") || m.includes("too many")) {
-    return "Troppi tentativi: attendi qualche minuto e riprova.";
+    return "Too many attempts: wait a few minutes and retry.";
   }
   return COPY.genericError;
 }
@@ -77,20 +77,20 @@ function formatUpdateError(message: string): string {
 function coachStatusBadge(status: string | null): { label: string; className: string; Icon: typeof ShieldCheck } {
   if (status === "approved") {
     return {
-      label: "Coach attivo",
+      label: "Coach active",
       className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200",
       Icon: ShieldCheck,
     };
   }
   if (status === "suspended") {
     return {
-      label: "Account sospeso",
+      label: "Account suspended",
       className: "border-rose-400/40 bg-rose-500/10 text-rose-200",
       Icon: ShieldAlert,
     };
   }
   return {
-    label: "In attesa di approvazione",
+    label: "Awaiting approval",
     className: "border-amber-400/40 bg-amber-500/10 text-amber-200",
     Icon: Clock,
   };
