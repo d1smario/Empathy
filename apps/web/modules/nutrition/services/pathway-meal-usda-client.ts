@@ -34,7 +34,7 @@ export async function fetchUsdaFoodsForCatalogIds(catalogIds: string[]): Promise
   const foods = j.foods ?? [];
   const usdaConfigured = res.status !== 503;
   const error =
-    res.ok ? (j.error ?? null) : j.error ?? (usdaConfigured ? "Errore USDA." : "USDA_API_KEY non configurata (server).");
+    res.ok ? (j.error ?? null) : j.error ?? (usdaConfigured ? "USDA error." : "USDA_API_KEY not configured (server).");
 
   return {
     foods: mergeAndRankFoods(foods, 12),

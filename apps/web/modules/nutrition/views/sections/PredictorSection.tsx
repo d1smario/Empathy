@@ -56,11 +56,11 @@ export function PredictorSection({
   return (
     <section id="nutrition-predictor" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Previsione</h2>
-        <p className="mt-1 text-sm text-gray-400">Stima consumo energetico, CHO e rischio deplezione glicogeno.</p>
+        <h2 className="text-lg font-bold text-white">Prediction</h2>
+        <p className="mt-1 text-sm text-gray-400">Estimate energy expenditure, CHO and glycogen depletion risk.</p>
       </header>
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-        <h3 className="viz-title">Previsione performance · consumo e rischio esaurimento energetico</h3>
+        <h3 className="viz-title">Performance prediction · consumption and energy depletion risk</h3>
         <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
           <button
             type="button"
@@ -71,7 +71,7 @@ export function PredictorSection({
             }`}
             onClick={() => setPredictorUsePlanDay((v) => !v)}
           >
-            {predictorUsePlanDay ? "Contesto giorno attivo" : "Modalita manuale"}
+            {predictorUsePlanDay ? "Active day context" : "Manual mode"}
           </button>
           {predictorUsePlanDay && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[0.7rem] font-semibold tabular-nums text-amber-300">
@@ -88,9 +88,9 @@ export function PredictorSection({
               ))}
             </select>
           </div>
-          <div className="form-group"><label className="form-label">Distanza (km)</label><input className="form-input" type="number" value={predictorDistanceKm} onChange={(e) => setPredictorDistanceKm(n(e.target.value, 0))} /></div>
+          <div className="form-group"><label className="form-label">Distance (km)</label><input className="form-input" type="number" value={predictorDistanceKm} onChange={(e) => setPredictorDistanceKm(n(e.target.value, 0))} /></div>
           <div className="form-group">
-            <label className="form-label">Tempo previsto (min)</label>
+            <label className="form-label">Expected time (min)</label>
             <input
               className="form-input"
               type="number"
@@ -100,7 +100,7 @@ export function PredictorSection({
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Intensita % FTP</label>
+            <label className="form-label">Intensity % FTP</label>
             <input
               className="form-input"
               type="number"
@@ -123,12 +123,12 @@ export function PredictorSection({
           ))}
         </div>
         <details className="collapsible-card">
-          <summary>Note previsione</summary>
+          <summary>Prediction notes</summary>
           <div className="alert-warning" style={{ marginBottom: 0 }}>
-            Energia evento: {round(predictor.totalEnergy)} kcal · Rifornimento totale suggerito: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
+            Event energy: {round(predictor.totalEnergy)} kcal · Suggested total fueling: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
             {predictor.exhaustionHours < predictor.eventHours
-              ? ` Rischio esaurimento prima del termine: riduci ritmo verso ${predictor.maxSustainablePct}% FTP o aumenta rifornimento.`
-              : " Ritmo sostenibile con il rifornimento impostato."}
+              ? ` Depletion risk before the finish: lower your pace toward ${predictor.maxSustainablePct}% FTP or increase fueling.`
+              : " Sustainable pace with the configured fueling."}
           </div>
         </details>
       </section>

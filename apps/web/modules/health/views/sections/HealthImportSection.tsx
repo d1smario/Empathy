@@ -101,18 +101,18 @@ export function HealthImportSection({
     <section
       id="mod-import"
       className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
-      aria-label="Carica un esame"
+      aria-label="Upload an exam"
     >
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Referti</p>
-          <h2 className="mt-1 text-lg font-bold text-white">Carica un esame</h2>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Reports</p>
+          <h2 className="mt-1 text-lg font-bold text-white">Upload an exam</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Scegli data e tipo del referto, poi carica il file (PDF o foto). Lo leggiamo e lo aggiungiamo ai tuoi trend.
+            Choose the date and type of the report, then upload the file (PDF or photo). We&apos;ll read it and add it to your trends.
           </p>
         </div>
         <label className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-gray-400">
-          Data campione
+          Sample date
           <input
             type="date"
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-1 font-mono tabular-nums text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
@@ -122,7 +122,7 @@ export function HealthImportSection({
         </label>
       </div>
 
-      <p className="mt-5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Tipo di esame</p>
+      <p className="mt-5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Exam type</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {HEALTH_EXAM_TYPES.map((t) => {
           const Icon = t.icon;
@@ -183,18 +183,18 @@ export function HealthImportSection({
         onClick={() => fileRef.current?.click()}
       >
         {busy ? (
-          "Invio…"
+          "Sending…"
         ) : (
           <>
             <Upload className="mr-2 h-5 w-5" strokeWidth={2.5} />
-            Carica esame
+            Upload exam
           </>
         )}
       </Pro2Button>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
         {timelineErr ? <span className="text-amber-300">{timelineErr}</span> : null}
-        {loadingTimeline ? <span>Sincronizzazione archivio…</span> : null}
+        {loadingTimeline ? <span>Syncing archive…</span> : null}
       </div>
     </section>
   );

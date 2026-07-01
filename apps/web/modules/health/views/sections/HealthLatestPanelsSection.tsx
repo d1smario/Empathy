@@ -41,14 +41,14 @@ export function HealthLatestPanelsSection({
     <section
       id="mod-ultimo-referto"
       className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
-      aria-label="Valori ultimo referto per tipo"
+      aria-label="Latest report values by type"
     >
       <h2 className="text-center font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-        Ultimo referto caricato · valori estratti
+        Latest uploaded report · extracted values
       </h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-gray-400">
-        Un solo esame basta: qui vedi i campi strutturati dell&apos;ultimo referto per ogni tipo. I trend nel tempo si
-        riempiono quando ci sono più punti.
+        A single test is enough: here you see the structured fields of the latest report for each type. Trends over time
+        fill in when there are more data points.
       </p>
       <div className="mt-5 space-y-4">
         {bloodRow ? (

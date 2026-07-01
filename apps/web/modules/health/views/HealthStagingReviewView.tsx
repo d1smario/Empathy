@@ -71,24 +71,24 @@ function fieldFromPatch(p: Record<string, unknown>): EditableField | null {
 
 function confidenceBadge(confidence: number): { label: string; className: string } {
   if (confidence >= 0.8) {
-    return { label: "alta", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
+    return { label: "high", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
   }
   if (confidence >= 0.55) {
-    return { label: "media", className: "border-amber-500/40 bg-amber-500/10 text-amber-200" };
+    return { label: "medium", className: "border-amber-500/40 bg-amber-500/10 text-amber-200" };
   }
-  return { label: "bassa", className: "border-rose-500/40 bg-rose-500/10 text-rose-200" };
+  return { label: "low", className: "border-rose-500/40 bg-rose-500/10 text-rose-200" };
 }
 
 function formatPanelTitle(panel: HealthStagingPanelSnapshot | null): string {
-  if (!panel) return "Referto";
+  if (!panel) return "Report";
   const t = panel.type ?? "";
   const labels: Record<string, string> = {
-    blood: "Sangue",
+    blood: "Blood",
     microbiota: "Microbiota",
-    epigenetics: "Epigenetica",
-    hormones: "Ormoni",
-    inflammation: "Infiammazione",
-    oxidative_stress: "Stress ossidativo",
+    epigenetics: "Epigenetics",
+    hormones: "Hormones",
+    inflammation: "Inflammation",
+    oxidative_stress: "Oxidative stress",
   };
   const label = labels[t] ?? t;
   return panel.sampleDate ? `${label} · ${panel.sampleDate}` : label;
@@ -120,7 +120,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
       const r = await fetchHealthStagingRunDetail(runId);
       if (cancelled) return;
       if (!r.ok || !r.run) {
-        setError(r.error ?? "Review non disponibile");
+        setError(r.error ?? "Review not available");
         setLoading(false);
         return;
       }
@@ -163,7 +163,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
         confidence: f.confidence,
       }));
     if (!confirmed.length) {
-      setToast("Nessun campo selezionato.");
+      setToast("No field selected.");
       return;
     }
     setBusy("confirm");
@@ -175,11 +175,11 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     });
     setBusy(null);
     if (!res.ok) {
-      setToast(res.error ?? "Conferma fallita");
+      setToast(res.error ?? "Confirmation failed");
       return;
     }
     setDone(true);
-    setToast(`${res.confirmedCount ?? confirmed.length} parametri inseriti nell'archivio.`);
+    setToast(`${res.confirmedCount ?? confirmed.length} parameters added to the archive.`);
   }
 
   async function handleReject() {
@@ -193,11 +193,11 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     });
     setBusy(null);
     if (!res.ok) {
-      setToast(res.error ?? "Aggiornamento staging fallito");
+      setToast(res.error ?? "Staging update failed");
       return;
     }
     setDone(true);
-    setToast("Review rifiutata.");
+    setToast("Review rejected.");
   }
 
   const triggerSource = run?.triggerSource ?? null;
@@ -208,7 +208,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Health · Review referto"
+      eyebrow="Health · Report review"
       eyebrowClassName={moduleEyebrowClass("health")}
       title={formatPanelTitle(panel)}
       description={
@@ -216,13 +216,13 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
           <ShieldCheck className="inline h-4 w-4 text-emerald-400" />
           {showTech ? (
             <span>
-              Conferma assistita: l&apos;AI ha proposto i valori, tu li validi e diventano archivio. Niente entra in
-              archivio senza il tuo ok.
+              Assisted confirmation: the AI proposed the values, you validate them and they become the archive. Nothing
+              enters the archive without your ok.
             </span>
           ) : (
             <span>
-              I tuoi referti sono in revisione. Qui sotto trovi i valori letti: diventano parte del tuo archivio dopo la
-              validazione del coach.
+              Your reports are under review. Below you&apos;ll find the values read: they become part of your archive after
+              validation by the coach.
             </span>
           )}
         </span>
@@ -234,21 +234,21 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
             href={backToHealthHref}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 transition hover:border-fuchsia-500/40 hover:text-white"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Health
           </Link>
         ) : (
           // Fallback inerte: solo se l'href scoped non è ricostruibile (scope coach senza
           // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
-            title="Disponibile nella scheda dedicata (v2)"
+            title="Available in the dedicated tab (v2)"
             className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 opacity-50 transition"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Torna a Health
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Health
           </span>
         )}
         {showTech && detectedProvider ? (
           <span className="rounded-md border border-fuchsia-500/30 bg-fuchsia-950/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-fuchsia-200">
-            Lab rilevato: {detectedProvider}
+            Lab detected: {detectedProvider}
           </span>
         ) : null}
         {showTech && triggerSource ? (
@@ -258,43 +258,43 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
         ) : null}
         {showTech ? (
           <span className="rounded-md border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-zinc-400">
-            Confidence media: {(overallConfidence * 100).toFixed(0)}%
+            Average confidence: {(overallConfidence * 100).toFixed(0)}%
           </span>
         ) : null}
       </div>
 
       {loading ? (
-        <p className="text-sm text-zinc-500">Caricamento review…</p>
+        <p className="text-sm text-zinc-500">Loading review…</p>
       ) : error ? (
         <p className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-4 py-3 text-sm text-rose-200">{error}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Pane sinistro — file originale */}
           <section className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">Documento originale</h2>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">Original document</h2>
             {signedUrl ? (
               /\.pdf(\?|$)/i.test(signedUrl) ? (
                 <iframe
                   src={signedUrl}
                   className="h-[60vh] max-h-[640px] min-h-[360px] w-full rounded-md border border-white/10 bg-white sm:h-[640px]"
-                  title="Documento referto"
+                  title="Report document"
                 />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={signedUrl}
-                  alt="Referto caricato"
+                  alt="Uploaded report"
                   className="max-h-[640px] w-full rounded-md border border-white/10 bg-black object-contain"
                 />
               )
             ) : showTech ? (
               <p className="text-xs text-zinc-500">
-                File non disponibile nello storage (HEALTH_UPLOADS_BUCKET non configurato o file scaduto). Puoi comunque
-                confermare i valori controllando le proposte sulla destra.
+                File not available in storage (HEALTH_UPLOADS_BUCKET not configured or file expired). You can still
+                confirm the values by checking the proposals on the right.
               </p>
             ) : (
               <p className="text-xs text-zinc-500">
-                Il documento originale non è al momento disponibile. I valori letti dal referto sono mostrati qui a fianco.
+                The original document is not available at the moment. The values read from the report are shown alongside.
               </p>
             )}
           </section>
@@ -303,9 +303,9 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
           <section className="rounded-2xl border border-fuchsia-500/30 bg-black/40 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wider text-fuchsia-200">
-                {showTech ? `Valori proposti · ${fields.length} campi` : `Valori letti · ${fields.length} parametri`}
+                {showTech ? `Proposed values · ${fields.length} fields` : `Read values · ${fields.length} parameters`}
               </h2>
-              {showTech ? <span className="text-[11px] text-zinc-500">{enabledCount} attivi</span> : null}
+              {showTech ? <span className="text-[11px] text-zinc-500">{enabledCount} active</span> : null}
             </div>
 
             <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[600px]">
@@ -326,7 +326,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                           checked={f.enabled}
                           onChange={(e) => updateField(i, { enabled: e.target.checked })}
                           className="mt-1 h-4 w-4 accent-fuchsia-500"
-                          aria-label={`Attiva campo ${f.field}`}
+                          aria-label={`Enable field ${f.field}`}
                         />
                       ) : null}
                       <div className="flex-1">
@@ -364,7 +364,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                                 type="button"
                                 onClick={() => updateField(i, { value: f.proposedValue })}
                                 className="text-[10px] text-fuchsia-300 hover:text-fuchsia-200"
-                                title="Ripristina valore proposto"
+                                title="Restore proposed value"
                               >
                                 ↺
                               </button>
@@ -383,7 +383,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               })}
               {fields.length === 0 ? (
                 <p className="text-xs text-zinc-500">
-                  {showTech ? "Nessuna proposta nel run di staging." : "Nessun valore letto dal referto."}
+                  {showTech ? "No proposals in the staging run." : "No values read from the report."}
                 </p>
               ) : null}
             </div>
@@ -391,7 +391,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
             {showTech ? (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-zinc-500">
-                  Solo i campi attivi e con valore vengono scritti in archivio.
+                  Only active fields with a value are written to the archive.
                 </span>
                 <div className="flex gap-2">
                   <Pro2Button
@@ -402,10 +402,10 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                     onClick={handleReject}
                   >
                     {busy === "reject" ? (
-                      "Rifiuto…"
+                      "Rejecting…"
                     ) : (
                       <>
-                        <X className="mr-1.5 h-4 w-4" /> Rifiuta
+                        <X className="mr-1.5 h-4 w-4" /> Reject
                       </>
                     )}
                   </Pro2Button>
@@ -416,10 +416,10 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                     onClick={handleConfirm}
                   >
                     {busy === "confirm" ? (
-                      "Salvo…"
+                      "Saving…"
                     ) : (
                       <>
-                        <Check className="mr-1.5 h-4 w-4" /> Conferma {enabledCount ? `(${enabledCount})` : ""}
+                        <Check className="mr-1.5 h-4 w-4" /> Confirm {enabledCount ? `(${enabledCount})` : ""}
                       </>
                     )}
                   </Pro2Button>
@@ -427,14 +427,14 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               </div>
             ) : (
               <p className="mt-4 rounded-md border border-white/10 bg-black/40 px-3 py-2 text-[11px] text-zinc-400">
-                Questi valori sono in attesa di validazione dal tuo coach prima di entrare in archivio.
+                These values are awaiting validation by your coach before entering the archive.
               </p>
             )}
 
             {showTech && toast ? (
               <p
                 className={`mt-3 rounded-md border px-3 py-2 text-xs ${
-                  done && !toast.toLowerCase().includes("rifiut")
+                  done && !toast.toLowerCase().includes("reject")
                     ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-200"
                     : "border-amber-500/30 bg-amber-950/30 text-amber-200"
                 }`}
@@ -447,14 +447,14 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               <div className="mt-4 text-right">
                 {backToHealthHref ? (
                   <Pro2Link href={backToHealthHref} className="text-[11px] uppercase tracking-wider text-fuchsia-200 hover:text-white">
-                    → Torna all&apos;archivio Health
+                    → Back to the Health archive
                   </Pro2Link>
                 ) : (
                   <span
-                    title="Disponibile nella scheda dedicata (v2)"
+                    title="Available in the dedicated tab (v2)"
                     className="cursor-default text-[11px] uppercase tracking-wider text-fuchsia-200 opacity-50"
                   >
-                    → Torna all&apos;archivio Health
+                    → Back to the Health archive
                   </span>
                 )}
               </div>

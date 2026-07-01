@@ -63,7 +63,7 @@ export async function fetchHealthPanelsTimeline(athleteId: string): Promise<{
   }
 
   if (!res.ok || !json.ok) {
-    const errCode = ("error" in json && json.error) || "Timeline non disponibile";
+    const errCode = ("error" in json && json.error) || "Timeline not available";
     return {
       panels: [],
       error: humanizeTimelineError(errCode),
@@ -91,13 +91,13 @@ export async function fetchHealthPanelsTimeline(athleteId: string): Promise<{
 function humanizeTimelineError(code: string): string {
   switch (code) {
     case "missing_athleteId":
-      return "Atleta non specificato (athleteId vuoto).";
+      return "Athlete not specified (athleteId empty).";
     case "unauthorized":
-      return "Sessione scaduta: rientra per ricaricare l'archivio.";
+      return "Session expired: sign in again to reload the archive.";
     case "forbidden":
-      return "Atleta non autorizzato per questo account: il profilo collegato non corrisponde all'atleta attivo.";
+      return "Athlete not authorized for this account: the linked profile does not match the active athlete.";
     case "supabase_unconfigured":
-      return "Configurazione Supabase mancante sul server.";
+      return "Supabase configuration missing on the server.";
     default:
       return code;
   }
@@ -139,7 +139,7 @@ export async function uploadHealthDocument(input: {
     reviewUrl?: string | null;
   };
   if (!res.ok || !json.ok) {
-    return { ok: false, error: json.error || "Upload fallito" };
+    return { ok: false, error: json.error || "Upload failed" };
   }
   return {
     ok: true,
@@ -180,7 +180,7 @@ export async function fetchHealthSystemMap(athleteId: string): Promise<{
   if (!res.ok || !json.ok) {
     return {
       systemMap: { nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] },
-      error: ("error" in json && json.error) || "System map non disponibile",
+      error: ("error" in json && json.error) || "System map not available",
     };
   }
   return { systemMap: json.systemMap ?? { nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] }, error: null };
@@ -201,7 +201,7 @@ export async function patchHealthStagingRun(input: {
   });
   const json = (await res.json()) as { ok: boolean; error?: string };
   if (!res.ok || !json.ok) {
-    return { ok: false, error: json.error || "Aggiornamento staging fallito" };
+    return { ok: false, error: json.error || "Staging update failed" };
   }
   return { ok: true };
 }
@@ -265,7 +265,7 @@ export async function fetchHealthStagingRunDetail(runId: string): Promise<{
       panel: null,
       signedUrl: null,
       importBlock: null,
-      error: ("error" in json && json.error) || "Review non disponibile",
+      error: ("error" in json && json.error) || "Review not available",
     };
   }
   const r = json.run as Record<string, unknown>;
@@ -347,7 +347,7 @@ export async function analyzePanelWithAi(input: {
   if (!res.ok || !json.ok) {
     return {
       ok: false,
-      error: json.note ? `${json.error ?? ""}: ${json.note}` : json.error || "Analisi AI fallita",
+      error: json.note ? `${json.error ?? ""}: ${json.note}` : json.error || "AI analysis failed",
     };
   }
   return {
@@ -392,7 +392,7 @@ export async function bulkReanalyzePanelsWithAi(input: {
     canonicalSkipped?: number;
   };
   if (!res.ok || !json.ok) {
-    return { ok: false, error: json.error || "Bulk re-analyze fallito" };
+    return { ok: false, error: json.error || "Bulk re-analyze failed" };
   }
   return {
     ok: true,
@@ -424,7 +424,7 @@ export async function applyHealthStagingPatches(input: {
   });
   const json = (await res.json()) as { ok: boolean; error?: string; confirmedCount?: number };
   if (!res.ok || !json.ok) {
-    return { ok: false, error: json.error || "Conferma fallita" };
+    return { ok: false, error: json.error || "Confirmation failed" };
   }
   return { ok: true, confirmedCount: json.confirmedCount };
 }

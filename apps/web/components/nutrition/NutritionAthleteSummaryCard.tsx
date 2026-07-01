@@ -33,7 +33,7 @@ export function NutritionAthleteSummaryCard() {
     if (!athleteId) {
       setConstraints(null);
       setPlans([]);
-      setErr("Nessun atleta attivo.");
+      setErr("No active athlete.");
       setLoading(false);
       return;
     }
@@ -61,7 +61,7 @@ export function NutritionAthleteSummaryCard() {
           if (!cached) {
             setConstraints(null);
             setPlans([]);
-            setErr(("error" in json && json.error) || "Lettura non riuscita.");
+            setErr(("error" in json && json.error) || "Read failed.");
           }
           return;
         }
@@ -71,7 +71,7 @@ export function NutritionAthleteSummaryCard() {
         nutritionSummaryCache = { constraints: json.constraints, plans: json.plans };
         nutritionSummaryCacheId = athleteId;
       } catch {
-        if (!c && !cached) setErr("Errore di rete.");
+        if (!c && !cached) setErr("Network error.");
       } finally {
         if (!c) setLoading(false);
       }
@@ -84,10 +84,10 @@ export function NutritionAthleteSummaryCard() {
   return (
     <section
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
-      aria-label="Riepilogo nutrizione"
+      aria-label="Nutrition summary"
     >
-      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">Nutrition · dati reali</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Vincoli e piani</h2>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">Nutrition · real data</p>
+      <h2 className="mt-2 text-lg font-bold text-white">Constraints and plans</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 space-y-2">
@@ -102,19 +102,19 @@ export function NutritionAthleteSummaryCard() {
       ) : null}
 
       {!ctxLoading && !loading && !err && !constraints && plans.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">Nessun vincolo o piano in database per questo atleta.</p>
+        <p className="mt-4 text-sm text-gray-500">No constraints or plans in the database for this athlete.</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && constraints ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Vincoli</h3>
+          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Constraints</h3>
           <p className="mt-1 text-sm text-gray-200">{formatNutritionConstraintsLine(constraints)}</p>
         </div>
       ) : null}
 
       {!ctxLoading && !loading && !err && plans.length > 0 ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Piani recenti</h3>
+          <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Recent plans</h3>
           <ul className="mt-2 space-y-2">
             {plans.map((p) => (
               <li

@@ -32,7 +32,7 @@ export async function fetchFoodDiary(input: {
       to: input.to,
       entries: [],
       dayTotals: [],
-      error: payload.error ?? "Caricamento diario fallito",
+      error: payload.error ?? "Failed to load diary",
     };
   }
   return { ...payload, error: null };
@@ -52,7 +52,7 @@ export async function postFoodDiaryEntry(body: Record<string, unknown>): Promise
     error?: string;
   };
   if (!res.ok) {
-    return { error: payload.error ?? "Salvataggio voce fallito" };
+    return { error: payload.error ?? "Failed to save entry" };
   }
   return payload;
 }
@@ -68,7 +68,7 @@ export async function deleteFoodDiaryEntry(input: { athleteId: string; id: strin
   });
   const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
   if (!res.ok) {
-    return { error: payload.error ?? "Eliminazione fallita" };
+    return { error: payload.error ?? "Failed to delete" };
   }
   return { ok: true };
 }

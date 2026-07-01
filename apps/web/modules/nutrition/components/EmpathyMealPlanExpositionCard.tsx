@@ -194,7 +194,7 @@ export function EmpathyMealPlanExpositionCard({
           </div>
         </header>
         <p className="empathy-meal-expo-placeholder-note">
-          Segnaposto visivo · il piano lavora sui cinque pasti principali; lo spuntino pre-sonno è opzionale.
+          Visual placeholder · the plan works on the five main meals; the pre-sleep snack is optional.
         </p>
       </article>
     );
@@ -210,7 +210,7 @@ export function EmpathyMealPlanExpositionCard({
           <h3 className="empathy-meal-expo-title-banner">{titleUpper}</h3>
           {subline ? <p className="empathy-meal-expo-sub-banner">{subline}</p> : null}
         </div>
-        <div className="empathy-meal-expo-kcal-tile" aria-label={`${totalKcal} chilocalorie`}>
+        <div className="empathy-meal-expo-kcal-tile" aria-label={`${totalKcal} kilocalories`}>
           <span className="empathy-meal-expo-kcal-num">{Math.round(totalKcal)}</span>
           <span className="empathy-meal-expo-kcal-unit">KCAL</span>
         </div>
@@ -220,17 +220,17 @@ export function EmpathyMealPlanExpositionCard({
       <div className="empathy-meal-expo-macros">
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--cho">
           <Activity className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">CARBOIDRATI</span>
+          <span className="empathy-meal-expo-macro-label">CARBOHYDRATES</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(carbsG)} g</span>
         </div>
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--pro">
           <Zap className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">PROTEINE</span>
+          <span className="empathy-meal-expo-macro-label">PROTEIN</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(proteinG)} g</span>
         </div>
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--fat">
           <Droplets className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">GRASSI</span>
+          <span className="empathy-meal-expo-macro-label">FATS</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(fatG)} g</span>
         </div>
       </div>
@@ -239,7 +239,7 @@ export function EmpathyMealPlanExpositionCard({
         <div className="empathy-meal-expo-igbar-left">
           <TrendingUp className="empathy-meal-expo-ig-ic" strokeWidth={1.6} aria-hidden />
           <div>
-            <div className="empathy-meal-expo-ig-label">Indice Glicemico Medio</div>
+            <div className="empathy-meal-expo-ig-label">Average Glycemic Index</div>
             <div className="empathy-meal-expo-ig-num">{igWeighted}</div>
           </div>
         </div>
@@ -271,7 +271,7 @@ export function EmpathyMealPlanExpositionCard({
       {boostNote ? (
         <aside
           className="mt-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2"
-          aria-label="Suggerimenti complementari dal sistema intelligente"
+          aria-label="Complementary suggestions from the intelligent system"
         >
           <div className="flex items-start gap-2">
             <Zap
@@ -281,11 +281,11 @@ export function EmpathyMealPlanExpositionCard({
             />
             <div className="flex-1 min-w-0">
               <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/90">
-                Suggerimenti complementari (sistema intelligente)
+                Complementary suggestions (intelligent system)
               </div>
               <p className="mt-0.5 text-[11px] leading-snug text-amber-50/90">{boostNote}</p>
               <p className="mt-1 text-[10px] leading-snug text-amber-200/70">
-                Sono complementi da aggiungere o preferire al pasto, non sostituiscono gli alimenti scelti.
+                These are add-ons to include or prefer for the meal, they do not replace the chosen foods.
                 {integrationHref ? (
                   <>
                     {" "}
@@ -293,16 +293,16 @@ export function EmpathyMealPlanExpositionCard({
                       /* Nelle schede admin il link cross-shell è inerte (v2). */
                       <span
                         className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 cursor-default opacity-50"
-                        title="Disponibile nella scheda dedicata (v2)"
+                        title="Available in the dedicated tab (v2)"
                       >
-                        Apri Integrazione →
+                        Open Integration →
                       </span>
                     ) : (
                       <Link
                         href={integrationHref}
                         className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100"
                       >
-                        Apri Integrazione →
+                        Open Integration →
                       </Link>
                     )}
                   </>
@@ -316,12 +316,12 @@ export function EmpathyMealPlanExpositionCard({
       <div className="empathy-meal-expo-detail">
       <section className="empathy-meal-expo-detail-head">
         <span className="empathy-meal-expo-detail-bar" aria-hidden />
-        <h4 className="empathy-meal-expo-detail-title">ALIMENTI DETTAGLIATI</h4>
+        <h4 className="empathy-meal-expo-detail-title">DETAILED FOODS</h4>
       </section>
 
       <ul className="empathy-meal-expo-food-list">
         {items.length === 0 ? (
-          <li className="empathy-meal-expo-food-empty muted-copy">Nessuna voce per questo pasto.</li>
+          <li className="empathy-meal-expo-food-empty muted-copy">No items for this meal.</li>
         ) : (
           items.map((food) => {
             const b = bandFromGi(food.ig);
@@ -376,7 +376,7 @@ export function EmpathyMealPlanExpositionCard({
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                       onClick={() => onCoachRemove(food.sourceIndex)}
                     >
-                      Rimuovi
+                      Remove
                     </button>
                     <button
                       type="button"
@@ -384,7 +384,7 @@ export function EmpathyMealPlanExpositionCard({
                       disabled={!athleteId || busy}
                       onClick={() => onCoachExcludeProfile(food.sourceIndex)}
                     >
-                      {busy ? "Salvo…" : "Escludi profilo"}
+                      {busy ? "Saving…" : "Exclude from profile"}
                     </button>
                   </div>
                 ) : null}
@@ -400,31 +400,31 @@ export function EmpathyMealPlanExpositionCard({
 
 export function EmpathyMealPlanGlycemicLegend() {
   return (
-    <section className="empathy-meal-expo-legend" aria-label="Legenda indice glicemico">
+    <section className="empathy-meal-expo-legend" aria-label="Glycemic index legend">
       <div className="empathy-meal-expo-detail-head empathy-meal-expo-detail-head--legend">
         <TrendingUp className="h-4 w-4 text-[var(--nutri-expo-pink)]" strokeWidth={2} aria-hidden />
-        <h4 className="empathy-meal-expo-detail-title">LEGENDA INDICE GLICEMICO (IG)</h4>
+        <h4 className="empathy-meal-expo-detail-title">GLYCEMIC INDEX (GI) LEGEND</h4>
       </div>
       <div className="empathy-meal-expo-legend-grid">
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--low">
-          <strong>BASSO</strong>
+          <strong>LOW</strong>
           <span>&lt; 35</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--med">
-          <strong>MEDIO</strong>
+          <strong>MEDIUM</strong>
           <span>35–55</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--high">
-          <strong>ALTO</strong>
+          <strong>HIGH</strong>
           <span>55–70</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--vhigh">
-          <strong>MOLTO ALTO</strong>
+          <strong>VERY HIGH</strong>
           <span>&gt; 70</span>
         </div>
       </div>
       <p className="empathy-meal-expo-legend-note muted-copy text-[11px] leading-snug">
-        IG mostrati sono stime educative da composizione macro stimata, non valori di laboratorio o tabella IG ufficiale per alimento.
+        The GI values shown are educational estimates from estimated macro composition, not laboratory values or an official per-food GI table.
       </p>
     </section>
   );

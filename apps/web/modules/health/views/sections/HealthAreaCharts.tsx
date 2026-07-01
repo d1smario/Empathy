@@ -91,24 +91,24 @@ export function HealthAreaCharts({
         <div>
           <div className="mb-1 flex items-center gap-2">
             <Dna className="h-5 w-5 text-violet-400" />
-            <h3 className="text-lg font-bold text-white">Epigenetica · metilazione e vie metaboliche</h3>
+            <h3 className="text-lg font-bold text-white">Epigenetics · methylation and metabolic pathways</h3>
           </div>
           <p className="text-sm text-gray-400">
-            Anelli percentuali, radar sintetico e trend temporale.
-            {epigeneticRadar.isDemo && epigeneticTrend.isDemo ? " Dati demo finché mancano valori strutturati." : ""}
+            Percentage rings, synthetic radar and time trend.
+            {epigeneticRadar.isDemo && epigeneticTrend.isDemo ? " Demo data until structured values are available." : ""}
           </p>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2">
           <div>
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Profilo a ciambelle
+              Donut profile
             </h4>
             <div className="h-[220px] w-full sm:h-[260px]">
               {epigeneticRings.length === 0 ? (
                 <PointToLatest>
-                  Carica un referto epigenetico per questo profilo. I valori estratti compaiono nella sezione «Ultimo
-                  referto caricato».
+                  Upload an epigenetic report for this profile. The extracted values appear in the «Last uploaded
+                  report» section.
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -146,12 +146,12 @@ export function HealthAreaCharts({
 
           <div>
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Vie metaboliche · radar
+              Metabolic pathways · radar
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {epigeneticRadar.rows.length === 0 ? (
                 <PointToLatest>
-                  Nessun dato numerico epigenetico strutturato — importa un referto <code className="mx-1 text-violet-300">epigenetics</code>.
+                  No structured epigenetic numeric data — import an <code className="mx-1 text-violet-300">epigenetics</code> report.
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -170,14 +170,14 @@ export function HealthAreaCharts({
 
         <div>
           <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-            Trend metilazione / detox / riparazione
+            Methylation / detox / repair trend
             {epigeneticTrend.isDemo ? " (demo)" : ""}
           </h4>
           <div className="min-h-[260px] w-full">
             {epigeneticTrend.rows.length === 0 ? (
               <PointToLatest>
-                Carica almeno un panel <code className="mx-1 text-violet-300">epigenetics</code> con metilazione, detox e riparazione.
-                Il confronto nel tempo parte dal secondo referto compatibile.
+                Upload at least one <code className="mx-1 text-violet-300">epigenetics</code> panel with methylation, detox and repair.
+                The over-time comparison starts from the second compatible report.
               </PointToLatest>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
@@ -201,9 +201,9 @@ export function HealthAreaCharts({
                   <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                   <Tooltip contentStyle={chartTooltipStyle("health")} />
                   <Legend />
-                  <Area type="monotone" dataKey="metilazione" name="Metilazione" stroke="#a855f7" fill="url(#epiMeth)" strokeWidth={CHART_STROKE.base} connectNulls />
+                  <Area type="monotone" dataKey="metilazione" name="Methylation" stroke="#a855f7" fill="url(#epiMeth)" strokeWidth={CHART_STROKE.base} connectNulls />
                   <Area type="monotone" dataKey="detox" name="Detox" stroke={CHART_SIGNAL.hrv} fill="url(#epiDetox)" strokeWidth={CHART_STROKE.base} connectNulls />
-                  <Area type="monotone" dataKey="riparazione" name="Riparazione" stroke="#3b82f6" fill="url(#epiRep)" strokeWidth={CHART_STROKE.base} connectNulls />
+                  <Area type="monotone" dataKey="riparazione" name="Repair" stroke="#3b82f6" fill="url(#epiRep)" strokeWidth={CHART_STROKE.base} connectNulls />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -215,23 +215,23 @@ export function HealthAreaCharts({
       <section className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Heart className="h-5 w-5 text-orange-400" />
-          <h3 className="text-lg font-bold text-white">Sistema endocrino</h3>
+          <h3 className="text-lg font-bold text-white">Endocrine system</h3>
         </div>
         <p className="text-sm text-gray-400">
-          Radar funzionale (HPA, HPG, tiroide, DHEA, IGF-1) e barre con i valori del referto ormonale.
-          {endocrineRadar.isDemo && hormonesBar.isDemo ? " Dati demo finché mancano numeri." : ""}
+          Functional radar (HPA, HPG, thyroid, DHEA, IGF-1) and bars with the hormone report values.
+          {endocrineRadar.isDemo && hormonesBar.isDemo ? " Demo data until numbers are available." : ""}
         </p>
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           <div>
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Equilibrio assi
+              Axis balance
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {endocrineRadar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
-                    ? "Il radar richiede campi mappati (cortisolo AM/PM, testosterone, TSH, DHEA, IGF-1). I valori grezzi sono in «Ultimo referto caricato»."
-                    : "Carica un referto ormonale con numeri strutturati."}
+                    ? "The radar requires mapped fields (cortisol AM/PM, testosterone, TSH, DHEA, IGF-1). The raw values are in «Last uploaded report»."
+                    : "Upload a hormone report with structured numbers."}
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -248,14 +248,14 @@ export function HealthAreaCharts({
           </div>
           <div>
             <h4 className="mb-2 text-center font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Valori ormonali (referto)
+              Hormone values (report)
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {hormonesBar.rows.length === 0 ? (
                 <PointToLatest>
                   {hasHormonesPanel
-                    ? "Le barre usano gli ormoni mappati (cortisolo AM/PM, testosterone, TSH, T3/T4 libere). I valori grezzi sono in «Ultimo referto caricato»."
-                    : "Nessun dato ormonale strutturato — importa un referto ormonale."}
+                    ? "The bars use the mapped hormones (cortisol AM/PM, testosterone, TSH, free T3/T4). The raw values are in «Last uploaded report»."
+                    : "No structured hormone data — import a hormone report."}
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -264,7 +264,7 @@ export function HealthAreaCharts({
                     <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick - 1 }} angle={-20} textAnchor="end" height={64} />
                     <YAxis tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                     <Tooltip contentStyle={chartTooltipStyle("health")} formatter={(v: number) => [v, ""]} />
-                    <Bar dataKey="val" name="Valore" fill={CHART_SIGNAL.power} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="val" name="Value" fill={CHART_SIGNAL.power} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -277,17 +277,17 @@ export function HealthAreaCharts({
       <section className="rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Zap className="h-5 w-5 text-sky-400" />
-          <h3 className="text-lg font-bold text-white">Stress ossidativo · capacità antiossidante</h3>
+          <h3 className="text-lg font-bold text-white">Oxidative stress · antioxidant capacity</h3>
         </div>
         <p className="text-sm text-gray-400">
-          d-ROMs, BAP, glutatione, enzimi. {oxidativeRadar.isDemo ? "Demo finché mancano valori." : ""}
+          d-ROMs, BAP, glutathione, enzymes. {oxidativeRadar.isDemo ? "Demo until values are available." : ""}
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {oxidativeRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasOxidativePanel
-                ? "Nessun marker mappato al radar — i valori grezzi sono in «Ultimo referto caricato»."
-                : "Carica un referto di stress ossidativo per vedere questo radar."}
+                ? "No marker mapped to the radar — the raw values are in «Last uploaded report»."
+                : "Upload an oxidative stress report to see this radar."}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -307,18 +307,18 @@ export function HealthAreaCharts({
       <section className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <Flame className="h-5 w-5 text-amber-400" />
-          <h3 className="text-lg font-bold text-white">Markers infiammatori</h3>
+          <h3 className="text-lg font-bold text-white">Inflammatory markers</h3>
         </div>
         <p className="text-sm text-gray-400">
-          Radar · score sintetico (valori bassi = migliore){" "}
-          {inflammationRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
+          Radar · synthetic score (lower values = better){" "}
+          {inflammationRadar.isDemo ? "— demo until a report with numbers is available" : ""}
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {inflammationRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasInflammationPanel
-                ? "Nessun marker mappato agli assi PCR/IL-6 — i valori grezzi sono in «Ultimo referto caricato»."
-                : "Carica un referto di infiammazione per questo grafico."}
+                ? "No marker mapped to the PCR/IL-6 axes — the raw values are in «Last uploaded report»."
+                : "Upload an inflammation report for this chart."}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -338,18 +338,18 @@ export function HealthAreaCharts({
       <section className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.12] via-teal-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
         <div className="mb-2 flex items-center gap-2">
           <HeartPulse className="h-5 w-5 text-emerald-400" />
-          <h3 className="text-lg font-bold text-white">Composizione microbiota</h3>
+          <h3 className="text-lg font-bold text-white">Microbiota composition</h3>
         </div>
         <p className="text-sm text-gray-400">
-          Percentuali / diversità (asse 0–100){" "}
-          {microbiotaRadar.isDemo ? "— demo finché manca un referto con numeri" : ""}
+          Percentages / diversity (0–100 axis){" "}
+          {microbiotaRadar.isDemo ? "— demo until a report with numbers is available" : ""}
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {microbiotaRadar.rows.length === 0 ? (
             <PointToLatest>
               {hasMicrobiotaPanel
-                ? "Composizioni attese non trovate (Firmicutes/Bacteroidetes ecc.) — i valori grezzi sono in «Ultimo referto caricato»."
-                : "Carica un referto del microbiota per questo grafico."}
+                ? "Expected compositions not found (Firmicutes/Bacteroidetes etc.) — the raw values are in «Last uploaded report»."
+                : "Upload a microbiota report for this chart."}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -357,7 +357,7 @@ export function HealthAreaCharts({
                 <PolarGrid stroke={POLAR_GRID} />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={RADIUS_TICK} />
-                <Radar name="Valore" dataKey="A" stroke={CHART_SIGNAL.hrv} fill={CHART_SIGNAL.hrv} fillOpacity={0.35} strokeWidth={CHART_STROKE.base} />
+                <Radar name="Value" dataKey="A" stroke={CHART_SIGNAL.hrv} fill={CHART_SIGNAL.hrv} fillOpacity={0.35} strokeWidth={CHART_STROKE.base} />
                 <Tooltip contentStyle={chartTooltipStyle("health")} formatter={(v: number) => [`${Math.round(v)}`, ""]} />
               </RadarChart>
             </ResponsiveContainer>

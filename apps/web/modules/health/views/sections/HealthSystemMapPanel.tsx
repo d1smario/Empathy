@@ -23,11 +23,11 @@ export function HealthSystemMapPanel({
   return (
     <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:p-6">
       <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-        Mappa interazioni · panoramica cross-area
+        Interaction map · cross-area overview
       </h2>
       <p className="mt-2 text-sm text-gray-400">
-        Nodi, collegamenti causali e risposte bioenergetiche derivati dai referti. Include le revisioni in attesa di
-        interpretazione.
+        Nodes, causal links and bioenergetic responses derived from the reports. Includes reviews awaiting
+        interpretation.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -45,11 +45,11 @@ export function HealthSystemMapPanel({
       {systemMapErr ? <p className="mt-3 text-xs text-amber-300">{systemMapErr}</p> : null}
       <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
         <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-400">
-          Dettaglio nodi e archi
+          Nodes and edges detail
         </summary>
         <div className="mt-3 grid gap-4 lg:grid-cols-2">
           <div>
-            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Nodi attivi</p>
+            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Active nodes</p>
             <div className="space-y-2">
               {systemMap.nodes.slice(0, 12).map((n, i) => (
                 <div key={`node-${i}-${String(n.id ?? n.node_key ?? i)}`} className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-2 text-xs">
@@ -57,11 +57,11 @@ export function HealthSystemMapPanel({
                   <div className="text-gray-400">{String(n.area ?? "area")} · {String(n.observed_at ?? n.created_at ?? "n/d")}</div>
                 </div>
               ))}
-              {!systemMap.nodes.length ? <p className="text-xs text-gray-500">Nessun nodo disponibile.</p> : null}
+              {!systemMap.nodes.length ? <p className="text-xs text-gray-500">No nodes available.</p> : null}
             </div>
           </div>
           <div>
-            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Archi causali</p>
+            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Causal edges</p>
             <div className="space-y-2">
               {systemMap.edges.slice(0, 12).map((e, i) => (
                 <div key={`edge-${i}-${String(e.id ?? i)}`} className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-2 text-xs">
@@ -74,13 +74,13 @@ export function HealthSystemMapPanel({
                   </div>
                 </div>
               ))}
-              {!systemMap.edges.length ? <p className="text-xs text-gray-500">Nessun arco disponibile.</p> : null}
+              {!systemMap.edges.length ? <p className="text-xs text-gray-500">No edges available.</p> : null}
             </div>
           </div>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <div>
-            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Risposte bioenergetiche</p>
+            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Bioenergetic responses</p>
             <div className="space-y-2">
               {systemMap.bioenergeticsResponses.slice(0, 8).map((r, i) => (
                 <div key={`bio-${i}-${String(r.id ?? i)}`} className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-2.5 py-2 text-xs">
@@ -88,7 +88,7 @@ export function HealthSystemMapPanel({
                   <div className="text-amber-200/80">{String(r.category ?? "risk")} · {String(r.severity ?? "n/d")}</div>
                 </div>
               ))}
-              {!systemMap.bioenergeticsResponses.length ? <p className="text-xs text-gray-500">Nessuna risposta bioenergetica.</p> : null}
+              {!systemMap.bioenergeticsResponses.length ? <p className="text-xs text-gray-500">No bioenergetic responses.</p> : null}
             </div>
           </div>
           <div>
@@ -115,9 +115,9 @@ export function HealthSystemMapPanel({
                       <div className="mt-2 flex flex-wrap gap-2">
                         {isVlmReview ? <HealthStagingReviewLink runId={runId} /> : null}
                         {[
-                          { status: "committed" as const, label: "Valida" },
-                          { status: "rejected" as const, label: "Scarta" },
-                          { status: "archived" as const, label: "Archivia" },
+                          { status: "committed" as const, label: "Validate" },
+                          { status: "rejected" as const, label: "Discard" },
+                          { status: "archived" as const, label: "Archive" },
                         ].map((action) => {
                           const busy = stagingBusy === `${runId}:${action.status}`;
                           return (
@@ -137,7 +137,7 @@ export function HealthSystemMapPanel({
                   </div>
                 );
               })}
-              {!systemMap.stagingRuns.length ? <p className="text-xs text-gray-500">Nessuna revisione recente.</p> : null}
+              {!systemMap.stagingRuns.length ? <p className="text-xs text-gray-500">No recent reviews.</p> : null}
             </div>
           </div>
         </div>

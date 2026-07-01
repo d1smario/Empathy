@@ -139,9 +139,9 @@ export function MealPlanSection({
           className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
           style={{ marginBottom: "12px" }}
         >
-          <h2 className="viz-title text-base">Piano pasti del giorno</h2>
+          <h2 className="viz-title text-base">Meal plan for the day</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Scegli il giorno e genera il piano pasti calibrato su profilo, allenamenti e segnali della giornata.
+            Choose the day and generate the meal plan calibrated on profile, workouts and signals of the day.
           </p>
           <div className="mt-3 flex flex-col gap-3">
             <NutritionPlanDatePicker
@@ -164,7 +164,7 @@ export function MealPlanSection({
                     }
                     onClick={() => void handleGenerateIntelligentMealPlan()}
                   >
-                    {intelligentMealLoading ? "Generazione piano…" : "Genera il mio piano pasti"}
+                    {intelligentMealLoading ? "Generating plan…" : "Generate my meal plan"}
                   </button>
                   {intelligentMealPlan ? (
                     <button
@@ -176,14 +176,14 @@ export function MealPlanSection({
                         setCoachSessionFoodExclusions([]);
                       }}
                     >
-                      Rigenera piano
+                      Regenerate plan
                     </button>
                   ) : null}
                 </>
               ) : null}
               {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
-                  Piano pasti generato
+                  Meal plan generated
                 </span>
               ) : null}
             </div>
@@ -193,11 +193,11 @@ export function MealPlanSection({
               className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
               role="status"
             >
-              <strong className="font-semibold">Attenzione — budget pasti molto basso.</strong>{" "}
-              Target pasti ~{Math.round(lowMealsBudgetWarning.meals)} kcal con allenamento stimato ~
-              {Math.round(lowMealsBudgetWarning.train)} kcal: di solito mancano peso/altezza/data di nascita nel profilo
-              (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso;
-              controlla <span className="font-medium">Profilo</span> e rigenera il piano dopo il salvataggio.
+              <strong className="font-semibold">Warning — meal budget very low.</strong>{" "}
+              Meal target ~{Math.round(lowMealsBudgetWarning.meals)} kcal with estimated training ~
+              {Math.round(lowMealsBudgetWarning.train)} kcal: usually weight/height/date of birth are missing in the profile
+              (BMR not computable). The breakfast/lunch/dinner percentages from the profile apply to that low total;
+              check <span className="font-medium">Profile</span> and regenerate the plan after saving.
             </div>
           ) : null}
         </section>
@@ -207,10 +207,10 @@ export function MealPlanSection({
       <Pro2StickyAnchorSubnav
         accent={MODULE_PILL_AMBER}
         items={[
-          { id: "mod-target-giorno", label: "Target del giorno" },
-          { id: "nutrition-meal-plan", label: "Piano pasti" },
-          { id: "mod-approfondimenti", label: "Approfondimenti" },
-          { id: "mod-dettagli-motore", label: "Come funziona" },
+          { id: "mod-target-giorno", label: "Daily target" },
+          { id: "nutrition-meal-plan", label: "Meal plan" },
+          { id: "mod-approfondimenti", label: "Insights" },
+          { id: "mod-dettagli-motore", label: "How it works" },
         ]}
       />
 
@@ -256,24 +256,24 @@ export function MealPlanSection({
           }
           raceDayPreRaceNotice={
             raceDayPreRaceContext
-              ? `Giornata gara: pasto pre-gara (${raceDayPreRaceContext.mealSlot === "breakfast" ? "colazione" : "pranzo"}) alle ${raceDayPreRaceContext.lunchTimeLocal} — pasta/riso ${raceDayPreRaceContext.rule.carbsPerKgG} g CHO/kg, grana, olio 15 g. Pasti prima/durante gara → Fueling; solidi nel pomeriggio/post gara.`
+              ? `Race day: pre-race meal (${raceDayPreRaceContext.mealSlot === "breakfast" ? "breakfast" : "lunch"}) at ${raceDayPreRaceContext.lunchTimeLocal} — pasta/rice ${raceDayPreRaceContext.rule.carbsPerKgG} g CHO/kg, grana cheese, oil 15 g. Meals before/during race → Fueling; solids in the afternoon/post-race.`
               : null
           }
           dietDayNotice={
             mealRows.length > 0
               ? [
                   suppressedSnackSlots.length > 0
-                    ? `Spuntini in finestra allenamento (${suppressedSnackSlots.join(", ")}) → carbo in seduta nel modulo Fueling, non come pasto solido extra.`
+                    ? `Snacks in the training window (${suppressedSnackSlots.join(", ")}) → carbs during the session in the Fueling module, not as an extra solid meal.`
                     : null,
                   mealRows.length < 6 && effectiveMealCountMode === "6"
-                    ? "Attesi 6 pasti: salva Profile → Diet (martedì) con tre % spuntino e rigenera il piano."
+                    ? "6 meals expected: save Profile → Diet (Tuesday) with three snack % and regenerate the plan."
                     : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
-                      ? "Piano generato con meno slot del Diet: usa «Rigenera piano» per ricalcolare."
+                      ? "Plan generated with fewer slots than Diet: use «Regenerate plan» to recompute."
                       : null,
                 ]
                   .filter(Boolean)
                   .join(" ")
-              : `Nessuna ripartizione % leggibile per ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) con 6 pasti e tre % spuntino, poi Salva profilo.`
+              : `No readable % split for ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) with 6 meals and three snack %, then Save profile.`
           }
           coachMealRemovalKeys={coachMealRemovalKeys}
           coachSessionFoodExclusions={coachSessionFoodExclusions}

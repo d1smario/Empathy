@@ -19,14 +19,14 @@ export function HealthStagingReviewLink({ runId }: { runId: string }) {
   const href = scopedShellHref(`/health/staging/${runId}`, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   if (!href) {
     return (
-      <span title="Disponibile nella scheda dedicata (v2)" className={`${BASE} cursor-default opacity-50 transition`}>
-        Apri review
+      <span title="Available in the dedicated tab (v2)" className={`${BASE} cursor-default opacity-50 transition`}>
+        Open review
       </span>
     );
   }
   return (
     <Link href={href} className={`${BASE} transition-colors hover:border-fuchsia-400/50 hover:bg-fuchsia-500/20`}>
-      Apri review
+      Open review
     </Link>
   );
 }

@@ -69,11 +69,11 @@ export function NutritionMicronutrientGrid({
   return (
     <div className={className ?? "nutrition-micro-grid-wrap"}>
       <div className="nutrition-diary-micro-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <MicroCol title="Vitamine" lines={vitamins} />
-        <MicroCol title="Minerali" lines={minerals} />
-        <MicroCol title="Aminoacidi" lines={aminoAcids} />
-        <MicroCol title="Grassi (frazioni)" lines={fattyAcids} />
-        <MicroCol title="Altri (FDC)" lines={otherNutrients} />
+        <MicroCol title="Vitamins" lines={vitamins} />
+        <MicroCol title="Minerals" lines={minerals} />
+        <MicroCol title="Amino acids" lines={aminoAcids} />
+        <MicroCol title="Fats (fractions)" lines={fattyAcids} />
+        <MicroCol title="Other (FDC)" lines={otherNutrients} />
       </div>
     </div>
   );
@@ -336,7 +336,7 @@ function MicroPercentRadar({
       </div>
       {rows.length ? (
         <div className="empathy-micro-radar-layout">
-          <svg className="empathy-micro-radar-svg" viewBox="0 0 100 100" role="img" aria-label={`${title}: percentuali su target`}>
+          <svg className="empathy-micro-radar-svg" viewBox="0 0 100 100" role="img" aria-label={`${title}: percentages against target`}>
             <polygon className="empathy-micro-radar-grid" points={Array.from({ length: axisCount }, (_, i) => {
               const p = polarPoint(i, axisCount, 46);
               return `${p.x},${p.y}`;
@@ -356,14 +356,14 @@ function MicroPercentRadar({
               <li key={row.name}>
                 <span>{row.name}</span>
                 <strong>
-                  {Math.min(row.pct, 999)}% <small>{row.kind === "max" ? "limite" : "target"}</small>
+                  {Math.min(row.pct, 999)}% <small>{row.kind === "max" ? "limit" : "target"}</small>
                 </strong>
               </li>
             ))}
           </ul>
         </div>
       ) : (
-        <p className="muted-copy text-xs">Target non disponibile per questo bucket.</p>
+        <p className="muted-copy text-xs">Target not available for this bucket.</p>
       )}
     </article>
   );
@@ -383,16 +383,16 @@ export function NutritionMicronutrientDailyBoard({
     <div className={className ?? "empathy-micro-daily-board"}>
       <div className="empathy-micro-daily-head">
         <div>
-          <p className="empathy-micro-daily-eyebrow">Totali giornalieri · micronutrienti</p>
-          <h4>Assunzione stimata e copertura rispetto ai valori consigliati</h4>
+          <p className="empathy-micro-daily-eyebrow">Daily totals · micronutrients</p>
+          <h4>Estimated intake and coverage against recommended values</h4>
         </div>
-        <span>Valori dal piano alimentare assemblato; target adulti indicativi.</span>
+        <span>Values from the assembled meal plan; indicative adult targets.</span>
       </div>
       <div className="empathy-micro-radar-grid-wrap">
-        <MicroPercentRadar title="Vitamine" subtitle="12 indicatori vitaminici giornalieri" lines={boardLines.vitamins} tone="vitamins" />
-        <MicroPercentRadar title="Minerali" subtitle="12 minerali e proxy elettrolitici" lines={boardLines.minerals} tone="minerals" />
-        <MicroPercentRadar title="Aminoacidi" subtitle="20 aminoacidi: EAA diretti + profilo stimato" lines={boardLines.aminoAcids} tone="amino" />
-        <MicroPercentRadar title="Grassi e fibra" subtitle="12 indicatori: catene, omega e limiti" lines={boardLines.fattyAcids} tone="lipids" />
+        <MicroPercentRadar title="Vitamins" subtitle="12 daily vitamin indicators" lines={boardLines.vitamins} tone="vitamins" />
+        <MicroPercentRadar title="Minerals" subtitle="12 minerals and electrolyte proxies" lines={boardLines.minerals} tone="minerals" />
+        <MicroPercentRadar title="Amino acids" subtitle="20 amino acids: direct EAA + estimated profile" lines={boardLines.aminoAcids} tone="amino" />
+        <MicroPercentRadar title="Fats and fiber" subtitle="12 indicators: chains, omega and limits" lines={boardLines.fattyAcids} tone="lipids" />
       </div>
       <NutritionMicronutrientTable {...boardLines} />
     </div>
@@ -420,8 +420,8 @@ function MicronutrientTableSection({
             </th>
           </tr>
           <tr className="empathy-micro-table-subhead">
-            <th scope="col">Nutriente</th>
-            <th scope="col">Quantità</th>
+            <th scope="col">Nutrient</th>
+            <th scope="col">Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -449,11 +449,11 @@ export function NutritionMicronutrientTable({
   return (
     <div className={className ?? "empathy-micro-table-outer"}>
       <div className="empathy-micro-table-stack">
-        <MicronutrientTableSection tone="vitamins" title="Vitamine" lines={vitamins} />
-        <MicronutrientTableSection tone="minerals" title="Minerali" lines={minerals} />
-        <MicronutrientTableSection tone="amino" title="Aminoacidi · profilo completo" lines={aminoAcids} />
-        <MicronutrientTableSection tone="lipids" title="Grassi · catene · fibra" lines={fattyAcids} />
-        <MicronutrientTableSection tone="minerals" title="Altri nutrienti (USDA FDC)" lines={otherNutrients} />
+        <MicronutrientTableSection tone="vitamins" title="Vitamins" lines={vitamins} />
+        <MicronutrientTableSection tone="minerals" title="Minerals" lines={minerals} />
+        <MicronutrientTableSection tone="amino" title="Amino acids · full profile" lines={aminoAcids} />
+        <MicronutrientTableSection tone="lipids" title="Fats · chains · fiber" lines={fattyAcids} />
+        <MicronutrientTableSection tone="minerals" title="Other nutrients (USDA FDC)" lines={otherNutrients} />
       </div>
     </div>
   );

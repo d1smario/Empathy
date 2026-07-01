@@ -281,7 +281,7 @@ export function formatScalarForDisplay(val: unknown): string {
   if (val == null) return "—";
   if (typeof val === "number" && Number.isFinite(val))
     return String(val).includes(".") ? String(val) : String(val);
-  if (typeof val === "boolean") return val ? "Sì" : "No";
+  if (typeof val === "boolean") return val ? "Yes" : "No";
   if (typeof val === "string") {
     const t = val.trim();
     return t.length ? t : "—";
@@ -343,7 +343,7 @@ export function panelRawDisplayRows(
       return {
         key: field || `proposal_${Math.random().toString(36).slice(2, 8)}`,
         // L'atleta vede solo "in attesa di validazione"; il coach vede "proposto".
-        label: showTech ? `${baseLabel} · proposto` : `${baseLabel} · in attesa di validazione`,
+        label: showTech ? `${baseLabel} · proposed` : `${baseLabel} · awaiting validation`,
         value: `${formatScalarForDisplay(p.value)}${unit}`,
       };
     })

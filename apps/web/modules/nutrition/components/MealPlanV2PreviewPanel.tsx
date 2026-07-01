@@ -36,15 +36,15 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="m-0 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-            Nutrition V2 · anteprima (beta)
+            Nutrition V2 · preview (beta)
           </p>
           <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
-            Anteprima motore V2 (USDA FDC taggato + fueling substrati). Produzione: imposta{" "}
-            <code className="text-amber-300/80">NUTRITION_MEAL_PLAN_ENGINE=v2</code> o shadow per confronto.
+            V2 engine preview (tagged USDA FDC + substrate fueling). Production: set{" "}
+            <code className="text-amber-300/80">NUTRITION_MEAL_PLAN_ENGINE=v2</code> or shadow to compare.
           </p>
         </div>
         <Pro2Button type="button" variant="secondary" disabled={!planRequest || loading} onClick={() => void load()}>
-          {loading ? "Caricamento…" : "Anteprima V2"}
+          {loading ? "Loading…" : "V2 preview"}
         </Pro2Button>
       </div>
 
@@ -58,15 +58,15 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
         <div className="mt-4 space-y-4 text-sm text-gray-300">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategia</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategy</p>
               <p className="m-0 font-semibold text-white">{req.strategyKind}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Profilo dieta (asse 4)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Diet profile (axis 4)</p>
               <p className="m-0 font-semibold text-white">{req.dietProfileActive}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">CHO totale</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Total CHO</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.macros.total.choG} g</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
@@ -79,15 +79,15 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Pasti (Diet)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Meals (Diet)</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.energy.mealsKcal} kcal</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fueling (CHO substrati)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fueling (CHO substrates)</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.energy.fuelingKcal} kcal</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategia g/kg</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategy g/kg</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">
                 CHO {req.dailyMacroTargetsGPerKg.choMinGPerKg}–{req.dailyMacroTargetsGPerKg.choMaxGPerKg} · PRO{" "}
                 {req.dailyMacroTargetsGPerKg.proGPerKg} · FAT {req.dailyMacroTargetsGPerKg.fatGPerKg}
@@ -98,12 +98,12 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {req.substrateFueling?.sessions.length ? (
             <div>
               <p className="mb-1 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Fueling intra (da CHO bruciato, non % kcal training)
+                Intra fueling (from CHO burned, not % training kcal)
               </p>
               <ul className="m-0 list-none space-y-1 p-0 font-mono text-[11px] text-gray-400">
                 {req.substrateFueling.sessions.map((s) => (
                   <li key={s.sessionLabel}>
-                    {s.sessionLabel}: CHO burn {s.choBurnedG} g · share energia {Math.round(s.choEnergyShare * 100)}% ·
+                    {s.sessionLabel}: CHO burn {s.choBurnedG} g · energy share {Math.round(s.choEnergyShare * 100)}% ·
                     intra {s.intraChoG} g ({s.intraChoGPerH} g/h, replace {Math.round(s.intraChoReplaceFraction * 100)}
                     %)
                   </li>
@@ -114,7 +114,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
 
           {req.substrateRates.length > 0 ? (
             <div>
-              <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Substrati seduta</p>
+              <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Session substrates</p>
               <ul className="m-0 list-none space-y-1 p-0 font-mono text-[11px] text-gray-400">
                 {req.substrateRates.map((s) => (
                   <li key={s.sessionLabel}>
@@ -128,7 +128,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.dietMealSlotBudgets && preview.dietMealSlotBudgets.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Slot pasti · Profile Diet
+                Meal slots · Profile Diet
               </p>
               <ul className="m-0 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                 {preview.dietMealSlotBudgets.map((sl) => (
@@ -143,7 +143,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.composedMealPlan && preview.composedMealPlan.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Bozza piano (composer V2)
+                Plan draft (composer V2)
               </p>
               <div className="space-y-2">
                 {preview.composedMealPlan.map((slot) => (
@@ -155,7 +155,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                       </span>
                     </p>
                     {slot.items.length === 0 ? (
-                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">Pool vuoto per questo slot.</p>
+                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">Empty pool for this slot.</p>
                     ) : (
                       <ul className="m-0 mt-1 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                         {slot.items.map((it) => (
@@ -174,7 +174,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.foodPoolsBySlot.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Pool USDA filtrati ({preview.taxonomyVersion})
+                Filtered USDA pools ({preview.taxonomyVersion})
               </p>
               <div className="space-y-3">
                 {preview.foodPoolsBySlot.map((pool) => (
@@ -184,7 +184,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                       <span className="font-normal text-gray-500">({pool.filterSummary})</span>
                     </p>
                     {pool.candidates.length === 0 ? (
-                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">Nessun candidato — verifica cache USDA / migration 075.</p>
+                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">No candidate — check USDA cache / migration 075.</p>
                     ) : (
                       <ul className="m-0 mt-1 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                         {pool.candidates.slice(0, 5).map((c) => (
@@ -199,7 +199,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                           </li>
                         ))}
                         {pool.candidates.length > 5 ? (
-                          <li className="text-gray-600">+{pool.candidates.length - 5} altri</li>
+                          <li className="text-gray-600">+{pool.candidates.length - 5} more</li>
                         ) : null}
                       </ul>
                     )}

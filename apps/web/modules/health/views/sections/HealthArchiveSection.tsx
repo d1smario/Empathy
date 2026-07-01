@@ -54,53 +54,53 @@ export function HealthArchiveSection({
   onReloadTimeline,
 }: HealthArchiveSectionProps) {
   return (
-    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-5 shadow-inner" aria-label="Archivio referti">
+    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-5 shadow-inner" aria-label="Report archive">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Archivio referti</h3>
+        <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Report archive</h3>
         {athleteId ? (
           <span
             className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.7rem] uppercase tracking-[0.16em] text-gray-400"
-            title={`athleteId attivo: ${athleteId}`}
+            title={`active athleteId: ${athleteId}`}
           >
             athlete: {athleteId.slice(0, 8)}…
           </span>
         ) : null}
       </div>
       <p className="mt-1 text-sm text-gray-400">
-        Pannelli da <code className="text-gray-300">biomarker_panels</code> per l&apos;atleta attivo
-        {!loadingTimeline && !timelineErr ? ` · ${panels.length} in memoria` : ""}.
+        Panels from <code className="text-gray-300">biomarker_panels</code> for the active athlete
+        {!loadingTimeline && !timelineErr ? ` · ${panels.length} in memory` : ""}.
       </p>
       {!loadingTimeline && !timelineErr && archiveDiagnostics.total > 0 ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums tracking-wider text-gray-300">
             <span>
               <span className="text-emerald-300">{archiveDiagnostics.withCanonicalValues}</span>
-              <span className="text-gray-500"> canonici</span>
+              <span className="text-gray-500"> canonical</span>
             </span>
             <span>
               <span className="text-fuchsia-300">{archiveDiagnostics.withProposalsOnly}</span>
-              <span className="text-gray-500"> con valori proposti</span>
+              <span className="text-gray-500"> with proposed values</span>
             </span>
             <span>
               <span className="text-amber-300">{archiveDiagnostics.importOnly}</span>
-              <span className="text-gray-500"> solo file (vuoti)</span>
+              <span className="text-gray-500"> files only (empty)</span>
             </span>
             {archiveDiagnostics.vlmPending > 0 ? (
               <span>
                 <span className="text-violet-300">{archiveDiagnostics.vlmPending}</span>
-                <span className="text-gray-500"> review da confermare</span>
+                <span className="text-gray-500"> reviews to confirm</span>
               </span>
             ) : null}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-            Le card e i grafici leggono i numeri da <code className="text-gray-300">values</code> del pannello più recente
-            per tipo (es. <code>crp_mg_l</code>, <code>cortisol_am</code>, <code>firmicutes_pct</code>,{" "}
-            <code>methylation_score</code>) e in fallback dalle <code>vlm_proposals</code> non ancora confermate.{" "}
+            The cards and charts read the numbers from <code className="text-gray-300">values</code> of the most recent panel
+            per type (e.g. <code>crp_mg_l</code>, <code>cortisol_am</code>, <code>firmicutes_pct</code>,{" "}
+            <code>methylation_score</code>) and fall back to the <code>vlm_proposals</code> not yet confirmed.{" "}
             {archiveDiagnostics.withCanonicalValues + archiveDiagnostics.withProposalsOnly === 0
-              ? "Nessun referto ha numeri leggibili: carica un esame oppure applica un seed canonico."
+              ? "No report has readable numbers: upload an exam or apply a canonical seed."
               : archiveDiagnostics.vlmPending > 0
-                ? "Le review aperte aggiornano lo stato canonico in DB; finché non le confermi, i numeri restano in modalità «proposto»."
-                : "I grafici sono allineati alla memoria dell'atleta."}
+                ? "Open reviews update the canonical state in the DB; until you confirm them, the numbers stay in «proposed» mode."
+                : "The charts are aligned with the athlete's memory."}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
@@ -110,77 +110,77 @@ export function HealthArchiveSection({
               className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-rose-100 transition-colors hover:border-rose-400/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
               title={
                 archiveDiagnostics.bulkCandidates > 0
-                  ? "Avvia bulk re-analyze sui file in storage"
-                  : "Nessun file riusabile (nessun referto con file in Storage e formato image/pdf)"
+                  ? "Start bulk re-analyze on the files in storage"
+                  : "No reusable file (no report with a file in Storage and image/pdf format)"
               }
             >
               {bulkBusy
-                ? "Elaborazione in corso…"
+                ? "Processing…"
                 : archiveDiagnostics.bulkCandidates > 0
-                  ? `Trasforma ${archiveDiagnostics.bulkCandidates} file in valori proposti`
-                  : "Trasforma file in valori proposti (0 candidati)"}
+                  ? `Turn ${archiveDiagnostics.bulkCandidates} files into proposed values`
+                  : "Turn files into proposed values (0 candidates)"}
             </button>
             <span className="text-[10px] text-gray-500">
               {archiveDiagnostics.bulkCandidates > 0
-                ? "Convoglia i referti senza valori sulla pipeline canonica; i numeri arrivano nei grafici come «proposti» e restano in attesa di conferma in review."
+                ? "Routes the reports without values onto the canonical pipeline; the numbers land in the charts as «proposed» and stay pending confirmation in review."
                 : archiveDiagnostics.importOnlyNoStorage > 0
-                  ? `${archiveDiagnostics.importOnlyNoStorage} referti non hanno il file in Storage (caricati prima che il bucket fosse configurato, o upload fallito). Per analizzarli, ri-carica il file dal modulo «Carica esame» qui sopra.`
+                  ? `${archiveDiagnostics.importOnlyNoStorage} reports have no file in Storage (uploaded before the bucket was configured, or upload failed). To analyze them, re-upload the file from the «Upload exam» module above.`
                   : archiveDiagnostics.importOnlyUnsupported > 0
-                    ? `${archiveDiagnostics.importOnlyUnsupported} referti hanno un formato non supportato (solo image/* o application/pdf possono essere elaborati).`
+                    ? `${archiveDiagnostics.importOnlyUnsupported} reports have an unsupported format (only image/* or application/pdf can be processed).`
                     : archiveDiagnostics.importOnly === 0
-                      ? "Tutti i referti hanno già valori canonici o valori proposti: niente da rielaborare."
-                      : "Nessun candidato per il bulk (verifica che i referti abbiano un file image/pdf in Storage)."}
+                      ? "All reports already have canonical or proposed values: nothing to reprocess."
+                      : "No candidate for the bulk (check that the reports have an image/pdf file in Storage)."}
             </span>
           </div>
         </div>
       ) : null}
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {loadingTimeline ? (
-          <li className="col-span-full py-6 text-center text-sm text-gray-500">Caricamento archivio…</li>
+          <li className="col-span-full py-6 text-center text-sm text-gray-500">Loading archive…</li>
         ) : null}
         {!loadingTimeline && timelineErr ? (
           <li className="col-span-full py-4" role="alert">
             <p className="rounded-xl border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-sm text-amber-100">
-              Lettura archivio non riuscita: {timelineErr}
+              Failed to read archive: {timelineErr}
             </p>
             {timelineDiag ? (
               <div className="mt-2 space-y-1 text-xs text-gray-500">
                 {timelineDiag.requestedAthleteId ? (
                   <p>
-                    Atleta richiesto: <code className="text-gray-300">{timelineDiag.requestedAthleteId}</code>
+                    Requested athlete: <code className="text-gray-300">{timelineDiag.requestedAthleteId}</code>
                   </p>
                 ) : null}
                 {timelineDiag.userProfileAthleteId &&
                 timelineDiag.userProfileAthleteId !== timelineDiag.requestedAthleteId ? (
                   <p className="text-amber-300/90">
-                    Atleta collegato al tuo profilo:{" "}
-                    <code className="text-amber-100">{timelineDiag.userProfileAthleteId}</code> — l&apos;atleta attivo
-                    nella UI non corrisponde. Apri Athletes / Accesso e seleziona quello con i referti, oppure rilancia il
-                    seed SQL su <code className="text-amber-100">{timelineDiag.requestedAthleteId}</code>.
+                    Athlete linked to your profile:{" "}
+                    <code className="text-amber-100">{timelineDiag.userProfileAthleteId}</code> — the athlete active
+                    in the UI does not match. Open Athletes / Access and select the one with the reports, or re-run the
+                    SQL seed on <code className="text-amber-100">{timelineDiag.requestedAthleteId}</code>.
                   </p>
                 ) : null}
                 {timelineDiag.errorCode ? (
                   <p className="text-gray-600">
-                    Codice: <code className="text-gray-400">{timelineDiag.errorCode}</code>
+                    Code: <code className="text-gray-400">{timelineDiag.errorCode}</code>
                     {typeof timelineDiag.httpStatus === "number" ? ` · HTTP ${timelineDiag.httpStatus}` : ""}
                   </p>
                 ) : null}
               </div>
             ) : (
               <p className="mt-2 text-xs text-gray-500">
-                Se il problema persiste, esci e rientra oppure verifica che l&apos;atleta selezionato sia quello con i
-                referti in database.
+                If the problem persists, sign out and back in or verify that the selected athlete is the one with the
+                reports in the database.
               </p>
             )}
             <Pro2Button type="button" variant="secondary" className="mt-3 border-white/15 text-xs" onClick={() => onReloadTimeline()}>
-              Riprova
+              Retry
             </Pro2Button>
           </li>
         ) : null}
         {!loadingTimeline && !timelineErr && panels.length === 0 ? (
           <li className="col-span-full py-6 text-center text-sm text-gray-500">
-            Nessun referto in archivio per questo atleta. Usa «Carica esame» sopra, oppure applica lo seed SQL sullo
-            stesso <code className="text-gray-400">athlete_id</code> attivo
+            No report in the archive for this athlete. Use «Upload exam» above, or apply the SQL seed on the
+            same active <code className="text-gray-400">athlete_id</code>
             {athleteId ? (
               <>
                 {" "}(<code className="text-gray-400">{athleteId}</code>)
@@ -229,12 +229,12 @@ export function HealthArchiveSection({
                   <span className="font-semibold capitalize text-white">{p.type.replace(/_/g, " ")}</span>
                   {isPendingVlm ? (
                     <span className="inline-flex items-center rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-300">
-                      In attesa
+                      Pending
                     </span>
                   ) : null}
                   {nFields > 0 ? (
                     <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold tabular-nums text-emerald-300">
-                      {nFields} campi
+                      {nFields} fields
                     </span>
                   ) : null}
                 </div>
@@ -242,7 +242,7 @@ export function HealthArchiveSection({
                   className="mt-1 truncate font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500"
                   title={p.source ?? ""}
                 >
-                  {p.source ? `Sorgente: ${p.source}` : "Sorgente: —"}
+                  {p.source ? `Source: ${p.source}` : "Source: —"}
                 </div>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-gray-400">
                   <span className="whitespace-nowrap font-mono tabular-nums text-gray-400">
@@ -256,8 +256,8 @@ export function HealthArchiveSection({
                       </>
                     ) : (
                       <span>
-                        Valori strutturati{nFields > 0 ? ` · ${nFields} campi` : ""}
-                        {nFields === 0 ? " (payload vuoto o solo import)" : ""}
+                        Structured values{nFields > 0 ? ` · ${nFields} fields` : ""}
+                        {nFields === 0 ? " (empty payload or import only)" : ""}
                       </span>
                     )}
                   </span>
@@ -275,7 +275,7 @@ export function HealthArchiveSection({
                     onClick={() => onToggleExpanded(expanded ? null : p.id)}
                     className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-rose-500/40 hover:text-white"
                   >
-                    {expanded ? "Chiudi" : "Apri"}
+                    {expanded ? "Close" : "Open"}
                   </button>
                   {reviewRunId ? <HealthStagingReviewLink runId={reviewRunId} /> : null}
                   {canAnalyzeWithAi ? (
@@ -285,7 +285,7 @@ export function HealthArchiveSection({
                       onClick={() => onAnalyzePanelWithAi(p.id)}
                       className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-100 transition-colors hover:border-rose-400/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {analyzing ? "Estrazione…" : "Estrai dal referto"}
+                      {analyzing ? "Extracting…" : "Extract from report"}
                     </button>
                   ) : null}
                 </div>
@@ -295,7 +295,7 @@ export function HealthArchiveSection({
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                     {valueEntries.length === 0 ? (
                       <p className="text-xs text-gray-500">
-                        Nessun valore strutturato in questo pannello. Se hai un file in storage, prova «Estrai dal referto».
+                        No structured value in this panel. If you have a file in storage, try «Extract from report».
                       </p>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-4">
@@ -313,7 +313,7 @@ export function HealthArchiveSection({
                     )}
                     {Array.isArray(vals?.vlm_proposals) && (vals?.vlm_proposals as unknown[]).length > 0 ? (
                       <p className="mt-3 text-[11px] text-fuchsia-300">
-                        {(vals?.vlm_proposals as unknown[]).length} valori proposti da confermare. Apri la review per accettarle.
+                        {(vals?.vlm_proposals as unknown[]).length} proposed values to confirm. Open the review to accept them.
                       </p>
                     ) : null}
                   </div>

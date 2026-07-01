@@ -58,7 +58,7 @@ export function NutritionPlanDatePicker({
 
   const labelIt = (() => {
     try {
-      return new Date(`${value}T12:00:00`).toLocaleDateString("it-IT", {
+      return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -78,7 +78,7 @@ export function NutritionPlanDatePicker({
             onClick={goPrev}
             disabled={atMin}
             className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-amber-500/30 bg-black/40 text-amber-200 transition-colors hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
-            aria-label="Giorno precedente"
+            aria-label="Previous day"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
@@ -97,14 +97,14 @@ export function NutritionPlanDatePicker({
               "focus-visible:ring-2 focus-visible:ring-amber-400/40",
               "[color-scheme:dark]",
             )}
-            aria-label="Scegli giorno, mese e anno"
+            aria-label="Choose day, month and year"
           />
           <button
             type="button"
             onClick={goNext}
             disabled={atMax}
             className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-amber-500/30 bg-black/40 text-amber-200 transition-colors hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-10 sm:w-10"
-            aria-label="Giorno successivo"
+            aria-label="Next day"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
@@ -118,7 +118,7 @@ export function NutritionPlanDatePicker({
         onClick={() => onChange(today)}
         className="h-11 min-h-[44px] shrink-0 touch-manipulation rounded-full border border-amber-500/30 bg-amber-500/10 px-4 text-xs font-bold uppercase tracking-wider text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20 sm:h-10 sm:min-h-0 sm:self-center sm:px-5"
       >
-        Oggi
+        Today
       </button>
     </div>
   );

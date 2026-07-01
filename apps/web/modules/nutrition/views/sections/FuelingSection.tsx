@@ -107,10 +107,10 @@ export function FuelingSection({
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Rifornimento</h2>
+        <h2 className="text-lg font-bold text-white">Fueling</h2>
         <p className="mt-1 text-sm text-gray-300">
-          Piano pre, intra e post per la seduta del giorno (priorità pianificato Builder; se manca, usa durata/TSS
-          dell&apos;eseguito importato). Numeri sintetici prima, dettagli apribili quando servono.
+          Pre, intra and post plan for the day&apos;s session (Builder planned takes priority; if missing, uses
+          duration/TSS from the imported executed workout). Summary numbers first, expandable details when needed.
         </p>
       </header>
       {athleteId ? (
@@ -118,11 +118,11 @@ export function FuelingSection({
           className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
           style={{ marginBottom: 12 }}
         >
-          <h3 className="viz-title text-base">Assunzione rifornimento</h3>
+          <h3 className="viz-title text-base">Fueling intake</h3>
           <p className="mt-1 text-sm text-gray-400">
-            Conferma che hai seguito il piano (pre / intra / post) per{" "}
-            <strong className="text-white">{selectedPlanDate}</strong>. La conferma viene salvata e può supportare
-            il confronto piano vs reale se attivi l&apos;aderenza nutrizione sul meal plan.
+            Confirm that you followed the plan (pre / intra / post) for{" "}
+            <strong className="text-white">{selectedPlanDate}</strong>. The confirmation is saved and can support
+            the plan vs actual comparison if you enable nutrition adherence on the meal plan.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
@@ -132,54 +132,54 @@ export function FuelingSection({
               onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
             >
               {fuelingConfirmBusy
-                ? "Salvataggio…"
+                ? "Saving…"
                 : fuelingConfirmedForSelectedDate
-                  ? "Annulla conferma questo giorno"
-                  : "Confermo assunzione rifornimento questo giorno"}
+                  ? "Undo confirmation for this day"
+                  : "I confirm fueling intake for this day"}
             </button>
             {fuelingConfirmedForSelectedDate ? (
               <span className="text-xs text-emerald-300">
-                Confermato
+                Confirmed
                 {fuelingExecutionConfirmations[selectedPlanDate]?.at
-                  ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("it-IT")}`
+                  ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("en-US")}`
                   : null}
               </span>
             ) : (
-              <span className="text-xs text-gray-500">Nessuna conferma per questa data.</span>
+              <span className="text-xs text-gray-500">No confirmation for this date.</span>
             )}
           </div>
         </section>
       ) : null}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
-          <h3 className="viz-title">Piano rifornimento · pre / intra / post</h3>
+          <h3 className="viz-title">Fueling plan · pre / intra / post</h3>
         </div>
         {!fuelingReadiness.ready ? (
           <div className="alert-warning" style={{ marginBottom: 0 }}>
             <p className="m-0 mb-2">
-              <strong>Manca ancora:</strong> {fuelingReadiness.missing.join(", ")}.
+              <strong>Still missing:</strong> {fuelingReadiness.missing.join(", ")}.
             </p>
             {fuelingReadiness.onlyDayTrainingMissing ? (
               <p className="m-0 text-sm leading-relaxed opacity-95">
-                Per la data in alto il modulo non trova allenamento nel periodo caricato: niente riga in{" "}
-                <strong>Training → Calendario</strong> e nessun <strong>eseguito</strong> con quella data.
-                Il fueling è legato al <strong>giorno</strong>: sposta la data o aggiungi/importa la sessione —
-                qui non è un problema di Physiology.
+                For the date above the module finds no workout in the loaded period: no row in{" "}
+                <strong>Training → Calendar</strong> and no <strong>executed workout</strong> with that date.
+                Fueling is tied to the <strong>day</strong>: move the date or add/import the session —
+                this is not a Physiology problem.
               </p>
             ) : (
               <>
                 {fuelingReadiness.hasProfileOrPhysiologyGap ? (
                   <p className="m-0 text-sm leading-relaxed opacity-95">
-                    Senza gli elementi sopra (profilo e fisiologia per il rifornimento) non stimiamo CHO/h e il lattato
-                    con numeri inventati. Compila in <strong>Profilo</strong> e <strong>Physiology</strong>.
+                    Without the elements above (profile and physiology for fueling) we do not estimate CHO/h and lactate
+                    with made-up numbers. Fill them in under <strong>Profile</strong> and <strong>Physiology</strong>.
                   </p>
                 ) : null}
                 {fuelingReadiness.dayTrainingAlsoMissing ? (
                   <p
                     className={`m-0 text-sm leading-relaxed opacity-95 ${fuelingReadiness.hasProfileOrPhysiologyGap ? "mt-2" : ""}`}
                   >
-                    In più serve un <strong>allenamento per quel giorno</strong> (pianificato nel calendario o
-                    importato come eseguito), altrimenti non c’è seduta su cui calcolare pre/intra/post.
+                    On top of that you need a <strong>workout for that day</strong> (planned in the calendar or
+                    imported as executed), otherwise there is no session to compute pre/intra/post on.
                   </p>
                 ) : null}
               </>
@@ -203,10 +203,10 @@ export function FuelingSection({
               ))}
             </div>
             {fuelingSessionPackages.length ? (
-              <section className="fueling-visible-plan-strip" aria-label="Piano di integrazione visibile">
+              <section className="fueling-visible-plan-strip" aria-label="Visible fueling plan">
                 {fuelingSessionPackages.map((pkg) => (
                   <article key={`fueling-visible-plan-${pkg.id}`} className="fueling-visible-plan-card">
-                    <span className="fueling-visible-plan-kicker">Piano integrazione</span>
+                    <span className="fueling-visible-plan-kicker">Fueling plan</span>
                     <strong>{pkg.title}</strong>
                     <small>
                       ~{pkg.durationMin} min · {round(pkg.intensityPctFtp)}% FTP · CHO/h ~{pkg.choPerHourSession} g/h
@@ -217,17 +217,17 @@ export function FuelingSection({
             ) : null}
             {recoverySummary?.status === "poor" || recoverySummary?.status === "moderate" ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Note recupero</summary>
+                <summary>Recovery notes</summary>
                 <div className="alert-warning" style={{ marginBottom: 0 }}>
                   {recoverySummary.status === "poor"
-                    ? "Recupero basso: privilegia un rifornimento piu' semplice e progressivo, controlla tolleranza GI e evita aggressivita' inutile nella giornata."
-                    : "Recupero intermedio: mantieni attenzione a densita' del rifornimento, idratazione e finestra post-workout."}
+                    ? "Low recovery: favor a simpler, progressive fueling approach, watch GI tolerance and avoid needless aggressiveness during the day."
+                    : "Intermediate recovery: keep an eye on fueling density, hydration and the post-workout window."}
                 </div>
               </details>
             ) : null}
             {showTech && fuelingTrainingContext.length ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Analisi seduta e substrati</summary>
+                <summary>Session and substrate analysis</summary>
                 <section
                   style={{
                     display: "grid",
@@ -260,16 +260,16 @@ export function FuelingSection({
                     </div>
                     {session.substrate ? (
                       <div style={{ color: "var(--empathy-text-muted)", fontSize: 11, lineHeight: 1.45 }}>
-                        <strong>Substrati (stima motore):</strong> intensità indotta ~{session.substrate.estimatedIntensityPctFtp}% FTP · lact
-                        ~{session.substrate.lactateProducedG} g · glucosio Cori ~{session.substrate.glucoseFromCoriG} g (net{" "}
-                        ~{session.substrate.glucoseNetFromCoriG} g) · CHO esogena ossidata ~{session.substrate.exogenousOxidizedG} g · CHO
-                        disponibile ~{session.substrate.choAvailableG} g · quota energetica CHO ~{session.substrate.glycolyticSharePct}% ·
-                        rischio via intestinale: {session.substrate.gutPathwayRisk} · delivery ematico ~{session.substrate.bloodDeliveryPctOfIngested}%
+                        <strong>Substrates (engine estimate):</strong> induced intensity ~{session.substrate.estimatedIntensityPctFtp}% FTP · lact
+                        ~{session.substrate.lactateProducedG} g · Cori glucose ~{session.substrate.glucoseFromCoriG} g (net{" "}
+                        ~{session.substrate.glucoseNetFromCoriG} g) · exogenous CHO oxidized ~{session.substrate.exogenousOxidizedG} g · CHO
+                        available ~{session.substrate.choAvailableG} g · CHO energy share ~{session.substrate.glycolyticSharePct}% ·
+                        gut pathway risk: {session.substrate.gutPathwayRisk} · blood delivery ~{session.substrate.bloodDeliveryPctOfIngested}%
                       </div>
                     ) : null}
                     {intraSplitRow ? (
                       <div style={{ color: "var(--empathy-text-muted)", fontSize: 11 }}>
-                        <strong>Quota intra CHO (split giorno):</strong> ~{intraSplitRow.choG} g
+                        <strong>Intra CHO share (day split):</strong> ~{intraSplitRow.choG} g
                       </div>
                     ) : null}
                     {session.target ? (
@@ -290,7 +290,7 @@ export function FuelingSection({
                     {session.family === "strength" && session.builderContract ? (
                       <details className="mt-2" open>
                         <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                          Scheda palestra (Builder) · intra workout
+                          Gym program (Builder) · intra workout
                         </summary>
                         <div style={{ marginTop: 8 }}>
                           <Pro2GymSchedaBlockList contract={session.builderContract} compact />
@@ -321,21 +321,21 @@ export function FuelingSection({
             ) : null}
             {knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Contesto rifornimento dalle evidenze</summary>
+                <summary>Fueling context from evidence</summary>
                 <div style={{ display: "grid", gap: 8 }}>
                   {knowledgeFuelingHints.intents.length ? (
                     <div className="session-sub-copy">
-                      Intento fisiologico · {knowledgeFuelingHints.intents.join(" · ")}
+                      Physiological intent · {knowledgeFuelingHints.intents.join(" · ")}
                     </div>
                   ) : null}
                   {knowledgeFuelingHints.supports.length ? (
                     <div className="session-sub-copy">
-                      Supporti prioritari · {knowledgeFuelingHints.supports.join(" · ")}
+                      Priority supports · {knowledgeFuelingHints.supports.join(" · ")}
                     </div>
                   ) : null}
                   {knowledgeFuelingHints.risks.length ? (
                     <div className="muted-copy">
-                      Vincoli e rischi · {knowledgeFuelingHints.risks.join(" · ")}
+                      Constraints and risks · {knowledgeFuelingHints.risks.join(" · ")}
                     </div>
                   ) : null}
                 </div>
@@ -357,7 +357,7 @@ export function FuelingSection({
                 >
                   <summary>{pkg.title}</summary>
                   <p className="nutrition-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-                    ~{pkg.durationMin} min · intensità stimata ~{round(pkg.intensityPctFtp)}% FTP · CHO/h seduta ~{pkg.choPerHourSession} g/h
+                    ~{pkg.durationMin} min · estimated intensity ~{round(pkg.intensityPctFtp)}% FTP · session CHO/h ~{pkg.choPerHourSession} g/h
                   </p>
                   <div className="fueling-vertical-timeline">
                     {pkg.timelineSteps.map((step, idx) => (
@@ -431,7 +431,7 @@ export function FuelingSection({
                                       rel="noopener noreferrer"
                                       className="fueling-step-link"
                                     >
-                                      Scheda produttore
+                                      Manufacturer page
                                     </a>
                                   </div>
                                 </div>
@@ -440,8 +440,8 @@ export function FuelingSection({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="fueling-step-media-link flex items-center justify-center"
-                                  aria-label={step.product?.product ?? "Prodotto fueling"}
-                                  title={step.isLogoFallback ? "Fallback logo marchio" : "Immagine catalogo / archivio"}
+                                  aria-label={step.product?.product ?? "Fueling product"}
+                                  title={step.isLogoFallback ? "Brand logo fallback" : "Catalog / archive image"}
                                   style={{ minHeight: 132, background: "rgba(0,0,0,0.28)", padding: 10, position: "relative" }}
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -492,7 +492,7 @@ export function FuelingSection({
                   </details>
 
                   <section className="fueling-visual-report">
-                    <h4>Report rifornimento · {pkg.title}</h4>
+                    <h4>Fueling report · {pkg.title}</h4>
                     <div className="fueling-metric-grid">
                       {pkg.visualMetrics.map((metric) => (
                         <article key={`${pkg.id}-${metric.label}`} className="fueling-metric-card">
@@ -509,13 +509,13 @@ export function FuelingSection({
                       ))}
                     </div>
                     <div className="fueling-glyco-future">
-                      <h5>Glycogen depletion (seduta)</h5>
+                      <h5>Glycogen depletion (session)</h5>
                       <div className="nutrition-detail-rail" style={{ marginBottom: "8px" }}>
                         <span>
                           <strong>Intake raw:</strong> {gDep.totalIntake} g
                         </span>
                         <span>
-                          <strong>Assorbiti:</strong> {gDep.totalAbsorbed} g
+                          <strong>Absorbed:</strong> {gDep.totalAbsorbed} g
                         </span>
                         <span>
                           <strong>Cori:</strong> {gDep.totalCori} g
@@ -612,10 +612,10 @@ export function FuelingSection({
                           </text>
                         ))}
                         <text x={gPlot.w - 188} y={16} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
-                          Y: glicogeno disponibile (g / %)
+                          Y: available glycogen (g / %)
                         </text>
                         <text x={gPlot.w - 118} y={gPlot.h - 8} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
-                          X: tempo
+                          X: time
                         </text>
                       </svg>
                     </div>

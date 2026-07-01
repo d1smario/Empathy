@@ -145,7 +145,7 @@ export default function HealthPageView() {
         if (direct.ok && json.ok) {
           resolvedPanels = Array.isArray(json.panels) ? json.panels : [];
         } else if (!direct.ok || !json.ok) {
-          resolvedErr = ("error" in json && json.error) || resolvedErr || "Timeline non disponibile";
+          resolvedErr = ("error" in json && json.error) || resolvedErr || "Timeline unavailable";
           resolvedDiag = {
             requestedAthleteId: ("requestedAthleteId" in json ? json.requestedAthleteId : athleteId) ?? athleteId,
             userProfileAthleteId: ("userProfileAthleteId" in json ? json.userProfileAthleteId : null) ?? null,
@@ -424,10 +424,10 @@ export default function HealthPageView() {
       const res = await uploadHealthDocument({ athleteId, panelType, sampleDate, file });
       setUploadBusy(null);
       if (!res.ok) {
-        setToast(res.error ?? "Errore upload");
+        setToast(res.error ?? "Upload error");
         return;
       }
-      setToast(res.message ?? "Caricamento registrato.");
+      setToast(res.message ?? "Upload recorded.");
       void loadTimeline();
       /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma
        *  (in scope coach resta dentro la scheda atleta: /athletes/[id]/health/staging/[runId]). */
@@ -449,10 +449,10 @@ export default function HealthPageView() {
       const res = await analyzePanelWithAi({ panelId, athleteId });
       setAnalyzeBusyPanelId(null);
       if (!res.ok) {
-        setToast(res.error ?? "Estrazione referto fallita");
+        setToast(res.error ?? "Report extraction failed");
         return;
       }
-      setToast(res.message ?? "Estrazione referto avviata.");
+      setToast(res.message ?? "Report extraction started.");
       void loadTimeline();
       if (res.reviewUrl) {
         const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
@@ -471,10 +471,10 @@ export default function HealthPageView() {
     const res = await bulkReanalyzePanelsWithAi({ athleteId });
     setBulkBusy(false);
     if (!res.ok) {
-      setToast(res.error ?? "Bulk re-analyze fallito");
+      setToast(res.error ?? "Bulk re-analyze failed");
       return;
     }
-    setToast(res.message ?? "Bulk re-analyze completato.");
+    setToast(res.message ?? "Bulk re-analyze completed.");
     void loadTimeline();
   }, [athleteId, loadTimeline]);
 
@@ -495,11 +495,11 @@ export default function HealthPageView() {
       });
       setStagingBusy(null);
       if (!res.ok) {
-        setToast(res.error ?? "Aggiornamento staging fallito");
+        setToast(res.error ?? "Staging update failed");
         return;
       }
       setToast(
-        status === "committed" ? "Staging validato." : status === "rejected" ? "Staging scartato." : "Staging archiviato.",
+        status === "committed" ? "Staging validated." : status === "rejected" ? "Staging rejected." : "Staging archived.",
       );
       void loadTimeline();
       void loadSystemMap();
@@ -509,36 +509,36 @@ export default function HealthPageView() {
 
   if (ctxLoading) {
     return (
-      <div className="min-h-[40vh] px-6 py-16 text-center text-sm text-gray-500">Caricamento contesto atleta…</div>
+      <div className="min-h-[40vh] px-6 py-16 text-center text-sm text-gray-500">Loading athlete context…</div>
     );
   }
 
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Salute"
+        eyebrow="Health"
         eyebrowClassName={moduleEyebrowClass("health")}
-        title="Salute e analisi cliniche"
-        description="Seleziona un atleta attivo per caricare i referti e vedere i trend."
+        title="Health and clinical analysis"
+        description="Select an active athlete to upload reports and view trends."
       >
-        <p className="text-sm text-amber-200/90">Nessun atleta attivo.</p>
+        <p className="text-sm text-amber-200/90">No active athlete.</p>
       </Pro2ModulePageShell>
     );
   }
 
   const tabItems: ModulePillAnchorItem[] = [
-    { key: "aree", anchor: "aree", label: "Analisi dettagliata", icon: Microscope, style: MODULE_PILL_ROSE },
-    { key: "stato", anchor: "stato", label: "Stato di salute", icon: HeartPulse, style: MODULE_PILL_ROSE },
-    { key: "dettagli", anchor: "dettagli", label: "Dettagli motore", icon: Wrench, style: MODULE_PILL_ROSE },
+    { key: "aree", anchor: "aree", label: "Detailed analysis", icon: Microscope, style: MODULE_PILL_ROSE },
+    { key: "stato", anchor: "stato", label: "Health status", icon: HeartPulse, style: MODULE_PILL_ROSE },
+    { key: "dettagli", anchor: "dettagli", label: "Engine details", icon: Wrench, style: MODULE_PILL_ROSE },
   ];
   const hasMatrici = bloodComparisonCols.length > 0 || Boolean(microComparisonCols);
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Salute"
+      eyebrow="Health"
       eyebrowClassName={moduleEyebrowClass("health")}
-      title="Salute e analisi cliniche"
-      description="Carica i tuoi referti e segui i trend nel tempo."
+      title="Health and clinical analysis"
+      description="Upload your reports and track trends over time."
     >
       {/* Tab di navigazione: una sola sezione montata alla volta */}
       <div className="sticky top-0 z-30 -mx-1 border-b border-white/10 bg-slate-950/90 px-1 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/80">
@@ -547,7 +547,7 @@ export default function HealthPageView() {
           items={tabItems}
           activeAnchor={activeTab}
           onSelect={(tab) => setActiveTab(tab as HealthTabId)}
-          ariaLabel="Sezioni Salute"
+          ariaLabel="Health sections"
         />
       </div>
 
@@ -588,7 +588,7 @@ export default function HealthPageView() {
               <div className="mb-4 flex items-center justify-center gap-2">
                 <Activity className="h-4 w-4 text-rose-400" />
                 <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-                  Storico esami del sangue
+                  Blood test history
                 </h2>
               </div>
               <HealthBloodTrendSection
@@ -623,7 +623,7 @@ export default function HealthPageView() {
           {hasMatrici ? (
             <div className="space-y-3">
               <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-                Matrici longitudinali
+                Longitudinal matrices
               </h2>
               <HealthLongitudinalTables bloodCols={bloodComparisonCols} microCols={microComparisonCols} />
             </div>
@@ -636,18 +636,18 @@ export default function HealthPageView() {
         <div className="space-y-6">
           <div className="space-y-3 text-sm leading-relaxed text-gray-400">
             <p>
-              Ogni referto caricato viene letto e i suoi valori finiscono in un archivio per atleta. Le card e i grafici
-              usano sempre i numeri del referto più recente per tipo (sangue, microbiota, epigenetica, ormoni,
-              infiammazione, stress ossidativo).
+              Every uploaded report is read and its values end up in a per-athlete archive. Cards and charts always use
+              the numbers from the most recent report per type (blood, microbiota, epigenetics, hormones, inflammation,
+              oxidative stress).
             </p>
             <p>
-              I punteggi sintetici dello «Stato di salute» compaiono quando sono presenti nei referti caricati. I trend
-              nel tempo si attivano dal secondo referto compatibile in poi: con un solo referto vedi comunque tutti i
-              valori estratti nella sezione «Stato di salute».
+              The summary scores in «Health status» appear when they are present in the uploaded reports. Trends over
+              time activate from the second compatible report onward: with a single report you still see all the values
+              extracted in the «Health status» section.
             </p>
             <p>
-              Quando il referto è una foto o un PDF, l&apos;estrazione può proporre valori da confermare prima che
-              diventino definitivi nei grafici.
+              When the report is a photo or a PDF, extraction can propose values to confirm before they become final in
+              the charts.
             </p>
           </div>
 
