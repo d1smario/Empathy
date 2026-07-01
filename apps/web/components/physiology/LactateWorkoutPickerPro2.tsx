@@ -13,7 +13,7 @@ export type LactateWorkoutPickItem = {
 };
 
 function formatWorkoutLine(w: LactateWorkoutPickItem) {
-  return `${new Date(w.date).toLocaleDateString("it-IT")} · ${w.sport} · ${Math.round(w.duration_min)} min · ${Math.round(w.tss)} TSS`;
+  return `${new Date(w.date).toLocaleDateString("en-US")} · ${w.sport} · ${Math.round(w.duration_min)} min · ${Math.round(w.tss)} TSS`;
 }
 
 export function LactateWorkoutPickerPro2({
@@ -57,10 +57,10 @@ export function LactateWorkoutPickerPro2({
           <CalendarClock className={icoClass} aria-hidden />
           <span className="truncate">
             {workouts.length === 0
-              ? "Nessuna sessione importata"
+              ? "No session imported"
               : selected
                 ? formatWorkoutLine(selected)
-                : "Seleziona allenamento da analizzare"}
+                : "Select workout to analyze"}
           </span>
         </span>
         <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
@@ -69,8 +69,8 @@ export function LactateWorkoutPickerPro2({
         <div className={`physiology-pro2-lac-pick-pop${isMox ? " physiology-pro2-lac-pick-pop--maxox" : ""}`} role="listbox">
           <p className="physiology-pro2-lac-pick-pop-hint">
             {isMox
-              ? "Tocca una sessione: potenza, VO₂, RER, lattato e SmO₂ vanno nel motore Max Oxidate (snapshot/aggregati del file). Per un tratto a ritmo stabile preferisci quei numeri o inseriscili a mano."
-              : "Tocca una sessione: i segnali vengono applicati al motore lattato."}
+              ? "Tap a session: power, VO₂, RER, lactate and SmO₂ go into the Max Oxidate engine (snapshot/aggregates from the file). For a steady-pace segment, prefer those numbers or enter them by hand."
+              : "Tap a session: the signals are applied to the lactate engine."}
           </p>
           <div className={`physiology-pro2-lac-pick-chips${isMox ? " physiology-pro2-lac-pick-chips--maxox" : ""}`}>
             {workouts.map((w) => (

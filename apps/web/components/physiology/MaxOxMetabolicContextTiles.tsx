@@ -11,7 +11,7 @@ const SPORT_OPTS: { v: SupportedSport; label: string }[] = [
   { v: "cycling", label: "Cycling" },
   { v: "running", label: "Running" },
   { v: "swimming", label: "Swimming" },
-  { v: "xc_ski", label: "Sci di fondo" },
+  { v: "xc_ski", label: "Cross-country ski" },
 ];
 
 function sportLabel(s: SupportedSport) {
@@ -64,16 +64,16 @@ export function MaxOxMetabolicContextTiles({
 
   const vo2Label =
     maxOxVo2Mode === "test"
-      ? "VO₂ da test"
+      ? "VO₂ from test"
       : vo2CapacitySource === "metabolic_engine_vo2max"
-        ? "VO₂max (modello CP)"
-        : "Stima potenza";
+        ? "VO₂max (CP model)"
+        : "Power estimate";
 
   return (
     <div className="physiology-pro2-ctx-shell physiology-pro2-ctx-shell--maxox" ref={shellRef}>
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-context">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Contesto test · fonte VO₂</span>
+        <span>Test context · VO₂ source</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
@@ -104,7 +104,7 @@ export function MaxOxMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">Fonte VO₂</span>
+          <span className="physiology-pro2-ctx-tile-k">VO₂ source</span>
           <span className="physiology-pro2-ctx-tile-v">{vo2Label}</span>
         </button>
       </div>
@@ -138,10 +138,10 @@ export function MaxOxMetabolicContextTiles({
             }}
           >
             {vo2CapacitySource === "test_manual"
-              ? "Device: VO₂max da curva CP → stima al carico"
+              ? "Device: VO₂max from CP curve → estimate at load"
               : vo2CapacitySource === "metabolic_engine_vo2max"
-                ? "Capacità da Metabolic Profile (VO₂max da curva CP)"
-                : "Solo stima potenza (compila la curva CP per il tetto)"}
+                ? "Capacity from Metabolic Profile (VO₂max from CP curve)"
+                : "Power estimate only (fill in the CP curve for the ceiling)"}
           </button>
           <button
             type="button"
@@ -151,7 +151,7 @@ export function MaxOxMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Valore da test
+            Value from test
           </button>
         </div>
       ) : null}
@@ -159,18 +159,18 @@ export function MaxOxMetabolicContextTiles({
       <div className="physiology-pro2-ctx-vo2-card physiology-pro2-ctx-vo2-card--maxox">
         <HeartPulse className="physiology-pro2-ctx-vo2-ico" aria-hidden />
         <div className="physiology-pro2-ctx-vo2-copy">
-          <span className="physiology-pro2-ctx-vo2-k">VO₂ usato nel modello</span>
+          <span className="physiology-pro2-ctx-vo2-k">VO₂ used in the model</span>
           <span className="physiology-pro2-ctx-vo2-main">{maxOxVo2Used.toFixed(2)} L/min</span>
           <span className="physiology-pro2-ctx-vo2-sub">
-            stimato {maxOxVo2EstL.toFixed(2)} L/min · {maxOxVo2MlKg.toFixed(1)} ml/kg/min
+            estimated {maxOxVo2EstL.toFixed(2)} L/min · {maxOxVo2MlKg.toFixed(1)} ml/kg/min
           </span>
           {segmentVo2LMin != null ? (
             <span className="mt-2 block text-[0.7rem] leading-snug text-gray-400">
-              Segmento (stima al carico): <strong className="font-mono tabular-nums text-white">{segmentVo2LMin.toFixed(2)} L/min</strong>
+              Segment (estimate at load): <strong className="font-mono tabular-nums text-white">{segmentVo2LMin.toFixed(2)} L/min</strong>
               {segmentO2TotalL != null && segmentDurationMin != null ? (
                 <>
                   {" "}
-                  · O₂ cumulativo ~<strong className="font-mono tabular-nums text-white">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
+                  · cumulative O₂ ~<strong className="font-mono tabular-nums text-white">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
                 </>
               ) : null}
             </span>

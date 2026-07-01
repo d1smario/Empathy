@@ -70,7 +70,7 @@ export function PhysiologyPro2MaxOxLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>CONFIGURAZIONE · SEGNALI · PARAMETRI MOTORE</span>
+        <span>CONFIGURATION · SIGNALS · ENGINE PARAMETERS</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 

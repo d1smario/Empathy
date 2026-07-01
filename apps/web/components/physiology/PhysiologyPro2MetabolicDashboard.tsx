@@ -195,7 +195,7 @@ export function PhysiologyPro2MetabolicDashboard({
               <div className="physiology-pro2-lab-cp-watts">{parseW(cpInputs[p.label] ?? "").toLocaleString("it-IT")}</div>
               <div className="physiology-pro2-lab-cp-unit">watts</div>
               <label className="physiology-pro2-lab-cp-edit">
-                <span className="physiology-pro2-sr-only">Potenza {p.label}</span>
+                <span className="physiology-pro2-sr-only">Power {p.label}</span>
                 <input
                   type="number"
                   className="physiology-pro2-lab-cp-input"
@@ -210,7 +210,7 @@ export function PhysiologyPro2MetabolicDashboard({
 
       {!cpCurveHasData ? (
         <p className="mt-4 rounded-xl border border-slate-600/40 bg-black/25 px-4 py-3 text-sm text-gray-400">
-          Dopo aver compilato la CP, usa <strong>Ricalcola</strong> e <strong>Salva snapshot</strong> nella scheda principale; i dati del laboratorio restano legati all&apos;atleta attivo.
+          After filling in the CP, use <strong>Recalculate</strong> and <strong>Save snapshot</strong> in the main tab; the lab data stays linked to the active athlete.
         </p>
       ) : null}
 
@@ -232,7 +232,7 @@ export function PhysiologyPro2MetabolicDashboard({
               <YAxis domain={[0, "auto"]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
               <Tooltip
                 contentStyle={chartTooltipStyle("physiology")}
-                formatter={(v: number) => [`${v} W`, "Potenza"]}
+                formatter={(v: number) => [`${v} W`, "Power"]}
               />
               <Area type="monotone" dataKey="watts" stroke={CHART_SIGNAL.power} strokeWidth={CHART_STROKE.base} fill="url(#pdcFill)" />
             </AreaChart>
@@ -246,7 +246,7 @@ export function PhysiologyPro2MetabolicDashboard({
         <Target className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
-      <p className="physiology-pro2-lab-subsec">Soglie &amp; Threshold</p>
+      <p className="physiology-pro2-lab-subsec">Thresholds</p>
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--3">
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--ftp">
           <Target className="physiology-pro2-lab-metric-ico" aria-hidden />
@@ -265,26 +265,26 @@ export function PhysiologyPro2MetabolicDashboard({
         </div>
       </div>
 
-      <p className="physiology-pro2-lab-subsec">Substrati energetici</p>
+      <p className="physiology-pro2-lab-subsec">Energy substrates</p>
       <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--fatmax">
         <Droplet className="physiology-pro2-lab-metric-ico" aria-hidden />
         <div className="physiology-pro2-lab-metric-label">FatMax</div>
         <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--fatmax">{model.fatmax.toFixed(0)} W</div>
       </div>
 
-      <p className="physiology-pro2-lab-subsec">Metabolismo · indice glicolitico</p>
+      <p className="physiology-pro2-lab-subsec">Metabolism · glycolytic index</p>
       <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--vla">
         <Zap className="physiology-pro2-lab-metric-ico" aria-hidden />
-        <div className="physiology-pro2-lab-metric-label">Indice glicolitico (proxy)</div>
+        <div className="physiology-pro2-lab-metric-label">Glycolytic index (proxy)</div>
         <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--vla">{model.vlamax.toFixed(2)}</div>
         <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-gray-500">
-          Proxy adimensionale dal motore CP (banda tipica ~0.3–0.8), non V̇La max di laboratorio. Picco lattato ematico schematico (sforzo massimo breve): ~{peakLacHint.toFixed(1)} mmol/L.
+          Dimensionless proxy from the CP engine (typical band ~0.3–0.8), not laboratory V̇La max. Schematic peak blood lactate (short maximal effort): ~{peakLacHint.toFixed(1)} mmol/L.
         </p>
       </div>
 
       <p className="physiology-pro2-lab-subsec physiology-pro2-lab-subsec--with-ico">
         <Battery className="physiology-pro2-lab-subsec-ico" aria-hidden />
-        Capacità energetiche
+        Energy capacities
       </p>
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--4">
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
@@ -317,7 +317,7 @@ export function PhysiologyPro2MetabolicDashboard({
 
       <p className="physiology-pro2-lab-subsec physiology-pro2-lab-subsec--with-ico">
         <Award className="physiology-pro2-lab-subsec-ico" aria-hidden />
-        Qualità fit &amp; fenotipo
+        Fit quality &amp; phenotype
       </p>
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--4">
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
@@ -361,7 +361,7 @@ export function PhysiologyPro2MetabolicDashboard({
         <table className="physiology-pro2-lab-table">
           <thead>
             <tr>
-              <th>Zona</th>
+              <th>Zone</th>
               <th>Power</th>
               <th>HR</th>
               <th>FAT %</th>
@@ -411,21 +411,21 @@ export function PhysiologyPro2MetabolicDashboard({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--report">
         <BarChart3 className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>REPORT FISIOLOGICI · Profilo metabolico</span>
+        <span>PHYSIOLOGY REPORTS · Metabolic profile</span>
         <BarChart3 className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
       <div className="physiology-pro2-lab-chart-card physiology-pro2-lab-chart-card--orange">
         <h3 className="physiology-pro2-lab-chart-title physiology-pro2-lab-chart-title--orange">
-          Profilo metabolico · Substrati vs intensità
+          Metabolic profile · Substrates vs intensity
         </h3>
-        <p className="physiology-pro2-lab-chart-hint">% substrato in funzione della zona (modello CP + RER)</p>
+        <p className="physiology-pro2-lab-chart-hint">% substrate as a function of zone (CP model + RER)</p>
         <div className="physiology-pro2-lab-chart-wrap">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={metabolicSeries} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
-              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} label={{ value: "% Substrato", angle: -90, position: "insideLeft", fill: CHART_AXIS.label, fontSize: CHART_FONT.axisLabel }} />
+              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} label={{ value: "% Substrate", angle: -90, position: "insideLeft", fill: CHART_AXIS.label, fontSize: CHART_FONT.axisLabel }} />
               <Tooltip
                 contentStyle={chartTooltipStyle("physiology")}
               />

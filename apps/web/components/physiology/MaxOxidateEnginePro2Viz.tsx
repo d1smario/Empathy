@@ -63,15 +63,15 @@ export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) 
   const reqOx = Math.max(0, model.oxidativeDemandKcalMin);
   const headroom = Math.max(0, cap - reqOx);
   const fluxSegs: Seg[] = [
-    { key: "req", label: "Domanda ossidativa (P_oss @ durata)", value: reqOx, tone: "rose" },
-    { key: "head", label: "Margine capacità", value: headroom, tone: "cyan" },
+    { key: "req", label: "Oxidative demand (P_oss @ duration)", value: reqOx, tone: "rose" },
+    { key: "head", label: "Capacity headroom", value: headroom, tone: "cyan" },
   ];
 
   const cho = Math.max(0, model.oxidativeCapacityChoGMin);
   const fat = Math.max(0, model.oxidativeCapacityFatGMin);
   const subSegs: Seg[] = [
-    { key: "cho", label: "Flusso CHO ossidabile", value: cho, tone: "amber" },
-    { key: "fat", label: "Flusso FAT ossidabile", value: fat, tone: "slate" },
+    { key: "cho", label: "Oxidizable CHO flux", value: cho, tone: "amber" },
+    { key: "fat", label: "Oxidizable FAT flux", value: fat, tone: "slate" },
   ];
 
   const cDel = Math.min(1, Math.max(0, model.centralDeliveryIndex / 1.2));
@@ -80,42 +80,42 @@ export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) 
   return (
     <div className="maxox-engine-viz">
       <div className="maxox-engine-viz-card">
-        <h4 className="maxox-engine-viz-title">Capacità ossidativa vs domanda</h4>
+        <h4 className="maxox-engine-viz-title">Oxidative capacity vs demand</h4>
         <p className="maxox-engine-viz-sub">
-          Capacità <strong>{model.oxidativeCapacityKcalMin.toFixed(2)} kcal/min</strong> · saturazione ossidativa{" "}
-          <strong>{model.utilizationRatioPct.toFixed(0)}%</strong> · domanda totale {model.requiredKcalMin.toFixed(2)} kcal/min
+          Capacity <strong>{model.oxidativeCapacityKcalMin.toFixed(2)} kcal/min</strong> · oxidative saturation{" "}
+          <strong>{model.utilizationRatioPct.toFixed(0)}%</strong> · total demand {model.requiredKcalMin.toFixed(2)} kcal/min
         </p>
         <SegmentedBar segments={fluxSegs} unit="kcal/min" />
       </div>
 
       <div className="maxox-engine-viz-card">
-        <h4 className="maxox-engine-viz-title">Substrati · potenziale ossidativo (g/min)</h4>
-        <p className="maxox-engine-viz-sub">Partizione stimata da intensità, RER e lattato (max-oxidate v1.5).</p>
+        <h4 className="maxox-engine-viz-title">Substrates · oxidative potential (g/min)</h4>
+        <p className="maxox-engine-viz-sub">Partition estimated from intensity, RER and lactate (max-oxidate v1.5).</p>
         <SegmentedBar segments={subSegs} unit="g/min" />
       </div>
 
       <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">Delivery centrale · utilizzo periferico · estrazione</h4>
+        <h4 className="maxox-engine-viz-title">Central delivery · peripheral utilization · extraction</h4>
         <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label="Indice delivery centrale (norm.)" value01={cDel} tone="cyan" />
-          <MeterRow label="Indice utilizzo periferico (norm.)" value01={pUti} tone="rose" />
-          <MeterRow label="Estrazione SmO₂" value01={model.extractionPct / 85} tone="violet" />
+          <MeterRow label="Central delivery index (norm.)" value01={cDel} tone="cyan" />
+          <MeterRow label="Peripheral utilization index (norm.)" value01={pUti} tone="rose" />
+          <MeterRow label="SmO₂ extraction" value01={model.extractionPct / 85} tone="violet" />
         </div>
         <p className="maxox-engine-viz-hint">
-          VO₂ rel <strong>{model.vo2RelMlKgMin.toFixed(1)} ml/kg/min</strong> · potenza ossidativa {model.oxidativePowerKw.toFixed(3)} kW · stato:{" "}
+          VO₂ rel <strong>{model.vo2RelMlKgMin.toFixed(1)} ml/kg/min</strong> · oxidative power {model.oxidativePowerKw.toFixed(3)} kW · state:{" "}
           <span className="maxox-engine-viz-state">{model.state}</span>
         </p>
       </div>
 
       <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">Stress ossidativo · redox · NADH</h4>
+        <h4 className="maxox-engine-viz-title">Oxidative stress · redox · NADH</h4>
         <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label="Collo di bottiglia (indice)" value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
-          <MeterRow label="Stress redox" value01={model.redoxStressIndex / 100} tone="amber" />
-          <MeterRow label="Pressione NADH" value01={model.nadhPressureIndex} tone="violet" />
+          <MeterRow label="Bottleneck (index)" value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
+          <MeterRow label="Redox stress" value01={model.redoxStressIndex / 100} tone="amber" />
+          <MeterRow label="NADH pressure" value01={model.nadhPressureIndex} tone="violet" />
         </div>
         <p className="maxox-engine-viz-hint">
-          Riossidazione (indice) {(model.reoxidationCapacityIndex * 100).toFixed(0)}% · tipo limite dominante nel motore:{" "}
+          Reoxidation (index) {(model.reoxidationCapacityIndex * 100).toFixed(0)}% · dominant limiting type in the engine:{" "}
           <strong>{model.bottleneckType.replaceAll("_", " ")}</strong>
         </p>
       </div>

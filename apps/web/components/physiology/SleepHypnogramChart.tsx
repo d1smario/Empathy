@@ -11,13 +11,13 @@ export const SLEEP_HYPNO_STAGE_FILL: Record<number, string> = {
 };
 
 const LEGEND: Array<{ stage: number; label: string }> = [
-  { stage: 0, label: "Risveglio" },
-  { stage: 1, label: "Leggero" },
-  { stage: 2, label: "Profondo" },
+  { stage: 0, label: "Awake" },
+  { stage: 1, label: "Light" },
+  { stage: 2, label: "Deep" },
   { stage: 3, label: "REM" },
 ];
 
-function formatAxisTime(iso: string | null | undefined, locale = "it-IT"): string {
+function formatAxisTime(iso: string | null | undefined, locale = "en-US"): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
@@ -49,9 +49,9 @@ export function SleepHypnogramChart({
       <div className={cn("rounded-xl border border-white/10 bg-black/40 p-4", className)}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-bold text-white">Sonno · fasi</p>
+            <p className="text-sm font-bold text-white">Sleep · stages</p>
             <p className="text-xs text-gray-500">
-              Nessun dato fasi per questa notte: assicurati che l’export includa sonno e stadi mappati.
+              No stage data for this night: make sure the export includes sleep and mapped stages.
             </p>
           </div>
         </div>
@@ -65,11 +65,11 @@ export function SleepHypnogramChart({
     <div className={cn("rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-white">Sonno · fasi (linea temporale)</p>
+          <p className="text-sm font-bold text-white">Sleep · stages (timeline)</p>
           <p className="text-xs text-gray-500">
             {approximated
-              ? "Modello ricostruito dai totali per stadio (WHOOP API non espone la sequenza reale). Non è l’ipnogramma clinico del dispositivo."
-              : "Sequenza da segmenti vendor quando disponibili."}
+              ? "Model reconstructed from per-stage totals (the WHOOP API does not expose the real sequence). This is not the device's clinical hypnogram."
+              : "Sequence from vendor segments when available."}
           </p>
         </div>
         {hasWindow ? (
@@ -86,9 +86,9 @@ export function SleepHypnogramChart({
         className="mt-3 h-40 w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Distribuzione delle fasi del sonno sulla notte"
+        aria-label="Distribution of sleep stages across the night"
       >
-        <title>Distribuzione delle fasi del sonno sulla notte</title>
+        <title>Distribution of sleep stages across the night</title>
         <rect width={w} height={h} fill="transparent" />
 
         {/* Asse */}
@@ -121,7 +121,7 @@ export function SleepHypnogramChart({
         })}
 
         <text x={8} y={bandTop - 2} fill="rgba(148,163,184,0.85)" fontSize={9} fontFamily="monospace">
-          Inizio notte
+          Night start
         </text>
         <text
           x={w - 8}
@@ -131,7 +131,7 @@ export function SleepHypnogramChart({
           fontFamily="monospace"
           textAnchor="end"
         >
-          Sveglia
+          Wake-up
         </text>
       </svg>
 

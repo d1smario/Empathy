@@ -33,9 +33,9 @@ export function bottleneckColor(index: number): string {
 }
 
 export function maxOxBottleneckLabel(kind: string): string {
-  if (kind === "central_delivery") return "Delivery centrale O2";
-  if (kind === "peripheral_utilization") return "Utilizzo periferico/mitocondriale";
-  if (kind === "glycolytic_pressure") return "Pressione glicolitica";
-  if (kind === "oxidative_ceiling") return "Tetto aerobico (CP / capacità)";
-  return "Bilanciato";
+  if (kind === "central_delivery") return "Central O2 delivery";
+  if (kind === "peripheral_utilization") return "Peripheral/mitochondrial utilization";
+  if (kind === "glycolytic_pressure") return "Glycolytic pressure";
+  if (kind === "oxidative_ceiling") return "Aerobic ceiling (CP / capacity)";
+  return "Balanced";
 }

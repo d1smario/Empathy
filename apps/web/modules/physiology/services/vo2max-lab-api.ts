@@ -15,7 +15,7 @@ export async function saveVo2maxLab(input: {
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(payload.error ?? "Salvataggio VO2max laboratorio fallito");
+    throw new Error(payload.error ?? "Failed to save lab VO2max");
   }
   return (await response.json()) as { status: string; vo2max_ml_min_kg: number };
 }
@@ -28,7 +28,7 @@ export async function clearVo2maxLab(athleteId: string) {
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(payload.error ?? "Reset VO2max fallito");
+    throw new Error(payload.error ?? "VO2max reset failed");
   }
   return (await response.json()) as { status: string };
 }

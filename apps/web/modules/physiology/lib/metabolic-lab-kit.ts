@@ -22,9 +22,9 @@ export type LabRun = {
 };
 
 export function labHistorySectionTitle(section: LabSection): string {
-  if (section === "metabolic_profile") return "Profilo metabolico";
-  if (section === "lactate_analysis") return "Analisi lattato";
-  return "Capacità ossidativa";
+  if (section === "metabolic_profile") return "Metabolic profile";
+  if (section === "lactate_analysis") return "Lactate analysis";
+  return "Oxidative capacity";
 }
 
 export type WorkoutSample = {

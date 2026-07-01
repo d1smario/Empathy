@@ -466,14 +466,14 @@ export function useMetabolicAnalyses({
   const maxOxSummary = useMemo(() => {
     const ratio = maxOxModel.utilizationRatioPct;
     const ratioText =
-      ratio >= 120 ? "domanda oltre capacita ossidativa" :
-      ratio >= 100 ? "domanda al limite della capacita ossidativa" :
-      "domanda sotto capacita ossidativa";
+      ratio >= 120 ? "demand above oxidative capacity" :
+      ratio >= 100 ? "demand at the limit of oxidative capacity" :
+      "demand below oxidative capacity";
     const bottleneckText = maxOxBottleneckLabel(maxOxModel.bottleneckType);
     const redoxText =
-      maxOxModel.redoxStressIndex >= 65 ? "stress redox alto" :
-      maxOxModel.redoxStressIndex >= 35 ? "stress redox moderato" :
-      "stress redox basso";
+      maxOxModel.redoxStressIndex >= 65 ? "high redox stress" :
+      maxOxModel.redoxStressIndex >= 35 ? "moderate redox stress" :
+      "low redox stress";
     return { ratioText, bottleneckText, redoxText };
   }, [maxOxModel]);
 

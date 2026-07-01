@@ -83,7 +83,7 @@ function TimeSeriesPlaceholder({
           />
         </svg>
         <p className="pointer-events-none absolute bottom-2 left-3 right-3 text-center text-[0.65rem] text-gray-500">
-          Asse tempo · placeholder finché la serie continua non è ingestita per questa giornata
+          Time axis · placeholder until the continuous series is ingested for this day
         </p>
       </div>
     </div>
@@ -101,41 +101,41 @@ function AdvancedPhysiologyChannelsStrip({ panel }: { panel: PhysiologyDailyPane
 
   const slots: Array<{ title: string; value: string; unit?: string; foot: string; warm?: boolean }> = [
     {
-      title: "Glucosio",
+      title: "Glucose",
       value: fmtNum(bio?.glucoseMmolL ?? null, 2),
       unit: bio?.glucoseMmolL != null ? "mmol/L" : undefined,
-      foot: "Puntuale da biomarker · serie CGM sotto quando ingestita.",
+      foot: "Point value from biomarker · CGM series below once ingested.",
       warm: Boolean(lab?.glucoseCgm),
     },
     {
-      title: "Lattato",
+      title: "Lactate",
       value: fmtNum(bio?.lactateMmolL ?? null, 2),
       unit: bio?.lactateMmolL != null ? "mmol/L" : undefined,
-      foot: "Flash / panel · monitoraggio continuo (serie) sotto.",
+      foot: "Flash / panel · continuous monitoring (series) below.",
       warm: Boolean(lab?.lactateContinuous),
     },
     {
-      title: "SmO₂ muscolare (NIRS)",
+      title: "Muscle SmO₂ (NIRS)",
       value: "—",
-      foot: "Saturazione ossigeno muscolo · device NIRS / laboratorio (non SpO₂ polso).",
+      foot: "Muscle oxygen saturation · NIRS device / lab (not wrist SpO₂).",
       warm: Boolean(lab?.muscleSmo2Continuous),
     },
     {
       title: "Gas · VO₂ / VCO₂",
       value: gasLine,
-      foot: "Spirometria / metabolic cart · stessa riga espone entrambi se presenti.",
+      foot: "Spirometry / metabolic cart · same row shows both when present.",
       warm: Boolean(lab?.gasExchangeLab),
     },
     {
-      title: "Temperatura core",
+      title: "Core temperature",
       value: "—",
-      foot: "Continua (belt, pill, lab) · valore puntuale + grafico quando collegati.",
+      foot: "Continuous (belt, pill, lab) · point value + chart when connected.",
       warm: Boolean(lab?.coreTempContinuous),
     },
     {
-      title: "Ormoni / metabolomics",
+      title: "Hormones / metabolomics",
       value: "—",
-      foot: "Panel seriali o upload Health: compariranno qui con chiavi mappate.",
+      foot: "Serial panels or Health upload: they will appear here with mapped keys.",
       warm: Boolean(lab?.hormonePanels),
     },
   ];
@@ -143,11 +143,11 @@ function AdvancedPhysiologyChannelsStrip({ panel }: { panel: PhysiologyDailyPane
   return (
     <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/[0.18] via-black/40 to-black/60 p-4 shadow-inner sm:p-5">
       <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
-        Canali dati avanzati
+        Advanced data channels
       </p>
       <p className="mt-2 max-w-3xl text-sm text-gray-300">
-        Oltre a passi, sonno e recovery: predisponiamo slot per laboratorio e wearable tecnici. Se non hai ancora
-        sorgenti collegate, le celle restano vuote (—) ma il perimetro del prodotto è chiaro.
+        Beyond steps, sleep and recovery: we set up slots for lab and technical wearables. If you don&apos;t yet have
+        connected sources, the cells stay empty (—) but the product scope is clear.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {slots.map((s) => (
@@ -207,7 +207,7 @@ export default function PhysiologyDailyWellnessPageView() {
       });
       const json = (await res.json()) as PhysiologyDailyPanelOk | { ok: false; error?: string };
       if (!res.ok || !json || typeof json !== "object" || !("ok" in json) || json.ok !== true) {
-        const nextErr = (json as { error?: string }).error || "Lettura pannello non riuscita.";
+        const nextErr = (json as { error?: string }).error || "Panel read failed.";
         setPanel(null);
         setErr(nextErr);
         dailyPanelCache = { panel: null, error: nextErr };
@@ -220,7 +220,7 @@ export default function PhysiologyDailyWellnessPageView() {
       dailyPanelCacheKey = cacheKey;
     } catch {
       setPanel(null);
-      setErr("Errore di rete.");
+      setErr("Network error.");
     } finally {
       setLoading(false);
     }
@@ -232,7 +232,7 @@ export default function PhysiologyDailyWellnessPageView() {
 
   const dayLabel = useMemo(() => {
     if (!dateValid) return "";
-    return new Date(`${date}T12:00:00`).toLocaleDateString("it-IT", {
+    return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -243,12 +243,12 @@ export default function PhysiologyDailyWellnessPageView() {
   if (ctxLoading || (loading && athleteId && dateValid)) {
     return (
       <Pro2ModulePageShell
-        eyebrow="La tua giornata"
+        eyebrow="Your day"
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Caricamento…"
-        description="Stiamo raccogliendo i dati del giorno scelto."
+        title="Loading…"
+        description="We're gathering the data for the selected day."
       >
-        <p className="text-sm text-gray-500">Caricamento contesto atleta…</p>
+        <p className="text-sm text-gray-500">Loading athlete context…</p>
       </Pro2ModulePageShell>
     );
   }
@@ -256,18 +256,18 @@ export default function PhysiologyDailyWellnessPageView() {
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="La tua giornata"
+        eyebrow="Your day"
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Wellness giornaliero"
-        description="Seleziona un atleta attivo per vedere i dati del giorno."
+        title="Daily wellness"
+        description="Select an active athlete to see the day's data."
         headerActions={
           <AdminScopedPro2Link href="/access" variant="secondary" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20">
-            Accesso
+            Access
           </AdminScopedPro2Link>
         }
       >
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
-          Nessun atleta attivo. Da coach apri Athletes; da atleta privato collega il profilo in Accesso.
+          No active athlete. As a coach open Athletes; as a private athlete link your profile in Access.
         </div>
       </Pro2ModulePageShell>
     );
@@ -276,12 +276,12 @@ export default function PhysiologyDailyWellnessPageView() {
   if (!dateValid) {
     return (
       <Pro2ModulePageShell
-        eyebrow="La tua giornata"
+        eyebrow="Your day"
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Data non valida"
-        description="Seleziona un giorno valido per vedere i dati."
+        title="Invalid date"
+        description="Select a valid day to see the data."
       >
-        <p className="text-sm text-amber-200/90">Il giorno indicato non è valido.</p>
+        <p className="text-sm text-amber-200/90">The specified day is not valid.</p>
       </Pro2ModulePageShell>
     );
   }
@@ -290,13 +290,13 @@ export default function PhysiologyDailyWellnessPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="La tua giornata"
+      eyebrow="Your day"
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Wellness giornaliero"
+      title="Daily wellness"
       description={
         <>
-          La fotografia del giorno: recupero, sonno, energia e segnali del corpo, sullo stesso giorno del tuo allenamento.
-          I grafici compaiono quando i dati sono disponibili.
+          The day&apos;s snapshot: recovery, sleep, energy and body signals, on the same day as your training.
+          The charts appear when the data is available.
         </>
       }
     >
@@ -324,38 +324,38 @@ export default function PhysiologyDailyWellnessPageView() {
         <AdvancedPhysiologyChannelsStrip panel={panel} />
       </div>
 
-      <Pro2SectionCard accent="emerald" title="Profilo e attività" subtitle="Peso profilo, passi, energia, vitale" icon={Activity}>
+      <Pro2SectionCard accent="emerald" title="Profile and activity" subtitle="Profile weight, steps, energy, vitals" icon={Activity}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCell label="Peso (profilo)" value={fmtNum(panel?.profileWeightKg ?? null, 1)} unit="kg" />
-          <MetricCell label="Passi" value={fmtNum(panel?.activity.steps ?? null, 0)} />
-          <MetricCell label="Kcal attive" value={fmtNum(panel?.activity.activeCaloriesKcal ?? null, 0)} unit="kcal" />
-          <MetricCell label="Kcal totali (stima)" value={fmtNum(panel?.activity.totalCaloriesKcal ?? null, 0)} unit="kcal" />
+          <MetricCell label="Weight (profile)" value={fmtNum(panel?.profileWeightKg ?? null, 1)} unit="kg" />
+          <MetricCell label="Steps" value={fmtNum(panel?.activity.steps ?? null, 0)} />
+          <MetricCell label="Active kcal" value={fmtNum(panel?.activity.activeCaloriesKcal ?? null, 0)} unit="kcal" />
+          <MetricCell label="Total kcal (estimate)" value={fmtNum(panel?.activity.totalCaloriesKcal ?? null, 0)} unit="kcal" />
           <MetricCell
-            label="Freq. respiratoria"
+            label="Respiratory rate"
             value={fmtNum(panel?.activity.respiratoryRateRpm ?? null, 1)}
             unit="rpm"
           />
-          <MetricCell label="Temperatura cute" value={fmtNum(panel?.activity.skinTempC ?? null, 2)} unit="°C" />
-          <MetricCell label="Temperatura / polso" value={fmtNum(panel?.activity.bodyTempC ?? null, 2)} unit="°C" />
-          <MetricCell label="SpO₂ (media)" value={fmtNum(panel?.activity.spo2Pct ?? null, 1)} unit="%" />
+          <MetricCell label="Skin temperature" value={fmtNum(panel?.activity.skinTempC ?? null, 2)} unit="°C" />
+          <MetricCell label="Temperature / wrist" value={fmtNum(panel?.activity.bodyTempC ?? null, 2)} unit="°C" />
+          <MetricCell label="SpO₂ (average)" value={fmtNum(panel?.activity.spo2Pct ?? null, 1)} unit="%" />
           <MetricCell
             label="ECG (flag)"
-            value={panel?.activity.ecgCaptured == null ? "—" : panel.activity.ecgCaptured ? "Sì" : "No"}
-            hint="Da payload device quando esposto"
+            value={panel?.activity.ecgCaptured == null ? "—" : panel.activity.ecgCaptured ? "Yes" : "No"}
+            hint="From device payload when exposed"
           />
         </div>
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="emerald" title="Recovery e sonno" subtitle="HRV, FC notturna, durata, score" icon={Moon}>
+      <Pro2SectionCard accent="emerald" title="Recovery and sleep" subtitle="HRV, night HR, duration, score" icon={Moon}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCell label="HRV" value={fmtNum(r?.hrvMs ?? null, 0)} unit="ms" />
-          <MetricCell label="FC a riposo / notte" value={fmtNum(r?.restingHrBpm ?? null, 0)} unit="bpm" />
-          <MetricCell label="Ore sonno" value={fmtNum(r?.sleepDurationHours ?? null, 2)} unit="h" />
+          <MetricCell label="Resting / night HR" value={fmtNum(r?.restingHrBpm ?? null, 0)} unit="bpm" />
+          <MetricCell label="Sleep hours" value={fmtNum(r?.sleepDurationHours ?? null, 2)} unit="h" />
           <MetricCell label="Sleep score" value={fmtNum(r?.sleepScore ?? null, 0)} />
           <MetricCell label="Readiness" value={fmtNum(r?.readinessScore ?? null, 0)} />
           <MetricCell label="Recovery" value={fmtNum(r?.recoveryScore ?? null, 0)} />
           <MetricCell label="Strain" value={fmtNum(r?.strainScore ?? null, 1)} />
-          <MetricCell label="Stato sintetico" value={r?.status === "unknown" || !r ? "—" : r.status} hint={r?.guidance} />
+          <MetricCell label="Overall status" value={r?.status === "unknown" || !r ? "—" : r.status} hint={r?.guidance} />
         </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <SleepHypnogramChart
@@ -365,7 +365,7 @@ export default function PhysiologyDailyWellnessPageView() {
             sleepEndUtc={panel?.sleepHypnogramWindowUtc?.sleepEndUtc}
           />
           <div className="space-y-3 rounded-xl border border-white/10 bg-black/30 p-4">
-            <p className="text-sm font-bold text-white">Fasi sonno (ore)</p>
+            <p className="text-sm font-bold text-white">Sleep phases (hours)</p>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <MetricCell label="Deep" value={fmtNum(panel?.sleepStages.deepHours ?? null, 2)} unit="h" />
               <MetricCell label="Light" value={fmtNum(panel?.sleepStages.lightHours ?? null, 2)} unit="h" />
@@ -379,72 +379,72 @@ export default function PhysiologyDailyWellnessPageView() {
         </div>
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="emerald" title="Laboratorio e serie continue" subtitle="Glucosio, lattato, gas, NIRS…" icon={Beaker}>
+      <Pro2SectionCard accent="emerald" title="Lab and continuous series" subtitle="Glucose, lactate, gas, NIRS…" icon={Beaker}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCell
-            label="Glucosio (panel)"
+            label="Glucose (panel)"
             value={fmtNum(panel?.biomarkers.glucoseMmolL ?? null, 2)}
             unit="mmol/L"
-            hint={`Pannelli biomarker con sample_date = ${date}`}
+            hint={`Biomarker panels with sample_date = ${date}`}
           />
-          <MetricCell label="Lattato (panel)" value={fmtNum(panel?.biomarkers.lactateMmolL ?? null, 2)} unit="mmol/L" />
+          <MetricCell label="Lactate (panel)" value={fmtNum(panel?.biomarkers.lactateMmolL ?? null, 2)} unit="mmol/L" />
           <MetricCell label="VO₂ (panel)" value={fmtNum(panel?.biomarkers.vo2LMin ?? null, 2)} unit="L/min" />
           <MetricCell label="VCO₂ (panel)" value={fmtNum(panel?.biomarkers.vco2LMin ?? null, 2)} unit="L/min" />
         </div>
         <p className="mt-3 text-xs text-gray-500">
-          Pannelli trovati: <span className="font-mono text-gray-300">{panel?.biomarkers.panelCount ?? 0}</span> — le serie
-          continue (CGM, core temp, ormoni, SmO₂ muscolare) richiedono ingest dedicata; qui sotto il segnaposto grafico
-          allineato al canone Pro 2.
+          Panels found: <span className="font-mono text-gray-300">{panel?.biomarkers.panelCount ?? 0}</span> — the
+          continuous series (CGM, core temp, hormones, muscle SmO₂) require dedicated ingestion; below is the chart
+          placeholder aligned to the Pro 2 canon.
         </p>
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <TimeSeriesPlaceholder
-            title="Glucosio interstiziale / CGM"
-            subtitle={panel?.labTracksAvailability.glucoseCgm ? "Chiavi glucose presenti nei panel." : "Nessuna chiave CGM rilevata nei panel di oggi."}
+            title="Interstitial glucose / CGM"
+            subtitle={panel?.labTracksAvailability.glucoseCgm ? "Glucose keys present in the panels." : "No CGM key detected in today's panels."}
             unitHint="mmol/L · t"
           />
           <TimeSeriesPlaceholder
-            title="Lattato ematico continuo"
-            subtitle={panel?.labTracksAvailability.lactateContinuous ? "Riferimenti lattato in values." : "Da integrare con stream lab."}
+            title="Continuous blood lactate"
+            subtitle={panel?.labTracksAvailability.lactateContinuous ? "Lactate references in values." : "To be integrated with lab stream."}
             unitHint="mmol/L · t"
           />
           <TimeSeriesPlaceholder
             title="Core temperature"
-            subtitle={panel?.labTracksAvailability.coreTempContinuous ? "Segnali temperatura core in values." : "Da belt / pill / lab."}
+            subtitle={panel?.labTracksAvailability.coreTempContinuous ? "Core temperature signals in values." : "From belt / pill / lab."}
             unitHint="°C · t"
           />
           <TimeSeriesPlaceholder
-            title="Ormoni · panel seriali"
-            subtitle={panel?.labTracksAvailability.hormonePanels ? "Chiavi ormonali rilevate." : "Upload documenti Health / lab."}
-            unitHint="unità · t"
+            title="Hormones · serial panels"
+            subtitle={panel?.labTracksAvailability.hormonePanels ? "Hormonal keys detected." : "Upload Health / lab documents."}
+            unitHint="unit · t"
           />
           <TimeSeriesPlaceholder
-            title="SmO₂ muscolare / NIRS"
-            subtitle={panel?.labTracksAvailability.muscleSmo2Continuous ? "Segnali SmO₂/NIRS in values." : "Sessione + wearables NIRS."}
+            title="Muscle SmO₂ / NIRS"
+            subtitle={panel?.labTracksAvailability.muscleSmo2Continuous ? "SmO₂/NIRS signals in values." : "Session + NIRS wearables."}
             unitHint="% · t"
           />
           <TimeSeriesPlaceholder
-            title="VO₂ / VCO₂ · spirometria"
-            subtitle={panel?.labTracksAvailability.gasExchangeLab ? "Gas exchange in values." : "Cardiopolmonare / lab metabolic."}
+            title="VO₂ / VCO₂ · spirometry"
+            subtitle={panel?.labTracksAvailability.gasExchangeLab ? "Gas exchange in values." : "Cardiopulmonary / metabolic lab."}
             unitHint="L/min · t"
           />
         </div>
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="slate" title="Fonti merge" subtitle="Export device mappati a questa data" icon={Heart}>
+      <Pro2SectionCard accent="slate" title="Merge sources" subtitle="Device exports mapped to this date" icon={Heart}>
         {panel?.sources?.length ? (
           <ul className="space-y-2 font-mono text-xs text-gray-300">
             {panel.sources.map((s, i) => (
               <li key={`${s.provider}-${s.created_at}-${i}`}>
-                {s.provider} · {s.created_at ? new Date(s.created_at).toLocaleString("it-IT") : "—"}
+                {s.provider} · {s.created_at ? new Date(s.created_at).toLocaleString("en-US") : "—"}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-gray-500">Nessuna riga device_sync_exports associata a questa data.</p>
+          <p className="text-sm text-gray-500">No device_sync_exports row associated with this date.</p>
         )}
         <p className="mt-4 text-xs text-gray-500">
-          Overlay dei segnali sul grafico allenamento (stessa giornata) è previsto come passo successivo: stessa chiave data
-          ISO tra Training session e questa vista.
+          Overlaying the signals on the training chart (same day) is planned as the next step: same ISO date key
+          between the Training session and this view.
         </p>
       </Pro2SectionCard>
     </Pro2ModulePageShell>

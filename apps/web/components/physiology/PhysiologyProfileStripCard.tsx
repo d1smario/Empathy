@@ -21,7 +21,7 @@ export function PhysiologyProfileStripCard() {
     if (ctxLoading) return;
     if (!athleteId) {
       setProfile(null);
-      setErr("Nessun atleta attivo.");
+      setErr("No active athlete.");
       setLoading(false);
       return;
     }
@@ -48,7 +48,7 @@ export function PhysiologyProfileStripCard() {
       } catch (e) {
         if (!c && !cached) {
           setProfile(null);
-          setErr(e instanceof Error ? e.message : "Lettura non riuscita.");
+          setErr(e instanceof Error ? e.message : "Read failed.");
         }
       } finally {
         if (!c && !cached) setLoading(false);
@@ -62,10 +62,10 @@ export function PhysiologyProfileStripCard() {
   return (
     <section
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
-      aria-label="Profilo fisiologico"
+      aria-label="Physiological profile"
     >
-      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Physiology · dati reali</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Profilo (canonico)</h2>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Physiology · real data</p>
+      <h2 className="mt-2 text-lg font-bold text-white">Profile (canonical)</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-40 animate-pulse rounded-full bg-white/10" />

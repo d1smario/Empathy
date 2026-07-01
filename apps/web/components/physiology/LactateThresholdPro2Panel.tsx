@@ -150,7 +150,7 @@ export function LactateThresholdPro2Panel({
 
   const vo2Line =
     vo2maxMlMinKg != null && Number.isFinite(vo2maxMlMinKg) && vo2maxMlMinKg >= 30
-      ? `VO₂max riferimento: ${vo2maxMlMinKg.toFixed(1)} ml/kg/min · `
+      ? `VO₂max reference: ${vo2maxMlMinKg.toFixed(1)} ml/kg/min · `
       : "";
 
   return (
@@ -165,14 +165,14 @@ export function LactateThresholdPro2Panel({
           </div>
           <p className="physiology-pro2-lactate-caption">
             {vo2Line}
-            Curva: <strong>BLa di stato stazionario stimata</strong> vs %FTP (60–115%). A 100% FTP resta in fascia{" "}
-            <strong>MLSS (~4–6 mmol/L)</strong>, non al picco da sforzo massimo. Oltre FTP la curva sale in modo moderato (accumulo); il{" "}
-            <strong>picco VO₂max</strong> è nel riquadro sotto, non sul punto 100%.
+            Curve: <strong>estimated steady-state BLa</strong> vs %FTP (60–115%). At 100% FTP it stays in the{" "}
+            <strong>MLSS band (~4–6 mmol/L)</strong>, not at the maximal-effort peak. Beyond FTP the curve rises moderately (accumulation); the{" "}
+            <strong>VO₂max peak</strong> is in the box below, not at the 100% point.
           </p>
         </div>
         <div className="physiology-pro2-lactate-vlamax">
-          Indice glicolitico (proxy): <span className="physiology-pro2-lactate-vlamax-value">{vlamax.toFixed(2)}</span>
-          <span className="physiology-pro2-lactate-vlamax-unit"> · non è VLamax da lab (mmol·L⁻¹·s⁻¹)</span>
+          Glycolytic index (proxy): <span className="physiology-pro2-lactate-vlamax-value">{vlamax.toFixed(2)}</span>
+          <span className="physiology-pro2-lactate-vlamax-unit"> · not lab VLamax (mmol·L⁻¹·s⁻¹)</span>
         </div>
       </div>
 
@@ -356,12 +356,12 @@ export function LactateThresholdPro2Panel({
         <div className="physiology-pro2-lactate-kpi physiology-pro2-lactate-kpi--max">
           <div className="physiology-pro2-lactate-kpi-label">BLa @ FTP (MLSS)</div>
           <div className="physiology-pro2-lactate-kpi-value">{blaAtFtp.toFixed(1)}</div>
-          <div className="physiology-pro2-lactate-kpi-sub">mmol/L · stato stazionario</div>
+          <div className="physiology-pro2-lactate-kpi-sub">mmol/L · steady-state</div>
         </div>
       </div>
       <p className="physiology-pro2-lactate-footnote">
-        Picco ematico stimato per <strong>sforzo massimo tipo VO₂max</strong> (non la BLa a 100% FTP):{" "}
-        <strong>{peakLactateMmol.toFixed(1)} mmol/L</strong> — schematico dal proxy glicolitico; valori reali da protocollo e prelievo.
+        Estimated blood peak for <strong>VO₂max-type maximal effort</strong> (not BLa at 100% FTP):{" "}
+        <strong>{peakLactateMmol.toFixed(1)} mmol/L</strong> — schematic from the glycolytic proxy; real values from protocol and sampling.
       </p>
     </div>
   );

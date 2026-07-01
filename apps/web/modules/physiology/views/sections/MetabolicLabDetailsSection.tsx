@@ -73,38 +73,38 @@ export function MetabolicLabDetailsSection({
       <Pro2SectionCard
         accent="emerald"
         icon={Network}
-        title="Multiscala biologica · collo di bottiglia (interpretazione)"
-        subtitle="Solo narrativa e tag interpretativi: non modifica i dati del tuo profilo"
+        title="Biological multiscale · bottleneck (interpretation)"
+        subtitle="Narrative and interpretive tags only: it does not modify your profile data"
       >
         <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          Priorità L1–L6 e nodi ontologia attivati in modo <strong>deterministico</strong>. I numeri canonici restano nei motori
-          fisiologia / bioenergetica.
+          L1–L6 priorities and ontology nodes activated <strong>deterministically</strong>. The canonical numbers remain in the
+          physiology / bioenergetics engines.
         </p>
         <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
       </Pro2SectionCard>
 
       <Pro2Accordion
         id="mod-dettagli-motore"
-        title="Come funziona"
-        subtitle="Come leggere le tre analisi e cosa salviamo per te"
+        title="How it works"
+        subtitle="How to read the three analyses and what we save for you"
         accent="slate"
       >
         <div className="space-y-3 text-sm leading-relaxed text-gray-400">
           <p>
-            <strong className="text-gray-200">Profilo metabolico</strong> — Dalla tua curva di potenza ricaviamo soglie (CP, FTP, LT),
-            VO₂max stimato e le zone di allenamento con il consumo di carboidrati e grassi previsto. Quando salvi, il valore resta
-            sul tuo profilo e alla prossima apertura ritrovi l&apos;ultima analisi.
+            <strong className="text-gray-200">Metabolic profile</strong> — From your power curve we derive thresholds (CP, FTP, LT),
+            estimated VO₂max and the training zones with the predicted carbohydrate and fat consumption. When you save, the value stays
+            on your profile and the next time you open it you find your latest analysis again.
           </p>
           <p>
-            <strong className="text-gray-200">Analisi lattato</strong> — Stima quanto carburante (carboidrati) usi a una certa intensità,
-            quanto ne assorbi e quanto ne riconverti. Serve a capire come alimentarti durante gli sforzi lunghi.
+            <strong className="text-gray-200">Lactate analysis</strong> — Estimates how much fuel (carbohydrates) you use at a given intensity,
+            how much you absorb and how much you reconvert. It helps you understand how to fuel during long efforts.
           </p>
           <p>
-            <strong className="text-gray-200">Capacità ossidativa</strong> — Misura quanto a fondo riesci a usare l&apos;ossigeno e dove sta
-            il limite (cuore/sangue, muscolo, o tetto aerobico). Utile per gli sforzi aerobici prolungati.
+            <strong className="text-gray-200">Oxidative capacity</strong> — Measures how deeply you can use oxygen and where the
+            limit lies (heart/blood, muscle, or aerobic ceiling). Useful for prolonged aerobic efforts.
           </p>
           <p className="text-xs text-gray-500">
-            I numeri si aggiornano da soli quando cambi gli input; lo storico conserva ogni analisi che salvi, così puoi confrontare i progressi.
+            The numbers update on their own when you change the inputs; the history keeps every analysis you save, so you can compare your progress.
           </p>
         </div>
       </Pro2Accordion>
@@ -112,14 +112,14 @@ export function MetabolicLabDetailsSection({
       {showTech ? (
         <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <small className="text-xs text-gray-400">Validation console interna (visibile solo a coach/staff).</small>
+            <small className="text-xs text-gray-400">Internal validation console (visible only to coach/staff).</small>
             <Pro2Button
               type="button"
               variant="secondary"
               className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
               onClick={onToggleValidationConsole}
             >
-              {showValidationConsole ? "Nascondi validazione" : "Mostra validazione"}
+              {showValidationConsole ? "Hide validation" : "Show validation"}
             </Pro2Button>
           </div>
         </div>
@@ -175,13 +175,13 @@ export function MetabolicLabDetailsSection({
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
                 <strong className="text-emerald-300">Aligned (published): {alignedRows.length}</strong>
                 <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {alignedRows.length === 0 ? <span>Nessun valore allineato.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
+                  {alignedRows.length === 0 ? <span>No aligned value.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
                 </div>
               </div>
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3">
                 <strong className="text-rose-300">Blocked (not published): {blockedRows.length}</strong>
                 <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {blockedRows.length === 0 ? <span>Tutti i valori sono allineati.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
+                  {blockedRows.length === 0 ? <span>All values are aligned.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
                 </div>
               </div>
             </div>
@@ -217,7 +217,7 @@ export function MetabolicLabDetailsSection({
               </table>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Regola: un valore e pubblicabile solo se source-check valido + range fisiologico in letteratura + evidenza disponibile.
+              Rule: a value is publishable only if source-check valid + physiological range in literature + evidence available.
             </p>
           </div>
         )}
@@ -228,32 +228,32 @@ export function MetabolicLabDetailsSection({
       <Pro2SectionCard
         accent="slate"
         icon={Layers}
-        title="Storico Metabolic Lab"
-        subtitle="Elenco snapshot + import negli input — dettaglio tecnico sotto"
+        title="Metabolic Lab history"
+        subtitle="Snapshot list + import into inputs — technical detail below"
       >
         <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          I KPI nella pagina usano il <strong>motore attuale</strong> (
+          The KPIs on the page use the <strong>current engine</strong> (
           <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">{METABOLIC_CP_ENGINE_REVISION}</code>
-          ). Qui sotto è lo <strong>snapshot congelato</strong> al salvataggio.
+          ). Below is the <strong>frozen snapshot</strong> at save time.
         </p>
         {historyLoading ? (
-          <p className="text-sm text-gray-500">Caricamento storico…</p>
+          <p className="text-sm text-gray-500">Loading history…</p>
         ) : history.length === 0 ? (
-          <p className="text-sm text-gray-500">Nessuno snapshot salvato.</p>
+          <p className="text-sm text-gray-500">No saved snapshot.</p>
         ) : (
           <>
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <label className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Archivio snapshot
+                Snapshot archive
                 <select
                   className="w-full max-w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   value={selectedHistoryId ?? ""}
                   onChange={(e) => onSelectHistoryId(e.target.value ? e.target.value : null)}
                 >
-                  <option value="">Seleziona uno snapshot…</option>
+                  <option value="">Select a snapshot…</option>
                   {history.map((row) => (
                     <option key={row.id} value={row.id}>
-                      {new Date(row.created_at).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })} ·{" "}
+                      {new Date(row.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })} ·{" "}
                       {labHistorySectionTitle(row.section)} · {row.model_version}
                     </option>
                   ))}
@@ -269,7 +269,7 @@ export function MetabolicLabDetailsSection({
                     if (selectedHistoryRow) onImportHistoryRow(selectedHistoryRow);
                   }}
                 >
-                  Importa negli input
+                  Import into inputs
                 </Pro2Button>
                 <Pro2Button
                   type="button"
@@ -278,7 +278,7 @@ export function MetabolicLabDetailsSection({
                   disabled={!selectedHistoryRow}
                   onClick={() => onSelectHistoryId(null)}
                 >
-                  Deseleziona
+                  Deselect
                 </Pro2Button>
               </div>
             </div>
@@ -290,7 +290,7 @@ export function MetabolicLabDetailsSection({
                       {labHistorySectionTitle(selectedHistoryRow.section)}
                     </span>
                     {" · "}
-                    {new Date(selectedHistoryRow.created_at).toLocaleString("it-IT")}
+                    {new Date(selectedHistoryRow.created_at).toLocaleString("en-US")}
                     {" · "}
                     <span className="font-mono">{selectedHistoryRow.model_version}</span>
                   </div>
@@ -318,7 +318,7 @@ export function MetabolicLabDetailsSection({
 
       {showTech ? (
         <p className="text-xs text-gray-600">
-          Contesto: {role === "coach" ? "Coach" : "Privato"} · Atleta {athleteId.slice(0, 8)}…
+          Context: {role === "coach" ? "Coach" : "Private"} · Athlete {athleteId.slice(0, 8)}…
         </p>
       ) : null}
     </div>

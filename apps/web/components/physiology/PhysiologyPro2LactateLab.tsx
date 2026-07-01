@@ -54,21 +54,21 @@ export function PhysiologyPro2LactateLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Bilanci compatti · barre (motore {model.version})</span>
+        <span>Compact balances · bars (engine {model.version})</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <LactateEnginePro2Viz model={model} choGapG={choGap} />
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
         <Gauge className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Qualità modello · gap · soglie</span>
+        <span>Model quality · gap · thresholds</span>
         <Gauge className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--3">
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
           <Droplets className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Lattato accumulato</div>
+          <div className="physiology-pro2-lab-metric-label">Accumulated lactate</div>
           <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--lac-acc">{model.lactateAccumG.toFixed(1)} g</div>
         </div>
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
@@ -78,20 +78,20 @@ export function PhysiologyPro2LactateLab({
         </div>
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
           <CheckCircle2 className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Affidabilità modello</div>
+          <div className="physiology-pro2-lab-metric-label">Model reliability</div>
           <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">{reliabilityPct}/100</div>
-          <div className="physiology-pro2-lab-metric-sub">±{uncertaintyPct}% incertezza input</div>
+          <div className="physiology-pro2-lab-metric-sub">±{uncertaintyPct}% input uncertainty</div>
         </div>
       </div>
 
       <div className="physiology-pro2-lab-hint-strip">
         <span><strong>Fueling:</strong> {fuelingHint}</span>
-        <span><strong>Lattato:</strong> {lactateHint}</span>
+        <span><strong>Lactate:</strong> {lactateHint}</span>
       </div>
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-curve">
         <Droplets className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>LACTATE THRESHOLD · CURVA vs %FTP</span>
+        <span>LACTATE THRESHOLD · CURVE vs %FTP</span>
         <Droplets className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
@@ -108,7 +108,7 @@ export function PhysiologyPro2LactateLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>CONFIGURAZIONE · SEGNALI · OUTPUT MOTORE</span>
+        <span>CONFIGURATION · SIGNALS · ENGINE OUTPUT</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 

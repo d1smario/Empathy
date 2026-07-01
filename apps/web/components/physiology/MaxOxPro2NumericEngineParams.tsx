@@ -58,7 +58,7 @@ const MAXOX_ENGINE_PARAM_DEFS: ParamDef[] = [
   },
   {
     key: "duration_min",
-    label: "Durata test",
+    label: "Test duration",
     unit: "min",
     gradient: "linear-gradient(145deg, #64748b, #475569)",
     glow: "0 0 18px rgba(100,116,139,0.35)",
@@ -218,7 +218,7 @@ export function MaxOxPro2NumericEngineParams({
     <div className="physiology-pro2-eng-param-shell physiology-pro2-eng-param-shell--maxox">
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-engine-params">
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Parametri numerici motore Max Oxidate</span>
+        <span>Max Oxidate engine numeric parameters</span>
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <div className="physiology-pro2-eng-param-grid">
@@ -245,7 +245,7 @@ export function MaxOxPro2NumericEngineParams({
                 <button
                   type="button"
                   className="physiology-pro2-eng-param-tile-hit"
-                  aria-label={`Modifica ${def.label}`}
+                  aria-label={`Edit ${def.label}`}
                   onClick={() => openEditor(def.key, raw)}
                 >
                   <span className="physiology-pro2-eng-param-tile-num">{raw || "—"}</span>
@@ -286,10 +286,10 @@ export function MaxOxPro2NumericEngineParams({
             />
             <div className="physiology-pro2-eng-param-editor-actions">
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ghost" onClick={closeEditor}>
-                Annulla
+                Cancel
               </button>
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ok-maxox" onClick={commitEditor}>
-                Applica
+                Apply
               </button>
             </div>
           </div>

@@ -28,11 +28,11 @@ export function MaxOxidateLabPro2Panel({
   const vo2Block =
     vo2CapacitySource === "test_manual" ? (
       <>
-        Capacità VO₂: <strong>{maxOxVo2UsedLMin.toFixed(2)} L/min</strong> (test manuale).
+        VO₂ capacity: <strong>{maxOxVo2UsedLMin.toFixed(2)} L/min</strong> (manual test).
       </>
     ) : vo2CapacitySource === "metabolic_engine_vo2max" ? (
       <>
-        VO₂max da <strong>Metabolic Profile</strong> (modello CP):{" "}
+        VO₂max from <strong>Metabolic Profile</strong> (CP model):{" "}
         {vo2maxMlMinKg != null ? (
           <strong>
             {vo2maxMlMinKg.toFixed(1)} ml/kg/min · {maxOxVo2UsedLMin.toFixed(2)} L/min
@@ -44,8 +44,8 @@ export function MaxOxidateLabPro2Panel({
       </>
     ) : (
       <>
-        Attenzione: capacità VO₂ solo da <strong>stima potenza</strong> ({maxOxVo2UsedLMin.toFixed(2)} L/min) — per un tetto
-        credibile compila la <strong>curva CP</strong> in Metabolic profile (VO₂max motore).
+        Warning: VO₂ capacity only from <strong>power estimate</strong> ({maxOxVo2UsedLMin.toFixed(2)} L/min) — for a credible
+        ceiling fill in the <strong>CP curve</strong> in Metabolic profile (engine VO₂max).
       </>
     );
 
@@ -61,14 +61,14 @@ export function MaxOxidateLabPro2Panel({
           </div>
           <p className="physiology-pro2-maxox-caption">
             {vo2Block}{" "}
-            Confronto tra <strong>capacità ossidativa netta</strong> (VO₂ × delivery) e{" "}
-            <strong>domanda ossidativa min(P, CP)</strong> — non l’intera potenza meccanica. Indici di delivery e redox sono proxy deterministici.
+            Comparison between <strong>net oxidative capacity</strong> (VO₂ × delivery) and{" "}
+            <strong>oxidative demand min(P, CP)</strong> — not the entire mechanical power. Delivery and redox indices are deterministic proxies.
           </p>
         </div>
         <div className="physiology-pro2-maxox-strip">
-          Saturazione ossidativa{" "}
+          Oxidative saturation{" "}
           <span className="physiology-pro2-maxox-strip-value">{model.utilizationRatioPct.toFixed(0)}%</span>
-          <span className="physiology-pro2-maxox-strip-unit"> · collo </span>
+          <span className="physiology-pro2-maxox-strip-unit"> · bottleneck </span>
           <span className="physiology-pro2-maxox-strip-value physiology-pro2-maxox-strip-value--pink">
             {model.oxidativeBottleneckIndex.toFixed(0)}
           </span>
@@ -81,7 +81,7 @@ export function MaxOxidateLabPro2Panel({
       </div>
 
       <p className="physiology-pro2-maxox-footnote">
-        Motore <strong>{model.version.replaceAll("-", " ")}</strong>. Per calibrazione clinica usare gas exchange e marker ematici; qui il focus è coerenza con CP/VO₂max e segnali sessione.
+        Engine <strong>{model.version.replaceAll("-", " ")}</strong>. For clinical calibration use gas exchange and blood markers; here the focus is coherence with CP/VO₂max and session signals.
       </p>
     </div>
   );

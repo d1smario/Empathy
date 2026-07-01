@@ -80,11 +80,11 @@ function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
   return [
     {
       id: "adaptation-score",
-      label: "Adattamento",
+      label: "Adaptation",
       value: `${g.scorePct}%`,
-      sub: `${fixed(g.expectedAdaptation, 2)} atteso · ${fixed(g.observedAdaptation, 2)} osservato`,
+      sub: `${fixed(g.expectedAdaptation, 2)} expected · ${fixed(g.observedAdaptation, 2)} observed`,
       tone: g.trafficLight === "red" ? "rose" : g.trafficLight === "yellow" ? "amber" : "green",
-      detail: `Semaforo ${g.trafficLight}. Il numero confronta adattamento atteso e osservato dal twin; non genera piano, alimenta il loop operativo.`,
+      detail: `Traffic light ${g.trafficLight}. The number compares expected and observed adaptation from the twin; it does not generate a plan, it feeds the operational loop.`,
     },
     {
       id: "loop-divergence",
@@ -96,13 +96,13 @@ function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
     },
     {
       id: "bio-load",
-      label: "Scala carico",
+      label: "Load scale",
       value: bio ? `${bio.loadScale.toFixed(2)}x` : "—",
-      sub: bio ? `${percent(bio.loadScalePct)} · ${bio.state}` : "fisiologia/twin parziali",
+      sub: bio ? `${percent(bio.loadScalePct)} · ${bio.state}` : "partial physiology/twin",
       tone: bio?.state === "protective" ? "rose" : bio?.state === "watch" ? "amber" : bio ? "cyan" : "slate",
       detail: bio
-        ? `${bio.headline} ${bio.guidance} Copertura segnali ${percent(bio.signalCoveragePct)}, incertezza ±${percent(bio.inputUncertaintyPct)}.`
-        : "Modulazione non calcolata: servono fisiologia e twin nello stesso bundle operativo.",
+        ? `${bio.headline} ${bio.guidance} Signal coverage ${percent(bio.signalCoveragePct)}, uncertainty ±${percent(bio.inputUncertaintyPct)}.`
+        : "Modulation not computed: physiology and twin are needed in the same operational bundle.",
     },
     {
       id: "readiness",
@@ -110,7 +110,7 @@ function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
       value: rounded(loop.readinessScore, "/100"),
       sub: `adapt ${rounded(loop.adaptationScore, "/100")} · intervention ${fixed(loop.interventionScore, 1)}`,
       tone: loop.readinessScore < 45 || loop.interventionScore > 40 ? "amber" : "violet",
-      detail: `Readiness e intervention score guidano la cautela del giorno. Trigger attivi: ${loop.triggers.length ? loop.triggers.join(" · ") : "nessuno"}.`,
+      detail: `Readiness and intervention score drive the day's caution. Active triggers: ${loop.triggers.length ? loop.triggers.join(" · ") : "none"}.`,
     },
     {
       id: "nutrition-dials",
@@ -118,17 +118,17 @@ function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
       value: `${nut.fuelingChoScale.toFixed(2)}x`,
       sub: `recovery/bio ${nut.trainingEnergyScale.toFixed(2)}x · protein +${nut.proteinBiasPctPoints.toFixed(1)} pt`,
       tone: "cyan",
-      detail: `Idratazione floor ${nut.hydrationFloorMultiplier.toFixed(2)}x. Le leve modulano timing pasti↔fueling, CHO/h, proteine, idratazione — il fabbisogno energetico totale resta BMR + lifestyle + training pianificato (non scalato).`,
+      detail: `Hydration floor ${nut.hydrationFloorMultiplier.toFixed(2)}x. The levers modulate meal↔fueling timing, CHO/h, protein, hydration — total energy needs stay BMR + lifestyle + planned training (not scaled).`,
     },
     {
       id: "day-context",
-      label: "Giornata",
+      label: "Day",
       value: ctx ? percent(ctx.loadScalePct ?? ctx.loadScale * 100) : "—",
-      sub: ctx ? `${ctx.mode} · ${ctx.headline}` : "contesto assente",
+      sub: ctx ? `${ctx.mode} · ${ctx.headline}` : "context absent",
       tone: ctx ? (ctx.loadScalePct < 90 ? "amber" : "green") : "slate",
       detail: ctx
-        ? `${ctx.guidance} Questo contesto viene consumato da VIRYA e dai dial applicativi, non dalla UI come motore parallelo.`
-        : "Nessun contesto operativo giornata disponibile.",
+        ? `${ctx.guidance} This context is consumed by VIRYA and the application dials, not by the UI as a parallel engine.`
+        : "No operational day context available.",
     },
   ];
 }
@@ -142,7 +142,7 @@ function BioKpiGrid({ cells }: { cells: BioCellVm[] }) {
           <div className="fueling-main-kpi-value">{cell.value}</div>
           <div className="fueling-main-kpi-sub">{cell.sub}</div>
           <details className="collapsible-card mt-3 border-white/10 bg-black/20 px-2.5 py-2">
-            <summary className="text-[0.62rem]">Perché</summary>
+            <summary className="text-[0.62rem]">Why</summary>
             <p className="m-0 text-[0.72rem] leading-relaxed text-gray-400">{cell.detail}</p>
           </details>
         </article>
@@ -165,10 +165,10 @@ function LedgerCellStrip({ rows }: { rows: BioenergeticInfluenceLedgerRow[] }) {
             <summary className="text-[0.65rem]">{row.source}</summary>
             <div className="space-y-2 text-xs leading-relaxed text-gray-400">
               <p className="m-0">
-                <span className="font-semibold text-gray-200">Consumatore:</span> {row.consumer}
+                <span className="font-semibold text-gray-200">Consumer:</span> {row.consumer}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-gray-200">Effetto:</span> {row.effect}
+                <span className="font-semibold text-gray-200">Effect:</span> {row.effect}
               </p>
             </div>
           </details>
@@ -196,7 +196,7 @@ function reasoningToneClass(tone: ReasoningTone): string {
 }
 
 function statusLabel(status: string): string {
-  return status.startsWith("hypothesis:") ? `${status.replace("hypothesis:", "")} · ipotesi` : status;
+  return status.startsWith("hypothesis:") ? `${status.replace("hypothesis:", "")} · hypothesis` : status;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -225,7 +225,7 @@ function manualActionVm(row: ManualActionRow) {
     confidence:
       typeof values.confidence === "number" && Number.isFinite(values.confidence)
         ? `${Math.round(values.confidence * 100)}%`
-        : "n/d",
+        : "n/a",
   };
 }
 
@@ -247,11 +247,11 @@ function buildOperationalRecommendations(input: {
         id: "rec-virya-adaptation",
         domain: "training",
         priority: loop.status === "regenerate" ? "alta" : "media",
-        title: "Adatta microciclo VIRYA",
-        recommendation: `${compactAction(loop.nextAction)} secondo controllo coach 0/50/70/100%.`,
-        why: `Divergenza ${loop.divergenceScore.toFixed(1)}, intervento ${loop.interventionScore.toFixed(1)}, readiness ${Math.round(loop.readinessScore)}/100.`,
-        timing: "Subito sul microciclo corrente; Calendar solo quando salvi il piano.",
-        control: "Automatico dai dati, modulato dalla percentuale coach.",
+        title: "Adapt VIRYA microcycle",
+        recommendation: `${compactAction(loop.nextAction)} per coach control 0/50/70/100%.`,
+        why: `Divergence ${loop.divergenceScore.toFixed(1)}, intervention ${loop.interventionScore.toFixed(1)}, readiness ${Math.round(loop.readinessScore)}/100.`,
+        timing: "Immediately on the current microcycle; Calendar only when you save the plan.",
+        control: "Automatic from data, modulated by the coach percentage.",
         tone: loop.status === "regenerate" ? "rose" : "amber",
       });
     }
@@ -260,11 +260,11 @@ function buildOperationalRecommendations(input: {
         id: "rec-load-scale",
         domain: "recovery",
         priority: ctx.loadScalePct <= 75 ? "alta" : "media",
-        title: "Scala carico giornata",
-        recommendation: `Porta il carico a ${Math.round(ctx.loadScalePct)}% invece di mantenere il piano pieno.`,
+        title: "Scale day load",
+        recommendation: `Bring load to ${Math.round(ctx.loadScalePct)}% instead of keeping the full plan.`,
         why: `${ctx.headline}. ${ctx.guidance}`,
-        timing: "Prima della prossima seduta utile.",
-        control: "Automatico se coach adaptation control > 0%.",
+        timing: "Before the next useful session.",
+        control: "Automatic if coach adaptation control > 0%.",
         tone: ctx.loadScalePct <= 75 ? "rose" : "amber",
       });
     }
@@ -273,11 +273,11 @@ function buildOperationalRecommendations(input: {
         id: "rec-bioenergetis-protection",
         domain: "bioenergetics",
         priority: bio.state === "protective" ? "alta" : "media",
-        title: "Proteggi stress bioenergetico",
+        title: "Protect bioenergetic stress",
         recommendation: bio.guidance,
-        why: `${bio.headline} Copertura ${Math.round(bio.signalCoveragePct)}%, incertezza ±${Math.round(bio.inputUncertaintyPct)}%.`,
-        timing: "Prima di prescrivere intensità o blocchi lattacidi.",
-        control: "Compute determina scala; coach può ridurre/annullare adattamento.",
+        why: `${bio.headline} Coverage ${Math.round(bio.signalCoveragePct)}%, uncertainty ±${Math.round(bio.inputUncertaintyPct)}%.`,
+        timing: "Before prescribing intensity or lactic blocks.",
+        control: "Compute determines scale; coach can reduce/cancel adaptation.",
         tone: bio.state === "protective" ? "rose" : "amber",
       });
     }
@@ -286,11 +286,11 @@ function buildOperationalRecommendations(input: {
         id: "rec-nutrition-fueling",
         domain: "nutrition",
         priority: "media",
-        title: "Allinea fueling e recovery",
-        recommendation: `CHO ×${nut.fuelingChoScale.toFixed(2)}, recovery/bio ×${nut.trainingEnergyScale.toFixed(2)} (indicatore), proteine +${nut.proteinBiasPctPoints.toFixed(1)} pt.`,
+        title: "Align fueling and recovery",
+        recommendation: `CHO ×${nut.fuelingChoScale.toFixed(2)}, recovery/bio ×${nut.trainingEnergyScale.toFixed(2)} (indicator), protein +${nut.proteinBiasPctPoints.toFixed(1)} pt.`,
         why: nut.rationale.slice(0, 2).join(" · "),
-        timing: "Pre/peri/post workout in base alla seduta Builder.",
-        control: "Non sostituisce solver kcal/macro o cataloghi USDA.",
+        timing: "Pre/peri/post workout based on the Builder session.",
+        control: "Does not replace the kcal/macro solver or USDA catalogs.",
         tone: "cyan",
       });
     }
@@ -299,11 +299,11 @@ function buildOperationalRecommendations(input: {
         id: `rec-applied-${patch.id}`,
         domain: patch.target.includes("nutrition") ? "nutrition" : patch.target.includes("bio") ? "bioenergetics" : "cross_module",
         priority: "bassa",
-        title: "Decisione già applicata",
+        title: "Decision already applied",
         recommendation: compactAction(patch.action),
-        why: typeof patch.reason === "string" ? patch.reason : "Decisione derivata da staging/manual action.",
-        timing: patch.appliedAt ? `Applicata ${patch.appliedAt}` : "Applicata, timestamp non disponibile.",
-        control: "Monitorare outcome nel prossimo expected-vs-obtained.",
+        why: typeof patch.reason === "string" ? patch.reason : "Decision derived from staging/manual action.",
+        timing: patch.appliedAt ? `Applied ${patch.appliedAt}` : "Applied, timestamp not available.",
+        control: "Monitor outcome in the next expected-vs-obtained.",
         tone: "green",
       });
     }
@@ -315,11 +315,11 @@ function buildOperationalRecommendations(input: {
       id: `rec-manual-${action.id}`,
       domain: action.action_type.includes("nutrition") ? "nutrition" : action.action_type.includes("physiology") ? "bioenergetics" : "training",
       priority: "media",
-      title: "Azione in coda applicativa",
+      title: "Action in application queue",
       recommendation: vm.action,
-      why: vm.reason || "Generata da ragionamento validato, in attesa di applicazione o rifiuto.",
-      timing: "Da risolvere prima del prossimo retune completo.",
-      control: "Coach applica/rifiuta/supera nella Application Queue.",
+      why: vm.reason || "Generated from a validated reasoning, awaiting application or rejection.",
+      timing: "To resolve before the next full retune.",
+      control: "Coach applies/rejects/supersedes in the Application Queue.",
       tone: "violet",
     });
   }
@@ -333,8 +333,8 @@ function buildOperationalRecommendations(input: {
       title: card.title,
       recommendation: card.actionLines.slice(0, 2).join(" · "),
       why: card.explanation,
-      timing: card.timingLines[0] ?? "Quando il modulo operativo consuma il bundle.",
-      control: "Consiglio derivato dal reasoning dashboard.",
+      timing: card.timingLines[0] ?? "When the operational module consumes the bundle.",
+      control: "Recommendation derived from the reasoning dashboard.",
       tone: card.tone,
     });
   }
@@ -350,9 +350,9 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
   return (
     <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
       <header>
-        <h2 className="viz-title">Consigli operativi</h2>
+        <h2 className="viz-title">Operational recommendations</h2>
         <p className="mt-1 text-sm text-gray-400">
-          Cosa fare adesso, perché, quando e con quale controllo. I numeri restano dei motori; qui trovi la sintesi applicativa.
+          What to do now, why, when and with which control. The numbers stay engines; here you find the application summary.
         </p>
       </header>
       {recommendations.length ? (
@@ -362,7 +362,7 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-mono text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-                    {rec.domain} · priorità {rec.priority}
+                    {rec.domain} · priority {rec.priority}
                   </div>
                   <h3 className="mt-1 text-sm font-bold text-white">{rec.title}</h3>
                 </div>
@@ -372,9 +372,9 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
               </div>
               <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-200">{rec.recommendation}</p>
               <details className="collapsible-card mt-3 border-white/10 bg-black/25">
-                <summary>Perché / timing</summary>
+                <summary>Why / timing</summary>
                 <div className="space-y-2 text-xs leading-relaxed text-gray-400">
-                  <p className="m-0"><span className="font-semibold text-gray-200">Perché:</span> {rec.why}</p>
+                  <p className="m-0"><span className="font-semibold text-gray-200">Why:</span> {rec.why}</p>
                   <p className="m-0"><span className="font-semibold text-emerald-200">Timing:</span> {rec.timing}</p>
                 </div>
               </details>
@@ -382,7 +382,7 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
           ))}
         </div>
       ) : (
-        <p className="text-xs text-gray-500">Nessun consiglio operativo disponibile: servono bundle, reasoning o manual actions.</p>
+        <p className="text-xs text-gray-500">No operational recommendation available: bundle, reasoning or manual actions are needed.</p>
       )}
     </section>
   );
@@ -408,8 +408,8 @@ function ManualActionsPanel({
       <header>
         <h2 className="viz-title">Application Queue</h2>
         <p className="mt-1 text-sm text-gray-400">
-          Azioni applicative generate da ragionamenti validati. Qui il coach decide se applicarle: il piano e il twin non vengono mutati
-          automaticamente.
+          Application actions generated from validated reasonings. Here the coach decides whether to apply them: the plan and the twin are not
+          mutated automatically.
         </p>
       </header>
       {loading ? <div className="h-2 w-44 animate-pulse rounded-full bg-white/10" aria-hidden /> : null}
@@ -445,9 +445,9 @@ function ManualActionsPanel({
               {showTech && action.status === "pending" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {[
-                    { status: "applied" as const, label: "Applica" },
-                    { status: "rejected" as const, label: "Rifiuta" },
-                    { status: "superseded" as const, label: "Superata" },
+                    { status: "applied" as const, label: "Apply" },
+                    { status: "rejected" as const, label: "Reject" },
+                    { status: "superseded" as const, label: "Supersede" },
                   ].map((item) => {
                     const busy = busyAction === `${action.id}:${item.status}`;
                     return (
@@ -468,7 +468,7 @@ function ManualActionsPanel({
           );
         })}
       </div>
-      {!loading && !error && !actions.length ? <p className="text-xs text-gray-500">Nessuna manual action pending.</p> : null}
+      {!loading && !error && !actions.length ? <p className="text-xs text-gray-500">No pending manual action.</p> : null}
     </section>
   );
 }
@@ -494,8 +494,8 @@ function ReasoningDashboardPanel({
       <header>
         <h2 className="viz-title">Reasoning Dashboard</h2>
         <p className="mt-1 text-sm text-gray-400">
-          Ragionamenti cross-modulo: training, VIRYA, nutrition, redox, microbiota, epigenetica, ematico e timing. Le azioni restano in
-          staging fino a validazione.
+          Cross-module reasonings: training, VIRYA, nutrition, redox, microbiota, epigenetics, blood and timing. Actions stay in
+          staging until validation.
         </p>
       </header>
       {loading ? <div className="h-2 w-48 animate-pulse rounded-full bg-white/10" aria-hidden /> : null}
@@ -503,15 +503,15 @@ function ReasoningDashboardPanel({
       {data ? (
         <div className="fueling-main-kpi-grid" style={{ marginBottom: 10 }}>
           {[
-            { label: "Totale", value: data.summary.total, tone: "cyan" as const },
+            { label: "Total", value: data.summary.total, tone: "cyan" as const },
             { label: "Pending", value: data.summary.pending, tone: "amber" as const },
-            { label: "Validati", value: data.summary.committed, tone: "green" as const },
-            { label: "Scartati", value: data.summary.rejected + data.summary.archived, tone: "slate" as const },
+            { label: "Validated", value: data.summary.committed, tone: "green" as const },
+            { label: "Discarded", value: data.summary.rejected + data.summary.archived, tone: "slate" as const },
           ].map((item) => (
             <div key={item.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${item.tone}`}>
               <div className="fueling-main-kpi-label">{item.label}</div>
               <div className="fueling-main-kpi-value">{item.value}</div>
-              <div className="fueling-main-kpi-sub">Decisioni ragionate</div>
+              <div className="fueling-main-kpi-sub">Reasoned decisions</div>
             </div>
           ))}
         </div>
@@ -530,17 +530,17 @@ function ReasoningDashboardPanel({
               <div className="shrink-0 text-right">
                 <div className="font-mono text-2xl font-black tabular-nums text-white">{card.value}</div>
                 <div className="text-[0.62rem] text-gray-500">
-                  conf {card.confidence != null ? `${Math.round(card.confidence * 100)}%` : "n/d"}
+                  conf {card.confidence != null ? `${Math.round(card.confidence * 100)}%` : "n/a"}
                 </div>
               </div>
             </div>
             <details className="collapsible-card mt-3 border-white/10 bg-black/25">
-              <summary>Spiegazione</summary>
+              <summary>Explanation</summary>
               <div className="space-y-3 text-xs leading-relaxed text-gray-400">
                 <p className="m-0">{card.explanation}</p>
                 {card.actionLines.length ? (
                   <div>
-                    <div className="font-semibold text-gray-200">Azioni</div>
+                    <div className="font-semibold text-gray-200">Actions</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.actionLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -550,7 +550,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.evidenceLines.length ? (
                   <div>
-                    <div className="font-semibold text-gray-200">Evidenza / trace / gate</div>
+                    <div className="font-semibold text-gray-200">Evidence / trace / gate</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.evidenceLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -560,7 +560,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.riskLines.length ? (
                   <div>
-                    <div className="font-semibold text-amber-100">Rischi / cautela</div>
+                    <div className="font-semibold text-amber-100">Risks / caution</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.riskLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -588,9 +588,9 @@ function ReasoningDashboardPanel({
             {showTech && card.stagingRunId ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
-                  { status: "committed" as const, label: "Valida" },
-                  { status: "rejected" as const, label: "Scarta" },
-                  { status: "archived" as const, label: "Archivia" },
+                  { status: "committed" as const, label: "Validate" },
+                  { status: "rejected" as const, label: "Discard" },
+                  { status: "archived" as const, label: "Archive" },
                 ].map((action) => {
                   const busy = busyRun === `${card.stagingRunId}:${action.status}`;
                   return (
@@ -610,7 +610,7 @@ function ReasoningDashboardPanel({
           </article>
         ))}
       </div>
-      {!loading && !error && !cards.length ? <p className="text-xs text-gray-500">Nessun ragionamento disponibile.</p> : null}
+      {!loading && !error && !cards.length ? <p className="text-xs text-gray-500">No reasoning available.</p> : null}
     </section>
   );
 }
@@ -645,7 +645,7 @@ export default function BioenergeticTransparencyHubPageView() {
   async function loadReasoning() {
     if (!athleteId) {
       setReasoning(null);
-      setReasoningErr("Nessun atleta attivo.");
+      setReasoningErr("No active athlete.");
       setReasoningLoading(false);
       return;
     }
@@ -659,13 +659,13 @@ export default function BioenergeticTransparencyHubPageView() {
       const json = (await res.json()) as ReasoningDashboardOk | ReasoningDashboardErr;
       if (!res.ok || !json.ok) {
         setReasoning(null);
-        setReasoningErr(("error" in json && json.error) || "Reasoning non disponibile.");
+        setReasoningErr(("error" in json && json.error) || "Reasoning not available.");
         return;
       }
       setReasoning(json);
     } catch {
       setReasoning(null);
-      setReasoningErr("Errore rete reasoning.");
+      setReasoningErr("Reasoning network error.");
     } finally {
       setReasoningLoading(false);
     }
@@ -674,7 +674,7 @@ export default function BioenergeticTransparencyHubPageView() {
   async function loadManualActions() {
     if (!athleteId) {
       setManualActions([]);
-      setManualActionsErr("Nessun atleta attivo.");
+      setManualActionsErr("No active athlete.");
       setManualActionsLoading(false);
       return;
     }
@@ -689,13 +689,13 @@ export default function BioenergeticTransparencyHubPageView() {
       const json = (await res.json()) as { items?: ManualActionRow[]; error?: string };
       if (!res.ok) {
         setManualActions([]);
-        setManualActionsErr(json.error || "Manual actions non disponibili.");
+        setManualActionsErr(json.error || "Manual actions not available.");
         return;
       }
       setManualActions((json.items ?? []).filter((item) => item.status === "pending"));
     } catch {
       setManualActions([]);
-      setManualActionsErr("Errore rete manual actions.");
+      setManualActionsErr("Manual actions network error.");
     } finally {
       setManualActionsLoading(false);
     }
@@ -714,12 +714,12 @@ export default function BioenergeticTransparencyHubPageView() {
       });
       const json = (await res.json()) as { ok: boolean; error?: string };
       if (!res.ok || !json.ok) {
-        setReasoningErr(json.error || "Aggiornamento staging fallito.");
+        setReasoningErr(json.error || "Staging update failed.");
         return;
       }
       await Promise.all([loadReasoning(), loadManualActions(), refetch()]);
     } catch {
-      setReasoningErr("Errore rete aggiornamento staging.");
+      setReasoningErr("Staging update network error.");
     } finally {
       setReasoningBusyRun(null);
     }
@@ -738,12 +738,12 @@ export default function BioenergeticTransparencyHubPageView() {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setManualActionsErr(json.error || "Aggiornamento manual action fallito.");
+        setManualActionsErr(json.error || "Manual action update failed.");
         return;
       }
       await Promise.all([loadManualActions(), loadReasoning(), refetch()]);
     } catch {
-      setManualActionsErr("Errore rete aggiornamento manual action.");
+      setManualActionsErr("Manual action update network error.");
     } finally {
       setManualActionBusy(null);
     }
@@ -758,13 +758,13 @@ export default function BioenergeticTransparencyHubPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="La tua energia, in chiaro"
+      eyebrow="Your energy, in plain sight"
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Bioenergetica"
+      title="Bioenergetics"
       description={
         <>
-          Una vista di <strong className="text-emerald-200/90">sola lettura</strong> sugli stessi segnali usati da dashboard e nutrizione.
-          Parti dalla realtà del giorno, leggi i segnali e vedi come si adatta il piano fino alla sessione.
+          A <strong className="text-emerald-200/90">read-only</strong> view on the same signals used by the dashboard and nutrition.
+          Start from the reality of the day, read the signals and see how the plan adapts down to the session.
         </>
       }
     >
@@ -782,10 +782,10 @@ export default function BioenergeticTransparencyHubPageView() {
         {!showLoading && !err && !showTech ? (
           <section className="viz-card builder-panel space-y-3" style={{ marginBottom: 12 }}>
             <header>
-              <h2 className="viz-title">Sezione avanzata</h2>
+              <h2 className="viz-title">Advanced section</h2>
               <p className="mt-1 text-sm text-gray-400">
-                Questa è un’area operativa di bioenergetica avanzata. Il tuo coach la usa per leggere i segnali e adattare il piano:
-                puoi rivederla insieme a lui. I tuoi dati restano al sicuro e continuano ad alimentare dashboard e nutrizione.
+                This is an advanced bioenergetics operational area. Your coach uses it to read the signals and adapt the plan:
+                you can review it together with them. Your data stays safe and keeps feeding the dashboard and nutrition.
               </p>
             </header>
           </section>
@@ -816,25 +816,25 @@ export default function BioenergeticTransparencyHubPageView() {
             {sig ? (
               <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
                 <header>
-                  <h2 className="viz-title">Bioenergetica Stack</h2>
+                  <h2 className="viz-title">Bioenergetics Stack</h2>
                   <p className="mt-1 text-sm text-gray-400">
-                    Celle operative dal bundle Compute: twin, loop, scala carico e dial nutrizione. Ogni numero apre la spiegazione.
+                    Operational cells from the Compute bundle: twin, loop, load scale and nutrition dials. Every number opens the explanation.
                   </p>
                 </header>
                 <details className="collapsible-card" style={{ marginBottom: 10 }}>
-                  <summary>Pipeline canonica · Compute → Application</summary>
+                  <summary>Canonical pipeline · Compute → Application</summary>
                   <ol className="m-0 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
-                    <li>Realtà del giorno e memoria atleta alimentano il bundle operativo.</li>
-                    <li>VIRYA consuma loop, divergenza e contesto per ritunare il microciclo.</li>
-                    <li>Builder materializza la singola sessione; non sostituisce VIRYA sul programma macro.</li>
-                    <li>Nutrizione/fueling scalano solver e timing a partire dagli stessi segnali.</li>
+                    <li>The reality of the day and athlete memory feed the operational bundle.</li>
+                    <li>VIRYA consumes loop, divergence and context to retune the microcycle.</li>
+                    <li>Builder materializes the single session; it does not replace VIRYA on the macro program.</li>
+                    <li>Nutrition/fueling scale the solver and timing starting from the same signals.</li>
                   </ol>
                 </details>
                 <BioKpiGrid cells={cells} />
                 {sig.nutritionPerformanceIntegration.rationale.length > 0 ? (
                   <details className="collapsible-card" style={{ marginBottom: 10, borderColor: "rgba(56,189,248,0.35)" }}>
                     <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
-                      Leve solver nutrizione ({sig.nutritionPerformanceIntegration.rationale.length})
+                      Nutrition solver levers ({sig.nutritionPerformanceIntegration.rationale.length})
                     </summary>
                     <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                       {sig.nutritionPerformanceIntegration.rationale.map((line) => (
@@ -846,7 +846,7 @@ export default function BioenergeticTransparencyHubPageView() {
               </section>
             ) : (
               <p className="text-sm text-gray-500">
-                Bioenergetica non disponibile al momento. Aggiungi i tuoi dati di fisiologia e riprova.
+                Bioenergetics not available at the moment. Add your physiology data and try again.
               </p>
             )}
 
@@ -855,7 +855,7 @@ export default function BioenergeticTransparencyHubPageView() {
                 <header>
                   <h2 className="viz-title">Influence Ledger</h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Celle audit derivate deterministicamente dal bundle — nessuna scrittura DB da questa pagina.
+                    Audit cells derived deterministically from the bundle — no DB writes from this page.
                   </p>
                 </header>
                 <LedgerCellStrip rows={ledger} />
@@ -864,7 +864,7 @@ export default function BioenergeticTransparencyHubPageView() {
 
             {hub.crossModuleDynamicsLines.length > 0 ? (
               <details className="collapsible-card border-emerald-500/25 bg-emerald-950/10">
-                <summary>Dinamica incrociata · training ↔ nutrizione ({hub.crossModuleDynamicsLines.length})</summary>
+                <summary>Cross dynamics · training ↔ nutrition ({hub.crossModuleDynamicsLines.length})</summary>
                 <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                   {hub.crossModuleDynamicsLines.slice(0, 12).map((line) => (
                     <li key={line}>{line}</li>
@@ -875,15 +875,15 @@ export default function BioenergeticTransparencyHubPageView() {
 
             <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
               <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-400">
-                Spina lettura · copertura {hub.readSpineCoverage.spineScore}%
+                Read spine · coverage {hub.readSpineCoverage.spineScore}%
               </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(
                   [
-                    ["Profilo", hub.readSpineCoverage.hasProfile],
-                    ["Fisiologia", hub.readSpineCoverage.hasPhysiology],
+                    ["Profile", hub.readSpineCoverage.hasProfile],
+                    ["Physiology", hub.readSpineCoverage.hasPhysiology],
                     ["Twin", hub.readSpineCoverage.hasTwin],
-                    ["Nutrizione", hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
+                    ["Nutrition", hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
                   ] as const
                 ).map(([label, on]) => (
                   <span
