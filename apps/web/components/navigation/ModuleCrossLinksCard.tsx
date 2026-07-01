@@ -11,14 +11,14 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
   ],
   training: [
-    { href: "/physiology/bioenergetics", label: "Bioenergetica", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
+    { href: "/physiology/bioenergetics", label: "Bioenergetics", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
     { href: "/nutrition", label: "Nutrition", className: "border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
     { href: "/dashboard", label: "Dashboard", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
   ],
   nutrition: [
     { href: "/bioenergetics", label: "BioEnergetics", className: "border-lime-500/35 bg-lime-500/10 hover:bg-lime-500/15" },
-    { href: "/physiology/bioenergetics", label: "Bioenergetica", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
+    { href: "/physiology/bioenergetics", label: "Bioenergetics", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
     { href: "/training", label: "Training", className: "border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
@@ -26,7 +26,7 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
   ],
   physiology: [
     { href: "/bioenergetics", label: "BioEnergetics", className: "border-lime-500/35 bg-lime-500/10 hover:bg-lime-500/15" },
-    { href: "/physiology/bioenergetics", label: "Bioenergetica", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
+    { href: "/physiology/bioenergetics", label: "Bioenergetics", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
     { href: "/training/builder", label: "Builder", className: "border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15" },
     { href: "/nutrition", label: "Nutrition", className: "border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15" },
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
@@ -62,7 +62,7 @@ export function ModuleCrossLinksCard({ module }: { module: ProductModuleId }) {
   const items = GENERATIVE_CROSS[module];
   if (!items?.length) return null;
   return (
-    <Pro2SectionCard accent="cyan" title="Moduli collegati" subtitle="Stesso atleta, contratti condivisi" icon={Link2}>
+    <Pro2SectionCard accent="cyan" title="Linked modules" subtitle="Same athlete, shared contracts" icon={Link2}>
       <div className="flex flex-wrap gap-2">
         {items.map((x) => (
           <Pro2Link

@@ -6,7 +6,7 @@ export default function ModuleRouteLoading() {
         className="h-1 w-36 animate-pulse rounded-full bg-gradient-to-r from-purple-500/50 via-pink-500/50 to-orange-500/50"
         aria-hidden
       />
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-gray-600">Caricamento</p>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-gray-600">Loading</p>
     </div>
   );
 }

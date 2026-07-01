@@ -14,7 +14,7 @@ import { ActiveAthleteScopeProvider } from "@/lib/use-active-athlete";
  */
 const LOADING = (
   <div className="px-6 py-16 text-center font-mono text-[0.65rem] uppercase tracking-[0.3em] text-gray-600">
-    Caricamento review…
+    Loading review…
   </div>
 );
 

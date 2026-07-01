@@ -17,8 +17,8 @@ import { MobileDashboardHeader } from "@/modules/mobile/components/MobileDashboa
 function mobileTitleForPath(pathname: string): string {
   const item = getMobileMenuItemForPath(pathname);
   if (item) return item.label;
-  if (pathname.startsWith("/m/nutrition/diary")) return "Diario";
-  if (pathname.startsWith("/m/training/session")) return "Giornata";
+  if (pathname.startsWith("/m/nutrition/diary")) return "Diary";
+  if (pathname.startsWith("/m/training/session")) return "Session";
   return "Empathy";
 }
 

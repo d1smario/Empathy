@@ -30,7 +30,7 @@ export function MobileDashboardView() {
     return (
       <div className="px-4 py-6">
         <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-400">
-          {role === "coach" ? "Seleziona un atleta attivo per vedere la dashboard." : "Profilo atleta non disponibile."}
+          {role === "coach" ? "Select an active athlete to view the dashboard." : "Athlete profile not available."}
         </p>
       </div>
     );
@@ -40,7 +40,7 @@ export function MobileDashboardView() {
     return (
       <div className="px-4 py-6">
         <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-500">
-          Caricamento dashboard…
+          Loading dashboard…
         </p>
       </div>
     );

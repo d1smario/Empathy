@@ -26,17 +26,17 @@ export default async function DashboardPage() {
         <Pro2ModulePageShell
           eyebrow="Dashboard · Coach"
           eyebrowClassName="text-violet-400"
-          title="Account in verifica"
+          title="Account under review"
           description={
             <span className="text-sm text-gray-400">
-              Il tuo account coach è in attesa di attivazione da parte di Empathy.
+              Your coach account is awaiting activation from Empathy.
             </span>
           }
         >
-          <Pro2SectionCard accent="amber" title="In attesa di approvazione" subtitle="Ci siamo quasi" icon={Clock}>
+          <Pro2SectionCard accent="amber" title="Awaiting approval" subtitle="Almost there" icon={Clock}>
             <p className="text-sm leading-relaxed text-gray-300">
-              Appena Empathy approva il tuo account, qui troverai i tuoi atleti, le sessioni della settimana e
-              le tue commissioni. Riceverai l&apos;operatività completa senza dover fare nulla.
+              As soon as Empathy approves your account, you&apos;ll find your athletes, this week&apos;s sessions, and
+              your commissions here. You&apos;ll get full operational access without having to do anything.
             </p>
           </Pro2SectionCard>
         </Pro2ModulePageShell>

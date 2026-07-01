@@ -46,7 +46,7 @@ export function Pro2AthleteRequiredGate({
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {role === "coach" ? (
             <Pro2Link href="/athletes" variant="primary" className="justify-center">
-              Vai ad Atleti
+              Go to Athletes
             </Pro2Link>
           ) : (
             <Pro2Link href="/profile" variant="primary" className="justify-center">

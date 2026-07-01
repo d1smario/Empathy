@@ -83,7 +83,7 @@ export function Pro2StickyAnchorSubnav({ items, accent = MODULE_PILL_CYAN }: Pro
         items={pillItems}
         activeAnchor={activeAnchor}
         onSelect={onSelect}
-        ariaLabel="Sezioni pagina"
+        ariaLabel="Page sections"
       />
     </div>
   );

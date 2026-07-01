@@ -9,8 +9,8 @@ import ProfilePageView from "@/modules/profile/views/ProfilePageView";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Profilo",
-  description: "Identità atleta, fisiologia e vincoli nutrizionali.",
+  title: "Profile",
+  description: "Athlete identity, physiology and nutritional constraints.",
 };
 
 /**
@@ -25,12 +25,12 @@ export default async function ProfilePage() {
   if (session.role === "coach") {
     return (
       <Pro2ModulePageShell
-        eyebrow="Profilo · Coach"
+        eyebrow="Profile · Coach"
         eyebrowClassName="text-violet-400"
-        title="Il tuo account"
+        title="Your account"
         description={
           <span className="text-sm text-gray-400">
-            Dati del tuo account coach, anagrafica per le commissioni e sicurezza.
+            Your coach account details, billing information for commissions and security.
           </span>
         }
       >

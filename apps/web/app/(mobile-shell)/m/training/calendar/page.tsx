@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Training · Calendar",
-  description: "Calendario operativo — app mobile.",
+  description: "Operational calendar — mobile app.",
 };
 
 // Il confinamento coach → roster è nel layout /m/training (copre calendar + session).

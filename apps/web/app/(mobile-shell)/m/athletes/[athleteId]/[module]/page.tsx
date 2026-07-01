@@ -9,7 +9,7 @@ type PageProps = { params: { athleteId: string; module: string } };
 
 export function generateMetadata({ params }: PageProps): Metadata {
   const tab = SCOPED_ATHLETE_TABS.find((x) => x.module === params.module);
-  return { title: tab ? `${tab.label} · Atleta` : "Atleta" };
+  return { title: tab ? `${tab.label} · Athlete` : "Athlete" };
 }
 
 /**

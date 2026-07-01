@@ -14,7 +14,7 @@ export default async function MobileAerodynamicsPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-gray-400">Caricamento Aerodynamics...</div>
+        <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-gray-400">Loading Aerodynamics...</div>
       }
     >
       <AerodynamicsPageView />

@@ -8,8 +8,8 @@ type PageProps = { params: { date: string } };
 export function generateMetadata({ params }: PageProps): Metadata {
   const d = params.date ?? "";
   return {
-    title: d ? `Physiology · Giornata ${d}` : "Physiology · Giornata",
-    description: "Pannello giornaliero: recovery, sonno, attività e biomarker allineati al calendario.",
+    title: d ? `Physiology · Day ${d}` : "Physiology · Day",
+    description: "Daily panel: recovery, sleep, activity and biomarkers aligned with the calendar.",
   };
 }
 

@@ -48,7 +48,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
 
   return (
     <Pro2ModulePageShell
-      eyebrow={module === "dashboard" ? "Human Performance Operating System" : `${title} · Modulo`}
+      eyebrow={module === "dashboard" ? "Human Performance Operating System" : `${title} · Module`}
       eyebrowClassName={moduleEyebrowClass(module)}
       title={
         module === "dashboard" ? (
@@ -65,10 +65,10 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
       }
       description={
         module === "dashboard" ? undefined : module === "athletes" ? (
-          <span className="text-sm text-gray-400">Stato account, atleti collegati e inviti.</span>
+          <span className="text-sm text-gray-400">Account status, linked athletes and invites.</span>
         ) : panel ? (
           <span className="leading-relaxed">
-            Punto di ingresso modulo: dati e azioni restano su contratti <code className="text-gray-500">@empathy/contracts</code> e domain
+            Module entry point: data and actions stay on <code className="text-gray-500">@empathy/contracts</code> contracts and domain
             packages.
           </span>
         ) : undefined
@@ -102,13 +102,13 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
         <section
           id="settings-coach-account"
           className="scroll-mt-28 space-y-6"
-          aria-label="Account coach e ruolo"
+          aria-label="Coach account and role"
         >
           <p className="text-center text-xs text-gray-500 sm:text-left">
-            <strong className="text-gray-300">Ruolo atleta / coach:</strong> si imposta in{" "}
-            <strong className="text-gray-400">/access</strong>, non qui. Sotto solo riepilogo e link utili. Le pill{" "}
-            <strong className="text-gray-400">Ambito</strong> · <strong className="text-gray-400">Collegamenti</strong> ·{" "}
-            <strong className="text-gray-400">Operatività</strong> servono a scorrere le altre sezioni.
+            <strong className="text-gray-300">Athlete / coach role:</strong> set it in{" "}
+            <strong className="text-gray-400">/access</strong>, not here. Below is only a summary and useful links. The{" "}
+            <strong className="text-gray-400">Scope</strong> · <strong className="text-gray-400">Connections</strong> ·{" "}
+            <strong className="text-gray-400">Operations</strong> pills let you jump to the other sections.
           </p>
           <SettingsCoachAccountCard />
         </section>
@@ -138,22 +138,22 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
         <>
       <section id="std-domain" className="scroll-mt-28 space-y-10">
         {panel ? (
-          <Pro2SectionCard accent="violet" title="Dominio contrattuale" subtitle={panel.title} icon={BookOpen}>
+          <Pro2SectionCard accent="violet" title="Contractual domain" subtitle={panel.title} icon={BookOpen}>
             <p className="text-sm leading-relaxed text-gray-300">{panel.summary}</p>
             <p className="mt-4 font-mono text-xs text-gray-500">
               <span className="text-purple-400">package</span> {panel.packageId}
             </p>
           </Pro2SectionCard>
         ) : (
-          <Pro2SectionCard accent="slate" title="Dominio" subtitle="Non mappato" icon={BookOpen}>
-            <p className="text-sm text-gray-400">Nessun pannello dominio mappato per questo id.</p>
+          <Pro2SectionCard accent="slate" title="Domain" subtitle="Not mapped" icon={BookOpen}>
+            <p className="text-sm text-gray-400">No domain panel mapped for this id.</p>
           </Pro2SectionCard>
         )}
       </section>
 
       <section id="std-links" className="scroll-mt-28">
-        <Pro2SectionCard accent="cyan" title="Collegamenti" subtitle="Navigazione rapida" icon={LayoutDashboard}>
-        <ActionBar className="border-0 pt-0" aria-label="Navigazione rapida">
+        <Pro2SectionCard accent="cyan" title="Connections" subtitle="Quick navigation" icon={LayoutDashboard}>
+        <ActionBar className="border-0 pt-0" aria-label="Quick navigation">
           <Pro2Link href="/" variant="ghost">
             Home
           </Pro2Link>
@@ -207,8 +207,8 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
            */}
           <Pro2SectionCard
             accent="slate"
-            title="Mio account · device"
-            subtitle="Quale device guida sonno, recovery e training; quali stream sincronizzare"
+            title="My account · devices"
+            subtitle="Which device drives sleep, recovery and training; which streams to sync"
             icon={Settings2}
           >
             <div className="flex flex-col gap-10">
@@ -222,8 +222,8 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
           <PlatformAdminOnly>
             <Pro2SectionCard
               accent="slate"
-              title="Diagnostica · admin"
-              subtitle="Sessione, atleta, integrazioni, billing — visibile solo a operatori piattaforma"
+              title="Diagnostics · admin"
+              subtitle="Session, athlete, integrations, billing — visible only to platform operators"
               icon={Settings2}
             >
               <div className="flex flex-col gap-10">

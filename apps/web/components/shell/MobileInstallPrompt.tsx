@@ -61,15 +61,15 @@ export function MobileInstallPrompt() {
     <div className="mx-auto max-w-lg px-4 pb-2 pt-1">
       <div className="flex items-start gap-3 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-950/40 px-3 py-3 shadow-lg shadow-fuchsia-950/30">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Installa Empathy</p>
+          <p className="text-sm font-semibold text-white">Install Empathy</p>
           <p className="mt-0.5 text-xs text-gray-400">
             {deferredPrompt
-              ? "Aggiungi alla home per aprire l'app a schermo intero."
-              : "Su iPhone: Condividi → Aggiungi a Home. Su Android: Installa app dal menu browser."}
+              ? "Add to your home screen to open the app in full screen."
+              : "On iPhone: Share → Add to Home Screen. On Android: Install app from the browser menu."}
           </p>
           {deferredPrompt ? (
             <Pro2Button type="button" className="mt-2 h-8 px-3 text-xs" onClick={() => void install()}>
-              Installa
+              Install
             </Pro2Button>
           ) : null}
         </div>
@@ -77,7 +77,7 @@ export function MobileInstallPrompt() {
           type="button"
           onClick={dismiss}
           className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white"
-          aria-label="Chiudi"
+          aria-label="Close"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>

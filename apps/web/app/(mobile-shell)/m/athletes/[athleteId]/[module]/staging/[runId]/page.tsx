@@ -10,7 +10,7 @@ const STAGING_MODULES = ["health", "biomechanics", "aerodynamics"];
 type PageProps = { params: { athleteId: string; module: string; runId: string } };
 
 export function generateMetadata({ params }: PageProps): Metadata {
-  return { title: `Review · ${params.module} · Atleta` };
+  return { title: `Review · ${params.module} · Athlete` };
 }
 
 /**

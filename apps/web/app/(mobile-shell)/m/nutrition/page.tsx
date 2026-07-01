@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Nutrition",
-  description: "Meal plan e diario — app mobile.",
+  description: "Meal plan and diary — mobile app.",
 };
 
 // Il confinamento coach → roster è nel layout (copre indice + meal-plan + diary).

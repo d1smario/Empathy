@@ -61,7 +61,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       title={title}
       description={
         <p className="leading-relaxed">
-          Superficie generativa Pro 2: riepilogo dominio nel riquadro sotto, dati operativi al centro, un focus guidato in fondo.
+          Pro 2 generative surface: domain summary in the panel below, operational data in the center, a guided focus at the bottom.
         </p>
       }
       headerActions={
@@ -85,22 +85,22 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
 
       <section id="gen-domain" className="scroll-mt-28">
         {panel ? (
-          <Pro2SectionCard accent={accent} title="Ambito modulo" subtitle={panel.title} icon={BookOpen}>
+          <Pro2SectionCard accent={accent} title="Module scope" subtitle={panel.title} icon={BookOpen}>
             <p className="text-sm leading-relaxed text-gray-300">{panel.summary}</p>
             <p className="mt-3 font-mono text-xs text-gray-500">
               <span className="text-purple-400">package</span> {panel.packageId}
             </p>
           </Pro2SectionCard>
         ) : (
-          <Pro2SectionCard accent="slate" title="Ambito modulo" subtitle="Non mappato" icon={BookOpen}>
-            <p className="text-sm text-gray-400">Nessun pannello dominio per questo modulo.</p>
+          <Pro2SectionCard accent="slate" title="Module scope" subtitle="Not mapped" icon={BookOpen}>
+            <p className="text-sm text-gray-400">No domain panel for this module.</p>
           </Pro2SectionCard>
         )}
       </section>
 
       <section id="gen-body" className="scroll-mt-28 space-y-10">
       {module === "profile" ? (
-        <Pro2SectionCard accent="fuchsia" title="Profilo atleta" subtitle="Lettura contratti" icon={BookOpen}>
+        <Pro2SectionCard accent="fuchsia" title="Athlete profile" subtitle="Contract read" icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <ProfileAthleteCard />
           </div>
@@ -108,7 +108,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "training" ? (
-        <Pro2SectionCard accent="orange" title="Training" subtitle="Finestra pianificata" icon={BookOpen}>
+        <Pro2SectionCard accent="orange" title="Training" subtitle="Planned window" icon={BookOpen}>
           <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-start">
             <TrainingPlannedWindowCard />
             <div className="flex flex-col gap-2 sm:justify-center">
@@ -117,7 +117,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
                 variant="secondary"
                 className="justify-center border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
               >
-                Apri builder (vista densa)
+                Open builder (dense view)
               </Pro2Link>
               <Pro2Link
                 href="/training/calendar"
@@ -140,21 +140,21 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
 
       {module === "nutrition" ? (
         <>
-          <Pro2SectionCard accent="amber" title="Nutrition" subtitle="Vincoli e piani (Supabase)" icon={BookOpen}>
+          <Pro2SectionCard accent="amber" title="Nutrition" subtitle="Constraints and plans (Supabase)" icon={BookOpen}>
             <div className="flex justify-center sm:justify-start">
               <NutritionAthleteSummaryCard />
             </div>
           </Pro2SectionCard>
           <Pro2SectionCard
             accent="orange"
-            title="Allineamento al carico"
-            subtitle="Stessa linea dati del training — niente secondo motore"
+            title="Load alignment"
+            subtitle="Same data line as training — no second engine"
             icon={CalendarDays}
           >
             <p className="text-sm leading-relaxed text-gray-400">
-              I target giornalieri restano coerenti con sessioni pianificate ed eseguite (calendario + builder). Usa Virya
-              per il contesto macro e l’adattamento; la nutrizione V1+2 consuma memoria atleta e output strutturati, non
-              sessioni generate dall’AI in parallelo.
+              Daily targets stay consistent with planned and completed sessions (calendar + builder). Use Virya
+              for macro context and adaptation; nutrition V1+2 consumes athlete memory and structured outputs, not
+              AI sessions generated in parallel.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pro2Link
@@ -197,12 +197,12 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
         <Pro2SectionCard
           accent="emerald"
           title="BioEnergetic Intelligence"
-          subtitle="Timeline giornata + provenienza misurato/stimato"
+          subtitle="Day timeline + measured/estimated provenance"
           icon={LineChart}
         >
           <p className="text-sm leading-relaxed text-gray-400">
-            Vista operativa a giornata che incrocia training, diario nutrizionale e stream device per stimare pathway
-            supportanti/inibitori senza sostituire i dati misurati.
+            Day-level operational view that cross-references training, nutrition diary and device streams to estimate
+            supporting/inhibiting pathways without replacing measured data.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Pro2Link
@@ -210,14 +210,14 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
               variant="secondary"
               className="justify-center border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25"
             >
-              Report giornaliero (grafici)
+              Daily report (charts)
             </Pro2Link>
             <Pro2Link
               href="/nutrition/diary"
               variant="secondary"
               className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
             >
-              Diario alimentare
+              Food diary
             </Pro2Link>
             <Pro2Link
               href="/training/calendar"
@@ -231,7 +231,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "physiology" ? (
-        <Pro2SectionCard accent="emerald" title="Physiology" subtitle="Profilo fisiologico" icon={BookOpen}>
+        <Pro2SectionCard accent="emerald" title="Physiology" subtitle="Physiological profile" icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <PhysiologyProfileStripCard />
           </div>
@@ -239,7 +239,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "health" ? (
-        <Pro2SectionCard accent="violet" title="Health & Bio" subtitle="Pannelli biomarker" icon={BookOpen}>
+        <Pro2SectionCard accent="violet" title="Health & Bio" subtitle="Biomarker panels" icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <HealthBiomarkerPanelsCard />
           </div>
@@ -252,8 +252,8 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
             <FaseModuleStubCard
               accentClass="text-emerald-300/90"
               kicker="Biomechanics · roadmap"
-              title="Dati cinematici"
-              body="Lettura da tabelle capture / analisi — in coda sulla scaletta Pro 2. Il twin e il training restano la sorgente operativa finché non è esposto un endpoint dedicato."
+              title="Kinematic data"
+              body="Read from capture / analysis tables — queued on the Pro 2 lineup. The twin and training remain the operational source until a dedicated endpoint is exposed."
             />
           </div>
         </Pro2SectionCard>
@@ -265,8 +265,8 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
             <FaseModuleStubCard
               accentClass="text-cyan-300/90"
               kicker="Aerodynamics · roadmap"
-              title="CdA e contesto vento"
-              body="Modulo aerodinamico collegato a discipline e sensori esterni; nessuna lettura Supabase canonica in questa fase. Resta nel perimetro architetturale per integrazioni future."
+              title="CdA and wind context"
+              body="Aerodynamic module linked to disciplines and external sensors; no canonical Supabase read at this stage. It stays within the architectural perimeter for future integrations."
             />
           </div>
         </Pro2SectionCard>
@@ -278,7 +278,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       </section>
 
       <section id="gen-focus" className="scroll-mt-28 space-y-6">
-        <Pro2SectionCard accent="fuchsia" title="Azioni" subtitle="Un focus per sessione — controlli compatti" icon={Sparkles}>
+        <Pro2SectionCard accent="fuchsia" title="Actions" subtitle="One focus per session — compact controls" icon={Sparkles}>
           <GenerativeFocusIsland module={module} />
         </Pro2SectionCard>
 

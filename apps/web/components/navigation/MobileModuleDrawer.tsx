@@ -73,24 +73,24 @@ export function MobileModuleDrawer({ role = "private", open, onClose }: MobileMo
   const sections = getMobileMenuSections(role);
 
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Menu moduli">
+    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Modules menu">
       <button
         type="button"
         className="absolute inset-0 bg-black/75 backdrop-blur-sm"
-        aria-label="Chiudi menu"
+        aria-label="Close menu"
         onClick={onClose}
       />
       <div className="absolute inset-x-0 bottom-0 flex max-h-[min(92vh,40rem)] flex-col rounded-t-3xl border border-white/10 bg-zinc-950 shadow-2xl shadow-purple-950/50">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
           <div className="min-w-0">
-            <p className="truncate text-base font-bold text-white">Moduli Empathy</p>
-            <p className="truncate text-[0.65rem] text-gray-500">Tutte le sezioni in un posto</p>
+            <p className="truncate text-base font-bold text-white">Empathy Modules</p>
+            <p className="truncate text-[0.65rem] text-gray-500">All sections in one place</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300"
-            aria-label="Chiudi"
+            aria-label="Close"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -116,7 +116,7 @@ export function MobileModuleDrawer({ role = "private", open, onClose }: MobileMo
         <div className="shrink-0 border-t border-white/10 px-4 py-3 sm:px-5">
           <p className="flex items-center gap-2 text-[0.65rem] text-gray-500">
             <Grid3X3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            Builder, VIRYA e staging lab avanzato restano su versione desktop.
+            Builder, VIRYA and the advanced staging lab remain on the desktop version.
           </p>
         </div>
       </div>

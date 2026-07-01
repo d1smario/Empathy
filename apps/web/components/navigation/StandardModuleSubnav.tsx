@@ -15,21 +15,21 @@ const ITEMS: ModulePillAnchorItem[] = [
   {
     key: "domain",
     anchor: "std-domain",
-    label: "Ambito",
+    label: "Scope",
     icon: BookOpen,
     style: MODULE_PILL_CYAN,
   },
   {
     key: "links",
     anchor: "std-links",
-    label: "Collegamenti",
+    label: "Links",
     icon: Link2,
     style: MODULE_PILL_FUCHSIA,
   },
   {
     key: "ops",
     anchor: "std-ops",
-    label: "Operatività",
+    label: "Operations",
     icon: LayoutGrid,
     style: MODULE_PILL_SKY,
   },
@@ -75,7 +75,7 @@ export function StandardModuleSubnav() {
       items={ITEMS}
       activeAnchor={activeAnchor}
       onSelect={onSelect}
-      ariaLabel="Sezioni modulo"
+      ariaLabel="Module sections"
     />
   );
 }

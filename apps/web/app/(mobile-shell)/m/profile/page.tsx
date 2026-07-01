@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Profile",
-  description: "Profilo — app mobile.",
+  description: "Profile — mobile app.",
 };
 
 /**
@@ -21,12 +21,12 @@ export default async function MobileProfilePage() {
   if (session.role === "coach") {
     return (
       <Pro2ModulePageShell
-        eyebrow="Profilo · Coach"
+        eyebrow="Profile · Coach"
         eyebrowClassName="text-violet-400"
-        title="Il tuo account"
+        title="Your account"
         description={
           <span className="text-sm text-gray-400">
-            Dati del tuo account coach, anagrafica per le commissioni e sicurezza.
+            Your coach account details, personal information for commissions and security.
           </span>
         }
       >

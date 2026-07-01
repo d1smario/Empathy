@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Aerodynamics",
-  description: "Capture foto e video per pipeline aerodinamica Pro 2 con CdA deterministico.",
+  description: "Capture photos and videos for the Pro 2 aerodynamics pipeline with deterministic CdA.",
 };
 
 export default async function AerodynamicsPage() {
@@ -15,7 +15,7 @@ export default async function AerodynamicsPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-gray-400">Caricamento Aerodynamics...</div>
+        <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-gray-400">Loading Aerodynamics...</div>
       }
     >
       <AerodynamicsPageView />
