@@ -8,11 +8,11 @@ type Sport = "cyclist" | "runner" | "soccer" | "skier" | "lifter";
 // Solo le animazioni rifinite restano in rotazione (runner/soccer ancora da rifare).
 const SPORTS: Sport[] = ["cyclist", "lifter", "skier"];
 const SPORT_LABELS: Record<Sport, string> = {
-  cyclist: "Ciclismo",
+  cyclist: "Cycling",
   runner: "Running",
-  soccer: "Calcio",
-  skier: "Sci",
-  lifter: "Pesistica",
+  soccer: "Soccer",
+  skier: "Skiing",
+  lifter: "Weightlifting",
 };
 
 const SPORT_DURATION = 6000;
@@ -1191,7 +1191,7 @@ export function AthleteCanvas({
         <canvas
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"
-          aria-label="Twin atleta in posa neutra costruito da flussi di dati"
+          aria-label="Athlete twin in a neutral pose built from data streams"
         />
       </div>
     );
@@ -1202,7 +1202,7 @@ export function AthleteCanvas({
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
-        aria-label="Animazione atleta costruito da flussi di dati"
+        aria-label="Athlete animation built from data streams"
       />
 
       {/* Sport label */}

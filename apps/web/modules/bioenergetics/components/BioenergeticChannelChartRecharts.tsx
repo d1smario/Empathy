@@ -15,7 +15,7 @@ import { DEFAULT_STROKE, STROKE_BY_CHANNEL_ID, type PreparedChannel } from "./Bi
  * layout shift mentre il chunk si carica).
  */
 function formatStreamAxisTick(ms: number): string {
-  return new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
+  return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 }
 
 export function BioenergeticChannelChartRecharts({
@@ -63,9 +63,9 @@ export function BioenergeticChannelChartRecharts({
             labelFormatter={(_label, payload) => {
               const row = payload?.[0]?.payload as { tsMs?: number } | undefined;
               if (row && typeof row.tsMs === "number" && Number.isFinite(row.tsMs)) {
-                return new Date(row.tsMs).toLocaleString("it-IT");
+                return new Date(row.tsMs).toLocaleString("en-US");
               }
-              return "Orario";
+              return "Time";
             }}
           />
           <Line
@@ -100,16 +100,16 @@ export function BioenergeticChannelChartRecharts({
             contentStyle={chartTooltipStyle("bioenergetics")}
             formatter={(value) => {
               const v = typeof value === "number" ? value : Number(value);
-              return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, "Valore"] : ["—", ch.labelIt];
+              return Number.isFinite(v) ? [`${v.toFixed(3)} ${ch.unit}`, "Value"] : ["—", ch.labelIt];
             }}
             labelFormatter={(_label, payload) => {
               const row = payload?.[0]?.payload as
                 | { hour?: number; hourLabel?: string; hourEndLabel?: string }
                 | undefined;
               if (row && typeof row.hour === "number") {
-                return `Finestra: ${row.hourLabel}–${row.hourEndLabel}`;
+                return `Window: ${row.hourLabel}–${row.hourEndLabel}`;
               }
-              return "Orario";
+              return "Time";
             }}
           />
           <Line

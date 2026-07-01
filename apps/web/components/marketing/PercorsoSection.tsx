@@ -26,41 +26,41 @@ import {
 // COPY (Italian) — edit the text below to change what the section says.
 // ---------------------------------------------------------------------------
 const COPY = {
-  eyebrow: "Il metodo",
-  title: "Il percorso, guidato dai dati",
+  eyebrow: "The method",
+  title: "The journey, guided by data",
   intro:
-    "Empathy non si limita a misurare: traduce i tuoi numeri in un piano concreto. Ti dice COSA mangiare e QUALI esercizi fare, giorno per giorno, mantenendo allenamento e alimentazione perfettamente sincronizzati.",
-  demoNote: "Dati dimostrativi — illustrazione del metodo, non valori reali.",
+    "Empathy doesn't just measure: it turns your numbers into a concrete plan. It tells you WHAT to eat and WHICH exercises to do, day by day, keeping training and nutrition perfectly in sync.",
+  demoNote: "Demo data — an illustration of the method, not real values.",
   cards: {
     load: {
-      title: "Carico & forma",
+      title: "Load & fitness",
       body:
-        "Empathy bilancia fatica e recupero settimana dopo settimana: vedi crescere la forma mentre il carico resta sotto controllo, senza sovrallenamento.",
+        "Empathy balances fatigue and recovery week after week: you see fitness grow while load stays under control, without overtraining.",
     },
     nutrition: {
-      title: "Alimentazione",
+      title: "Nutrition",
       body:
-        "Ogni giorno Empathy ti dice cosa mangiare: i macro (carboidrati, proteine, grassi) si adattano al carico dell'allenamento, di più nei giorni intensi.",
+        "Every day Empathy tells you what to eat: macros (carbs, protein, fat) adapt to your training load, more on hard days.",
     },
     exercises: {
-      title: "Esercizi",
+      title: "Exercises",
       body:
-        "Empathy pianifica quali esercizi fare e con quale intensità: sessioni distribuite nella settimana, dosate sul tuo livello e sugli obiettivi.",
+        "Empathy plans which exercises to do and at what intensity: sessions spread across the week, dosed to your level and your goals.",
     },
     lactate: {
-      title: "Soglia & lattato",
+      title: "Threshold & lactate",
       body:
-        "Dai test e dagli allenamenti Empathy stima soglie e curva del lattato: sai a che intensità allenarti per ogni obiettivo.",
+        "From tests and workouts Empathy estimates thresholds and the lactate curve: you know at what intensity to train for each goal.",
     },
     sleep: {
-      title: "Sonno & recupero",
+      title: "Sleep & recovery",
       body:
-        "Sonno e segnali fisiologici diventano un punteggio di recupero: Empathy adatta i carichi per farti arrivare pronto, non stanco.",
+        "Sleep and physiological signals become a recovery score: Empathy adapts loads to get you there ready, not tired.",
     },
     profile: {
-      title: "Profilo fisiologico",
+      title: "Physiological profile",
       body:
-        "Un quadro completo delle tue qualità — VO2max, soglia, resistenza, forza — per capire dove sei forte e su cosa lavorare.",
+        "A complete picture of your qualities — VO2max, threshold, endurance, strength — to understand where you are strong and what to work on.",
     },
   },
 } as const;
@@ -263,7 +263,7 @@ export function PercorsoSection() {
             <Area
               type="monotone"
               dataKey="carico"
-              name="Carico"
+              name="Load"
               stroke={ORANGE}
               strokeWidth={2}
               fillOpacity={1}
@@ -272,7 +272,7 @@ export function PercorsoSection() {
             <Area
               type="monotone"
               dataKey="forma"
-              name="Forma"
+              name="Fitness"
               stroke={PURPLE}
               strokeWidth={2.5}
               fillOpacity={1}
@@ -304,20 +304,20 @@ export function PercorsoSection() {
             />
             <Bar
               dataKey="carbo"
-              name="Carboidrati"
+              name="Carbs"
               stackId="macro"
               fill={PURPLE}
               radius={[0, 0, 0, 0]}
             />
             <Bar
               dataKey="proteine"
-              name="Proteine"
+              name="Protein"
               stackId="macro"
               fill={PINK}
             />
             <Bar
               dataKey="grassi"
-              name="Grassi"
+              name="Fat"
               stackId="macro"
               fill={ORANGE}
               radius={[6, 6, 0, 0]}
@@ -354,7 +354,7 @@ export function PercorsoSection() {
             />
             <Bar
               dataKey="intensita"
-              name="Intensità sessione"
+              name="Session intensity"
               radius={[6, 6, 0, 0]}
             >
               {exercisesData.map((entry) => (
@@ -404,7 +404,7 @@ export function PercorsoSection() {
             <Area
               type="monotone"
               dataKey="lattato"
-              name="Lattato (mmol/L)"
+              name="Lactate (mmol/L)"
               stroke={PINK}
               strokeWidth={2.5}
               fillOpacity={1}
@@ -437,7 +437,7 @@ export function PercorsoSection() {
             <Line
               type="monotone"
               dataKey="recupero"
-              name="Recupero %"
+              name="Recovery %"
               stroke={PURPLE}
               strokeWidth={2.5}
               dot={{ r: 3, fill: PINK, strokeWidth: 0 }}
@@ -463,7 +463,7 @@ export function PercorsoSection() {
             <PolarAngleAxis dataKey="k" tick={{ fill: "#9ca3af", fontSize: 10 }} />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
             <Radar
-              name="Profilo"
+              name="Profile"
               dataKey="v"
               stroke={PINK}
               fill={PINK}

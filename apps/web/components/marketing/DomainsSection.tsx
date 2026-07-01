@@ -8,8 +8,8 @@ interface DomainsSectionProps {
 
 const domains = [
   {
-    label: "Aerodinamica",
-    desc: "Analisi CdA, posizione sul sellino e simulazione vento.",
+    label: "Aerodynamics",
+    desc: "CdA analysis, saddle position and wind simulation.",
     color: "text-purple-300",
     border: "border-purple-500/20",
     bg: "from-purple-500/5 to-transparent",
@@ -23,8 +23,8 @@ const domains = [
     ),
   },
   {
-    label: "Fisiologia",
-    desc: "Zone cardiache, soglie metaboliche e bioenergetica.",
+    label: "Physiology",
+    desc: "Heart rate zones, metabolic thresholds and bioenergetics.",
     color: "text-pink-300",
     border: "border-pink-500/20",
     bg: "from-pink-500/5 to-transparent",
@@ -39,8 +39,8 @@ const domains = [
     ),
   },
   {
-    label: "Biomeccanica",
-    desc: "Cadenza, ground contact, angoli articolari ed efficienza.",
+    label: "Biomechanics",
+    desc: "Cadence, ground contact, joint angles and efficiency.",
     color: "text-cyan-300",
     border: "border-cyan-500/20",
     bg: "from-cyan-500/5 to-transparent",
@@ -55,8 +55,8 @@ const domains = [
     ),
   },
   {
-    label: "Nutrizione",
-    desc: "Ossidazione carb/fat, piani di fueling e metabolismo.",
+    label: "Nutrition",
+    desc: "Carb/fat oxidation, fueling plans and metabolism.",
     color: "text-green-300",
     border: "border-green-500/20",
     bg: "from-green-500/5 to-transparent",
@@ -76,7 +76,7 @@ const domains = [
   },
   {
     label: "Training Load",
-    desc: "ATL, CTL, readiness e modelli di adattamento.",
+    desc: "ATL, CTL, readiness and adaptation models.",
     color: "text-orange-300",
     border: "border-orange-500/20",
     bg: "from-orange-500/5 to-transparent",
@@ -93,7 +93,7 @@ const domains = [
   },
   {
     label: "Coaching",
-    desc: "Pianificazione periodizzata, feedback e obiettivi.",
+    desc: "Periodized planning, feedback and goals.",
     color: "text-indigo-300",
     border: "border-indigo-500/20",
     bg: "from-indigo-500/5 to-transparent",

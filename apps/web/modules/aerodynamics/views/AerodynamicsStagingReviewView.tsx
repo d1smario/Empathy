@@ -39,7 +39,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       const detail = await fetchAerodynamicsStagingRunDetail(runId);
       if (cancelled) return;
       if (!detail.ok) {
-        setError(detail.error ?? "Review non disponibile");
+        setError(detail.error ?? "Review not available");
         setLoading(false);
         return;
       }
@@ -52,7 +52,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       const proposal = asRecord(patches?.aeroGeometryProposal);
       const conf = typeof proposal?.confidence01 === "number" ? Math.round(proposal.confidence01 * 100) : null;
       setSummary(
-        `Surrogate model · confidenza CV ${conf ?? "—"}% · provider ${String(proposal?.provider ?? "—")} · ${compare?.candidates.length ?? 0} scenari`,
+        `Surrogate model · CV confidence ${conf ?? "—"}% · provider ${String(proposal?.provider ?? "—")} · ${compare?.candidates.length ?? 0} scenarios`,
       );
       setLoading(false);
     })();
@@ -67,7 +67,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
     const result = await applyAerodynamicsStagingRun(runId, selectedScenarioId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Conferma fallita");
+      setError(result.error ?? "Confirmation failed");
       return;
     }
     setDone(true);
@@ -79,7 +79,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
     const result = await rejectAerodynamicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Rifiuto fallito");
+      setError(result.error ?? "Rejection failed");
       return;
     }
     setDone(true);
@@ -87,13 +87,13 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
 
   return (
     <Pro2ModulePageShell
-      eyebrow={showTech ? "Aerodynamics · Review CV" : "Aerodinamica · Posizione"}
+      eyebrow={showTech ? "Aerodynamics · CV Review" : "Aerodynamics · Position"}
       eyebrowClassName="text-cyan-300"
-      title={showTech ? "Validazione proposta geometry" : "La tua posizione è in revisione"}
+      title={showTech ? "Geometry proposal validation" : "Your position is under review"}
       description={
         showTech
-          ? "Scegli lo scenario posizione da promuovere. Il motore deterministico calcola CdA e score."
-          : "Abbiamo ricostruito alcuni scenari della tua posizione in sella. Sono in attesa di validazione dal coach."
+          ? "Choose the position scenario to promote. The deterministic engine computes CdA and score."
+          : "We reconstructed a few scenarios of your riding position. They are awaiting validation from the coach."
       }
       headerActions={
         backHref ? (
@@ -106,7 +106,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
           // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
             className={pro2ButtonClassName("secondary", "justify-center border border-white/15 cursor-default opacity-50")}
-            title="Disponibile nella scheda dedicata (v2)"
+            title="Available in the dedicated tab (v2)"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Aerodynamics
@@ -114,14 +114,14 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
         )
       }
     >
-      {loading ? <p className="text-sm text-gray-400">Caricamento review...</p> : null}
+      {loading ? <p className="text-sm text-gray-400">Loading review...</p> : null}
       {showTech ? (
         summary ? (
           <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{summary}</p>
         ) : null
       ) : !loading ? (
         <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-          I tuoi dati sono in revisione. Gli scenari della tua posizione sono in attesa di validazione dal coach.
+          Your data is under review. The scenarios of your position are awaiting validation from the coach.
         </p>
       ) : null}
       {scenarioCompare?.candidates.length ? (
@@ -132,9 +132,9 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
                 <th className="px-3 py-2">Scenario</th>
                 <th className="px-3 py-2">CdA m²</th>
                 <th className="px-3 py-2">
-                  {showTech ? `ΔW @ ${scenarioCompare.referenceSpeedKph} km/h` : `Risparmio watt @ ${scenarioCompare.referenceSpeedKph} km/h`}
+                  {showTech ? `ΔW @ ${scenarioCompare.referenceSpeedKph} km/h` : `Watt savings @ ${scenarioCompare.referenceSpeedKph} km/h`}
                 </th>
-                {showTech ? <th className="px-3 py-2">Scegli</th> : null}
+                {showTech ? <th className="px-3 py-2">Select</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -163,7 +163,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
         <p className="mt-3 text-xs text-gray-400">
           Media:{" "}
           <Link href={signedUrl} target="_blank" className="text-cyan-200 underline">
-            apri cattura
+            open capture
           </Link>
         </p>
       ) : null}
@@ -171,23 +171,23 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       {showTech ? (
         done ? (
           <p className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Review chiusa. Torna al modulo per vedere test e twin aggiornati.
+            Review closed. Go back to the module to see updated tests and twin.
           </p>
         ) : (
           <div className="mt-6 flex flex-wrap gap-3">
             <Pro2Button onClick={onConfirm} disabled={busy != null || loading} className="justify-center">
               <Check className="mr-2 h-4 w-4" />
-              {busy === "confirm" ? "Conferma..." : "Conferma scenario"}
+              {busy === "confirm" ? "Confirming..." : "Confirm scenario"}
             </Pro2Button>
             <Pro2Button variant="secondary" onClick={onReject} disabled={busy != null || loading} className="justify-center">
               <X className="mr-2 h-4 w-4" />
-              {busy === "reject" ? "Rifiuto..." : "Rifiuta"}
+              {busy === "reject" ? "Rejecting..." : "Reject"}
             </Pro2Button>
           </div>
         )
       ) : (
         <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
-          Quando il coach valida la posizione, il test diventa definitivo e trovi il CdA nel modulo Aerodinamica.
+          When the coach validates the position, the test becomes final and you&apos;ll find the CdA in the Aerodynamics module.
         </p>
       )}
     </Pro2ModulePageShell>

@@ -119,16 +119,16 @@ export function BiomechanicsReportPanels({
     <div className="space-y-5">
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
         <p>
-          <span className="text-gray-500">Disciplina</span> · {data.discipline ?? "—"} ·{" "}
-          <span className="text-gray-500">Sorgente</span> · {data.source ?? "—"}
+          <span className="text-gray-500">Discipline</span> · {data.discipline ?? "—"} ·{" "}
+          <span className="text-gray-500">Source</span> · {data.source ?? "—"}
         </p>
         {data.recordedAt ? (
-          <p className="mt-1 text-xs text-gray-400">Registrata {formatDateTime(data.recordedAt)}</p>
+          <p className="mt-1 text-xs text-gray-400">Recorded {formatDateTime(data.recordedAt)}</p>
         ) : null}
         {mode === "preview" ? (
           <p className="mt-2 text-xs text-amber-300">
-            Anteprima proposta
-            {showTech && typeof data.confidence01 === "number" ? ` · confidenza ${pct01(data.confidence01)}` : ""}
+            Proposed preview
+            {showTech && typeof data.confidence01 === "number" ? ` · confidence ${pct01(data.confidence01)}` : ""}
             {showTech && data.provider ? ` · ${data.provider}` : ""}
           </p>
         ) : null}
@@ -136,30 +136,30 @@ export function BiomechanicsReportPanels({
 
       {efficiency ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label="Efficienza" value={pct01(efficiency.biomechanicalEfficiency01)} />
-          <KpiTile label="Qualità movimento" value={pct01(efficiency.movementQuality01)} />
-          <KpiTile label="Simmetria" value={pct01(efficiency.symmetry01)} />
-          <KpiTile label="Rischio infortunio" value={pct01(efficiency.injuryRisk01)} />
+          <KpiTile label="Efficiency" value={pct01(efficiency.biomechanicalEfficiency01)} />
+          <KpiTile label="Movement quality" value={pct01(efficiency.movementQuality01)} />
+          <KpiTile label="Symmetry" value={pct01(efficiency.symmetry01)} />
+          <KpiTile label="Injury risk" value={pct01(efficiency.injuryRisk01)} />
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-400">
-          Nessun campione angolo disponibile per calcolare i KPI.
+          No angle sample available to compute the KPIs.
         </p>
       )}
 
       {envelopes.length ? (
-        <Section title="Angoli articolari (ROM)" subtitle="Min, max, range e media per articolazione e lato." icon={Ruler}>
+        <Section title="Joint angles (ROM)" subtitle="Min, max, range and mean per joint and side." icon={Ruler}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-xs">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Articolazione</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Lato</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Joint</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Side</th>
                   <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Min</th>
                   <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Max</th>
                   <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">ROM</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Media</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Campioni</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Mean</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Samples</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -181,7 +181,7 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {movementEntries.length ? (
-        <Section title="Pattern di movimento" subtitle="Indicatori normalizzati 0–100%." icon={Activity}>
+        <Section title="Movement patterns" subtitle="Indicators normalized 0–100%." icon={Activity}>
           <div className="grid gap-2 sm:grid-cols-2">
             {movementEntries.map((key) => (
               <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -192,14 +192,14 @@ export function BiomechanicsReportPanels({
           </div>
           {data.compensationFlags?.length ? (
             <p className="mt-3 text-xs text-amber-300">
-              Compensazioni: {data.compensationFlags.join(", ")}
+              Compensations: {data.compensationFlags.join(", ")}
             </p>
           ) : null}
         </Section>
       ) : null}
 
       {riskEntries.length ? (
-        <Section title="Rischio per distretto" subtitle={showTech ? "Punteggi normalizzati dal motore CV + domain engine." : "Punteggi di rischio normalizzati per distretto."} icon={ShieldAlert}>
+        <Section title="Risk by body region" subtitle={showTech ? "Scores normalized from the CV motor + domain engine." : "Risk scores normalized by body region."} icon={ShieldAlert}>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {riskEntries.map(([key, label]) => (
               <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -214,27 +214,27 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {data.calibration ? (
-        <Section title="Calibrazione scala" subtitle="Riferimento metrico usato per la cattura." icon={Crosshair}>
+        <Section title="Scale calibration" subtitle="Metric reference used for the capture." icon={Crosshair}>
           <p className="text-sm text-gray-300">
             {data.calibration.referenceLabel} · {Math.round(data.calibration.referenceValueMm)} mm ·{" "}
             {data.calibration.method}
             {showTech && typeof data.calibration.confidence01 === "number"
-              ? ` · confidenza ${pct01(data.calibration.confidence01)}`
+              ? ` · confidence ${pct01(data.calibration.confidence01)}`
               : ""}
           </p>
         </Section>
       ) : null}
 
       {data.anthropometrics ? (
-        <Section title="Segmenti antropometrici" subtitle="Lunghezze stimate (mm)." icon={Ruler}>
+        <Section title="Anthropometric segments" subtitle="Estimated lengths (mm)." icon={Ruler}>
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
-                ["femurMm", "Femore"],
+                ["femurMm", "Femur"],
                 ["tibiaMm", "Tibia"],
                 ["torsoMm", "Torso"],
-                ["humerusMm", "Omero"],
-                ["forearmMm", "Avambraccio"],
+                ["humerusMm", "Humerus"],
+                ["forearmMm", "Forearm"],
               ] as const
             )
               .filter(([key]) => typeof data.anthropometrics?.[key] === "number")
@@ -252,12 +252,12 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       <Section
-        title="Overlay angoli"
+        title="Angle overlay"
         icon={Video}
         subtitle={
           editable
-            ? "Trascina i punti sul video; angoli e KPI si aggiornano dopo ogni correzione."
-            : "Scheletro, archi e valori in gradi sul frame chiave (fase ciclo)."
+            ? "Drag the points on the video; angles and KPIs update after each correction."
+            : "Skeleton, arcs and degree values on the key frame (cycle phase)."
         }
       >
         <BiomechanicsAngleOverlay
@@ -271,9 +271,9 @@ export function BiomechanicsReportPanels({
           title={
             mode === "preview"
               ? editable
-                ? "Correggi i punti CV prima di confermare la sessione."
-                : "Anteprima sulla cattura — conferma per promuovere al report canonico."
-              : "Annotazione angoli sulla sessione confermata."
+                ? "Correct the CV points before confirming the session."
+                : "Preview on the capture — confirm to promote to the canonical report."
+              : "Angle annotation on the confirmed session."
           }
         />
       </Section>

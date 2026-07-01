@@ -14,31 +14,31 @@ export function BioenergeticsStripAuditPanel({ audit }: Props) {
     <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div>
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-lime-400">
-          Controlli striscia (audit v{audit.auditContractVersion})
+          Strip controls (audit v{audit.auditContractVersion})
         </p>
         <p className="mt-1 text-xs text-gray-400">
-          Layer renderizzato: <span className="text-gray-200">{audit.stripLayerRendered}</span> · verifica coerenza motori
-          senza ricalcolo curve.
+          Rendered layer: <span className="text-gray-200">{audit.stripLayerRendered}</span> · engine consistency check
+          without recomputing curves.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <AuditStat label="CHO giorno (g)" value={String(Math.round(audit.diaryAndTraining.choIntakeGramsDay))} />
-        <AuditStat label="Pasti con macro" value={String(audit.diaryAndTraining.mealsWithMacroSignals)} />
-        <AuditStat label="Sedute eseguite" value={String(audit.diaryAndTraining.executedWorkoutCount)} />
-        <AuditStat label="TSS eseguito" value={String(Math.round(audit.diaryAndTraining.executedTssSum))} />
-        <AuditStat label="Campioni glicemia (055)" value={String(audit.channelsSource.glucoseSamples055)} />
-        <AuditStat label="Campioni lattato (055)" value={String(audit.channelsSource.lactateSamples055)} />
+        <AuditStat label="CHO day (g)" value={String(Math.round(audit.diaryAndTraining.choIntakeGramsDay))} />
+        <AuditStat label="Meals with macros" value={String(audit.diaryAndTraining.mealsWithMacroSignals)} />
+        <AuditStat label="Sessions executed" value={String(audit.diaryAndTraining.executedWorkoutCount)} />
+        <AuditStat label="TSS executed" value={String(Math.round(audit.diaryAndTraining.executedTssSum))} />
+        <AuditStat label="Glucose samples (055)" value={String(audit.channelsSource.glucoseSamples055)} />
+        <AuditStat label="Lactate samples (055)" value={String(audit.channelsSource.lactateSamples055)} />
         <AuditStat
-          label="Provenienza glu / lac"
+          label="Glu / lac provenance"
           value={`${audit.channelsSource.glucoseProvenance} / ${audit.channelsSource.lactateProvenance}`}
         />
         <AuditStat
-          label="Carico post-prandiale (01)"
+          label="Postprandial load (01)"
           value={String(Math.round(audit.cortisolActhModulation.postprandialMealLoad01 * 100) / 100)}
         />
         <AuditStat
-          label="Ora picco glicemico pasti"
+          label="Meal glycemic peak hour"
           value={`${String(audit.timelineDigest.mealGlycemicMaxHour).padStart(2, "0")}:00`}
         />
       </div>
@@ -47,12 +47,12 @@ export function BioenergeticsStripAuditPanel({ audit }: Props) {
         <table className="w-full min-w-[560px] text-xs">
           <thead>
             <tr>
-              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Canale</th>
-              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Piano</th>
-              <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Ore valorizzate</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Channel</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Plane</th>
+              <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Populated hours</th>
               <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Min–max</th>
               <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Stream</th>
-              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Fusione</th>
+              <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Fusion</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">

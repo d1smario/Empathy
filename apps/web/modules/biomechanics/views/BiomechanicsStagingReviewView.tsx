@@ -80,18 +80,18 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     });
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Salvataggio correzione fallito");
+      setError(result.error ?? "Correction save failed");
       return false;
     }
     pendingSaveRef.current = null;
-    setSaveHint("Correzione punti salvata");
+    setSaveHint("Point correction saved");
     return true;
   }, [runId]);
 
   const schedulePoseSave = useCallback(
     (landmarks: BiomechanicsLandmark3D[], jointAngles: BiomechanicsJointAngleSample[]) => {
       pendingSaveRef.current = { landmarks, jointAngles };
-      setSaveHint("Salvataggio correzione...");
+      setSaveHint("Saving correction...");
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         void flushPoseSave();
@@ -115,7 +115,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       const detail = await fetchBiomechanicsStagingRunDetail(runId);
       if (cancelled) return;
       if (!detail.ok) {
-        setError(detail.error ?? "Review non disponibile");
+        setError(detail.error ?? "Review not available");
         setLoading(false);
         return;
       }
@@ -154,7 +154,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     const result = await applyBiomechanicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Conferma fallita");
+      setError(result.error ?? "Confirmation failed");
       return;
     }
     setDone(true);
@@ -166,7 +166,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     const result = await rejectBiomechanicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Rifiuto fallito");
+      setError(result.error ?? "Rejection failed");
       return;
     }
     setDone(true);
@@ -176,13 +176,13 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
 
   return (
     <Pro2ModulePageShell
-      eyebrow={showTech ? "Biomechanics · Review CV" : "Biomechanics · Cattura"}
+      eyebrow={showTech ? "Biomechanics · CV Review" : "Biomechanics · Capture"}
       eyebrowClassName="text-emerald-300"
-      title={showTech ? "Validazione proposta pose" : "Cattura in revisione"}
+      title={showTech ? "Pose proposal validation" : "Capture under review"}
       description={
         showTech
-          ? "Allinea i punti sul video, verifica angoli e KPI, poi conferma la sessione."
-          : "I tuoi dati sono stati registrati e sono in attesa di validazione dal coach."
+          ? "Align the points on the video, check angles and KPIs, then confirm the session."
+          : "Your data has been recorded and is awaiting validation from the coach."
       }
       headerActions={
         backHref ? (
@@ -193,7 +193,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
         ) : (
           <span
             className="inline-flex cursor-default items-center justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm opacity-50"
-            title="Disponibile nella scheda dedicata (v2)"
+            title="Available in the dedicated tab (v2)"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Biomechanics
@@ -202,17 +202,17 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       }
     >
       {loading ? (
-        <p className="text-sm text-gray-400">{showTech ? "Caricamento review..." : "Caricamento..."}</p>
+        <p className="text-sm text-gray-400">{showTech ? "Loading review..." : "Loading..."}</p>
       ) : null}
       {!loading && reportData ? (
         showTech ? (
           <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            {angleCount} campioni angolo · trascina i punti rosa per correggere la CV
+            {angleCount} angle samples · drag the pink points to correct the CV
             {saveHint ? ` · ${saveHint}` : ""}
           </p>
         ) : (
           <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            La tua cattura è registrata ed è in attesa di validazione dal coach.
+            Your capture is recorded and awaiting validation from the coach.
           </p>
         )
       ) : null}
@@ -220,7 +220,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
         <p className="mt-3 text-xs text-gray-400 print:hidden">
           Media:{" "}
           <Link href={signedUrl} target="_blank" className="text-cyan-200 underline">
-            apri cattura a schermo intero
+            open capture in full screen
           </Link>
         </p>
       ) : null}
@@ -238,31 +238,31 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       ) : !loading ? (
         <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           {showTech
-            ? "Proposta CV senza angoli strutturati — controlla il sidecar o ri-elabora il job."
-            : "La cattura è in attesa di validazione dal coach. Riprova più tardi."}
+            ? "CV proposal without structured angles — check the sidecar or re-process the job."
+            : "The capture is awaiting validation from the coach. Try again later."}
         </p>
       ) : null}
       {error ? <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
       {done ? (
         <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
           {showTech
-            ? "Review chiusa. Torna al modulo per vedere sessioni e twin aggiornati."
-            : "Cattura completata. Torna al modulo per vedere le sessioni aggiornate."}
+            ? "Review closed. Go back to the module to see updated sessions and twin."
+            : "Capture completed. Go back to the module to see the updated sessions."}
         </p>
       ) : showTech ? (
         <div className="mt-6 flex flex-wrap gap-3 print:hidden">
           <Pro2Button onClick={onConfirm} disabled={busy != null || loading} className="justify-center">
             <Check className="mr-2 h-4 w-4" />
-            {busy === "confirm" ? "Conferma..." : busy === "save" ? "Salvataggio..." : "Conferma sessione"}
+            {busy === "confirm" ? "Confirming..." : busy === "save" ? "Saving..." : "Confirm session"}
           </Pro2Button>
           <Pro2Button variant="secondary" onClick={onReject} disabled={busy != null || loading} className="justify-center">
             <X className="mr-2 h-4 w-4" />
-            {busy === "reject" ? "Rifiuto..." : "Rifiuta"}
+            {busy === "reject" ? "Rejecting..." : "Reject"}
           </Pro2Button>
         </div>
       ) : (
         <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300 print:hidden">
-          La validazione verrà completata dal tuo coach. Riceverai il report quando sarà pronto.
+          Validation will be completed by your coach. You will receive the report when it is ready.
         </p>
       )}
     </Pro2ModulePageShell>

@@ -39,14 +39,14 @@ export function ManualIntegrationPullButton(props: {
       const j = (await r.json()) as PullResult;
       if (j.ok) {
         setNotice(
-          `Completato: inseriti ${j.inserted ?? 0}, saltati ${j.skipped ?? 0}.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Avvisi: ${j.errors.slice(0, 2).join(" · ")}` : ""),
+          `Completed: inserted ${j.inserted ?? 0}, skipped ${j.skipped ?? 0}.` +
+            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 2).join(" · ")}` : ""),
         );
       } else {
-        setNotice(j.error ?? `Errore HTTP ${r.status}`);
+        setNotice(j.error ?? `HTTP error ${r.status}`);
       }
     } catch {
-      setNotice("Errore di rete.");
+      setNotice("Network error.");
     } finally {
       setBusy(false);
     }
@@ -57,7 +57,7 @@ export function ManualIntegrationPullButton(props: {
   return (
     <div className={className}>
       <Pro2Button type="button" variant="secondary" disabled={!linked || busy} onClick={() => void runPull()}>
-        {busy ? "Aggiornamento…" : label}
+        {busy ? "Updating…" : label}
       </Pro2Button>
       {notice ? (
         <p className="mt-2 text-xs text-white/75" role="status">

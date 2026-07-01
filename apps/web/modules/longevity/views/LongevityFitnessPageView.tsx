@@ -11,10 +11,10 @@ export default function LongevityFitnessPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Benessere quotidiano"
+      eyebrow="Daily wellbeing"
       eyebrowClassName={moduleEyebrowClass("longevity")}
-      title="Longevità"
-      description="Fai il check-in di oggi e segui il tuo indice di longevità e fitness."
+      title="Longevity"
+      description="Complete today's check-in and track your longevity and fitness index."
     >
       <Pro2AthleteRequiredGate enabled={signedIn}>
         <DashboardLongevityPanels />

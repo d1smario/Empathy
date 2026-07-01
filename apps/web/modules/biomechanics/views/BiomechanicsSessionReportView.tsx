@@ -53,7 +53,7 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
       if (cancelled) return;
       let nextEntry: BiomechReportCacheEntry;
       if (!result.ok || !result.session) {
-        nextEntry = { reportData: null, signedUrl: null, error: result.error ?? "Report non disponibile" };
+        nextEntry = { reportData: null, signedUrl: null, error: result.error ?? "Report not available" };
       } else {
         nextEntry = {
           reportData: sessionToReportData(result.session),
@@ -77,24 +77,24 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
     <Pro2ModulePageShell
       eyebrow="Biomechanics · Report"
       eyebrowClassName={moduleEyebrowClass("biomechanics")}
-      title="Report sessione biomeccanica"
-      description="KPI deterministici, ROM articolare e rischio per distretto — esportabile in PDF."
+      title="Biomechanics session report"
+      description="Deterministic KPIs, joint ROM and per-region risk — exportable to PDF."
       headerActions={
         <div className="flex flex-wrap gap-2 print:hidden">
           <Pro2Link href="/biomechanics#biomech-report" variant="secondary" className="justify-center border border-white/15">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Archivio
+            Archive
           </Pro2Link>
         </div>
       }
     >
       <div className="print:text-black">
-        {loading ? <p className="text-sm text-gray-400">Caricamento report...</p> : null}
+        {loading ? <p className="text-sm text-gray-400">Loading report...</p> : null}
         {error ? (
           <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             {error}{" "}
             <Link href="/biomechanics" className="underline">
-              Torna a Biomechanics
+              Back to Biomechanics
             </Link>
           </p>
         ) : null}
@@ -107,9 +107,9 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
             disabled={!reportData}
           >
             <Printer className="mr-2 h-4 w-4" />
-            Salva PDF
+            Save PDF
           </Pro2Button>
-          <small className="text-xs text-gray-500">Esporta il report come PDF.</small>
+          <small className="text-xs text-gray-500">Export the report as PDF.</small>
         </div>
       </div>
     </Pro2ModulePageShell>

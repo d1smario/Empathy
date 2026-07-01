@@ -21,7 +21,7 @@ const GLU_COLOR = "#e879f9";
 const LAC_COLOR = "#fb923c";
 
 function formatTickMs(ms: number): string {
-  return new Intl.DateTimeFormat("it-IT", {
+  return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -64,25 +64,25 @@ export function BioenergeticsWindowStreamChart({
     <div className="mt-4 space-y-3">
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-fuchsia-500/25 bg-black/35 px-3 py-2">
-          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-fuchsia-300">Glucosio (mmol/L)</p>
+          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-fuchsia-300">Glucose (mmol/L)</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-white">{stats.glucose.count}</p>
           <p className="mt-0.5 text-[0.65rem] text-gray-400">
             min {formatStat(stats.glucose.min, 2)} · max {formatStat(stats.glucose.max, 2)} · μ {formatStat(stats.glucose.mean, 2)}
           </p>
         </div>
         <div className="rounded-xl border border-orange-500/25 bg-black/35 px-3 py-2">
-          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-orange-300">Lattato (mmol/L)</p>
+          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-orange-300">Lactate (mmol/L)</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-white">{stats.lactate.count}</p>
           <p className="mt-0.5 text-[0.65rem] text-gray-400">
             min {formatStat(stats.lactate.min, 2)} · max {formatStat(stats.lactate.max, 2)} · μ {formatStat(stats.lactate.mean, 2)}
           </p>
         </div>
         <div className="rounded-xl border border-violet-500/25 bg-black/35 px-3 py-2 sm:col-span-2 lg:col-span-2">
-          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-violet-300">Campioni totali (finestra)</p>
+          <p className="font-mono text-[0.55rem] uppercase tracking-wider text-violet-300">Total samples (window)</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-white">{stats.totalSamples}</p>
           <p className="mt-0.5 text-[0.65rem] text-gray-400">
-            Serie canonica 055 · valori misurati nel range selezionato
-            {truncated ? <span className="text-amber-200"> · troncatura limite righe</span> : null}
+            Canonical series 055 · values measured in the selected range
+            {truncated ? <span className="text-amber-200"> · row limit truncation</span> : null}
           </p>
         </div>
       </div>
@@ -90,25 +90,25 @@ export function BioenergeticsWindowStreamChart({
       {!skippedSchema && (stats.totalSamples > 0 || dailyRollups.length > 0) ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-fuchsia-500/20 bg-black/30 px-3 py-2">
-            <p className="font-mono text-[0.55rem] uppercase tracking-wider text-fuchsia-200/90">Ampiezza media (glu)</p>
+            <p className="font-mono text-[0.55rem] uppercase tracking-wider text-fuchsia-200/90">Mean amplitude (glu)</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-white">
               {variability.glucoseMeanDailyRange != null && Number.isFinite(variability.glucoseMeanDailyRange)
                 ? `${formatStat(variability.glucoseMeanDailyRange, 2)} mmol/L`
                 : "—"}
             </p>
             <p className="mt-0.5 text-[0.65rem] text-gray-500">
-              Media di (max−min) giornaliero · giorni con ≥2 campioni: {variability.daysWithGlucoseGte2}
+              Mean daily (max−min) · days with ≥2 samples: {variability.daysWithGlucoseGte2}
             </p>
           </div>
           <div className="rounded-xl border border-orange-500/20 bg-black/30 px-3 py-2">
-            <p className="font-mono text-[0.55rem] uppercase tracking-wider text-orange-200/90">Ampiezza media (lac)</p>
+            <p className="font-mono text-[0.55rem] uppercase tracking-wider text-orange-200/90">Mean amplitude (lac)</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-white">
               {variability.lactateMeanDailyRange != null && Number.isFinite(variability.lactateMeanDailyRange)
                 ? `${formatStat(variability.lactateMeanDailyRange, 2)} mmol/L`
                 : "—"}
             </p>
             <p className="mt-0.5 text-[0.65rem] text-gray-500">
-              Media di (max−min) giornaliero · giorni con ≥2 campioni: {variability.daysWithLactateGte2}
+              Mean daily (max−min) · days with ≥2 samples: {variability.daysWithLactateGte2}
             </p>
           </div>
         </div>
@@ -116,13 +116,13 @@ export function BioenergeticsWindowStreamChart({
 
       {skippedSchema ? (
         <p className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-400">
-          Storage time-series non disponibile su questo ambiente (schema).
+          Time-series storage not available in this environment (schema).
         </p>
       ) : null}
 
       {!skippedSchema && !hasChart ? (
         <p className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-gray-400">
-          Nessun campione glucosio/lattato nel range: il grafico compare quando ci sono punti in tabella 055.
+          No glucose/lactate sample in the range: the chart appears when there are points in table 055.
         </p>
       ) : null}
 
@@ -162,15 +162,15 @@ export function BioenergeticsWindowStreamChart({
               ) : null}
               <Tooltip
                 contentStyle={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8 }}
-                labelFormatter={(ms) => (typeof ms === "number" ? new Date(ms).toLocaleString("it-IT") : String(ms))}
+                labelFormatter={(ms) => (typeof ms === "number" ? new Date(ms).toLocaleString("en-US") : String(ms))}
                 formatter={(value: number, name: string) => [
                   value != null && Number.isFinite(value) ? `${value.toFixed(2)} mmol/L` : "—",
-                  name === "glucoseMmolL" ? "Glucosio" : "Lattato",
+                  name === "glucoseMmolL" ? "Glucose" : "Lactate",
                 ]}
               />
               <Legend
                 wrapperStyle={{ fontSize: 11 }}
-                formatter={(value) => (value === "glucoseMmolL" ? "Glucosio" : "Lattato")}
+                formatter={(value) => (value === "glucoseMmolL" ? "Glucose" : "Lactate")}
               />
               {hasGlu ? (
                 <Line
@@ -204,15 +204,15 @@ export function BioenergeticsWindowStreamChart({
       {!skippedSchema && dailyRollups.length > 0 ? (
         <div className="rounded-xl border border-white/10 bg-black/20">
           <p className="border-b border-white/10 px-3 py-2 font-mono text-[0.6rem] uppercase tracking-wider text-gray-400">
-            Sintesi per giorno (UTC) · n · min–max · media
+            Summary per day (UTC) · n · min–max · mean
           </p>
           <div className="max-h-48 overflow-y-auto">
             <table className="w-full text-left text-xs text-gray-300">
               <thead className="sticky top-0 bg-zinc-950/95 text-[0.6rem] uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2 text-fuchsia-200/90">Glucosio</th>
-                  <th className="px-3 py-2 text-orange-200/90">Lattato</th>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2 text-fuchsia-200/90">Glucose</th>
+                  <th className="px-3 py-2 text-orange-200/90">Lactate</th>
                 </tr>
               </thead>
               <tbody>

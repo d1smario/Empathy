@@ -207,7 +207,7 @@ export function BiomechanicsAngleOverlay({
   if (!hasAngles) {
     return (
       <p className="rounded-xl border border-white/10 px-4 py-3 text-sm text-gray-400">
-        Nessun angolo strutturato per disegnare l&apos;overlay.
+        No structured angle to draw the overlay.
       </p>
     );
   }
@@ -219,15 +219,15 @@ export function BiomechanicsAngleOverlay({
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           <span className="font-semibold text-amber-50">{captureViewModeLabel(viewMode)}</span>
           {" · "}
-          Punti ({MONOLATERAL_LANDMARK_IDS.map((id) => landmarkLabelIt(id)).join(" · ")}) — trascina sul video, un solo
-          lato visibile. Gli angoli si ricalcolano in 2D; salva prima di confermare.
+          Points ({MONOLATERAL_LANDMARK_IDS.map((id) => landmarkLabelIt(id)).join(" · ")}) — drag on the video, only one
+          side visible. Angles recompute in 2D; save before confirming.
         </p>
       ) : (
         <p className="text-xs text-gray-500">{captureViewModeLabel(viewMode)}</p>
       )}
       {viewMode === "multiview" ? (
         <p className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-xs text-teal-100">
-          Editor multi-view in fase 2. Per allineare i punti usa una cattura <strong>laterale</strong> (monolaterale).
+          Multi-view editor in phase 2. To align the points use a <strong>side</strong> (monolateral) capture.
         </p>
       ) : null}
       <div
@@ -246,13 +246,13 @@ export function BiomechanicsAngleOverlay({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-black via-black to-teal-950/40">
-            <p className="text-xs text-gray-500">Anteprima scheletro · angoli</p>
+            <p className="text-xs text-gray-500">Skeleton preview · angles</p>
           </div>
         )}
         <canvas
           ref={canvasRef}
           className={`absolute inset-0 h-full w-full touch-none ${editable ? "cursor-crosshair" : "pointer-events-none"}`}
-          aria-label={editable ? "Editor landmark biomeccanici" : undefined}
+          aria-label={editable ? "Biomechanics landmark editor" : undefined}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -262,7 +262,7 @@ export function BiomechanicsAngleOverlay({
       <div className="flex flex-wrap items-center gap-3">
         {phases.length > 1 ? (
           <label className="flex min-w-[14rem] flex-1 flex-wrap items-center gap-3 text-xs text-gray-400">
-            <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fase ciclo</span>
+            <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Cycle phase</span>
             <input
               type="range"
               min={Math.min(...phases)}
@@ -275,11 +275,11 @@ export function BiomechanicsAngleOverlay({
             <span className="font-mono tabular-nums text-white">{phasePct}%</span>
           </label>
         ) : (
-          <p className="text-xs text-gray-500">Fase analisi: {phasePct}% ciclo</p>
+          <p className="text-xs text-gray-500">Analysis phase: {phasePct}% cycle</p>
         )}
         {editable ? (
           <Pro2Button variant="secondary" type="button" onClick={onResetLandmarks} className="justify-center text-xs">
-            Ripristina punti CV
+            Reset CV points
           </Pro2Button>
         ) : null}
       </div>

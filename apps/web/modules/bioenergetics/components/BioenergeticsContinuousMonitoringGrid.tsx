@@ -58,7 +58,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
               key={ch.id}
               role="button"
               tabIndex={0}
-              aria-label={`Espandi grafico ${ch.labelIt}`}
+              aria-label={`Expand chart ${ch.labelIt}`}
               onClick={() => setExpandedId(ch.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {

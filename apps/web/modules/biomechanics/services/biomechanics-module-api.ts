@@ -69,7 +69,7 @@ export async function fetchBiomechanicsSessions(athleteId: string): Promise<Biom
       sessions: [],
       captureJobs: [],
       pendingStaging: [],
-      error: apiErrorMessage(json, "Biomechanics non disponibile."),
+      error: apiErrorMessage(json, "Biomechanics unavailable."),
     };
   }
 
@@ -96,7 +96,7 @@ export async function fetchBiomechanicsSessionDetail(input: {
     | ({ ok: true; session?: BiomechanicsSessionImportV1; signedUrl?: string | null } & Record<string, unknown>)
     | ApiError;
   if (!res.ok || !json.ok) {
-    return { ok: false, error: apiErrorMessage(json, "Report sessione non disponibile.") };
+    return { ok: false, error: apiErrorMessage(json, "Session report unavailable.") };
   }
   if (!json.session) {
     return { ok: false, error: "session_not_found" };
@@ -125,7 +125,7 @@ async function requestBiomechanicsSignUpload(input: { athleteId: string; file: F
   });
   const json = (await res.json().catch(() => ({}))) as SignUploadOk | ApiError;
   if (!res.ok || !json.ok) {
-    throw new Error(apiErrorMessage(json, "Firma upload Biomechanics non riuscita."));
+    throw new Error(apiErrorMessage(json, "Biomechanics upload signing failed."));
   }
   return json;
 }
@@ -141,12 +141,12 @@ export async function uploadBiomechanicsCapture(input: {
   const sign = await requestBiomechanicsSignUpload({ athleteId: input.athleteId, file: input.file });
   const sb = createEmpathyBrowserSupabase();
   if (!sb) {
-    throw new Error("Client Supabase non disponibile.");
+    throw new Error("Supabase client unavailable.");
   }
 
   const { error: uploadError } = await sb.storage.from(sign.bucket).uploadToSignedUrl(sign.path, sign.token, input.file);
   if (uploadError) {
-    throw new Error(uploadError.message || "Upload Biomechanics fallito.");
+    throw new Error(uploadError.message || "Biomechanics upload failed.");
   }
 
   const headers = await buildSupabaseAuthHeaders();
@@ -168,7 +168,7 @@ export async function uploadBiomechanicsCapture(input: {
   });
   const json = (await res.json().catch(() => ({}))) as ({ ok: true; job: BiomechanicsCaptureJobV1 } & Record<string, unknown>) | ApiError;
   if (!res.ok || !json.ok) {
-    throw new Error(apiErrorMessage(json, "Creazione job Biomechanics non riuscita."));
+    throw new Error(apiErrorMessage(json, "Biomechanics job creation failed."));
   }
   return { job: json.job };
 }
@@ -192,7 +192,7 @@ export async function processBiomechanicsCaptureJob(input: {
     const code = typeof json.code === "string" ? json.code : undefined;
     return {
       ok: false,
-      error: message ?? apiErrorMessage(json, "Elaborazione CV fallita."),
+      error: message ?? apiErrorMessage(json, "CV processing failed."),
       message: message ?? code ?? "",
     };
   }
@@ -213,7 +213,7 @@ export async function fetchBiomechanicsStagingRunDetail(runId: string): Promise<
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || !json.ok) {
-    return { ok: false, error: apiErrorMessage(json, "Staging non disponibile.") };
+    return { ok: false, error: apiErrorMessage(json, "Staging unavailable.") };
   }
   return {
     ok: true,
@@ -241,7 +241,7 @@ export async function saveBiomechanicsStagingPoseCorrection(input: {
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || !json.ok) {
-    return { ok: false, error: apiErrorMessage(json, "Salvataggio correzione fallito.") };
+    return { ok: false, error: apiErrorMessage(json, "Correction save failed.") };
   }
   return { ok: true };
 }
@@ -258,7 +258,7 @@ export async function applyBiomechanicsStagingRun(runId: string): Promise<{ ok: 
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || !json.ok) {
-    return { ok: false, error: apiErrorMessage(json, "Conferma fallita.") };
+    return { ok: false, error: apiErrorMessage(json, "Confirmation failed.") };
   }
   return { ok: true };
 }
@@ -275,7 +275,7 @@ export async function rejectBiomechanicsStagingRun(runId: string): Promise<{ ok:
   });
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok || !json.ok) {
-    return { ok: false, error: apiErrorMessage(json, "Rifiuto fallito.") };
+    return { ok: false, error: apiErrorMessage(json, "Rejection failed.") };
   }
   return { ok: true };
 }
@@ -298,7 +298,7 @@ export async function importBiomechanicsOpenCapSession(input: {
   if (!res.ok || !json.ok) {
     return {
       ok: false,
-      error: apiErrorMessage(json, "Import OpenCap fallito."),
+      error: apiErrorMessage(json, "OpenCap import failed."),
       message: String(json.message ?? ""),
     };
   }

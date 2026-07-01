@@ -48,9 +48,9 @@ export const DEFAULT_STROKE = CHART_SIGNAL.glucose;
 
 export function planeLabel(plane: BioenergeticMonitoringDataPlane): string {
   if (plane === "measured_stream") return "Stream";
-  if (plane === "sparse_lab_hold") return "Lab tenuto";
-  if (plane === "ai_from_inputs") return "Stima da input";
-  return "Modello";
+  if (plane === "sparse_lab_hold") return "Lab hold";
+  if (plane === "ai_from_inputs") return "Estimate from input";
+  return "Model";
 }
 
 export function planeBadgeClass(plane: BioenergeticMonitoringDataPlane): string {
@@ -62,16 +62,16 @@ export function planeBadgeClass(plane: BioenergeticMonitoringDataPlane): string 
 }
 
 export function governanceIt(g: BioenergeticCurveGovernanceHintV1): string {
-  if (g === "measurement_wins") return "Policy: vince la misura Empathy";
-  if (g === "deterministic_engine_wins") return "Policy: motore / pareggio (contesto ricco vs sim)";
-  return "Policy: fase iniziale — prevale curva stimata (sim come fallback oggi)";
+  if (g === "measurement_wins") return "Policy: the Empathy measurement wins";
+  if (g === "deterministic_engine_wins") return "Policy: engine / tie (rich context vs sim)";
+  return "Policy: initial phase — the estimated curve prevails (sim as fallback today)";
 }
 
 export function fusionSummary(res: BioenergeticChannelCurveResolutionV1): string {
   const dm = Math.round(res.deterministicWeight01 * 100);
   const ai = Math.round(res.aiProposalWeight01 * 100);
   const r = Math.round(res.internalContextRichness01 * 100);
-  return `Fusione v${res.fusionContractVersion}: motore ${dm}% · AI ${ai}% · ricchezza contesto ${r}%`;
+  return `Fusion v${res.fusionContractVersion}: engine ${dm}% · AI ${ai}% · context richness ${r}%`;
 }
 
 /** Nota sull'asse temporale, coerente tra card e modale. */
@@ -80,20 +80,20 @@ export function channelAxisNote(
   isStream: boolean,
   showTech: boolean,
 ): string {
-  if (!isStream) return "Asse orizzontale: ore del giorno (0–23, locale).";
+  if (!isStream) return "Horizontal axis: hours of the day (0–23, local).";
   if (ch.dataPlane === "measured_stream") {
     return showTech
-      ? "Asse: tempo reale del campione (stream misurato; tabella 055 / merge device)."
-      : "Asse: tempo reale del campione (misura registrata).";
+      ? "Axis: real sample time (measured stream; table 055 / device merge)."
+      : "Axis: real sample time (recorded measurement).";
   }
   if (ch.dataPlane === "ai_from_inputs") {
     return showTech
-      ? "Asse: tempo reale (passo 5 min; curva generata dai dati della giornata — non è CGM né sim diurno v1)."
-      : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo.";
+      ? "Axis: real time (5 min step; curve generated from the day's data — it is neither CGM nor diurnal sim v1)."
+      : "Axis: real time of the day (5 min step). It is an estimate, not a continuous sensor.";
   }
   return showTech
-    ? "Asse: tempo reale del modello (passo 5 min, deterministico da timeline — non è CGM)."
-    : "Asse: tempo reale della giornata (passo 5 min). È una stima, non un sensore continuo.";
+    ? "Axis: real model time (5 min step, deterministic from timeline — it is not CGM)."
+    : "Axis: real time of the day (5 min step). It is an estimate, not a continuous sensor.";
 }
 
 /** Recharts con dominio [v,v] non disegna la linea: aggiunge padding simmetrico. */
@@ -213,7 +213,7 @@ export function BioenergeticSparkline({
   const H = height;
 
   if (values.length === 0) {
-    return <p className="text-[0.65rem] text-gray-600">Nessun dato</p>;
+    return <p className="text-[0.65rem] text-gray-600">No data</p>;
   }
 
   const current = values[values.length - 1];

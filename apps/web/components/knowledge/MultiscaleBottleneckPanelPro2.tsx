@@ -46,7 +46,7 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
     } catch (e) {
       if (!cached) {
         setData(null);
-        setErr(e instanceof Error ? e.message : "Errore caricamento");
+        setErr(e instanceof Error ? e.message : "Loading error");
       }
     } finally {
       setLoading(false);
@@ -60,7 +60,7 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
   if (!athleteId) {
     return (
       <p className="text-sm text-slate-500">
-        Seleziona un atleta attivo per vedere la vista multiscala (interpretazione, non sostituisce i motori).
+        Select an active athlete to see the multiscale view (interpretation, does not replace the engines).
       </p>
     );
   }
@@ -75,11 +75,11 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
           disabled={loading}
           onClick={() => void load()}
         >
-          {loading ? "Aggiornamento…" : "Aggiorna da twin / lab"}
+          {loading ? "Updating…" : "Update from twin / lab"}
         </Pro2Button>
         {data ? (
           <span className="font-mono text-[0.65rem] text-slate-500">
-            Ontologia {data.bottleneck.ontologyVersion}
+            Ontology {data.bottleneck.ontologyVersion}
           </span>
         ) : null}
       </div>
@@ -87,22 +87,22 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
       {err ? <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">{err}</div> : null}
 
       {!data && !loading && !err ? (
-        <p className="text-sm text-slate-500">Nessun dato ancora caricato.</p>
+        <p className="text-sm text-slate-500">No data loaded yet.</p>
       ) : null}
 
       {data ? (
         <>
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/90">Collo dominante (L1–L6)</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/90">Dominant bottleneck (L1–L6)</div>
             <div className="mt-1 text-lg font-bold text-slate-100">{data.dominantLevelLabelIt}</div>
             <div className="mt-2 text-sm text-slate-300">
-              Peso interpretativo: <strong className="text-cyan-100">{formatPct01(data.bottleneck.dominantBottleneck.score)}</strong>
+              Interpretive weight: <strong className="text-cyan-100">{formatPct01(data.bottleneck.dominantBottleneck.score)}</strong>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-500">{data.bottleneck.dominantBottleneck.rationaleIt}</p>
           </div>
 
           <div>
-            <div className="physiology-pro2-mini-banner mb-2">Ordine livelli (da vincolo maggiore)</div>
+            <div className="physiology-pro2-mini-banner mb-2">Level order (from greatest constraint)</div>
             <ul className="space-y-2">
               {data.bottleneck.orderedLevels.map((row) => (
                 <li key={row.level} className="flex items-center gap-3 text-sm text-slate-300">
@@ -121,7 +121,7 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
 
           {data.bottleneck.suggestedInterpretationTags.length > 0 ? (
             <div>
-              <div className="physiology-pro2-mini-banner mb-2">Tag interpretativi</div>
+              <div className="physiology-pro2-mini-banner mb-2">Interpretive tags</div>
               <div className="flex flex-wrap gap-2">
                 {data.bottleneck.suggestedInterpretationTags.map((t) => (
                   <span
@@ -136,21 +136,21 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
           ) : null}
 
           <details className="rounded-lg border border-white/10 bg-black/25 p-3 text-sm text-slate-400">
-            <summary className="cursor-pointer text-slate-300">Nodi ontologia attivati + sottografo</summary>
+            <summary className="cursor-pointer text-slate-300">Activated ontology nodes + subgraph</summary>
             <div className="mt-2 space-y-2 font-mono text-[0.65rem] leading-relaxed">
               <div>
                 <span className="text-slate-500">IDs:</span> {data.bottleneck.activatedNodeIds.join(", ")}
               </div>
               {data.subgraph ? (
                 <div>
-                  Sottografo (1-hop): {data.subgraph.nodes.length} nodi, {data.subgraph.edges.length} archi.
+                  Subgraph (1-hop): {data.subgraph.nodes.length} nodes, {data.subgraph.edges.length} edges.
                 </div>
               ) : null}
               <div className="text-slate-500">
-                Proxy ingresso: redox {data.snapshot.redoxStressIndex ?? "—"}, infiammazione{" "}
-                {data.snapshot.twinInflammationRisk ?? "—"}, glicogeno {data.snapshot.glycogenStatus ?? "—"}, readiness{" "}
+                Input proxies: redox {data.snapshot.redoxStressIndex ?? "—"}, inflammation{" "}
+                {data.snapshot.twinInflammationRisk ?? "—"}, glycogen {data.snapshot.glycogenStatus ?? "—"}, readiness{" "}
                 {data.snapshot.readiness ?? "—"}, gut% {data.snapshot.gutStressScorePct ?? "—"}, CHO delivery%{" "}
-                {data.snapshot.choDeliveryPctOfIngested ?? "—"}, ossidativo {data.snapshot.oxidativeBottleneckIndex ?? "—"}.
+                {data.snapshot.choDeliveryPctOfIngested ?? "—"}, oxidative {data.snapshot.oxidativeBottleneckIndex ?? "—"}.
               </div>
             </div>
           </details>

@@ -40,7 +40,7 @@ type Props = {
 export function BioenergeticsDaySeriesPanel({ series }: Props) {
   const plot = series.filter((s) => s.points.length >= 2);
   if (!plot.length) {
-    return <p className="text-xs text-gray-500">Nessuna serie temporale sufficiente per curve aggiuntive (serve almeno 2 punti per canale).</p>;
+    return <p className="text-xs text-gray-500">No time series long enough for additional curves (at least 2 points per channel required).</p>;
   }
 
   const strokeFor = (id: string): string => {
@@ -58,10 +58,10 @@ export function BioenergeticsDaySeriesPanel({ series }: Props) {
   };
 
   const provenanceUi = (p: BioenergeticDaySeriesChannel["provenance"]): string => {
-    if (p === "measured") return "misurato";
-    if (p === "estimated") return "stimato";
-    if (p === "planned") return "da piano";
-    return "assente";
+    if (p === "measured") return "measured";
+    if (p === "estimated") return "estimated";
+    if (p === "planned") return "from plan";
+    return "absent";
   };
 
   return (

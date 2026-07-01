@@ -46,7 +46,7 @@ export function BioenergeticChannelExpandModal({
       className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/80 p-3 backdrop-blur-sm sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label={`Grafico ${channel.labelIt}`}
+      aria-label={`Chart ${channel.labelIt}`}
       onClick={onClose}
     >
       <style>{`html,body{overflow:hidden!important}`}</style>
@@ -56,7 +56,7 @@ export function BioenergeticChannelExpandModal({
       >
         <button
           type="button"
-          aria-label="Chiudi grafico"
+          aria-label="Close chart"
           onClick={onClose}
           className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-black/40 text-gray-300 transition hover:bg-white/10"
         >

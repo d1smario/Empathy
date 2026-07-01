@@ -23,19 +23,19 @@ import {
 } from "@/modules/aerodynamics/services/aerodynamics-module-api";
 
 const CAMERA_OPTIONS: Array<{ value: AerodynamicsCameraMode; label: string }> = [
-  { value: "side", label: "Laterale" },
-  { value: "front", label: "Frontale" },
-  { value: "rear", label: "Posteriore" },
+  { value: "side", label: "Side" },
+  { value: "front", label: "Front" },
+  { value: "rear", label: "Rear" },
   { value: "multi_view", label: "Multi-view" },
   { value: "three_sixty", label: "360°" },
 ];
 
 const SOURCE_LABELS: Record<AerodynamicsCaptureSource, string> = {
-  smartphone_video: "Video smartphone",
-  gopro_video: "Video GoPro",
-  image: "Foto",
-  manual_test: "Test manuale",
-  external_aero_import: "Import esterno",
+  smartphone_video: "Smartphone video",
+  gopro_video: "GoPro video",
+  image: "Photo",
+  manual_test: "Manual test",
+  external_aero_import: "External import",
 };
 
 function cameraLabel(mode: AerodynamicsCameraMode): string {
@@ -46,22 +46,22 @@ function formatDateTime(value: string | undefined): string {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("it-IT", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
 function statusLabel(job: AerodynamicsCaptureJobV1, awaitingReview: boolean): string {
-  if (awaitingReview) return "Da validare";
+  if (awaitingReview) return "To validate";
   switch (job.status) {
     case "pending":
-      return "In coda";
+      return "In queue";
     case "processing":
-      return "In elaborazione";
+      return "Processing";
     case "completed":
-      return "Completato";
+      return "Completed";
     case "failed":
-      return "Fallito";
+      return "Failed";
     case "cancelled":
-      return "Annullato";
+      return "Cancelled";
   }
 }
 
@@ -75,8 +75,8 @@ function LatestAeroJobCard({
   if (!job) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Ultima cattura</p>
-        <p className="mt-2 text-sm text-gray-300">Nessuna cattura aero caricata.</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Latest capture</p>
+        <p className="mt-2 text-sm text-gray-300">No aero capture uploaded.</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ function LatestAeroJobCard({
     <div className="rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-4">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-sky-400" />
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Ultima cattura</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Latest capture</p>
       </div>
       <p className="mt-2 text-lg font-semibold text-white">{statusLabel(job, awaitingReview)}</p>
       <p className="mt-1 text-xs text-gray-400">
@@ -106,7 +106,7 @@ function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
   if (!tests.length) {
     return (
       <p className="rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-        Nessun test aero confermato. Elabora una cattura, valida la proposta e conferma per ottenere il CdA.
+        No confirmed aero test. Process a capture, validate the proposal and confirm to obtain the CdA.
       </p>
     );
   }
@@ -122,7 +122,7 @@ function AeroTestList({ tests }: { tests: AerodynamicsTestSessionV1[] }) {
             <span className="ml-1 text-xs font-medium text-gray-500">m²</span>
           </p>
           <p className="mt-1 text-xs text-gray-400">
-            {formatDateTime(test.recordedAt)} · {SOURCE_LABELS[test.source]} · affidabilità{" "}
+            {formatDateTime(test.recordedAt)} · {SOURCE_LABELS[test.source]} · confidence{" "}
             {(test.cdaEstimate.confidence01 * 100).toFixed(0)}%
           </p>
         </div>
@@ -137,7 +137,7 @@ function AeroStagingLink({ runId, label, className }: { runId: string; label: st
   const href = scopedShellHref(`/aerodynamics/staging/${runId}`, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   if (!href) {
     return (
-      <span className={`${className} cursor-default opacity-50`} title="Disponibile nella scheda dedicata (v2)">
+      <span className={`${className} cursor-default opacity-50`} title="Available in the dedicated view (v2)">
         {label}
       </span>
     );
@@ -196,7 +196,7 @@ export default function AerodynamicsPageView() {
       aeroTestsCache = result;
       aeroTestsCacheId = athleteId;
     } catch (err) {
-      if (!cached) setError(err instanceof Error ? err.message : "Aerodynamics non disponibile.");
+      if (!cached) setError(err instanceof Error ? err.message : "Aerodynamics not available.");
     } finally {
       setLoading(false);
     }
@@ -209,7 +209,7 @@ export default function AerodynamicsPageView() {
 
   const captureCountLabel = useMemo(() => {
     const active = captureJobs.filter((job) => job.status === "pending" || job.status === "processing").length;
-    return `${captureJobs.length} catture · ${active} in lavorazione`;
+    return `${captureJobs.length} captures · ${active} processing`;
   }, [captureJobs]);
 
   async function onProcessJob(jobId: string): Promise<string | null> {
@@ -220,12 +220,12 @@ export default function AerodynamicsPageView() {
     try {
       const out = await processAerodynamicsCaptureJob({ athleteId, jobId });
       if (!out.ok) {
-        setError(out.message || out.error || "Elaborazione fallita.");
+        setError(out.message || out.error || "Processing failed.");
         return null;
       }
       return out.stagingRunId ?? null;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Elaborazione fallita.");
+      setError(err instanceof Error ? err.message : "Processing failed.");
       return null;
     } finally {
       setProcessingJobId(null);
@@ -244,16 +244,16 @@ export default function AerodynamicsPageView() {
         source,
         cameraMode,
       });
-      setMessage("Caricamento completato — elaborazione in corso...");
+      setMessage("Upload completed — processing in progress...");
       setFile(null);
       const stagingRunId = await onProcessJob(out.job.id);
       await refresh();
       if (stagingRunId) {
         setReviewStagingRunId(stagingRunId);
-        setMessage("Proposta pronta — conferma per ottenere il CdA.");
+        setMessage("Proposal ready — confirm to obtain the CdA.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload Aerodynamics fallito.");
+      setError(err instanceof Error ? err.message : "Aerodynamics upload failed.");
     } finally {
       setUploading(false);
     }
@@ -262,10 +262,10 @@ export default function AerodynamicsPageView() {
   return (
     <Pro2AthleteRequiredGate enabled>
       <Pro2ModulePageShell
-        eyebrow="Posizione in sella"
+        eyebrow="Riding position"
         eyebrowClassName="text-sky-400"
-        title="Aerodinamica"
-        description="Carica un video o una foto della tua posizione in sella: tu e il coach la validate e ottieni il CdA stimato."
+        title="Aerodynamics"
+        description="Upload a video or a photo of your riding position: you and the coach validate it and you get the estimated CdA."
       >
         <div className="scroll-mt-28">
           <GenerativeModuleSubnav />
@@ -275,12 +275,12 @@ export default function AerodynamicsPageView() {
           <Pro2SectionCard
             accent="sky"
             icon={UploadCloud}
-            title="Nuova cattura aero"
-            subtitle="Inquadra ciclista e bici: posizione, casco, ruote, cockpit, borracce. Formati supportati: MP4, MOV, JPEG, PNG, WEBP."
+            title="New aero capture"
+            subtitle="Frame the rider and bike: position, helmet, wheels, cockpit, bottles. Supported formats: MP4, MOV, JPEG, PNG, WEBP."
           >
             <div className="grid gap-4 lg:grid-cols-2">
               <label className="space-y-2 text-sm text-gray-300">
-                <span className="text-xs font-medium text-gray-400">Inquadratura</span>
+                <span className="text-xs font-medium text-gray-400">Framing</span>
                 <select
                   value={cameraMode}
                   onChange={(e) => setCameraMode(e.currentTarget.value as AerodynamicsCameraMode)}
@@ -294,7 +294,7 @@ export default function AerodynamicsPageView() {
                 </select>
               </label>
               <label className="space-y-2 text-sm text-gray-300">
-                <span className="text-xs font-medium text-gray-400">Video o foto</span>
+                <span className="text-xs font-medium text-gray-400">Video or photo</span>
                 <input
                   type="file"
                   accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp"
@@ -305,7 +305,7 @@ export default function AerodynamicsPageView() {
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Pro2Button onClick={onUpload} disabled={!file || uploading || processingJobId != null || !athleteId} className="justify-center">
-                {uploading || processingJobId ? "Upload ed elaborazione..." : "Carica ed elabora"}
+                {uploading || processingJobId ? "Uploading and processing..." : "Upload and process"}
               </Pro2Button>
               {file ? <p className="text-xs text-gray-400">{file.name} · {(file.size / 1_000_000).toFixed(1)} MB</p> : null}
             </div>
@@ -317,7 +317,7 @@ export default function AerodynamicsPageView() {
                     {" "}
                     <AeroStagingLink
                       runId={String(reviewStagingRunId ?? latestJobStaging?.id)}
-                      label="Apri review →"
+                      label="Open review →"
                       className="font-semibold underline"
                     />
                   </>
@@ -332,8 +332,8 @@ export default function AerodynamicsPageView() {
           <Pro2SectionCard
             accent="sky"
             icon={Wind}
-            title="Stato e risultati"
-            subtitle="Le tue catture restano private; ogni caricamento avvia un'elaborazione dedicata."
+            title="Status and results"
+            subtitle="Your captures stay private; every upload starts a dedicated processing run."
           >
             <div className="grid gap-3 sm:grid-cols-3">
               <LatestAeroJobCard
@@ -341,12 +341,12 @@ export default function AerodynamicsPageView() {
                 awaitingReview={latestJobAwaitingReview}
               />
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Archivio catture</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Capture archive</p>
                 <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-white">{captureCountLabel}</p>
-                <p className="mt-1 text-xs text-gray-400">Le catture più recenti dell&apos;atleta attivo.</p>
+                <p className="mt-1 text-xs text-gray-400">The most recent captures of the active athlete.</p>
               </div>
               <div className="rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">CdA corrente</p>
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Current CdA</p>
                 <p className="mt-1">
                   <span className="font-mono text-2xl font-bold tabular-nums text-sky-50">
                     {typeof latestCda === "number" ? latestCda.toFixed(3) : "—"}
@@ -355,22 +355,22 @@ export default function AerodynamicsPageView() {
                     <span className="ml-1 text-xs font-medium text-gray-500">m²</span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-xs text-gray-400">Solo da un test validato.</p>
+                <p className="mt-1 text-xs text-gray-400">Only from a validated test.</p>
               </div>
             </div>
             {showTech && pendingStaging.length ? (
               <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                {pendingStaging.length} proposte da validare —{" "}
-                <AeroStagingLink runId={pendingStaging[0]!.id} label="apri validazione" className="underline" />
+                {pendingStaging.length} proposals to validate —{" "}
+                <AeroStagingLink runId={pendingStaging[0]!.id} label="open validation" className="underline" />
               </div>
             ) : null}
             <div className="mt-4">
               <Pro2Accordion
-                title="Storico test validati"
-                subtitle="CdA, data e affidabilità degli ultimi test confermati."
+                title="Validated tests history"
+                subtitle="CdA, date and confidence of the latest confirmed tests."
                 accent="sky"
               >
-                {loading ? <p className="text-sm text-gray-400">Caricamento archivio...</p> : <AeroTestList tests={tests} />}
+                {loading ? <p className="text-sm text-gray-400">Loading archive...</p> : <AeroTestList tests={tests} />}
               </Pro2Accordion>
             </div>
           </Pro2SectionCard>
@@ -380,8 +380,8 @@ export default function AerodynamicsPageView() {
           <Pro2SectionCard
             accent="sky"
             icon={Bike}
-            title="Collegamenti"
-            subtitle="La posizione validata alimenta anche allenamento e analisi del movimento."
+            title="Links"
+            subtitle="The validated position also feeds training and movement analysis."
           >
             <div className="flex flex-wrap gap-2">
               {adminScoped ? (
@@ -389,13 +389,13 @@ export default function AerodynamicsPageView() {
                 <>
                   <span
                     className={pro2ButtonClassName("secondary", "justify-center border-sky-500/30 bg-sky-500/10 text-sky-100 cursor-default opacity-50")}
-                    title="Disponibile nella scheda dedicata (v2)"
+                    title="Available in the dedicated view (v2)"
                   >
                     Training
                   </span>
                   <span
                     className={pro2ButtonClassName("ghost", "justify-center border border-sky-500/30 bg-sky-500/10 text-sky-100 cursor-default opacity-50")}
-                    title="Disponibile nella scheda dedicata (v2)"
+                    title="Available in the dedicated view (v2)"
                   >
                     Biomechanics
                   </span>
@@ -424,24 +424,24 @@ export default function AerodynamicsPageView() {
 
         <section id="gen-focus" className="scroll-mt-28">
           <Pro2Accordion
-            title="Come funziona"
-            subtitle="Come leggere i numeri e come nasce la stima del CdA."
+            title="How it works"
+            subtitle="How to read the numbers and how the CdA estimate is produced."
             accent="sky"
           >
             <div className="space-y-3 text-sm leading-relaxed text-gray-300">
               <p>
-                Dal materiale caricato ricostruiamo la tua posizione in sella e proponiamo alcuni scenari. Quando ne
-                confermi uno, calcoliamo CdA, watt e secondi risparmiati. I valori sono stime di modello, non misure in
-                galleria del vento.
+                From the uploaded material we reconstruct your riding position and propose a few scenarios. When you
+                confirm one, we compute CdA, watts and seconds saved. The values are model estimates, not wind-tunnel
+                measurements.
               </p>
               <p>
-                Il percorso del dato: carichi la cattura, parte l&apos;elaborazione, ricevi una proposta da validare e solo
-                dopo la conferma il test diventa definitivo con il suo CdA. Gli scenari di posizione sono sempre validati
-                prima di diventare definitivi.
+                The data path: you upload the capture, processing starts, you receive a proposal to validate and only
+                after confirmation does the test become final with its CdA. Position scenarios are always validated
+                before becoming final.
               </p>
               <p>
-                Le inquadrature disponibili sono {CAMERA_OPTIONS.map((option) => option.label).join(", ")}: più punti di
-                vista carichi, più la ricostruzione della posizione è affidabile.
+                The available framings are {CAMERA_OPTIONS.map((option) => option.label).join(", ")}: the more viewpoints
+                you upload, the more reliable the position reconstruction is.
               </p>
             </div>
           </Pro2Accordion>
@@ -449,8 +449,8 @@ export default function AerodynamicsPageView() {
 
         {showTech ? (
           <Pro2Accordion
-            title="Diagnostica"
-            subtitle="Dati grezzi di job e proposte — visibile solo a coach e admin."
+            title="Diagnostics"
+            subtitle="Raw job and proposal data — visible only to coach and admin."
             accent="sky"
           >
             <div className="space-y-3 font-mono text-xs text-gray-400">
@@ -495,15 +495,15 @@ export default function AerodynamicsPageView() {
                 await refresh();
                 if (stagingRunId) {
                   setReviewStagingRunId(stagingRunId);
-                  setMessage("Proposta pronta — conferma per ottenere il CdA.");
+                  setMessage("Proposal ready — confirm to obtain the CdA.");
                 }
               })}
               disabled={processingJobId != null}
               className="justify-center"
             >
-              {processingJobId === latestJob.id ? "Elaborazione..." : "Elabora ultima cattura"}
+              {processingJobId === latestJob.id ? "Processing..." : "Process latest capture"}
             </Pro2Button>
-            <p className="text-xs text-gray-500">Ri-elabora l&apos;ultima cattura in coda.</p>
+            <p className="text-xs text-gray-500">Re-process the last capture in queue.</p>
           </div>
         ) : null}
       </Pro2ModulePageShell>
