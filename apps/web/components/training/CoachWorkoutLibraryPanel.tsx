@@ -1,6 +1,7 @@
 "use client";
 
 import { BookMarked, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { CoachLibraryContractEditor } from "@/components/training/CoachLibraryContractEditor";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
@@ -44,6 +45,7 @@ export function CoachWorkoutLibraryPanel({
   onApplied,
   onLoadInBuilder,
 }: CoachWorkoutLibraryPanelProps) {
+  const t = useTranslations("CoachWorkoutLibraryPanel");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function CoachWorkoutLibraryPanel({
     if (error) {
       setErr(
         error === "coach_only" || error === "coach_not_approved"
-          ? "Library reserved for approved coaches."
+          ? t("libraryReserved")
           : error,
       );
       setItems([]);
@@ -149,17 +151,17 @@ export function CoachWorkoutLibraryPanel({
 
   async function handleSave() {
     if (!contractToSave) {
-      setErr("No session contract to save.");
+      setErr(t("errNoContract"));
       return;
     }
     setBusy("save");
     setErr(null);
     setOkMsg(null);
-    const title = (saveTitle ?? contractToSave.sessionName ?? "Session").trim().slice(0, 200);
+    const title = (saveTitle ?? contractToSave.sessionName ?? t("defaultSessionTitle")).trim().slice(0, 200);
     const r = await saveCoachLibraryItem({ title, contract: contractToSave });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Save failed");
+      setErr(r.error ?? t("errSaveFailed"));
       return;
     }
     setOkMsg(`Saved to library: ${title}`);
@@ -168,7 +170,7 @@ export function CoachWorkoutLibraryPanel({
 
   async function handleApply(item: CoachWorkoutLibraryItemView) {
     if (!athleteId) {
-      setErr("Select an athlete.");
+      setErr(t("errSelectAthlete"));
       return;
     }
     setBusy(`apply-${item.id}`);
@@ -183,11 +185,11 @@ export function CoachWorkoutLibraryPanel({
     });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Apply failed");
+      setErr(r.error ?? t("errApplyFailed"));
       return;
     }
     const scaleHint =
-      applyScaling && r.loadScalePct != null ? ` (load ~${r.loadScalePct}%)` : "";
+      applyScaling && r.loadScalePct != null ? t("loadSuffix", { pct: r.loadScalePct }) : "";
     setOkMsg(`Applied «${item.title}» to ${targetDate}${scaleHint}`);
     onApplied?.();
   }
@@ -199,7 +201,7 @@ export function CoachWorkoutLibraryPanel({
     const r = await importEmpathyAerobicStarterPack();
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Pack import failed");
+      setErr(r.error ?? t("errPackImport"));
       return;
     }
     setOkMsg(
@@ -214,7 +216,7 @@ export function CoachWorkoutLibraryPanel({
     const r = await fetchCoachLibraryItemContract(item.id);
     setBusy(null);
     if (!r.ok || !r.contract) {
-      setErr(r.error ?? "Export failed");
+      setErr(r.error ?? t("errExportFailed"));
       return;
     }
     try {
@@ -228,7 +230,7 @@ export function CoachWorkoutLibraryPanel({
       URL.revokeObjectURL(url);
       setOkMsg(`ZWO export: ${item.title}`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "ZWO export failed");
+      setErr(e instanceof Error ? e.message : t("errZwoExportFailed"));
     }
   }
 
@@ -245,11 +247,11 @@ export function CoachWorkoutLibraryPanel({
     });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Failed to save changes");
+      setErr(r.error ?? t("errSaveChanges"));
       return;
     }
     setPreviewContract(structuredClone(draftContract));
-    setOkMsg("Template updated in library.");
+    setOkMsg(t("okTemplateUpdated"));
     void refresh();
   }
 
@@ -261,7 +263,7 @@ export function CoachWorkoutLibraryPanel({
     const r = await clonePlannedWorkout({ sourceId: sourcePlannedId, athleteId, date: targetDate });
     setBusy(null);
     if (!r.ok) {
-      setErr(r.error ?? "Copy failed");
+      setErr(r.error ?? t("errCopyFailed"));
       return;
     }
     setOkMsg(`Session copied to ${targetDate}`);
@@ -289,7 +291,7 @@ export function CoachWorkoutLibraryPanel({
           <div className="flex flex-wrap gap-2">
             {contractToSave ? (
               <Pro2Button type="button" variant="secondary" disabled={busy != null} onClick={() => void handleSave()}>
-                {busy === "save" ? "Saving…" : "Save session to library"}
+                {busy === "save" ? t("savingShort") : t("saveToLibrary")}
               </Pro2Button>
             ) : null}
             <Pro2Button
@@ -298,7 +300,7 @@ export function CoachWorkoutLibraryPanel({
               disabled={busy != null}
               onClick={() => void handleImportStarterPack()}
             >
-              {busy === "starter" ? "Importing…" : `Import / update catalog (${STARTER_PACK_TEMPLATE_COUNT})`}
+              {busy === "starter" ? t("importing") : t("importCatalog", { count: STARTER_PACK_TEMPLATE_COUNT })}
             </Pro2Button>
             {sourcePlannedId ? (
               <Pro2Button
@@ -307,12 +309,12 @@ export function CoachWorkoutLibraryPanel({
                 disabled={busy != null}
                 onClick={() => void handleCloneSource()}
               >
-                {busy === "clone" ? "Copying…" : "Copy selected session"}
+                {busy === "clone" ? t("copying") : t("copySelected")}
               </Pro2Button>
             ) : null}
             <input
               type="search"
-              placeholder="Search title, discipline…"
+              placeholder={t("searchPlaceholder")}
               className="min-w-[140px] flex-1 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -326,7 +328,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={disciplineFilter}
               onChange={(e) => setDisciplineFilter(e.target.value)}
-              aria-label="Discipline filter"
+              aria-label={t("filterDiscipline")}
             >
               {LIBRARY_DISCIPLINE_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -338,7 +340,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              aria-label="Methodology filter"
+              aria-label={t("filterMethodology")}
             >
               {LIBRARY_METHODOLOGY_TAG_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -350,7 +352,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={familyFilter}
               onChange={(e) => setFamilyFilter(e.target.value)}
-              aria-label="Family filter"
+              aria-label={t("filterFamily")}
             >
               {LIBRARY_FAMILY_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -362,7 +364,7 @@ export function CoachWorkoutLibraryPanel({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white"
               value={viryaPhaseFilter}
               onChange={(e) => setViryaPhaseFilter(e.target.value)}
-              aria-label="VIRYA phase filter"
+              aria-label={t("filterViryaPhase")}
             >
               {LIBRARY_VIRYA_PHASE_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -473,7 +475,7 @@ export function CoachWorkoutLibraryPanel({
                               void handleApply(item);
                             }}
                           >
-                            {busy === `apply-${item.id}` ? "…" : "Apply"}
+                            {busy === `apply-${item.id}` ? "…" : t("apply")}
                           </Pro2Button>
                         </div>
                       </div>
