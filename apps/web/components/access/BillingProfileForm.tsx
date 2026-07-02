@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, CircleAlert } from "lucide-react";
 import {
   BILLING_REQUIRED_FIELDS,
@@ -38,17 +39,17 @@ type FieldDef = {
 };
 
 const FIELDS: FieldDef[] = [
-  { key: "first_name", label: "First name *", autoComplete: "given-name", half: true },
-  { key: "last_name", label: "Last name *", autoComplete: "family-name", half: true },
-  { key: "company_name", label: "Company (optional)", autoComplete: "organization", half: true },
-  { key: "vat_number", label: "VAT / UID (optional)", placeholder: "CHE-...", half: true },
-  { key: "address_line1", label: "Address *", autoComplete: "address-line1" },
-  { key: "address_line2", label: "Address — line 2 (optional)", autoComplete: "address-line2" },
-  { key: "postal_code", label: "Postal code *", autoComplete: "postal-code", half: true },
-  { key: "city", label: "City *", autoComplete: "address-level2", half: true },
-  { key: "region", label: "Canton / Region (optional)", autoComplete: "address-level1", half: true },
-  { key: "country_code", label: "Country *", placeholder: "CH", autoComplete: "country", half: true },
-  { key: "phone", label: "Phone (optional)", autoComplete: "tel" },
+  { key: "first_name", label: "fieldFirstName", autoComplete: "given-name", half: true },
+  { key: "last_name", label: "fieldLastName", autoComplete: "family-name", half: true },
+  { key: "company_name", label: "fieldCompany", autoComplete: "organization", half: true },
+  { key: "vat_number", label: "fieldVat", placeholder: "CHE-...", half: true },
+  { key: "address_line1", label: "fieldAddress", autoComplete: "address-line1" },
+  { key: "address_line2", label: "fieldAddressLine2", autoComplete: "address-line2" },
+  { key: "postal_code", label: "fieldPostalCode", autoComplete: "postal-code", half: true },
+  { key: "city", label: "fieldCity", autoComplete: "address-level2", half: true },
+  { key: "region", label: "fieldRegion", autoComplete: "address-level1", half: true },
+  { key: "country_code", label: "fieldCountry", placeholder: "CH", autoComplete: "country", half: true },
+  { key: "phone", label: "fieldPhone", autoComplete: "tel" },
 ];
 
 /**
@@ -58,6 +59,7 @@ const FIELDS: FieldDef[] = [
  * intestatario e indirizzo. Il checkout dei piani a pagamento li verifica.
  */
 export function BillingProfileForm({ onCompletenessChange }: { onCompletenessChange?: (complete: boolean) => void }) {
+  const t = useTranslations("BillingProfileForm");
   const [row, setRow] = useState<BillingProfileRow>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,13 +123,13 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
     const sb = createEmpathyBrowserSupabase();
     if (!sb) {
       setMsgTone("warning");
-      setMsg("Supabase configuration missing.");
+      setMsg(t("errSupabaseMissing"));
       return;
     }
     const missing = BILLING_REQUIRED_FIELDS.filter((f) => !(row[f] ?? "").toString().trim());
     if (missing.length > 0) {
       setMsgTone("warning");
-      setMsg("Fill in all fields marked with * to complete your billing details.");
+      setMsg(t("errMissingFields"));
       return;
     }
     setSaving(true);
@@ -138,7 +140,7 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       const uid = session?.user?.id;
       if (!uid) {
         setMsgTone("warning");
-        setMsg("Session expired: please sign in again.");
+        setMsg(t("errSessionExpired"));
         return;
       }
       const payload: Record<string, unknown> = { user_id: uid, updated_at: new Date().toISOString() };
@@ -149,11 +151,11 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       const { error } = await sb.from("user_billing_profiles").upsert(payload, { onConflict: "user_id" });
       if (error) {
         setMsgTone("warning");
-        setMsg(`Save failed: ${error.message}`);
+        setMsg(t("errSaveFailed", { message: error.message }));
         return;
       }
       setMsgTone("success");
-      setMsg("Billing details saved.");
+      setMsg(t("saved"));
     } finally {
       setSaving(false);
     }
@@ -168,14 +170,13 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-cyan-300/80">
-            Your details · billing
+            {t("eyebrow")}
           </p>
           <h3 id="billing-profile-heading" className="mt-1 text-lg font-bold text-white">
-            Complete your billing details
+            {t("title")}
           </h3>
           <p className="mt-1 max-w-xl text-sm text-gray-400">
-            Filling in all fields is required to complete the purchase of paid
-            plans.
+            {t("subtitle")}
           </p>
         </div>
         <span
@@ -187,18 +188,18 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
           )}
         >
           {complete ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : <CircleAlert className="h-3.5 w-3.5" aria-hidden />}
-          {complete ? "Complete" : "Incomplete"}
+          {complete ? t("statusComplete") : t("statusIncomplete")}
         </span>
       </div>
 
       {loading ? (
-        <p className="mt-6 text-xs text-gray-500">Loading billing details…</p>
+        <p className="mt-6 text-xs text-gray-500">{t("loading")}</p>
       ) : (
         <>
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {FIELDS.map((f) => (
               <label key={f.key} className={cn("text-left", !f.half && "sm:col-span-2")}>
-                <span className={labelClass}>{f.label}</span>
+                <span className={labelClass}>{t(f.label)}</span>
                 <input
                   type="text"
                   autoComplete={f.autoComplete}
@@ -213,7 +214,7 @@ export function BillingProfileForm({ onCompletenessChange }: { onCompletenessCha
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Pro2Button type="button" variant="secondary" className="px-6" disabled={saving} onClick={() => void onSave()}>
-              {saving ? "Saving…" : "Save billing details"}
+              {saving ? t("saving") : t("save")}
             </Pro2Button>
             {msg ? (
               <p

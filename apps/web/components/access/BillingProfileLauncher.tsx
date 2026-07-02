@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { UserRound, X } from "lucide-react";
 import {
   isBillingProfileComplete,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/cn";
  * (es. dal gate del checkout quando mancano i dati).
  */
 export function BillingProfileLauncher() {
+  const t = useTranslations("BillingProfileLauncher");
   const [open, setOpen] = useState(false);
   const [complete, setComplete] = useState<boolean | null>(null);
 
@@ -64,8 +66,8 @@ export function BillingProfileLauncher() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="I tuoi dati di fatturazione"
-        aria-label="Apri i tuoi dati di fatturazione"
+        title={t("billingDetails")}
+        aria-label={t("openBillingDetails")}
         className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-gray-300 backdrop-blur-md transition hover:border-purple-500/40 hover:text-white"
       >
         <UserRound className="h-5 w-5" aria-hidden />
@@ -83,7 +85,7 @@ export function BillingProfileLauncher() {
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-8"
           role="dialog"
           aria-modal="true"
-          aria-label="I tuoi dati di fatturazione"
+          aria-label={t("billingDetails")}
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}
@@ -92,7 +94,7 @@ export function BillingProfileLauncher() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Chiudi"
+              aria-label={t("close")}
               className="absolute -right-2 -top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-[#17101f] text-gray-300 transition hover:border-rose-500/40 hover:text-white"
             >
               <X className="h-4 w-4" aria-hidden />

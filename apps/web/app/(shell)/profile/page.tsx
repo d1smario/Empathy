@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { CoachProfileView } from "@/components/coach/CoachProfileView";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { getSessionProfile } from "@/lib/auth/session-profile";
@@ -8,10 +9,13 @@ import ProfilePageView from "@/modules/profile/views/ProfilePageView";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Profile",
-  description: "Athlete identity, physiology and nutritional constraints.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ProfilePage");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 /**
  * Profilo per ruolo (stesso pattern di /dashboard): il coach gestisce qui il
@@ -21,16 +25,17 @@ export const metadata: Metadata = {
  * (L'admin non passa di qui: la shell lo gira su /admin.)
  */
 export default async function ProfilePage() {
+  const t = await getTranslations("ProfilePage");
   const session = await getSessionProfile();
   if (session.role === "coach") {
     return (
       <Pro2ModulePageShell
-        eyebrow="Profile · Coach"
+        eyebrow={t("coachEyebrow")}
         eyebrowClassName="text-violet-400"
-        title="Your account"
+        title={t("coachTitle")}
         description={
           <span className="text-sm text-gray-400">
-            Your coach account details, billing information for commissions and security.
+            {t("coachDescription")}
           </span>
         }
       >

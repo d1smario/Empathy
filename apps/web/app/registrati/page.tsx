@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { AccessRegisterForm } from "@/components/access/AccessRegisterForm";
 import { AccessRedirectIfSession } from "@/components/access/AccessRedirectIfSession";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
@@ -15,16 +16,20 @@ import { createSupabaseCookieClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Sign up — Empathy",
-  description: "Create your Empathy account.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("RegistratiPage");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 /**
  * Pagina di REGISTRAZIONE (porta unica, separata dal login `/access`).
  * Se già loggato, instrada per identità come `/access`.
  */
 export default async function RegisterPage() {
+  const t = await getTranslations("RegistratiPage");
   if (getSupabasePublicConfig()) {
     const sb = createSupabaseCookieClient();
     if (sb) {
@@ -75,7 +80,7 @@ export default async function RegisterPage() {
         className="flex min-h-screen scroll-mt-0 flex-col items-center justify-center gap-8 px-6 py-12 outline-none sm:py-16"
       >
         <div className="text-center">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">SIGN UP</p>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.35em] text-gray-500">{t("kicker")}</p>
           <Link
             href="/"
             className="mt-4 inline-block text-2xl font-black tracking-[0.12em] text-white transition-opacity hover:opacity-80 sm:text-3xl"
@@ -86,7 +91,7 @@ export default async function RegisterPage() {
         </div>
         <AccessRegisterForm />
         <Link href="/" className="text-xs text-gray-500 transition-colors hover:text-gray-300">
-          ← Back to home
+          {t("backToHome")}
         </Link>
       </main>
     </BrutalistAppBackdrop>

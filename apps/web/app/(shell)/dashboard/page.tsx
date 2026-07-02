@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Clock } from "lucide-react";
 import { CoachDashboardView } from "@/components/coach/CoachDashboardView";
 import { ModulePlaceholder } from "@/components/navigation/ModulePlaceholder";
@@ -20,23 +21,23 @@ export const metadata: Metadata = { title: "Dashboard" };
  */
 export default async function DashboardPage() {
   const session = await getSessionProfile();
+  const t = await getTranslations("DashboardPage");
   if (session.role === "coach") {
     if (!coachOperationalApproved("coach", session.platformCoachStatus)) {
       return (
         <Pro2ModulePageShell
           eyebrow="Dashboard · Coach"
           eyebrowClassName="text-violet-400"
-          title="Account under review"
+          title={t("accountUnderReviewTitle")}
           description={
             <span className="text-sm text-gray-400">
-              Your coach account is awaiting activation from Empathy.
+              {t("accountUnderReviewDescription")}
             </span>
           }
         >
-          <Pro2SectionCard accent="amber" title="Awaiting approval" subtitle="Almost there" icon={Clock}>
+          <Pro2SectionCard accent="amber" title={t("awaitingApprovalTitle")} subtitle={t("awaitingApprovalSubtitle")} icon={Clock}>
             <p className="text-sm leading-relaxed text-gray-300">
-              As soon as Empathy approves your account, you&apos;ll find your athletes, this week&apos;s sessions, and
-              your commissions here. You&apos;ll get full operational access without having to do anything.
+              {t("awaitingApprovalBody")}
             </p>
           </Pro2SectionCard>
         </Pro2ModulePageShell>

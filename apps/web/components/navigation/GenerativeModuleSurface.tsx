@@ -1,5 +1,6 @@
 import { EMPATHY_PLATFORM_VERSION, type ProductModuleId } from "@empathy/contracts";
 import { BookOpen, CalendarDays, LineChart, Sparkles } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { GenerativeFocusIsland } from "@/components/generative/GenerativeFocusIsland";
 import { FaseModuleStubCard } from "@/components/navigation/FaseModuleStubCard";
 import { ModuleCrossLinksCard } from "@/components/navigation/ModuleCrossLinksCard";
@@ -48,7 +49,8 @@ function domainAccent(module: ProductModuleId): Pro2SectionAccent {
 /**
  * Moduli generativi: stessa shell del Builder; sezioni card + focus island (densità controllata da `empathy_pro2_ui_language.mdc`).
  */
-export function GenerativeModuleSurface({ module }: { module: ProductModuleId }) {
+export async function GenerativeModuleSurface({ module }: { module: ProductModuleId }) {
+  const t = await getTranslations("GenerativeModuleSurface");
   const nav = getProductNavItemByModule(module);
   const title = nav?.label ?? module;
   const panel = getModuleDomainPanel(module);
@@ -60,9 +62,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       eyebrowClassName={moduleEyebrowClass(module)}
       title={title}
       description={
-        <p className="leading-relaxed">
-          Pro 2 generative surface: domain summary in the panel below, operational data in the center, a guided focus at the bottom.
-        </p>
+        <p className="leading-relaxed">{t("surfaceDescription")}</p>
       }
       headerActions={
         <>
@@ -85,22 +85,22 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
 
       <section id="gen-domain" className="scroll-mt-28">
         {panel ? (
-          <Pro2SectionCard accent={accent} title="Module scope" subtitle={panel.title} icon={BookOpen}>
+          <Pro2SectionCard accent={accent} title={t("moduleScopeTitle")} subtitle={panel.title} icon={BookOpen}>
             <p className="text-sm leading-relaxed text-gray-300">{panel.summary}</p>
             <p className="mt-3 font-mono text-xs text-gray-500">
               <span className="text-purple-400">package</span> {panel.packageId}
             </p>
           </Pro2SectionCard>
         ) : (
-          <Pro2SectionCard accent="slate" title="Module scope" subtitle="Not mapped" icon={BookOpen}>
-            <p className="text-sm text-gray-400">No domain panel for this module.</p>
+          <Pro2SectionCard accent="slate" title={t("moduleScopeTitle")} subtitle={t("notMapped")} icon={BookOpen}>
+            <p className="text-sm text-gray-400">{t("noDomainPanel")}</p>
           </Pro2SectionCard>
         )}
       </section>
 
       <section id="gen-body" className="scroll-mt-28 space-y-10">
       {module === "profile" ? (
-        <Pro2SectionCard accent="fuchsia" title="Athlete profile" subtitle="Contract read" icon={BookOpen}>
+        <Pro2SectionCard accent="fuchsia" title={t("athleteProfileTitle")} subtitle={t("contractRead")} icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <ProfileAthleteCard />
           </div>
@@ -108,7 +108,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "training" ? (
-        <Pro2SectionCard accent="orange" title="Training" subtitle="Planned window" icon={BookOpen}>
+        <Pro2SectionCard accent="orange" title="Training" subtitle={t("plannedWindow")} icon={BookOpen}>
           <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-start">
             <TrainingPlannedWindowCard />
             <div className="flex flex-col gap-2 sm:justify-center">
@@ -117,7 +117,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
                 variant="secondary"
                 className="justify-center border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
               >
-                Open builder (dense view)
+                {t("openBuilderDenseView")}
               </Pro2Link>
               <Pro2Link
                 href="/training/calendar"
@@ -140,22 +140,18 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
 
       {module === "nutrition" ? (
         <>
-          <Pro2SectionCard accent="amber" title="Nutrition" subtitle="Constraints and plans (Supabase)" icon={BookOpen}>
+          <Pro2SectionCard accent="amber" title="Nutrition" subtitle={t("constraintsAndPlans")} icon={BookOpen}>
             <div className="flex justify-center sm:justify-start">
               <NutritionAthleteSummaryCard />
             </div>
           </Pro2SectionCard>
           <Pro2SectionCard
             accent="orange"
-            title="Load alignment"
-            subtitle="Same data line as training — no second engine"
+            title={t("loadAlignmentTitle")}
+            subtitle={t("loadAlignmentSubtitle")}
             icon={CalendarDays}
           >
-            <p className="text-sm leading-relaxed text-gray-400">
-              Daily targets stay consistent with planned and completed sessions (calendar + builder). Use Virya
-              for macro context and adaptation; nutrition V1+2 consumes athlete memory and structured outputs, not
-              AI sessions generated in parallel.
-            </p>
+            <p className="text-sm leading-relaxed text-gray-400">{t("loadAlignmentBody")}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pro2Link
                 href="/training/calendar"
@@ -197,27 +193,24 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
         <Pro2SectionCard
           accent="emerald"
           title="BioEnergetic Intelligence"
-          subtitle="Day timeline + measured/estimated provenance"
+          subtitle={t("bioenergeticsSubtitle")}
           icon={LineChart}
         >
-          <p className="text-sm leading-relaxed text-gray-400">
-            Day-level operational view that cross-references training, nutrition diary and device streams to estimate
-            supporting/inhibiting pathways without replacing measured data.
-          </p>
+          <p className="text-sm leading-relaxed text-gray-400">{t("bioenergeticsBody")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Pro2Link
               href="/bioenergetics"
               variant="secondary"
               className="justify-center border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25"
             >
-              Daily report (charts)
+              {t("dailyReportCharts")}
             </Pro2Link>
             <Pro2Link
               href="/nutrition/diary"
               variant="secondary"
               className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
             >
-              Food diary
+              {t("foodDiary")}
             </Pro2Link>
             <Pro2Link
               href="/training/calendar"
@@ -231,7 +224,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "physiology" ? (
-        <Pro2SectionCard accent="emerald" title="Physiology" subtitle="Physiological profile" icon={BookOpen}>
+        <Pro2SectionCard accent="emerald" title="Physiology" subtitle={t("physiologicalProfile")} icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <PhysiologyProfileStripCard />
           </div>
@@ -239,7 +232,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       ) : null}
 
       {module === "health" ? (
-        <Pro2SectionCard accent="violet" title="Health & Bio" subtitle="Biomarker panels" icon={BookOpen}>
+        <Pro2SectionCard accent="violet" title="Health & Bio" subtitle={t("biomarkerPanels")} icon={BookOpen}>
           <div className="flex justify-center sm:justify-start">
             <HealthBiomarkerPanelsCard />
           </div>
@@ -252,8 +245,8 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
             <FaseModuleStubCard
               accentClass="text-emerald-300/90"
               kicker="Biomechanics · roadmap"
-              title="Kinematic data"
-              body="Read from capture / analysis tables — queued on the Pro 2 lineup. The twin and training remain the operational source until a dedicated endpoint is exposed."
+              title={t("kinematicDataTitle")}
+              body={t("kinematicDataBody")}
             />
           </div>
         </Pro2SectionCard>
@@ -265,8 +258,8 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
             <FaseModuleStubCard
               accentClass="text-cyan-300/90"
               kicker="Aerodynamics · roadmap"
-              title="CdA and wind context"
-              body="Aerodynamic module linked to disciplines and external sensors; no canonical Supabase read at this stage. It stays within the architectural perimeter for future integrations."
+              title={t("cdaWindContextTitle")}
+              body={t("cdaWindContextBody")}
             />
           </div>
         </Pro2SectionCard>
@@ -278,7 +271,7 @@ export function GenerativeModuleSurface({ module }: { module: ProductModuleId })
       </section>
 
       <section id="gen-focus" className="scroll-mt-28 space-y-6">
-        <Pro2SectionCard accent="fuchsia" title="Actions" subtitle="One focus per session — compact controls" icon={Sparkles}>
+        <Pro2SectionCard accent="fuchsia" title={t("actionsTitle")} subtitle={t("actionsSubtitle")} icon={Sparkles}>
           <GenerativeFocusIsland module={module} />
         </Pro2SectionCard>
 

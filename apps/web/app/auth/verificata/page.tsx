@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Email verified — Empathy",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("AuthVerificataPage");
+  return {
+    title: t("metaTitle"),
+  };
+}
 
 /**
  * Landing dopo conferma email riuscita (`/auth/confirm` → verifyOtp ok).
  * L'utente a questo punto ha già la sessione attiva: il bottone lo porta dentro
  * (`/access` instrada per identità).
  */
-export default function EmailVerifiedPage() {
+export default async function EmailVerifiedPage() {
+  const t = await getTranslations("AuthVerificataPage");
   return (
     <BrutalistAppBackdrop matrix>
       <main
@@ -36,15 +41,15 @@ export default function EmailVerifiedPage() {
           <span className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15">
             <CheckCircle2 className="h-6 w-6 text-emerald-300" aria-hidden />
           </span>
-          <h1 className="text-lg font-bold text-white">Email verified</h1>
+          <h1 className="text-lg font-bold text-white">{t("heading")}</h1>
           <p className="text-sm leading-relaxed text-gray-300">
-            Your account is active. You can now enter the platform.
+            {t("body")}
           </p>
           <Link
             href="/access"
             className="empathy-btn-gradient mt-1 w-full rounded-xl px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg shadow-purple-500/25"
           >
-            Enter
+            {t("enterButton")}
           </Link>
         </div>
       </main>

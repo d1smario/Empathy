@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
 import { classifyClientError } from "@/lib/errors/classify-client-error";
@@ -12,6 +13,7 @@ export default function RootError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("Error");
   const classified = useMemo(() => classifyClientError(error), [error]);
   const autoReloadAttempted = useRef(false);
 
@@ -52,7 +54,7 @@ export default function RootError({
         tabIndex={-1}
         className="relative flex min-h-[70vh] scroll-mt-0 flex-col items-center justify-center px-6 py-16 text-center outline-none"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.35em] text-gray-500">Error</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.35em] text-gray-500">{t("eyebrow")}</p>
         <h1 className="mt-3 max-w-md text-3xl font-light tracking-tight text-white sm:text-4xl">
           {classified.titleIt}
         </h1>
@@ -65,7 +67,7 @@ export default function RootError({
         ) : null}
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Pro2Button type="button" variant="primary" className="px-8" onClick={handleRetry}>
-            {classified.suggestHardReload ? "Reload app" : "Retry"}
+            {classified.suggestHardReload ? t("reloadApp") : t("retry")}
           </Pro2Button>
           <Pro2Link href="/" variant="secondary" className="justify-center px-8">
             Home

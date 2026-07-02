@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Button } from "@/components/ui/empathy";
@@ -23,24 +24,25 @@ type AcceptOutcome = {
   linked?: boolean;
 };
 
-function acceptErrorMessage(reason: string | undefined): string {
+function acceptErrorMessage(reason: string | undefined, t: (key: string) => string): string {
   switch (reason) {
     case "cannot_self":
-      return "You can't accept your own invite: this link should be sent to your coach.";
+      return t("errorCannotSelf");
     case "consumed":
-      return "This invite has already been used by another account.";
+      return t("errorConsumed");
     case "expired":
-      return "This invite has expired: ask the athlete to generate a new one from their profile.";
+      return t("errorExpired");
     case "not_found":
-      return "This invite doesn't exist or has been deleted.";
+      return t("errorNotFound");
     case "not_authenticated":
-      return "You need to sign in before accepting the invite.";
+      return t("errorNotAuthenticated");
     default:
-      return "Acceptance failed: please try again in a moment.";
+      return t("errorDefault");
   }
 }
 
 export function CoachInviteTokenClient({ token }: { token: string }) {
+  const t = useTranslations("CoachInviteTokenClient");
   const [status, setStatus] = useState<LookupStatus>("loading");
   const [athleteName, setAthleteName] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
     if (busy) return;
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setAcceptError("Supabase not configured: please try again later.");
+      setAcceptError(t("supabaseNotConfigured"));
       return;
     }
     setBusy(true);
@@ -110,16 +112,16 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
       }
       const outcome = (data ?? {}) as AcceptOutcome;
       if (!outcome.ok) {
-        setAcceptError(acceptErrorMessage(outcome.reason));
+        setAcceptError(acceptErrorMessage(outcome.reason, t));
         return;
       }
       setAccepted(outcome);
     } catch {
-      setAcceptError("Network error: please try again.");
+      setAcceptError(t("networkError"));
     } finally {
       setBusy(false);
     }
-  }, [busy, token]);
+  }, [busy, token, t]);
 
   const expiresLabel = expiresAt
     ? new Date(expiresAt).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -132,79 +134,76 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
         tabIndex={-1}
         className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-16 text-center outline-none"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Coach invite</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">{t("eyebrow")}</p>
         <h1 className="max-w-md bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-2xl font-light tracking-tight text-transparent sm:text-3xl">
           {status === "valid" && athleteName
-            ? `You've been invited to become ${athleteName}'s coach on Empathy`
-            : "Become a coach on Empathy"}
+            ? t("titleInvited", { athleteName })
+            : t("titleDefault")}
         </h1>
 
-        {status === "loading" ? <p className="max-w-md text-sm text-gray-500">Verifying the invite…</p> : null}
+        {status === "loading" ? <p className="max-w-md text-sm text-gray-500">{t("verifying")}</p> : null}
         {status === "misconfigured" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Invites unavailable: Supabase configuration missing on this environment.
+            {t("misconfigured")}
           </p>
         ) : null}
         {status === "error" ? (
-          <p className="max-w-md text-sm text-amber-300/90">Verification failed: reload the page and try again.</p>
+          <p className="max-w-md text-sm text-amber-300/90">{t("verificationFailed")}</p>
         ) : null}
         {status === "not_found" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            This link isn&apos;t valid: check that you copied it in full, or ask the athlete for a new invite.
+            {t("linkNotValid")}
           </p>
         ) : null}
         {status === "expired" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            This invite has expired{expiresLabel ? ` (valid until ${expiresLabel})` : ""}. Ask the athlete to
-            generate a new one from their profile.
+            {expiresLabel ? t("expiredWithDate", { expiresLabel }) : t("expiredNoDate")}
           </p>
         ) : null}
         {status === "consumed" ? (
-          <p className="max-w-md text-sm text-gray-400">This invite has already been used.</p>
+          <p className="max-w-md text-sm text-gray-400">{t("alreadyUsed")}</p>
         ) : null}
 
         {status === "valid" && !accepted ? (
           <div className="flex max-w-md flex-col items-center gap-4">
             {expiresLabel ? (
-              <p className="text-xs text-gray-500">Invite valid until {expiresLabel}.</p>
+              <p className="text-xs text-gray-500">{t("inviteValidUntil", { expiresLabel })}</p>
             ) : null}
             {signedIn === false ? (
               <>
                 <p className="text-sm text-gray-400">
-                  Sign in with your coach account or create one: once you&apos;re in, the athlete will be linked to your
-                  roster and Empathy will activate your coach account (admin approval).
+                  {t("signInPrompt")}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <Link
                     href={accessHref}
                     className="rounded-full border border-purple-500/40 bg-purple-500/15 px-6 py-2.5 text-sm font-bold text-purple-100 transition hover:border-purple-400/60"
                   >
-                    Sign in
+                    {t("signIn")}
                   </Link>
                   <Link
                     href="/registrati"
                     className="rounded-full border border-white/15 bg-white/5 px-6 py-2.5 text-sm font-bold text-white transition hover:border-purple-500/40 hover:bg-white/10"
                   >
-                    Sign up
+                    {t("signUp")}
                   </Link>
                 </div>
                 <p className="text-xs text-gray-500">
-                  If you sign up now: after confirming via email, reopen this link to complete the connection.
+                  {t("signUpHint")}
                 </p>
               </>
             ) : null}
             {signedIn === true ? (
               <>
                 <p className="text-sm text-gray-400">
-                  By accepting, {athleteName ?? "the athlete"} is linked to your roster. The final activation of your
-                  coach account is handled by Empathy (admin approval).
+                  {t("acceptExplanation", { athleteName: athleteName ?? t("theAthlete") })}
                 </p>
                 <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
-                  {busy ? "Processing…" : "Accept the invite"}
+                  {busy ? t("processing") : t("acceptInvite")}
                 </Pro2Button>
               </>
             ) : null}
-            {signedIn === null ? <p className="text-sm text-gray-500">Verifying session…</p> : null}
+            {signedIn === null ? <p className="text-sm text-gray-500">{t("verifyingSession")}</p> : null}
           </div>
         ) : null}
 
@@ -212,14 +211,14 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
           <div className="flex max-w-md flex-col items-center gap-4">
             <p className="text-sm text-emerald-300/90" role="status">
               {accepted.coachStatus === "pending"
-                ? "Linked! Your coach account is awaiting approval from Empathy."
-                : "Athlete linked to your roster."}
+                ? t("linkedPending")
+                : t("linkedDone")}
             </p>
             <Link
               href="/athletes"
               className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-6 py-2.5 text-sm font-bold text-emerald-100 transition hover:border-emerald-400/60"
             >
-              Go to Athletes
+              {t("goToAthletes")}
             </Link>
           </div>
         ) : null}
@@ -231,7 +230,7 @@ export function CoachInviteTokenClient({ token }: { token: string }) {
         ) : null}
 
         <Link href="/" className="text-xs text-gray-500 underline-offset-4 hover:text-gray-400 hover:underline">
-          ← Back to home
+          {t("backToHome")}
         </Link>
       </main>
     </BrutalistAppBackdrop>

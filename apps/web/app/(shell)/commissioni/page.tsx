@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { CoachCommissionsView } from "@/components/coach/CoachCommissionsView";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { redirectIfShellRoleNotAllowed } from "@/lib/auth/redirect-role-gate";
@@ -13,15 +14,15 @@ export const metadata: Metadata = { title: "Commissioni" };
  */
 export default async function CommissioniPage() {
   await redirectIfShellRoleNotAllowed(["coach"]);
+  const t = await getTranslations("CommissioniPage");
   return (
     <Pro2ModulePageShell
-      eyebrow="Commissioni · Coach"
+      eyebrow={t("eyebrow")}
       eyebrowClassName="text-amber-400"
-      title="Commissioni"
+      title={t("title")}
       description={
         <span className="text-sm text-gray-400">
-          I compensi maturati dalle vendite collegate al tuo account: richiedi il pagamento delle commissioni
-          maturate e segui lo stato delle richieste.
+          {t("description")}
         </span>
       }
     >

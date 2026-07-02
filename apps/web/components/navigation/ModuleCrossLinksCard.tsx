@@ -1,5 +1,6 @@
 import type { ProductModuleId } from "@empathy/contracts";
 import { Link2 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link } from "@/components/ui/empathy";
 
@@ -58,11 +59,12 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
 };
 
 /** Link incrociati tra moduli generativi (stesso canone Pro2SectionCard). */
-export function ModuleCrossLinksCard({ module }: { module: ProductModuleId }) {
+export async function ModuleCrossLinksCard({ module }: { module: ProductModuleId }) {
   const items = GENERATIVE_CROSS[module];
   if (!items?.length) return null;
+  const t = await getTranslations("ModuleCrossLinksCard");
   return (
-    <Pro2SectionCard accent="cyan" title="Linked modules" subtitle="Same athlete, shared contracts" icon={Link2}>
+    <Pro2SectionCard accent="cyan" title={t("linkedModulesTitle")} subtitle={t("linkedModulesSubtitle")} icon={Link2}>
       <div className="flex flex-wrap gap-2">
         {items.map((x) => (
           <Pro2Link
@@ -71,7 +73,7 @@ export function ModuleCrossLinksCard({ module }: { module: ProductModuleId }) {
             variant="secondary"
             className={`justify-center ${x.className ?? "border-white/20 bg-white/5 hover:bg-white/10"}`}
           >
-            {x.label}
+            {x.href === "/physiology/bioenergetics" ? t("bioenergeticsLabel") : x.label}
           </Pro2Link>
         ))}
       </div>

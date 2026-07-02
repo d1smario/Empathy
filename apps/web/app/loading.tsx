@@ -1,5 +1,8 @@
+import { getTranslations } from "next-intl/server";
+
 /** Fallback navigazione globale (allineato allo skeleton moduli shell). */
-export default function RootLoading() {
+export default async function RootLoading() {
+  const t = await getTranslations("Loading");
   return (
     <div
       id="main-content"
@@ -10,7 +13,7 @@ export default function RootLoading() {
         className="h-1 w-36 animate-pulse rounded-full bg-gradient-to-r from-purple-500/50 via-pink-500/50 to-orange-500/50"
         aria-hidden
       />
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-gray-600">Caricamento</p>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-gray-600">{t("loadingLabel")}</p>
     </div>
   );
 }

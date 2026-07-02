@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Eye, EyeOff, MailCheck } from "lucide-react";
 import { accessAppOriginFromWindow } from "@/lib/auth/access-app-origin";
@@ -16,19 +17,19 @@ import { Pro2Button } from "@/components/ui/empathy";
 
 type MsgTone = "info" | "success" | "warning";
 
-function formatSignupError(message: string): string {
+function formatSignupError(message: string, t: (key: string) => string): string {
   const m = message.toLowerCase();
   if (m.includes("already registered") || m.includes("already been registered") || m.includes("user already exists")) {
-    return "This email is already registered. Try signing in.";
+    return t("errorAlreadyRegistered");
   }
   if (m.includes("invalid api key") || m.includes("invalid api")) {
-    return "Invalid Supabase keys: contact support.";
+    return t("errorInvalidApiKey");
   }
   if (m.includes("redirect") && (m.includes("not allowed") || m.includes("disallowed") || m.includes("url"))) {
-    return "Redirect URL not allowed in the Supabase configuration.";
+    return t("errorRedirectNotAllowed");
   }
   if (m.includes("password")) {
-    return "Invalid password: use at least 8 characters.";
+    return t("errorInvalidPassword");
   }
   return message;
 }
@@ -46,6 +47,7 @@ const inputIconClass =
  * e consenso obbligatorio a Privacy + Termini di Servizio.
  */
 export function AccessRegisterForm() {
+  const t = useTranslations("AccessRegisterForm");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,7 +74,7 @@ export function AccessRegisterForm() {
     setMsg(null);
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      notify("Missing Supabase configuration.");
+      notify(t("errorMissingConfig"));
       return;
     }
     const fn = firstName.trim();
@@ -81,23 +83,23 @@ export function AccessRegisterForm() {
     // Codice coach opzionale: normalizziamo a uppercase (la colonna è citext lato DB).
     const coachCodeNorm = coachCode.trim().toUpperCase();
     if (!fn || !ln) {
-      notify("Enter your first and last name.");
+      notify(t("errorEnterName"));
       return;
     }
     if (!em) {
-      notify("Enter a valid email.");
+      notify(t("errorEnterEmail"));
       return;
     }
     if (password.length < 8) {
-      notify("The password must be at least 8 characters long.");
+      notify(t("errorPasswordTooShort"));
       return;
     }
     if (password !== password2) {
-      notify("The passwords do not match.");
+      notify(t("errorPasswordsMismatch"));
       return;
     }
     if (!consent) {
-      notify("You must accept the Privacy Policy and Terms of Service to register.");
+      notify(t("errorConsentRequired"));
       return;
     }
 
@@ -119,7 +121,7 @@ export function AccessRegisterForm() {
     });
     if (error) {
       setBusy(false);
-      notify(formatSignupError(error.message));
+      notify(formatSignupError(error.message, t));
       return;
     }
     if (data.session) {
@@ -158,19 +160,19 @@ export function AccessRegisterForm() {
         <span className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/15">
           <MailCheck className="h-6 w-6 text-emerald-300" aria-hidden />
         </span>
-        <h2 className="text-lg font-bold text-white">Check your email</h2>
+        <h2 className="text-lg font-bold text-white">{t("emailSentTitle")}</h2>
         <p className="text-sm leading-relaxed text-gray-300">
-          We&apos;ve sent a confirmation link to <strong className="text-white">{sentTo}</strong>. Open it to
-          activate your account, then come back to sign in.
+          {t.rich("emailSentBody", {
+            email: sentTo,
+            b: (chunks) => <strong className="text-white">{chunks}</strong>,
+          })}
         </p>
-        <p className="text-xs text-gray-500">
-          Can&apos;t find it? Check your spam folder. The link may take a few minutes to arrive.
-        </p>
+        <p className="text-xs text-gray-500">{t("emailSentSpamHint")}</p>
         <Link
           href="/access"
           className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-gray-200 transition-colors hover:border-purple-500/40 hover:text-white"
         >
-          Go to login
+          {t("goToLogin")}
         </Link>
       </div>
     );
@@ -180,11 +182,11 @@ export function AccessRegisterForm() {
     <form
       onSubmit={onSubmit}
       className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-md"
-      aria-label="Registration"
+      aria-label={t("formAriaLabel")}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-left">
-          <span className={labelClass}>First name</span>
+          <span className={labelClass}>{t("firstNameLabel")}</span>
           <input
             type="text"
             autoComplete="given-name"
@@ -195,7 +197,7 @@ export function AccessRegisterForm() {
           />
         </label>
         <label className="text-left">
-          <span className={labelClass}>Last name</span>
+          <span className={labelClass}>{t("lastNameLabel")}</span>
           <input
             type="text"
             autoComplete="family-name"
@@ -216,12 +218,12 @@ export function AccessRegisterForm() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={busy}
           className={inputClass}
-          placeholder="name@example.com"
+          placeholder={t("emailPlaceholder")}
         />
       </label>
 
       <label className="text-left">
-        <span className={labelClass}>Coach code (optional)</span>
+        <span className={labelClass}>{t("coachCodeLabel")}</span>
         <input
           type="text"
           autoComplete="off"
@@ -229,12 +231,12 @@ export function AccessRegisterForm() {
           onChange={(e) => setCoachCode(e.target.value.toUpperCase())}
           disabled={busy}
           className={`${inputClass} font-mono uppercase tracking-[0.15em]`}
-          placeholder="E.G. COACH-7K2P"
+          placeholder={t("coachCodePlaceholder")}
         />
       </label>
 
       <label className="text-left">
-        <span className={labelClass}>Password</span>
+        <span className={labelClass}>{t("passwordLabel")}</span>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -248,7 +250,7 @@ export function AccessRegisterForm() {
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             aria-pressed={showPassword}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-200"
           >
@@ -259,7 +261,7 @@ export function AccessRegisterForm() {
       </label>
 
       <label className="text-left">
-        <span className={labelClass}>Confirm password</span>
+        <span className={labelClass}>{t("confirmPasswordLabel")}</span>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -273,7 +275,7 @@ export function AccessRegisterForm() {
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             aria-pressed={showPassword}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-200"
           >
@@ -281,7 +283,7 @@ export function AccessRegisterForm() {
           </button>
         </div>
         {password2 && password !== password2 ? (
-          <span className="mt-1 block text-[0.65rem] text-red-400">The passwords do not match.</span>
+          <span className="mt-1 block text-[0.65rem] text-red-400">{t("errorPasswordsMismatch")}</span>
         ) : null}
       </label>
 
@@ -294,27 +296,32 @@ export function AccessRegisterForm() {
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5 accent-purple-500"
         />
         <span>
-          I accept the{" "}
-          <Link href="/privacy" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
-            Privacy Policy
-          </Link>{" "}
-          and the{" "}
-          <Link href="/termini" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
-            Terms of Service
-          </Link>
-          .
+          {t.rich("consentText", {
+            privacy: (chunks) => (
+              <Link href="/privacy" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
+                {chunks}
+              </Link>
+            ),
+            terms: (chunks) => (
+              <Link href="/termini" target="_blank" className="text-cyan-300/90 underline-offset-2 hover:underline">
+                {chunks}
+              </Link>
+            ),
+          })}
         </span>
       </label>
 
       <Pro2Button type="submit" disabled={busy || !consent} className="w-full justify-center">
-        {busy ? "Creating account…" : "Sign up"}
+        {busy ? t("submitBusy") : t("submit")}
       </Pro2Button>
 
       <Link
         href="/access"
         className="text-center text-xs text-gray-500 transition-colors hover:text-gray-300"
       >
-        Already have an account? <span className="text-gray-300">Sign in</span>
+        {t.rich("alreadyHaveAccount", {
+          signin: (chunks) => <span className="text-gray-300">{chunks}</span>,
+        })}
       </Link>
 
       {msg ? (

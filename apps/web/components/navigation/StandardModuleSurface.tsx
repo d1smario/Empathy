@@ -1,5 +1,6 @@
 import { EMPATHY_PLATFORM_VERSION, type ProductModuleId } from "@empathy/contracts";
 import { BookOpen, LayoutDashboard, Settings2 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { getEmpathyAccountCatalog } from "@/lib/account/plan-catalog";
 import type { UserAccessEntitlement } from "@/lib/billing/access-entitlement";
 import { loadBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
@@ -31,6 +32,7 @@ import { getProductNavItemByModule } from "@/core/navigation/module-registry";
 
 /** Hub / coach / settings: shell e sezioni canone Pro 2 (`docs/PRO2_UI_PAGE_CANON.md`). */
 export async function StandardModuleSurface({ module }: { module: ProductModuleId }) {
+  const t = await getTranslations("StandardModuleSurface");
   const nav = getProductNavItemByModule(module);
   const title = nav?.label ?? module;
   const panel = getModuleDomainPanel(module);
@@ -48,7 +50,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
 
   return (
     <Pro2ModulePageShell
-      eyebrow={module === "dashboard" ? "Human Performance Operating System" : `${title} · Module`}
+      eyebrow={module === "dashboard" ? "Human Performance Operating System" : t("titleModuleSuffix", { title })}
       eyebrowClassName={moduleEyebrowClass(module)}
       title={
         module === "dashboard" ? (
@@ -65,11 +67,12 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
       }
       description={
         module === "dashboard" ? undefined : module === "athletes" ? (
-          <span className="text-sm text-gray-400">Account status, linked athletes and invites.</span>
+          <span className="text-sm text-gray-400">{t("athletesDescription")}</span>
         ) : panel ? (
           <span className="leading-relaxed">
-            Module entry point: data and actions stay on <code className="text-gray-500">@empathy/contracts</code> contracts and domain
-            packages.
+            {t.rich("moduleEntryDescription", {
+              code: (chunks) => <code className="text-gray-500">{chunks}</code>,
+            })}
           </span>
         ) : undefined
       }
@@ -102,13 +105,16 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
         <section
           id="settings-coach-account"
           className="scroll-mt-28 space-y-6"
-          aria-label="Coach account and role"
+          aria-label={t("coachAccountRoleAria")}
         >
           <p className="text-center text-xs text-gray-500 sm:text-left">
-            <strong className="text-gray-300">Athlete / coach role:</strong> set it in{" "}
-            <strong className="text-gray-400">/access</strong>, not here. Below is only a summary and useful links. The{" "}
-            <strong className="text-gray-400">Scope</strong> · <strong className="text-gray-400">Connections</strong> ·{" "}
-            <strong className="text-gray-400">Operations</strong> pills let you jump to the other sections.
+            {t.rich("coachRoleNote", {
+              role: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+              access: (chunks) => <strong className="text-gray-400">{chunks}</strong>,
+              scope: (chunks) => <strong className="text-gray-400">{chunks}</strong>,
+              connections: (chunks) => <strong className="text-gray-400">{chunks}</strong>,
+              operations: (chunks) => <strong className="text-gray-400">{chunks}</strong>,
+            })}
           </p>
           <SettingsCoachAccountCard />
         </section>
@@ -138,22 +144,22 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
         <>
       <section id="std-domain" className="scroll-mt-28 space-y-10">
         {panel ? (
-          <Pro2SectionCard accent="violet" title="Contractual domain" subtitle={panel.title} icon={BookOpen}>
+          <Pro2SectionCard accent="violet" title={t("contractualDomainTitle")} subtitle={panel.title} icon={BookOpen}>
             <p className="text-sm leading-relaxed text-gray-300">{panel.summary}</p>
             <p className="mt-4 font-mono text-xs text-gray-500">
               <span className="text-purple-400">package</span> {panel.packageId}
             </p>
           </Pro2SectionCard>
         ) : (
-          <Pro2SectionCard accent="slate" title="Domain" subtitle="Not mapped" icon={BookOpen}>
-            <p className="text-sm text-gray-400">No domain panel mapped for this id.</p>
+          <Pro2SectionCard accent="slate" title={t("domainTitle")} subtitle={t("notMappedSubtitle")} icon={BookOpen}>
+            <p className="text-sm text-gray-400">{t("noDomainPanelMapped")}</p>
           </Pro2SectionCard>
         )}
       </section>
 
       <section id="std-links" className="scroll-mt-28">
-        <Pro2SectionCard accent="cyan" title="Connections" subtitle="Quick navigation" icon={LayoutDashboard}>
-        <ActionBar className="border-0 pt-0" aria-label="Quick navigation">
+        <Pro2SectionCard accent="cyan" title={t("connectionsTitle")} subtitle={t("quickNavigationSubtitle")} icon={LayoutDashboard}>
+        <ActionBar className="border-0 pt-0" aria-label={t("quickNavigationAria")}>
           <Pro2Link href="/" variant="ghost">
             Home
           </Pro2Link>
@@ -207,8 +213,8 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
            */}
           <Pro2SectionCard
             accent="slate"
-            title="My account · devices"
-            subtitle="Which device drives sleep, recovery and training; which streams to sync"
+            title={t("myAccountDevicesTitle")}
+            subtitle={t("myAccountDevicesSubtitle")}
             icon={Settings2}
           >
             <div className="flex flex-col gap-10">
@@ -222,8 +228,8 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
           <PlatformAdminOnly>
             <Pro2SectionCard
               accent="slate"
-              title="Diagnostics · admin"
-              subtitle="Session, athlete, integrations, billing — visible only to platform operators"
+              title={t("diagnosticsAdminTitle")}
+              subtitle={t("diagnosticsAdminSubtitle")}
               icon={Settings2}
             >
               <div className="flex flex-col gap-10">

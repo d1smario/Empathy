@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { CoachProfileView } from "@/components/coach/CoachProfileView";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { getSessionProfile } from "@/lib/auth/session-profile";
@@ -17,16 +18,17 @@ export const metadata: Metadata = {
  * profilo. (L'admin non passa dalla shell mobile.)
  */
 export default async function MobileProfilePage() {
+  const t = await getTranslations("MProfilePage");
   const session = await getSessionProfile();
   if (session.role === "coach") {
     return (
       <Pro2ModulePageShell
-        eyebrow="Profile · Coach"
+        eyebrow={t("coachEyebrow")}
         eyebrowClassName="text-violet-400"
-        title="Your account"
+        title={t("coachTitle")}
         description={
           <span className="text-sm text-gray-400">
-            Your coach account details, personal information for commissions and security.
+            {t("coachDescription")}
           </span>
         }
       >

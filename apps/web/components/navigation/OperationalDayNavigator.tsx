@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Pro2Button } from "@/components/ui/empathy";
 import { addCalendarDaysIso, localCalendarDayIso } from "@/lib/datetime/local-calendar-day";
@@ -18,6 +19,7 @@ type OperationalDayNavigatorProps = {
  * Cambio giorno operativo: ieri/domani, salto a oggi, input data nativo (locale browser).
  */
 export function OperationalDayNavigator({ dateIso, hrefPrefix }: OperationalDayNavigatorProps) {
+  const t = useTranslations("OperationalDayNavigator");
   const router = useRouter();
   const safe = ISO.test(dateIso) ? dateIso.slice(0, 10) : localCalendarDayIso();
   const todayIso = localCalendarDayIso();
@@ -35,7 +37,7 @@ export function OperationalDayNavigator({ dateIso, hrefPrefix }: OperationalDayN
           type="button"
           variant="secondary"
           className="border border-white/15 bg-white/5 px-2 py-1.5 text-xs sm:px-3"
-          aria-label="Giorno precedente"
+          aria-label={t("previousDay")}
           onClick={() => push(prev)}
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -44,7 +46,7 @@ export function OperationalDayNavigator({ dateIso, hrefPrefix }: OperationalDayN
           type="button"
           variant="secondary"
           className="border border-white/15 bg-white/5 px-2 py-1.5 text-xs sm:px-3"
-          aria-label="Giorno successivo"
+          aria-label={t("nextDay")}
           onClick={() => push(next)}
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
@@ -52,7 +54,7 @@ export function OperationalDayNavigator({ dateIso, hrefPrefix }: OperationalDayN
       </div>
 
       <label className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-[14rem]">
-        <span className="font-mono text-[0.58rem] font-semibold uppercase tracking-wider text-gray-500">Data</span>
+        <span className="font-mono text-[0.58rem] font-semibold uppercase tracking-wider text-gray-500">{t("dateLabel")}</span>
         <input
           type="date"
           value={safe}
@@ -74,13 +76,15 @@ export function OperationalDayNavigator({ dateIso, hrefPrefix }: OperationalDayN
           onClick={() => push(localCalendarDayIso())}
         >
           <CalendarClock className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-          Oggi
+          {t("today")}
         </Pro2Button>
       ) : null}
 
       <p className="w-full basis-full font-mono text-[0.65rem] text-gray-500 sm:basis-auto sm:w-auto">
-        Navigazione aggiorna l&apos;URL · stessi dati del calendario per{" "}
-        <span className="text-gray-400">{safe}</span>
+        {t.rich("hint", {
+          date: safe,
+          d: (chunks) => <span className="text-gray-400">{chunks}</span>,
+        })}
       </p>
     </div>
   );

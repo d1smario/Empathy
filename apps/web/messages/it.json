@@ -3601,5 +3601,316 @@
   "Navbar": {
     "login": "Accedi",
     "register": "Registrati"
+  },
+  "AccessRegisterForm": {
+    "errorAlreadyRegistered": "Questa email è già registrata. Prova ad accedere.",
+    "errorInvalidApiKey": "Chiavi Supabase non valide: contatta il supporto.",
+    "errorRedirectNotAllowed": "URL di redirect non autorizzato nella configurazione Supabase.",
+    "errorInvalidPassword": "Password non valida: usa almeno 8 caratteri.",
+    "errorMissingConfig": "Configurazione Supabase mancante.",
+    "errorEnterName": "Inserisci nome e cognome.",
+    "errorEnterEmail": "Inserisci una email valida.",
+    "errorPasswordTooShort": "La password deve avere almeno 8 caratteri.",
+    "errorPasswordsMismatch": "Le password non coincidono.",
+    "errorConsentRequired": "Devi accettare Privacy e Termini di Servizio per registrarti.",
+    "emailSentTitle": "Controlla la tua email",
+    "emailSentBody": "Abbiamo inviato un link di conferma a <b>{email}</b>. Aprilo per attivare il tuo account, poi torna ad accedere.",
+    "emailSentSpamHint": "Non lo trovi? Controlla nello spam. Il link può richiedere qualche minuto ad arrivare.",
+    "goToLogin": "Vai al login",
+    "formAriaLabel": "Registrazione",
+    "firstNameLabel": "Nome",
+    "lastNameLabel": "Cognome",
+    "emailPlaceholder": "nome@esempio.it",
+    "coachCodeLabel": "Codice coach (opzionale)",
+    "coachCodePlaceholder": "ES. COACH-7K2P",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Conferma password",
+    "hidePassword": "Nascondi password",
+    "showPassword": "Mostra password",
+    "consentText": "Accetto la <privacy>Privacy Policy</privacy> e i <terms>Termini di Servizio</terms>.",
+    "submitBusy": "Creazione account…",
+    "submit": "Registrati",
+    "alreadyHaveAccount": "Hai già un account? <signin>Accedi</signin>"
+  },
+  "AerodynamicsPage": {
+    "loading": "Caricamento Aerodynamics..."
+  },
+  "AuthSetPasswordPage": {
+    "title": "Imposta nuova password",
+    "subtitle": "Scegli una password sicura (minimo 8 caratteri). Dopo il salvataggio entrerai in app."
+  },
+  "AuthVerificataPage": {
+    "metaTitle": "Email verificata — Empathy",
+    "heading": "Email verificata",
+    "body": "Il tuo account è attivo. Ora puoi entrare nella piattaforma.",
+    "enterButton": "Entra"
+  },
+  "BillingProfileForm": {
+    "fieldFirstName": "Nome *",
+    "fieldLastName": "Cognome *",
+    "fieldCompany": "Azienda (opzionale)",
+    "fieldVat": "P. IVA / UID (opzionale)",
+    "fieldAddress": "Indirizzo *",
+    "fieldAddressLine2": "Indirizzo — riga 2 (opzionale)",
+    "fieldPostalCode": "CAP *",
+    "fieldCity": "Città *",
+    "fieldRegion": "Cantone / Regione (opzionale)",
+    "fieldCountry": "Paese *",
+    "fieldPhone": "Telefono (opzionale)",
+    "errSupabaseMissing": "Configurazione Supabase mancante.",
+    "errMissingFields": "Compila tutti i campi contrassegnati con * per completare l'anagrafica.",
+    "errSessionExpired": "Sessione scaduta: accedi di nuovo.",
+    "errSaveFailed": "Salvataggio non riuscito: {message}",
+    "saved": "Anagrafica salvata.",
+    "eyebrow": "I tuoi dati · fatturazione",
+    "title": "Completa l'anagrafica",
+    "subtitle": "La compilazione di tutti i campi è necessaria per completare l'acquisto dei piani a pagamento.",
+    "statusComplete": "Completa",
+    "statusIncomplete": "Da completare",
+    "loading": "Caricamento anagrafica…",
+    "saving": "Salvataggio…",
+    "save": "Salva anagrafica"
+  },
+  "BillingProfileLauncher": {
+    "billingDetails": "I tuoi dati di fatturazione",
+    "openBillingDetails": "Apri i tuoi dati di fatturazione",
+    "close": "Chiudi"
+  },
+  "BiomechanicsPage": {
+    "loading": "Caricamento Biomechanics..."
+  },
+  "CalendarioPage": {
+    "eyebrow": "Calendario · Coach",
+    "title": "Calendario",
+    "description": "Agenda del coach. Modulo in arrivo: qui troverai appuntamenti, sessioni e impegni del tuo account.",
+    "comingSoonTitle": "In arrivo",
+    "comingSoonSubtitle": "Calendario del coach",
+    "comingSoonBody": "Stiamo definendo il calendario operativo del coach. Resta una voce fissa del tuo account, indipendente dall’atleta selezionato."
+  },
+  "CoachInviteTokenClient": {
+    "errorCannotSelf": "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.",
+    "errorConsumed": "Questo invito è già stato usato da un altro account.",
+    "errorExpired": "Questo invito è scaduto: chiedi all'atleta di generarne uno nuovo dal suo profilo.",
+    "errorNotFound": "Questo invito non esiste o è stato eliminato.",
+    "errorNotAuthenticated": "Devi accedere prima di accettare l'invito.",
+    "errorDefault": "Accettazione non riuscita: riprova tra qualche istante.",
+    "supabaseNotConfigured": "Supabase non configurato: riprova più tardi.",
+    "networkError": "Errore di rete: riprova.",
+    "eyebrow": "Invito coach",
+    "titleInvited": "Sei stato invitato a diventare il coach di {athleteName} su Empathy",
+    "titleDefault": "Diventa coach su Empathy",
+    "verifying": "Verifica dell'invito…",
+    "misconfigured": "Inviti non disponibili: configurazione Supabase mancante su questo ambiente.",
+    "verificationFailed": "Verifica non riuscita: ricarica la pagina e riprova.",
+    "linkNotValid": "Questo link non è valido: controlla di averlo copiato per intero o chiedi all'atleta un nuovo invito.",
+    "expiredWithDate": "Questo invito è scaduto (valido fino al {expiresLabel}). Chiedi all'atleta di generarne uno nuovo dal suo profilo.",
+    "expiredNoDate": "Questo invito è scaduto. Chiedi all'atleta di generarne uno nuovo dal suo profilo.",
+    "alreadyUsed": "Questo invito è già stato usato.",
+    "inviteValidUntil": "Invito valido fino al {expiresLabel}.",
+    "signInPrompt": "Accedi con il tuo account coach oppure registrati: una volta dentro, l'atleta verrà collegato al tuo roster e Empathy attiverà il tuo account coach (approvazione admin).",
+    "signIn": "Accedi",
+    "signUp": "Registrati",
+    "signUpHint": "Se ti registri ora: dopo la conferma via email riapri questo link per completare il collegamento.",
+    "acceptExplanation": "Accettando, {athleteName} viene collegato al tuo roster. L'attivazione finale del tuo account coach la fa Empathy (approvazione admin).",
+    "theAthlete": "l'atleta",
+    "processing": "Elaborazione…",
+    "acceptInvite": "Accetta l'invito",
+    "verifyingSession": "Verifica sessione…",
+    "linkedPending": "Collegato! Il tuo account coach è in attesa di approvazione da parte di Empathy.",
+    "linkedDone": "Atleta collegato al tuo roster.",
+    "goToAthletes": "Vai ad Athletes",
+    "backToHome": "← Torna alla home"
+  },
+  "CommissioniPage": {
+    "eyebrow": "Commissioni · Coach",
+    "title": "Commissioni",
+    "description": "I compensi maturati dalle vendite collegate al tuo account: richiedi il pagamento delle commissioni maturate e segui lo stato delle richieste."
+  },
+  "DashboardPage": {
+    "accountUnderReviewTitle": "Account in verifica",
+    "accountUnderReviewDescription": "Il tuo account coach è in attesa di attivazione da parte di Empathy.",
+    "awaitingApprovalTitle": "In attesa di approvazione",
+    "awaitingApprovalSubtitle": "Ci siamo quasi",
+    "awaitingApprovalBody": "Appena Empathy approva il tuo account, qui troverai i tuoi atleti, le sessioni della settimana e le tue commissioni. Riceverai l'operatività completa senza dover fare nulla."
+  },
+  "Error": {
+    "eyebrow": "Errore",
+    "reloadApp": "Ricarica app",
+    "retry": "Riprova"
+  },
+  "GenerativeModuleSurface": {
+    "surfaceDescription": "Superficie generativa Pro 2: riepilogo dominio nel riquadro sotto, dati operativi al centro, un focus guidato in fondo.",
+    "moduleScopeTitle": "Ambito modulo",
+    "notMapped": "Non mappato",
+    "noDomainPanel": "Nessun pannello dominio per questo modulo.",
+    "athleteProfileTitle": "Profilo atleta",
+    "contractRead": "Lettura contratti",
+    "plannedWindow": "Finestra pianificata",
+    "openBuilderDenseView": "Apri builder (vista densa)",
+    "constraintsAndPlans": "Vincoli e piani (Supabase)",
+    "loadAlignmentTitle": "Allineamento al carico",
+    "loadAlignmentSubtitle": "Stessa linea dati del training — niente secondo motore",
+    "loadAlignmentBody": "I target giornalieri restano coerenti con sessioni pianificate ed eseguite (calendario + builder). Usa Virya per il contesto macro e l’adattamento; la nutrizione V1+2 consuma memoria atleta e output strutturati, non sessioni generate dall’AI in parallelo.",
+    "bioenergeticsSubtitle": "Timeline giornata + provenienza misurato/stimato",
+    "bioenergeticsBody": "Vista operativa a giornata che incrocia training, diario nutrizionale e stream device per stimare pathway supportanti/inibitori senza sostituire i dati misurati.",
+    "dailyReportCharts": "Report giornaliero (grafici)",
+    "foodDiary": "Diario alimentare",
+    "physiologicalProfile": "Profilo fisiologico",
+    "biomarkerPanels": "Pannelli biomarker",
+    "kinematicDataTitle": "Dati cinematici",
+    "kinematicDataBody": "Lettura da tabelle capture / analisi — in coda sulla scaletta Pro 2. Il twin e il training restano la sorgente operativa finché non è esposto un endpoint dedicato.",
+    "cdaWindContextTitle": "CdA e contesto vento",
+    "cdaWindContextBody": "Modulo aerodinamico collegato a discipline e sensori esterni; nessuna lettura Supabase canonica in questa fase. Resta nel perimetro architetturale per integrazioni future.",
+    "actionsTitle": "Azioni",
+    "actionsSubtitle": "Un focus per sessione — controlli compatti"
+  },
+  "InviteTokenClient": {
+    "requestFailed": "Richiesta non riuscita.",
+    "linkCreated": "Collegamento creato. Puoi aprire il modulo Athletes dal coach.",
+    "networkError": "Errore di rete.",
+    "eyebrow": "Invito coach",
+    "title": "Collega il tuo profilo atleta al coach",
+    "misconfigured": "Inviti non disponibili: manca la service role sul server o la tabella non è stata creata.",
+    "notFound": "Questo link non è valido.",
+    "consumed": "Questo invito è già stato usato.",
+    "expired": "Invito scaduto. Chiedi un nuovo link al coach.",
+    "signInPrompt": "Accedi con lo stesso account che userai come atleta.",
+    "goToAccess": "Vai ad Access / login",
+    "checkingAthleteProfile": "Verifica profilo atleta…",
+    "linkingInProgress": "Collegamento in corso al coach che ti ha invitato…",
+    "confirmLinkPrompt": "Confermi il collegamento al coach che ti ha inviato il link? Creeremo il tuo profilo atleta se non esiste ancora.",
+    "processing": "Elaborazione…",
+    "acceptInvite": "Accetta invito",
+    "checkingSession": "Verifica sessione…",
+    "backToDashboard": "Torna alla dashboard"
+  },
+  "Loading": {
+    "loadingLabel": "Caricamento"
+  },
+  "MAerodynamicsPage": {
+    "loading": "Caricamento Aerodynamics..."
+  },
+  "MCommissioniPage": {
+    "metaTitle": "Commissioni",
+    "eyebrow": "Commissioni · Coach",
+    "title": "Commissioni",
+    "description": "I compensi maturati dalle vendite collegate al tuo account: richiedi il pagamento e segui lo stato."
+  },
+  "MProfilePage": {
+    "coachEyebrow": "Profilo · Coach",
+    "coachTitle": "Il tuo account",
+    "coachDescription": "Dati del tuo account coach, anagrafica per le commissioni e sicurezza."
+  },
+  "MobileDashboardHeader": {
+    "openModulesMenu": "Apri menu moduli"
+  },
+  "MobileHeroSection": {
+    "understandToday": "Understand Today.",
+    "predictTomorrow": "Predict Tomorrow.",
+    "systemTagline": "Human Performance Operating System",
+    "readinessScore": "Readiness Score",
+    "waiting": "In attesa"
+  },
+  "MobileInstallPrompt": {
+    "title": "Installa Empathy",
+    "hintNative": "Aggiungi alla home per aprire l'app a schermo intero.",
+    "hintManual": "Su iPhone: Condividi → Aggiungi a Home. Su Android: Installa app dal menu browser.",
+    "installCta": "Installa",
+    "close": "Chiudi"
+  },
+  "MobileModuleDrawer": {
+    "modulesMenu": "Menu moduli",
+    "closeMenu": "Chiudi menu",
+    "empathyModules": "Moduli Empathy",
+    "allSectionsSubtitle": "Tutte le sezioni in un posto",
+    "close": "Chiudi",
+    "desktopOnlyNote": "Builder, VIRYA e staging lab avanzato restano su versione desktop."
+  },
+  "MobileNutritionHubView": {
+    "eyebrow": "Nutrition",
+    "title": "Alimentazione",
+    "description": "Meal plan e diario — per editing avanzato usa la versione desktop.",
+    "mealPlanTitle": "Meal plan",
+    "mealPlanSubtitle": "Target giornalieri e pasti",
+    "diaryTitle": "Diario",
+    "diarySubtitle": "Pasti registrati e aderenza",
+    "openDesktopMealPlan": "Apri meal plan desktop"
+  },
+  "MobileProfileSection": {
+    "physiologicalProfileTitle": "Profilo fisiologico"
+  },
+  "MobileTodayPageView": {
+    "eyebrow": "Empathy · Oggi",
+    "title": "Giornata operativa",
+    "description": "Seduta, nutrizione e segnali atleta — stesso twin del desktop.",
+    "trainingLink": "Training · giornata",
+    "nutritionLink": "Nutrition · piano e diario"
+  },
+  "MobileTopBar": {
+    "openModulesMenu": "Apri menu moduli"
+  },
+  "MobileTrendsSection": {
+    "sevenDayTrends": "Trend 7 giorni",
+    "sevenDays": "7 giorni"
+  },
+  "ModuleCrossLinksCard": {
+    "linkedModulesTitle": "Moduli collegati",
+    "linkedModulesSubtitle": "Stesso atleta, contratti condivisi",
+    "bioenergeticsLabel": "Bioenergetica"
+  },
+  "ModuleLoading": {
+    "loadingLabel": "Caricamento"
+  },
+  "OperationalDayNavigator": {
+    "previousDay": "Giorno precedente",
+    "nextDay": "Giorno successivo",
+    "dateLabel": "Data",
+    "today": "Oggi",
+    "hint": "Navigazione aggiorna l'URL · stessi dati del calendario per <d>{date}</d>"
+  },
+  "PhysiologyDailyPage": {
+    "redirecting": "Reindirizzamento al wellness giornaliero locale…"
+  },
+  "ProfilePage": {
+    "metaTitle": "Profilo",
+    "metaDescription": "Identità atleta, fisiologia e vincoli nutrizionali.",
+    "coachEyebrow": "Profilo · Coach",
+    "coachTitle": "Il tuo account",
+    "coachDescription": "Dati del tuo account coach, anagrafica per le commissioni e sicurezza."
+  },
+  "RegistratiPage": {
+    "metaTitle": "Registrati — Empathy",
+    "metaDescription": "Crea il tuo account Empathy.",
+    "kicker": "REGISTRATI",
+    "backToHome": "← Torna alla home"
+  },
+  "StandardModuleSurface": {
+    "titleModuleSuffix": "{title} · Modulo",
+    "athletesDescription": "Stato account, atleti collegati e inviti.",
+    "moduleEntryDescription": "Punto di ingresso modulo: dati e azioni restano su contratti <code>@empathy/contracts</code> e domain packages.",
+    "coachAccountRoleAria": "Account coach e ruolo",
+    "coachRoleNote": "<role>Ruolo atleta / coach:</role> si imposta in <access>/access</access>, non qui. Sotto solo riepilogo e link utili. Le pill <scope>Ambito</scope> · <connections>Collegamenti</connections> · <operations>Operatività</operations> servono a scorrere le altre sezioni.",
+    "contractualDomainTitle": "Dominio contrattuale",
+    "domainTitle": "Dominio",
+    "notMappedSubtitle": "Non mappato",
+    "noDomainPanelMapped": "Nessun pannello dominio mappato per questo id.",
+    "connectionsTitle": "Collegamenti",
+    "quickNavigationSubtitle": "Navigazione rapida",
+    "quickNavigationAria": "Navigazione rapida",
+    "myAccountDevicesTitle": "Mio account · device",
+    "myAccountDevicesSubtitle": "Quale device guida sonno, recovery e training; quali stream sincronizzare",
+    "diagnosticsAdminTitle": "Diagnostica · admin",
+    "diagnosticsAdminSubtitle": "Sessione, atleta, integrazioni, billing — visibile solo a operatori piattaforma"
+  },
+  "TerminiPage": {
+    "backToHome": "← Torna alla home",
+    "eyebrow": "Termini di Servizio",
+    "heroTitle": "Condizioni d'uso della piattaforma EMPATHY.",
+    "heroIntro": "I presenti Termini disciplinano l'accesso e l'utilizzo del Servizio: oggetto del contratto, account e responsabilità dell'utente, ruolo del coach, abbonamenti e pagamenti, proprietà intellettuale, limitazioni di responsabilità, recesso e foro competente. Vanno letti insieme all'Informativa Privacy.",
+    "lastUpdated": "Ultimo aggiornamento: {date}",
+    "referencesTitle": "Riferimenti",
+    "dataController": "<b>Titolare:</b> Day One Sagl, Via Nassa 15, 6900 Lugano, Svizzera",
+    "privacyPolicyLabel": "Informativa privacy:",
+    "disclaimer": "Nota: EMPATHY non è un dispositivo medico e non fornisce diagnosi cliniche. Le informazioni hanno finalità informative e di supporto alla performance; consulta un medico prima di intraprendere o modificare un programma di allenamento o alimentare. Documento soggetto ad aggiornamenti."
   }
 }

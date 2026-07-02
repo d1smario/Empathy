@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { DashboardSparkline } from "@/components/dashboard/DashboardSparkline";
 import { AREA_THEME, AREA_ORDER } from "@/lib/dashboard/dashboard-ui-config";
@@ -24,18 +25,19 @@ function pctChange(values: number[]): string | null {
 }
 
 export function MobileTrendsSection({ areas }: MobileTrendsSectionProps) {
+  const t = useTranslations("MobileTrendsSection");
   const byKey = new Map(areas.map((a) => [a.key, a]));
   const ordered = AREA_ORDER.map((k) => byKey.get(k)).filter((a): a is DashboardArea => Boolean(a));
 
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-white">Trend 7 giorni</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-white">{t("sevenDayTrends")}</h2>
         <button
           type="button"
           className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.6rem] font-medium text-gray-400"
         >
-          7 giorni <ChevronDown className="h-3 w-3" aria-hidden />
+          {t("sevenDays")} <ChevronDown className="h-3 w-3" aria-hidden />
         </button>
       </div>
       <div className="grid grid-cols-3 gap-2">

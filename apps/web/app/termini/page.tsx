@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Link } from "@/components/ui/empathy";
 import { empathyTermsLastUpdated, empathyTermsSections } from "@/lib/legal/empathy-terms-sections";
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
  * e dal footer. Testo GENERICO di base (vedi lib/legal/empathy-terms-sections.ts): sarà
  * sostituito dal testo legale definitivo del Titolare.
  */
-export default function TerminiPage() {
+export default async function TerminiPage() {
+  const t = await getTranslations("TerminiPage");
   return (
     <BrutalistAppBackdrop matrix>
       <main
@@ -23,7 +25,7 @@ export default function TerminiPage() {
       >
         <header className="flex flex-wrap items-center justify-between gap-4">
           <Pro2Link href="/" className="text-sm text-white/70 hover:text-white">
-            ← Back to home
+            {t("backToHome")}
           </Pro2Link>
         </header>
 
@@ -34,30 +36,29 @@ export default function TerminiPage() {
               "radial-gradient(circle at top left, rgba(168,85,247,0.12), transparent 30%), radial-gradient(circle at top right, rgba(255,93,122,0.12), transparent 24%), linear-gradient(180deg, rgba(12,12,16,0.96), rgba(7,8,11,0.98))",
           }}
         >
-          <p className="text-xs uppercase tracking-[0.16em] text-white/60">Terms of Service</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-white/60">{t("eyebrow")}</p>
           <h1 className="mt-2 text-balance text-3xl font-semibold leading-tight text-white md:text-4xl">
-            Terms of use of the EMPATHY platform.
+            {t("heroTitle")}
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/85 md:text-base">
-            These Terms govern access to and use of the Service: subject of the agreement, account and user
-            responsibilities, the coach&apos;s role, subscriptions and payments, intellectual property,
-            limitations of liability, withdrawal, and jurisdiction. They should be read together with the
-            Privacy Policy.
+            {t("heroIntro")}
           </p>
-          <p className="mt-3 text-xs text-white/55">Last updated: {empathyTermsLastUpdated}</p>
+          <p className="mt-3 text-xs text-white/55">{t("lastUpdated", { date: empathyTermsLastUpdated })}</p>
         </section>
 
         <section
           className="rounded-2xl border border-amber-400/20 p-5 md:p-6"
           style={{ background: "linear-gradient(180deg, rgba(14,17,22,0.94), rgba(8,10,14,0.98))" }}
         >
-          <h2 className="text-xl font-semibold text-white">References</h2>
+          <h2 className="text-xl font-semibold text-white">{t("referencesTitle")}</h2>
           <ul className="mt-4 grid gap-2 text-sm text-white/90">
             <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <strong className="text-white">Data controller:</strong> Day One Sagl, Via Nassa 15, 6900 Lugano, Switzerland
+              {t.rich("dataController", {
+                b: (chunks) => <strong className="text-white">{chunks}</strong>,
+              })}
             </li>
             <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <strong className="text-white">Privacy policy:</strong>{" "}
+              <strong className="text-white">{t("privacyPolicyLabel")}</strong>{" "}
               <Pro2Link href="/privacy" className="text-cyan-200/90 hover:underline">
                 /privacy
               </Pro2Link>
@@ -85,9 +86,7 @@ export default function TerminiPage() {
 
         <section className="rounded-xl border border-dashed border-white/20 bg-white/[0.02] p-5">
           <p className="text-xs leading-relaxed text-white/75 md:text-sm">
-            Note: EMPATHY is not a medical device and does not provide clinical diagnoses. The information is
-            provided for informational and performance-support purposes; consult a physician before starting or
-            changing a training or nutrition program. This document is subject to updates.
+            {t("disclaimer")}
           </p>
         </section>
       </main>

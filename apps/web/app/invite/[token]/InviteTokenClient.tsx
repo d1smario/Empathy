@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Button } from "@/components/ui/empathy";
 
@@ -15,6 +16,7 @@ export function InviteTokenClient({
   token: string;
   initialStatus: InviteInitialStatus;
 }) {
+  const t = useTranslations("InviteTokenClient");
   const router = useRouter();
   const [status, setStatus] = useState<InviteInitialStatus>(initialStatus);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -75,19 +77,19 @@ export function InviteTokenClient({
       });
       const j = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !j.ok) {
-        setMsg(j.error ?? "Request failed.");
+        setMsg(j.error ?? t("requestFailed"));
         setBusy(false);
         return;
       }
       setLinked(true);
-      setMsg("Link created. You can open the Athletes module from your coach.");
+      setMsg(t("linkCreated"));
       router.refresh();
     } catch {
-      setMsg("Network error.");
+      setMsg(t("networkError"));
     } finally {
       setBusy(false);
     }
-  }, [router, token]);
+  }, [router, t, token]);
 
   // Auto-accept on-mount: utente loggato con profilo atleta → collega senza click.
   // Se manca athlete_id, lasciamo il bottone come fallback (l'API lo crea comunque al volo).
@@ -106,72 +108,71 @@ export function InviteTokenClient({
         id="main-content"
         className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-16 text-center"
       >
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">Coach invite</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.25em] text-gray-500">{t("eyebrow")}</p>
         <h1 className="max-w-md bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-2xl font-light tracking-tight text-transparent sm:text-3xl">
-          Link your athlete profile to your coach
+          {t("title")}
         </h1>
 
         {status === "misconfigured" ? (
           <p className="max-w-md text-sm text-amber-300/90">
-            Invites are unavailable: the server is missing the service role or the table has not been created.
+            {t("misconfigured")}
           </p>
         ) : null}
         {status === "not_found" ? (
-          <p className="max-w-md text-sm text-amber-300/90">This link is not valid.</p>
+          <p className="max-w-md text-sm text-amber-300/90">{t("notFound")}</p>
         ) : null}
         {status === "consumed" ? (
-          <p className="max-w-md text-sm text-gray-400">This invite has already been used.</p>
+          <p className="max-w-md text-sm text-gray-400">{t("consumed")}</p>
         ) : null}
         {status === "expired" ? (
-          <p className="max-w-md text-sm text-amber-300/90">Invite expired. Ask your coach for a new link.</p>
+          <p className="max-w-md text-sm text-amber-300/90">{t("expired")}</p>
         ) : null}
 
         {status === "valid" ? (
           <div className="flex max-w-md flex-col items-center gap-4">
             {signedIn === false ? (
               <>
-                <p className="text-sm text-gray-400">Sign in with the same account you will use as an athlete.</p>
+                <p className="text-sm text-gray-400">{t("signInPrompt")}</p>
                 <Link
                   href={accessHref}
                   className="rounded-full border border-purple-500/40 bg-purple-500/15 px-6 py-2.5 text-sm font-bold text-purple-100 transition hover:border-purple-400/60"
                 >
-                  Go to Access / login
+                  {t("goToAccess")}
                 </Link>
               </>
             ) : null}
             {signedIn === true && !linked ? (
               hasAthleteId === null ? (
-                <p className="text-sm text-gray-500">Checking athlete profile…</p>
+                <p className="text-sm text-gray-500">{t("checkingAthleteProfile")}</p>
               ) : hasAthleteId === true ? (
                 <p className="text-sm text-gray-400" role="status">
-                  Linking to the coach who invited you…
+                  {t("linkingInProgress")}
                 </p>
               ) : (
                 <>
                   <p className="text-sm text-gray-400">
-                    Do you confirm the link to the coach who sent you this link? We&apos;ll create your athlete profile if
-                    it doesn&apos;t exist yet.
+                    {t("confirmLinkPrompt")}
                   </p>
                   <Pro2Button type="button" disabled={busy} onClick={() => void accept()} className="min-w-[12rem]">
-                    {busy ? "Processing…" : "Accept invite"}
+                    {busy ? t("processing") : t("acceptInvite")}
                   </Pro2Button>
                 </>
               )
             ) : null}
             {signedIn === null ? (
-              <p className="text-sm text-gray-500">Checking session…</p>
+              <p className="text-sm text-gray-500">{t("checkingSession")}</p>
             ) : null}
           </div>
         ) : null}
 
         {msg ? (
-          <p className={`max-w-md text-sm ${msg.includes("Link created") ? "text-emerald-300/90" : "text-amber-300/90"}`} role="status">
+          <p className={`max-w-md text-sm ${linked ? "text-emerald-300/90" : "text-amber-300/90"}`} role="status">
             {msg}
           </p>
         ) : null}
 
         <Link href="/dashboard" className="text-xs text-gray-500 underline-offset-4 hover:text-gray-400 hover:underline">
-          Back to dashboard
+          {t("backToDashboard")}
         </Link>
       </main>
     </BrutalistAppBackdrop>

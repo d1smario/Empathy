@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { localCalendarDayIso } from "@/lib/datetime/local-calendar-day";
 
 /**
@@ -9,6 +10,7 @@ import { localCalendarDayIso } from "@/lib/datetime/local-calendar-day";
  */
 export default function PhysiologyDailyTodayEntryPage() {
   const router = useRouter();
+  const t = useTranslations("PhysiologyDailyPage");
 
   useEffect(() => {
     router.replace(`/physiology/daily/${localCalendarDayIso()}`);
@@ -16,7 +18,7 @@ export default function PhysiologyDailyTodayEntryPage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16 text-center">
-      <p className="text-sm text-gray-400">Reindirizzamento al wellness giornaliero locale…</p>
+      <p className="text-sm text-gray-400">{t("redirecting")}</p>
     </div>
   );
 }
