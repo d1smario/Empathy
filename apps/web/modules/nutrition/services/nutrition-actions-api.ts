@@ -1,4 +1,7 @@
+"use client";
+
 import type { AthleteMemory, RealityIngestionEnvelope } from "@/lib/empathy/schemas";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 export async function saveNutritionLookupItem(input: {
   source: string;
@@ -49,16 +52,17 @@ export async function fetchNutritionMediaRows(): Promise<{
   rows: Array<Record<string, unknown>>;
   error?: string | null;
 }> {
-  const response = await fetch("/api/nutrition/media", {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string };
-    return { rows: [], error: payload.error ?? "Nutrition media fetch failed" };
-  }
-  const payload = (await response.json()) as { rows?: Array<Record<string, unknown>>; error?: string | null };
-  return { rows: payload.rows ?? [], error: payload.error ?? null };
+  // Lettura diretta browser→Supabase dei media nutrizione (RLS select pubblica su media_assets).
+  const supabase = createEmpathyBrowserSupabase();
+  if (!supabase) return { rows: [], error: "Nutrition media fetch failed" };
+  const { data, error } = await supabase
+    .from("media_assets")
+    .select("entity_type, entity_key, media_kind, url, active, sort_order")
+    .eq("domain", "nutrition")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+  if (error) return { rows: [], error: error.message };
+  return { rows: (data ?? []) as Array<Record<string, unknown>>, error: null };
 }
 
 export async function saveNutritionProfileConfig(input: {

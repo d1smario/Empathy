@@ -1,4 +1,7 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
+import { isMissingRelationError } from "@/lib/supabase/missing-relation-error";
 
 export type HealthPanelTimelineRow = {
   id: string;
@@ -21,70 +24,80 @@ export type HealthTimelineFetchDiagnostics = {
   httpStatus?: number;
 };
 
-type TimelineErrorEnvelope = {
-  ok: false;
-  error?: string;
-  requestedAthleteId?: string;
-  userProfileAthleteId?: string | null;
-};
-
-type TimelineSuccessEnvelope = {
-  ok: true;
-  panels: HealthPanelTimelineRow[];
-  athleteId?: string;
-};
-
-const COOKIE_ONLY: RequestInit = { cache: "no-store", credentials: "same-origin" };
+/**
+ * Diagnostica leggera quando la lettura fallisce: espone l'`athlete_id`
+ * collegato al profilo dell'utente autenticato (`app_user_profiles`), così la UI
+ * può spiegare un eventuale mismatch tra atleta attivo client e profilo (parità
+ * con la vecchia diagnostica 401/403 dell'API).
+ */
+async function readUserProfileAthleteId(sb: SupabaseClient): Promise<string | null> {
+  try {
+    const { data: sessionData } = await sb.auth.getSession();
+    const userId = sessionData.session?.user?.id;
+    if (!userId) return null;
+    const { data } = await sb
+      .from("app_user_profiles")
+      .select("athlete_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return (data as { athlete_id?: string | null } | null)?.athlete_id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * Fetch archivio panel + diagnostica leggera. Strategia:
- * 1. Tentativo con `Authorization: Bearer` (Supabase client-side) + cookie session.
- * 2. **Fallback cookie-only** quando il server risponde 401 OR 403 (token bearer
- *    stale che non corrisponde alla sessione cookie del browser, oppure profilo
- *    legato a un atleta diverso da quello attivo).
- * 3. In caso di errore, ritorna `error` umano + `diagnostics` strutturate per la UI.
+ * Archivio panel + diagnostica leggera. Lettura diretta da Supabase (RLS come
+ * guardia, filtro esplicito su `athlete_id` come nella vecchia route): serie
+ * temporale per grafici Health e archivio (valori strutturati in `values` JSON).
  */
 export async function fetchHealthPanelsTimeline(athleteId: string): Promise<{
   panels: HealthPanelTimelineRow[];
   error: string | null;
   diagnostics: HealthTimelineFetchDiagnostics;
 }> {
-  const url = `/api/health/panels-timeline?athleteId=${encodeURIComponent(athleteId)}`;
-  let res = await fetch(url, {
-    ...COOKIE_ONLY,
-    headers: await buildSupabaseAuthHeaders(),
-  });
-  let json = (await res.json()) as TimelineSuccessEnvelope | TimelineErrorEnvelope;
-
-  // Bearer stale o legato a utente diverso dalla sessione cookie: ritenta cookie-only.
-  if (!res.ok && (res.status === 401 || res.status === 403)) {
-    res = await fetch(url, COOKIE_ONLY);
-    json = (await res.json()) as TimelineSuccessEnvelope | TimelineErrorEnvelope;
-  }
-
-  if (!res.ok || !json.ok) {
-    const errCode = ("error" in json && json.error) || "Timeline not available";
+  const requestedAthleteId = athleteId.trim();
+  if (!requestedAthleteId) {
     return {
       panels: [],
-      error: humanizeTimelineError(errCode),
+      error: humanizeTimelineError("missing_athleteId"),
+      diagnostics: { requestedAthleteId: athleteId, errorCode: "missing_athleteId" },
+    };
+  }
+
+  const sb = createEmpathyBrowserSupabase();
+  if (!sb) {
+    return {
+      panels: [],
+      error: humanizeTimelineError("supabase_unconfigured"),
+      diagnostics: { requestedAthleteId, errorCode: "supabase_unconfigured" },
+    };
+  }
+
+  const { data, error } = await sb
+    .from("biomarker_panels")
+    .select("id, type, sample_date, reported_at, source, values, created_at")
+    .eq("athlete_id", requestedAthleteId)
+    .order("sample_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(48);
+
+  if (error) {
+    return {
+      panels: [],
+      error: humanizeTimelineError(error.message),
       diagnostics: {
-        requestedAthleteId:
-          ("requestedAthleteId" in json && json.requestedAthleteId) || athleteId,
-        userProfileAthleteId:
-          ("userProfileAthleteId" in json ? json.userProfileAthleteId : null) ?? null,
-        errorCode: errCode,
-        httpStatus: res.status,
+        requestedAthleteId,
+        userProfileAthleteId: await readUserProfileAthleteId(sb),
+        errorCode: error.message,
       },
     };
   }
 
   return {
-    panels: json.panels ?? [],
+    panels: (data ?? []) as HealthPanelTimelineRow[],
     error: null,
-    diagnostics: {
-      requestedAthleteId: json.athleteId ?? athleteId,
-      httpStatus: res.status,
-    },
+    diagnostics: { requestedAthleteId },
   };
 }
 
@@ -159,31 +172,79 @@ export type HealthSystemMapViewModel = {
 
 export type HealthStagingRunAction = "committed" | "rejected" | "archived";
 
+/**
+ * Mappa di sistema (nodi/archi + risposte bioenergetiche + staging run): assembla
+ * più letture dirette da Supabase in parallelo (RLS come guardia, filtri espliciti
+ * su `athlete_id` come nella vecchia route). Le tabelle opzionali non ancora
+ * migrate vengono trattate come liste vuote.
+ */
 export async function fetchHealthSystemMap(athleteId: string): Promise<{
   systemMap: HealthSystemMapViewModel;
   error: string | null;
 }> {
-  const url = `/api/health/system-map?athleteId=${encodeURIComponent(athleteId)}`;
-  let res = await fetch(url, {
-    ...COOKIE_ONLY,
-    headers: await buildSupabaseAuthHeaders(),
-  });
-  let json = (await res.json()) as
-    | { ok: true; systemMap: HealthSystemMapViewModel }
-    | { ok: false; error?: string };
-  if (!res.ok && (res.status === 401 || res.status === 403)) {
-    res = await fetch(url, COOKIE_ONLY);
-    json = (await res.json()) as
-      | { ok: true; systemMap: HealthSystemMapViewModel }
-      | { ok: false; error?: string };
+  const emptyMap: HealthSystemMapViewModel = { nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] };
+  const trimmedAthleteId = athleteId.trim();
+  if (!trimmedAthleteId) {
+    return { systemMap: emptyMap, error: "missing_athleteId" };
   }
-  if (!res.ok || !json.ok) {
-    return {
-      systemMap: { nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] },
-      error: ("error" in json && json.error) || "System map not available",
+
+  const sb = createEmpathyBrowserSupabase();
+  if (!sb) {
+    return { systemMap: emptyMap, error: "System map not available" };
+  }
+
+  const [nodesRes, edgesRes, responsesRes, stagingRes] = await Promise.all([
+    sb
+      .from("athlete_system_nodes")
+      .select("id, node_key, area, label, state, observed_at, created_at")
+      .eq("athlete_id", trimmedAthleteId)
+      .order("observed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(200),
+    sb
+      .from("athlete_system_edges")
+      .select("id, from_node_key, to_node_key, effect_sign, confidence, evidence_refs, rule_key, rule_version, time_window, metadata, observed_at, created_at")
+      .eq("athlete_id", trimmedAthleteId)
+      .order("observed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(260),
+    sb
+      .from("bioenergetics_responses")
+      .select("id, response_key, category, title, description, trigger_refs, mitigation_refs, severity, confidence, observed_at, created_at")
+      .eq("athlete_id", trimmedAthleteId)
+      .order("observed_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(120),
+    sb
+      .from("interpretation_staging_runs")
+      .select("id, domain, status, confidence, created_at, source_refs")
+      .eq("athlete_id", trimmedAthleteId)
+      .in("domain", ["health", "physiology", "bioenergetics", "cross_module"])
+      .in("status", ["ready", "pending_validation", "draft"])
+      .order("created_at", { ascending: false })
+      .limit(24),
+  ]);
+
+  try {
+    const handleOptional = (res: { data: unknown; error: { message?: string; code?: string } | null }) => {
+      if (!res.error) return (res.data ?? []) as Array<Record<string, unknown>>;
+      if (isMissingRelationError(res.error)) return [];
+      throw new Error(res.error.message || "health_system_map_error");
     };
+
+    return {
+      systemMap: {
+        nodes: handleOptional(nodesRes),
+        edges: handleOptional(edgesRes),
+        bioenergeticsResponses: handleOptional(responsesRes),
+        stagingRuns: handleOptional(stagingRes),
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "health_system_map_error";
+    return { systemMap: emptyMap, error: message };
   }
-  return { systemMap: json.systemMap ?? { nodes: [], edges: [], bioenergeticsResponses: [], stagingRuns: [] }, error: null };
 }
 
 export async function patchHealthStagingRun(input: {

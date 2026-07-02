@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Pro2Button } from "@/components/ui/empathy";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 export type InviteInitialStatus = "valid" | "expired" | "consumed" | "not_found" | "misconfigured";
 
@@ -33,26 +34,29 @@ export function InviteTokenClient({
   useEffect(() => {
     let c = false;
     (async () => {
-      const res = await fetch("/api/auth/session", { cache: "no-store" });
-      const j = (await res.json()) as { ok?: boolean; signedIn?: boolean; userId?: string | null };
+      // Stato sessione letto direttamente dal browser (niente hop HTTP):
+      // `auth.getUser()` valida il token contro Supabase come faceva la vecchia API.
+      const supabase = createEmpathyBrowserSupabase();
+      if (!supabase) {
+        if (!c) {
+          setSignedIn(false);
+          setHasAthleteId(false);
+        }
+        return;
+      }
+      const { data: got, error } = await supabase.auth.getUser();
       if (c) return;
-      const isSignedIn = j?.ok === true && Boolean(j.signedIn);
-      setSignedIn(isSignedIn);
-      if (!isSignedIn) {
+      const user = error ? null : got.user;
+      setSignedIn(Boolean(user));
+      if (!user) {
         setHasAthleteId(false);
         return;
       }
       try {
-        const { createEmpathyBrowserSupabase } = await import("@/lib/supabase/browser");
-        const supabase = createEmpathyBrowserSupabase();
-        if (!supabase || !j.userId) {
-          if (!c) setHasAthleteId(false);
-          return;
-        }
         const { data } = await supabase
           .from("app_user_profiles")
           .select("athlete_id")
-          .eq("user_id", j.userId)
+          .eq("user_id", user.id)
           .maybeSingle();
         if (c) return;
         const athleteId = (data as { athlete_id?: string | null } | null)?.athlete_id?.trim() || null;

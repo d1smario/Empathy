@@ -3078,7 +3078,7 @@
     "errorRequestFailed": "Request failed.",
     "ariaLabel": "Supabase auth diagnostics",
     "header": "Auth · session (Supabase SSR)",
-    "endpointDescription": "Endpoint: <endpoint></endpoint>. Middleware refreshes cookies when <env></env> is configured.",
+    "endpointDescription": "Direct check from the browser: <endpoint></endpoint>. Middleware refreshes cookies when <env></env> is configured.",
     "rowConfigured": "Supabase project configured (public env)",
     "rowValidSession": "Valid session (cookie)",
     "authErrorWarning": "Invalid or expired token/cookie (try logging out from the client or reload after login).",

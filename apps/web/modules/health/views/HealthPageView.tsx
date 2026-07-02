@@ -125,47 +125,16 @@ export default function HealthPageView() {
     } else {
       setLoadingTimeline(true);
     }
+    // Lettura diretta da Supabase (RLS come guardia): stessa sessione browser,
+    // niente retry HTTP cookie-only (il vecchio fallback compensava bearer stale).
     const { panels: next, error, diagnostics } = await fetchHealthPanelsTimeline(athleteId);
-    let resolvedPanels = next;
-    let resolvedErr = error;
-    let resolvedDiag = diagnostics;
-    // Production safeguard: retry direct cookie-only read if first pass returns empty without errors.
-    if (!error && next.length === 0) {
-      try {
-        const direct = await fetch(`/api/health/panels-timeline?athleteId=${encodeURIComponent(athleteId)}`, {
-          cache: "no-store",
-          credentials: "same-origin",
-        });
-        const json = (await direct.json()) as
-          | { ok: true; panels?: HealthPanelTimelineRow[] }
-          | {
-              ok: false;
-              error?: string;
-              requestedAthleteId?: string;
-              userProfileAthleteId?: string | null;
-            };
-        if (direct.ok && json.ok) {
-          resolvedPanels = Array.isArray(json.panels) ? json.panels : [];
-        } else if (!direct.ok || !json.ok) {
-          resolvedErr = ("error" in json && json.error) || resolvedErr || t("timelineUnavailable");
-          resolvedDiag = {
-            requestedAthleteId: ("requestedAthleteId" in json ? json.requestedAthleteId : athleteId) ?? athleteId,
-            userProfileAthleteId: ("userProfileAthleteId" in json ? json.userProfileAthleteId : null) ?? null,
-            errorCode: "direct_timeline_fallback_failed",
-            httpStatus: direct.status,
-          };
-        }
-      } catch {
-        // Keep first response as-is; diagnostic banner remains available.
-      }
-    }
-    setPanels(resolvedPanels);
-    setTimelineErr(resolvedErr);
-    setTimelineDiag(resolvedDiag);
-    healthTimelineCache = { panels: resolvedPanels, error: resolvedErr, diagnostics: resolvedDiag };
+    setPanels(next);
+    setTimelineErr(error);
+    setTimelineDiag(diagnostics);
+    healthTimelineCache = { panels: next, error, diagnostics };
     healthTimelineCacheId = athleteId;
     setLoadingTimeline(false);
-  }, [athleteId, t]);
+  }, [athleteId]);
 
   /** Mappa di sistema (diagnostica coach/admin): caricata solo quando si apre «Dettagli e motore». */
   const loadSystemMap = useCallback(async () => {

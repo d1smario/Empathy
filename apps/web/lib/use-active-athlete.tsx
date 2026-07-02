@@ -222,24 +222,20 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
       return null;
     }
 
+    /**
+     * Env pubblico Supabase assente: niente client browser e (stessa config
+     * `NEXT_PUBLIC_*`) nemmeno cookie client lato server → stato signed-out.
+     */
     async function loadNoSupabaseClient() {
       setLoading(true);
       try {
-        const res = await fetch("/api/auth/session", { cache: "no-store" });
-        const j = (await res.json()) as {
-          ok?: boolean;
-          configured?: boolean;
-          signedIn?: boolean;
-          userId?: string | null;
-        };
-        const ok = j?.ok === true && j.configured && j.signedIn && j.userId;
         if (!active) return;
-        setSignedIn(Boolean(ok));
-        setUserId(ok ? (j.userId as string) : null);
+        setSignedIn(false);
+        setUserId(null);
         setRole("private");
         setAthletes([]);
-        setAthleteId(ok ? readActiveAthleteId() : null);
-        if (!ok) clearPro2ClientSessionKeys();
+        setAthleteId(null);
+        clearPro2ClientSessionKeys();
       } finally {
         if (active) setLoading(false);
       }

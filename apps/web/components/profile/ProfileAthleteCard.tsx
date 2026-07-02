@@ -3,10 +3,13 @@
 import { formatAthleteProfileStrip, type AthleteProfileRowView } from "@/lib/profile/athlete-profile-strip";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { mapAthleteProfileRow } from "@/lib/profile/map-athlete-profile-row";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
-type ApiOk = { ok: true; athleteId: string; profile: AthleteProfileRowView | null };
-type ApiErr = { ok: false; error?: string };
+/** Stesse colonne della vecchia API `athlete-row` (nessuna colonna in più). */
+const ATHLETE_ROW_SELECT =
+  "id, first_name, last_name, email, birth_date, sex, timezone, activity_level, height_cm, weight_kg, training_days_per_week, training_max_session_minutes, updated_at";
 
 // Cache cross-mount dell'anagrafica atleta: ri-atterrando sulla pagina i dati
 // compaiono subito (niente spinner/"refresh"); il refetch parte comunque in
@@ -43,22 +46,36 @@ export function ProfileAthleteCard() {
         setErr(null);
       }
       try {
-        const res = await fetch(`/api/profile/athlete-row?athleteId=${encodeURIComponent(athleteId)}`, {
-          cache: "no-store",
-        });
-        const json = (await res.json()) as ApiOk | ApiErr;
-        if (c) return;
-        if (!res.ok || !json.ok) {
+        // Lettura diretta dal browser (RLS fa da guardia): stessa select e stesso
+        // mapping al view-model della vecchia API `athlete-row`.
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase) {
+          if (c) return;
           setProfile(null);
-          const nextErr = ("error" in json && json.error) || t("readFailed");
+          const nextErr = "supabase_unconfigured";
           setErr(nextErr);
           athleteCardCache = { profile: null, err: nextErr };
           athleteCardCacheId = athleteId;
           return;
         }
-        setProfile(json.profile);
+        const { data: row, error } = await supabase
+          .from("athlete_profiles")
+          .select(ATHLETE_ROW_SELECT)
+          .eq("id", athleteId)
+          .maybeSingle();
+        if (c) return;
+        if (error) {
+          setProfile(null);
+          const nextErr = error.message || t("readFailed");
+          setErr(nextErr);
+          athleteCardCache = { profile: null, err: nextErr };
+          athleteCardCacheId = athleteId;
+          return;
+        }
+        const nextProfile = mapAthleteProfileRow(row);
+        setProfile(nextProfile);
         setErr(null);
-        athleteCardCache = { profile: json.profile, err: null };
+        athleteCardCache = { profile: nextProfile, err: null };
         athleteCardCacheId = athleteId;
       } catch {
         if (!c) setErr(t("networkError"));

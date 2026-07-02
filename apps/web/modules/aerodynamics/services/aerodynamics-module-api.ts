@@ -4,6 +4,8 @@ import type {
   AerodynamicsCameraMode,
   AerodynamicsCaptureJobV1,
   AerodynamicsCaptureSource,
+  AerodynamicsEquipmentSnapshot,
+  AerodynamicsPositionSnapshot,
   AerodynamicsTestSessionV1,
 } from "@empathy/contracts";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
@@ -34,38 +36,134 @@ export type AerodynamicsTestsResponse = {
   error: string | null;
 };
 
+// Righe DB lette dal browser: parità con lib/aerodynamics/aero-capture-pipeline.ts (server-only, non importabile qui).
+type AeroCaptureJobRow = {
+  id: string;
+  athlete_id: string;
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
+  source: AerodynamicsCaptureSource;
+  camera_mode: AerodynamicsCameraMode | "unknown" | null;
+  media_storage_path: string | null;
+  media_content_type: string | null;
+  error_message: string | null;
+  result_test_session_id: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+type AeroTestSessionRow = {
+  id: string;
+  athlete_id: string;
+  source: AerodynamicsCaptureSource;
+  recorded_at: string;
+  position: AerodynamicsPositionSnapshot;
+  equipment: AerodynamicsEquipmentSnapshot;
+  geometry: Record<string, unknown> | null;
+  cda_estimate: Record<string, unknown>;
+  optimization: Record<string, unknown> | null;
+  scores: Record<string, unknown> | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+function mapAeroJobRow(row: AeroCaptureJobRow): AerodynamicsCaptureJobV1 {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    status: row.status,
+    source: row.source,
+    cameraMode: row.camera_mode === "unknown" || !row.camera_mode ? "side" : row.camera_mode,
+    mediaStoragePath: row.media_storage_path ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? undefined,
+    errorMessage: row.error_message,
+  };
+}
+
+function mapAeroTestSessionRow(row: AeroTestSessionRow): AerodynamicsTestSessionV1 {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    recordedAt: row.recorded_at,
+    source: row.source,
+    position: row.position ?? {},
+    equipment: row.equipment ?? {},
+    geometry: row.geometry ?? undefined,
+    cdaEstimate: row.cda_estimate as AerodynamicsTestSessionV1["cdaEstimate"],
+    optimization: (row.optimization ?? undefined) as AerodynamicsTestSessionV1["optimization"],
+    scores: (row.scores ?? undefined) as AerodynamicsTestSessionV1["scores"],
+    payloadVersion: "aerodynamics_test_session_v1",
+    payload: row.payload ?? {},
+  };
+}
+
+// Lettura diretta da Supabase (RLS come guardia, filtri espliciti su athlete_id come nella vecchia route).
 export async function fetchAerodynamicsTests(athleteId: string): Promise<AerodynamicsTestsResponse> {
-  const url = `/api/aerodynamics/tests?athleteId=${encodeURIComponent(athleteId)}`;
-  const headers = await buildSupabaseAuthHeaders();
-  let res = await fetch(url, {
-    cache: "no-store",
-    credentials: "same-origin",
-    headers,
-  });
-  let json = (await res.json().catch(() => ({}))) as
-    | ({ ok: true; tests?: AerodynamicsTestSessionV1[]; captureJobs?: AerodynamicsCaptureJobV1[] })
-    | ApiError;
-
-  if (!res.ok && (res.status === 401 || res.status === 403)) {
-    res = await fetch(url, { cache: "no-store", credentials: "same-origin" });
-    json = (await res.json().catch(() => ({}))) as
-      | ({ ok: true; tests?: AerodynamicsTestSessionV1[]; captureJobs?: AerodynamicsCaptureJobV1[] })
-      | ApiError;
+  const empty: AerodynamicsTestsResponse = { tests: [], captureJobs: [], pendingStaging: [], error: null };
+  if (!athleteId.trim()) {
+    return { ...empty, error: "missing_athleteId" };
   }
 
-  if (!res.ok || !json.ok) {
+  const sb = createEmpathyBrowserSupabase();
+  if (!sb) {
+    return { ...empty, error: "Aerodynamics non disponibile." };
+  }
+
+  const [testsRes, jobsRes, stagingRes] = await Promise.all([
+    sb
+      .from("aero_test_sessions")
+      .select("id, athlete_id, source, recorded_at, position, equipment, geometry, cda_estimate, optimization, scores, payload, created_at")
+      .eq("athlete_id", athleteId)
+      .order("recorded_at", { ascending: false })
+      .limit(20)
+      .returns<AeroTestSessionRow[]>(),
+    sb
+      .from("aero_capture_jobs")
+      .select(
+        "id, athlete_id, status, source, camera_mode, media_storage_path, media_content_type, error_message, result_test_session_id, created_at, updated_at",
+      )
+      .eq("athlete_id", athleteId)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .returns<AeroCaptureJobRow[]>(),
+    sb
+      .from("interpretation_staging_runs")
+      .select("id, status, created_at, candidate_bundle")
+      .eq("athlete_id", athleteId)
+      .eq("domain", "aerodynamics")
+      .eq("status", "pending_validation")
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  if (testsRes.error) {
+    return { ...empty, error: testsRes.error.message || "aero_test_sessions_read_failed" };
+  }
+  if (jobsRes.error) {
+    return { ...empty, error: jobsRes.error.message || "aero_capture_jobs_read_failed" };
+  }
+  // Tabella staging opzionale: se manca la trattiamo come lista vuota (parità con la lib server).
+  if (stagingRes.error && !stagingRes.error.message?.includes("interpretation_staging_runs")) {
+    return { ...empty, error: stagingRes.error.message || "aero_staging_list_failed" };
+  }
+
+  const pendingStaging = (stagingRes.error ? [] : stagingRes.data ?? []).map((row) => {
+    const bundle =
+      row.candidate_bundle && typeof row.candidate_bundle === "object" && !Array.isArray(row.candidate_bundle)
+        ? (row.candidate_bundle as Record<string, unknown>)
+        : {};
     return {
-      tests: [],
-      captureJobs: [],
-      pendingStaging: [],
-      error: apiErrorMessage(json, "Aerodynamics non disponibile."),
+      id: String(row.id),
+      status: String(row.status),
+      createdAt: String(row.created_at),
+      jobId: typeof bundle.captureJobId === "string" ? bundle.captureJobId : null,
     };
-  }
+  });
 
   return {
-    tests: json.tests ?? [],
-    captureJobs: json.captureJobs ?? [],
-    pendingStaging: (json as { pendingStaging?: AerodynamicsTestsResponse["pendingStaging"] }).pendingStaging ?? [],
+    tests: (testsRes.data ?? []).map(mapAeroTestSessionRow),
+    captureJobs: (jobsRes.data ?? []).map(mapAeroJobRow),
+    pendingStaging,
     error: null,
   };
 }

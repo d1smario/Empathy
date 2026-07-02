@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
 import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
 import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
@@ -468,13 +469,17 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     setAdherenceConfigLoading(true);
     void (async () => {
       try {
-        const res = await fetch(`/api/nutrition/adherence-config?athleteId=${encodeURIComponent(athleteId)}`);
-        const payload = (await res.json().catch(() => ({}))) as {
-          adaptationAdherenceOptIn?: boolean;
-        };
+        // Lettura diretta browser→Supabase del toggle adherence (RLS scoped su athlete_id).
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase) return;
+        const { data, error } = await supabase
+          .from("nutrition_constraints")
+          .select("athlete_id, adaptation_adherence_opt_in, updated_at")
+          .eq("athlete_id", athleteId)
+          .maybeSingle();
         if (cancelled) return;
-        if (res.ok) {
-          setAdherenceOptIn(payload.adaptationAdherenceOptIn === true);
+        if (!error) {
+          setAdherenceOptIn(data?.adaptation_adherence_opt_in === true);
         }
       } finally {
         if (!cancelled) setAdherenceConfigLoading(false);
@@ -2848,17 +2853,19 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         nutrition_config: payloadNutrition,
         routine_config: payloadRoutine,
       });
-      const adherenceRes = await fetch("/api/nutrition/adherence-config", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          athleteId,
-          adaptationAdherenceOptIn: adherenceOptIn,
-        }),
-      });
-      if (!adherenceRes.ok) {
-        const payload = (await adherenceRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error ?? "Error saving nutrition adherence toggle");
+      // Upsert diretto browser→Supabase del toggle adherence (RLS write scoped su athlete_id).
+      const supabase = createEmpathyBrowserSupabase();
+      if (!supabase) throw new Error("Error saving nutrition adherence toggle");
+      const { error: adherenceError } = await supabase.from("nutrition_constraints").upsert(
+        {
+          athlete_id: athleteId,
+          adaptation_adherence_opt_in: adherenceOptIn,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "athlete_id" },
+      );
+      if (adherenceError) {
+        throw new Error(adherenceError.message || "Error saving nutrition adherence toggle");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error saving nutrition configuration");

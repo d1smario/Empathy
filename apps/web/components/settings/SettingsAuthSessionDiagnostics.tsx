@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Pro2Link } from "@/components/ui/empathy";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 type SessionPayload =
   | {
@@ -46,7 +47,8 @@ function maskUserId(id: string | null): string {
 }
 
 /**
- * Probe `GET /api/auth/session` — niente PII oltre a un id mascherato opzionale.
+ * Probe sessione direttamente dal browser (`supabase.auth.getUser()`) —
+ * niente PII oltre a un id mascherato opzionale.
  */
 export function SettingsAuthSessionDiagnostics() {
   const t = useTranslations("SettingsAuthSessionDiagnostics");
@@ -57,14 +59,18 @@ export function SettingsAuthSessionDiagnostics() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/auth/session", { cache: "no-store" });
-        const json = (await res.json()) as SessionPayload;
-        if (cancelled) return;
-        if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr(t("errorReadSession"));
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase) {
+          if (!cancelled) setData({ ok: true, configured: false, signedIn: false, userId: null });
           return;
         }
-        setData(json);
+        const { data: got, error } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (error) {
+          setData({ ok: true, configured: true, signedIn: false, userId: null, authError: true });
+          return;
+        }
+        setData({ ok: true, configured: true, signedIn: Boolean(got.user), userId: got.user?.id ?? null });
       } catch {
         if (!cancelled) setErr(t("errorRequestFailed"));
       }
@@ -91,7 +97,7 @@ export function SettingsAuthSessionDiagnostics() {
           {t.rich("endpointDescription", {
             endpoint: () => (
               <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
-                /api/auth/session
+                supabase.auth.getUser()
               </code>
             ),
             env: () => <code className="text-gray-500">NEXT_PUBLIC_SUPABASE_*</code>,

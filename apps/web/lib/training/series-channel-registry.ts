@@ -5,8 +5,8 @@
  *   - migration `045_executed_workout_series_v1.sql` + `050_executed_workout_series_route_distance.sql`
  *     (CHECK constraint sul nome canale)
  *   - `import-series-persist.ts` (write side)
- *   - `app/api/training/session-series/route.ts` (read side)
  *   - `session-detail-summary.ts` + UI `CalendarDaySessionDetail.tsx`
+ *     (read side: query browser diretta su `executed_workout_series`, DB-first)
  *
  * Aggiungere un canale qui ⇒ aggiornare contestualmente:
  *   1. la migration (CHECK widening),

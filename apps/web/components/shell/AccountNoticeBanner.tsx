@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 type Notice = {
   id: string;
@@ -18,13 +19,34 @@ export function AccountNoticeBanner() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/account/notices?unread=1", { cache: "no-store" });
-      const j = (await res.json()) as { ok?: boolean; notices?: Notice[] };
-      if (res.ok && j.ok && j.notices?.length) {
-        setNotice(j.notices[0] ?? null);
-      } else {
+      // Lettura diretta dal browser: RLS limita alle notices dell'utente, il filtro
+      // esplicito su `user_id` resta come nella vecchia API.
+      const supabase = createEmpathyBrowserSupabase();
+      if (!supabase) {
         setNotice(null);
+        return;
       }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setNotice(null);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("user_account_notices")
+        .select("id, kind, title, body, metadata, read_at, created_at")
+        .eq("user_id", user.id)
+        .is("read_at", null)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) {
+        // Tabella assente (migrazione non applicata) o errore lettura: nessun banner.
+        setNotice(null);
+        return;
+      }
+      const notices = (data ?? []) as Notice[];
+      setNotice(notices[0] ?? null);
     } catch {
       setNotice(null);
     }
@@ -38,11 +60,20 @@ export function AccountNoticeBanner() {
     if (!notice) return;
     setDismissing(true);
     try {
-      await fetch("/api/account/notices", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ noticeId: notice.id }),
-      });
+      // Mark-as-read diretto: coperto dalla policy `user_account_notices_update_own_read`.
+      const supabase = createEmpathyBrowserSupabase();
+      if (supabase) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from("user_account_notices")
+            .update({ read_at: new Date().toISOString() })
+            .eq("user_id", user.id)
+            .eq("id", notice.id);
+        }
+      }
       setNotice(null);
     } finally {
       setDismissing(false);

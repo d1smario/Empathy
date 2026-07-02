@@ -8,7 +8,7 @@ import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SessionRouteMap } from "@/components/training/SessionRouteMap";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { TrainingSingleTraceChart } from "@/components/training/TrainingSingleTraceChart";
-import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
   geoPointsFromWorkoutTrace,
@@ -58,7 +58,8 @@ const SERIES_COLOR: Record<ChartChannel, string> = {
   vertical_speed_mps: CHART_SIGNAL.altitude,
 };
 
-const SESSION_SERIES_CHART_CHANNELS = Array.from(CHART_CHANNELS).join(",");
+/** Canali chart richiesti al DB (colonna `channel` di `executed_workout_series`). */
+const SESSION_SERIES_CHART_CHANNELS: readonly string[] = Array.from(CHART_CHANNELS);
 
 const SERIES_LABEL: Record<ChartChannel, string> = {
   power: "Power",
@@ -123,32 +124,24 @@ function SessionDetailCard({
     let cancelled = false;
     const needsRouteFromDb = traceRoutePoints.length < 2;
     const channels = needsRouteFromDb
-      ? `${SESSION_SERIES_CHART_CHANNELS},route`
-      : SESSION_SERIES_CHART_CHANNELS;
+      ? [...SESSION_SERIES_CHART_CHANNELS, "route"]
+      : [...SESSION_SERIES_CHART_CHANNELS];
     (async () => {
       try {
-        const q = new URLSearchParams({ athleteId, executedId: vm.workoutId, channels });
-        const res = await fetch(`/api/training/session-series?${q}`, {
-          cache: "no-store",
-          credentials: "same-origin",
-          headers: await buildSupabaseAuthHeaders(),
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as
-          | {
-              ok: true;
-              channels: Array<{
-                channel: string;
-                unit: string;
-                shape?: "scalar" | "geo_point";
-                samples: unknown[];
-              }>;
-            }
-          | { ok: false; error?: string };
-        if (cancelled || !("ok" in json) || !json.ok) return;
+        /** DB-first: serie HD lette direttamente da `executed_workout_series` (RLS access-scoped). */
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase) return;
+        const { data, error } = await supabase
+          .from("executed_workout_series")
+          .select("channel, unit, samples")
+          .eq("athlete_id", athleteId)
+          .eq("executed_workout_id", vm.workoutId)
+          .in("channel", channels);
+        if (cancelled || error || !data) return;
+        const rows = data as Array<{ channel: string; unit: string; samples: unknown }>;
 
         const merged: ExtendedSeriesBundle[] = [];
-        for (const c of json.channels) {
+        for (const c of rows) {
           if (c.channel === "route") {
             const pts = (Array.isArray(c.samples) ? c.samples : []).filter(isGeoPoint) as GeoPoint[];
             if (pts.length >= 1) {

@@ -3078,7 +3078,7 @@
     "errorRequestFailed": "Richiesta non riuscita.",
     "ariaLabel": "Diagnostica auth Supabase",
     "header": "Auth · sessione (Supabase SSR)",
-    "endpointDescription": "Endpoint: <endpoint></endpoint>. Middleware aggiorna i cookie se <env></env> è configurato.",
+    "endpointDescription": "Verifica diretta dal browser: <endpoint></endpoint>. Middleware aggiorna i cookie se <env></env> è configurato.",
     "rowConfigured": "Progetto Supabase configurato (env pubblico)",
     "rowValidSession": "Sessione valida (cookie)",
     "authErrorWarning": "Token/cookie non validi o scaduti (prova logout dal client o ricarica dopo login).",

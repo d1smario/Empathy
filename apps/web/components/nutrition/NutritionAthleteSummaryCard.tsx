@@ -3,15 +3,17 @@
 import {
   formatNutritionConstraintsLine,
   formatNutritionPlanLine,
+  nutritionConstraintsFromDbRow,
+  nutritionPlanFromDbRow,
   type NutritionConstraints,
+  type NutritionConstraintsDbRow,
   type NutritionPlan,
+  type NutritionPlanDbRow,
 } from "@empathy/domain-nutrition";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-
-type ApiOk = { ok: true; athleteId: string; constraints: NutritionConstraints | null; plans: NutritionPlan[] };
-type ApiErr = { ok: false; error?: string };
 
 // Cache cross-mount del riepilogo nutrizione: ri-atterrando sulla pagina i dati
 // compaiono subito (niente spinner/"refresh"); il refetch in background gira
@@ -54,23 +56,42 @@ export function NutritionAthleteSummaryCard() {
     }
     (async () => {
       try {
-        const res = await fetch(`/api/nutrition/athlete-summary?athleteId=${encodeURIComponent(athleteId)}`, {
-          cache: "no-store",
-        });
-        const json = (await res.json()) as ApiOk | ApiErr;
-        if (c) return;
-        if (!res.ok || !json.ok) {
-          if (!cached) {
+        // Lettura diretta browser→Supabase (RLS scoped sull'atleta): vincoli + ultimi piani.
+        const supabase = createEmpathyBrowserSupabase();
+        if (!supabase) {
+          if (!c && !cached) {
             setConstraints(null);
             setPlans([]);
-            setErr(("error" in json && json.error) || t("readFailed"));
+            setErr(t("readFailed"));
           }
           return;
         }
-        setConstraints(json.constraints);
-        setPlans(json.plans);
+        const [cRes, pRes] = await Promise.all([
+          supabase.from("nutrition_constraints").select("*").eq("athlete_id", athleteId).maybeSingle(),
+          supabase
+            .from("nutrition_plans")
+            .select("id, athlete_id, from_date, to_date, goal, constraints_snapshot, created_at, updated_at")
+            .eq("athlete_id", athleteId)
+            .order("from_date", { ascending: false })
+            .limit(8),
+        ]);
+        if (c) return;
+        const errMsg = cRes.error?.message ?? pRes.error?.message ?? null;
+        if (errMsg) {
+          if (!cached) {
+            setConstraints(null);
+            setPlans([]);
+            setErr(errMsg || t("readFailed"));
+          }
+          return;
+        }
+        const constraintsRow = cRes.data as NutritionConstraintsDbRow | null;
+        const nextConstraints = constraintsRow ? nutritionConstraintsFromDbRow(constraintsRow) : null;
+        const nextPlans = ((pRes.data ?? []) as NutritionPlanDbRow[]).map(nutritionPlanFromDbRow);
+        setConstraints(nextConstraints);
+        setPlans(nextPlans);
         setErr(null);
-        nutritionSummaryCache = { constraints: json.constraints, plans: json.plans };
+        nutritionSummaryCache = { constraints: nextConstraints, plans: nextPlans };
         nutritionSummaryCacheId = athleteId;
       } catch {
         if (!c && !cached) setErr(t("networkError"));

@@ -1,6 +1,13 @@
 import type { GeneratedSession } from "@/lib/training/engine";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { invalidatePlannedWindowCacheForAthlete } from "@/lib/training/planned-window-client-cache";
+import {
+  extractViryaTagFromPlannedNotes,
+  ilikeContainsViryaTag,
+  planNameFromViryaTag,
+  VIRYA_NOTES_ILIKE_MARKER,
+} from "@/lib/training/virya/virya-planned-notes";
 import { mapEngineSessionToPlannedRow } from "@/lib/training/planned/map-engine-session-to-planned";
 import type { TrainingPlannerCalendarReplaceInput, TrainingPlannerCalendarReplaceResult } from "@/api/training/contracts";
 
@@ -230,30 +237,75 @@ export type ViryaCalendarPlanSummary = {
 };
 
 export async function fetchViryaCalendarPlans(athleteId: string): Promise<ViryaCalendarPlanSummary[]> {
-  const headers = await buildSupabaseAuthHeaders();
-  const q = new URLSearchParams({ athleteId: athleteId.trim() });
-  const res = await fetch(`/api/training/virya/plans?${q}`, {
-    headers,
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  const json = (await res.json().catch(() => ({}))) as { plans?: ViryaCalendarPlanSummary[]; error?: string };
-  if (!res.ok) throw new Error(json.error ?? "Loading VIRYA plans failed");
-  return json.plans ?? [];
+  /** DB-first: lettura diretta di `planned_workouts` dal browser (RLS access-scoped). */
+  const supabase = createEmpathyBrowserSupabase();
+  if (!supabase) throw new Error("Loading VIRYA plans failed");
+  const { data, error } = await supabase
+    .from("planned_workouts")
+    .select("id, date, notes")
+    .eq("athlete_id", athleteId.trim())
+    .ilike("notes", VIRYA_NOTES_ILIKE_MARKER)
+    .order("date", { ascending: true });
+  if (error) throw new Error(error.message || "Loading VIRYA plans failed");
+  /** Aggregazione per tag `[VIRYA:…]`: conteggio sedute + finestra date min/max. */
+  const byTag = new Map<string, { count: number; dateMin: string; dateMax: string }>();
+  for (const row of data ?? []) {
+    const tag = extractViryaTagFromPlannedNotes(typeof row.notes === "string" ? row.notes : null);
+    if (!tag) continue;
+    const date = String(row.date ?? "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const cur = byTag.get(tag);
+    if (!cur) {
+      byTag.set(tag, { count: 1, dateMin: date, dateMax: date });
+    } else {
+      cur.count += 1;
+      if (date < cur.dateMin) cur.dateMin = date;
+      if (date > cur.dateMax) cur.dateMax = date;
+    }
+  }
+  return Array.from(byTag.entries())
+    .map(([tag, agg]) => ({
+      tag,
+      planName: planNameFromViryaTag(tag),
+      sessionCount: agg.count,
+      dateMin: agg.dateMin,
+      dateMax: agg.dateMax,
+    }))
+    .sort((a, b) => b.dateMax.localeCompare(a.dateMax));
 }
 
 export async function deleteViryaCalendarPlan(input: { athleteId: string; tag: string }): Promise<number> {
-  const headers = await buildSupabaseAuthHeaders({ "Content-Type": "application/json" });
-  const res = await fetch("/api/training/virya/plans", {
-    method: "DELETE",
-    headers,
-    credentials: "same-origin",
-    body: JSON.stringify({ athleteId: input.athleteId.trim(), tag: input.tag.trim() }),
-    cache: "no-store",
-  });
-  const json = (await res.json().catch(() => ({}))) as { deletedCount?: number; error?: string };
-  if (!res.ok) throw new Error(json.error ?? "VIRYA plan deletion failed");
-  return json.deletedCount ?? 0;
+  const athleteId = input.athleteId.trim();
+  const tag = input.tag.trim();
+  if (!athleteId || !tag.startsWith("[VIRYA:")) {
+    throw new Error("Missing athleteId or valid VIRYA tag");
+  }
+  /** DB-first: DELETE diretta su `planned_workouts` (RLS access-scoped, policy ALL). */
+  const supabase = createEmpathyBrowserSupabase();
+  if (!supabase) throw new Error("VIRYA plan deletion failed");
+  const pattern = ilikeContainsViryaTag(tag);
+  const { data: deletedRows, error: delErr } = await supabase
+    .from("planned_workouts")
+    .delete()
+    .eq("athlete_id", athleteId)
+    .ilike("notes", pattern)
+    .select("id");
+  if (delErr) throw new Error(delErr.message || "VIRYA plan deletion failed");
+  const deletedCount = deletedRows?.length ?? 0;
+  /** Verifica post-DELETE: se restano righe con lo stesso tag, RLS ha bloccato parte del piano. */
+  const { data: remaining, error: remainErr } = await supabase
+    .from("planned_workouts")
+    .select("id")
+    .eq("athlete_id", athleteId)
+    .ilike("notes", pattern)
+    .limit(1);
+  if (remainErr) throw new Error(remainErr.message || "VIRYA plan deletion failed");
+  if (remaining?.length) {
+    throw new Error(
+      "Dopo DELETE restano righe VIRYA con lo stesso tag: verifica RLS o ripubblica da VIRYA con «Sostituisci» disattivo.",
+    );
+  }
+  return deletedCount;
 }
 
 export async function replaceTrainingPlannerCalendar(
