@@ -8,7 +8,6 @@ import { AccessRedirectIfSession } from "@/components/access/AccessRedirectIfSes
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { safeAppInternalPath } from "@/core/routing/guards";
 import { getSupabasePublicConfig } from "@/lib/integrations/integration-status";
-import { Pro2Link } from "@/components/ui/empathy";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { EMPATHY_DESKTOP_COOKIE, EMPATHY_MOBILE_COOKIE } from "@/core/navigation/mobile-module-registry";
 import { isMobilePreferred } from "@/lib/shell/mobile-detect";
@@ -108,11 +107,6 @@ export default async function AccessPage({
           </p>
         ) : null}
         <AccessPasswordForm redirectAfterLogin={safeNext} />
-        <div className="flex w-full max-w-sm flex-col gap-3">
-          <Pro2Link href="/" variant="ghost" className="justify-center">
-            {t("goToHome")}
-          </Pro2Link>
-        </div>
       </main>
     </BrutalistAppBackdrop>
   );

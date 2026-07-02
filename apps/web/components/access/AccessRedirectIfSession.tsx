@@ -44,7 +44,9 @@ export function AccessRedirectIfSession({ nextPath }: { nextPath: string }) {
         }
 
         if (!isPlatformAdmin) {
-          const entRes = await fetch("/api/billing/entitlement?repair=1", { cache: "no-store" });
+          // Lettura DB-only (niente `repair=1`): la riconciliazione Stripe appartiene
+          // al post-checkout (/access/plan), che resta il punto di self-healing.
+          const entRes = await fetch("/api/billing/entitlement", { cache: "no-store" });
           const ent = (await entRes.json()) as {
             ok?: boolean;
             hasAthleteAccess?: boolean;

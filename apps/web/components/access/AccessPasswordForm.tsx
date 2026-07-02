@@ -44,10 +44,12 @@ type PostLoginIdentity = {
 };
 
 /**
- * Identità post-login + bootstrap profilo in un solo passaggio.
+ * Identità post-login + bootstrap profilo, ottimizzati per latenza.
  * - Platform admin: NESSUN bootstrap atleta (non è un atleta) → ingresso immediato.
- * - Altri: `ensure-profile` allinea profilo/atleta, ma un suo fallimento NON blocca
- *   il login (la shell lo ritenta al mount via ActiveAthleteProvider).
+ * - Profilo GIÀ esistente (login abituale): `ensure-profile` parte in BACKGROUND
+ *   (keepalive: sopravvive alla navigazione) e NON viene atteso — per design un suo
+ *   fallimento non blocca il login (la shell lo ritenta al mount via ActiveAthleteProvider).
+ * - Profilo ASSENTE (primo login): si attende il bootstrap, perché decide il ruolo.
  */
 async function resolvePostLoginIdentity(): Promise<PostLoginIdentity> {
   const fallback: PostLoginIdentity = { sessionOk: false, role: "private", isPlatformAdmin: false };
@@ -72,19 +74,31 @@ async function resolvePostLoginIdentity(): Promise<PostLoginIdentity> {
   }
 
   const meta = u.user_metadata as Record<string, unknown>;
-  try {
-    const res = await fetch("/api/access/ensure-profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({
-        userId: u.id,
-        role: storedRole,
-        email: u.email ?? null,
-        firstName: typeof meta?.first_name === "string" ? meta.first_name : null,
-        lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
-      }),
+  const ensureProfile = fetch("/api/access/ensure-profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    keepalive: true,
+    body: JSON.stringify({
+      userId: u.id,
+      role: storedRole,
+      email: u.email ?? null,
+      firstName: typeof meta?.first_name === "string" ? meta.first_name : null,
+      lastName: typeof meta?.last_name === "string" ? meta.last_name : null,
+    }),
+  });
+
+  if (profile) {
+    // Login abituale: il ruolo è già nel DB, il bootstrap gira in background.
+    ensureProfile.catch(() => {
+      console.warn("[access] ensure-profile non raggiungibile — la shell ritenterà.");
     });
+    return { sessionOk: true, role: storedRole, isPlatformAdmin: false };
+  }
+
+  // Primo login (nessuna riga profilo): il bootstrap decide il ruolo effettivo.
+  try {
+    const res = await ensureProfile;
     if (res.ok) {
       const j = (await res.json()) as { role?: PendingAppRole };
       return { sessionOk: true, role: j.role === "coach" ? "coach" : storedRole, isPlatformAdmin: false };
@@ -145,9 +159,24 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
       return;
     }
 
-    // Identità + bootstrap in un passaggio: admin salta il bootstrap atleta,
-    // e un bootstrap fallito non blocca l'ingresso (la shell ritenta).
-    const identity = await resolvePostLoginIdentity();
+    // Identità ed entitlement partono in PARALLELO (l'entitlement dipende solo dal
+    // cookie di sessione, non dal profilo): niente cascata di roundtrip sequenziali.
+    // NIENTE `repair=1` qui: la riconciliazione Stripe è roba da post-checkout
+    // (/access/plan con session_id), al login basta la lettura DB — il gate paywall
+    // server-side nella shell resta comunque l'autorità finale.
+    const identityPromise = resolvePostLoginIdentity();
+    const entitlementPromise = fetch("/api/billing/entitlement", { cache: "no-store" })
+      .then(async (res) => {
+        const j = (await res.json()) as {
+          ok?: boolean;
+          hasAthleteAccess?: boolean;
+          hasOperatorAccess?: boolean;
+        };
+        return res.ok && j.ok ? j : null;
+      })
+      .catch(() => null);
+
+    const identity = await identityPromise;
     if (!identity.sessionOk) {
       setBusy(false);
       notify(t("msgSessionNotReady"));
@@ -164,20 +193,12 @@ export function AccessPasswordForm({ redirectAfterLogin }: Props) {
     } else if (redirectRole === "coach") {
       hasOperatorAccess = true;
     } else {
-      try {
-        const entRes = await fetch("/api/billing/entitlement?repair=1", { cache: "no-store" });
-        const ent = (await entRes.json()) as {
-          ok?: boolean;
-          hasAthleteAccess?: boolean;
-          hasOperatorAccess?: boolean;
-        };
-        if (entRes.ok && ent.ok) {
-          hasAthleteAccess = Boolean(ent.hasAthleteAccess);
-          hasOperatorAccess = Boolean(ent.hasOperatorAccess);
-        }
-      } catch {
-        /* gate piano se entitlement non leggibile */
+      const ent = await entitlementPromise;
+      if (ent) {
+        hasAthleteAccess = Boolean(ent.hasAthleteAccess);
+        hasOperatorAccess = Boolean(ent.hasOperatorAccess);
       }
+      /* gate piano se entitlement non leggibile */
     }
     const target = resolvePostLoginDestination({
       next: redirectAfterLogin,
