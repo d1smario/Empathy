@@ -2,6 +2,7 @@
 
 import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
   buildDownsampleIndices,
@@ -97,6 +98,7 @@ export function TrainingCalendarAnalyzer({
   onExecutedChanged,
   onPlannedChanged,
 }: Props) {
+  const t = useTranslations("TrainingCalendarAnalyzer");
   const [fileTraceMode, setFileTraceMode] = useState(true);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [overlayOn, setOverlayOn] = useState<Record<string, boolean>>({});
@@ -306,7 +308,7 @@ export function TrainingCalendarAnalyzer({
 
   const analyzerMetricDefs = useMemo(
     () => [
-      { id: "tss", label: "Load", color: CHART_SIGNAL.load, values: lineSeries.tss },
+      { id: "tss", label: t("metricLoad"), color: CHART_SIGNAL.load, values: lineSeries.tss },
       { id: "power", label: "Power", color: CHART_SIGNAL.power, values: lineSeries.power },
       { id: "hr", label: "HR", color: CHART_SIGNAL.hr, values: lineSeries.hr },
       { id: "cadence", label: "Cadence", color: CHART_SIGNAL.cadence, values: lineSeries.cadence },
@@ -320,7 +322,7 @@ export function TrainingCalendarAnalyzer({
       { id: "vo2", label: "VO2", color: "#34d399", values: lineSeries.vo2 },
       { id: "vco2", label: "VCO2", color: "#2dd4bf", values: lineSeries.vco2 },
     ],
-    [lineSeries],
+    [lineSeries, t],
   );
 
   const availableAnalyzerMetricDefs = useMemo(
@@ -548,9 +550,9 @@ export function TrainingCalendarAnalyzer({
           })}
         </h3>
         <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
-          <p className="font-semibold text-gray-200">No session on this day</p>
+          <p className="font-semibold text-gray-200">{t("noSessionTitle")}</p>
           <p className="mt-2">
-            Select another day on the calendar or add a plan / import an executed file.
+            {t("noSessionHint")}
           </p>
         </div>
       </section>
@@ -570,8 +572,7 @@ export function TrainingCalendarAnalyzer({
 
       {plannedOnly ? (
         <p className="mt-2 rounded-xl border border-orange-400/25 bg-orange-500/10 px-3 py-2 text-sm text-orange-100/90">
-          Planning only: the chart shows target load and duration (PLAN blocks). Import an executed workout for the map and file
-          trace.
+          {t("plannedOnlyNote")}
         </p>
       ) : null}
 
@@ -579,18 +580,18 @@ export function TrainingCalendarAnalyzer({
         <div className="min-w-0 flex-1">
           {plannedOnly ? (
             <div className="flex h-[220px] items-center justify-center rounded-xl border border-white/10 bg-black/40 text-center text-sm text-gray-500">
-              Route map after importing an executed workout (FIT/GPX/TCX).
+              {t("routeMapAfterImport")}
             </div>
           ) : (
             <StravaStyleMap route={gpsRoute} height={220} />
           )}
         </div>
         <div className="flex flex-shrink-0 flex-wrap gap-2 text-xs font-semibold text-gray-300 lg:flex-col lg:justify-center">
-          <span className="rounded-lg bg-white/5 px-2 py-1">Distance {gpsStats.distanceKm.toFixed(1)} km</span>
-          <span className="rounded-lg bg-white/5 px-2 py-1">Elevation gain {gpsStats.elevGain.toFixed(0)} m</span>
-          <span className="rounded-lg bg-white/5 px-2 py-1">Duration {gpsStats.durationMin.toFixed(0)} min</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">{t("statDistance", { km: gpsStats.distanceKm.toFixed(1) })}</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">{t("statElevationGain", { m: gpsStats.elevGain.toFixed(0) })}</span>
+          <span className="rounded-lg bg-white/5 px-2 py-1">{t("statDuration", { min: gpsStats.durationMin.toFixed(0) })}</span>
           <span className="rounded-lg bg-white/5 px-2 py-1">
-            Pace {gpsStats.paceMinKm > 0 ? gpsStats.paceMinKm.toFixed(2) : "0.00"} min/km
+            {t("statPace", { pace: gpsStats.paceMinKm > 0 ? gpsStats.paceMinKm.toFixed(2) : "0.00" })}
           </span>
         </div>
       </div>
@@ -598,7 +599,7 @@ export function TrainingCalendarAnalyzer({
       {fitQuality ? (
         <details className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3 text-sm">
           <summary className="cursor-pointer font-semibold text-gray-200">
-            File quality {fitQuality.sourceFormat.toUpperCase()}:{" "}
+            {t("fileQuality")} {fitQuality.sourceFormat.toUpperCase()}:{" "}
             <span
               className={
                 fitQuality.status === "OK"
@@ -631,7 +632,7 @@ export function TrainingCalendarAnalyzer({
 
       {channelAvailability ? (
         <p className="mt-3 text-xs text-gray-500">
-          File channels:{" "}
+          {t("fileChannels")}{" "}
           {Object.entries(channelAvailability)
             .map(([k, v]) => `${k}:${v ? "yes" : "no"}`)
             .join(" · ")}
@@ -657,7 +658,7 @@ export function TrainingCalendarAnalyzer({
           File trace mode
         </button>
         <span className="text-xs text-gray-500">
-          With Garmin/Wahoo trace: power, HR, altitude; radar vs month peak — VAM from altitude or vertical_speed (m/h).
+          {t("fileTraceHint")}
         </span>
       </div>
 
@@ -665,42 +666,44 @@ export function TrainingCalendarAnalyzer({
         <>
           {dayRefKpis.multiSessionDay ? (
             <p className="mt-3 text-xs text-amber-200/90">
-              KPIs on the main session (map/GPS). Day total: {formatDayDurationMin(dayRefKpis.dayTotalMin)} across{" "}
-              {dayExecuted.length} sessions.
+              {t("multiSessionKpis", {
+                dayTotal: formatDayDurationMin(dayRefKpis.dayTotalMin),
+                count: dayExecuted.length,
+              })}
             </p>
           ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Load · session</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiLoadSession")}</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{dayRefKpis.tss.toFixed(0)}</div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · session</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiKcalSession")}</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.kcal.toFixed(0)}
               <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg watts</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiAvgWatts")}</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.wattAvg != null ? dayRefKpis.wattAvg.toFixed(0) : "—"}
               {dayRefKpis.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Duration · session</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiDurationSession")}</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {formatDayDurationMin(dayRefKpis.totalMin)}
             </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg climb VAM</div>
+            <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiAvgClimbVam")}</div>
             <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
               {dayRefKpis.vamAvg != null ? dayRefKpis.vamAvg : "—"}
               {dayRefKpis.vamAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-gray-500">elevation gain ÷ hours</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">{t("kpiVamAvgHint")}</p>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
             <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
@@ -710,7 +713,7 @@ export function TrainingCalendarAnalyzer({
               {dayRefKpis.vamPeak != null ? dayRefKpis.vamPeak.vamMh : "—"}
               {dayRefKpis.vamPeak != null ? <span className="ml-1 text-xs font-medium text-gray-500">m/h</span> : null}
             </div>
-            <p className="mt-0.5 text-[0.6rem] text-gray-500">window peak</p>
+            <p className="mt-0.5 text-[0.6rem] text-gray-500">{t("kpiWindowPeak")}</p>
           </div>
         </div>
         </>
@@ -718,8 +721,8 @@ export function TrainingCalendarAnalyzer({
 
       {telemetryRows.length >= 2 ? (
         <div className="mt-4 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-black/80 via-black/40 to-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <h4 className="text-sm font-bold text-orange-100/95">Telemetry (session style)</h4>
-          <p className="mb-3 text-xs text-gray-500">Power with gradient fill; HR in red; altitude shown separately below.</p>
+          <h4 className="text-sm font-bold text-orange-100/95">{t("telemetryTitle")}</h4>
+          <p className="mb-3 text-xs text-gray-500">{t("telemetryHint")}</p>
           <TrainingCalendarTelemetryChart data={telemetryRows} />
         </div>
       ) : null}
@@ -727,10 +730,9 @@ export function TrainingCalendarAnalyzer({
       {peakRadarProfiles.length > 0 ? (
         <div className="mt-6 space-y-4">
           <div>
-            <h4 className="text-sm font-bold text-white">Profiles · radar vs month peak</h4>
+            <h4 className="text-sm font-bold text-white">{t("radarTitle")}</h4>
             <p className="mt-1 text-xs text-gray-500">
-              One hexagon for each channel present in the recording (power, HR, cadence, speed, VAM, lactate,
-              glucose, SmO₂, temperature, VO₂, …) — windows 5s → 60′ vs the month peak.
+              {t("radarHint")}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -751,11 +753,10 @@ export function TrainingCalendarAnalyzer({
 
       <details open className="group mt-6 rounded-xl border border-white/10 bg-black/20 p-3">
         <summary className="cursor-pointer font-mono text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 group-open:text-gray-300">
-          Normalized comparison (all metrics overlaid)
+          {t("normalizedComparison")}
         </summary>
              <p className="mb-2 mt-2 text-xs text-gray-500">
-               Y axis 0–100%: each series on its own min/max. Toggle curves (HR, glucose, core temp, smO2, VO2,
-               VCO2, …) to overlay them.
+               {t("normalizedComparisonHint")}
              </p>
              <div className="mb-3 flex flex-wrap gap-2">
                <button
@@ -767,7 +768,7 @@ export function TrainingCalendarAnalyzer({
                    setOverlayOn(o);
                  }}
                >
-                 All
+                 {t("toggleAll")}
                </button>
                <button
                  type="button"
@@ -780,7 +781,7 @@ export function TrainingCalendarAnalyzer({
                    setOverlayOn(next);
                  }}
                >
-                 Load · Power · HR only
+                 {t("toggleLoadPowerHr")}
                </button>
              </div>
              <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -803,7 +804,7 @@ export function TrainingCalendarAnalyzer({
                ))}
              </div>
       {selectedMetricDefs.length === 0 ? (
-        <p className="text-sm text-amber-200/90">Select at least one metric to display the chart.</p>
+        <p className="text-sm text-amber-200/90">{t("selectAtLeastOneMetric")}</p>
       ) : (
       <svg
         viewBox={`0 0 ${analyzerInteractive.width} ${analyzerInteractive.height}`}
@@ -811,7 +812,7 @@ export function TrainingCalendarAnalyzer({
         height={420}
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Training metrics analysis chart"
+        aria-label={t("chartAriaLabel")}
         className="mt-1 block max-h-[min(420px,70vw)] min-h-[280px] w-full text-gray-200"
       >
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -919,7 +920,11 @@ export function TrainingCalendarAnalyzer({
                     PLAN
                   </span>
                   <span>
-                    {c?.sessionName?.trim() || w.type} · {dm}m · load {ts}
+                    {t("plannedRowSummary", {
+                      name: c?.sessionName?.trim() || w.type,
+                      duration: dm,
+                      load: ts,
+                    })}
                   </span>
                 </div>
                 {athleteId ? (
@@ -928,24 +933,24 @@ export function TrainingCalendarAnalyzer({
                     disabled={deletingPlannedId === w.id}
                     className="shrink-0 rounded-full border border-rose-400/40 bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
                     onClick={async () => {
-                      if (!athleteId || !window.confirm("Delete this planned session?")) return;
+                      if (!athleteId || !window.confirm(t("confirmDeletePlanned"))) return;
                       setDeletingPlannedId(w.id);
                       try {
                         const aid = (w.athleteId?.trim() || athleteId?.trim() || "").trim();
                         if (!aid) {
-                          window.alert("Missing athleteId: cannot align DELETE to planned-window.");
+                          window.alert(t("missingAthleteId"));
                           return;
                         }
                         await deletePlannedWorkout({ id: w.id, athleteId: aid });
                         onPlannedChanged?.(w.id);
                       } catch (err) {
-                        window.alert(err instanceof Error ? err.message : "Deletion failed");
+                        window.alert(err instanceof Error ? err.message : t("deletionFailed"));
                       } finally {
                         setDeletingPlannedId(null);
                       }
                     }}
                   >
-                    {deletingPlannedId === w.id ? "…" : "Delete"}
+                    {deletingPlannedId === w.id ? "…" : t("delete")}
                   </button>
                 ) : null}
               </div>
@@ -970,7 +975,7 @@ export function TrainingCalendarAnalyzer({
                   EXEC
                 </span>
                 <span className="ml-2">
-                  {w.durationMinutes}m · load {w.tss}
+                  {t("executedRowSummary", { duration: w.durationMinutes, load: w.tss })}
                   {fn ? (
                     <>
                       {" "}
@@ -988,7 +993,7 @@ export function TrainingCalendarAnalyzer({
                   onClick={async () => {
                     if (
                       !athleteId ||
-                      !window.confirm("Delete this executed workout? (V1: also removes duplicates from the same import.)")
+                      !window.confirm(t("confirmDeleteExecuted"))
                     ) {
                       return;
                     }
@@ -1002,13 +1007,13 @@ export function TrainingCalendarAnalyzer({
                       });
                       onExecutedChanged?.();
                     } catch (err) {
-                      window.alert(err instanceof Error ? err.message : "Deletion failed");
+                      window.alert(err instanceof Error ? err.message : t("deletionFailed"));
                     } finally {
                       setDeletingId(null);
                     }
                   }}
                 >
-                  {deletingId === w.id ? "…" : "Delete"}
+                  {deletingId === w.id ? "…" : t("delete")}
                 </button>
               ) : null}
             </div>

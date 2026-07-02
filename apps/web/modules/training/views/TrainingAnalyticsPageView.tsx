@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import type {
   TrainingAdaptationLoopViewModel,
   TrainingBioenergeticModulationViewModel,
@@ -147,6 +148,7 @@ let trainingAnalyticsCache: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows
  * Analyzer — logica V1 (carico esterno/interno, planned vs real) con shell Pro 2 / Tailwind.
  */
 export default function TrainingAnalyticsPageView() {
+  const t = useTranslations("TrainingAnalyticsPageView");
   const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
   /** Contenuti tecnici (coperture, diagnostica) visibili solo a coach/admin. */
   const showTech = role === "coach" || adminScoped;
@@ -373,12 +375,12 @@ export default function TrainingAnalyticsPageView() {
 
   const adaptationStatus =
     divergenceScore > 45
-      ? "High divergence: actual load is far from planned"
+      ? t("adaptationStatusHighDivergence")
       : coupling7 > 1.15
-        ? "Warning: internal load high relative to external"
+        ? t("adaptationStatusWarning")
         : coupling7 < 0.85
-          ? "Low coupling: check for underload or context"
-          : "Balanced coupling";
+          ? t("adaptationStatusLowCoupling")
+          : t("adaptationStatusBalanced");
   const adaptabilityScore = Math.max(0, Math.min(100, Math.round(100 - divergenceScore * 1.7)));
   const operationalSuggestedLoad7d = useMemo(() => {
     if (!operationalContext) return null;
@@ -468,6 +470,9 @@ export default function TrainingAnalyticsPageView() {
   const ctlPolyline = polyline(last42.map((p) => p.ctl), 1100, 260);
   const iCtlPolyline = polyline(last42.map((p) => p.iCtl), 1100, 260);
 
+  /** Prefisso label settimana (fuori dai callback SVG dove `t` viene shadowato dall'angolo). */
+  const weekAbbrev = t("weekAbbrev");
+
   const kpiCard = (label: string, value: ReactNode, valueClass = "text-white") => (
     <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3">
       <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{label}</div>
@@ -477,10 +482,10 @@ export default function TrainingAnalyticsPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training"
+      eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
-      title="Load analysis"
-      description="How much you're really training: planned and executed load, trends, and day analysis."
+      title={t("title")}
+      description={t("description")}
     >
       <div className="scroll-mt-28">
         <TrainingSubnav />
@@ -489,14 +494,14 @@ export default function TrainingAnalyticsPageView() {
       {athleteId ? (
         <section
           className="mb-6 rounded-2xl border border-orange-500/25 bg-black/35 p-4"
-          aria-label="Analysis time window"
+          aria-label={t("analysisTimeWindowAria")}
         >
           <p className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-            Analysis period
+            {t("analysisPeriod")}
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
-              <span className="font-semibold text-gray-300">Window end date (day included)</span>
+              <span className="font-semibold text-gray-300">{t("windowEndDate")}</span>
               <input
                 type="date"
                 value={anchorDate}
@@ -509,7 +514,7 @@ export default function TrainingAnalyticsPageView() {
               />
             </label>
             <div className="flex flex-1 flex-col gap-1">
-              <span className="text-xs font-semibold text-gray-300">Range</span>
+              <span className="text-xs font-semibold text-gray-300">{t("range")}</span>
               <div className="flex flex-wrap gap-2">
                 {WINDOW_PRESETS.map((p) => (
                   <button
@@ -529,11 +534,11 @@ export default function TrainingAnalyticsPageView() {
             </div>
           </div>
           <p className="mt-3 font-mono text-[0.7rem] text-gray-500">
-            Period: <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
-            {windowDays === 1 ? " · single day (daily detail)" : null}
+            {t("periodLabel")} <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
+            {windowDays === 1 ? t("periodSingleDaySuffix") : null}
           </p>
           <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
-            <span className="font-semibold text-gray-300">Detailed analysis day</span>
+            <span className="font-semibold text-gray-300">{t("detailedAnalysisDay")}</span>
             <input
               type="date"
               value={focusDay}
@@ -570,11 +575,10 @@ export default function TrainingAnalyticsPageView() {
       {showTech && readSpineCoverage && athleteId && !error ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-gray-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
-            Read spine (athlete-memory) · {readSpineCoverage.spineScore}%
+            {t("readSpineSummary", { score: readSpineCoverage.spineScore })}
           </summary>
           <p className="mt-2 text-xs text-gray-500">
-            Same summary as the hub dashboard: aggregate coverage across profile, physiology, twin, nutrition, health,
-            ingest, evidence.
+            {t("readSpineDescription")}
           </p>
         </details>
       ) : null}
@@ -588,38 +592,38 @@ export default function TrainingAnalyticsPageView() {
       {!athleteId && !athleteLoading ? (
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
           {role === "coach"
-            ? "Set the active athlete from the profile/coach context to analyze load."
-            : "Athlete profile not available."}
+            ? t("noAthleteCoach")
+            : t("noAthleteProfile")}
         </div>
       ) : loading ? (
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">{t("loading")}</p>
       ) : !series.length && !plannedRows.length ? (
         <p className="text-sm text-gray-500">
-          No planned/executed data in the period {bounds.from} → {bounds.to}. Try a wider range or a different window day.
+          {t("noData", { from: bounds.from, to: bounds.to })}
         </p>
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} · 7d</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} {t("perWeekSuffix")}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{refKpis7d.tss.toFixed(0)}</div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal · 7d</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal {t("perWeekSuffix")}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {refKpis7d.kcal.toFixed(0)}
                 <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Avg watts</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("avgWatts")}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {refKpis7d.wattAvg != null ? refKpis7d.wattAvg.toFixed(0) : "—"}
                 {refKpis7d.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Total time · 7d</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("totalTime")} {t("perWeekSuffix")}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
                 {formatDurationTotal(refKpis7d.totalMinutes)}
               </div>
@@ -627,7 +631,7 @@ export default function TrainingAnalyticsPageView() {
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="mb-3 text-sm font-bold text-white">Weekly progression · external load (6×7d)</h2>
+            <h2 className="mb-3 text-sm font-bold text-white">{t("weeklyProgressionTitle")}</h2>
             <svg viewBox="0 0 400 120" width="100%" height="120" className="max-h-[28vh]">
               <defs>
                 <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
@@ -643,7 +647,7 @@ export default function TrainingAnalyticsPageView() {
                   <g key={i}>
                     <rect x={x} y={100 - barH} width={40} height={barH} rx={4} fill="url(#wkGrad)" opacity={0.92} />
                     <text x={x + 20} y={112} textAnchor="middle" fill={CHART_AXIS.tick} fontSize={9}>
-                      W{i + 1}
+                      {weekAbbrev}{i + 1}
                     </text>
                     <text x={x + 20} y={Math.max(12, 94 - barH)} textAnchor="middle" fill="#e5e7eb" fontSize={9}>
                       {Math.round(v)}
@@ -656,15 +660,15 @@ export default function TrainingAnalyticsPageView() {
 
           <section className="mb-8 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 to-black/40 p-4 shadow-inner shadow-orange-950/20">
             <h2 className="mb-1 text-base font-bold text-white">
-              Day analysis ·{" "}
-              {new Date(`${focusDay}T12:00:00`).toLocaleDateString("en-US", {
+              {t("dayAnalysisLabel")}{" "}
+              {new Date(`${focusDay}T12:00:00`).toLocaleDateString(t("dateLocale"), {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
               })}
             </h2>
             <p className="mb-4 text-xs text-gray-400">
-              GPS, telemetry, min/max, hexagonal power profiles · HR · VAM (5s–60′). Same panel as the Calendar.
+              {t("dayAnalysisDescription")}
             </p>
             {realityDiagBanner ? (
               <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
@@ -672,7 +676,7 @@ export default function TrainingAnalyticsPageView() {
               </p>
             ) : null}
             {focusDayExecuted.length === 0 && focusDayPlanned.length === 0 ? (
-              <p className="text-sm text-gray-500">No session on this day in the loaded range.</p>
+              <p className="text-sm text-gray-500">{t("noSessionOnDay")}</p>
             ) : (
               <div className="space-y-8">
                 {focusDayExecuted.length > 0 ? (
@@ -694,16 +698,16 @@ export default function TrainingAnalyticsPageView() {
           </section>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {kpiCard("External load 7d", external7.toFixed(0))}
-            {kpiCard("Internal load 7d", internal7.toFixed(0))}
-            {kpiCard("Planned / actual 7d", plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
+            {kpiCard(t("kpiExternalLoad7d"), external7.toFixed(0))}
+            {kpiCard(t("kpiInternalLoad7d"), internal7.toFixed(0))}
+            {kpiCard(t("kpiPlannedActual7d"), plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
             {kpiCard(
-              "Execution compliance 7d",
+              t("kpiExecutionCompliance7d"),
               `${compliance7.toFixed(0)}%`,
               compliance7 < 70 || compliance7 > 130 ? "text-amber-200" : "text-emerald-200",
             )}
             {kpiCard(
-              "Coupling 7d",
+              t("kpiCoupling7d"),
               <>
                 <span style={{ color: couplingColor(coupling7) }}>{coupling7.toFixed(2)}</span>
                 <span className="ml-2 text-xs font-normal text-gray-500">
@@ -722,19 +726,19 @@ export default function TrainingAnalyticsPageView() {
               latest ? `${latest.iCtl.toFixed(1)} / ${latest.iAtl.toFixed(1)}` : "—",
             )}
             {kpiCard(
-              "Readiness / fatigue",
+              t("kpiReadinessFatigue"),
               twinState
                 ? `${(twinState.readiness ?? 0).toFixed(1)} / ${(twinState.fatigueAcute ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Glycogen / adaptation",
+              t("kpiGlycogenAdaptation"),
               twinState
                 ? `${(twinState.glycogenStatus ?? 0).toFixed(1)} / ${(twinState.adaptationScore ?? 0).toFixed(1)}`
                 : "—",
             )}
             {kpiCard(
-              "Divergence / intervention",
+              t("kpiDivergenceIntervention"),
               `${divergenceScore.toFixed(1)} / ${interventionScore.toFixed(1)}`,
               adaptationToneClass,
             )}
@@ -745,7 +749,7 @@ export default function TrainingAnalyticsPageView() {
             style={{ borderLeft: `3px solid ${couplingColor(coupling7)}` }}
           >
             <summary className={`cursor-pointer font-semibold ${couplingToneClass}`}>
-              Adaptability {adaptabilityScore}/100 · coupling {coupling7.toFixed(2)}
+              {t("adaptabilitySummary", { score: adaptabilityScore, coupling: coupling7.toFixed(2) })}
             </summary>
             <p className={`mt-2 font-semibold ${couplingToneClass}`}>{adaptationStatus}</p>
             <p className="mt-2 text-xs text-gray-500">
@@ -764,18 +768,18 @@ export default function TrainingAnalyticsPageView() {
               }`}
             >
               <summary className="cursor-pointer">
-                <strong>{operationalContext.headline}</strong> · operational load ~{operationalContext.loadScalePct}% of plan
+                <strong>{operationalContext.headline}</strong> {t("operationalLoadSuffix", { pct: operationalContext.loadScalePct })}
               </summary>
               <p className="mt-2">{operationalContext.guidance}</p>
               {operationalSuggestedLoad7d != null ? (
                 <p className="mt-2">
-                  7d window: plan {Math.round(adaptationLoop?.expectedLoad7d ?? 0)} → operational ~{operationalSuggestedLoad7d}.
+                  {t("operationalWindow7d", { plan: Math.round(adaptationLoop?.expectedLoad7d ?? 0), operational: operationalSuggestedLoad7d })}
                 </p>
               ) : null}
               {recoverySummary ? (
                 <p className="mt-2">
-                  Recovery {recoverySummary.status}
-                  {recoverySummary.sleepDurationHours != null ? ` · sleep ${recoverySummary.sleepDurationHours} h` : ""}
+                  {t("recoveryLabel")} {recoverySummary.status}
+                  {recoverySummary.sleepDurationHours != null ? t("recoverySleepSuffix", { hours: recoverySummary.sleepDurationHours }) : ""}
                   {recoverySummary.hrvMs != null ? ` · HRV ${recoverySummary.hrvMs} ms` : ""}
                   {recoverySummary.strainScore != null ? ` · strain ${recoverySummary.strainScore}` : ""}.
                 </p>
@@ -796,7 +800,7 @@ export default function TrainingAnalyticsPageView() {
                 {bioenergeticModulation.mitochondrialReadinessScore.toFixed(0)}/100
               </summary>
               <p className="mt-2">
-                state {bioenergeticModulation.state} · coverage {bioenergeticModulation.signalCoveragePct.toFixed(0)}%.
+                {t("bioStateCoverage", { state: bioenergeticModulation.state, coverage: bioenergeticModulation.signalCoveragePct.toFixed(0) })}
               </p>
               <p className="mt-2">{bioenergeticModulation.guidance}</p>
               {!!bioenergeticModulation.missingSignals.length ? (
@@ -811,10 +815,10 @@ export default function TrainingAnalyticsPageView() {
           {crossModuleDynamicsLines.length ? (
             <details className="mb-6 rounded-2xl border border-orange-500/25 bg-orange-950/20 p-4 text-sm text-gray-300">
               <summary className="cursor-pointer text-sm font-bold text-orange-100">
-                Cross-module dynamics (Training → Nutrition / refueling) · {crossModuleDynamicsLines.length}
+                {t("crossModuleDynamicsSummary", { count: crossModuleDynamicsLines.length })}
               </summary>
               <p className="mt-2 text-xs text-gray-500">
-                Deterministic bridge: adaptation, operational load, calendar loop, nutrition dial.
+                {t("crossModuleDynamicsDescription")}
               </p>
               <ul className="mt-2 list-inside list-disc text-xs leading-relaxed text-gray-400">
                 {crossModuleDynamicsLines.map((line, i) => (
@@ -828,7 +832,7 @@ export default function TrainingAnalyticsPageView() {
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-sm font-bold text-white">
                 <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
-                Normalized comparison (overlaid metrics)
+                {t("normalizedComparisonTitle")}
               </h2>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -840,7 +844,7 @@ export default function TrainingAnalyticsPageView() {
                     setOverlayOn(o);
                   }}
                 >
-                  Enable all
+                  {t("enableAll")}
                 </button>
                 <button
                   type="button"
@@ -853,17 +857,16 @@ export default function TrainingAnalyticsPageView() {
                     setOverlayOn(o);
                   }}
                 >
-                  Load only
+                  {t("loadOnly")}
                 </button>
               </div>
             </div>
             <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
               <summary className="cursor-pointer text-gray-300">
-                Overlay metrics notes · {Object.values(overlayOn).filter(Boolean).length} active
+                {t("overlayMetricsNotes", { count: Object.values(overlayOn).filter(Boolean).length })}
               </summary>
               <p className="mt-2">
-                Each series uses its own min/max over the 42 days and is scaled to 0-100 to overlay HR, smO2,
-                glucose, VO2/VCO2, temperature, and loads in the same chart.
+                {t("overlayMetricsDescription")}
               </p>
             </details>
             <div className="mb-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -903,27 +906,26 @@ export default function TrainingAnalyticsPageView() {
               })}
             </svg>
             <div className="mt-2 text-[0.65rem] text-gray-500">
-              X axis: last 42 days. Series with null or constant values stay on the center line.
+              {t("xAxisNote")}
             </div>
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold text-white">
               <Hexagon className="h-4 w-4 text-orange-400" aria-hidden />
-              Hexagonal comparison · one metric vs history
+              {t("hexagonalComparisonTitle")}
             </h2>
             <details className="mb-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-gray-400">
               <summary className="cursor-pointer text-gray-300">
-                Hexagon guide · metric {hexMetric}
+                {t("hexagonGuideSummary", { metric: hexMetric })}
               </summary>
               <p className="mt-2">
-                Six vertices = weekly average (7 days) in the last 42-day window; dashed = same
-                structure over the previous 6 weeks (requires at least 84 days).
+                {t("hexagonGuideDescription")}
               </p>
             </details>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="text-xs text-gray-400">
-                Metric
+                {t("metricLabel")}
                 <select
                   className="ml-2 rounded-xl border border-white/15 bg-black/40 px-2 py-1 text-sm text-white"
                   value={hexMetric}
@@ -978,7 +980,7 @@ export default function TrainingAnalyticsPageView() {
                   const lr = 172;
                   const tx = cx + lr * Math.cos(t);
                   const ty = cy + lr * Math.sin(t);
-                  const label = `W${i + 1}`;
+                  const label = `${weekAbbrev}${i + 1}`;
                   return (
                     <text
                       key={i}
@@ -996,16 +998,19 @@ export default function TrainingAnalyticsPageView() {
               </svg>
               <div className="max-w-md text-xs text-gray-400">
                 <p className="mb-2">
-                  <span className="inline-block h-2 w-4 rounded-sm bg-orange-400/90" /> <strong className="text-gray-300">Last 6 weeks</strong> — recent profile
-                  shape for the chosen metric.
+                  <span className="inline-block h-2 w-4 rounded-sm bg-orange-400/90" />{" "}
+                  {t.rich("hexLegendRecent", {
+                    b: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+                  })}
                 </p>
                 <p>
                   <span className="inline-block h-0.5 w-4 border-t-2 border-dotted border-violet-400" />{" "}
-                  <strong className="text-gray-300">Previous period</strong> — same granularity, to compare
-                  at a glance.
+                  {t.rich("hexLegendPrevious", {
+                    b: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+                  })}
                 </p>
                 {compareSeries.length < 84 ? (
-                  <p className="mt-3 text-amber-200/90">Extend the range (needs at least ~84 days) to fill the dashed polygon.</p>
+                  <p className="mt-3 text-amber-200/90">{t("hexExtendRange")}</p>
                 ) : null}
               </div>
             </div>
@@ -1014,7 +1019,7 @@ export default function TrainingAnalyticsPageView() {
           <div className="mb-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
               <BarChart3 className="h-4 w-4 text-orange-400" aria-hidden />
-              Trend 42d · Planned vs real vs internal
+              {t("trend42dTitle")}
             </h2>
             <svg viewBox="0 0 1100 260" width="100%" height="260" className="max-h-[30vh] sm:max-h-[40vh]">
               <polyline fill="none" stroke={TRAINING_SERIES[1]} strokeWidth="2" points={plannedPolyline} />
@@ -1025,13 +1030,13 @@ export default function TrainingAnalyticsPageView() {
             </svg>
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-400">
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[1] }} /> Planned
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[1] }} /> {t("legendPlanned")}
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[0] }} /> External
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[0] }} /> {t("legendExternal")}
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[2] }} /> Internal
+                <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[2] }} /> {t("legendInternal")}
               </span>
               <span className="inline-flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full" style={{ background: TRAINING_SERIES[3] }} /> {EMPATHY_LOAD_LABELS_IT.fitness4}
@@ -1045,22 +1050,22 @@ export default function TrainingAnalyticsPageView() {
           <TrainingAnalyzerCrossChannelSection sessions={crossChannelSessions} />
 
           <div className="mb-6 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-4">
-            <h2 className="mb-3 text-sm font-bold text-white">Planned vs real · windows</h2>
+            <h2 className="mb-3 text-sm font-bold text-white">{t("plannedVsRealWindowsTitle")}</h2>
             <table className="w-full min-w-[520px] text-sm text-gray-300">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Window</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Planned</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Real</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Internal</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Compliance</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Coupling</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thWindow")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thPlanned")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thReal")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thInternal")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thCompliance")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thCoupling")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {[
                   {
-                    label: "Last 7d",
+                    label: t("windowLast7d"),
                     planned: plan7?.planned ?? 0,
                     ext: plan7?.executed ?? external7,
                     int: plan7?.internal ?? internal7,
@@ -1068,7 +1073,7 @@ export default function TrainingAnalyticsPageView() {
                     coupling: coupling7,
                   },
                   {
-                    label: "Last 28d",
+                    label: t("windowLast28d"),
                     planned: plan28?.planned ?? 0,
                     ext: plan28?.executed ?? external28,
                     int: plan28?.internal ?? internal28,
@@ -1106,7 +1111,7 @@ export default function TrainingAnalyticsPageView() {
           <details className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <summary className="mb-3 flex cursor-pointer items-center gap-2 text-sm font-bold text-white">
               <LineChart className="h-4 w-4 text-orange-400" aria-hidden />
-              Adaptation loop · adaptability {adaptabilityScore}/100
+              {t("adaptationLoopSummary", { score: adaptabilityScore })}
             </summary>
             <table className="w-full text-sm text-gray-300">
               <tbody className="divide-y divide-white/5">

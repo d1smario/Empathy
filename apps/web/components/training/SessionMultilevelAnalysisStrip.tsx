@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import type { AdaptationSectorPillVm } from "@/lib/adaptation/adaptation-sector-box";
 import type { SessionAnalysisFacetCategory } from "@/api/training/contracts";
@@ -42,6 +43,7 @@ export function SessionMultilevelAnalysisStrip({
   fallbackDurationMin?: number | null;
   compact?: boolean;
 }) {
+  const t = useTranslations("SessionMultilevelAnalysisStrip");
   const vm = useMemo(() => {
     const interp = contract?.sessionInterpretation;
     if (interp?.modelVersion === 1 && interp.sectors.length > 0) {
@@ -89,23 +91,23 @@ export function SessionMultilevelAnalysisStrip({
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-          Multilevel analysis · deterministic
+          {t("title")}
         </p>
         {activeCount > 0 ? (
           <span className="font-mono text-[0.6rem] text-gray-500">
-            {activeCount} active sectors · block profile + target
+            {t("activeSectors", { activeCount })}
           </span>
         ) : null}
       </div>
       <AdaptationSectorStrip
-        title="Sectors · session · activated pathways"
+        title={t("sectorsTitle")}
         boxes={boxes}
-        emptyHint={vm.notes[0] ?? "No structured data for this session."}
+        emptyHint={vm.notes[0] ?? t("noData")}
       />
 
       {vm.coachPrompts.length > 0 ? (
         <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/20 px-3 py-2.5">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Coach questions</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">{t("coachQuestions")}</p>
           <ul className="mt-2 space-y-1.5">
             {vm.coachPrompts.map((q) => (
               <li key={q} className="text-xs leading-relaxed text-gray-300">
@@ -122,7 +124,7 @@ export function SessionMultilevelAnalysisStrip({
       {vm.facilitationHints.length > 0 ? (
         <div className="mt-3 rounded-xl border border-orange-500/20 bg-orange-950/15 px-3 py-2.5">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-            Stimuli · facilitations
+            {t("stimuliFacilitations")}
           </p>
           <ul className="mt-2 space-y-1.5">
             {vm.facilitationHints.map((h) => (
@@ -135,7 +137,7 @@ export function SessionMultilevelAnalysisStrip({
       ) : null}
 
       <details className={`rounded-lg border border-white/10 bg-black/30 px-3 py-2 ${compact ? "mt-3" : "mt-4"}`}>
-        <summary className="cursor-pointer text-xs font-semibold text-gray-300">Model notes · facet list</summary>
+        <summary className="cursor-pointer text-xs font-semibold text-gray-300">{t("modelNotes")}</summary>
         <ul className="mt-2 max-h-48 list-disc space-y-1.5 overflow-y-auto pl-4 text-[0.65rem] leading-relaxed text-gray-500">
           {vm.notes.map((n) => (
             <li key={n}>{n}</li>

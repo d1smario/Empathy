@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { intensityLabelForContractBlock } from "@/lib/training/builder/pro2-session-notes";
 
@@ -151,13 +152,15 @@ function expandBlockSegments(
 
 export function BuilderPlannedSessionViz({
   contract,
-  title = "Execution map",
+  title: titleProp,
   compact = false,
 }: {
   contract: Pro2BuilderSessionContract | null | undefined;
   title?: string;
   compact?: boolean;
 }) {
+  const t = useTranslations("BuilderPlannedSessionViz");
+  const title = titleProp ?? t("titleDefault");
   const blocks = contract?.blocks ?? [];
   if (!blocks.length) return null;
   const renderProfile = contract?.renderProfile;
@@ -184,19 +187,22 @@ export function BuilderPlannedSessionViz({
   const total = Math.max(1, segments.reduce((s, x) => s + x.seconds, 0));
   let cursor = 0;
   let elapsed = 0;
-  const axisLabel = renderProfile.intensityUnit === "watt" ? "Target (W)" : "Target FC (bpm)";
+  const axisLabel = renderProfile.intensityUnit === "watt" ? t("axisTargetWatt") : t("axisTargetHr");
 
   return (
     <div className="builder-chart-shell" style={{ width: "100%" }}>
       <div className="builder-chart-title">
-        {title} · Profilo blocchi ({renderProfile.intensityUnit === "watt" ? "Watt" : "Frequenza cardiaca"})
+        {t("chartTitle", {
+          title,
+          mode: renderProfile.intensityUnit === "watt" ? t("modeWatt") : t("modeHr"),
+        })}
       </div>
       <svg
         viewBox="0 0 1000 250"
         className="builder-chart-svg"
         preserveAspectRatio="none"
         role="img"
-        aria-label="Builder planned session timeline"
+        aria-label={t("timelineAriaLabel")}
       >
         <rect x="0" y="0" width="1000" height="250" fill="rgba(255,255,255,0.02)" />
         <text x="8" y="16" fill="rgba(255,255,255,0.62)" fontSize="10">
@@ -283,8 +289,8 @@ export function BuilderPlannedSessionViz({
               <div className="session-sub-copy" style={{ marginBottom: 0 }}>
                 {block.durationMinutes} min
                 {block.kind ? ` · ${block.kind}` : ""}
-                {block.target ? ` · target ${block.target}` : ""}
-                {block.intensityCue ? ` · intensity ${block.intensityCue}` : ""}
+                {block.target ? ` · ${t("targetLabel", { target: block.target })}` : ""}
+                {block.intensityCue ? ` · ${t("intensityLabel", { intensity: block.intensityCue })}` : ""}
               </div>
               {block.notes ? <div className="muted-copy" style={{ marginTop: 4 }}>{block.notes}</div> : null}
             </div>

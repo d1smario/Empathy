@@ -1,6 +1,7 @@
 "use client";
 
 import { FileUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { normalizeDateKey } from "@/lib/training/calendar-analyzer-helpers";
@@ -27,18 +28,19 @@ export function CalendarFileImportSection({
   setFileImportForm,
   onSubmit,
 }: CalendarFileImportSectionProps) {
+  const t = useTranslations("CalendarFileImportSection");
   return (
     <div id="training-calendar-file-import" className="scroll-mt-24">
       <Pro2SectionCard
         accent="orange"
-        title="Import from file"
-        subtitle="Auto: FIT workout → calendar (Planned); activity → Executed. Calendar: ZWO/ERG/MRC/CSV. Executed: recorded track."
+        title={t("cardTitle")}
+        subtitle={t("cardSubtitle")}
         icon={FileUp}
       >
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Mode
+              {t("modeLabel")}
               <select
                 className="mt-1 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
                 value={fileImportForm.mode}
@@ -52,20 +54,20 @@ export function CalendarFileImportSection({
                   }));
                 }}
               >
-                <option value="auto">Auto (recommended)</option>
-                <option value="planned">Calendar · device export (PLAN)</option>
-                <option value="executed">Recorded activity (EXEC)</option>
+                <option value="auto">{t("modeAuto")}</option>
+                <option value="planned">{t("modePlanned")}</option>
+                <option value="executed">{t("modeExecuted")}</option>
               </select>
             </label>
             <label className="block font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-              Device source
+              {t("deviceLabel")}
               <select
                 className="mt-1 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
                 value={fileImportForm.device}
                 onChange={(e) => setFileImportForm((f) => ({ ...f, device: e.target.value }))}
                 disabled={fileImportForm.mode === "planned"}
               >
-                <option value="auto">Auto (from file name)</option>
+                <option value="auto">{t("deviceAuto")}</option>
                 <option value="garmin">Garmin</option>
                 <option value="wahoo">Wahoo (ELEMNT / RIVAL)</option>
                 <option value="suunto">Suunto</option>
@@ -78,7 +80,7 @@ export function CalendarFileImportSection({
                 <option value="trainingpeaks">TrainingPeaks</option>
                 <option value="whoop">WHOOP</option>
                 <option value="oura">Oura</option>
-                <option value="other">Other</option>
+                <option value="other">{t("deviceOther")}</option>
               </select>
             </label>
           </div>
@@ -92,7 +94,7 @@ export function CalendarFileImportSection({
             />
           </label>
           <label className="block font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-            Day in calendar
+            {t("dayLabel")}
             <input
               type="date"
               className="mt-1 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
@@ -101,14 +103,14 @@ export function CalendarFileImportSection({
             />
             <span className="mt-1 block font-sans font-normal normal-case tracking-normal text-gray-500">
               {fileImportForm.mode === "auto"
-                ? "Auto: FIT/ZWO/ERG/MRC workout → Planned chip (Zwift/Rouvy export); FIT/TCX/GPX activity → Executed. Day = selected cell."
+                ? t("dayHintAuto")
                 : fileImportForm.mode === "executed"
-                  ? "Recorded tracks only (Analyzer). The day is the one selected in the grid."
-                  : "Tabular program or structured session on this day (Planned)."}
+                  ? t("dayHintExecuted")
+                  : t("dayHintPlanned")}
             </span>
           </label>
           <label className="block font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-            Import notes (optional)
+            {t("notesLabel")}
             <input
               className="mt-1 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
               value={fileImportForm.notes}
@@ -117,8 +119,8 @@ export function CalendarFileImportSection({
           </label>
           <p className="text-xs text-gray-500">
             {fileImportForm.mode === "planned"
-              ? "Tabular: CSV/JSON calendar export (multiple sessions). Structured: ZWO, ERG, MRC or FIT workout — a single session on the chosen day, with a block chart as in the Builder."
-              : "Executed: FIT/FIT.GZ, CSV, JSON, TCX, GPX. Saving uses the day indicated above (current cell if you do not change the date). Device: auto or manual."}
+              ? t("formatHintPlanned")
+              : t("formatHintExecuted")}
           </p>
           {fileImportForm.mode === "planned" ? (
             <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-300">
@@ -130,11 +132,7 @@ export function CalendarFileImportSection({
                   setFileImportForm((f) => ({ ...f, fallbackExecutedOnPlannedError: e.target.checked }))
                 }
               />
-              <span>
-                If the planned import fails, import the same file as an executed workout (track for
-                Analyzer). Useful when the FIT does not convert well in Builder: the Analyzer uses the series as for
-                executed ones (workout-only FIT files without records may have minimal charts).
-              </span>
+              <span>{t("fallbackText")}</span>
             </label>
           ) : null}
           <div className="flex flex-wrap gap-2">
@@ -143,7 +141,7 @@ export function CalendarFileImportSection({
               disabled={saving || !athleteId || !fileImportForm.file}
               className="rounded-full border border-orange-500/30 bg-orange-500/10 px-5 py-2.5 text-sm font-bold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
             >
-              {saving ? "Importing…" : fileImportForm.mode === "planned" ? "Import program" : "Import workout"}
+              {saving ? t("importing") : fileImportForm.mode === "planned" ? t("importProgram") : t("importWorkout")}
             </button>
           </div>
         </form>

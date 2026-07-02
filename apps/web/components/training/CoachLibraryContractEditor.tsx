@@ -1,6 +1,7 @@
 "use client";
 
 import { Minus, Plus, Timer } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { CoachLibraryContractPreview } from "@/components/training/CoachLibraryContractPreview";
 import { Pro2Button } from "@/components/ui/empathy";
@@ -30,6 +31,7 @@ function Stepper({
   suffix?: string;
   onChange: (next: number) => void;
 }) {
+  const t = useTranslations("CoachLibraryContractEditor");
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[0.6rem] font-bold uppercase tracking-wider text-gray-400">{label}</span>
@@ -37,7 +39,7 @@ function Stepper({
         <button
           type="button"
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/50 text-white hover:bg-white/10"
-          aria-label={`Decrease ${label}`}
+          aria-label={t("decreaseLabel", { label })}
           onClick={() => onChange(Math.max(min, value - step))}
         >
           <Minus className="h-3.5 w-3.5" />
@@ -49,7 +51,7 @@ function Stepper({
         <button
           type="button"
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/50 text-white hover:bg-white/10"
-          aria-label={`Increase ${label}`}
+          aria-label={t("increaseLabel", { label })}
           onClick={() => onChange(Math.min(max, value + step))}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -82,6 +84,7 @@ export function CoachLibraryContractEditor({
   onReset?: () => void;
   onOpenInBuilder?: () => void;
 }) {
+  const t = useTranslations("CoachLibraryContractEditor");
   const durationMin = useMemo(
     () =>
       contract.plannedSessionDurationMinutes ??
@@ -97,7 +100,7 @@ export function CoachLibraryContractEditor({
         <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
           <span className="flex items-center gap-1 font-bold uppercase tracking-wider text-orange-400">
             <Timer className="h-3.5 w-3.5" aria-hidden />
-            Calendar duration
+            {t("calendarDuration")}
           </span>
           <select
             className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
@@ -112,10 +115,10 @@ export function CoachLibraryContractEditor({
           </select>
         </label>
         <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={() => onChange(scaleLibraryContractTiming(contract, 0.9))}>
-          −10% time
+          {t("decreaseTime")}
         </Pro2Button>
         <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={() => onChange(scaleLibraryContractTiming(contract, 1.1))}>
-          +10% time
+          {t("increaseTime")}
         </Pro2Button>
         {dirty && onReset ? (
           <button
@@ -123,12 +126,12 @@ export function CoachLibraryContractEditor({
             className="text-[0.65rem] font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
             onClick={onReset}
           >
-            Discard changes
+            {t("discardChanges")}
           </button>
         ) : null}
         {onOpenInBuilder ? (
           <Pro2Button type="button" variant="secondary" className="!px-2 !py-1 text-[0.65rem]" onClick={onOpenInBuilder}>
-            Open in Builder
+            {t("openInBuilder")}
           </Pro2Button>
         ) : null}
         {onSave ? (
@@ -139,7 +142,7 @@ export function CoachLibraryContractEditor({
             disabled={saveBusy || !dirty}
             onClick={onSave}
           >
-            {saveBusy ? "Saving…" : "Save template"}
+            {saveBusy ? t("saving") : t("saveTemplate")}
           </Pro2Button>
         ) : null}
       </div>
@@ -160,7 +163,7 @@ export function CoachLibraryContractEditor({
                 </p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <Stepper
-                    label="Block duration (min)"
+                    label={t("blockDuration")}
                     value={Math.max(1, Math.round(block.durationMinutes || 1))}
                     min={1}
                     max={720}
@@ -170,7 +173,7 @@ export function CoachLibraryContractEditor({
                   {hasInterval && ch ? (
                     <>
                       <Stepper
-                        label="Repetitions"
+                        label={t("repetitions")}
                         value={Math.max(1, ch.repeats || 1)}
                         min={1}
                         max={99}
@@ -178,7 +181,7 @@ export function CoachLibraryContractEditor({
                         onChange={(n) => onChange(patchLibraryContractBlock(contract, block.id, { repeats: n }))}
                       />
                       <Stepper
-                        label="Work"
+                        label={t("work")}
                         value={Math.max(0, ch.workSeconds || 0)}
                         min={0}
                         max={3600}
@@ -187,7 +190,7 @@ export function CoachLibraryContractEditor({
                         onChange={(n) => onChange(patchLibraryContractBlock(contract, block.id, { workSeconds: n }))}
                       />
                       <Stepper
-                        label="Recovery"
+                        label={t("recovery")}
                         value={Math.max(0, ch.recoverSeconds || 0)}
                         min={0}
                         max={3600}
@@ -199,7 +202,7 @@ export function CoachLibraryContractEditor({
                   ) : null}
                   {gymSets != null ? (
                     <Stepper
-                      label="Sets"
+                      label={t("sets")}
                       value={Math.max(1, gymSets)}
                       min={1}
                       max={20}
@@ -213,7 +216,7 @@ export function CoachLibraryContractEditor({
           })}
         </ul>
       ) : (
-        <p className="text-xs text-gray-500">No editable block in this template.</p>
+        <p className="text-xs text-gray-500">{t("noEditableBlock")}</p>
       )}
 
       <CoachLibraryContractPreview

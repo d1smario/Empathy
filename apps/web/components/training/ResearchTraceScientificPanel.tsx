@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { KnowledgeExpansionTrace, ResearchHopTrace, ResearchIntent } from "@/lib/empathy/schemas";
 import { fetchKnowledgeResearchTracesExpanded } from "@/lib/knowledge/knowledge-research-traces-client";
 
@@ -17,34 +18,36 @@ type ResearchTraceScientificPanelProps = {
   traceSurface?: "multi" | "latest_primary";
 };
 
+// Mappa kind → chiavi i18n del settore (i testi visibili vivono nel namespace i18n,
+// così restano traducibili anche se HOP_SECTOR è a livello modulo).
 const HOP_SECTOR: Record<
   ResearchHopTrace["kind"],
-  { shortTitle: string; physiologyFunction: string; amplificationFocus: string }
+  { shortTitleKey: string; physiologyFunctionKey: string; amplificationFocusKey: string }
 > = {
   literature_search: {
-    shortTitle: "Stimulus & systems",
-    physiologyFunction: "Acute and chronic response to load; neuro‑endocrine and systemic integration",
-    amplificationFocus: "Phenotypes, hormones, thermal/metabolic stress in literature",
+    shortTitleKey: "sectorLiteratureShortTitle",
+    physiologyFunctionKey: "sectorLiteraturePhysiologyFunction",
+    amplificationFocusKey: "sectorLiteratureAmplificationFocus",
   },
   entity_lookup: {
-    shortTitle: "Signal & genes",
-    physiologyFunction: "Transduction, transcription factors, hormones and receptors",
-    amplificationFocus: "Genes · proteins · signaling pathways (Reactome/GO/Uniprot)",
+    shortTitleKey: "sectorEntityShortTitle",
+    physiologyFunctionKey: "sectorEntityPhysiologyFunction",
+    amplificationFocusKey: "sectorEntityAmplificationFocus",
   },
   pathway_lookup: {
-    shortTitle: "Pathway",
-    physiologyFunction: "Network processes (metabolic / signaling pathway)",
-    amplificationFocus: "Curated pathways and causal relationships between processes",
+    shortTitleKey: "sectorPathwayShortTitle",
+    physiologyFunctionKey: "sectorPathwayPhysiologyFunction",
+    amplificationFocusKey: "sectorPathwayAmplificationFocus",
   },
   reaction_lookup: {
-    shortTitle: "Metabolism & cofactors",
-    physiologyFunction: "Substrate fluxes, enzymes, cofactors, micronutrients",
-    amplificationFocus: "Metabolites · reactions · modulators (HMDB/ChEBI/KEGG)",
+    shortTitleKey: "sectorReactionShortTitle",
+    physiologyFunctionKey: "sectorReactionPhysiologyFunction",
+    amplificationFocusKey: "sectorReactionAmplificationFocus",
   },
   projection_review: {
-    shortTitle: "Module projection",
-    physiologyFunction: "Translation into training, nutrition, recovery, health",
-    amplificationFocus: "Cross‑module operational implications (audit, not automatic decision)",
+    shortTitleKey: "sectorProjectionShortTitle",
+    physiologyFunctionKey: "sectorProjectionPhysiologyFunction",
+    amplificationFocusKey: "sectorProjectionAmplificationFocus",
   },
 };
 
@@ -54,12 +57,12 @@ function intentForHop(trace: KnowledgeExpansionTrace, hop: ResearchHopTrace): Re
   return trace.intents.find((i) => i.intentId === hop.intentId) ?? null;
 }
 
-function traceFocus(trace: KnowledgeExpansionTrace) {
+function traceFocus(trace: KnowledgeExpansionTrace, fallback: string) {
   return (
     trace.trigger.stimulusLabel ??
     trace.trigger.entityLabel ??
     trace.trigger.adaptationTarget?.replaceAll("_", " ") ??
-    "stimulus"
+    fallback
   );
 }
 
@@ -79,11 +82,16 @@ function sortHops(hops: ResearchHopTrace[]): ResearchHopTrace[] {
   });
 }
 
-function traceSubtitle(trace: KnowledgeExpansionTrace) {
+function traceSubtitle(
+  trace: KnowledgeExpansionTrace,
+  labels: { module: string; adaptation: string },
+) {
   return (
     <>
-      Module {trace.trigger.module ?? "—"} · {trace.trigger.kind}
-      {trace.trigger.adaptationTarget ? ` · adaptation ${trace.trigger.adaptationTarget.replaceAll("_", " ")}` : ""}
+      {labels.module} {trace.trigger.module ?? "—"} · {trace.trigger.kind}
+      {trace.trigger.adaptationTarget
+        ? ` · ${labels.adaptation} ${trace.trigger.adaptationTarget.replaceAll("_", " ")}`
+        : ""}
     </>
   );
 }
@@ -101,6 +109,7 @@ export function ResearchTraceScientificPanel({
   className,
   traceSurface = "multi",
 }: ResearchTraceScientificPanelProps) {
+  const t = useTranslations("ResearchTraceScientificPanel");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [traces, setTraces] = useState<KnowledgeExpansionTrace[]>([]);
@@ -133,13 +142,13 @@ export function ResearchTraceScientificPanel({
       researchTracesCacheKey = cacheKey;
     } catch (e) {
       if (!cached) {
-        setError(e instanceof Error ? e.message : "Failed to load traces");
+        setError(e instanceof Error ? e.message : t("loadFailed"));
         setTraces([]);
       }
     } finally {
       setLoading(false);
     }
-  }, [athleteId, limit]);
+  }, [athleteId, limit, t]);
 
   useEffect(() => {
     void load();
@@ -151,15 +160,15 @@ export function ResearchTraceScientificPanel({
     <div
       className={`rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/20 via-black/40 to-black/60 p-4 sm:p-5 ${className ?? ""}`}
     >
-      <h3 className="text-base font-bold text-white">Canonical scientific trace</h3>
+      <h3 className="text-base font-bold text-white">{t("panelTitle")}</h3>
       <p className="mt-1 text-[0.7rem] leading-snug text-gray-500">
-        Audit between deterministic engines and evidence corpus; does not replace the engine&apos;s physiological decision (Pro 2 rules).
+        {t("panelSubtitle")}
       </p>
 
-      {loading && <p className="mt-3 text-xs text-gray-500">Loading traces…</p>}
+      {loading && <p className="mt-3 text-xs text-gray-500">{t("loadingTraces")}</p>}
       {error && <p className="mt-3 text-xs text-rose-300/90">{error}</p>}
       {!loading && !traces.length && !error && (
-        <p className="mt-3 text-xs text-gray-500">No trace: generate from VIRYA / builder or save a research plan.</p>
+        <p className="mt-3 text-xs text-gray-500">{t("emptyTraces")}</p>
       )}
 
       {(() => {
@@ -175,16 +184,27 @@ export function ResearchTraceScientificPanel({
                   key={trace.traceId}
                   className={ti > 0 ? "mt-4 border-t border-white/10 pt-4" : "mt-3"}
                 >
-                  <p className="text-sm font-semibold text-gray-200">Focus · {traceFocus(trace)}</p>
-                  <p className="mt-0.5 text-[0.65rem] text-gray-500">{traceSubtitle(trace)}</p>
+                  <p className="text-sm font-semibold text-gray-200">
+                    {t("focusPrefix")} · {traceFocus(trace, t("focusFallback"))}
+                  </p>
+                  <p className="mt-0.5 text-[0.65rem] text-gray-500">
+                    {traceSubtitle(trace, { module: t("subtitleModule"), adaptation: t("subtitleAdaptation") })}
+                  </p>
 
                   <div className="builder-kpi-grid mt-3">
                     {hops.map((hop, idx) => {
-                      const sector = HOP_SECTOR[hop.kind] ?? {
-                        shortTitle: hop.kind,
-                        physiologyFunction: "Knowledge expansion",
-                        amplificationFocus: hop.kind,
-                      };
+                      const mappedSector = HOP_SECTOR[hop.kind];
+                      const sector = mappedSector
+                        ? {
+                            shortTitle: t(mappedSector.shortTitleKey),
+                            physiologyFunction: t(mappedSector.physiologyFunctionKey),
+                            amplificationFocus: t(mappedSector.amplificationFocusKey),
+                          }
+                        : {
+                            shortTitle: hop.kind,
+                            physiologyFunction: t("sectorFallbackPhysiologyFunction"),
+                            amplificationFocus: hop.kind,
+                          };
                       const intent = intentForHop(trace, hop);
                       const docN = hop.linkedDocumentIds?.length ?? 0;
                       const asN = hop.linkedAssertionIds?.length ?? 0;
@@ -199,10 +219,10 @@ export function ResearchTraceScientificPanel({
                           </div>
                           <p className="mt-2 text-xs font-semibold leading-snug text-gray-100">{fnLabel}</p>
                           <p className="mt-2 text-[0.65rem] leading-snug text-gray-400">
-                            We amplify: {sector.amplificationFocus}
+                            {t("amplifyLabel")} {sector.amplificationFocus}
                           </p>
                           <p className="mt-2 text-[0.6rem] text-gray-500">
-                            Entities: {humanizeEntityTypes(hop.expectedEntityTypes)} · {docN} doc · {asN} assert · {hop.status}
+                            {t("entitiesLabel")} {humanizeEntityTypes(hop.expectedEntityTypes)} · {docN} {t("docUnit")} · {asN} {t("assertUnit")} · {hop.status}
                           </p>
                         </div>
                       );
@@ -215,16 +235,16 @@ export function ResearchTraceScientificPanel({
             {historyTraces.length > 0 ? (
               <details className="mt-4 rounded-xl border border-orange-500/20 bg-orange-950/10 px-3 py-2">
                 <summary className="cursor-pointer text-xs font-semibold text-orange-200/90">
-                  Saved traces history ({historyTraces.length}) — same 4‑sector structure, without repeating the grid
+                  {t("historySummary", { count: historyTraces.length })}
                 </summary>
                 <ul className="mt-2 space-y-2 border-t border-white/10 pt-2 text-[0.65rem] leading-snug text-gray-400">
-                  {historyTraces.map((t) => (
-                    <li key={`hist-${t.traceId}`} className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2">
-                      <span className="font-mono text-[0.58rem] text-gray-500">{t.createdAt}</span>
-                      <span className="mt-0.5 block font-semibold text-gray-300">Focus · {traceFocus(t)}</span>
-                      <span className="mt-0.5 block text-gray-500">{traceSubtitle(t)}</span>
+                  {historyTraces.map((hist) => (
+                    <li key={`hist-${hist.traceId}`} className="rounded-lg border border-white/5 bg-black/20 px-2.5 py-2">
+                      <span className="font-mono text-[0.58rem] text-gray-500">{hist.createdAt}</span>
+                      <span className="mt-0.5 block font-semibold text-gray-300">{t("focusPrefix")} · {traceFocus(hist, t("focusFallback"))}</span>
+                      <span className="mt-0.5 block text-gray-500">{traceSubtitle(hist, { module: t("subtitleModule"), adaptation: t("subtitleAdaptation") })}</span>
                       <span className="mt-0.5 block text-gray-600">
-                        {t.hops.length} hop · {t.status}
+                        {hist.hops.length} {t("hopUnit")} · {hist.status}
                       </span>
                     </li>
                   ))}
@@ -236,41 +256,47 @@ export function ResearchTraceScientificPanel({
       })()}
 
       <details className="mt-4 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-        <summary className="cursor-pointer text-sm font-semibold text-gray-200">Textual deep dive (audit)</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-gray-200">{t("deepDiveSummary")}</summary>
         <div className="mt-3 space-y-3 text-xs leading-relaxed text-gray-400">
           <p>
-            <strong className="text-gray-300">Operational goal:</strong> connect training and the physiological/twin state computed
-            by the engines to persisted evidence (documents + assertions). Auditability, not an LLM deciding the physiology.
+            {t.rich("deepDiveIntro", {
+              b: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+            })}
           </p>
-          {traces.map((trace) => (
-            <div key={`txt-${trace.traceId}`}>
-              <p className="font-semibold text-gray-300">{traceFocus(trace)}</p>
-              {sortHops(trace.hops).map((hop) => {
-                const sector = HOP_SECTOR[hop.kind];
-                const intent = intentForHop(trace, hop);
-                return (
-                  <div
-                    key={hop.traceHopId}
-                    className="mt-2 rounded-lg border border-white/10 bg-black/25 p-2.5"
-                  >
-                    <p className="font-semibold text-gray-300">
-                      {sector?.shortTitle ?? hop.kind} — {intent?.label ?? sector?.physiologyFunction}
-                    </p>
-                    <p className="mt-1">
-                      <strong>Why:</strong> {intent?.rationale ?? sector?.physiologyFunction}
-                    </p>
-                    <p className="mt-1">
-                      <strong>Operational question:</strong> {hop.question}
-                    </p>
-                    <p className="mt-1 text-[0.65rem] opacity-90">
-                      Expected sources: {hop.sourceDbs.join(", ") || "—"} · outcome: {hop.resultSummary ?? "—"}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-          {!traces.length && !loading ? <p>No content until saved traces exist.</p> : null}
+          {traces.map((trace) => {
+            const sectorFn = (key: string | undefined) => (key ? t(key) : undefined);
+            return (
+              <div key={`txt-${trace.traceId}`}>
+                <p className="font-semibold text-gray-300">{traceFocus(trace, t("focusFallback"))}</p>
+                {sortHops(trace.hops).map((hop) => {
+                  const sector = HOP_SECTOR[hop.kind];
+                  const sectorShortTitle = sectorFn(sector?.shortTitleKey);
+                  const sectorPhysiology = sectorFn(sector?.physiologyFunctionKey);
+                  const intent = intentForHop(trace, hop);
+                  return (
+                    <div
+                      key={hop.traceHopId}
+                      className="mt-2 rounded-lg border border-white/10 bg-black/25 p-2.5"
+                    >
+                      <p className="font-semibold text-gray-300">
+                        {sectorShortTitle ?? hop.kind} — {intent?.label ?? sectorPhysiology}
+                      </p>
+                      <p className="mt-1">
+                        {t.rich("deepDiveWhy", { b: (chunks) => <strong>{chunks}</strong> })} {intent?.rationale ?? sectorPhysiology}
+                      </p>
+                      <p className="mt-1">
+                        {t.rich("deepDiveOperationalQuestion", { b: (chunks) => <strong>{chunks}</strong> })} {hop.question}
+                      </p>
+                      <p className="mt-1 text-[0.65rem] opacity-90">
+                        {t("expectedSourcesLabel")} {hop.sourceDbs.join(", ") || "—"} · {t("outcomeLabel")} {hop.resultSummary ?? "—"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {!traces.length && !loading ? <p>{t("noContentTraces")}</p> : null}
         </div>
       </details>
     </div>

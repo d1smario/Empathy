@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -56,6 +57,7 @@ export function TrainingAnalyzerCrossChannelSection({
 }: {
   sessions: CrossChannelSessionVm[];
 }) {
+  const t = useTranslations("TrainingAnalyzerCrossChannelSection");
   const [activeId, setActiveId] = useState<string | null>(sessions[0]?.executedId ?? null);
   const active = useMemo(
     () => (activeId ? sessions.find((s) => s.executedId === activeId) ?? sessions[0] ?? null : sessions[0] ?? null),
@@ -71,8 +73,8 @@ export function TrainingAnalyzerCrossChannelSection({
     <div className="mb-6">
       <Pro2SectionCard
         accent="orange"
-        title="Cross-channel intra-session"
-        subtitle="Power / HR vs CGM glucose within the same session interval"
+        title={t("cardTitle")}
+        subtitle={t("cardSubtitle")}
         icon={Activity}
       >
         <div className="mb-3 flex flex-wrap gap-2">
@@ -137,7 +139,7 @@ export function TrainingAnalyzerCrossChannelSection({
                       strokeWidth={CHART_STROKE.thin}
                       dot={false}
                       isAnimationActive={false}
-                      name="HR (bpm)"
+                      name={t("seriesHr")}
                     />
                   ) : null}
                   {active.hasGlucose ? (
@@ -146,7 +148,7 @@ export function TrainingAnalyzerCrossChannelSection({
                       dataKey="glucose"
                       fill={CHART_SIGNAL.glucose}
                       shape="circle"
-                      name="Glucose (mmol/L)"
+                      name={t("seriesGlucose")}
                     />
                   ) : null}
                 </ComposedChart>
@@ -160,16 +162,16 @@ export function TrainingAnalyzerCrossChannelSection({
               ) : null}
               {active.hasHr ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.hr }} /> HR
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.hr }} /> {t("legendHr")}
                 </span>
               ) : null}
               {active.hasGlucose ? (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.glucose }} /> Glucose (right axis)
+                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_SIGNAL.glucose }} /> {t("legendGlucose")}
                 </span>
               ) : null}
               {!active.hasGlucose ? (
-                <span className="text-amber-300/80">No CGM sample within the session interval.</span>
+                <span className="text-amber-300/80">{t("noCgmSample")}</span>
               ) : null}
             </div>
           </div>

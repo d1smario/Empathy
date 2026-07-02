@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import type { WellnessByDateMap } from "@/lib/physiology/wellness-window-summary";
@@ -152,6 +153,7 @@ export function CalendarMonthGrid({
   movePlannedBusyId,
   movePlannedWorkoutToDate,
 }: CalendarMonthGridProps) {
+  const t = useTranslations("CalendarMonthGrid");
   return (
     <section className="tc2-calendar-shell mb-10 rounded-2xl border border-orange-500/20 bg-gradient-to-b from-black/80 to-black/50 shadow-inner shadow-orange-950/25">
       <div className="tc2-calendar-scroll">
@@ -217,7 +219,7 @@ export function CalendarMonthGrid({
                     {hasExecuted ? (
                       <span
                         className="tc2-calendar-exec-dot"
-                        title={`${eList.length} executed`}
+                        title={t("executedCount", { count: eList.length })}
                         aria-hidden
                       />
                     ) : null}
@@ -225,7 +227,7 @@ export function CalendarMonthGrid({
                   {pList.length > 0 ? (
                     <div
                       className="tc2-calendar-day-glyphs flex flex-wrap items-center justify-center gap-0.5 py-0.5"
-                      aria-label="Planned sports"
+                      aria-label={t("plannedSports")}
                     >
                       {uniquePlannedSportGlyphs(pList, 5).map((glyph) => (
                         <SportDisciplineGlyph key={glyph} glyph={glyph} className="h-4 w-4 text-orange-200/95" />
@@ -276,7 +278,7 @@ export function CalendarMonthGrid({
                         className={`tc2-calendar-chip tc2-calendar-chip--draggable ${chip.chipClass} ${
                           dragPlannedId === w.id ? "tc2-calendar-chip--dragging" : ""
                         } ${moving ? "opacity-50" : ""}`}
-                        title="Drag to another day of the calendar"
+                        title={t("dragToAnotherDay")}
                       >
                         <div className="flex items-center gap-1.5 font-bold">
                           <span className={`tc2-calendar-chip-icon tc2-calendar-chip-icon--${chip.family}`}>
@@ -286,7 +288,7 @@ export function CalendarMonthGrid({
                               <SportGlyph type={w.type} />
                             )}
                           </span>
-                          <span>Planned</span>
+                          <span>{t("planned")}</span>
                           <span
                             className={`tc2-calendar-chip-sport-badge ${
                               chip.family === "strength"
@@ -307,7 +309,7 @@ export function CalendarMonthGrid({
                     );
                   })}
                   {pList.length > 2 ? (
-                    <div className="text-[10px] font-semibold text-orange-200/90">+{pList.length - 2} planned</div>
+                    <div className="text-[10px] font-semibold text-orange-200/90">{t("morePlanned", { count: pList.length - 2 })}</div>
                   ) : null}
                   {eList.slice(0, 2).map((w) => {
                     const tr = traceRecord(w);
@@ -316,7 +318,7 @@ export function CalendarMonthGrid({
                     const importedFile = pickText(tr, ["imported_file_name"]);
                     return (
                       <div key={w.id} className="tc2-calendar-chip tc2-calendar-chip-exec">
-                        <div className="font-bold">✅ Executed</div>
+                        <div className="font-bold">{t("executed")}</div>
                         <div>
                           {w.durationMinutes}m · {LOAD_CHIP_LABEL}{" "}
                           {resolveExecutedTrainingLoad({
@@ -339,7 +341,7 @@ export function CalendarMonthGrid({
                     );
                   })}
                   {eList.length > 2 ? (
-                    <div className="text-[10px] font-semibold text-gray-300">+{eList.length - 2} executed</div>
+                    <div className="text-[10px] font-semibold text-gray-300">{t("moreExecuted", { count: eList.length - 2 })}</div>
                   ) : null}
                 </button>
               );

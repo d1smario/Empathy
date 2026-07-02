@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Pro2Accordion } from "@/components/ui/empathy";
 import type { CalendarFetchDiag, ExecutedCalendarGapInfo } from "./useCalendarMonthData";
 
@@ -27,34 +29,33 @@ export function CalendarEngineDetailsAccordion({
   executedCalendarGap,
   monthExecutedRenderedCount,
 }: CalendarEngineDetailsAccordionProps) {
+  const t = useTranslations("CalendarEngineDetailsAccordion");
   return (
     <Pro2Accordion
       id="mod-dettagli-motore"
-      title="How it works"
-      subtitle="Moves, import formats and calendar data window"
+      title={t("title")}
+      subtitle={t("subtitle")}
       accent="orange"
     >
       <div className="space-y-4 text-sm text-gray-300">
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Move a session</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">{t("moveSessionTitle")}</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            Drag a <strong className="text-orange-200">PLAN</strong> chip onto another day in the grid to
-            move the session (same Builder structure, new date). Executed workouts (EXEC) do not move.
+            {t.rich("moveSessionBody", {
+              plan: (chunks) => <strong className="text-orange-200">{chunks}</strong>,
+            })}
           </p>
         </div>
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Import formats</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">{t("importFormatsTitle")}</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            Auto mode: FIT workout files become calendar sessions (PLAN), recorded activities become
-            EXEC. Structured sessions: ZWO, ERG, MRC or FIT workout — one session on the chosen day with a block chart
-            like in the Builder. Executed tracks: FIT/FIT.GZ, CSV, JSON, TCX, GPX.
+            {t("importFormatsBody")}
           </p>
         </div>
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">Data window</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">{t("dataWindowTitle")}</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-400">
-            The loaded data includes a few days before and after the visible month, so sessions at the edges do not
-            disappear from the grid.
+            {t("dataWindowBody")}
             {showTech ? (
               <span className="mt-1 block font-mono text-[0.65rem] text-gray-500">
                 API: {fetchFrom} → {fetchTo}
@@ -91,10 +92,13 @@ export function CalendarEngineDetailsAccordion({
         {showTech && executedCalendarGap ? (
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             <p className="font-mono text-[0.65rem] uppercase tracking-wide text-amber-300">
-              warning · executed present but not rendered in grid
+              {t("warningNotRendered")}
             </p>
             <p className="mt-1 text-amber-100/90">
-              Executed in the month: {executedCalendarGap.totalRows}. Visible EXEC chips: {monthExecutedRenderedCount}.
+              {t("executedGapSummary", {
+                totalRows: executedCalendarGap.totalRows,
+                renderedCount: monthExecutedRenderedCount,
+              })}
             </p>
             <pre className="mt-2 overflow-x-auto rounded border border-amber-500/25 bg-black/40 p-2 font-mono text-[0.65rem] leading-relaxed text-amber-200/95">
               {JSON.stringify(executedCalendarGap.sample, null, 2)}

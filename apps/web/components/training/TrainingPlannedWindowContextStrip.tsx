@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import { formatPlannedProvenanceSummaryIt } from "@/lib/training/planned-provenance";
@@ -17,7 +18,7 @@ type Props = {
   plannedProvenanceSummary?: Partial<Record<string, number>> | null;
 };
 
-function twinLine(t: TrainingTwinContextStripViewModel): string {
+function twinLine(t: TrainingTwinContextStripViewModel, emptyLabel: string): string {
   const bits: string[] = [];
   if (t.readiness != null) bits.push(`readiness ${Math.round(t.readiness)}`);
   if (t.fatigueAcute != null) bits.push(`fatigue ${Math.round(t.fatigueAcute)}`);
@@ -27,7 +28,7 @@ function twinLine(t: TrainingTwinContextStripViewModel): string {
   if (t.adaptationScoreV1 != null) {
     bits.push(`conf ${(t.adaptationScoreV1.confidence * 100).toFixed(0)}%`);
   }
-  return bits.length ? bits.join(" · ") : "Twin present (partial metrics).";
+  return bits.length ? bits.join(" · ") : emptyLabel;
 }
 
 /**
@@ -41,6 +42,7 @@ export function TrainingPlannedWindowContextStrip({
   athleteId,
   plannedProvenanceSummary,
 }: Props) {
+  const t = useTranslations("TrainingPlannedWindowContextStrip");
   if (!readSpineCoverage) return null;
 
   const aid = athleteId?.trim() ?? "";
@@ -54,17 +56,17 @@ export function TrainingPlannedWindowContextStrip({
       )}
     >
       <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">
-        {label} · read spine {readSpineCoverage.spineScore}%
+        {label} · {t("readSpine")} {readSpineCoverage.spineScore}%
         {twinContextStrip ? " · twin" : ""}
       </summary>
       {aid ? (
-        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-gray-500" title="athlete_id used by planned-window">
-          athlete {aid}
+        <p className="mt-2 break-all font-mono text-[0.6rem] leading-snug text-gray-500" title={t("athleteIdTitle")}>
+          {t("athlete", { aid })}
         </p>
       ) : null}
       {showProv ? (
         <p className="mt-1 text-xs text-gray-500">
-          <span className="font-semibold text-gray-400">Planned origin · </span>
+          <span className="font-semibold text-gray-400">{t("plannedOrigin")}</span>
           {formatPlannedProvenanceSummaryIt(plannedProvenanceSummary)}
         </p>
       ) : null}
@@ -93,13 +95,13 @@ export function TrainingPlannedWindowContextStrip({
       {twinContextStrip ? (
         <p className="mt-2 text-xs text-gray-500">
           <span className="font-semibold text-gray-400">Twin · </span>
-          {twinLine(twinContextStrip)}
+          {twinLine(twinContextStrip, t("twinPartial"))}
           {twinContextStrip.asOf ? (
             <span className="mt-1 block font-mono text-[0.6rem] text-gray-600">asOf {twinContextStrip.asOf}</span>
           ) : null}
         </p>
       ) : (
-        <p className="mt-2 text-xs text-amber-200/70">No twin in memory: only spine and raw calendar data.</p>
+        <p className="mt-2 text-xs text-amber-200/70">{t("noTwin")}</p>
       )}
     </details>
   );

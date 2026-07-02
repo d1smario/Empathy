@@ -4,6 +4,7 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachWorkoutLibraryPanel } from "@/components/training/CoachWorkoutLibraryPanel";
@@ -83,6 +84,7 @@ let builderWindowCache: BuilderWindowCacheEntry | null = null;
  * Builder = unico motore sessione; Vyria annuale userà solo questo endpoint per materializzare.
  */
 export default function TrainingBuilderRichPageView() {
+  const t = useTranslations("TrainingBuilderRichPageView");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
@@ -155,7 +157,7 @@ export default function TrainingBuilderRichPageView() {
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
-      setErr("Select an active athlete (coach) or complete the profile.");
+      setErr(t("errNoActiveAthlete"));
       setLoading(false);
       return;
     }
@@ -203,7 +205,7 @@ export default function TrainingBuilderRichPageView() {
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
-          setErr(("error" in json && json.error) || "Failed to read the calendar.");
+          setErr(("error" in json && json.error) || t("errReadCalendar"));
           return;
         }
         const entry: BuilderWindowCacheEntry = {
@@ -225,7 +227,7 @@ export default function TrainingBuilderRichPageView() {
         builderWindowCacheKey = cacheKey;
       } catch {
         if (!c && !cached) {
-          setErr("Network error.");
+          setErr(t("errNetwork"));
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
@@ -489,13 +491,13 @@ export default function TrainingBuilderRichPageView() {
         if (typeof p.lt2HeartRate === "number" && p.lt2HeartRate > 0) {
           const hm = Math.min(220, Math.max(155, Math.round(p.lt2HeartRate / 0.88)));
           setHrMax(hm);
-          hint.push(`HR max ~${hm} bpm`);
+          hint.push(t("hrMaxHint", { hm }));
         } else if (typeof p.lt1HeartRate === "number" && p.lt1HeartRate > 0) {
           const hm = Math.min(220, Math.max(155, Math.round(p.lt1HeartRate / 0.72)));
           setHrMax(hm);
-          hint.push(`HR max ~${hm} bpm`);
+          hint.push(t("hrMaxHint", { hm }));
         }
-        setPhysioHint(hint.length ? `From physiology: ${hint.join(" · ")}` : null);
+        setPhysioHint(hint.length ? t("fromPhysiology", { hints: hint.join(" · ") }) : null);
       } catch {
         if (!c) setPhysioHint(null);
       }
@@ -556,7 +558,7 @@ export default function TrainingBuilderRichPageView() {
         });
         if (catErr || catalogRows.length === 0) {
           setGenBusy(false);
-          setGenErr(catErr ?? "EMPATHY catalog not available to materialize the plan.");
+          setGenErr(catErr ?? t("errCatalogUnavailable"));
           setGenResult(null);
           return;
         }
@@ -569,9 +571,7 @@ export default function TrainingBuilderRichPageView() {
         });
         if (built.length === 0) {
           setGenBusy(false);
-          setGenErr(
-            "The engine proposed a structure but no catalog exercise is compatible. Try a different adaptation or discipline.",
-          );
+          setGenErr(t("errNoCompatibleExercise"));
           setGenResult(null);
           return;
         }
@@ -637,7 +637,7 @@ export default function TrainingBuilderRichPageView() {
     if (!athleteId || !genResult || !("ok" in genResult) || !genResult.ok) return;
     const day = normalizeCalendarTargetDay(targetDate);
     if (!day) {
-      setSaveErr("Invalid calendar date.");
+      setSaveErr(t("errInvalidDate"));
       return;
     }
     setSaveBusy(true);
@@ -663,7 +663,7 @@ export default function TrainingBuilderRichPageView() {
       });
       if (!scheda) {
         setSaveBusy(false);
-        setSaveErr("Empty plan: regenerate or apply exercises from the catalog.");
+        setSaveErr(t("errEmptyPlan"));
         return;
       }
       session = scheda;
@@ -710,7 +710,7 @@ export default function TrainingBuilderRichPageView() {
         await deletePlannedWorkout({ id: replacePlannedIdFromQuery, athleteId });
       } catch (e) {
         setSaveBusy(false);
-        setSaveErr(e instanceof Error ? e.message : "Unable to replace the planned session.");
+        setSaveErr(e instanceof Error ? e.message : t("errReplaceSession"));
         return;
       }
     }
@@ -779,7 +779,7 @@ export default function TrainingBuilderRichPageView() {
       return;
     }
     setWahooPushOk(
-      r.plan_id != null ? `Wahoo plan #${r.plan_id} and planned workout created.` : "Plan sent to Wahoo Cloud.",
+      r.plan_id != null ? t("wahooPlanCreated", { planId: r.plan_id }) : t("wahooPlanSent"),
     );
   }, [
     athleteId,
@@ -796,7 +796,7 @@ export default function TrainingBuilderRichPageView() {
     if (!athleteId || !manualSession) return;
     const day = normalizeCalendarTargetDay(targetDate);
     if (!day) {
-      setManualSaveErr("Invalid calendar date.");
+      setManualSaveErr(t("errInvalidDate"));
       return;
     }
     setManualSaveBusy(true);
@@ -1034,16 +1034,18 @@ export default function TrainingBuilderRichPageView() {
       const p = vm.plan;
       const src =
         vm.planSource === "calendar_training_solver"
-          ? "from calendar"
+          ? t("nutritionSrcCalendar")
           : vm.planSource === "nutrition_plans"
-            ? "from nutrition plan"
-            : "no training in the calendar for this day";
+            ? t("nutritionSrcPlan")
+            : t("nutritionSrcNone");
       setNutritionLine(
         `${p.calories} kcal · CHO ${p.carbsG}g · PRO ${p.proteinsG}g · FAT ${p.fatsG}g · H₂O ${p.hydrationMl}ml · ${src}` +
-          (typeof vm.plannedSessionsCount === "number" ? ` · planned sessions ${vm.plannedSessionsCount}` : ""),
+          (typeof vm.plannedSessionsCount === "number"
+            ? ` · ${t("plannedSessionsSuffix", { count: vm.plannedSessionsCount })}`
+            : ""),
       );
     } catch (e) {
-      setNutritionErr(e instanceof Error ? e.message : "Error reading nutrition");
+      setNutritionErr(e instanceof Error ? e.message : t("errReadNutrition"));
       setNutritionLine(null);
     } finally {
       setNutritionBusy(false);
@@ -1059,10 +1061,10 @@ export default function TrainingBuilderRichPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training"
+      eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
-      title="Create your session"
-      description="Choose the sport, generate the session, refine it, and save it to the calendar in four steps."
+      title={t("pageTitle")}
+      description={t("pageDescription")}
     >
         <div className="scroll-mt-28">
           <TrainingSubnav />
@@ -1154,8 +1156,9 @@ export default function TrainingBuilderRichPageView() {
             3
           </span>
           <p className="text-sm font-bold text-white">
-            Refine{" "}
-            <span className="font-normal text-gray-400">— adjust blocks, exercises, duration, and session name in the editor below.</span>
+            {t.rich("refineLine", {
+              muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
+            })}
           </p>
         </div>
 
@@ -1208,10 +1211,9 @@ export default function TrainingBuilderRichPageView() {
             4
           </span>
           <p className="text-sm font-bold text-white">
-            Save{" "}
-            <span className="font-normal text-gray-400">
-              — use «Save to calendar» in the generated session or in the editor: the session appears in «Upcoming planned» and in the Calendar.
-            </span>
+            {t.rich("saveLine", {
+              muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
+            })}
           </p>
         </div>
 

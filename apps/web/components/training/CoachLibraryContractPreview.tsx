@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
@@ -26,6 +27,7 @@ export function CoachLibraryContractPreview({
   durationFallback?: number;
   compact?: boolean;
 }) {
+  const t = useTranslations("CoachLibraryContractPreview");
   const enriched = useMemo(
     () =>
       ensurePro2BuilderSessionInterpretation(contract, {
@@ -47,23 +49,23 @@ export function CoachLibraryContractPreview({
   );
 
   const gymScheda = contractHasGymScheda(enriched);
-  const chartTitle = title ? `Structure · ${title}` : "Session structure";
+  const chartTitle = title ? t("chartTitleWithName", { title }) : t("chartTitle");
 
   if (enriched.family === "strength") {
     return (
       <div className="space-y-3">
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">Gym plan</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-orange-400">{t("gymPlanLabel")}</p>
         <Pro2GymSchedaBlockList contract={enriched} />
         {!gymScheda && segments.length > 0 ? (
           <SessionBlockIntensityChart
             segments={segments}
-            title="Time / load proxy"
+            title={t("timeLoadProxy")}
             estimatedTss={tssEst}
             compact={compact}
           />
         ) : null}
         {!gymScheda && segments.length === 0 ? (
-          <p className="text-xs text-gray-500">No exercises in the plan — open in the Builder to complete.</p>
+          <p className="text-xs text-gray-500">{t("noExercises")}</p>
         ) : null}
         <SessionMultilevelAnalysisStrip
           contract={enriched}
@@ -79,7 +81,7 @@ export function CoachLibraryContractPreview({
     return (
       <div className="space-y-3">
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-xs text-gray-500">
-          No block to display in this template.
+          {t("noBlock")}
         </p>
         <SessionMultilevelAnalysisStrip
           contract={enriched}

@@ -11,18 +11,13 @@ import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchor
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Accordion, Pro2Link } from "@/components/ui/empathy";
 import { useIsMobileApp } from "@/lib/shell/use-product-href";
+import { useTranslations } from "next-intl";
 import { CalendarDayPlannedSection } from "./calendar/CalendarDayPlannedSection";
 import { CalendarEngineDetailsAccordion } from "./calendar/CalendarEngineDetailsAccordion";
 import { CalendarFileImportSection } from "./calendar/CalendarFileImportSection";
 import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarTodayCard } from "./calendar/CalendarTodayCard";
 import { useCalendarMonthData } from "./calendar/useCalendarMonthData";
-
-const ANCHOR_ITEMS = [
-  { id: "oggi", label: "Today" },
-  { id: "piano", label: "Plan" },
-  { id: "analisi", label: "Analysis" },
-];
 
 /**
  * Calendario allenamenti — ordine canone Pro 2:
@@ -31,21 +26,28 @@ const ANCHOR_ITEMS = [
  * Stato/fetch e ref anti-stale vivono in blocco in `useCalendarMonthData`.
  */
 export default function TrainingCalendarPageView() {
+  const t = useTranslations("TrainingCalendarPageView");
   const cal = useCalendarMonthData();
   const isMobileApp = useIsMobileApp();
 
   const dataReady = !cal.ctxLoading && cal.calendarReady && !cal.err;
 
+  const ANCHOR_ITEMS = [
+    { id: "oggi", label: t("anchorToday") },
+    { id: "piano", label: t("anchorPlan") },
+    { id: "analisi", label: t("anchorAnalysis") },
+  ];
+
   return (
     <Pro2ModulePageShell
-      eyebrow="Training"
+      eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
-      title="Training calendar"
-      description="Your planned and completed sessions, day by day."
+      title={t("title")}
+      description={t("description")}
     >
       <div
         className={`scroll-mt-28${cal.adminScoped ? " pointer-events-none opacity-50" : ""}`}
-        title={cal.adminScoped ? "Available in the dedicated tab (v2)" : undefined}
+        title={cal.adminScoped ? t("adminScopedTitle") : undefined}
       >
         {isMobileApp ? null : <TrainingSubnav />}
       </div>
@@ -67,7 +69,7 @@ export default function TrainingCalendarPageView() {
 
       {cal.monthRefreshing ? (
         <p className="mb-3 text-xs text-orange-300/90" role="status">
-          Updating calendar…
+          {t("updatingCalendar")}
         </p>
       ) : null}
 
@@ -80,15 +82,15 @@ export default function TrainingCalendarPageView() {
       {(cal.fetchDiag?.executedHiddenByPreference ?? 0) > 0 ? (
         <p className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100" role="status">
           {cal.fetchDiag!.executedHiddenByPreference}{" "}
-          {cal.fetchDiag!.executedHiddenByPreference === 1 ? "completed activity hidden" : "completed activities hidden"} from the
-          calendar based on your data source preferences.
+          {cal.fetchDiag!.executedHiddenByPreference === 1 ? t("hiddenActivitySingular") : t("hiddenActivityPlural")}{" "}
+          {t("hiddenActivitySuffix")}
           {cal.adminScoped ? null : (
             <>
               {" "}
               <Pro2Link href="/settings" className="text-amber-50 underline underline-offset-2">
-                Open Settings
+                {t("openSettings")}
               </Pro2Link>{" "}
-              to include other providers (Garmin, Strava, …).
+              {t("includeOtherProviders")}
             </>
           )}
         </p>
@@ -107,9 +109,9 @@ export default function TrainingCalendarPageView() {
           w.source.startsWith("file_import"),
       ) ? (
         <p className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100" role="status">
-          FIT import on this day saved as EXEC without duration (previous import in «Attività» mode). Re-import the
-          same file with <strong className="text-amber-50">Auto</strong> mode (or «Workout pianificato»): it creates the PLAN row
-          with a block chart, duration, TSS and kJ as in the Builder; the empty EXEC row is removed automatically.
+          {t.rich("fitImportWarning", {
+            b: (chunks) => <strong className="text-amber-50">{chunks}</strong>,
+          })}
         </p>
       ) : null}
 
@@ -132,7 +134,7 @@ export default function TrainingCalendarPageView() {
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-black/50 text-lg text-white hover:border-orange-400/45"
             onClick={() => cal.setMonthCursor(new Date(cal.monthCursor.getFullYear(), cal.monthCursor.getMonth() - 1, 1))}
-            aria-label="Previous month"
+            aria-label={t("previousMonth")}
           >
             ‹
           </button>
@@ -141,7 +143,7 @@ export default function TrainingCalendarPageView() {
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-black/50 text-lg text-white hover:border-orange-400/45"
             onClick={() => cal.setMonthCursor(new Date(cal.monthCursor.getFullYear(), cal.monthCursor.getMonth() + 1, 1))}
-            aria-label="Next month"
+            aria-label={t("nextMonth")}
           >
             ›
           </button>
@@ -150,18 +152,18 @@ export default function TrainingCalendarPageView() {
             className="ml-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
             onClick={cal.goToToday}
           >
-            Today
+            {t("today")}
           </button>
           <button
             type="button"
             className="ml-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
             onClick={cal.toggleFileImport}
           >
-            {cal.showFileImport ? "Close import" : "Import file"}
+            {cal.showFileImport ? t("closeImport") : t("importFile")}
           </button>
         </div>
         <div className="rounded-xl border border-orange-500/25 bg-black/35 px-3 py-1.5">
-          <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Sessions in window</p>
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("sessionsInWindow")}</p>
           <p className="font-mono text-lg font-semibold tabular-nums text-white">{cal.monthlySessionCount}</p>
         </div>
       </div>
@@ -237,8 +239,8 @@ export default function TrainingCalendarPageView() {
         {dataReady && cal.belowFoldReady ? (
           <div className="mb-8 space-y-4">
             <Pro2Accordion
-              title="Session of the day"
-              subtitle={`${cal.selectedDate} · tracks, map and telemetry of completed sessions`}
+              title={t("sessionOfDayTitle")}
+              subtitle={t("sessionOfDaySubtitle", { date: cal.selectedDate })}
               accent="orange"
               defaultOpen={cal.dayExecuted.length > 0}
             >
@@ -249,8 +251,8 @@ export default function TrainingCalendarPageView() {
               />
             </Pro2Accordion>
             <Pro2Accordion
-              title="Analysis of the day"
-              subtitle={`${cal.selectedDate} · planned vs completed, sets and load`}
+              title={t("analysisOfDayTitle")}
+              subtitle={t("analysisOfDaySubtitle", { date: cal.selectedDate })}
               accent="orange"
             >
               <TrainingCalendarAnalyzer
@@ -264,8 +266,8 @@ export default function TrainingCalendarPageView() {
               />
             </Pro2Accordion>
             <Pro2Accordion
-              title="Wellness of the day"
-              subtitle={`${cal.selectedDate} · sleep, HRV and recovery`}
+              title={t("wellnessOfDayTitle")}
+              subtitle={t("wellnessOfDaySubtitle", { date: cal.selectedDate })}
               accent="orange"
             >
               <CalendarDayWellnessDetail athleteId={cal.athleteId} selectedDate={cal.selectedDate} />
@@ -288,8 +290,8 @@ export default function TrainingCalendarPageView() {
             />
           ) : null}
           <Pro2Accordion
-            title="Aggregate volume"
-            subtitle="Totals of completed sessions in the calendar window"
+            title={t("aggregateVolumeTitle")}
+            subtitle={t("aggregateVolumeSubtitle")}
             accent="orange"
           >
             <TrainingPeriodVolumeSummary athleteId={cal.athleteId} deferUntilVisible />

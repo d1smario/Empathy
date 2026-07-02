@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useDeferredVisible } from "@/lib/ui/use-deferred-visible";
 import type {
   TrainingExecutedVolumeRollupViewModel,
@@ -126,6 +127,7 @@ export function TrainingPeriodVolumeSummary({
   /** Ritarda il fetch analytics finché la sezione non è vicina al viewport. */
   deferUntilVisible?: boolean;
 }) {
+  const t = useTranslations("TrainingPeriodVolumeSummary");
   const { ref: visibilityRef, visible: nearViewport } = useDeferredVisible();
   const fetchEnabled = Boolean(athleteId) && (!deferUntilVisible || nearViewport);
   const [preset, setPreset] = useState<PresetId>("28");
@@ -247,17 +249,17 @@ export function TrainingPeriodVolumeSummary({
     return [
       { k: "VO₂", v: scan(["vo2_l_min", "vo2_lpm"]) != null ? `${scan(["vo2_l_min", "vo2_lpm"])?.toFixed(2)} L/min` : "—" },
       { k: "VCO₂", v: scan(["vco2_l_min", "vco2_lpm"]) != null ? `${scan(["vco2_l_min", "vco2_lpm"])?.toFixed(2)} L/min` : "—" },
-      { k: "Glucose", v: latestGlucose != null ? `${latestGlucose.toFixed(2)} mmol/L` : "—" },
-      { k: "Glycemic TIR", v: scan(["time_in_range_pct", "glucose_tir_pct"]) != null ? `${(scan(["time_in_range_pct", "glucose_tir_pct"]) ?? 0).toFixed(0)}%` : "—" },
-      { k: "Glycemic CV", v: scan(["glucose_variability_cv", "glucose_cv_pct"]) != null ? `${(scan(["glucose_variability_cv", "glucose_cv_pct"]) ?? 0).toFixed(1)}%` : "—" },
+      { k: t("bioGlucose"), v: latestGlucose != null ? `${latestGlucose.toFixed(2)} mmol/L` : "—" },
+      { k: t("bioGlycemicTir"), v: scan(["time_in_range_pct", "glucose_tir_pct"]) != null ? `${(scan(["time_in_range_pct", "glucose_tir_pct"]) ?? 0).toFixed(0)}%` : "—" },
+      { k: t("bioGlycemicCv"), v: scan(["glucose_variability_cv", "glucose_cv_pct"]) != null ? `${(scan(["glucose_variability_cv", "glucose_cv_pct"]) ?? 0).toFixed(1)}%` : "—" },
       { k: "Testosterone", v: scan(["testosterone", "testosterone_ng_dl"]) != null ? `${Math.round(scan(["testosterone", "testosterone_ng_dl"]) ?? 0)} ng/dL` : "—" },
-      { k: "Cortisol", v: scan(["cortisol_ug_dl", "cortisol"]) != null ? `${(scan(["cortisol_ug_dl", "cortisol"]) ?? 0).toFixed(1)} ug/dL` : "—" },
+      { k: t("bioCortisol"), v: scan(["cortisol_ug_dl", "cortisol"]) != null ? `${(scan(["cortisol_ug_dl", "cortisol"]) ?? 0).toFixed(1)} ug/dL` : "—" },
       { k: "DHEA-S", v: scan(["dhea_s_ug_dl", "dhea_s", "dhea"]) != null ? `${Math.round(scan(["dhea_s_ug_dl", "dhea_s", "dhea"]) ?? 0)} ug/dL` : "—" },
-      { k: "Nitric oxide", v: scan(["nitric_oxide", "nitric_oxide_index", "no_index"]) != null ? `${(scan(["nitric_oxide", "nitric_oxide_index", "no_index"]) ?? 0).toFixed(1)}` : "—" },
-      { k: "Lactate", v: latestLactate != null ? `${latestLactate.toFixed(2)} mmol/L` : "—" },
+      { k: t("bioNitricOxide"), v: scan(["nitric_oxide", "nitric_oxide_index", "no_index"]) != null ? `${(scan(["nitric_oxide", "nitric_oxide_index", "no_index"]) ?? 0).toFixed(1)}` : "—" },
+      { k: t("bioLactate"), v: latestLactate != null ? `${latestLactate.toFixed(2)} mmol/L` : "—" },
       { k: "NAD", v: scan(["nad", "nad_plus", "nad_index"]) != null ? `${(scan(["nad", "nad_plus", "nad_index"]) ?? 0).toFixed(1)}` : "—" },
     ];
-  }, [analyticsVm?.rows]);
+  }, [analyticsVm?.rows, t]);
 
   const avgCells = useMemo(() => {
     const sleepAvg = avg(sleepSeries.map((p) => p.sleep), 2);
@@ -267,25 +269,25 @@ export function TrainingPeriodVolumeSummary({
     const hrAvg = avg(sleepSeries.map((p) => p.hr), 1);
     const hrvAvg = avg(sleepSeries.map((p) => p.hrv), 1);
     return [
-      { k: "Avg total sleep", v: sleepAvg != null ? `${sleepAvg.toFixed(2)} h` : "—" },
-      { k: "Avg deep", v: deepAvg != null ? `${deepAvg.toFixed(2)} h` : "—" },
-      { k: "Avg REM", v: remAvg != null ? `${remAvg.toFixed(2)} h` : "—" },
-      { k: "Avg light", v: lightAvg != null ? `${lightAvg.toFixed(2)} h` : "—" },
-      { k: "Avg night HR", v: hrAvg != null ? `${hrAvg.toFixed(1)} bpm` : "—" },
-      { k: "Avg night HRV", v: hrvAvg != null ? `${hrvAvg.toFixed(1)} ms` : "—" },
+      { k: t("avgTotalSleep"), v: sleepAvg != null ? `${sleepAvg.toFixed(2)} h` : "—" },
+      { k: t("avgDeep"), v: deepAvg != null ? `${deepAvg.toFixed(2)} h` : "—" },
+      { k: t("avgRem"), v: remAvg != null ? `${remAvg.toFixed(2)} h` : "—" },
+      { k: t("avgLight"), v: lightAvg != null ? `${lightAvg.toFixed(2)} h` : "—" },
+      { k: t("avgNightHr"), v: hrAvg != null ? `${hrAvg.toFixed(1)} bpm` : "—" },
+      { k: t("avgNightHrv"), v: hrvAvg != null ? `${hrvAvg.toFixed(1)} ms` : "—" },
     ];
-  }, [sleepSeries]);
+  }, [sleepSeries, t]);
 
   return (
     <div ref={deferUntilVisible ? visibilityRef : undefined} className="w-full min-w-0">
     <Pro2SectionCard
       accent="orange"
-      title="Aggregate volume · Analyzer"
-      subtitle={`Executed in the window ${bounds.from} → ${bounds.to} (series + trace_summary)`}
+      title={t("cardTitle")}
+      subtitle={t("cardSubtitle", { from: bounds.from, to: bounds.to })}
       icon={LineChartIcon}
     >
       {!athleteId ? (
-        <p className="text-sm text-amber-200/85">Select an active athlete to load the aggregates.</p>
+        <p className="text-sm text-amber-200/85">{t("selectAthlete")}</p>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap gap-2">
@@ -300,22 +302,22 @@ export function TrainingPeriodVolumeSummary({
                     : "border-white/15 bg-black/35 text-gray-400 hover:border-white/25 hover:text-gray-200"
                 }`}
               >
-                {p.label}
+                {t(`preset_${p.id}`)}
               </button>
             ))}
           </div>
           {fetchErr ? <p className="mb-3 text-xs text-amber-300/90">{fetchErr}</p> : null}
           {!loading && analyticsVm?.adaptationSummary ? (
             <p className="mb-3 rounded-xl border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-100/90">
-              <span className="font-semibold text-orange-200/95">Twin · adaptation · </span>
+              <span className="font-semibold text-orange-200/95">{t("twinAdaptation")}</span>
               {analyticsVm.adaptationSummary.recoveryDataTier ? (
                 <span>
                   tier{" "}
                   {analyticsVm.adaptationSummary.recoveryDataTier === "minimal"
-                    ? "minimal"
+                    ? t("tierMinimal")
                     : analyticsVm.adaptationSummary.recoveryDataTier === "extended"
-                      ? "extended"
-                      : "standard"}
+                      ? t("tierExtended")
+                      : t("tierStandard")}
                   {" · "}
                 </span>
               ) : null}
@@ -327,7 +329,7 @@ export function TrainingPeriodVolumeSummary({
               ) : analyticsVm.adaptationSummary.adaptationScore != null ? (
                 <>legacy {Math.round(analyticsVm.adaptationSummary.adaptationScore)}/100</>
               ) : (
-                "partial metrics"
+                t("partialMetrics")
               )}
               {analyticsVm.adaptationSummary.asOf ? (
                 <span className="ml-1 font-mono text-[0.65rem] text-gray-500">· asOf {analyticsVm.adaptationSummary.asOf}</span>
@@ -340,11 +342,11 @@ export function TrainingPeriodVolumeSummary({
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
-                  { k: "Sessions", v: f.sessions },
-                  { k: "Hours", v: f.hours },
-                  { k: "Load", v: f.tss },
-                  { k: "Distance km", v: f.km },
-                  { k: "Elevation m", v: f.elev },
+                  { k: t("volSessions"), v: f.sessions },
+                  { k: t("volHours"), v: f.hours },
+                  { k: t("volLoad"), v: f.tss },
+                  { k: t("volDistanceKm"), v: f.km },
+                  { k: t("volElevationM"), v: f.elev },
                   { k: "kcal", v: f.kcal },
                 ].map((cell) => (
                   <div key={cell.k} className="rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-center shadow-inner">
@@ -357,7 +359,7 @@ export function TrainingPeriodVolumeSummary({
                 {[
                   { k: "Rest HR", v: recoveryRollup?.avgRestingHrBpm != null ? `${Math.round(recoveryRollup.avgRestingHrBpm)} bpm` : "—" },
                   { k: "HRV RMSSD", v: recoveryRollup?.avgHrvRmssdMs != null ? `${Math.round(recoveryRollup.avgHrvRmssdMs)} ms` : "—" },
-                  { k: "Avg sleep", v: recoveryRollup?.avgSleepHours != null ? `${recoveryRollup.avgSleepHours.toFixed(2)} h` : "—" },
+                  { k: t("recAvgSleep"), v: recoveryRollup?.avgSleepHours != null ? `${recoveryRollup.avgSleepHours.toFixed(2)} h` : "—" },
                   { k: "Skin temp", v: recoveryRollup?.avgSkinTempC != null ? `${recoveryRollup.avgSkinTempC.toFixed(2)} C` : "—" },
                   { k: "Sample rc", v: recoveryRollup != null ? String(recoveryRollup.sampleCount) : "0" },
                 ].map((cell) => (
@@ -370,7 +372,7 @@ export function TrainingPeriodVolumeSummary({
 
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">Sleep trend (total/deep/REM/light)</p>
+                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">{t("sleepTrendHeader")}</p>
                   <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sleepSeries}>
@@ -379,7 +381,7 @@ export function TrainingPeriodVolumeSummary({
                         <YAxis tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                         <Tooltip contentStyle={chartTooltipStyle("training")} />
                         <Legend />
-                        <Line type="monotone" dataKey="sleep" name="Total h" stroke={CHART_SIGNAL.sleep} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="sleep" name={t("legendTotalH")} stroke={CHART_SIGNAL.sleep} dot={false} connectNulls />
                         <Line type="monotone" dataKey="deep" name="Deep h" stroke={CHART_SIGNAL.lactate} dot={false} connectNulls />
                         <Line type="monotone" dataKey="rem" name="REM h" stroke={CHART_SIGNAL.load} dot={false} connectNulls />
                         <Line type="monotone" dataKey="light" name="Light h" stroke="#fbbf24" dot={false} connectNulls />
@@ -388,7 +390,7 @@ export function TrainingPeriodVolumeSummary({
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/35 p-3">
-                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">Night HR / night HRV trend</p>
+                  <p className="mb-2 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-gray-500">{t("nightHrHrvHeader")}</p>
                   <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sleepSeries}>
@@ -397,7 +399,7 @@ export function TrainingPeriodVolumeSummary({
                         <YAxis tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }} />
                         <Tooltip contentStyle={chartTooltipStyle("training")} />
                         <Legend />
-                        <Line type="monotone" dataKey="hr" name="Night HR" stroke={CHART_SIGNAL.hr} dot={false} connectNulls />
+                        <Line type="monotone" dataKey="hr" name={t("legendNightHr")} stroke={CHART_SIGNAL.hr} dot={false} connectNulls />
                         <Line type="monotone" dataKey="hrv" name="HRV RMSSD" stroke={CHART_SIGNAL.hrv} dot={false} connectNulls />
                       </LineChart>
                     </ResponsiveContainer>
@@ -425,8 +427,11 @@ export function TrainingPeriodVolumeSummary({
             </>
           )}
           <p className="mt-3 text-[0.65rem] leading-relaxed text-gray-500">
-            KPIs from <code className="rounded border border-white/10 bg-white/5 px-1 text-gray-400">GET /api/training/analytics</code> on real traces.
-            Fields not present in the traces stay unpopulated until they arrive from provider/lab ingest.
+            {t.rich("footerNote", {
+              code: (chunks) => (
+                <code className="rounded border border-white/10 bg-white/5 px-1 text-gray-400">{chunks}</code>
+              ),
+            })}
           </p>
         </>
       )}

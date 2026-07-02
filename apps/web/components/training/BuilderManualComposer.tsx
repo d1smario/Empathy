@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
 import { defaultManualPlanBlock, type ManualPlanBlock, type PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
@@ -213,6 +214,7 @@ function GenerativeStepperPod({
   bgClass: string;
   iconClass: string;
 }) {
+  const t = useTranslations("BuilderManualComposer");
   const dec = () => onChange(Math.max(min, value - step));
   const inc = () => onChange(Math.min(max, value + step));
   return (
@@ -223,7 +225,7 @@ function GenerativeStepperPod({
       <div className="min-w-0 flex-1">
         <p className="text-[0.6rem] font-bold uppercase tracking-wider text-gray-400">{label}</p>
         <div className="mt-1 flex items-center gap-1">
-          <button type="button" className={stepperBtn} onClick={dec} aria-label={`Decrease ${label}`}>
+          <button type="button" className={stepperBtn} onClick={dec} aria-label={t("decreaseAria", { label })}>
             −
           </button>
           <input
@@ -238,7 +240,7 @@ function GenerativeStepperPod({
               if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
             }}
           />
-          <button type="button" className={stepperBtn} onClick={inc} aria-label={`Increase ${label}`}>
+          <button type="button" className={stepperBtn} onClick={inc} aria-label={t("increaseAria", { label })}>
             +
           </button>
         </div>
@@ -315,6 +317,7 @@ export function BuilderManualComposer({
   manualSessionDurationMinutes,
   setManualSessionDurationMinutes,
 }: BuilderManualComposerProps) {
+  const t = useTranslations("BuilderManualComposer");
   const safeIndex = Math.min(Math.max(0, activeIndex), Math.max(0, manualPlanBlocks.length - 1));
   const row = manualPlanBlocks[safeIndex];
   const kindMetaList = kindMetaForFamily(macroFamily);
@@ -407,15 +410,15 @@ export function BuilderManualComposer({
 
   const titleCopy =
     macroFamily === "technical"
-      ? { h: "Manual · Technical", p: "Quick presets drill / game / technical + burst; pyramid omitted to keep it simple." }
+      ? { h: t("titleTechnicalH"), p: t("titleTechnicalP") }
       : macroFamily === "lifestyle"
         ? {
-            h: "Manual · Lifestyle",
-            p: "Mobility, breath, recovery: low zones (Z1–Z2). Use the quick sessions or compose the blocks as for aerobic.",
+            h: t("titleLifestyleH"),
+            p: t("titleLifestyleP"),
           }
         : {
-            h: "Build session · Aerobic",
-            p: "The chart updates as you compose. Watt/HR zones; distance and cadence only for A · Aerobic.",
+            h: t("titleAerobicH"),
+            p: t("titleAerobicP"),
           };
 
   const showAerobicDistance = macroFamily === "aerobic";
@@ -423,7 +426,7 @@ export function BuilderManualComposer({
 
   return (
     <section
-      aria-label="Coach manual builder"
+      aria-label={t("sectionAria")}
       className={`rounded-2xl border bg-gradient-to-b ${skin.border} ${skin.bg} p-4 sm:p-6`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -446,7 +449,7 @@ export function BuilderManualComposer({
       <div
         className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
       >
-        <SessionBlockIntensityChart segments={manualChartSegments} title="Session preview" estimatedTss={estimatedTss} />
+        <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreview")} estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
           {manualPlanBlocks.map((b, i) => (
             <button
@@ -459,13 +462,13 @@ export function BuilderManualComposer({
                   : "w-2.5 bg-white/25 hover:bg-white/40"
               }`}
               title={b.label}
-              aria-label={`Go to ${b.label}`}
+              aria-label={t("goToBlockAria", { label: b.label })}
             />
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-mono uppercase tracking-[0.2em] text-gray-500">Duration in calendar</span>
+            <span className="font-mono uppercase tracking-[0.2em] text-gray-500">{t("durationInCalendar")}</span>
             <select
               className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
               value={manualSessionDurationMinutes}
@@ -479,9 +482,10 @@ export function BuilderManualComposer({
             </select>
           </label>
           <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            Sum of segments in the chart:{" "}
-            <span className="font-mono font-semibold text-gray-300">~{structureMinutesFromChart} min</span>. The session saved to the calendar
-            uses the duration selected on the left.
+            {t.rich("segmentsSum", {
+              minutes: structureMinutesFromChart,
+              b: (chunks) => <span className="font-mono font-semibold text-gray-300">{chunks}</span>,
+            })}
           </p>
         </div>
       </div>
@@ -490,7 +494,7 @@ export function BuilderManualComposer({
         <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
           <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Quick sessions · technical
+            {t("quickSessionsTechnical")}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -511,7 +515,7 @@ export function BuilderManualComposer({
                 setActiveIndex(0);
               }}
             >
-              Technical + burst
+              {t("presetTechnicalBurst")}
             </button>
             <button
               type="button"
@@ -521,7 +525,7 @@ export function BuilderManualComposer({
                 setActiveIndex(0);
               }}
             >
-              Game
+              {t("presetGame")}
             </button>
           </div>
         </div>
@@ -529,7 +533,7 @@ export function BuilderManualComposer({
         <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
           <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Quick sessions · lifestyle
+            {t("quickSessionsLifestyle")}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -540,7 +544,7 @@ export function BuilderManualComposer({
                 setActiveIndex(0);
               }}
             >
-              Gentle flow
+              {t("presetGentleFlow")}
             </button>
             <button
               type="button"
@@ -550,7 +554,7 @@ export function BuilderManualComposer({
                 setActiveIndex(0);
               }}
             >
-              Mobility
+              {t("presetMobility")}
             </button>
             <button
               type="button"
@@ -560,7 +564,7 @@ export function BuilderManualComposer({
                 setActiveIndex(0);
               }}
             >
-              Breath + movement
+              {t("presetBreathMovement")}
             </button>
           </div>
         </div>
@@ -607,7 +611,7 @@ export function BuilderManualComposer({
             />
           </label>
           <label className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-14 shrink-0">HR max</span>
+            <span className="w-14 shrink-0">{t("hrMax")}</span>
             <input
               type="number"
               min={120}
@@ -618,7 +622,7 @@ export function BuilderManualComposer({
             />
           </label>
           <label className="ml-auto flex min-w-[8rem] flex-1 flex-col gap-1 text-[0.65rem] text-gray-500 sm:max-w-xs">
-            Session name
+            {t("sessionName")}
             <input
               type="text"
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
@@ -631,13 +635,13 @@ export function BuilderManualComposer({
       {showAerobicDistance ? (
         <div className="mt-2 flex flex-wrap gap-2 text-[0.65rem] text-gray-500">
           <span>
-            Duration:{" "}
+            {t("durationLabel")}{" "}
             <button
               type="button"
               className={lengthMode === "time" ? "text-orange-300 underline" : ""}
               onClick={() => setLengthMode("time")}
             >
-              time
+              {t("durationTime")}
             </button>
             {" · "}
             <button
@@ -645,12 +649,12 @@ export function BuilderManualComposer({
               className={lengthMode === "distance" ? "text-orange-300 underline" : ""}
               onClick={() => setLengthMode("distance")}
             >
-              distance
+              {t("durationDistance")}
             </button>
           </span>
           <span className="text-gray-600">|</span>
           <label className="flex items-center gap-1">
-            Ref. speed km/h
+            {t("refSpeedKmh")}
             <input
               type="number"
               min={5}
@@ -663,31 +667,31 @@ export function BuilderManualComposer({
         </div>
       ) : (
         <p className="mt-2 text-[0.65rem] text-gray-600">
-          Blocks on time; distance reserved for sector A · Aerobic. The duration on the calendar is the one set above the chart.
+          {t("blocksOnTimeNote")}
         </p>
       )}
 
       {/* Navigazione blocchi */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <button type="button" className={btnIcon} onClick={goPrev} disabled={safeIndex <= 0} aria-label="Previous block">
+          <button type="button" className={btnIcon} onClick={goPrev} disabled={safeIndex <= 0} aria-label={t("previousBlockAria")}>
             <ChevronLeft className="h-5 w-5 text-orange-400" />
           </button>
           <span className="min-w-[7rem] text-center text-sm font-mono text-gray-300">
-            Block {safeIndex + 1} / {manualPlanBlocks.length}
+            {t("blockCounter", { current: safeIndex + 1, total: manualPlanBlocks.length })}
           </span>
           <button
             type="button"
             className={btnIcon}
             onClick={goNext}
             disabled={safeIndex >= manualPlanBlocks.length - 1}
-            aria-label="Next block"
+            aria-label={t("nextBlockAria")}
           >
             <ChevronRight className="h-5 w-5 text-orange-400" />
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className={`${btnIcon} border-emerald-500/40 bg-emerald-500/20`} onClick={addBlock} aria-label="Add block">
+          <button type="button" className={`${btnIcon} border-emerald-500/40 bg-emerald-500/20`} onClick={addBlock} aria-label={t("addBlockAria")}>
             <Plus className="h-5 w-5 text-emerald-200" />
           </button>
           <button
@@ -695,7 +699,7 @@ export function BuilderManualComposer({
             className={`${btnIcon} border-rose-500/40 bg-rose-500/15`}
             onClick={removeBlock}
             disabled={manualPlanBlocks.length <= 1}
-            aria-label="Delete block"
+            aria-label={t("deleteBlockAria")}
           >
             <Trash2 className="h-5 w-5 text-rose-200" />
           </button>
@@ -709,10 +713,10 @@ export function BuilderManualComposer({
           className="mb-3 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-base font-semibold text-white"
           value={row.label}
           onChange={(e) => patch({ label: e.target.value })}
-          placeholder="Block name"
+          placeholder={t("blockNamePlaceholder")}
         />
 
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">Type</p>
+        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{t("typeLabel")}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {kindMetaList.map(({ kind, label, icon: Icon, color, iconClass }) => {
             const on = row.kind === kind;
@@ -772,7 +776,7 @@ export function BuilderManualComposer({
 
           {(row.kind === "steady" || row.kind === "ramp" || row.kind === "pyramid") && showAerobicDistance && lengthMode === "distance" ? (
             <label className="flex max-w-xs flex-col gap-1 text-xs text-gray-500">
-              Distance (km)
+              {t("distanceKm")}
               <input
                 type="number"
                 step="0.1"
@@ -786,7 +790,7 @@ export function BuilderManualComposer({
 
           {row.kind === "steady" ? (
             <ZoneStrip
-              label="Main zone"
+              label={t("mainZone")}
               value={row.intensity}
               onPick={(z) => patch({ intensity: z })}
               unit={intensityUnit}
@@ -798,7 +802,7 @@ export function BuilderManualComposer({
           {row.kind === "ramp" ? (
             <div className="space-y-3">
               <ZoneStrip
-                label="Start"
+                label={t("startZone")}
                 value={row.startIntensity}
                 onPick={(z) => patch({ startIntensity: z })}
                 unit={intensityUnit}
@@ -806,7 +810,7 @@ export function BuilderManualComposer({
                 hrMax={hr}
               />
               <ZoneStrip
-                label="End"
+                label={t("endZone")}
                 value={row.endIntensity}
                 onPick={(z) => patch({ endIntensity: z })}
                 unit={intensityUnit}
@@ -819,7 +823,7 @@ export function BuilderManualComposer({
           {row.kind === "interval2" ? (
             <div className="space-y-3">
               <ZoneStrip
-                label="Work"
+                label={t("workZone")}
                 value={row.intensity}
                 onPick={(z) => patch({ intensity: z })}
                 unit={intensityUnit}
@@ -827,7 +831,7 @@ export function BuilderManualComposer({
                 hrMax={hr}
               />
               <ZoneStrip
-                label="Recovery"
+                label={t("recoveryZone")}
                 value={row.intensity2}
                 onPick={(z) => patch({ intensity2: z })}
                 unit={intensityUnit}
@@ -836,7 +840,7 @@ export function BuilderManualComposer({
               />
               <div className="flex flex-wrap gap-3">
                 <label className="text-xs text-gray-500">
-                  Repeats
+                  {t("repeats")}
                   <input
                     type="number"
                     min={1}
@@ -872,7 +876,7 @@ export function BuilderManualComposer({
           {row.kind === "interval3" ? (
             <div className="space-y-3">
               <ZoneStrip
-                label="Phase A"
+                label={t("phaseA")}
                 value={row.intensity}
                 onPick={(z) => patch({ intensity: z })}
                 unit={intensityUnit}
@@ -880,7 +884,7 @@ export function BuilderManualComposer({
                 hrMax={hr}
               />
               <ZoneStrip
-                label="Phase B"
+                label={t("phaseB")}
                 value={row.intensity2}
                 onPick={(z) => patch({ intensity2: z })}
                 unit={intensityUnit}
@@ -888,7 +892,7 @@ export function BuilderManualComposer({
                 hrMax={hr}
               />
               <ZoneStrip
-                label="Phase C"
+                label={t("phaseC")}
                 value={row.intensity3}
                 onPick={(z) => patch({ intensity3: z })}
                 unit={intensityUnit}
@@ -897,7 +901,7 @@ export function BuilderManualComposer({
               />
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                 <label>
-                  Sets
+                  {t("sets")}
                   <input
                     type="number"
                     min={1}
@@ -945,16 +949,16 @@ export function BuilderManualComposer({
               <p className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-gray-500 sm:flex-row sm:items-center sm:gap-2">
                 <span className="inline-flex items-center gap-2">
                   <Mountain className="h-4 w-4 text-orange-300" aria-hidden />
-                  Pyramid
+                  {t("pyramid")}
                 </span>
                 <span className="font-mono text-[0.58rem] font-normal normal-case text-gray-600">
-                  Δ step = (end − start) / steps · last = end
+                  {t("pyramidFormula")}
                 </span>
               </p>
               <div className="flex flex-wrap gap-3">
                 <GenerativeStepperPod
                   icon={Layers}
-                  label="Steps"
+                  label={t("steps")}
                   value={row.pyramidSteps}
                   onChange={(n) => patch({ pyramidSteps: n })}
                   min={1}
@@ -966,7 +970,7 @@ export function BuilderManualComposer({
                 />
                 <GenerativeStepperPod
                   icon={Timer}
-                  label="Sec / step"
+                  label={t("secPerStep")}
                   value={row.pyramidStepSeconds}
                   onChange={(n) => patch({ pyramidStepSeconds: n })}
                   min={20}
@@ -1006,7 +1010,7 @@ export function BuilderManualComposer({
 
           <div className={`flex flex-wrap items-end gap-3 ${!showCadenceRow ? "hidden" : ""}`}>
             <div className="space-y-1.5">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">Cadence</p>
+              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{t("cadence")}</p>
               <div className="flex rounded-full border border-white/15 bg-black/50 p-0.5">
                 <button
                   type="button"
@@ -1077,11 +1081,11 @@ export function BuilderManualComposer({
           {macroFamily === "technical" ? (
             <details className="mt-3 rounded-lg border border-white/10 bg-black/25">
               <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-gray-400">
-                Notes and load multiplier (optional)
+                {t("notesAndLoadSummary")}
               </summary>
               <div className="space-y-3 border-t border-white/10 px-3 pb-3 pt-3">
                 <label className="flex flex-col gap-1 text-xs text-gray-500">
-                  Execution notes
+                  {t("executionNotes")}
                   <textarea
                     rows={2}
                     className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
@@ -1090,7 +1094,7 @@ export function BuilderManualComposer({
                   />
                 </label>
                 <label className="flex max-w-xs flex-col gap-1 text-xs text-gray-500">
-                  Load multiplier (engine, opt.)
+                  {t("loadMultiplier")}
                   <input
                     type="number"
                     step="0.05"
@@ -1106,7 +1110,7 @@ export function BuilderManualComposer({
           ) : (
             <>
               <label className="flex flex-col gap-1 text-xs text-gray-500">
-                Execution notes
+                {t("executionNotes")}
                 <textarea
                   rows={2}
                   className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
@@ -1115,7 +1119,7 @@ export function BuilderManualComposer({
                 />
               </label>
               <label className="flex max-w-xs flex-col gap-1 text-xs text-gray-500">
-                Load multiplier (engine, opt.)
+                {t("loadMultiplier")}
                 <input
                   type="number"
                   step="0.05"
@@ -1133,7 +1137,7 @@ export function BuilderManualComposer({
 
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
         <label className="flex flex-col gap-1 text-xs text-gray-500">
-          Date
+          {t("date")}
           <input
             type="date"
             className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
@@ -1147,7 +1151,7 @@ export function BuilderManualComposer({
           disabled={!athleteId || !canSave || manualSaveBusy}
           onClick={() => onSaveManual(manualPlannedDate)}
         >
-          {manualSaveBusy ? "Saving…" : "Save to calendar"}
+          {manualSaveBusy ? t("saving") : t("saveToCalendar")}
         </button>
       </div>
       {manualSaveErr ? (

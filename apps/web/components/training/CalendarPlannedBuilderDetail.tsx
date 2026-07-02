@@ -24,6 +24,7 @@ import { ChevronDown, Copy, ExternalLink, Trash2, Download, ArrowRightLeft } fro
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useProductHref } from "@/lib/shell/use-product-href";
+import { useTranslations } from "next-intl";
 
 const LIFESTYLE_CATS: readonly LifestylePracticeCategory[] = [
   "yoga",
@@ -86,6 +87,7 @@ export function CalendarPlannedBuilderDetail({
   onDeleted?: (removedPlannedId: string) => void;
   onCalendarMutated?: () => void;
 }) {
+  const t = useTranslations("CalendarPlannedBuilderDetail");
   const contract = useMemo(() => parsePro2BuilderSessionFromNotes(workout.notes ?? null), [workout.notes]);
 
   const segments = useMemo(() => (contract ? pro2BuilderContractToChartSegments(contract) : []), [contract]);
@@ -169,52 +171,52 @@ export function CalendarPlannedBuilderDetail({
             <span
               className={`rounded-full border px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider ${family ? familyBadgeClass[family] ?? "border-white/20 bg-white/5 text-gray-300" : "border-white/20 bg-white/5 text-gray-400"}`}
             >
-              {contract ? familyLabel(family) : "Planned"}
+              {contract ? familyLabel(family) : t("planned")}
             </span>
             {typeof workout.notes === "string" && workout.notes.includes("[STRUCTURED_PLAN_IMPORT]") ? (
               <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-orange-300">
-                Structured import
+                {t("structuredImport")}
               </span>
             ) : null}
             <span className="font-mono text-xs text-gray-500">{workout.type}</span>
           </div>
           <h4 className="mt-1.5 text-base font-bold text-white">
-            {contract?.sessionName?.trim() || workout.type} · {titleDurationMin}′ · Load {titleTss}
+            {contract?.sessionName?.trim() || workout.type} · {titleDurationMin}′ · {t("load")} {titleTss}
             {titleKcal != null && titleKcal > 0 ? ` · kcal ${titleKcal}` : ""}
           </h4>
           {contract?.discipline ? (
             <p className="mt-0.5 text-xs text-gray-500">
               {contract.discipline}
               {contract.adaptationTarget ? ` · ${contract.adaptationTarget}` : ""}
-              {contract.phase ? ` · phase ${contract.phase}` : ""}
+              {contract.phase ? ` · ${t("phaseSuffix", { phase: contract.phase })}` : ""}
             </p>
           ) : null}
         </div>
         <div className="relative z-20 flex flex-wrap gap-2 pointer-events-auto">
           <Pro2Link href={sessionHref} variant="ghost" className="border border-orange-500/35 bg-orange-500/10 text-xs">
-            Day
+            {t("day")}
             <ExternalLink className="ml-1 inline h-3 w-3 opacity-70" aria-hidden />
           </Pro2Link>
           <button
             type="button"
             disabled={adaptNavigating}
             className="inline-flex items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 px-5 py-2.5 text-xs font-bold text-orange-100 transition hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
-            title="Opens the builder with daily adaptation and replaces this row on save."
+            title={t("adaptTitle")}
             onClick={() => {
               setActionFeedback(null);
               setAdaptNavigating(true);
               router.push(builderHref);
             }}
           >
-            {adaptNavigating ? "Opening builder…" : "Adapt"}
+            {adaptNavigating ? t("openingBuilder") : t("adapt")}
           </button>
           {resolvedAthleteId ? (
             deleteConfirmOpen ? (
               <div className="flex max-w-md flex-col gap-2 rounded-lg border border-rose-400/40 bg-rose-950/40 px-2 py-2">
                 <span className="text-xs text-rose-100">
                   {isViryaSession
-                    ? `VIRYA session (${planNameFromViryaTag(viryaTag)}). This is not AI memory: it is a session planned on the calendar.`
-                    : "Remove from calendar?"}
+                    ? t("viryaSessionInfo", { plan: planNameFromViryaTag(viryaTag) })
+                    : t("removeFromCalendar")}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -234,28 +236,28 @@ export function CalendarPlannedBuilderDetail({
                         setDeleteConfirmOpen(false);
                         const extra =
                           r.purgedViryaDayDuplicates && r.purgedViryaDayDuplicates > 0
-                            ? ` (+${r.purgedViryaDayDuplicates} VIRYA duplicates same day)`
+                            ? ` ${t("viryaDuplicatesSameDay", { n: r.purgedViryaDayDuplicates })}`
                             : "";
-                        setActionFeedback({ tone: "ok", text: `Session removed from calendar.${extra}` });
+                        setActionFeedback({ tone: "ok", text: `${t("sessionRemoved")}${extra}` });
                         onDeleted?.(workout.id);
                       } catch (e) {
                         setActionFeedback({
                           tone: "err",
-                          text: e instanceof Error ? e.message : "Deletion failed",
+                          text: e instanceof Error ? e.message : t("deletionFailed"),
                         });
                       } finally {
                         setDeleting(false);
                       }
                     }}
                   >
-                    {deleting ? "Deleting…" : isViryaSession ? "This day only" : "Confirm"}
+                    {deleting ? t("deleting") : isViryaSession ? t("thisDayOnly") : t("confirm")}
                   </button>
                   {isViryaSession && viryaTag ? (
                     <button
                       type="button"
                       disabled={deleting}
                       className="rounded-lg border border-amber-400/45 bg-amber-500/20 px-2 py-1 text-xs font-bold text-amber-100 hover:bg-amber-500/30 disabled:opacity-40"
-                      title="Removes all sessions with the same VIRYA tag on the calendar"
+                      title={t("removeAllViryaTitle")}
                       onClick={async () => {
                         setActionFeedback(null);
                         setDeleting(true);
@@ -270,21 +272,21 @@ export function CalendarPlannedBuilderDetail({
                           setDeleteConfirmOpen(false);
                           setActionFeedback({
                             tone: "ok",
-                            text: `VIRYA plan removed (${n} sessions). To republish: VIRYA → Save to Calendar.`,
+                            text: t("viryaPlanRemoved", { n }),
                           });
                           onDeleted?.(workout.id);
                           onCalendarMutated?.();
                         } catch (e) {
                           setActionFeedback({
                             tone: "err",
-                            text: e instanceof Error ? e.message : "VIRYA plan deletion failed",
+                            text: e instanceof Error ? e.message : t("viryaPlanDeletionFailed"),
                           });
                         } finally {
                           setDeleting(false);
                         }
                       }}
                     >
-                      Entire VIRYA plan
+                      {t("entireViryaPlan")}
                     </button>
                   ) : null}
                   <button
@@ -293,7 +295,7 @@ export function CalendarPlannedBuilderDetail({
                     className="rounded-lg border border-white/15 px-2 py-1 text-xs text-gray-300 hover:bg-white/10 disabled:opacity-40"
                     onClick={() => setDeleteConfirmOpen(false)}
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                 </div>
               </div>
@@ -302,18 +304,18 @@ export function CalendarPlannedBuilderDetail({
                 type="button"
                 disabled={deleting}
                 className="inline-flex items-center gap-1 rounded-lg border border-rose-400/45 bg-rose-500/15 px-2.5 py-1.5 text-xs font-bold text-rose-100 hover:bg-rose-500/25 disabled:opacity-40"
-                title="Removes this planned session from the calendar"
+                title={t("deleteTitle")}
                 onClick={() => {
                   setActionFeedback(null);
                   setDeleteConfirmOpen(true);
                 }}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                Delete
+                {t("delete")}
               </button>
             )
           ) : (
-            <span className="text-xs text-amber-200/90">Delete: athlete context not available.</span>
+            <span className="text-xs text-amber-200/90">{t("deleteNoAthleteContext")}</span>
           )}
         </div>
       </div>
@@ -330,7 +332,7 @@ export function CalendarPlannedBuilderDetail({
       {resolvedAthleteId ? (
         <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-white/10 pt-3">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-500">
-            Target date
+            {t("targetDate")}
             <input
               type="date"
               className="rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-white"
@@ -343,7 +345,7 @@ export function CalendarPlannedBuilderDetail({
             type="button"
             disabled={calendarBusy != null || !targetDate.trim()}
             className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
-            title="Duplicates the session to another date (the original row stays unchanged)"
+            title={t("copyTitle")}
             onClick={async () => {
               setCalendarActionMsg(null);
               setCalendarBusy("copy");
@@ -353,23 +355,23 @@ export function CalendarPlannedBuilderDetail({
                   athleteId: resolvedAthleteId,
                   date: targetDate.trim(),
                 });
-                if (!r.ok) throw new Error(r.error ?? "Copy failed");
-                setCalendarActionMsg(`Copied to ${targetDate.trim()}`);
+                if (!r.ok) throw new Error(r.error ?? t("copyFailed"));
+                setCalendarActionMsg(t("copiedTo", { date: targetDate.trim() }));
                 onCalendarMutated?.();
               } catch (e) {
-                setCalendarActionMsg(e instanceof Error ? e.message : "Copy failed");
+                setCalendarActionMsg(e instanceof Error ? e.message : t("copyFailed"));
               } finally {
                 setCalendarBusy(null);
               }
             }}
           >
             <Copy className="h-3.5 w-3.5" aria-hidden />
-            {calendarBusy === "copy" ? "Copying…" : "Copy"}
+            {calendarBusy === "copy" ? t("copying") : t("copy")}
           </button>
           {moveConfirmOpen ? (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-400/35 bg-orange-950/30 px-2 py-1.5">
               <span className="text-xs text-orange-100">
-                Move from {workout.date} to {targetDate.trim()}?
+                {t("moveConfirmQuestion", { from: workout.date, to: targetDate.trim() })}
               </span>
               <button
                 type="button"
@@ -385,16 +387,16 @@ export function CalendarPlannedBuilderDetail({
                       patch: { date: targetDate.trim() },
                     });
                     setMoveConfirmOpen(false);
-                    setCalendarActionMsg(`Moved to ${targetDate.trim()}`);
+                    setCalendarActionMsg(t("movedTo", { date: targetDate.trim() }));
                     onCalendarMutated?.();
                   } catch (e) {
-                    setCalendarActionMsg(e instanceof Error ? e.message : "Move failed");
+                    setCalendarActionMsg(e instanceof Error ? e.message : t("moveFailed"));
                   } finally {
                     setCalendarBusy(null);
                   }
                 }}
               >
-                {calendarBusy === "move" ? "Moving…" : "Confirm"}
+                {calendarBusy === "move" ? t("moving") : t("confirm")}
               </button>
               <button
                 type="button"
@@ -402,7 +404,7 @@ export function CalendarPlannedBuilderDetail({
                 className="rounded-lg border border-white/15 px-2 py-1 text-xs text-gray-300 hover:bg-white/10 disabled:opacity-40"
                 onClick={() => setMoveConfirmOpen(false)}
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           ) : (
@@ -410,14 +412,14 @@ export function CalendarPlannedBuilderDetail({
               type="button"
               disabled={calendarBusy != null || !targetDate.trim() || targetDate.trim() === workout.date}
               className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20 disabled:opacity-40"
-              title="Moves the session to another date"
+              title={t("moveTitle")}
               onClick={() => {
                 setCalendarActionMsg(null);
                 setMoveConfirmOpen(true);
               }}
             >
               <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
-              Move
+              {t("move")}
             </button>
           )}
           {calendarActionMsg ? (
@@ -432,7 +434,7 @@ export function CalendarPlannedBuilderDetail({
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
           <span className="flex items-center gap-1 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">
             <Download className="h-3 w-3 shrink-0" aria-hidden />
-            Export device
+            {t("exportDevice")}
           </span>
           {canStructuredExport ? (
             <>
@@ -459,23 +461,24 @@ export function CalendarPlannedBuilderDetail({
               </Pro2Link>
             </>
           ) : (
-            <span className="text-xs text-gray-500">ZWO/FIT/CSV: requires aerobic macro + watts.</span>
+            <span className="text-xs text-gray-500">{t("exportRequiresAerobicWatts")}</span>
           )}
           <Pro2Link
             href={exportHref("fueling_json")!}
             variant="ghost"
             className="border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-100"
           >
-            Fueling JSON
+            {t("fuelingJson")}
           </Pro2Link>
         </div>
       ) : null}
 
       {!contract ? (
         <p className="mt-3 text-sm text-gray-500">
-          No Builder contract in <code className="text-gray-600">notes</code> (typical TrainingPeaks / CSV import: summary
-          only). The block chart and zones appear after defining the session in the Builder — use{" "}
-          <span className="text-gray-400">Edit</span> above.
+          {t.rich("noBuilderContract", {
+            code: (chunks) => <code className="text-gray-600">{chunks}</code>,
+            edit: (chunks) => <span className="text-gray-400">{chunks}</span>,
+          })}
         </p>
       ) : (
         <>
@@ -484,15 +487,16 @@ export function CalendarPlannedBuilderDetail({
               id="calendar-gym-scheda"
               className="mt-4 scroll-mt-28 rounded-2xl border border-orange-500/35 bg-gradient-to-br from-orange-950/30 via-orange-950/20 to-black/50 p-4 shadow-[0_0_32px_-12px_rgba(217,70,239,0.35)]"
             >
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-200">Gym program · like Builder</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-200">{t("gymProgramLikeBuilder")}</p>
               <div className="mt-4">
                 <Pro2GymSchedaBlockList contract={contract} />
               </div>
               {!gymScheda ? (
                 <p className="mt-3 text-xs text-amber-200/90">
-                  This session does not have catalog exercises yet (<code className="text-amber-100/80">gymRx</code>). In VIRYA
-                  set a plan name, regenerate and republish to Calendar, or open <span className="text-white">Adapt</span> in the
-                  Builder.
+                  {t.rich("gymNoCatalogExercises", {
+                    code: (chunks) => <code className="text-amber-100/80">{chunks}</code>,
+                    adapt: (chunks) => <span className="text-white">{chunks}</span>,
+                  })}
                 </p>
               ) : null}
             </div>
@@ -505,8 +509,8 @@ export function CalendarPlannedBuilderDetail({
                 segments={segments}
                 title={
                   family === "aerobic"
-                    ? "Block chart (planned)"
-                    : "Time / load proxy (estimate)"
+                    ? t("blockChartPlanned")
+                    : t("timeLoadProxyEstimate")
                 }
                 estimatedTss={tssEst > 0 ? tssEst : undefined}
               />
@@ -515,7 +519,7 @@ export function CalendarPlannedBuilderDetail({
                   rows={stepRows}
                   ftpW={chartFtpW}
                   compact
-                  title="Session details"
+                  title={t("sessionDetails")}
                 />
               ) : null}
               <SessionMultilevelAnalysisStrip
@@ -527,8 +531,9 @@ export function CalendarPlannedBuilderDetail({
             </div>
           ) : contract && (contract.blocks ?? []).length === 0 ? (
             <p className="mt-4 text-sm text-amber-200/90">
-              Builder contract without blocks: open <span className="text-white">Adapt</span> in the Builder and save again, or
-              regenerate from VIRYA to Calendar.
+              {t.rich("builderContractNoBlocks", {
+                adapt: (chunks) => <span className="text-white">{chunks}</span>,
+              })}
             </p>
           ) : null}
 
@@ -540,10 +545,10 @@ export function CalendarPlannedBuilderDetail({
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-gray-200 marker:hidden [&::-webkit-details-marker]:hidden">
               <span>
                 {family === "strength"
-                  ? "Technical detail · block list"
+                  ? t("technicalDetailBlockList")
                   : hasBlockChart
-                    ? "Block detail · notes"
-                    : "Structure · open / close"}
+                    ? t("blockDetailNotes")
+                    : t("structureOpenClose")}
               </span>
               <ChevronDown
                 className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${structureOpen ? "rotate-180" : ""}`}
@@ -554,13 +559,13 @@ export function CalendarPlannedBuilderDetail({
               {family === "strength" && !gymScheda && segments.length > 0 && !hasBlockChart ? (
                 <SessionBlockIntensityChart
                   segments={segments}
-                  title="Time / load proxy (estimate — no program)"
+                  title={t("timeLoadProxyNoProgram")}
                   estimatedTss={tssEst > 0 ? tssEst : undefined}
                 />
               ) : null}
 
               {!hasBlockChart ? (
-                <BuilderPlannedSessionViz contract={contract} title="Zone profile (builder V1)" compact />
+                <BuilderPlannedSessionViz contract={contract} title={t("zoneProfileBuilderV1")} compact />
               ) : null}
 
               {!hasBlockChart ? (
@@ -607,7 +612,7 @@ export function CalendarPlannedBuilderDetail({
                           </p>
                           {block.technicalRx ? (
                             <p className="mt-2 text-xs text-orange-200/85">
-                              {block.technicalRx.entryType === "scheme" ? "Scheme" : "Drill"}
+                              {block.technicalRx.entryType === "scheme" ? t("scheme") : t("drill")}
                               {block.technicalRx.periodsLabel ? ` · ${block.technicalRx.periodsLabel}` : ""}
                               {block.technicalRx.spaceLabel ? ` · ${block.technicalRx.spaceLabel}` : ""}
                               {block.technicalRx.coachingCue ? ` · ${block.technicalRx.coachingCue}` : ""}

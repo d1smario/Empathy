@@ -6,6 +6,7 @@ import {
   type PlannedWorkout,
 } from "@empathy/domain-training";
 import { CalendarDays, ClipboardList, Heart, Wrench } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarPlannedBuilderDetail } from "@/components/training/CalendarPlannedBuilderDetail";
@@ -44,6 +45,7 @@ type WindowErr = { ok: false; error?: string };
  * Completion manuale e patch coach arriveranno con endpoint dedicati Pro 2.
  */
 export default function TrainingSessionPageView() {
+  const t = useTranslations("TrainingSessionPageView");
   const params = useParams<{ date: string }>();
   const date = typeof params?.date === "string" ? params.date : "";
   const dateValid = ISO_DATE.test(date);
@@ -76,7 +78,7 @@ export default function TrainingSessionPageView() {
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
-      setErr("No active athlete.");
+      setErr(t("noActiveAthlete"));
       return;
     }
 
@@ -108,7 +110,7 @@ export default function TrainingSessionPageView() {
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | WindowErr;
         if (cancelled) return;
         if (!res.ok || !json.ok) {
-          const errMsg = ("error" in json && json.error) || "Read failed.";
+          const errMsg = ("error" in json && json.error) || t("readFailed");
           setPlanned([]);
           setExecuted([]);
           setReadSpineCoverage(null);
@@ -146,7 +148,7 @@ export default function TrainingSessionPageView() {
         };
       } catch {
         if (!cancelled && !cached) {
-          setErr("Network error.");
+          setErr(t("networkError"));
           setPlanned([]);
           setExecuted([]);
           setReadSpineCoverage(null);
@@ -161,7 +163,7 @@ export default function TrainingSessionPageView() {
     return () => {
       cancelled = true;
     };
-  }, [athleteId, ctxLoading, date, dateValid]);
+  }, [athleteId, ctxLoading, date, dateValid, t]);
 
   const titleDate = useMemo(() => {
     if (!dateValid) return "—";
@@ -179,16 +181,19 @@ export default function TrainingSessionPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Day"
+      eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
-      title={dateValid ? titleDate : "Invalid date"}
+      title={dateValid ? titleDate : t("invalidDateTitle")}
       description={
         dateValid ? (
           <span>
-            Day <code className="text-orange-200/80">{date}</code> — same data as the calendar.
+            {t.rich("dayDescription", {
+              date,
+              code: (chunks) => <code className="text-orange-200/80">{chunks}</code>,
+            })}
           </span>
         ) : (
-          "Invalid address: the date must be in YYYY-MM-DD format (e.g. 2025-04-02)."
+          t("invalidAddress")
         )
       }
     >
@@ -205,7 +210,7 @@ export default function TrainingSessionPageView() {
       {dateValid && readSpineCoverage && athleteId ? (
         <TrainingPlannedWindowContextStrip
           className="mb-4"
-          label="Day"
+          label={t("dayLabel")}
           readSpineCoverage={readSpineCoverage}
           twinContextStrip={twinContextStrip}
           athleteId={athleteId}
@@ -214,9 +219,11 @@ export default function TrainingSessionPageView() {
       ) : null}
 
       {!dateValid ? (
-        <Pro2SectionCard accent="slate" title="Invalid date" subtitle="Date format" icon={CalendarDays}>
+        <Pro2SectionCard accent="slate" title={t("invalidDateTitle")} subtitle={t("dateFormatSubtitle")} icon={CalendarDays}>
           <p className="text-sm text-gray-400">
-            The date in the URL must be <strong className="text-gray-200">YYYY-MM-DD</strong>.
+            {t.rich("dateFormatBody", {
+              b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+            })}
           </p>
         </Pro2SectionCard>
       ) : null}
@@ -225,8 +232,8 @@ export default function TrainingSessionPageView() {
         <>
           <Pro2SectionCard
             accent="cyan"
-            title="Planned"
-            subtitle={ctxLoading || loading ? "Loading…" : err ? undefined : `${planned.length} on this day`}
+            title={t("plannedTitle")}
+            subtitle={ctxLoading || loading ? t("loading") : err ? undefined : t("plannedCount", { count: planned.length })}
             icon={CalendarDays}
           >
             {err ? (
@@ -235,7 +242,7 @@ export default function TrainingSessionPageView() {
               </p>
             ) : null}
             {!ctxLoading && !loading && !err && planned.length === 0 ? (
-              <p className="text-sm text-gray-500">No workout planned for this date.</p>
+              <p className="text-sm text-gray-500">{t("noWorkoutPlanned")}</p>
             ) : null}
             {!ctxLoading && !loading && !err && planned.length > 0 ? (
               <ul className="space-y-4">
@@ -250,12 +257,12 @@ export default function TrainingSessionPageView() {
 
           <Pro2SectionCard
             accent="emerald"
-            title="Executed"
-            subtitle={!loading && !err ? `${executed.length} recordings` : undefined}
+            title={t("executedTitle")}
+            subtitle={!loading && !err ? t("executedCount", { count: executed.length }) : undefined}
             icon={ClipboardList}
           >
             {!ctxLoading && !loading && !err && executed.length === 0 ? (
-              <p className="text-sm text-gray-500">No execution on this day.</p>
+              <p className="text-sm text-gray-500">{t("noExecution")}</p>
             ) : null}
             {!ctxLoading && !loading && !err && executed.length > 0 ? (
               <ul className="space-y-2">
@@ -273,13 +280,14 @@ export default function TrainingSessionPageView() {
 
           <Pro2SectionCard
             accent="violet"
-            title="Twin and recovery"
-            subtitle="Same data used by Builder and Nutrition"
+            title={t("twinTitle")}
+            subtitle={t("twinSubtitle")}
             icon={Heart}
           >
             <p className="text-sm text-gray-400">
-              Readiness, internal load and recovery live in the athlete&apos;s <strong className="text-gray-200">digital twin</strong>.
-              Open Profile for the snapshot; Physiology for the signal detail.
+              {t.rich("twinBody", {
+                b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+              })}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Pro2Link
@@ -299,10 +307,11 @@ export default function TrainingSessionPageView() {
             </div>
           </Pro2SectionCard>
 
-          <Pro2SectionCard accent="amber" title="Next steps" subtitle="Coming soon" icon={Wrench}>
+          <Pro2SectionCard accent="amber" title={t("nextStepsTitle")} subtitle={t("comingSoon")} icon={Wrench}>
             <p className="text-sm text-gray-400">
-              <strong className="text-gray-200">Complete session</strong> recording, coach load editing and structured builder notes
-              will arrive in upcoming releases.
+              {t.rich("nextStepsBody", {
+                b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+              })}
             </p>
           </Pro2SectionCard>
         </>

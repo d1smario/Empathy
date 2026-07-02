@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type StatusPayload = {
   configured: boolean;
@@ -12,6 +13,7 @@ type StatusPayload = {
  * Stato Replicate lato server (nessun segreto in UI). Informativo per asset esercizi — non blocca il builder.
  */
 export function ReplicateStatusStrip() {
+  const t = useTranslations("ReplicateStatusStrip");
   const [data, setData] = useState<StatusPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export function ReplicateStatusStrip() {
         if (!cancelled) setData(j);
       })
       .catch(() => {
-        if (!cancelled) setErr("Unable to reach the exercise asset status.");
+        if (!cancelled) setErr(t("unreachable"));
       });
     return () => {
       cancelled = true;
@@ -39,12 +41,12 @@ export function ReplicateStatusStrip() {
 
   const label =
     data == null
-      ? "Exercise assets"
+      ? t("assets")
       : data.configured && data.reachable === true
-        ? "Exercise assets · connected"
+        ? t("assetsConnected")
         : data.configured
-          ? "Exercise assets · token / network"
-          : "Exercise assets · not configured";
+          ? t("assetsTokenNetwork")
+          : t("assetsNotConfigured");
 
   return (
     <div
@@ -54,9 +56,11 @@ export function ReplicateStatusStrip() {
       <p className="font-bold text-gray-200">{label}</p>
       {err ? <p className="mt-1 text-amber-200/90">{err}</p> : null}
       {data && !err ? <p className="mt-1">{data.message}</p> : null}
-      {data == null && !err ? <p className="mt-1 opacity-80">Checking…</p> : null}
+      {data == null && !err ? <p className="mt-1 opacity-80">{t("checking")}</p> : null}
       <p className="mt-2 text-[0.65rem] opacity-75">
-        PNG batch generation: run the <code className="text-gray-500">scripts/generate-exercise-images.ps1</code> script locally.
+        {t.rich("pngBatch", {
+          code: (chunks) => <code className="text-gray-500">{chunks}</code>,
+        })}
       </p>
     </div>
   );

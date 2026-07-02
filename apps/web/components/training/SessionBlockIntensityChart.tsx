@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { colorForIntensity } from "@/lib/training/builder/pro2-intensity";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
@@ -18,7 +19,7 @@ function formatSec(sec: number): string {
  */
 export function SessionBlockIntensityChart({
   segments,
-  title = "Block chart (intensity)",
+  title,
   estimatedTss,
   compact = false,
 }: {
@@ -29,12 +30,14 @@ export function SessionBlockIntensityChart({
   /** Variante compatta per anteprime in lista (libreria coach). */
   compact?: boolean;
 }) {
+  const t = useTranslations("SessionBlockIntensityChart");
+  const resolvedTitle = title ?? t("defaultTitle");
   const totalSec = segments.reduce((s, x) => s + x.durationSeconds, 0) || 1;
 
   if (segments.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center text-sm text-gray-400">
-        No block to display.
+        {t("emptyState")}
       </div>
     );
   }
@@ -43,11 +46,11 @@ export function SessionBlockIntensityChart({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-          {title}
+          {resolvedTitle}
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.65rem] text-gray-500">
           <span>
-            {formatSec(totalSec)} total · {segments.length} segments
+            {t("totalSummary", { total: formatSec(totalSec), count: segments.length })}
           </span>
           {typeof estimatedTss === "number" ? (
             <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 font-semibold text-orange-300">
@@ -60,7 +63,7 @@ export function SessionBlockIntensityChart({
       <div
         className="rounded-xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 via-black/60 to-black/75 p-2 shadow-inner shadow-orange-950/20 ring-1 ring-orange-500/15"
         role="img"
-        aria-label={`Session timeline, ${totalSec} seconds`}
+        aria-label={t("timelineAriaLabel", { seconds: totalSec })}
       >
         <div className={`flex gap-1 ${compact ? "min-h-[8rem]" : "min-h-[11rem]"}`}>
           {segments.map((seg) => {
@@ -109,12 +112,13 @@ export function SessionBlockIntensityChart({
 
       {!compact ? (
         <p className="text-[0.6rem] leading-relaxed text-gray-500">
-          Colors = zone; width = time. Height = load (pyramid: linear increase on W/bpm, not just zone label).
+          {t("legend")}
           {typeof estimatedTss === "number" ? (
             <>
               {" "}
-              Estimated TSS: model sums <span className="text-orange-300/90">IF²</span> per segment, calibrated on{" "}
-              <span className="text-orange-300/90">60′ in Z4 ≈ 100 TSS</span>.
+              {t.rich("tssExplanation", {
+                h: (chunks) => <span className="text-orange-300/90">{chunks}</span>,
+              })}
             </>
           ) : null}
         </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { BLOCK1_MUSCLE_FILTERS } from "@/lib/training/domain-blocks/block1-strength-functional";
 import type { Block1MusclePreset } from "@/lib/training/exercise-library/types";
@@ -162,12 +163,13 @@ export type MuscleDistrictFilterPopoverProps = {
 };
 
 export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistrictFilterPopoverProps) {
+  const t = useTranslations("MuscleDistrictFilterPopover");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const currentLabel = useMemo(
-    () => BLOCK1_MUSCLE_FILTERS.find((o) => o.value === value)?.label ?? "District",
-    [value],
+    () => BLOCK1_MUSCLE_FILTERS.find((o) => o.value === value)?.label ?? t("districtFallback"),
+    [value, t],
   );
 
   useEffect(() => {
@@ -182,7 +184,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
 
   return (
     <div ref={wrapRef} className="relative inline-flex flex-col gap-1" id={id}>
-      <span className="text-[0.65rem] font-medium text-orange-200/80">District filter</span>
+      <span className="text-[0.65rem] font-medium text-orange-200/80">{t("districtFilterLabel")}</span>
       <button
         type="button"
         aria-expanded={open}
@@ -208,7 +210,7 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
       {open ? (
         <div
           role="listbox"
-          aria-label="Select muscle district"
+          aria-label={t("selectMuscleDistrict")}
           className="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-orange-500/35 bg-gradient-to-b from-orange-950/[0.97] via-gray-950/95 to-black/95 py-3 shadow-2xl shadow-orange-950/50 backdrop-blur-md"
         >
           <div className="flex items-start gap-3 border-b border-orange-500/20 px-3 pb-3">
@@ -218,11 +220,11 @@ export function MuscleDistrictFilterPopover({ value, onChange, id }: MuscleDistr
             />
             <div className="min-w-0 pt-0.5">
               <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                Region preview
+                {t("regionPreview")}
               </p>
               <p className="mt-1 text-sm font-semibold leading-snug text-white">{currentLabel}</p>
               <p className="mt-1 text-[0.65rem] leading-relaxed text-gray-500">
-                Purple → fuchsia → orange gradient = active district. Same presets as catalog V1.
+                {t("gradientHint")}
               </p>
             </div>
           </div>

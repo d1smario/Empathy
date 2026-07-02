@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 function formatDuration(seconds: number): string {
   const safe = Math.max(0, Math.round(seconds || 0));
   const totalMinutes = Math.round(safe / 60);
@@ -27,6 +29,7 @@ export function BuilderDayKpiPanel({
   sessionName: string;
   items: BuilderDayKpiItem[];
 }) {
+  const t = useTranslations("BuilderDayKpiPanel");
   const safeItems = items.slice(0, 2);
   const totalDuration = safeItems.reduce((sum, item) => sum + Math.max(0, item.durationSec || 0), 0);
   const totalTss = safeItems.reduce((sum, item) => sum + Math.max(0, item.tss || 0), 0);
@@ -44,44 +47,44 @@ export function BuilderDayKpiPanel({
 
   return (
     <section className="viz-card builder-panel" style={{ marginTop: "12px" }}>
-      <h3 className="viz-title">KPI sessione</h3>
+      <h3 className="viz-title">{t("sessionKpiTitle")}</h3>
       <div className="builder-kpi-grid">
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">Durata day</div>
+          <div className="kpi-card-label">{t("dayDurationLabel")}</div>
           <div className="kpi-card-value">{formatDuration(totalDuration)}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">TSS day</div>
+          <div className="kpi-card-label">{t("dayTssLabel")}</div>
           <div className="kpi-card-value">{totalTss}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">kcal day</div>
+          <div className="kpi-card-label">{t("dayKcalLabel")}</div>
           <div className="kpi-card-value">{totalKcal || "-"}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">kJ day</div>
+          <div className="kpi-card-label">{t("dayKjLabel")}</div>
           <div className="kpi-card-value">{totalKj || "-"}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">W medi day</div>
+          <div className="kpi-card-label">{t("dayAvgPowerLabel")}</div>
           <div className="kpi-card-value">{weightedAvgPower || "-"}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">Disciplina</div>
+          <div className="kpi-card-label">{t("disciplineLabel")}</div>
           <div className="kpi-card-value">{discipline || "-"}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">Sessione</div>
+          <div className="kpi-card-label">{t("sessionLabel")}</div>
           <div className="kpi-card-value">{sessionName || "-"}</div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">Training 1</div>
+          <div className="kpi-card-label">{t("training1Label")}</div>
           <div className="kpi-card-value">
             {training1 ? `${formatDuration(training1.durationSec)} · TSS ${training1.tss} · ${training1.kj} kJ` : "-"}
           </div>
         </div>
         <div className="builder-kpi-card">
-          <div className="kpi-card-label">Training 2</div>
+          <div className="kpi-card-label">{t("training2Label")}</div>
           <div className="kpi-card-value">
             {training2 ? `${formatDuration(training2.durationSec)} · TSS ${training2.tss} · ${training2.kj} kJ` : "-"}
           </div>

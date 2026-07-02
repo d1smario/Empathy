@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { formatDurationMmss, type StructuredIntervalRow } from "@/lib/training/planned-structured-interval-csv";
 
 function formatTargetW(row: StructuredIntervalRow): string {
@@ -13,22 +15,25 @@ export function StructuredWorkoutStepTable({
   rows,
   ftpW,
   compact = false,
-  title = "Dettagli seduta",
+  title,
 }: {
   rows: StructuredIntervalRow[];
   ftpW?: number;
   compact?: boolean;
   title?: string;
 }) {
+  const t = useTranslations("StructuredWorkoutStepTable");
+
   if (!rows.length) return null;
 
+  const resolvedTitle = title ?? t("defaultTitle");
   const cell = compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm";
   const head = compact ? "px-2 py-1.5 text-[0.6rem]" : "px-3 py-2 text-[0.65rem]";
 
   return (
     <div className="rounded-xl border border-white/10 bg-black/30">
       <p className="border-b border-white/10 px-3 py-2 text-[0.65rem] font-bold uppercase tracking-wider text-gray-400">
-        {title}
+        {resolvedTitle}
         {ftpW && ftpW > 0 ? (
           <span className="ml-2 font-mono font-normal normal-case text-gray-500">FTP {ftpW} W</span>
         ) : null}
@@ -39,10 +44,10 @@ export function StructuredWorkoutStepTable({
             <tr className="border-b border-white/10 text-gray-500">
               <th className={`${head} font-bold uppercase tracking-wider`}>#</th>
               <th className={`${head} font-bold uppercase tracking-wider`}>Step</th>
-              <th className={`${head} font-bold uppercase tracking-wider`}>Durata</th>
+              <th className={`${head} font-bold uppercase tracking-wider`}>{t("durationHeader")}</th>
               <th className={`${head} font-bold uppercase tracking-wider`}>Target W</th>
-              <th className={`${head} font-bold uppercase tracking-wider`}>Zona</th>
-              <th className={`${head} font-bold uppercase tracking-wider`}>Note</th>
+              <th className={`${head} font-bold uppercase tracking-wider`}>{t("zoneHeader")}</th>
+              <th className={`${head} font-bold uppercase tracking-wider`}>{t("notesHeader")}</th>
             </tr>
           </thead>
           <tbody>

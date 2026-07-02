@@ -2,6 +2,7 @@
 
 import { formatExecutedWorkoutSummary, type ExecutedWorkout, type PlannedWorkout } from "@empathy/domain-training";
 import { formatPlannedWorkoutCardTitle } from "@/lib/training/planned/format-planned-workout-title";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
@@ -13,6 +14,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { useProductHref } from "@/lib/shell/use-product-href";
 
 function SessionDayLink({ date, variant }: { date: string; variant: "planned" | "executed" }) {
+  const t = useTranslations("TrainingPlannedWindowCard");
   const href = useProductHref(`/training/session/${date}`);
   const className =
     variant === "planned"
@@ -20,7 +22,7 @@ function SessionDayLink({ date, variant }: { date: string; variant: "planned" | 
       : "shrink-0 border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs hover:bg-emerald-500/15";
   return (
     <Pro2Link href={href} variant="ghost" className={className}>
-      Day
+      {t("dayLink")}
     </Pro2Link>
   );
 }
@@ -46,6 +48,7 @@ let plannedWindowCache: PlannedWindowCacheData | null = null;
  * Fase 5 — pianificato + eseguito nella stessa finestra (default −7 / +28 giorni).
  */
 export function TrainingPlannedWindowCard({ className }: { className?: string }) {
+  const t = useTranslations("TrainingPlannedWindowCard");
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [planned, setPlanned] = useState<PlannedWorkout[]>([]);
@@ -65,7 +68,7 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
-      setErr("No active athlete: open Settings or complete profile (private / coach).");
+      setErr(t("errNoActiveAthlete"));
       setLoading(false);
       return;
     }
@@ -97,7 +100,7 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
         const json = (await res.json()) as TrainingPlannedWindowOkViewModel | ApiErr;
         if (cancelled) return;
         if (!res.ok || !json.ok) {
-          const errMsg = ("error" in json && json.error) || "Could not load data.";
+          const errMsg = ("error" in json && json.error) || t("errCouldNotLoad");
           setPlanned([]);
           setExecuted([]);
           setRange(null);
@@ -137,7 +140,7 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
         plannedWindowCacheId = athleteId;
       } catch {
         if (!cancelled) {
-          setErr("Network error.");
+          setErr(t("errNetwork"));
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
@@ -160,10 +163,10 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
         "w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md",
         className,
       )}
-      aria-label="Training calendar"
+      aria-label={t("ariaTrainingCalendar")}
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-orange-300">Training · live data</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Calendar</h2>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-orange-300">{t("liveDataEyebrow")}</p>
+      <h2 className="mt-2 text-lg font-bold text-white">{t("calendarTitle")}</h2>
       {range ? (
         <p className="mt-1 font-mono text-xs text-gray-500">
           {range.from} → {range.to}
@@ -173,7 +176,7 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
       {readSpineCoverage && !err ? (
         <TrainingPlannedWindowContextStrip
           className="mt-4"
-          label="Calendar"
+          label={t("calendarTitle")}
           readSpineCoverage={readSpineCoverage}
           twinContextStrip={twinContextStrip}
           athleteId={athleteId}
@@ -195,12 +198,12 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
       ) : null}
 
       {showEmptyLists ? (
-        <p className="mt-4 text-sm text-gray-500">No planned or executed sessions in this window.</p>
+        <p className="mt-4 text-sm text-gray-500">{t("emptyWindow")}</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && planned.length > 0 ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">Planned</h3>
+          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">{t("plannedHeading")}</h3>
           <ul className="mt-2 space-y-2">
             {planned.map((w) => (
               <li
@@ -223,7 +226,7 @@ export function TrainingPlannedWindowCard({ className }: { className?: string })
 
       {!ctxLoading && !loading && !err && executed.length > 0 ? (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">Executed</h3>
+          <h3 className="font-mono text-[0.6rem] uppercase tracking-wider text-gray-500">{t("executedHeading")}</h3>
           <ul className="mt-2 space-y-2">
             {executed.map((w) => (
               <li
