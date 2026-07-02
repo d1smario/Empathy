@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, ChevronDown, HeartPulse, Layers } from "lucide-react";
 import type { SupportedSport } from "@/lib/engines/vo2-estimator";
 import type { Vo2InputMode } from "@/components/physiology/LactateMetabolicContextTiles";
@@ -44,6 +45,7 @@ export function MaxOxMetabolicContextTiles({
   segmentO2TotalL?: number | null;
   segmentDurationMin?: number | null;
 }) {
+  const t = useTranslations("MaxOxMetabolicContextTiles");
   const [open, setOpen] = useState<OpenKey>(null);
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -64,16 +66,16 @@ export function MaxOxMetabolicContextTiles({
 
   const vo2Label =
     maxOxVo2Mode === "test"
-      ? "VO₂ from test"
+      ? t("vo2FromTest")
       : vo2CapacitySource === "metabolic_engine_vo2max"
-        ? "VO₂max (CP model)"
-        : "Power estimate";
+        ? t("vo2maxCpModel")
+        : t("powerEstimate");
 
   return (
     <div className="physiology-pro2-ctx-shell physiology-pro2-ctx-shell--maxox" ref={shellRef}>
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-context">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Test context · VO₂ source</span>
+        <span>{t("bannerLabel")}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
@@ -104,7 +106,7 @@ export function MaxOxMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">VO₂ source</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("vo2SourceLabel")}</span>
           <span className="physiology-pro2-ctx-tile-v">{vo2Label}</span>
         </button>
       </div>
@@ -138,10 +140,10 @@ export function MaxOxMetabolicContextTiles({
             }}
           >
             {vo2CapacitySource === "test_manual"
-              ? "Device: VO₂max from CP curve → estimate at load"
+              ? t("deviceVo2maxEstimate")
               : vo2CapacitySource === "metabolic_engine_vo2max"
-                ? "Capacity from Metabolic Profile (VO₂max from CP curve)"
-                : "Power estimate only (fill in the CP curve for the ceiling)"}
+                ? t("capacityFromMetabolicProfile")
+                : t("powerEstimateOnly")}
           </button>
           <button
             type="button"
@@ -151,7 +153,7 @@ export function MaxOxMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Value from test
+            {t("valueFromTest")}
           </button>
         </div>
       ) : null}
@@ -159,18 +161,18 @@ export function MaxOxMetabolicContextTiles({
       <div className="physiology-pro2-ctx-vo2-card physiology-pro2-ctx-vo2-card--maxox">
         <HeartPulse className="physiology-pro2-ctx-vo2-ico" aria-hidden />
         <div className="physiology-pro2-ctx-vo2-copy">
-          <span className="physiology-pro2-ctx-vo2-k">VO₂ used in the model</span>
+          <span className="physiology-pro2-ctx-vo2-k">{t("vo2UsedInModel")}</span>
           <span className="physiology-pro2-ctx-vo2-main">{maxOxVo2Used.toFixed(2)} L/min</span>
           <span className="physiology-pro2-ctx-vo2-sub">
-            estimated {maxOxVo2EstL.toFixed(2)} L/min · {maxOxVo2MlKg.toFixed(1)} ml/kg/min
+            {t("estimatedSub", { lmin: maxOxVo2EstL.toFixed(2), mlkg: maxOxVo2MlKg.toFixed(1) })}
           </span>
           {segmentVo2LMin != null ? (
             <span className="mt-2 block text-[0.7rem] leading-snug text-gray-400">
-              Segment (estimate at load): <strong className="font-mono tabular-nums text-white">{segmentVo2LMin.toFixed(2)} L/min</strong>
+              {t("segmentPrefix")} <strong className="font-mono tabular-nums text-white">{segmentVo2LMin.toFixed(2)} L/min</strong>
               {segmentO2TotalL != null && segmentDurationMin != null ? (
                 <>
                   {" "}
-                  · cumulative O₂ ~<strong className="font-mono tabular-nums text-white">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
+                  {t("cumulativeO2Prefix")}<strong className="font-mono tabular-nums text-white">{segmentO2TotalL.toFixed(2)} L</strong> / {segmentDurationMin.toFixed(1)} min
                 </>
               ) : null}
             </span>

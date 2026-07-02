@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { MultisportCpCurveSuggestionMode, MultisportCpCurveSuggestionOutput } from "@/lib/engines/multisport-cp-curve-suggestion";
 import { MULTISPORT_CP_CURVE_LABELS } from "@/lib/engines/multisport-cp-curve-suggestion";
@@ -73,6 +74,7 @@ export function MultisportCpCurveSuggestionPanel({
   metabolicProfileSaveDisabled = false,
   metabolicProfileSaveLabel = "Save metabolic profile",
 }: MultisportCpCurveSuggestionPanelProps) {
+  const t = useTranslations("MultisportCpCurveSuggestionPanel");
   const [sport, setSport] = useState<MultisportEngineSport>("running");
   const [mode, setMode] = useState<MultisportCpCurveSuggestionMode>("running_race_riegel");
   const [efficiencyStr, setEfficiencyStr] = useState("0.24");
@@ -163,7 +165,7 @@ export function MultisportCpCurveSuggestionPanel({
     setErr(null);
     setResult(null);
     if (!massOk) {
-      setErr("Set a valid athlete weight (35–120 kg) in the lab before calculating.");
+      setErr(t("errInvalidWeight"));
       return;
     }
     setLoading(true);
@@ -176,7 +178,7 @@ export function MultisportCpCurveSuggestionPanel({
       });
       const json = (await res.json().catch(() => ({}))) as MultisportCpCurveSuggestionOutput & { error?: string };
       if (!res.ok) {
-        setErr(json.error ?? `HTTP error ${res.status}`);
+        setErr(json.error ?? t("errHttp", { status: res.status }));
         return;
       }
       if (json.error) {
@@ -185,7 +187,7 @@ export function MultisportCpCurveSuggestionPanel({
       }
       setResult(json as MultisportCpCurveSuggestionOutput);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Network error");
+      setErr(e instanceof Error ? e.message : t("errNetwork"));
     } finally {
       setLoading(false);
     }
@@ -199,7 +201,7 @@ export function MultisportCpCurveSuggestionPanel({
       if (typeof w === "number" && w > 0) out[label] = w;
     }
     if (Object.keys(out).length === 0) {
-      setErr("No W point to apply: recalculate or check the inputs.");
+      setErr(t("errNoWPoint"));
       return;
     }
     onApplyToCpInputs(out);
@@ -213,17 +215,19 @@ export function MultisportCpCurveSuggestionPanel({
     <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.14] via-black/40 to-black/60 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-white">Multisport · CP curve suggestion</h3>
+          <h3 className="text-sm font-bold text-white">{t("title")}</h3>
           <p className="mt-1 max-w-prose text-xs leading-relaxed text-gray-500">
-            Equivalent cycling W on the 8 lab points + deterministic VO₂ (same <code className="text-gray-400">estimateVo2FromDevice</code> stack). Server-side
-            computation; <strong className="text-gray-300">applies to preview only</strong> on the fields below — then &quot;Save snapshot&quot; as usual.
+            {t.rich("description", {
+              code: (chunks) => <code className="text-gray-400">{chunks}</code>,
+              strong: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+            })}
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs text-gray-400">
-          Sport
+          {t("sportLabel")}
           <select
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-gray-200"
             value={sport}
@@ -237,7 +241,7 @@ export function MultisportCpCurveSuggestionPanel({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-400 sm:col-span-2">
-          Mode
+          {t("modeLabel")}
           <select
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 text-sm text-gray-200"
             value={mode}
@@ -251,7 +255,7 @@ export function MultisportCpCurveSuggestionPanel({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-400">
-          η (efficiency)
+          {t("efficiencyLabel")}
           <input
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-gray-200"
             value={efficiencyStr}
@@ -260,7 +264,7 @@ export function MultisportCpCurveSuggestionPanel({
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-400">
-          Grade %
+          {t("gradeLabel")}
           <input
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-2 font-mono text-sm text-gray-200"
             value={gradePctStr}
@@ -277,7 +281,7 @@ export function MultisportCpCurveSuggestionPanel({
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-gray-400">
-              Duration 1 (s)
+              {t("duration1Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cD1} onChange={(e) => setCD1(e.target.value)} />
             </label>
             <label className="text-xs text-gray-400">
@@ -287,7 +291,7 @@ export function MultisportCpCurveSuggestionPanel({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-gray-400">
-              Duration 2 (s)
+              {t("duration2Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={cD2} onChange={(e) => setCD2(e.target.value)} />
             </label>
             <label className="text-xs text-gray-400">
@@ -301,7 +305,7 @@ export function MultisportCpCurveSuggestionPanel({
       {mode === "reference_w_phenotype" ? (
         <div className="mt-3 flex flex-wrap gap-3">
           <label className="text-xs text-gray-400">
-            Reference W
+            {t("referenceWLabel")}
             <input
               className="mt-1 block w-32 rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm"
               value={refW}
@@ -309,15 +313,15 @@ export function MultisportCpCurveSuggestionPanel({
             />
           </label>
           <label className="text-xs text-gray-400">
-            Phenotype
+            {t("phenotypeLabel")}
             <select
               className="mt-1 block rounded border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-gray-200"
               value={phenotype}
               onChange={(e) => setPhenotype(e.target.value as "oxidative" | "balanced" | "glycolytic")}
             >
-              <option value="oxidative">Oxidative</option>
-              <option value="balanced">Balanced</option>
-              <option value="glycolytic">Glycolytic</option>
+              <option value="oxidative">{t("phenotypeOxidative")}</option>
+              <option value="balanced">{t("phenotypeBalanced")}</option>
+              <option value="glycolytic">{t("phenotypeGlycolytic")}</option>
             </select>
           </label>
         </div>
@@ -329,21 +333,21 @@ export function MultisportCpCurveSuggestionPanel({
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-gray-400">
-              Distance 1 (m)
+              {t("distance1Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceD1} onChange={(e) => setRaceD1(e.target.value)} />
             </label>
             <label className="text-xs text-gray-400">
-              Time 1 (s)
+              {t("time1Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceT1} onChange={(e) => setRaceT1(e.target.value)} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-gray-400">
-              Distance 2 (m) opt.
+              {t("distance2Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceD2} onChange={(e) => setRaceD2(e.target.value)} />
             </label>
             <label className="text-xs text-gray-400">
-              Time 2 (s) opt.
+              {t("time2Label")}
               <input className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-sm" value={raceT2} onChange={(e) => setRaceT2(e.target.value)} />
             </label>
           </div>
@@ -351,16 +355,18 @@ export function MultisportCpCurveSuggestionPanel({
       ) : null}
 
       <p className="mt-2 text-[0.65rem] text-gray-600">
-        Weight used: <span className="font-mono text-gray-400">{bodyMassKg.toFixed(1)}</span> kg
-        {!massOk ? " — set the weight in the lab (mass / profile fields)." : null}
+        {t.rich("weightUsed", {
+          w: () => <span className="font-mono text-gray-400">{bodyMassKg.toFixed(1)}</span>,
+        })}
+        {!massOk ? t("weightUsedHint") : null}
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         <Pro2Button type="button" variant="secondary" className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20" disabled={loading} onClick={() => void runSuggest()}>
-          {loading ? "Calculating…" : "Calculate suggestion"}
+          {loading ? t("calculating") : t("calculateSuggestion")}
         </Pro2Button>
         <Pro2Button type="button" variant="primary" disabled={!result || loading} onClick={applyPreview}>
-          Apply to CP curve preview
+          {t("applyToCpCurvePreview")}
         </Pro2Button>
         {onSaveMetabolicProfile ? (
           <Pro2Button
@@ -394,7 +400,7 @@ export function MultisportCpCurveSuggestionPanel({
             <table className="w-full min-w-[28rem] text-left text-xs">
               <thead>
                 <tr className="border-b border-white/10 text-gray-500">
-                  <th className="py-1 pr-2">Duration</th>
+                  <th className="py-1 pr-2">{t("tableDuration")}</th>
                   <th className="py-1 pr-2">W eq.</th>
                   <th className="py-1">VO₂ ml/kg/min</th>
                 </tr>

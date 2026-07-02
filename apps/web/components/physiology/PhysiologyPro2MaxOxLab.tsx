@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Activity } from "lucide-react";
 import type { MaxOxidateOutput } from "@/lib/engines/max-oxidate-engine";
 import { MaxOxidateLabPro2Panel } from "@/components/physiology/MaxOxidateLabPro2Panel";
@@ -43,6 +44,7 @@ export function PhysiologyPro2MaxOxLab({
   maxOxVo2Mode,
   children,
 }: PhysiologyPro2MaxOxLabProps) {
+  const t = useTranslations("PhysiologyPro2MaxOxLab");
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--maxox">
       <MaxOxidateLabPro2Panel
@@ -70,7 +72,7 @@ export function PhysiologyPro2MaxOxLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>CONFIGURATION · SIGNALS · ENGINE PARAMETERS</span>
+        <span>{t("inputsBanner")}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, Route } from "lucide-react";
 import { Pro2Button } from "@/components/ui/empathy";
 
@@ -48,6 +49,7 @@ export function MaxOxSegmentPanelPro2({
   lastSegmentO2TotalL: number | null;
   lastSegmentDurationMin: number | null;
 }) {
+  const t = useTranslations("MaxOxSegmentPanelPro2");
   const [form, setForm] = useState<MaxOxSegmentForm>(EMPTY);
 
   const set =
@@ -58,14 +60,13 @@ export function MaxOxSegmentPanelPro2({
     <div className="physiology-pro2-lab-page-panel">
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-inputs">
         <Route className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Steady-load segment · profile / lactate</span>
+        <span>{t("bannerLabel")}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <p className="mb-3 max-w-[62ch] text-xs leading-relaxed text-gray-500">
-        The <strong className="text-gray-300">oxidative capacity</strong> in the engine stays the{" "}
-        <strong className="text-gray-300">VO₂max from Metabolic Profile</strong> (device source). Here we estimate the{" "}
-        <strong className="text-gray-300">VO₂ at the segment load</strong> (L/min) and the <strong className="text-gray-300">cumulative O₂</strong>{" "}
-        (L/min × minutes). Use a homogeneous stretch (e.g. a constant climb).
+        {t.rich("intro", {
+          b: (chunks) => <strong className="text-gray-300">{chunks}</strong>,
+        })}
       </p>
       <div className="mb-4 flex flex-wrap gap-2">
         <Pro2Button
@@ -74,7 +75,7 @@ export function MaxOxSegmentPanelPro2({
           className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           onClick={onSyncProfile}
         >
-          Take from Metabolic Profile
+          {t("takeFromProfile")}
         </Pro2Button>
         <Pro2Button
           type="button"
@@ -82,24 +83,24 @@ export function MaxOxSegmentPanelPro2({
           className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
           onClick={onSyncLactate}
         >
-          Take from Lactate lab
+          {t("takeFromLactate")}
         </Pro2Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Duration (min)
+          {t("durationLabel")}
           <input className={`${inputClass} mt-1`} type="number" min={0} step={0.5} value={form.duration_min} onChange={set("duration_min")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Average power (W)
-          <input className={`${inputClass} mt-1`} type="number" min={0} value={form.power_w} onChange={set("power_w")} placeholder="e.g. 280" />
+          {t("powerLabel")}
+          <input className={`${inputClass} mt-1`} type="number" min={0} value={form.power_w} onChange={set("power_w")} placeholder={t("powerPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Elevation gain (m)
-          <input className={`${inputClass} mt-1`} type="number" value={form.elevation_m} onChange={set("elevation_m")} placeholder="opt." />
+          {t("elevationLabel")}
+          <input className={`${inputClass} mt-1`} type="number" value={form.elevation_m} onChange={set("elevation_m")} placeholder={t("optionalPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Horizontal distance (km)
+          {t("distanceLabel")}
           <input
             className={`${inputClass} mt-1`}
             type="number"
@@ -107,45 +108,45 @@ export function MaxOxSegmentPanelPro2({
             step={0.01}
             value={form.distance_km}
             onChange={set("distance_km")}
-            placeholder="for grade %"
+            placeholder={t("distancePlaceholder")}
           />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Manual grade (%)
-          <input className={`${inputClass} mt-1`} type="number" value={form.grade_pct} onChange={set("grade_pct")} placeholder="opt." />
+          {t("gradeLabel")}
+          <input className={`${inputClass} mt-1`} type="number" value={form.grade_pct} onChange={set("grade_pct")} placeholder={t("optionalPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Velocity (m/min)
-          <input className={`${inputClass} mt-1`} type="number" min={0} value={form.velocity_m_min} onChange={set("velocity_m_min")} placeholder="run/ski" />
+          {t("velocityLabel")}
+          <input className={`${inputClass} mt-1`} type="number" min={0} value={form.velocity_m_min} onChange={set("velocity_m_min")} placeholder={t("velocityPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          SmO₂ work (%)
-          <input className={`${inputClass} mt-1`} type="number" value={form.smo2_work} onChange={set("smo2_work")} placeholder="opt." />
+          {t("smo2WorkLabel")}
+          <input className={`${inputClass} mt-1`} type="number" value={form.smo2_work} onChange={set("smo2_work")} placeholder={t("optionalPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          SmO₂ rest (%)
-          <input className={`${inputClass} mt-1`} type="number" value={form.smo2_rest} onChange={set("smo2_rest")} placeholder="opt." />
+          {t("smo2RestLabel")}
+          <input className={`${inputClass} mt-1`} type="number" value={form.smo2_rest} onChange={set("smo2_rest")} placeholder={t("optionalPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Lactate (mmol/L)
-          <input className={`${inputClass} mt-1`} type="number" min={0} step={0.1} value={form.lactate_mmol} onChange={set("lactate_mmol")} placeholder="opt." />
+          {t("lactateLabel")}
+          <input className={`${inputClass} mt-1`} type="number" min={0} step={0.1} value={form.lactate_mmol} onChange={set("lactate_mmol")} placeholder={t("optionalPlaceholder")} />
         </label>
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-          Core temp. (°C)
-          <input className={`${inputClass} mt-1`} type="number" step={0.1} value={form.core_temp_c} onChange={set("core_temp_c")} placeholder="opt." />
+          {t("coreTempLabel")}
+          <input className={`${inputClass} mt-1`} type="number" step={0.1} value={form.core_temp_c} onChange={set("core_temp_c")} placeholder={t("optionalPlaceholder")} />
         </label>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Pro2Button type="button" variant="primary" onClick={() => onApplySegment(form)}>
-          Apply segment to Max Oxidate
+          {t("applySegment")}
         </Pro2Button>
         {lastSegmentVo2LMin != null && lastSegmentDurationMin != null ? (
           <span className="text-xs text-gray-500">
-            Last: VO₂ at load <strong className="font-mono tabular-nums text-white">{lastSegmentVo2LMin.toFixed(2)} L/min</strong>
+            {t("lastPrefix")} <strong className="font-mono tabular-nums text-white">{lastSegmentVo2LMin.toFixed(2)} L/min</strong>
             {lastSegmentO2TotalL != null ? (
               <>
                 {" "}
-                · cumulative O₂ ~<strong className="font-mono tabular-nums text-white">{lastSegmentO2TotalL.toFixed(2)} L</strong> / {lastSegmentDurationMin.toFixed(1)} min
+                {t("lastCumulative")}<strong className="font-mono tabular-nums text-white">{lastSegmentO2TotalL.toFixed(2)} L</strong> / {lastSegmentDurationMin.toFixed(1)} min
               </>
             ) : null}
           </span>

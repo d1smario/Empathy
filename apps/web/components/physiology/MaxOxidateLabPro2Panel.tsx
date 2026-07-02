@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Flame } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { MaxOxidateOutput } from "@/lib/engines/max-oxidate-engine";
 import { MaxOxidateEnginePro2Viz } from "@/components/physiology/MaxOxidateEnginePro2Viz";
 
@@ -25,29 +27,20 @@ export function MaxOxidateLabPro2Panel({
   maxOxVo2UsedLMin,
   vo2CapacitySource,
 }: MaxOxidateLabPro2PanelProps) {
+  const t = useTranslations("MaxOxidateLabPro2Panel");
+  const vo2Used = `${maxOxVo2UsedLMin.toFixed(2)} L/min`;
+  const bold = (chunks: ReactNode) => <strong>{chunks}</strong>;
   const vo2Block =
-    vo2CapacitySource === "test_manual" ? (
-      <>
-        VO₂ capacity: <strong>{maxOxVo2UsedLMin.toFixed(2)} L/min</strong> (manual test).
-      </>
-    ) : vo2CapacitySource === "metabolic_engine_vo2max" ? (
-      <>
-        VO₂max from <strong>Metabolic Profile</strong> (CP model):{" "}
-        {vo2maxMlMinKg != null ? (
-          <strong>
-            {vo2maxMlMinKg.toFixed(1)} ml/kg/min · {maxOxVo2UsedLMin.toFixed(2)} L/min
-          </strong>
-        ) : (
-          <strong>{maxOxVo2UsedLMin.toFixed(2)} L/min</strong>
-        )}
-        .
-      </>
-    ) : (
-      <>
-        Warning: VO₂ capacity only from <strong>power estimate</strong> ({maxOxVo2UsedLMin.toFixed(2)} L/min) — for a credible
-        ceiling fill in the <strong>CP curve</strong> in Metabolic profile (engine VO₂max).
-      </>
-    );
+    vo2CapacitySource === "test_manual"
+      ? t.rich("vo2CapacityManual", { b: bold, vo2: vo2Used })
+      : vo2CapacitySource === "metabolic_engine_vo2max"
+        ? vo2maxMlMinKg != null
+          ? t.rich("vo2maxFromMetabolicWithValue", {
+              b: bold,
+              value: `${vo2maxMlMinKg.toFixed(1)} ml/kg/min · ${vo2Used}`,
+            })
+          : t.rich("vo2maxFromMetabolicNoValue", { b: bold, vo2: vo2Used })
+        : t.rich("vo2CapacityPowerWarning", { b: bold, vo2: vo2Used });
 
   return (
     <div className="physiology-pro2-maxox-card" aria-label="Max Oxidate lab Pro 2">
@@ -61,14 +54,13 @@ export function MaxOxidateLabPro2Panel({
           </div>
           <p className="physiology-pro2-maxox-caption">
             {vo2Block}{" "}
-            Comparison between <strong>net oxidative capacity</strong> (VO₂ × delivery) and{" "}
-            <strong>oxidative demand min(P, CP)</strong> — not the entire mechanical power. Delivery and redox indices are deterministic proxies.
+            {t.rich("caption", { b: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
         <div className="physiology-pro2-maxox-strip">
-          Oxidative saturation{" "}
+          {t("oxidativeSaturation")}{" "}
           <span className="physiology-pro2-maxox-strip-value">{model.utilizationRatioPct.toFixed(0)}%</span>
-          <span className="physiology-pro2-maxox-strip-unit"> · bottleneck </span>
+          <span className="physiology-pro2-maxox-strip-unit">{t("bottleneckLabel")}</span>
           <span className="physiology-pro2-maxox-strip-value physiology-pro2-maxox-strip-value--pink">
             {model.oxidativeBottleneckIndex.toFixed(0)}
           </span>
@@ -81,7 +73,10 @@ export function MaxOxidateLabPro2Panel({
       </div>
 
       <p className="physiology-pro2-maxox-footnote">
-        Engine <strong>{model.version.replaceAll("-", " ")}</strong>. For clinical calibration use gas exchange and blood markers; here the focus is coherence with CP/VO₂max and session signals.
+        {t.rich("footnote", {
+          b: (chunks) => <strong>{chunks}</strong>,
+          version: model.version.replaceAll("-", " "),
+        })}
       </p>
     </div>
   );

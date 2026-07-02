@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { MaxOxidateOutput } from "@/lib/engines/max-oxidate-engine";
 
 type Seg = { key: string; label: string; value: number; tone: string };
@@ -59,19 +61,20 @@ function MeterRow({ label, value01, tone }: { label: string; value01: number; to
 
 /** Vista grafica Pro2 per l’output Max Oxidate (capacità, substrati, delivery, stress). */
 export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) {
+  const t = useTranslations("MaxOxidateEnginePro2Viz");
   const cap = Math.max(1e-6, model.oxidativeCapacityKcalMin);
   const reqOx = Math.max(0, model.oxidativeDemandKcalMin);
   const headroom = Math.max(0, cap - reqOx);
   const fluxSegs: Seg[] = [
-    { key: "req", label: "Oxidative demand (P_oss @ duration)", value: reqOx, tone: "rose" },
-    { key: "head", label: "Capacity headroom", value: headroom, tone: "cyan" },
+    { key: "req", label: t("oxidativeDemandLabel"), value: reqOx, tone: "rose" },
+    { key: "head", label: t("capacityHeadroomLabel"), value: headroom, tone: "cyan" },
   ];
 
   const cho = Math.max(0, model.oxidativeCapacityChoGMin);
   const fat = Math.max(0, model.oxidativeCapacityFatGMin);
   const subSegs: Seg[] = [
-    { key: "cho", label: "Oxidizable CHO flux", value: cho, tone: "amber" },
-    { key: "fat", label: "Oxidizable FAT flux", value: fat, tone: "slate" },
+    { key: "cho", label: t("oxidizableChoFluxLabel"), value: cho, tone: "amber" },
+    { key: "fat", label: t("oxidizableFatFluxLabel"), value: fat, tone: "slate" },
   ];
 
   const cDel = Math.min(1, Math.max(0, model.centralDeliveryIndex / 1.2));
@@ -80,43 +83,54 @@ export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) 
   return (
     <div className="maxox-engine-viz">
       <div className="maxox-engine-viz-card">
-        <h4 className="maxox-engine-viz-title">Oxidative capacity vs demand</h4>
+        <h4 className="maxox-engine-viz-title">{t("capacityVsDemandTitle")}</h4>
         <p className="maxox-engine-viz-sub">
-          Capacity <strong>{model.oxidativeCapacityKcalMin.toFixed(2)} kcal/min</strong> · oxidative saturation{" "}
-          <strong>{model.utilizationRatioPct.toFixed(0)}%</strong> · total demand {model.requiredKcalMin.toFixed(2)} kcal/min
+          {t.rich("capacityVsDemandSub", {
+            capacity: model.oxidativeCapacityKcalMin.toFixed(2),
+            saturation: model.utilizationRatioPct.toFixed(0),
+            demand: model.requiredKcalMin.toFixed(2),
+            b: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
         <SegmentedBar segments={fluxSegs} unit="kcal/min" />
       </div>
 
       <div className="maxox-engine-viz-card">
-        <h4 className="maxox-engine-viz-title">Substrates · oxidative potential (g/min)</h4>
-        <p className="maxox-engine-viz-sub">Partition estimated from intensity, RER and lactate (max-oxidate v1.5).</p>
+        <h4 className="maxox-engine-viz-title">{t("substratesTitle")}</h4>
+        <p className="maxox-engine-viz-sub">{t("substratesSub")}</p>
         <SegmentedBar segments={subSegs} unit="g/min" />
       </div>
 
       <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">Central delivery · peripheral utilization · extraction</h4>
+        <h4 className="maxox-engine-viz-title">{t("deliveryTitle")}</h4>
         <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label="Central delivery index (norm.)" value01={cDel} tone="cyan" />
-          <MeterRow label="Peripheral utilization index (norm.)" value01={pUti} tone="rose" />
-          <MeterRow label="SmO₂ extraction" value01={model.extractionPct / 85} tone="violet" />
+          <MeterRow label={t("centralDeliveryIndexLabel")} value01={cDel} tone="cyan" />
+          <MeterRow label={t("peripheralUtilizationIndexLabel")} value01={pUti} tone="rose" />
+          <MeterRow label={t("smo2ExtractionLabel")} value01={model.extractionPct / 85} tone="violet" />
         </div>
         <p className="maxox-engine-viz-hint">
-          VO₂ rel <strong>{model.vo2RelMlKgMin.toFixed(1)} ml/kg/min</strong> · oxidative power {model.oxidativePowerKw.toFixed(3)} kW · state:{" "}
-          <span className="maxox-engine-viz-state">{model.state}</span>
+          {t.rich("deliveryHint", {
+            vo2rel: model.vo2RelMlKgMin.toFixed(1),
+            power: model.oxidativePowerKw.toFixed(3),
+            b: (chunks) => <strong>{chunks}</strong>,
+            state: () => <span className="maxox-engine-viz-state">{model.state}</span>,
+          })}
         </p>
       </div>
 
       <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">Oxidative stress · redox · NADH</h4>
+        <h4 className="maxox-engine-viz-title">{t("stressTitle")}</h4>
         <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label="Bottleneck (index)" value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
-          <MeterRow label="Redox stress" value01={model.redoxStressIndex / 100} tone="amber" />
-          <MeterRow label="NADH pressure" value01={model.nadhPressureIndex} tone="violet" />
+          <MeterRow label={t("bottleneckLabel")} value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
+          <MeterRow label={t("redoxStressLabel")} value01={model.redoxStressIndex / 100} tone="amber" />
+          <MeterRow label={t("nadhPressureLabel")} value01={model.nadhPressureIndex} tone="violet" />
         </div>
         <p className="maxox-engine-viz-hint">
-          Reoxidation (index) {(model.reoxidationCapacityIndex * 100).toFixed(0)}% · dominant limiting type in the engine:{" "}
-          <strong>{model.bottleneckType.replaceAll("_", " ")}</strong>
+          {t.rich("stressHint", {
+            reox: (model.reoxidationCapacityIndex * 100).toFixed(0),
+            b: (chunks) => <strong>{chunks}</strong>,
+            type: () => <strong>{model.bottleneckType.replaceAll("_", " ")}</strong>,
+          })}
         </p>
       </div>
     </div>

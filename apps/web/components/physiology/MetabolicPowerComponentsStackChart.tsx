@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { PowerComponentRow } from "@/lib/engines/critical-power-engine";
 
 export type MetabolicPowerComponentsStackChartProps = {
@@ -12,17 +14,22 @@ export type MetabolicPowerComponentsStackChartProps = {
  * Barre impilate: P(t) = CP + W′/t ripartito in ossidativo residuo, PCr (cinetica e⁻ᵗ/ᵗ) e glicolisi (quota iperbolica + parallela a soglia).
  */
 export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: MetabolicPowerComponentsStackChartProps) {
+  const t = useTranslations("MetabolicPowerComponentsStackChart");
   if (!rows.length) return null;
 
   return (
-    <div className="metabolic-comp-stack-card" aria-label="Model power breakdown: oxidative, PCr and glycolytic by duration">
+    <div className="metabolic-comp-stack-card" aria-label={t("cardAriaLabel")}>
       <div className="metabolic-comp-stack-head">
-        <h4 className="metabolic-comp-stack-title">Three metabolic components · power share by duration</h4>
+        <h4 className="metabolic-comp-stack-title">{t("title")}</h4>
         <p className="metabolic-comp-stack-caption">
-          <strong>P(t) = CP + W′/t</strong> with CP/W′ from <strong>work–time</strong> fit when R² is high.{" "}
-          <strong style={{ color: "#7dd3fc" }}>PCr</strong>: <strong>P<sub>PCr</sub> = min(W′/t, (E<sub>PCr</sub>/t)·e<sup>−t/τ</sup>)</strong>.{" "}
-          <strong style={{ color: "#fbbf24" }}>Glycolysis</strong>: hyperbolic share <strong>W′/t − P<sub>PCr</sub></strong> + threshold-parallel share{" "}
-          <strong>CP·f<sub>∥</sub>(t)</strong> (grows with log t). <strong style={{ color: "#34d399" }}>Oxidative</strong> = residual. Not lab V̇La.
+          {t.rich("caption", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+            pcr: (chunks) => <strong style={{ color: "#7dd3fc" }}>{chunks}</strong>,
+            gly: (chunks) => <strong style={{ color: "#fbbf24" }}>{chunks}</strong>,
+            oxy: (chunks) => <strong style={{ color: "#34d399" }}>{chunks}</strong>,
+            sub: (chunks) => <sub>{chunks}</sub>,
+            sup: (chunks) => <sup>{chunks}</sup>,
+          })}
         </p>
       </div>
       <div className="metabolic-comp-stack-rows">
@@ -34,21 +41,21 @@ export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: Met
           return (
             <div key={row.sec} className="metabolic-comp-stack-row">
               <span className="metabolic-comp-stack-lab">{row.label}</span>
-              <div className="metabolic-comp-stack-track" title={`P=${row.modelPowerW.toFixed(0)} W`}>
+              <div className="metabolic-comp-stack-track" title={t("trackTitle", { w: row.modelPowerW.toFixed(0) })}>
                 <div
                   className="metabolic-comp-stack-seg metabolic-comp-stack-seg--aer"
                   style={{ width: `${pctA}%` }}
-                  title={`Oxidative ${row.aerobicW.toFixed(0)} W`}
+                  title={t("oxidativeTitle", { w: row.aerobicW.toFixed(0) })}
                 />
                 <div
                   className="metabolic-comp-stack-seg metabolic-comp-stack-seg--pcr"
                   style={{ width: `${pctP}%` }}
-                  title={`PCr ${row.pcrW.toFixed(0)} W`}
+                  title={t("pcrTitle", { w: row.pcrW.toFixed(0) })}
                 />
                 <div
                   className="metabolic-comp-stack-seg metabolic-comp-stack-seg--gly"
                   style={{ width: `${pctG}%` }}
-                  title={`Glycolysis ${row.glycolyticW.toFixed(0)} W`}
+                  title={t("glycolysisTitle", { w: row.glycolyticW.toFixed(0) })}
                 />
               </div>
               <span className="metabolic-comp-stack-total">{row.modelPowerW.toFixed(0)} W</span>
@@ -58,13 +65,13 @@ export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: Met
       </div>
       <ul className="metabolic-comp-stack-legend">
         <li>
-          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--aer" /> Oxidative
+          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--aer" /> {t("legendOxidative")}
         </li>
         <li>
-          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--pcr" /> PCr
+          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--pcr" /> {t("legendPcr")}
         </li>
         <li>
-          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--gly" /> Glycolysis
+          <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--gly" /> {t("legendGlycolysis")}
         </li>
       </ul>
       {engineRevision ? (
@@ -78,9 +85,11 @@ export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: Met
             wordBreak: "break-word",
           }}
         >
-          Active engine: <strong style={{ color: "var(--empathy-text-secondary)" }}>{engineRevision}</strong>
-          {" — "}
-          if in production you still see <em>identical</em> PCr/glyc kJ across all durations, the deploy does not include this revision.
+          {t.rich("engineNote", {
+            revision: engineRevision,
+            strong: (chunks) => <strong style={{ color: "var(--empathy-text-secondary)" }}>{chunks}</strong>,
+            em: (chunks) => <em>{chunks}</em>,
+          })}
         </p>
       ) : null}
     </div>

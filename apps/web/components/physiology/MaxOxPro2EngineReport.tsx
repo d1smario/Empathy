@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Activity, ArrowUpRight, HeartPulse, Sparkles, Wind, Zap } from "lucide-react";
 import {
   Bar,
@@ -98,18 +99,19 @@ export function MaxOxPro2EngineReport({
   vo2CapacitySource: "metabolic_engine_vo2max" | "power_estimate" | "test_manual";
   maxOxVo2Mode: Vo2LabMode;
 }) {
+  const t = useTranslations("MaxOxPro2EngineReport");
   const capLab =
     maxOxVo2Mode === "test"
-      ? "VO₂ test (manual)"
+      ? t("capLabTestManual")
       : vo2CapacitySource === "metabolic_engine_vo2max"
-        ? "VO₂max (Metabolic Profile model)"
-        : "Capacity (power estimate)";
+        ? t("capLabVo2max")
+        : t("capLabPowerEstimate");
   const sat = model.utilizationRatioPct;
   const oversaturated = sat > 100;
   const satVisualMax = 150;
   const barData = [
-    { name: "Central delivery", v: model.centralDeliveryIndex * 100 },
-    { name: "Peripheral utilization", v: model.peripheralUtilizationIndex * 100 },
+    { name: t("barCentralDelivery"), v: model.centralDeliveryIndex * 100 },
+    { name: t("barPeripheralUtilization"), v: model.peripheralUtilizationIndex * 100 },
   ];
 
   const nadhP = model.nadhPressureIndex * 100;
@@ -126,7 +128,7 @@ export function MaxOxPro2EngineReport({
       <div className="physiology-pro2-eng-vo2-trio">
         <div className="physiology-pro2-eng-vo2-trio-head">
           <HeartPulse className="physiology-pro2-eng-section-ico" aria-hidden />
-          <span>VO₂ in the model (max capacity)</span>
+          <span>{t("vo2ModelTitle")}</span>
         </div>
         <div className="physiology-pro2-eng-vo2-grid">
           <div className="physiology-pro2-eng-vo2-cell physiology-pro2-eng-vo2-cell--cyan">
@@ -135,29 +137,29 @@ export function MaxOxPro2EngineReport({
             <span className="physiology-pro2-eng-vo2-unit">L/min</span>
           </div>
           <div className="physiology-pro2-eng-vo2-cell physiology-pro2-eng-vo2-cell--blue">
-            <span className="physiology-pro2-eng-vo2-lab">At this power</span>
+            <span className="physiology-pro2-eng-vo2-lab">{t("atThisPower")}</span>
             <strong>{vo2AtPowerL.toFixed(1)}</strong>
-            <span className="physiology-pro2-eng-vo2-unit">L/min · load estimate</span>
+            <span className="physiology-pro2-eng-vo2-unit">{t("lminLoadEstimate")}</span>
           </div>
           <div className="physiology-pro2-eng-vo2-cell physiology-pro2-eng-vo2-cell--violet">
             <span className="physiology-pro2-eng-vo2-lab">ml/kg/min</span>
             <strong>{vo2MlKgCapacity.toFixed(1)}</strong>
-            <span className="physiology-pro2-eng-vo2-unit">from capacity · {vo2MlKgAtPower.toFixed(1)} at power</span>
+            <span className="physiology-pro2-eng-vo2-unit">{t("fromCapacityAtPower", { atPower: vo2MlKgAtPower.toFixed(1) })}</span>
           </div>
         </div>
       </div>
 
       <div className="physiology-pro2-eng-maxox-summary-bar">
         <div>
-          <span className="physiology-pro2-eng-maxox-sum-lab">Limit type</span>
+          <span className="physiology-pro2-eng-maxox-sum-lab">{t("limitType")}</span>
           <span className="physiology-pro2-eng-maxox-sum-val physiology-pro2-eng-maxox-sum-val--cyan">{bottleneckLabel}</span>
         </div>
         <div>
-          <span className="physiology-pro2-eng-maxox-sum-lab">Reliability</span>
+          <span className="physiology-pro2-eng-maxox-sum-lab">{t("reliability")}</span>
           <span className="physiology-pro2-eng-maxox-sum-val physiology-pro2-eng-maxox-sum-val--green">{reliabilityPct}%</span>
         </div>
         <div>
-          <span className="physiology-pro2-eng-maxox-sum-lab">Uncertainty</span>
+          <span className="physiology-pro2-eng-maxox-sum-lab">{t("uncertainty")}</span>
           <span className="physiology-pro2-eng-maxox-sum-val physiology-pro2-eng-maxox-sum-val--amber">± {uncertaintyPct}%</span>
         </div>
       </div>
@@ -167,13 +169,13 @@ export function MaxOxPro2EngineReport({
 
       <div className="physiology-pro2-eng-section-title-row physiology-pro2-eng-section-title-row--warn">
         <Zap className="physiology-pro2-eng-section-ico" aria-hidden />
-        <span>Engine output · Saturation · Bottleneck · Redox</span>
+        <span>{t("engineOutputSection")}</span>
       </div>
 
       <div className="physiology-pro2-eng-maxox-gauges">
         <div className="physiology-pro2-eng-gauge-hero">
           <SemiGauge
-            label="Oxidative saturation"
+            label={t("oxidativeSaturation")}
             value={sat}
             maxScale={satVisualMax}
             tone="rose"
@@ -185,20 +187,22 @@ export function MaxOxPro2EngineReport({
             <span className="physiology-pro2-eng-sat-ok">Within capacity</span>
           )}
           <p className="physiology-pro2-eng-sat-foot">
-            Oxidative demand (P_oss @ duration) vs net capacity. Total load coherence vs raw VO₂:{" "}
-            <strong>{model.utilizationVo2CoherencePct.toFixed(0)}%</strong> · delivery stress (total / net):{" "}
-            <strong>{model.utilizationDeliveryStressPct.toFixed(0)}%</strong>
+            {t.rich("satFoot", {
+              coherence: model.utilizationVo2CoherencePct.toFixed(0),
+              stress: model.utilizationDeliveryStressPct.toFixed(0),
+              b: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
         <SemiGauge
-          label="Oxidative bottleneck"
+          label={t("oxidativeBottleneck")}
           value={model.oxidativeBottleneckIndex}
           maxScale={100}
           tone="amber"
           displayText={`${model.oxidativeBottleneckIndex.toFixed(0)}/100`}
         />
         <SemiGauge
-          label="Redox stress"
+          label={t("redoxStress")}
           value={model.redoxStressIndex}
           maxScale={100}
           tone="emerald"
@@ -208,55 +212,55 @@ export function MaxOxPro2EngineReport({
 
       <div className="physiology-pro2-eng-maxox-bottom-kpis">
         <div className="physiology-pro2-eng-mbkpi physiology-pro2-eng-mbkpi--violet">
-          <span className="physiology-pro2-eng-mbkpi-lab">Test intensity</span>
+          <span className="physiology-pro2-eng-mbkpi-lab">{t("testIntensity")}</span>
           <strong>{model.intensityPctFtp.toFixed(0)}%</strong>
           <span className="physiology-pro2-eng-mbkpi-sub">FTP</span>
         </div>
         <div className="physiology-pro2-eng-mbkpi physiology-pro2-eng-mbkpi--green">
-          <span className="physiology-pro2-eng-mbkpi-lab">Capacity from VO₂</span>
+          <span className="physiology-pro2-eng-mbkpi-lab">{t("capacityFromVo2")}</span>
           <strong>{model.oxidativeCapacityKcalMinGross.toFixed(2)}</strong>
-          <span className="physiology-pro2-eng-mbkpi-sub">kcal/min · net {model.oxidativeCapacityKcalMin.toFixed(2)}</span>
+          <span className="physiology-pro2-eng-mbkpi-sub">{t("kcalMinNet", { net: model.oxidativeCapacityKcalMin.toFixed(2) })}</span>
         </div>
         <div className="physiology-pro2-eng-mbkpi physiology-pro2-eng-mbkpi--rose">
-          <span className="physiology-pro2-eng-mbkpi-lab">Energy demand</span>
+          <span className="physiology-pro2-eng-mbkpi-lab">{t("energyDemand")}</span>
           <strong>{model.requiredKcalMin.toFixed(2)}</strong>
-          <span className="physiology-pro2-eng-mbkpi-sub">kcal/min total</span>
+          <span className="physiology-pro2-eng-mbkpi-sub">{t("kcalMinTotal")}</span>
         </div>
         <div className="physiology-pro2-eng-mbkpi physiology-pro2-eng-mbkpi--rose">
-          <span className="physiology-pro2-eng-mbkpi-lab">Oxidative demand (P_oss)</span>
+          <span className="physiology-pro2-eng-mbkpi-lab">{t("oxidativeDemandPoss")}</span>
           <strong>{model.oxidativeDemandKcalMin.toFixed(2)}</strong>
           <span className="physiology-pro2-eng-mbkpi-sub">
-            kcal/min · non-oxid. {model.glycolyticPowerDemandW.toFixed(0)} W
+            {t("kcalMinNonOxid", { w: model.glycolyticPowerDemandW.toFixed(0) })}
           </span>
         </div>
       </div>
 
       <div className="physiology-pro2-eng-section-title-row physiology-pro2-eng-section-title-row--cyan">
         <ArrowUpRight className="physiology-pro2-eng-section-ico" aria-hidden />
-        <span>Output · Delivery · Extraction · Mitochondria</span>
+        <span>{t("outputDeliverySection")}</span>
       </div>
 
       <div className="physiology-pro2-eng-maxox-delivery-grid">
         <div className="physiology-pro2-eng-del-card physiology-pro2-eng-del-card--green">
           <Wind className="physiology-pro2-eng-del-ico" aria-hidden />
-          <span className="physiology-pro2-eng-del-lab">Central O2 delivery</span>
+          <span className="physiology-pro2-eng-del-lab">{t("centralO2Delivery")}</span>
           <strong>{model.centralDeliveryIndex.toFixed(2)}</strong>
         </div>
         <div className="physiology-pro2-eng-del-card physiology-pro2-eng-del-card--cyan">
           <Activity className="physiology-pro2-eng-del-ico" aria-hidden />
-          <span className="physiology-pro2-eng-del-lab">Peripheral utilization</span>
+          <span className="physiology-pro2-eng-del-lab">{t("peripheralUtilization")}</span>
           <strong>{model.peripheralUtilizationIndex.toFixed(2)}</strong>
         </div>
         <div className="physiology-pro2-eng-del-card physiology-pro2-eng-del-card--cyan">
           <HeartPulse className="physiology-pro2-eng-del-ico" aria-hidden />
-          <span className="physiology-pro2-eng-del-lab">SmO2 extraction</span>
+          <span className="physiology-pro2-eng-del-lab">{t("smo2Extraction")}</span>
           <strong>{model.extractionPct.toFixed(1)}%</strong>
         </div>
       </div>
 
       <div className="physiology-pro2-eng-nadh-row">
         <div className="physiology-pro2-eng-nadh-card">
-          <p className="physiology-pro2-eng-nadh-title">NADH / Reoxidation</p>
+          <p className="physiology-pro2-eng-nadh-title">{t("nadhReoxidationTitle")}</p>
           <div className="physiology-pro2-eng-nadh-bars">
             <div>
               <div className="physiology-pro2-eng-nadh-row-h">
@@ -269,7 +273,7 @@ export function MaxOxPro2EngineReport({
             </div>
             <div>
               <div className="physiology-pro2-eng-nadh-row-h">
-                <span>Reoxidation</span>
+                <span>{t("reoxidation")}</span>
                 <span>{reoxP.toFixed(0)}%</span>
               </div>
               <div className="physiology-pro2-lab-bar-track">
@@ -279,11 +283,11 @@ export function MaxOxPro2EngineReport({
           </div>
           <div className="physiology-pro2-eng-nadh-pills">
             <span className="physiology-pro2-eng-nadh-pill physiology-pro2-eng-nadh-pill--pur">{nadhP.toFixed(0)}% NADH</span>
-            <span className="physiology-pro2-eng-nadh-pill physiology-pro2-eng-nadh-pill--gr">{reoxP.toFixed(0)}% Reoxidation</span>
+            <span className="physiology-pro2-eng-nadh-pill physiology-pro2-eng-nadh-pill--gr">{t("reoxidationPill", { pct: reoxP.toFixed(0) })}</span>
           </div>
         </div>
         <div className="physiology-pro2-eng-del-chart-card">
-          <p className="physiology-pro2-eng-chart-h3 text-emerald-300">Delivery vs utilization</p>
+          <p className="physiology-pro2-eng-chart-h3 text-emerald-300">{t("deliveryVsUtilization")}</p>
           <div className="physiology-pro2-eng-chart-inner">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={barData} margin={{ top: 8, right: 12, left: 4, bottom: 32 }}>
@@ -294,7 +298,7 @@ export function MaxOxPro2EngineReport({
                   formatter={(v: number) => [`${v.toFixed(0)}`, ""]}
                   contentStyle={chartTooltipStyle("physiology")}
                 />
-                <Bar dataKey="v" fill={CHART_MODULE_ACCENT.physiology} radius={[6, 6, 0, 0]} name="Index ×100" />
+                <Bar dataKey="v" fill={CHART_MODULE_ACCENT.physiology} radius={[6, 6, 0, 0]} name={t("indexTimes100")} />
               </BarChart>
             </ResponsiveContainer>
           </div>

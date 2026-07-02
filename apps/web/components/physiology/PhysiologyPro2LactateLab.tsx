@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, CheckCircle2, Droplets, Gauge, HeartPulse } from "lucide-react";
 import type { LactateEngineOutput } from "@/lib/engines/lactate-engine";
 import { LactateEnginePro2Viz } from "@/components/physiology/LactateEnginePro2Viz";
@@ -47,6 +48,7 @@ export function PhysiologyPro2LactateLab({
   intensityPctFtp,
   children,
 }: PhysiologyPro2LactateLabProps) {
+  const t = useTranslations("PhysiologyPro2LactateLab");
   const vo2maxRefMlMinKg = Math.max(0, profileVo2maxMlMinKg ?? 0, vo2MlKg ?? 0);
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--lactate">
@@ -54,21 +56,21 @@ export function PhysiologyPro2LactateLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Compact balances · bars (engine {model.version})</span>
+        <span>{t("overviewBanner", { version: model.version })}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <LactateEnginePro2Viz model={model} choGapG={choGap} />
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
         <Gauge className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Model quality · gap · thresholds</span>
+        <span>{t("qualityBanner")}</span>
         <Gauge className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--3">
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
           <Droplets className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Accumulated lactate</div>
+          <div className="physiology-pro2-lab-metric-label">{t("accumulatedLactate")}</div>
           <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--lac-acc">{model.lactateAccumG.toFixed(1)} g</div>
         </div>
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
@@ -78,20 +80,20 @@ export function PhysiologyPro2LactateLab({
         </div>
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--lac">
           <CheckCircle2 className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Model reliability</div>
+          <div className="physiology-pro2-lab-metric-label">{t("modelReliability")}</div>
           <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">{reliabilityPct}/100</div>
-          <div className="physiology-pro2-lab-metric-sub">±{uncertaintyPct}% input uncertainty</div>
+          <div className="physiology-pro2-lab-metric-sub">{t("inputUncertainty", { pct: uncertaintyPct })}</div>
         </div>
       </div>
 
       <div className="physiology-pro2-lab-hint-strip">
-        <span><strong>Fueling:</strong> {fuelingHint}</span>
-        <span><strong>Lactate:</strong> {lactateHint}</span>
+        <span><strong>{t("fuelingLabel")}</strong> {fuelingHint}</span>
+        <span><strong>{t("lactateLabel")}</strong> {lactateHint}</span>
       </div>
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-curve">
         <Droplets className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>LACTATE THRESHOLD · CURVE vs %FTP</span>
+        <span>{t("curveBanner")}</span>
         <Droplets className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
@@ -108,7 +110,7 @@ export function PhysiologyPro2LactateLab({
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>CONFIGURATION · SIGNALS · ENGINE OUTPUT</span>
+        <span>{t("inputsBanner")}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Activity,
   Bug,
@@ -20,16 +21,12 @@ export type DysbiosisPreset = "eubiosi" | "lieve" | "moderata" | "severa" | "gra
 
 type OpenKey = "sport" | "vo2" | "rer" | "micro" | "dys" | "fatox" | null;
 
-const SPORT_OPTS: { v: SupportedSport; label: string }[] = [
-  { v: "cycling", label: "Cycling" },
-  { v: "running", label: "Running" },
-  { v: "swimming", label: "Swimming" },
-  { v: "xc_ski", label: "Cross-country ski" },
+const SPORT_OPTS: { v: SupportedSport; labelKey: string }[] = [
+  { v: "cycling", labelKey: "sportCycling" },
+  { v: "running", labelKey: "sportRunning" },
+  { v: "swimming", labelKey: "sportSwimming" },
+  { v: "xc_ski", labelKey: "sportXcSki" },
 ];
-
-function sportLabel(s: SupportedSport) {
-  return SPORT_OPTS.find((o) => o.v === s)?.label ?? s;
-}
 
 export function LactateMetabolicContextTiles({
   lactateSport,
@@ -66,8 +63,14 @@ export function LactateMetabolicContextTiles({
   lactateVo2EstL: number;
   lactateVo2MlKg: number;
 }) {
+  const t = useTranslations("LactateMetabolicContextTiles");
   const [open, setOpen] = useState<OpenKey>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+
+  function sportLabel(s: SupportedSport) {
+    const opt = SPORT_OPTS.find((o) => o.v === s);
+    return opt ? t(opt.labelKey) : s;
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -84,26 +87,26 @@ export function LactateMetabolicContextTiles({
     setOpen((cur) => (cur === k ? null : k));
   }
 
-  const vo2Label = lactateVo2Mode === "device" ? "From device" : "From test";
-  const rerLabel = lactateRerMode === "auto" ? "Auto %FTP" : "Manual";
+  const vo2Label = lactateVo2Mode === "device" ? t("vo2FromDevice") : t("vo2FromTest");
+  const rerLabel = lactateRerMode === "auto" ? t("rerAutoFtp") : t("rerManual");
   const microLabels: Record<MicrobiotaSourceMode, string> = {
-    health_bio: "Health&Bio",
-    preset: "5-level preset",
-    manual: "Manual",
+    health_bio: t("microHealthBio"),
+    preset: t("microPreset"),
+    manual: t("microManual"),
   };
   const dysLabels: Record<DysbiosisPreset, string> = {
-    eubiosi: "Eubiosis",
-    lieve: "Mild",
-    moderata: "Moderate",
-    severa: "Severe",
-    grave: "Critical",
+    eubiosi: t("dysEubiosi"),
+    lieve: t("dysLieve"),
+    moderata: t("dysModerata"),
+    severa: t("dysSevera"),
+    grave: t("dysGrave"),
   };
 
   return (
     <div className="physiology-pro2-ctx-shell" ref={shellRef}>
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-metabolism">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Metabolic context · VO₂ · RER · microbiota</span>
+        <span>{t("banner")}</span>
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
@@ -119,7 +122,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">Sport</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileSport")}</span>
           <span className="physiology-pro2-ctx-tile-v">{sportLabel(lactateSport)}</span>
         </button>
 
@@ -134,7 +137,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">VO₂ source</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileVo2Source")}</span>
           <span className="physiology-pro2-ctx-tile-v">{vo2Label}</span>
         </button>
 
@@ -149,7 +152,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">RER source</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileRerSource")}</span>
           <span className="physiology-pro2-ctx-tile-v">{rerLabel}</span>
         </button>
 
@@ -164,7 +167,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">Microbiota</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileMicrobiota")}</span>
           <span className="physiology-pro2-ctx-tile-v">{microLabels[microbiotaSourceMode]}</span>
         </button>
 
@@ -180,7 +183,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">Dysbiosis</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileDysbiosis")}</span>
           <span className="physiology-pro2-ctx-tile-v">{dysLabels[dysbiosisPreset]}</span>
         </button>
 
@@ -196,7 +199,7 @@ export function LactateMetabolicContextTiles({
             </span>
             <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
           </div>
-          <span className="physiology-pro2-ctx-tile-k">Fat ox. adapt.</span>
+          <span className="physiology-pro2-ctx-tile-k">{t("tileFatOxAdapt")}</span>
           <span className="physiology-pro2-ctx-tile-v">{fatOxAdaptation.toFixed(2)}</span>
         </button>
       </div>
@@ -213,7 +216,7 @@ export function LactateMetabolicContextTiles({
                 setOpen(null);
               }}
             >
-              {o.label}
+              {t(o.labelKey)}
             </button>
           ))}
         </div>
@@ -229,7 +232,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Calculated from device
+            {t("vo2OptDevice")}
           </button>
           <button
             type="button"
@@ -239,7 +242,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Value from test
+            {t("vo2OptTest")}
           </button>
         </div>
       ) : null}
@@ -254,7 +257,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Auto from %FTP
+            {t("rerOptAuto")}
           </button>
           <button
             type="button"
@@ -264,7 +267,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Manual
+            {t("rerOptManual")}
           </button>
         </div>
       ) : null}
@@ -281,7 +284,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Health&Bio test {hasHealthMicrobiotaProfile ? "" : "(not available)"}
+            {t("microOptHealthBioTest")} {hasHealthMicrobiotaProfile ? "" : t("microOptNotAvailable")}
           </button>
           <button
             type="button"
@@ -291,7 +294,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            5-level preset
+            {t("microOptPreset")}
           </button>
           <button
             type="button"
@@ -301,7 +304,7 @@ export function LactateMetabolicContextTiles({
               setOpen(null);
             }}
           >
-            Manual
+            {t("microOptManual")}
           </button>
         </div>
       ) : null}
@@ -327,7 +330,7 @@ export function LactateMetabolicContextTiles({
       {open === "fatox" ? (
         <div className="physiology-pro2-ctx-fatox">
           <label className="physiology-pro2-ctx-fatox-lab" htmlFor="lac-fatox-range">
-            0 = more carbs at threshold · 1 = more fat oxidation (0–1)
+            {t("fatoxRangeLabel")}
           </label>
           <input
             id="lac-fatox-range"
@@ -346,10 +349,10 @@ export function LactateMetabolicContextTiles({
       <div className="physiology-pro2-ctx-vo2-card">
         <HeartPulse className="physiology-pro2-ctx-vo2-ico" aria-hidden />
         <div className="physiology-pro2-ctx-vo2-copy">
-          <span className="physiology-pro2-ctx-vo2-k">VO₂ used in the model</span>
+          <span className="physiology-pro2-ctx-vo2-k">{t("vo2UsedInModel")}</span>
           <span className="physiology-pro2-ctx-vo2-main">{lactateVo2Used.toFixed(2)} L/min</span>
           <span className="physiology-pro2-ctx-vo2-sub">
-            estimated {lactateVo2EstL.toFixed(2)} L/min · {lactateVo2MlKg.toFixed(1)} ml/kg/min
+            {t("vo2EstimatedSub", { est: lactateVo2EstL.toFixed(2), mlkg: lactateVo2MlKg.toFixed(1) })}
           </span>
         </div>
       </div>

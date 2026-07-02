@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { FileUp, FlaskConical, Link2, Stethoscope } from "lucide-react";
 import { Pro2Link } from "@/components/ui/empathy";
 
@@ -10,10 +11,13 @@ export type HealthBioGlucoseMeta = {
   source: "blood_panel" | "physiological_baseline" | "session_roll";
 };
 
-function glucoseSourceLabel(source: HealthBioGlucoseMeta["source"]): string {
-  if (source === "blood_panel") return "Blood panel (Health)";
-  if (source === "physiological_baseline") return "Glucose baseline (physiological profile)";
-  return "Session average (glucose_mmol)";
+function glucoseSourceLabel(
+  source: HealthBioGlucoseMeta["source"],
+  t: (key: string) => string,
+): string {
+  if (source === "blood_panel") return t("glucoseSourceBloodPanel");
+  if (source === "physiological_baseline") return t("glucoseSourcePhysiologicalBaseline");
+  return t("glucoseSourceSessionAverage");
 }
 
 /**
@@ -32,43 +36,54 @@ export function LactateAnalysisDataSourcesCard({
   healthBioGlucose?: HealthBioGlucoseMeta | null;
   healthBioCoreTempC?: number | null;
 }) {
+  const t = useTranslations("LactateAnalysisDataSourcesCard");
   return (
     <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/10 px-4 py-4 text-sm text-gray-300">
       <div className="flex flex-wrap items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
         <FlaskConical className="h-4 w-4" aria-hidden />
-        Data sources · gut &amp; sensors
+        {t("dataSourcesLabel")}
       </div>
       {(healthBioGlucose != null || healthBioCoreTempC != null || hasHealthMicrobiotaProfile) ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[0.75rem] leading-relaxed text-gray-400">
-          <span className="font-semibold text-emerald-300">Aligned from Health / profile</span>
+          <span className="font-semibold text-emerald-300">{t("alignedFromHealthProfile")}</span>
           {hasHealthMicrobiotaProfile ? (
-            <span className="block mt-1">Microbiota: <em>Health&amp;Bio</em> panel available for taxa.</span>
+            <span className="block mt-1">
+              {t.rich("microbiotaPanelLine", { em: (chunks) => <em>{chunks}</em> })}
+            </span>
           ) : null}
           {healthBioGlucose != null ? (
             <span className="block mt-1">
-              Glucose: <strong className="text-gray-200">{healthBioGlucose.mmol_l.toFixed(2)} mmol/L</strong> ·{" "}
-              {glucoseSourceLabel(healthBioGlucose.source)} (pre-filled if the field was empty; session import takes operational priority when you apply the picker).
+              {t("glucoseLabel")}{" "}
+              <strong className="text-gray-200">{healthBioGlucose.mmol_l.toFixed(2)} mmol/L</strong> ·{" "}
+              {glucoseSourceLabel(healthBioGlucose.source, t)} {t("glucoseSourceNote")}
             </span>
           ) : null}
           {healthBioCoreTempC != null ? (
             <span className="block mt-1">
-              Core temp baseline: <strong className="text-gray-200">{healthBioCoreTempC.toFixed(1)} °C</strong> from physiological profile (only if the field was empty).
+              {t("coreTempBaselineLabel")}{" "}
+              <strong className="text-gray-200">{healthBioCoreTempC.toFixed(1)} °C</strong> {t("coreTempBaselineNote")}
             </span>
           ) : null}
         </div>
       ) : null}
       <ul className="mt-3 list-inside list-disc space-y-1.5 text-[0.8rem] leading-relaxed text-gray-400">
         <li>
-          <strong className="text-gray-200">Absorption / sequestration / gut training</strong> with source{" "}
-          <em>Health&amp;Bio</em> or <em>Phenotype preset</em>: values <strong>derived</strong> from the microbiota panel or the dysbiosis level (not editable until you switch to{" "}
-          <strong>Manual</strong> in the Microbiota tile).
+          {t.rich("bulletAbsorption", {
+            b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+            s: (chunks) => <strong>{chunks}</strong>,
+            em: (chunks) => <em>{chunks}</em>,
+          })}
         </li>
         <li>
-          <strong className="text-gray-200">VO₂, SmO₂, glucose (mmol/L), core temperature</strong>: pre-fill from{" "}
-          <strong>blood panel</strong>, <strong>profile baseline</strong> or <strong>session average</strong> (priority order on the API side); completion with <strong>session import</strong> (picker) and VO₂ in <strong>test</strong> mode where needed.
+          {t.rich("bulletMetrics", {
+            b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+            s: (chunks) => <strong>{chunks}</strong>,
+          })}
         </li>
         <li>
-          <strong className="text-gray-200">Segment track</strong>: attach a support file (CSV/GPX/JSON exported from the device); today only metadata is recorded in the snapshot (no storage upload in this iteration).
+          {t.rich("bulletSegmentTrack", {
+            b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+          })}
         </li>
       </ul>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -78,17 +93,17 @@ export function LactateAnalysisDataSourcesCard({
           className="inline-flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
         >
           <Stethoscope className="h-3.5 w-3.5" aria-hidden />
-          Health &amp; bio
+          {t("healthBioLink")}
         </Pro2Link>
         <span className="inline-flex items-center gap-1.5 text-[0.7rem] text-gray-500">
           <Link2 className="h-3.5 w-3.5" aria-hidden />
-          Tests (blood, microbiota) uploaded there are reflected in the lab when the athlete loads.
+          {t("testsReflectedNote")}
         </span>
       </div>
       <label className="mt-4 flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-white/15 bg-black/25 px-3 py-3 text-xs text-gray-400 transition-colors hover:border-emerald-500/40">
         <span className="flex items-center gap-2 font-medium text-gray-200">
           <FileUp className="h-4 w-4 text-emerald-400" aria-hidden />
-          Segment track attachment (optional)
+          {t("segmentTrackAttachmentLabel")}
         </span>
         <input
           type="file"
@@ -107,11 +122,12 @@ export function LactateAnalysisDataSourcesCard({
         <span className="text-[0.7rem] text-gray-500">
           {segmentAttachment ? (
             <>
-              Selected: <strong className="text-gray-300">{segmentAttachment.name}</strong> (
-              {(segmentAttachment.size / 1024).toFixed(1)} KB)
+              {t("selectedLabel")}{" "}
+              <strong className="text-gray-300">{segmentAttachment.name}</strong>{" "}
+              {t("selectedSize", { size: (segmentAttachment.size / 1024).toFixed(1) })}
             </>
           ) : (
-            "No file — it will be cited in the Lactate snapshot as an operational reference."
+            t("noFileNote")
           )}
         </span>
         {segmentAttachment ? (
@@ -120,7 +136,7 @@ export function LactateAnalysisDataSourcesCard({
             className="self-start text-[0.7rem] text-rose-300 underline"
             onClick={() => onSegmentFile(null)}
           >
-            Remove attachment
+            {t("removeAttachment")}
           </button>
         ) : null}
       </label>

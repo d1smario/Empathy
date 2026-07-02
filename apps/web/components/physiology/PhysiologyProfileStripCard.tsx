@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPhysiologicalProfileStrip, type PhysiologicalProfile } from "@empathy/domain-physiology";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { fetchCanonicalPhysiologyProfile } from "@/modules/physiology/services/physiology-profile-api";
@@ -12,6 +13,7 @@ let physiologyStripCacheId: string | null = null;
 let physiologyStripCache: Awaited<ReturnType<typeof fetchCanonicalPhysiologyProfile>> | null = null;
 
 export function PhysiologyProfileStripCard() {
+  const t = useTranslations("PhysiologyProfileStripCard");
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<PhysiologicalProfile | null>(null);
@@ -21,7 +23,7 @@ export function PhysiologyProfileStripCard() {
     if (ctxLoading) return;
     if (!athleteId) {
       setProfile(null);
-      setErr("No active athlete.");
+      setErr(t("noActiveAthlete"));
       setLoading(false);
       return;
     }
@@ -48,7 +50,7 @@ export function PhysiologyProfileStripCard() {
       } catch (e) {
         if (!c && !cached) {
           setProfile(null);
-          setErr(e instanceof Error ? e.message : "Read failed.");
+          setErr(e instanceof Error ? e.message : t("readFailed"));
         }
       } finally {
         if (!c && !cached) setLoading(false);
@@ -62,10 +64,10 @@ export function PhysiologyProfileStripCard() {
   return (
     <section
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
-      aria-label="Physiological profile"
+      aria-label={t("ariaLabel")}
     >
-      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Physiology · real data</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Profile (canonical)</h2>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{t("eyebrow")}</p>
+      <h2 className="mt-2 text-lg font-bold text-white">{t("title")}</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-40 animate-pulse rounded-full bg-white/10" />

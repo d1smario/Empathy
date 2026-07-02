@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { buildInfluenceLedgerRowsFromOperationalBundle } from "@/lib/platform/bioenergetic-transparency-ledger";
 import type { BioenergeticInfluenceLedgerRow } from "@/lib/platform/bioenergetic-transparency-ledger";
 import { useAthleteOperationalHub } from "@/lib/dashboard/use-athlete-operational-hub";
@@ -134,6 +135,7 @@ function buildBioenergeticaCells(sig: OperationalSignalsBundle): BioCellVm[] {
 }
 
 function BioKpiGrid({ cells }: { cells: BioCellVm[] }) {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   return (
     <div className="fueling-main-kpi-grid" style={{ marginBottom: 12 }}>
       {cells.map((cell) => (
@@ -142,7 +144,7 @@ function BioKpiGrid({ cells }: { cells: BioCellVm[] }) {
           <div className="fueling-main-kpi-value">{cell.value}</div>
           <div className="fueling-main-kpi-sub">{cell.sub}</div>
           <details className="collapsible-card mt-3 border-white/10 bg-black/20 px-2.5 py-2">
-            <summary className="text-[0.62rem]">Why</summary>
+            <summary className="text-[0.62rem]">{t("whySummary")}</summary>
             <p className="m-0 text-[0.72rem] leading-relaxed text-gray-400">{cell.detail}</p>
           </details>
         </article>
@@ -152,6 +154,7 @@ function BioKpiGrid({ cells }: { cells: BioCellVm[] }) {
 }
 
 function LedgerCellStrip({ rows }: { rows: BioenergeticInfluenceLedgerRow[] }) {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   if (!rows.length) return null;
   return (
     <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
@@ -165,10 +168,10 @@ function LedgerCellStrip({ rows }: { rows: BioenergeticInfluenceLedgerRow[] }) {
             <summary className="text-[0.65rem]">{row.source}</summary>
             <div className="space-y-2 text-xs leading-relaxed text-gray-400">
               <p className="m-0">
-                <span className="font-semibold text-gray-200">Consumer:</span> {row.consumer}
+                <span className="font-semibold text-gray-200">{t("consumerLabel")}</span> {row.consumer}
               </p>
               <p className="m-0">
-                <span className="font-semibold text-gray-200">Effect:</span> {row.effect}
+                <span className="font-semibold text-gray-200">{t("effectLabel")}</span> {row.effect}
               </p>
             </div>
           </details>
@@ -347,12 +350,13 @@ function buildOperationalRecommendations(input: {
 }
 
 function OperationalRecommendationsPanel({ recommendations }: { recommendations: OperationalRecommendationVm[] }) {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   return (
     <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
       <header>
-        <h2 className="viz-title">Operational recommendations</h2>
+        <h2 className="viz-title">{t("recommendationsTitle")}</h2>
         <p className="mt-1 text-sm text-gray-400">
-          What to do now, why, when and with which control. The numbers stay engines; here you find the application summary.
+          {t("recommendationsDescription")}
         </p>
       </header>
       {recommendations.length ? (
@@ -362,7 +366,7 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-mono text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-                    {rec.domain} · priority {rec.priority}
+                    {t("domainPriority", { domain: rec.domain, priority: rec.priority })}
                   </div>
                   <h3 className="mt-1 text-sm font-bold text-white">{rec.title}</h3>
                 </div>
@@ -372,17 +376,17 @@ function OperationalRecommendationsPanel({ recommendations }: { recommendations:
               </div>
               <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-200">{rec.recommendation}</p>
               <details className="collapsible-card mt-3 border-white/10 bg-black/25">
-                <summary>Why / timing</summary>
+                <summary>{t("whyTimingSummary")}</summary>
                 <div className="space-y-2 text-xs leading-relaxed text-gray-400">
-                  <p className="m-0"><span className="font-semibold text-gray-200">Why:</span> {rec.why}</p>
-                  <p className="m-0"><span className="font-semibold text-emerald-200">Timing:</span> {rec.timing}</p>
+                  <p className="m-0"><span className="font-semibold text-gray-200">{t("whyLabel")}</span> {rec.why}</p>
+                  <p className="m-0"><span className="font-semibold text-emerald-200">{t("timingLabel")}</span> {rec.timing}</p>
                 </div>
               </details>
             </article>
           ))}
         </div>
       ) : (
-        <p className="text-xs text-gray-500">No operational recommendation available: bundle, reasoning or manual actions are needed.</p>
+        <p className="text-xs text-gray-500">{t("noRecommendation")}</p>
       )}
     </section>
   );
@@ -403,13 +407,13 @@ function ManualActionsPanel({
   onPatchAction: (actionId: string, status: "applied" | "rejected" | "superseded") => void;
   showTech: boolean;
 }) {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   return (
     <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
       <header>
         <h2 className="viz-title">Application Queue</h2>
         <p className="mt-1 text-sm text-gray-400">
-          Application actions generated from validated reasonings. Here the coach decides whether to apply them: the plan and the twin are not
-          mutated automatically.
+          {t("applicationQueueDescription")}
         </p>
       </header>
       {loading ? <div className="h-2 w-44 animate-pulse rounded-full bg-white/10" aria-hidden /> : null}
@@ -445,9 +449,9 @@ function ManualActionsPanel({
               {showTech && action.status === "pending" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {[
-                    { status: "applied" as const, label: "Apply" },
-                    { status: "rejected" as const, label: "Reject" },
-                    { status: "superseded" as const, label: "Supersede" },
+                    { status: "applied" as const, label: t("applyAction") },
+                    { status: "rejected" as const, label: t("rejectAction") },
+                    { status: "superseded" as const, label: t("supersedeAction") },
                   ].map((item) => {
                     const busy = busyAction === `${action.id}:${item.status}`;
                     return (
@@ -468,7 +472,7 @@ function ManualActionsPanel({
           );
         })}
       </div>
-      {!loading && !error && !actions.length ? <p className="text-xs text-gray-500">No pending manual action.</p> : null}
+      {!loading && !error && !actions.length ? <p className="text-xs text-gray-500">{t("noPendingManualAction")}</p> : null}
     </section>
   );
 }
@@ -488,14 +492,14 @@ function ReasoningDashboardPanel({
   onPatchRun: (runId: string, status: "committed" | "rejected" | "archived") => void;
   showTech: boolean;
 }) {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   const cards = data?.cards ?? [];
   return (
     <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
       <header>
         <h2 className="viz-title">Reasoning Dashboard</h2>
         <p className="mt-1 text-sm text-gray-400">
-          Cross-module reasonings: training, VIRYA, nutrition, redox, microbiota, epigenetics, blood and timing. Actions stay in
-          staging until validation.
+          {t("reasoningDashboardDescription")}
         </p>
       </header>
       {loading ? <div className="h-2 w-48 animate-pulse rounded-full bg-white/10" aria-hidden /> : null}
@@ -503,15 +507,15 @@ function ReasoningDashboardPanel({
       {data ? (
         <div className="fueling-main-kpi-grid" style={{ marginBottom: 10 }}>
           {[
-            { label: "Total", value: data.summary.total, tone: "cyan" as const },
-            { label: "Pending", value: data.summary.pending, tone: "amber" as const },
-            { label: "Validated", value: data.summary.committed, tone: "green" as const },
-            { label: "Discarded", value: data.summary.rejected + data.summary.archived, tone: "slate" as const },
+            { label: t("totalLabel"), value: data.summary.total, tone: "cyan" as const },
+            { label: t("pendingLabel"), value: data.summary.pending, tone: "amber" as const },
+            { label: t("validatedLabel"), value: data.summary.committed, tone: "green" as const },
+            { label: t("discardedLabel"), value: data.summary.rejected + data.summary.archived, tone: "slate" as const },
           ].map((item) => (
             <div key={item.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${item.tone}`}>
               <div className="fueling-main-kpi-label">{item.label}</div>
               <div className="fueling-main-kpi-value">{item.value}</div>
-              <div className="fueling-main-kpi-sub">Reasoned decisions</div>
+              <div className="fueling-main-kpi-sub">{t("reasonedDecisions")}</div>
             </div>
           ))}
         </div>
@@ -535,12 +539,12 @@ function ReasoningDashboardPanel({
               </div>
             </div>
             <details className="collapsible-card mt-3 border-white/10 bg-black/25">
-              <summary>Explanation</summary>
+              <summary>{t("explanationSummary")}</summary>
               <div className="space-y-3 text-xs leading-relaxed text-gray-400">
                 <p className="m-0">{card.explanation}</p>
                 {card.actionLines.length ? (
                   <div>
-                    <div className="font-semibold text-gray-200">Actions</div>
+                    <div className="font-semibold text-gray-200">{t("actionsHeading")}</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.actionLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -550,7 +554,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.evidenceLines.length ? (
                   <div>
-                    <div className="font-semibold text-gray-200">Evidence / trace / gate</div>
+                    <div className="font-semibold text-gray-200">{t("evidenceHeading")}</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.evidenceLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -560,7 +564,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.riskLines.length ? (
                   <div>
-                    <div className="font-semibold text-amber-100">Risks / caution</div>
+                    <div className="font-semibold text-amber-100">{t("risksHeading")}</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.riskLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -570,7 +574,7 @@ function ReasoningDashboardPanel({
                 ) : null}
                 {card.timingLines.length ? (
                   <div>
-                    <div className="font-semibold text-emerald-200">Timing</div>
+                    <div className="font-semibold text-emerald-200">{t("timingHeading")}</div>
                     <ul className="m-0 list-disc pl-4">
                       {card.timingLines.map((line) => (
                         <li key={line}>{line}</li>
@@ -588,9 +592,9 @@ function ReasoningDashboardPanel({
             {showTech && card.stagingRunId ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
-                  { status: "committed" as const, label: "Validate" },
-                  { status: "rejected" as const, label: "Discard" },
-                  { status: "archived" as const, label: "Archive" },
+                  { status: "committed" as const, label: t("validateAction") },
+                  { status: "rejected" as const, label: t("discardAction") },
+                  { status: "archived" as const, label: t("archiveAction") },
                 ].map((action) => {
                   const busy = busyRun === `${card.stagingRunId}:${action.status}`;
                   return (
@@ -610,12 +614,13 @@ function ReasoningDashboardPanel({
           </article>
         ))}
       </div>
-      {!loading && !error && !cards.length ? <p className="text-xs text-gray-500">No reasoning available.</p> : null}
+      {!loading && !error && !cards.length ? <p className="text-xs text-gray-500">{t("noReasoning")}</p> : null}
     </section>
   );
 }
 
 export default function BioenergeticTransparencyHubPageView() {
+  const t = useTranslations("BioenergeticTransparencyHubPageView");
   const { role, adminScoped } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const { athleteId, ctxLoading, loading, error: err, hub, refetch } = useAthleteOperationalHub({
@@ -645,7 +650,7 @@ export default function BioenergeticTransparencyHubPageView() {
   async function loadReasoning() {
     if (!athleteId) {
       setReasoning(null);
-      setReasoningErr("No active athlete.");
+      setReasoningErr(t("noActiveAthlete"));
       setReasoningLoading(false);
       return;
     }
@@ -659,13 +664,13 @@ export default function BioenergeticTransparencyHubPageView() {
       const json = (await res.json()) as ReasoningDashboardOk | ReasoningDashboardErr;
       if (!res.ok || !json.ok) {
         setReasoning(null);
-        setReasoningErr(("error" in json && json.error) || "Reasoning not available.");
+        setReasoningErr(("error" in json && json.error) || t("reasoningNotAvailable"));
         return;
       }
       setReasoning(json);
     } catch {
       setReasoning(null);
-      setReasoningErr("Reasoning network error.");
+      setReasoningErr(t("reasoningNetworkError"));
     } finally {
       setReasoningLoading(false);
     }
@@ -674,7 +679,7 @@ export default function BioenergeticTransparencyHubPageView() {
   async function loadManualActions() {
     if (!athleteId) {
       setManualActions([]);
-      setManualActionsErr("No active athlete.");
+      setManualActionsErr(t("noActiveAthlete"));
       setManualActionsLoading(false);
       return;
     }
@@ -689,13 +694,13 @@ export default function BioenergeticTransparencyHubPageView() {
       const json = (await res.json()) as { items?: ManualActionRow[]; error?: string };
       if (!res.ok) {
         setManualActions([]);
-        setManualActionsErr(json.error || "Manual actions not available.");
+        setManualActionsErr(json.error || t("manualActionsNotAvailable"));
         return;
       }
       setManualActions((json.items ?? []).filter((item) => item.status === "pending"));
     } catch {
       setManualActions([]);
-      setManualActionsErr("Manual actions network error.");
+      setManualActionsErr(t("manualActionsNetworkError"));
     } finally {
       setManualActionsLoading(false);
     }
@@ -714,12 +719,12 @@ export default function BioenergeticTransparencyHubPageView() {
       });
       const json = (await res.json()) as { ok: boolean; error?: string };
       if (!res.ok || !json.ok) {
-        setReasoningErr(json.error || "Staging update failed.");
+        setReasoningErr(json.error || t("stagingUpdateFailed"));
         return;
       }
       await Promise.all([loadReasoning(), loadManualActions(), refetch()]);
     } catch {
-      setReasoningErr("Staging update network error.");
+      setReasoningErr(t("stagingUpdateNetworkError"));
     } finally {
       setReasoningBusyRun(null);
     }
@@ -738,12 +743,12 @@ export default function BioenergeticTransparencyHubPageView() {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setManualActionsErr(json.error || "Manual action update failed.");
+        setManualActionsErr(json.error || t("manualActionUpdateFailed"));
         return;
       }
       await Promise.all([loadManualActions(), loadReasoning(), refetch()]);
     } catch {
-      setManualActionsErr("Manual action update network error.");
+      setManualActionsErr(t("manualActionUpdateNetworkError"));
     } finally {
       setManualActionBusy(null);
     }
@@ -758,13 +763,14 @@ export default function BioenergeticTransparencyHubPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Your energy, in plain sight"
+      eyebrow={t("eyebrow")}
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Bioenergetics"
+      title={t("title")}
       description={
         <>
-          A <strong className="text-emerald-200/90">read-only</strong> view on the same signals used by the dashboard and nutrition.
-          Start from the reality of the day, read the signals and see how the plan adapts down to the session.
+          {t.rich("description", {
+            b: (chunks) => <strong className="text-emerald-200/90">{chunks}</strong>,
+          })}
         </>
       }
     >
@@ -782,10 +788,9 @@ export default function BioenergeticTransparencyHubPageView() {
         {!showLoading && !err && !showTech ? (
           <section className="viz-card builder-panel space-y-3" style={{ marginBottom: 12 }}>
             <header>
-              <h2 className="viz-title">Advanced section</h2>
+              <h2 className="viz-title">{t("advancedSectionTitle")}</h2>
               <p className="mt-1 text-sm text-gray-400">
-                This is an advanced bioenergetics operational area. Your coach uses it to read the signals and adapt the plan:
-                you can review it together with them. Your data stays safe and keeps feeding the dashboard and nutrition.
+                {t("advancedSectionDescription")}
               </p>
             </header>
           </section>
@@ -816,25 +821,25 @@ export default function BioenergeticTransparencyHubPageView() {
             {sig ? (
               <section className="viz-card builder-panel space-y-4" style={{ marginBottom: 12 }}>
                 <header>
-                  <h2 className="viz-title">Bioenergetics Stack</h2>
+                  <h2 className="viz-title">{t("bioenergeticsStackTitle")}</h2>
                   <p className="mt-1 text-sm text-gray-400">
-                    Operational cells from the Compute bundle: twin, loop, load scale and nutrition dials. Every number opens the explanation.
+                    {t("bioenergeticsStackDescription")}
                   </p>
                 </header>
                 <details className="collapsible-card" style={{ marginBottom: 10 }}>
-                  <summary>Canonical pipeline · Compute → Application</summary>
+                  <summary>{t("canonicalPipelineSummary")}</summary>
                   <ol className="m-0 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
-                    <li>The reality of the day and athlete memory feed the operational bundle.</li>
-                    <li>VIRYA consumes loop, divergence and context to retune the microcycle.</li>
-                    <li>Builder materializes the single session; it does not replace VIRYA on the macro program.</li>
-                    <li>Nutrition/fueling scale the solver and timing starting from the same signals.</li>
+                    <li>{t("pipelineStep1")}</li>
+                    <li>{t("pipelineStep2")}</li>
+                    <li>{t("pipelineStep3")}</li>
+                    <li>{t("pipelineStep4")}</li>
                   </ol>
                 </details>
                 <BioKpiGrid cells={cells} />
                 {sig.nutritionPerformanceIntegration.rationale.length > 0 ? (
                   <details className="collapsible-card" style={{ marginBottom: 10, borderColor: "rgba(56,189,248,0.35)" }}>
                     <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
-                      Nutrition solver levers ({sig.nutritionPerformanceIntegration.rationale.length})
+                      {t("nutritionSolverLevers", { count: sig.nutritionPerformanceIntegration.rationale.length })}
                     </summary>
                     <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                       {sig.nutritionPerformanceIntegration.rationale.map((line) => (
@@ -846,7 +851,7 @@ export default function BioenergeticTransparencyHubPageView() {
               </section>
             ) : (
               <p className="text-sm text-gray-500">
-                Bioenergetics not available at the moment. Add your physiology data and try again.
+                {t("bioenergeticsNotAvailable")}
               </p>
             )}
 
@@ -855,7 +860,7 @@ export default function BioenergeticTransparencyHubPageView() {
                 <header>
                   <h2 className="viz-title">Influence Ledger</h2>
                   <p className="mt-1 text-xs text-gray-500">
-                    Audit cells derived deterministically from the bundle — no DB writes from this page.
+                    {t("influenceLedgerDescription")}
                   </p>
                 </header>
                 <LedgerCellStrip rows={ledger} />
@@ -864,7 +869,7 @@ export default function BioenergeticTransparencyHubPageView() {
 
             {hub.crossModuleDynamicsLines.length > 0 ? (
               <details className="collapsible-card border-emerald-500/25 bg-emerald-950/10">
-                <summary>Cross dynamics · training ↔ nutrition ({hub.crossModuleDynamicsLines.length})</summary>
+                <summary>{t("crossDynamicsSummary", { count: hub.crossModuleDynamicsLines.length })}</summary>
                 <ul className="m-0 list-disc space-y-1 pl-4 text-xs leading-relaxed text-gray-400">
                   {hub.crossModuleDynamicsLines.slice(0, 12).map((line) => (
                     <li key={line}>{line}</li>
@@ -875,15 +880,15 @@ export default function BioenergeticTransparencyHubPageView() {
 
             <section className="rounded-2xl border border-white/10 bg-black/20 p-6">
               <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-400">
-                Read spine · coverage {hub.readSpineCoverage.spineScore}%
+                {t("readSpineCoverage", { score: hub.readSpineCoverage.spineScore })}
               </h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(
                   [
-                    ["Profile", hub.readSpineCoverage.hasProfile],
-                    ["Physiology", hub.readSpineCoverage.hasPhysiology],
+                    [t("profileBadge"), hub.readSpineCoverage.hasProfile],
+                    [t("physiologyBadge"), hub.readSpineCoverage.hasPhysiology],
                     ["Twin", hub.readSpineCoverage.hasTwin],
-                    ["Nutrition", hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
+                    [t("nutritionBadge"), hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
                   ] as const
                 ).map(([label, on]) => (
                   <span

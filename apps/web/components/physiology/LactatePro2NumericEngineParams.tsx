@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Activity,
   AlertTriangle,
@@ -290,6 +291,7 @@ export function LactatePro2NumericEngineParams({
   rerMode: LactateRerMode;
   microbiotaSourceMode: LactateMicrobiotaSourceMode;
 }) {
+  const t = useTranslations("LactatePro2NumericEngineParams");
   const [editKey, setEditKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -324,7 +326,7 @@ export function LactatePro2NumericEngineParams({
     <div className="physiology-pro2-eng-param-shell">
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-engine-params">
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Lactate engine numeric parameters · v1.2</span>
+        <span>{t("bannerTitle")}</span>
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <div className="physiology-pro2-eng-param-grid">
@@ -351,7 +353,7 @@ export function LactatePro2NumericEngineParams({
                 <button
                   type="button"
                   className="physiology-pro2-eng-param-tile-hit"
-                  aria-label={`Edit ${def.label}`}
+                  aria-label={t("editAriaLabel", { label: def.label })}
                   onClick={() => openEditor(def.key, raw)}
                 >
                   <span className="physiology-pro2-eng-param-tile-num">{raw || "—"}</span>
@@ -392,10 +394,10 @@ export function LactatePro2NumericEngineParams({
             />
             <div className="physiology-pro2-eng-param-editor-actions">
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ghost" onClick={closeEditor}>
-                Cancel
+                {t("cancel")}
               </button>
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ok" onClick={commitEditor}>
-                Apply
+                {t("apply")}
               </button>
             </div>
           </div>

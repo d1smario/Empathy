@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Droplets, Flame, HeartPulse, Target, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Bar,
   BarChart,
@@ -128,6 +129,7 @@ export function LactatePro2EngineReport({
   vo2Used: number;
   rerUsed: number;
 }) {
+  const t = useTranslations("LactatePro2EngineReport");
   const choKcal = model.choKcal;
   const nonChoKcal = model.nonChoKcal;
 
@@ -135,17 +137,17 @@ export function LactatePro2EngineReport({
   const ana = model.anaerobicKcal;
 
   const flowRows = [
-    { name: "Prodotto", g: model.lactateProducedG, fill: CHART_SIGNAL.hr },
-    { name: "Ossidato", g: model.lactateOxidizedG, fill: CHART_SIGNAL.hrv },
-    { name: "Cori", g: model.lactateCoriG, fill: CHART_SIGNAL.fat },
-    { name: "Accumulato", g: model.lactateAccumG, fill: CHART_SIGNAL.power },
+    { name: t("flowProduced"), g: model.lactateProducedG, fill: CHART_SIGNAL.hr },
+    { name: t("flowOxidized"), g: model.lactateOxidizedG, fill: CHART_SIGNAL.hrv },
+    { name: t("flowCori"), g: model.lactateCoriG, fill: CHART_SIGNAL.fat },
+    { name: t("flowAccumulated"), g: model.lactateAccumG, fill: CHART_SIGNAL.power },
   ];
 
   const choPipeline = [
-    { label: "Ingeriti", g: model.choIngestedTotalG },
-    { label: "Post-ass.", g: model.choAfterAbsorptionG },
-    { label: "Disponibili", g: model.choIntoBloodstreamG },
-    { label: "Ossidati", g: model.exogenousOxidizedG },
+    { label: t("pipelineIngested"), g: model.choIngestedTotalG },
+    { label: t("pipelinePostAbsorption"), g: model.choAfterAbsorptionG },
+    { label: t("pipelineAvailable"), g: model.choIntoBloodstreamG },
+    { label: t("pipelineOxidized"), g: model.exogenousOxidizedG },
   ];
   const pipeMax = Math.max(1, ...choPipeline.map((p) => p.g));
 
@@ -158,7 +160,7 @@ export function LactatePro2EngineReport({
     Icon: typeof Flame;
   }[] = [
     {
-      label: "Glicogeno combusto lordo",
+      label: t("shuttleGlycogenGross"),
       value: model.glycogenCombustedGrossG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #db2777, #be185d)",
@@ -166,7 +168,7 @@ export function LactatePro2EngineReport({
       Icon: Flame,
     },
     {
-      label: "Lattato prodotto",
+      label: t("shuttleLactateProduced"),
       value: model.lactateProducedG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #dc2626, #991b1b)",
@@ -174,7 +176,7 @@ export function LactatePro2EngineReport({
       Icon: Zap,
     },
     {
-      label: "Lattato da glicolisi anaerobica",
+      label: t("shuttleLactateAnaerobic"),
       value: model.lactateFromAnaerobicGlycolysisG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #b91c1c, #7f1d1d)",
@@ -182,7 +184,7 @@ export function LactatePro2EngineReport({
       Icon: Flame,
     },
     {
-      label: "Lattato da glicolisi aerobia",
+      label: t("shuttleLactateAerobic"),
       value: model.lactateFromAerobicGlycolysisG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #9f1239, #831843)",
@@ -190,7 +192,7 @@ export function LactatePro2EngineReport({
       Icon: Zap,
     },
     {
-      label: "Destini sul prodotto (ox / Cori / acc)",
+      label: t("shuttleFates"),
       value: `${model.lactateFateOxidationPct.toFixed(0)} · ${model.lactateFateCoriPct.toFixed(0)} · ${model.lactateFateAccumPct.toFixed(0)}`,
       unit: "%",
       gradient: "linear-gradient(145deg, #64748b, #475569)",
@@ -198,7 +200,7 @@ export function LactatePro2EngineReport({
       Icon: Target,
     },
     {
-      label: "Lattato ossidato (MCT1)",
+      label: t("shuttleLactateOxidized"),
       value: model.lactateOxidizedG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #16a34a, #15803d)",
@@ -206,7 +208,7 @@ export function LactatePro2EngineReport({
       Icon: CheckCircle2,
     },
     {
-      label: "Lattato Cori",
+      label: t("shuttleLactateCori"),
       value: model.lactateCoriG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #2563eb, #1d4ed8)",
@@ -214,7 +216,7 @@ export function LactatePro2EngineReport({
       Icon: HeartPulse,
     },
     {
-      label: "Lattato accumulato",
+      label: t("shuttleLactateAccumulated"),
       value: model.lactateAccumG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #ea580c, #c2410c)",
@@ -222,7 +224,7 @@ export function LactatePro2EngineReport({
       Icon: AlertCircle,
     },
     {
-      label: "Glucosio da Cori",
+      label: t("shuttleGlucoseFromCori"),
       value: model.glucoseFromCoriG.toFixed(1),
       unit: "g",
       gradient: "linear-gradient(145deg, #0ea5e9, #0369a1)",
@@ -230,7 +232,7 @@ export function LactatePro2EngineReport({
       Icon: Droplets,
     },
     {
-      label: "Costo Cori",
+      label: t("shuttleCoriCost"),
       value: model.coriCostKcal.toFixed(0),
       unit: "kcal",
       gradient: "linear-gradient(145deg, #f97316, #ea580c)",
@@ -241,7 +243,7 @@ export function LactatePro2EngineReport({
 
   const energyKpis: GradientKpi[] = [
     {
-      label: "Energy demand",
+      label: t("energyDemand"),
       value: model.energyDemandKcal.toFixed(0),
       unit: "kcal",
       gradient: "linear-gradient(145deg, #ef4444, #f97316)",
@@ -249,7 +251,7 @@ export function LactatePro2EngineReport({
       Icon: Flame,
     },
     {
-      label: "Intensity",
+      label: t("intensity"),
       value: model.intensityPctFtp.toFixed(0),
       unit: "%FTP",
       gradient: "linear-gradient(145deg, #f59e0b, #eab308)",
@@ -257,7 +259,7 @@ export function LactatePro2EngineReport({
       Icon: Zap,
     },
     {
-      label: "VO2 used",
+      label: t("vo2Used"),
       value: vo2Used.toFixed(2),
       unit: "L/min",
       gradient: "linear-gradient(145deg, #0ea5e9, #38bdf8)",
@@ -265,7 +267,7 @@ export function LactatePro2EngineReport({
       Icon: HeartPulse,
     },
     {
-      label: "RER used",
+      label: t("rerUsed"),
       value: rerUsed.toFixed(2),
       unit: "",
       gradient: "linear-gradient(145deg, #d946ef, #a855f7)",
@@ -273,7 +275,7 @@ export function LactatePro2EngineReport({
       Icon: Target,
     },
     {
-      label: "CHO share",
+      label: t("choShare"),
       value: model.glycolyticSharePct.toFixed(0),
       unit: "%",
       gradient: "linear-gradient(145deg, #1d4ed8, #3b82f6)",
@@ -281,7 +283,7 @@ export function LactatePro2EngineReport({
       Icon: Droplets,
     },
     {
-      label: "Aerobic energy",
+      label: t("aerobicEnergy"),
       value: model.aerobicKcal.toFixed(0),
       unit: "kcal (capped)",
       gradient: "linear-gradient(145deg, #22c55e, #14b8a6)",
@@ -296,23 +298,23 @@ export function LactatePro2EngineReport({
 
   const pathwayPill =
     model.gutPathwayRisk === "low"
-      ? { text: "LOW", className: "physiology-pro2-eng-pathway--low" }
+      ? { text: t("pathwayLow"), className: "physiology-pro2-eng-pathway--low" }
       : model.gutPathwayRisk === "moderate"
-        ? { text: "MODERATE", className: "physiology-pro2-eng-pathway--mod" }
-        : { text: "HIGH", className: "physiology-pro2-eng-pathway--high" };
+        ? { text: t("pathwayModerate"), className: "physiology-pro2-eng-pathway--mod" }
+        : { text: t("pathwayHigh"), className: "physiology-pro2-eng-pathway--high" };
 
   return (
     <div className="physiology-pro2-eng-report">
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-metabolism">
         <Flame className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Lactate metabolism analysis</span>
+        <span>{t("bannerTitle")}</span>
         <Flame className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
 
       <div className="physiology-pro2-eng-section physiology-pro2-eng-section--energy">
         <p className="physiology-pro2-eng-section-title physiology-pro2-eng-section-title--pink">
           <Flame className="physiology-pro2-eng-section-ico" aria-hidden />
-          Energy demand &amp; intensity
+          {t("sectionEnergyTitle")}
         </p>
         <div className="physiology-pro2-eng-kpi-grid-6">
           {energyKpis.map((k) => (
@@ -323,18 +325,18 @@ export function LactatePro2EngineReport({
 
       <div className="physiology-pro2-eng-donut-row">
         <Pro2DonutPair
-          title="Energy from substrates"
-          aLabel="kcal da CHO"
-          bLabel="kcal da non-CHO"
+          title={t("donutEnergySubstratesTitle")}
+          aLabel={t("donutKcalFromCho")}
+          bLabel={t("donutKcalFromNonCho")}
           aVal={choKcal}
           bVal={nonChoKcal}
           aColor="#3b82f6"
           bColor="#facc15"
         />
         <Pro2DonutPair
-          title="Aerobic vs anaerobic"
-          aLabel="Aerobic kcal"
-          bLabel="Anaerobic kcal"
+          title={t("donutAerobicVsAnaerobicTitle")}
+          aLabel={t("donutAerobicKcal")}
+          bLabel={t("donutAnaerobicKcal")}
           aVal={aer}
           bVal={ana}
           aColor="#22c55e"
@@ -343,10 +345,13 @@ export function LactatePro2EngineReport({
       </div>
 
       <div className="physiology-pro2-eng-chart-block physiology-pro2-eng-chart-block--lac-flow">
-        <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">Lactate flow distribution</h3>
+        <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">{t("lactateFlowTitle")}</h3>
         <p className="physiology-pro2-eng-chart-caption">
-          Tre destini (massa): ossidazione {model.lactateFateOxidationPct.toFixed(0)}% · Cori {model.lactateFateCoriPct.toFixed(0)}% · accumulo{" "}
-          {model.lactateFateAccumPct.toFixed(0)}%
+          {t("lactateFlowCaption", {
+            ox: model.lactateFateOxidationPct.toFixed(0),
+            cori: model.lactateFateCoriPct.toFixed(0),
+            acc: model.lactateFateAccumPct.toFixed(0),
+          })}
         </p>
         <div className="physiology-pro2-eng-chart-inner">
           <ResponsiveContainer width="100%" height={240}>
@@ -372,7 +377,7 @@ export function LactatePro2EngineReport({
       <div className="physiology-pro2-eng-section">
         <p className="physiology-pro2-eng-section-title physiology-pro2-eng-section-title--magenta">
           <Droplets className="physiology-pro2-eng-section-ico" aria-hidden />
-          Glicogeno · Shuttle lattato · Ciclo di Cori
+          {t("sectionGlycogenTitle")}
         </p>
         <div className="physiology-pro2-eng-shuttle-grid">
           {shuttleCards.map((c) => {
@@ -397,7 +402,7 @@ export function LactatePro2EngineReport({
 
       <div className="physiology-pro2-eng-two-col">
         <div className="physiology-pro2-eng-pipeline-card">
-          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">CHO pipeline flow</h3>
+          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">{t("choPipelineTitle")}</h3>
           <div className="physiology-pro2-eng-pipeline-bars">
             {choPipeline.map((row) => (
               <div key={row.label} className="physiology-pro2-eng-pipeline-row">
@@ -413,17 +418,19 @@ export function LactatePro2EngineReport({
             ))}
           </div>
           <p className="physiology-pro2-eng-pipeline-footnote">
-            Rendimento assorbimento intestinale (CHO attraverso parete vs ingerito):{" "}
-            <strong>{model.gutAbsorptionYieldPctOfIngested.toFixed(1)}%</strong> · entrata ematica vs ingerito{" "}
-            <strong>{model.bloodDeliveryPctOfIngested.toFixed(0)}%</strong>
+            {t.rich("pipelineFootnote", {
+              absorption: model.gutAbsorptionYieldPctOfIngested.toFixed(1),
+              blood: model.bloodDeliveryPctOfIngested.toFixed(0),
+              b: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
 
         <div className="physiology-pro2-eng-micro-card">
-          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">Microbiota &amp; gut metrics</h3>
+          <h3 className="physiology-pro2-eng-chart-h3 text-emerald-300">{t("microbiotaTitle")}</h3>
           <ul className="physiology-pro2-eng-micro-list">
             <li>
-              <span>Assorbimento vs ingerito</span>
+              <span>{t("microAbsorptionVsIngested")}</span>
               <span>{model.gutAbsorptionYieldPctOfIngested.toFixed(1)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -433,7 +440,7 @@ export function LactatePro2EngineReport({
               </div>
             </li>
             <li>
-              <span>Blood delivery</span>
+              <span>{t("microBloodDelivery")}</span>
               <span>{model.bloodDeliveryPctOfIngested.toFixed(0)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -443,7 +450,7 @@ export function LactatePro2EngineReport({
               </div>
             </li>
             <li>
-              <span>Sequestro effettivo</span>
+              <span>{t("microEffectiveSequestration")}</span>
               <span>{model.effectiveSequestrationPct.toFixed(0)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -453,7 +460,7 @@ export function LactatePro2EngineReport({
               </div>
             </li>
             <li>
-              <span>Dysbiosis score</span>
+              <span>{t("microDysbiosisScore")}</span>
               <span>{dysbiosisPct.toFixed(0)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -463,7 +470,7 @@ export function LactatePro2EngineReport({
               </div>
             </li>
             <li>
-              <span>Gut stress</span>
+              <span>{t("microGutStress")}</span>
               <span>{gutStressPct.toFixed(0)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -473,7 +480,7 @@ export function LactatePro2EngineReport({
               </div>
             </li>
             <li>
-              <span>Fermentation load</span>
+              <span>{t("microFermentationLoad")}</span>
               <span>{fermentPct.toFixed(0)}%</span>
               <div className="physiology-pro2-lab-bar-track">
                 <div
@@ -484,7 +491,7 @@ export function LactatePro2EngineReport({
             </li>
           </ul>
           <div className="physiology-pro2-eng-pathway-box">
-            <span className="physiology-pro2-eng-pathway-label">Pathway risk</span>
+            <span className="physiology-pro2-eng-pathway-label">{t("pathwayRiskLabel")}</span>
             <span className={`physiology-pro2-eng-pathway-pill ${pathwayPill.className}`}>{pathwayPill.text}</span>
           </div>
         </div>
@@ -493,18 +500,18 @@ export function LactatePro2EngineReport({
       <div className="physiology-pro2-eng-strategia">
         <p className="physiology-pro2-eng-section-title physiology-pro2-eng-section-title--strat">
           <Target className="physiology-pro2-eng-section-ico" aria-hidden />
-          Strategia · Glicogeno netto · Glucosio richiesto
+          {t("sectionStrategyTitle")}
         </p>
         <div className="physiology-pro2-eng-strategia-kpis">
           <div className="physiology-pro2-eng-strat-kpi physiology-pro2-eng-strat-kpi--purple">
-            <span className="physiology-pro2-eng-strat-label">Glicogeno combusto netto</span>
+            <span className="physiology-pro2-eng-strat-label">{t("stratGlycogenNet")}</span>
             <strong>{model.glycogenCombustedNetG.toFixed(1)}</strong>
-            <span className="physiology-pro2-eng-strat-unit">grammi</span>
+            <span className="physiology-pro2-eng-strat-unit">{t("stratUnitGrams")}</span>
           </div>
           <div className="physiology-pro2-eng-strat-kpi physiology-pro2-eng-strat-kpi--orange">
-            <span className="physiology-pro2-eng-strat-label">Glucosio richiesto reale</span>
+            <span className="physiology-pro2-eng-strat-label">{t("stratGlucoseRequired")}</span>
             <strong>{model.glucoseRequiredForStrategyG.toFixed(1)}</strong>
-            <span className="physiology-pro2-eng-strat-unit">grammi</span>
+            <span className="physiology-pro2-eng-strat-unit">{t("stratUnitGrams")}</span>
           </div>
         </div>
       </div>

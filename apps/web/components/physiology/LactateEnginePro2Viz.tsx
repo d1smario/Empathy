@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { LactateEngineOutput } from "@/lib/engines/lactate-engine";
 
 export type LactateEnginePro2VizProps = {
@@ -72,29 +74,30 @@ function MeterRow({ label, value01, tone }: { label: string; value01: number; to
  * Complementare al report (`LactatePro2EngineReport`) e alla curva LT (`LactateThresholdPro2Panel`).
  */
 export function LactateEnginePro2Viz({ model, choGapG }: LactateEnginePro2VizProps) {
+  const t = useTranslations("LactateEnginePro2Viz");
   const E = Math.max(1e-6, model.energyDemandKcal);
   const energySegs: Seg[] = [
-    { key: "cho", label: "Energy from CHO", value: model.choKcal, tone: "amber" },
-    { key: "noncho", label: "Energy from non-CHO", value: model.nonChoKcal, tone: "cyan" },
+    { key: "cho", label: t("segEnergyCho"), value: model.choKcal, tone: "amber" },
+    { key: "noncho", label: t("segEnergyNonCho"), value: model.nonChoKcal, tone: "cyan" },
   ];
 
   const oxSegs: Seg[] = [
-    { key: "aer", label: "Aerobic (VO₂ ceiling)", value: model.aerobicKcal, tone: "cyan" },
-    { key: "ana", label: "Anaerobic contribution", value: model.anaerobicKcal, tone: "rose" },
+    { key: "aer", label: t("segAerobicCeiling"), value: model.aerobicKcal, tone: "cyan" },
+    { key: "ana", label: t("segAnaerobicContribution"), value: model.anaerobicKcal, tone: "rose" },
   ];
 
   const lacSegs: Seg[] = [
-    { key: "ox", label: "Oxidized (MCT1)", value: model.lactateOxidizedG, tone: "cyan" },
-    { key: "cori", label: "Cori cycle", value: model.lactateCoriG, tone: "violet" },
-    { key: "acc", label: "Accumulated", value: model.lactateAccumG, tone: "rose" },
+    { key: "ox", label: t("segOxidized"), value: model.lactateOxidizedG, tone: "cyan" },
+    { key: "cori", label: t("segCoriCycle"), value: model.lactateCoriG, tone: "violet" },
+    { key: "acc", label: t("segAccumulated"), value: model.lactateAccumG, tone: "rose" },
   ];
 
   const ing = model.choIngestedTotalG;
   const nonAbsorbedG = Math.max(0, ing - model.choAfterAbsorptionG);
   const pipeSegs: Seg[] = [
-    { key: "nab", label: "Not absorbed (gut output)", value: nonAbsorbedG, tone: "slate" },
-    { key: "seq", label: "Microbiota sequestration", value: model.microbiotaSequestrationG, tone: "rose" },
-    { key: "blood", label: "Available pool / blood", value: model.choIntoBloodstreamG, tone: "amber" },
+    { key: "nab", label: t("segNotAbsorbed"), value: nonAbsorbedG, tone: "slate" },
+    { key: "seq", label: t("segMicrobiotaSequestration"), value: model.microbiotaSequestrationG, tone: "rose" },
+    { key: "blood", label: t("segAvailablePool"), value: model.choIntoBloodstreamG, tone: "amber" },
   ];
 
   const riskTone =
@@ -103,65 +106,96 @@ export function LactateEnginePro2Viz({ model, choGapG }: LactateEnginePro2VizPro
   return (
     <div className="lactate-engine-viz">
       <div className="lactate-engine-viz-card">
-        <h4 className="lactate-engine-viz-title">Energy balance · substrate split</h4>
+        <h4 className="lactate-engine-viz-title">{t("energyBalanceTitle")}</h4>
         <p className="lactate-engine-viz-sub">
-          Total demand <strong>{model.energyDemandKcal.toFixed(0)} kcal</strong> · glycolytic share {model.glycolyticSharePct.toFixed(0)}% · RER implicit in the engine
+          {t.rich("energyBalanceSub", {
+            demand: model.energyDemandKcal.toFixed(0),
+            share: model.glycolyticSharePct.toFixed(0),
+            b: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
         {model.profileMetabolicCouplingActive ? (
           <p className="lactate-engine-viz-hint" style={{ marginTop: 6 }}>
-            CP+W′ profile: anaerobic/lactate modulation (hint {(model.profileAnaerobicModulation01 * 100).toFixed(0)}%) from hyperbolic sustainability and glycolytic proxy.
+            {t("cpwHint", { hint: (model.profileAnaerobicModulation01 * 100).toFixed(0) })}
           </p>
         ) : null}
         <SegmentedBar segments={energySegs} unit="kcal" />
       </div>
 
       <div className="lactate-engine-viz-card">
-        <h4 className="lactate-engine-viz-title">Aerobic vs anaerobic (kcal)</h4>
+        <h4 className="lactate-engine-viz-title">{t("aerobicVsAnaerobicTitle")}</h4>
         <p className="lactate-engine-viz-sub">
-          Aerobic coverage {pct(model.aerobicKcal, E).toFixed(0)}% · anaerobic contribution {pct(model.anaerobicKcal, E).toFixed(0)}%
+          {t("aerobicVsAnaerobicSub", {
+            aerobic: pct(model.aerobicKcal, E).toFixed(0),
+            anaerobic: pct(model.anaerobicKcal, E).toFixed(0),
+          })}
         </p>
         <SegmentedBar segments={oxSegs} unit="kcal" />
       </div>
 
       <div className="lactate-engine-viz-card">
-        <h4 className="lactate-engine-viz-title">Lactate fate · mass (g)</h4>
+        <h4 className="lactate-engine-viz-title">{t("lactateFateTitle")}</h4>
         <p className="lactate-engine-viz-sub">
-          Produced <strong>{model.lactateProducedG.toFixed(1)} g</strong> (anaerobic {model.lactateFromAnaerobicGlycolysisG.toFixed(1)} · aerobic{" "}
-          {model.lactateFromAerobicGlycolysisG.toFixed(1)}) · gross glycogen {model.glycogenCombustedGrossG.toFixed(1)} g
+          {t.rich("lactateFateSub", {
+            produced: model.lactateProducedG.toFixed(1),
+            anaerobic: model.lactateFromAnaerobicGlycolysisG.toFixed(1),
+            aerobic: model.lactateFromAerobicGlycolysisG.toFixed(1),
+            glycogen: model.glycogenCombustedGrossG.toFixed(1),
+            b: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
         <SegmentedBar segments={lacSegs} unit="g" />
         <p className="lactate-engine-viz-hint">
-          Three fates on the product: oxidation {model.lactateFateOxidationPct.toFixed(0)}% · Cori {model.lactateFateCoriPct.toFixed(0)}% · accumulation{" "}
-          {model.lactateFateAccumPct.toFixed(0)}%
+          {t("lactateFateHint", {
+            oxidation: model.lactateFateOxidationPct.toFixed(0),
+            cori: model.lactateFateCoriPct.toFixed(0),
+            accumulation: model.lactateFateAccumPct.toFixed(0),
+          })}
         </p>
       </div>
 
       <div className="lactate-engine-viz-card">
-        <h4 className="lactate-engine-viz-title">CHO pipeline during session (g)</h4>
+        <h4 className="lactate-engine-viz-title">{t("choPipelineTitle")}</h4>
         <p className="lactate-engine-viz-sub">
-          Total ingested <strong>{model.choIngestedTotalG.toFixed(1)} g</strong> · exogenous oxidized {model.exogenousOxidizedG.toFixed(1)} g · strategy CHO gap{" "}
-          <strong className={`font-mono tabular-nums ${choGapG > 15 ? "text-rose-400" : choGapG > 5 ? "text-amber-300" : "text-emerald-400"}`}>{choGapG.toFixed(0)} g</strong>
+          {t.rich("choPipelineSub", {
+            ingested: model.choIngestedTotalG.toFixed(1),
+            oxidized: model.exogenousOxidizedG.toFixed(1),
+            b: (chunks) => <strong>{chunks}</strong>,
+            gap: (chunks) => (
+              <strong className={`font-mono tabular-nums ${choGapG > 15 ? "text-rose-400" : choGapG > 5 ? "text-amber-300" : "text-emerald-400"}`}>{chunks}</strong>
+            ),
+            gapValue: choGapG.toFixed(0),
+          })}
           {model.bloodGlucoseMmolL != null ? (
             <>
               {" "}
-              · sensor blood glucose <strong>{model.bloodGlucoseMmolL.toFixed(2)} mmol/L</strong>
+              {t.rich("choPipelineGlucose", {
+                glucose: model.bloodGlucoseMmolL.toFixed(2),
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
             </>
           ) : null}
         </p>
         <SegmentedBar segments={pipeSegs} unit="g" />
         <p className="lactate-engine-viz-hint">
-          Gut absorption (CHO through the wall) {model.gutAbsorptionYieldPctOfIngested.toFixed(0)}% of ingested · blood pool entry{" "}
-          {model.bloodDeliveryPctOfIngested.toFixed(0)}% of ingested · effective microbiota sequestration {model.effectiveSequestrationPct.toFixed(1)}%
+          {t("choPipelineHintAbsorption", {
+            absorption: model.gutAbsorptionYieldPctOfIngested.toFixed(0),
+            delivery: model.bloodDeliveryPctOfIngested.toFixed(0),
+            sequestration: model.effectiveSequestrationPct.toFixed(1),
+          })}
         </p>
         <p className="lactate-engine-viz-hint">
-          Mass: absorbed {model.choAfterAbsorptionG.toFixed(1)} g · available in circulation {model.choAvailableG.toFixed(1)} g (post-sequestration)
+          {t("choPipelineHintMass", {
+            absorbed: model.choAfterAbsorptionG.toFixed(1),
+            available: model.choAvailableG.toFixed(1),
+          })}
         </p>
       </div>
 
       <div className="lactate-engine-viz-card lactate-engine-viz-card--gut">
-        <h4 className="lactate-engine-viz-title">Gut · microbiota · pathway risk</h4>
+        <h4 className="lactate-engine-viz-title">{t("gutTitle")}</h4>
         <p className="lactate-engine-viz-sub">
-          Pathway risk: <span className={`lactate-engine-viz-risk lactate-engine-viz-risk--${riskTone}`}>{model.gutPathwayRisk}</span>
+          {t("gutPathwayRiskLabel")} <span className={`lactate-engine-viz-risk lactate-engine-viz-risk--${riskTone}`}>{model.gutPathwayRisk}</span>
         </p>
         <div className="lactate-engine-viz-meter-grid">
           <MeterRow label="Dysbiosis score" value01={model.microbiotaDysbiosisScore} tone="rose" />
@@ -170,19 +204,19 @@ export function LactateEnginePro2Viz({ model, choGapG }: LactateEnginePro2VizPro
         </div>
         <div className="lactate-engine-viz-mini-kpis">
           <div>
-            <span className="lactate-engine-viz-mini-label">Net glycogen</span>
+            <span className="lactate-engine-viz-mini-label">{t("miniNetGlycogen")}</span>
             <span className="lactate-engine-viz-mini-val">{model.glycogenCombustedNetG.toFixed(1)} g</span>
           </div>
           <div>
-            <span className="lactate-engine-viz-mini-label">Glucose required</span>
+            <span className="lactate-engine-viz-mini-label">{t("miniGlucoseRequired")}</span>
             <span className="lactate-engine-viz-mini-val">{model.glucoseRequiredForStrategyG.toFixed(1)} g</span>
           </div>
           <div>
-            <span className="lactate-engine-viz-mini-label">Glucose from Cori</span>
+            <span className="lactate-engine-viz-mini-label">{t("miniGlucoseFromCori")}</span>
             <span className="lactate-engine-viz-mini-val">{model.glucoseFromCoriG.toFixed(1)} g</span>
           </div>
           <div>
-            <span className="lactate-engine-viz-mini-label">Cori cost</span>
+            <span className="lactate-engine-viz-mini-label">{t("miniCoriCost")}</span>
             <span className="lactate-engine-viz-mini-val">{model.coriCostKcal.toFixed(0)} kcal</span>
           </div>
         </div>

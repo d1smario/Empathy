@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Brain } from "lucide-react";
 import {
   estimatePeakBloodLactateMmol,
@@ -46,6 +47,7 @@ export function LactateThresholdPro2Panel({
   vo2maxMlMinKg,
   currentIntensityPctFtp,
 }: LactateThresholdPro2PanelProps) {
+  const t = useTranslations("LactateThresholdPro2Panel");
   const gradId = useId().replace(/:/g, "");
   const ftp = Math.max(1, ftpW);
   const lt1Pct = clamp((lt1W / ftp) * 100, 58, 88);
@@ -150,7 +152,7 @@ export function LactateThresholdPro2Panel({
 
   const vo2Line =
     vo2maxMlMinKg != null && Number.isFinite(vo2maxMlMinKg) && vo2maxMlMinKg >= 30
-      ? `VO₂max reference: ${vo2maxMlMinKg.toFixed(1)} ml/kg/min · `
+      ? t("vo2Reference", { value: vo2maxMlMinKg.toFixed(1) })
       : "";
 
   return (
@@ -165,14 +167,12 @@ export function LactateThresholdPro2Panel({
           </div>
           <p className="physiology-pro2-lactate-caption">
             {vo2Line}
-            Curve: <strong>estimated steady-state BLa</strong> vs %FTP (60–115%). At 100% FTP it stays in the{" "}
-            <strong>MLSS band (~4–6 mmol/L)</strong>, not at the maximal-effort peak. Beyond FTP the curve rises moderately (accumulation); the{" "}
-            <strong>VO₂max peak</strong> is in the box below, not at the 100% point.
+            {t.rich("caption", { b: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
         <div className="physiology-pro2-lactate-vlamax">
-          Glycolytic index (proxy): <span className="physiology-pro2-lactate-vlamax-value">{vlamax.toFixed(2)}</span>
-          <span className="physiology-pro2-lactate-vlamax-unit"> · not lab VLamax (mmol·L⁻¹·s⁻¹)</span>
+          {t("glycolyticIndexLabel")} <span className="physiology-pro2-lactate-vlamax-value">{vlamax.toFixed(2)}</span>
+          <span className="physiology-pro2-lactate-vlamax-unit">{t("glycolyticIndexUnit")}</span>
         </div>
       </div>
 
@@ -356,12 +356,14 @@ export function LactateThresholdPro2Panel({
         <div className="physiology-pro2-lactate-kpi physiology-pro2-lactate-kpi--max">
           <div className="physiology-pro2-lactate-kpi-label">BLa @ FTP (MLSS)</div>
           <div className="physiology-pro2-lactate-kpi-value">{blaAtFtp.toFixed(1)}</div>
-          <div className="physiology-pro2-lactate-kpi-sub">mmol/L · steady-state</div>
+          <div className="physiology-pro2-lactate-kpi-sub">{t("kpiMlssSub")}</div>
         </div>
       </div>
       <p className="physiology-pro2-lactate-footnote">
-        Estimated blood peak for <strong>VO₂max-type maximal effort</strong> (not BLa at 100% FTP):{" "}
-        <strong>{peakLactateMmol.toFixed(1)} mmol/L</strong> — schematic from the glycolytic proxy; real values from protocol and sampling.
+        {t.rich("footnote", {
+          peak: peakLactateMmol.toFixed(1),
+          b: (chunks) => <strong>{chunks}</strong>,
+        })}
       </p>
     </div>
   );

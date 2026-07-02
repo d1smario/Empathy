@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Activity,
   Droplets,
@@ -184,6 +185,7 @@ export function MaxOxPro2NumericEngineParams({
   onInputChange: (key: string, value: string) => void;
   vo2Mode: MaxOxVo2Mode;
 }) {
+  const t = useTranslations("MaxOxPro2NumericEngineParams");
   const [editKey, setEditKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -218,7 +220,7 @@ export function MaxOxPro2NumericEngineParams({
     <div className="physiology-pro2-eng-param-shell physiology-pro2-eng-param-shell--maxox">
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-engine-params">
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>Max Oxidate engine numeric parameters</span>
+        <span>{t("bannerTitle")}</span>
         <Zap className="physiology-pro2-lab-banner-ico" aria-hidden />
       </div>
       <div className="physiology-pro2-eng-param-grid">
@@ -245,7 +247,7 @@ export function MaxOxPro2NumericEngineParams({
                 <button
                   type="button"
                   className="physiology-pro2-eng-param-tile-hit"
-                  aria-label={`Edit ${def.label}`}
+                  aria-label={t("editAria", { label: def.label })}
                   onClick={() => openEditor(def.key, raw)}
                 >
                   <span className="physiology-pro2-eng-param-tile-num">{raw || "—"}</span>
@@ -286,10 +288,10 @@ export function MaxOxPro2NumericEngineParams({
             />
             <div className="physiology-pro2-eng-param-editor-actions">
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ghost" onClick={closeEditor}>
-                Cancel
+                {t("cancel")}
               </button>
               <button type="button" className="physiology-pro2-eng-param-editor-btn physiology-pro2-eng-param-editor-btn--ok-maxox" onClick={commitEditor}>
-                Apply
+                {t("apply")}
               </button>
             </div>
           </div>

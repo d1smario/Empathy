@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAthleteContext } from "@/core";
 import { computeLactateEngine, computeMaxOxidateEngine } from "@/engines";
 import { estimateVo2FromDevice, type SupportedSport } from "@/lib/engines/vo2-estimator";
@@ -95,6 +96,7 @@ let physiologyHistoryCacheId: string | null = null;
 let physiologyHistoryCache: Awaited<ReturnType<typeof fetchPhysiologyHistoryAndFtp>> | null = null;
 
 export default function MetabolicLabPage() {
+  const t = useTranslations("PhysiologyPageView");
   const { athleteId, role, loading, userId, adminScoped } = useAthleteContext();
   const showTech = role === "coach" || adminScoped;
   const [section, setSection] = useState<"profile" | "lactate" | "maxox" | "dettagli">("profile");
@@ -555,7 +557,7 @@ export default function MetabolicLabPage() {
         }
         return next;
       });
-      setSaveMessage("Metabolic profile snapshot imported into inputs.");
+      setSaveMessage(t("importedMetabolicProfileSnapshot"));
       setError(null);
       return;
     }
@@ -597,7 +599,7 @@ export default function MetabolicLabPage() {
         }
         setLactateCalcTick((n) => n + 1);
       }
-      setSaveMessage("Lactate analysis snapshot imported into inputs.");
+      setSaveMessage(t("importedLactateAnalysisSnapshot"));
       setError(null);
       return;
     }
@@ -614,7 +616,7 @@ export default function MetabolicLabPage() {
         if (rec.vo2_mode === "device" || rec.vo2_mode === "test") setMaxOxVo2Mode(rec.vo2_mode);
         setMaxOxCalcTick((n) => n + 1);
       }
-      setSaveMessage("Oxidative capacity snapshot imported into inputs.");
+      setSaveMessage(t("importedOxidativeCapacitySnapshot"));
       setError(null);
     }
   }
@@ -652,7 +654,7 @@ export default function MetabolicLabPage() {
         setSelectedWorkoutId("");
       }
       if (payload.autoInputs?.sessionsAnalyzed && payload.autoInputs.sessionsAnalyzed > 0) {
-        setAutoInfo(`Auto-decode active: ${payload.autoInputs.sessionsAnalyzed} sessions analyzed.`);
+        setAutoInfo(t("autoDecodeActive", { sessionsAnalyzed: payload.autoInputs.sessionsAnalyzed }));
       } else {
         setAutoInfo(null);
       }
@@ -817,7 +819,7 @@ export default function MetabolicLabPage() {
       physiologyHistoryCacheId = activeAthleteId;
     } catch (err) {
       if (!cached) {
-        setError(err instanceof Error ? err.message : "Error loading physiology history");
+        setError(err instanceof Error ? err.message : t("errorLoadingHistory"));
         setHistory([]);
         setAthleteProfileWeightKg(null);
         setLastLabSavedAt({ metabolic: null, lactate: null, maxox: null });
@@ -879,11 +881,11 @@ export default function MetabolicLabPage() {
               }
             : null,
       });
-      setSaveMessage("Snapshot saved: Metabolic Lab + physiology profile (Supabase) updated.");
+      setSaveMessage(t("snapshotSaved"));
       setProfileRecalcHint(null);
       await loadHistory(athleteId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error saving physiology snapshot");
+      setError(err instanceof Error ? err.message : t("errorSavingSnapshot"));
     }
     setSaving(false);
   }
@@ -1025,10 +1027,10 @@ export default function MetabolicLabPage() {
       }> = [
         { key: "intensity", label: "Intensity %FTP", value: lactateModel.intensityPctFtp, valueText: `${lactateModel.intensityPctFtp.toFixed(0)} %FTP`, min: 40, max: 140, keys: ["power_w", "ftp_w"] },
         { key: "glycolytic", label: "CHO share", value: lactateModel.glycolyticSharePct, valueText: `${lactateModel.glycolyticSharePct.toFixed(0)}%`, min: 25, max: 98, keys: ["rer", "smo2_work", "smo2_rest", "glucose_mmol_l"] },
-        { key: "lactate_prod", label: "Lactate produced", value: lactateModel.lactateProducedG, valueText: `${lactateModel.lactateProducedG.toFixed(1)} g`, min: 5, max: 450, keys: ["power_w", "duration_min", "smo2_work"] },
-        { key: "lactate_acc", label: "Lactate accumulated", value: lactateModel.lactateAccumG, valueText: `${lactateModel.lactateAccumG.toFixed(1)} g`, min: 0, max: 220, keys: ["lactate_oxidation_pct", "cori_pct"] },
-        { key: "cho_avail", label: "CHO available", value: lactateModel.choAvailableG, valueText: `${lactateModel.choAvailableG.toFixed(1)} g`, min: 0, max: 220, keys: ["cho_ingested_g_h", "gut_absorption_pct", "microbiota_sequestration_pct"] },
-        { key: "glyc_net", label: "Net glycogen", value: lactateModel.glycogenCombustedNetG, valueText: `${lactateModel.glycogenCombustedNetG.toFixed(1)} g`, min: 0, max: 420, keys: ["duration_min", "power_w", "ftp_w"] },
+        { key: "lactate_prod", label: t("proCheckLactateProduced"), value: lactateModel.lactateProducedG, valueText: `${lactateModel.lactateProducedG.toFixed(1)} g`, min: 5, max: 450, keys: ["power_w", "duration_min", "smo2_work"] },
+        { key: "lactate_acc", label: t("proCheckLactateAccumulated"), value: lactateModel.lactateAccumG, valueText: `${lactateModel.lactateAccumG.toFixed(1)} g`, min: 0, max: 220, keys: ["lactate_oxidation_pct", "cori_pct"] },
+        { key: "cho_avail", label: t("proCheckChoAvailable"), value: lactateModel.choAvailableG, valueText: `${lactateModel.choAvailableG.toFixed(1)} g`, min: 0, max: 220, keys: ["cho_ingested_g_h", "gut_absorption_pct", "microbiota_sequestration_pct"] },
+        { key: "glyc_net", label: t("proCheckNetGlycogen"), value: lactateModel.glycogenCombustedNetG, valueText: `${lactateModel.glycogenCombustedNetG.toFixed(1)} g`, min: 0, max: 420, keys: ["duration_min", "power_w", "ftp_w"] },
       ];
       return rows.map((row) => {
         const source = sourceFromInputs(row.keys, lactateInput, autoLactateBaseline, LACTATE_DEFAULT_INPUT);
@@ -1059,7 +1061,7 @@ export default function MetabolicLabPage() {
         { key: "vo2rel", label: "VO2 rel", value: maxOxModel.vo2RelMlKgMin, valueText: `${maxOxModel.vo2RelMlKgMin.toFixed(1)} ml/kg/min`, min: 25, max: 95, keys: ["vo2_l_min", "body_mass_kg"] },
         {
           key: "util_ratio",
-          label: "Oxidative saturation (P_oxi / capacity)",
+          label: t("proCheckOxidativeSaturation"),
           value: maxOxModel.utilizationRatioPct,
           valueText: `${maxOxModel.utilizationRatioPct.toFixed(0)}%`,
           min: 5,
@@ -1107,9 +1109,7 @@ export default function MetabolicLabPage() {
     setProfileCalcTick((n) => n + 1);
     setProfileLastRecalcAt(Date.now());
     setSaveMessage(null);
-    setProfileRecalcHint(
-      "Calculation updated on this page. To keep it, press «Save metabolic profile» above: next time you open it you'll find the last saved analysis.",
-    );
+    setProfileRecalcHint(t("profileRecalcHint"));
     window.setTimeout(() => setProfileRecalcHint(null), 14000);
     requestAnimationFrame(() => {
       document.getElementById("physiology-live-metabolic-summary")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -1124,12 +1124,12 @@ export default function MetabolicLabPage() {
   if (loading) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Your physiological engine"
+        eyebrow={t("eyebrow")}
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Loading…"
-        description="We&apos;re preparing your data."
+        title={t("loadingTitle")}
+        description={t("loadingDescription")}
       >
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">{t("loadingInProgress")}</p>
       </Pro2ModulePageShell>
     );
   }
@@ -1137,23 +1137,22 @@ export default function MetabolicLabPage() {
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Your physiological engine"
+        eyebrow={t("eyebrow")}
         eyebrowClassName={moduleEyebrowClass("physiology")}
-        title="Physiology"
-        description="To see your analysis you need an active athlete."
+        title={t("title")}
+        description={t("noAthleteDescription")}
         headerActions={
           <AdminScopedPro2Link
             href="/access"
             variant="secondary"
             className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
           >
-            Access
+            {t("accessLink")}
           </AdminScopedPro2Link>
         }
       >
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
-          No active athlete. If you&apos;re a coach, select an athlete in Athletes. If you&apos;re an individual, link your profile in
-          Access.
+          {t("noActiveAthleteBody")}
         </div>
       </Pro2ModulePageShell>
     );
@@ -1169,15 +1168,10 @@ export default function MetabolicLabPage() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Your physiological engine"
+      eyebrow={t("eyebrow")}
       eyebrowClassName={moduleEyebrowClass("physiology")}
-      title="Physiology"
-      description={
-        <>
-          Understand how your body produces and uses energy: power, thresholds and aerobic capacity.
-          Choose what to analyze, enter the data and save the analysis to find it again next time.
-        </>
-      }
+      title={t("title")}
+      description={<>{t("description")}</>}
     >
       <div className="space-y-8">
       {error ? <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">{error}</div> : null}
@@ -1197,28 +1191,28 @@ export default function MetabolicLabPage() {
           className={physiologyTabClass(section === "profile", "cyan")}
           onClick={() => setSection("profile")}
         >
-          Metabolic profile
+          {t("tabMetabolicProfile")}
         </button>
         <button
           type="button"
           className={physiologyTabClass(section === "lactate", "amber")}
           onClick={() => setSection("lactate")}
         >
-          Lactate analysis
+          {t("tabLactateAnalysis")}
         </button>
         <button
           type="button"
           className={physiologyTabClass(section === "maxox", "rose")}
           onClick={() => setSection("maxox")}
         >
-          Oxidative capacity
+          {t("tabOxidativeCapacity")}
         </button>
         <button
           type="button"
           className={physiologyTabClass(section === "dettagli", "rose")}
           onClick={() => setSection("dettagli")}
         >
-          {showTech ? "Details and diagnostics" : "Details"}
+          {showTech ? t("tabDetailsAndDiagnostics") : t("tabDetails")}
         </button>
         {autoInfo ? (
           <span className="ml-auto self-center font-mono text-[0.65rem] text-emerald-300/90">{autoInfo}</span>
@@ -1259,24 +1253,26 @@ export default function MetabolicLabPage() {
           />
 
           <details className="collapsible-card" style={{ marginBottom: "14px" }}>
-            <summary>Power components · three metabolic pathways (P = CP + W′/t)</summary>
+            <summary>{t("powerComponentsSummary")}</summary>
             <p className="session-sub-copy" style={{ marginBottom: 10, maxWidth: "58rem" }}>
-              <strong>P = CP + W′/t</strong>. <strong>PCr</strong>: min on W′/t with <strong>(E<sub>PCr</sub>/t)·e<sup>−t/τ</sup></strong>. <strong>Glycolysis</strong>:{" "}
-              <strong>W′/t − P<sub>PCr</sub> + CP·f<sub>∥</sub>(t)</strong> (threshold). <strong>Oxidative</strong> column = residual. The <strong>kJ</strong> columns are{" "}
-              <strong>P·t at the row duration</strong> (energy in that bin): the PCr kJ do <strong>not</strong> stay the same as t varies (old model: fixed E/t).
+              {t.rich("powerComponentsFormulaNote", {
+                b: (chunks) => <strong>{chunks}</strong>,
+                sub: (chunks) => <sub>{chunks}</sub>,
+                sup: (chunks) => <sup>{chunks}</sup>,
+              })}
             </p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[40rem] text-xs">
                 <thead>
                   <tr>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Duration</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">P model</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Oxidative</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colDuration")}</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colPModel")}</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colOxidative")}</th>
                     <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">PCr</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Glycolysis</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ oxi @t</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ PCr @t</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kJ glyc @t</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colGlycolysis")}</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colKjOxi")}</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colKjPcr")}</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colKjGlyc")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -1306,9 +1302,9 @@ export default function MetabolicLabPage() {
               <table className="w-full min-w-[34rem] text-xs">
                 <thead>
                   <tr>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Zone</th>
+                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colZone")}</th>
                     <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Range W</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Estimated RER</th>
+                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colEstimatedRer")}</th>
                     <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kcal/h</th>
                     <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">CHO g/h</th>
                     <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">FAT g/h</th>
@@ -1347,29 +1343,29 @@ export default function MetabolicLabPage() {
 
           <Pro2SectionCard
             accent="emerald"
-            title="Lab VO₂max"
-            subtitle="Enter the value by hand or import the test file (CSV/TXT). It updates your physiology profile."
+            title={t("labVo2maxTitle")}
+            subtitle={t("labVo2maxSubtitle")}
             icon={Activity}
           >
             <p className="mb-3 text-sm text-gray-400">
               {profileVo2maxMlMinKg != null ? (
                 <>
-                  <strong className="text-gray-200">Current profile:</strong> {profileVo2maxMlMinKg.toFixed(1)} ml/kg/min
+                  <strong className="text-gray-200">{t("currentProfileLabel")}</strong> {profileVo2maxMlMinKg.toFixed(1)} ml/kg/min
                   {profileVo2maxLMin != null ? ` (~${profileVo2maxLMin.toFixed(2)} L/min)` : ""}.
                 </>
               ) : (
-                <>No lab VO₂max on the profile: enter a value or import a file.</>
+                <>{t("noLabVo2maxEnterOrImport")}</>
               )}
             </p>
             {labVo2Message ? <p className="mb-3 text-sm text-emerald-300/95">{labVo2Message}</p> : null}
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
-                Known VO₂max (ml/kg/min)
+                {t("knownVo2maxLabel")}
                 <input
                   className="mt-1 w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 font-mono text-sm tabular-nums text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   type="text"
                   inputMode="decimal"
-                  placeholder="e.g. 58.5"
+                  placeholder={t("vo2maxPlaceholder")}
                   value={labVo2ManualInput}
                   onChange={(e) => setLabVo2ManualInput(e.target.value)}
                 />
@@ -1383,7 +1379,7 @@ export default function MetabolicLabPage() {
                     if (!athleteId) return;
                     const v = parseFloat(labVo2ManualInput.replace(",", "."));
                     if (!Number.isFinite(v) || v < 10 || v > 100) {
-                      setLabVo2Message("Enter a plausible value (about 20–95 ml/kg/min).");
+                      setLabVo2Message(t("enterPlausibleValue"));
                       return;
                     }
                     setLabVo2Saving(true);
@@ -1401,21 +1397,21 @@ export default function MetabolicLabPage() {
                         parseFloat(String(maxOxInput.body_mass_kg).replace(",", ".")) ||
                         70;
                       setProfileVo2maxLMin((res.vo2max_ml_min_kg * bm) / 1000);
-                      setLabVo2Message("Saved to the physiology profile and recorded in Metabolic Lab (vo2max_lab).");
+                      setLabVo2Message(t("savedToProfileManual"));
                       await loadHistory(athleteId);
                     } catch (err) {
-                      setLabVo2Message(err instanceof Error ? err.message : "Save error");
+                      setLabVo2Message(err instanceof Error ? err.message : t("saveError"));
                     } finally {
                       setLabVo2Saving(false);
                     }
                   }}
                 >
-                  {labVo2Saving ? "Saving…" : "Save manual VO₂max"}
+                  {labVo2Saving ? t("saving") : t("saveManualVo2max")}
                 </Pro2Button>
               </div>
             </div>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-400">
-              Export file (Cosmed / Cortex / CSV)
+              {t("exportFileLabel")}
               <input
                 className="mt-1 block w-full text-sm text-gray-300 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-600/80 file:px-3 file:py-1.5 file:text-white"
                 type="file"
@@ -1429,7 +1425,7 @@ export default function MetabolicLabPage() {
                     const text = await f.text();
                     setGasParseResult(parseGasExchangeExport(text, { bodyMassKg: athleteBodyMassForGasImport }));
                   } catch {
-                    setGasParseResult({ ok: false, error: "File read failed." });
+                    setGasParseResult({ ok: false, error: t("fileReadFailed") });
                   }
                   e.target.value = "";
                 }}
@@ -1437,19 +1433,19 @@ export default function MetabolicLabPage() {
             </label>
             {gasFileName ? (
               <p className="mb-2 text-xs text-gray-500">
-                File: <strong className="text-gray-300">{gasFileName}</strong>
+                {t("filePrefix")} <strong className="text-gray-300">{gasFileName}</strong>
                 {athleteBodyMassForGasImport != null
-                  ? ` · mass for parser: ${athleteBodyMassForGasImport} kg`
-                  : " · set mass in Lactate/MaxOx if the export only has absolute VO₂"}
+                  ? t("massForParser", { mass: athleteBodyMassForGasImport })
+                  : t("setMassIfAbsoluteVo2")}
               </p>
             ) : null}
             {gasParseResult ? (
               gasParseResult.ok ? (
                 <div className="mb-3 space-y-2">
                   <p className="text-sm text-gray-300">
-                    Estimated peak: <strong>{gasParseResult.vo2maxMlMinKg.toFixed(1)} ml/kg/min</strong>
-                    {gasParseResult.vo2maxLMin != null ? ` (~${gasParseResult.vo2maxLMin.toFixed(2)} L/min)` : ""} · row #
-                    {gasParseResult.peakRowIndex + 1} · {gasParseResult.rowCount} rows
+                    {t("estimatedPeakLabel")} <strong>{gasParseResult.vo2maxMlMinKg.toFixed(1)} ml/kg/min</strong>
+                    {gasParseResult.vo2maxLMin != null ? ` (~${gasParseResult.vo2maxLMin.toFixed(2)} L/min)` : ""}{t("rowNumberSeparator")}
+                    {gasParseResult.peakRowIndex + 1}{t("rowsCount", { count: gasParseResult.rowCount })}
                   </p>
                   <Pro2Button
                     type="button"
@@ -1479,16 +1475,16 @@ export default function MetabolicLabPage() {
                           parseFloat(String(maxOxInput.body_mass_kg).replace(",", ".")) ||
                           70;
                         setProfileVo2maxLMin((res.vo2max_ml_min_kg * bm) / 1000);
-                        setLabVo2Message("VO₂max from file saved to the profile.");
+                        setLabVo2Message(t("vo2maxFromFileSaved"));
                         await loadHistory(athleteId);
                       } catch (err) {
-                        setLabVo2Message(err instanceof Error ? err.message : "Save error");
+                        setLabVo2Message(err instanceof Error ? err.message : t("saveError"));
                       } finally {
                         setLabVo2Saving(false);
                       }
                     }}
                   >
-                    {labVo2Saving ? "Saving…" : "Apply VO₂max from file to profile"}
+                    {labVo2Saving ? t("saving") : t("applyVo2maxFromFile")}
                   </Pro2Button>
                 </div>
               ) : (
@@ -1509,23 +1505,23 @@ export default function MetabolicLabPage() {
                   setProfileVo2maxLMin(null);
                   setGasParseResult(null);
                   setGasFileName(null);
-                  setLabVo2Message("Lab VO₂max removed from the profile.");
+                  setLabVo2Message(t("labVo2maxRemoved"));
                   await loadHistory(athleteId);
                 } catch (err) {
-                  setLabVo2Message(err instanceof Error ? err.message : "Reset error");
+                  setLabVo2Message(err instanceof Error ? err.message : t("resetError"));
                 } finally {
                   setLabVo2Saving(false);
                 }
               }}
             >
-              Remove lab VO₂max from the profile
+              {t("removeLabVo2max")}
             </Pro2Button>
           </Pro2SectionCard>
 
           <Pro2SectionCard
             accent="emerald"
-            title="Sport-specific physiology (Bike / Run / Swim)"
-            subtitle="Three separate panels from the same athlete memory: compare load, metabolic cost and response by discipline."
+            title={t("sportSpecificTitle")}
+            subtitle={t("sportSpecificSubtitle")}
             icon={Layers}
           >
             <div className="grid gap-3 md:grid-cols-3">
@@ -1533,33 +1529,33 @@ export default function MetabolicLabPage() {
                 <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
                   <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
                   <p className="mt-1 font-mono text-sm text-gray-300">
-                    Sessions: <span className="text-white">{panel.sessionCount}</span>
-                    {panel.lastDate ? ` · last ${panel.lastDate}` : ""}
+                    {t("sessionsLabel")} <span className="text-white">{panel.sessionCount}</span>
+                    {panel.lastDate ? t("lastDateSuffix", { date: panel.lastDate }) : ""}
                   </p>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-                    <span>Avg duration: {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
-                    <span>Avg TSS: {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
-                    <span>Avg P: {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
-                    <span>Speed: {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
-                    <span>Avg RER: {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
-                    <span>Avg VO₂: {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
+                    <span>{t("avgDuration")} {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
+                    <span>{t("avgTss")} {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
+                    <span>{t("avgP")} {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
+                    <span>{t("speed")} {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
+                    <span>{t("avgRer")} {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
+                    <span>{t("avgVo2")} {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
                   </div>
                   <p className="mt-2 text-xs text-amber-100/90">
-                    Sport-specific estimated VO₂:{" "}
+                    {t("sportSpecificEstimatedVo2")}{" "}
                     <strong>{panel.vo2EstimateMlKgMin != null ? `${panel.vo2EstimateMlKgMin.toFixed(1)} ml/kg/min` : "—"}</strong>
                   </p>
                 </article>
               ))}
             </div>
             <p className="mt-3 text-[11px] text-gray-500">
-              If a discipline has no recent sessions, the panel stays visible but with empty metrics: it avoids mixing up different sport profiles.
+              {t("noRecentSessionsNote")}
             </p>
           </Pro2SectionCard>
 
           {cpCurveHasData ? (
             <details className="collapsible-card">
               <summary className="cursor-pointer text-sm font-semibold text-gray-300">
-                Cross-check: VO₂ kinetics (60 s) and substrates from gas (Lactate analysis)
+                {t("crossCheckSummary")}
               </summary>
               <div className="mt-3 space-y-3 text-sm text-gray-400">
                 <div className="overflow-x-auto">
@@ -1575,10 +1571,10 @@ export default function MetabolicLabPage() {
                       </tr>
                       <tr className="transition-colors hover:bg-white/[0.03]">
                         <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
-                          VO₂ at 60 s (model)
+                          {t("vo2At60sHeader")}
                         </th>
                         <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
-                          {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}% of estimated VO₂max (
+                          {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}{t("pctOfEstimatedVo2max")} (
                           {cpModel.vo2maxLMin.toFixed(2)} L/min)
                         </td>
                       </tr>
@@ -1589,10 +1585,10 @@ export default function MetabolicLabPage() {
                   <p>
                     RER {gasExchangeSubstrateProfile.rer.toFixed(3)} · CHO {gasExchangeSubstrateProfile.choGPerMin.toFixed(3)} g/min · FAT{" "}
                     {gasExchangeSubstrateProfile.fatGPerMin.toFixed(3)} g/min
-                    {!gasExchangeSubstrateProfile.plausible ? " (outside recommended band)" : ""}
+                    {!gasExchangeSubstrateProfile.plausible ? t("outsideRecommendedBand") : ""}
                   </p>
                 ) : (
-                  <p>Substrates from gas: set VO₂ and VCO₂ (L/min) in Lactate analysis.</p>
+                  <p>{t("substratesFromGasHint")}</p>
                 )}
               </div>
             </details>
@@ -1603,7 +1599,7 @@ export default function MetabolicLabPage() {
             id="physiology-lab-save-bar"
             className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.18] to-black/60 p-4 shadow-inner"
             role="region"
-            aria-label="Metabolic profile summary and save"
+            aria-label={t("metabolicSummaryAriaLabel")}
           >
             <div id="physiology-live-metabolic-summary" className="space-y-3">
               {/* Riga 1: dato unico VO₂max stimato + azioni salva/ricalcola */}
@@ -1611,7 +1607,7 @@ export default function MetabolicLabPage() {
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                   {cpCurveHasData ? (
                     <>
-                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">Estimated VO₂max</span>
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("estimatedVo2max")}</span>
                       <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-emerald-50 sm:text-4xl">
                         {cpModel.vo2maxMlMinKg.toFixed(1)}
                         <span className="ml-1 text-xs font-medium text-gray-500">ml/kg/min</span>
@@ -1623,7 +1619,7 @@ export default function MetabolicLabPage() {
                     </>
                   ) : (
                     <span className="text-sm text-amber-200/85">
-                      Fill in the CP curve above: it generates VO₂max, CP and FTP.
+                      {t("fillCpCurveHint")}
                     </span>
                   )}
                 </div>
@@ -1634,7 +1630,7 @@ export default function MetabolicLabPage() {
                     className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
                     onClick={runProfileRecalc}
                   >
-                    Recalculate (screen only)
+                    {t("recalculateScreenOnly")}
                   </Pro2Button>
                   <Pro2Button
                     type="button"
@@ -1642,7 +1638,7 @@ export default function MetabolicLabPage() {
                     disabled={saving || !cpCurveHasData}
                     onClick={saveMetabolicProfileSnapshot}
                   >
-                    {saving ? "Saving…" : "Save metabolic profile"}
+                    {saving ? t("saving") : t("saveMetabolicProfile")}
                   </Pro2Button>
                 </div>
               </div>
@@ -1651,22 +1647,22 @@ export default function MetabolicLabPage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-3 text-xs">
                 {profileVo2maxMlMinKg != null && profileVo2maxMlMinKg > 0 ? (
                   <span className="text-gray-400">
-                    Profile/lab VO₂max:{" "}
+                    {t("profileLabVo2maxLabel")}{" "}
                     <span className="font-mono tabular-nums text-white">{profileVo2maxMlMinKg.toFixed(1)} ml/kg/min</span>
                     {profileVo2maxLMin != null ? (
                       <span className="text-gray-500"> ≈ {profileVo2maxLMin.toFixed(2)} L/min</span>
                     ) : null}
                   </span>
                 ) : (
-                  <span className="text-gray-500">No lab VO₂max on the profile.</span>
+                  <span className="text-gray-500">{t("noLabVo2maxOnProfile")}</span>
                 )}
                 {profileLastRecalcAt ? (
                   <span className="text-gray-500">
-                    Last recalculation: {new Date(profileLastRecalcAt).toLocaleTimeString("en-US")}
+                    {t("lastRecalculation", { time: new Date(profileLastRecalcAt).toLocaleTimeString(t("localeCode")) })}
                   </span>
                 ) : null}
                 <span className="ml-auto text-gray-500">
-                  Estimate from CP curve (not spirometry) · «Save» writes to the profile, «Recalculate» updates on screen.
+                  {t("estimateFromCpCurveNote")}
                 </span>
               </div>
             </div>
@@ -1745,13 +1741,19 @@ export default function MetabolicLabPage() {
           </div>
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--notes">
           <details className="collapsible-card physiology-pro2-lab-details">
-            <summary>CHO pipeline &amp; strategy notes</summary>
+            <summary>{t("choPipelineNotesSummary")}</summary>
             <div className="session-sub-copy" style={{ marginBottom: 0 }}>
-              CHO pipeline: {lactateModel.choIngestedTotalG.toFixed(1)} g ingested · wall absorption {lactateModel.gutAbsorptionYieldPctOfIngested.toFixed(1)}% · − {lactateModel.microbiotaSequestrationG.toFixed(1)} g sequestration = {lactateModel.choIntoBloodstreamG.toFixed(1)} g available to the bloodstream (exogenous oxidized: {lactateModel.exogenousOxidizedG.toFixed(1)} g).
+              {t("choPipelineBody", {
+                ingested: lactateModel.choIngestedTotalG.toFixed(1),
+                absorption: lactateModel.gutAbsorptionYieldPctOfIngested.toFixed(1),
+                sequestration: lactateModel.microbiotaSequestrationG.toFixed(1),
+                available: lactateModel.choIntoBloodstreamG.toFixed(1),
+                exogenous: lactateModel.exogenousOxidizedG.toFixed(1),
+              })}
             </div>
             <div className="nutrition-compliance-strip physiology-pro2-lab-compliance" style={{ marginTop: "12px" }}>
               <span style={{ color: choGapColor(lactateStrategy.choGap), fontWeight: 700 }}>
-                CHO gap: {lactateStrategy.choGap.toFixed(0)} g
+                {t("choGap", { grams: lactateStrategy.choGap.toFixed(0) })}
               </span>
               <span>{lactateStrategy.fuelingAction}</span>
               <span>{lactateStrategy.lactateAction}</span>
@@ -1760,7 +1762,7 @@ export default function MetabolicLabPage() {
           </div>
           <div className="physiology-pro2-lab-footer-actions">
             <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveLactateAnalysisSnapshot}>
-              {saving ? "Saving…" : "Save lactate analysis"}
+              {saving ? t("saving") : t("saveLactateAnalysis")}
             </Pro2Button>
             <Pro2Button
               type="button"
@@ -1771,12 +1773,12 @@ export default function MetabolicLabPage() {
                 setLactateLastRecalcAt(Date.now());
               }}
             >
-              Recalculate lactate analysis
+              {t("recalculateLactateAnalysis")}
             </Pro2Button>
             <small className="text-xs text-gray-500">
               {lactateLastRecalcAt
-                ? `Last recalculation: ${new Date(lactateLastRecalcAt).toLocaleTimeString("en-US")} · Auto-update active on every input change.`
-                : "Auto-update active on every input change."}
+                ? t("lastRecalcWithAutoUpdate", { time: new Date(lactateLastRecalcAt).toLocaleTimeString(t("localeCode")) })
+                : t("autoUpdateActive")}
             </small>
           </div>
           </PhysiologyPro2LactateLab>
@@ -1837,30 +1839,33 @@ export default function MetabolicLabPage() {
             />
           </div>
           <div className="physiology-pro2-lab-page-panel">
-            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">VO₂ capacity source · summary</div>
+            <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{t("vo2CapacitySourceSummary")}</div>
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs leading-relaxed text-gray-300">
               <div className="mb-1 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">
-                VO₂ used as capacity (max)
+                {t("vo2UsedAsCapacity")}
               </div>
               <div className="text-lg font-bold text-gray-200">{maxOxVo2Used.toFixed(2)} L/min</div>
               <div className="mt-2 text-gray-400">
                 {maxOxVo2CapacitySource === "test_manual" ? (
-                  <>
-                    <strong className="text-gray-200">Manual test.</strong> At this power estimated ~
-                    {maxOxVo2Estimate.vo2LMin.toFixed(2)} L/min ({maxOxVo2Estimate.vo2MlKgMin.toFixed(1)} ml/kg/min).
-                  </>
+                  t.rich("vo2SourceTestManual", {
+                    b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+                    vo2L: maxOxVo2Estimate.vo2LMin.toFixed(2),
+                    vo2MlKg: maxOxVo2Estimate.vo2MlKgMin.toFixed(1),
+                  })
                 ) : maxOxVo2CapacitySource === "metabolic_engine_vo2max" ? (
-                  <>
-                    <strong className="text-gray-200">VO₂max from Metabolic profile</strong> (CP/W′ blend):{" "}
-                    {cpModel.vo2maxMlMinKg.toFixed(1)} ml/kg/min · {maxOxVo2Used.toFixed(2)} L/min @{" "}
-                    {labBodyMassKg.toFixed(0)} kg. At this power ~{maxOxVo2Estimate.vo2LMin.toFixed(2)} L/min.
-                  </>
+                  t.rich("vo2SourceMetabolicEngine", {
+                    b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+                    vo2maxMlKg: cpModel.vo2maxMlMinKg.toFixed(1),
+                    vo2Used: maxOxVo2Used.toFixed(2),
+                    mass: labBodyMassKg.toFixed(0),
+                    vo2L: maxOxVo2Estimate.vo2LMin.toFixed(2),
+                  })
                 ) : (
-                  <>
-                    <strong className="text-gray-200">Power estimate only</strong> ({maxOxVo2Estimate.vo2LMin.toFixed(2)}{" "}
-                    L/min, {maxOxVo2Estimate.vo2MlKgMin.toFixed(1)} ml/kg/min) — for a credible maximum capacity, fill in the
-                    CP curve in Metabolic profile (VO₂max engine); the lab no longer uses the registry VO₂max as a ceiling.
-                  </>
+                  t.rich("vo2SourcePowerEstimate", {
+                    b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
+                    vo2L: maxOxVo2Estimate.vo2LMin.toFixed(2),
+                    vo2MlKg: maxOxVo2Estimate.vo2MlKgMin.toFixed(1),
+                  })
                 )}
               </div>
             </div>
@@ -1875,7 +1880,7 @@ export default function MetabolicLabPage() {
 
           <div className="physiology-pro2-lab-footer-actions">
             <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>
-              {saving ? "Saving…" : "Save oxidative capacity"}
+              {saving ? t("saving") : t("saveOxidativeCapacity")}
             </Pro2Button>
             <Pro2Button
               type="button"
@@ -1886,12 +1891,12 @@ export default function MetabolicLabPage() {
                 setMaxOxLastRecalcAt(Date.now());
               }}
             >
-              Recalculate oxidative capacity
+              {t("recalculateOxidativeCapacity")}
             </Pro2Button>
             <small className="text-xs text-gray-500">
               {maxOxLastRecalcAt
-                ? `Last recalculation: ${new Date(maxOxLastRecalcAt).toLocaleTimeString("en-US")}`
-                : "Press recalculate to force the model refresh."}
+                ? t("lastRecalculation", { time: new Date(maxOxLastRecalcAt).toLocaleTimeString(t("localeCode")) })
+                : t("pressRecalculateHint")}
             </small>
           </div>
           </PhysiologyPro2MaxOxLab>

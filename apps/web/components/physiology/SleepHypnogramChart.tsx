@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { cn } from "@/lib/cn";
 
 /** 0 sveglio · 1 leggero · 2 profondo · 3 REM */
@@ -10,11 +12,11 @@ export const SLEEP_HYPNO_STAGE_FILL: Record<number, string> = {
   3: "#f472b6",
 };
 
-const LEGEND: Array<{ stage: number; label: string }> = [
-  { stage: 0, label: "Awake" },
-  { stage: 1, label: "Light" },
-  { stage: 2, label: "Deep" },
-  { stage: 3, label: "REM" },
+const LEGEND: Array<{ stage: number; labelKey: string }> = [
+  { stage: 0, labelKey: "legendAwake" },
+  { stage: 1, labelKey: "legendLight" },
+  { stage: 2, labelKey: "legendDeep" },
+  { stage: 3, labelKey: "legendRem" },
 ];
 
 function formatAxisTime(iso: string | null | undefined, locale = "en-US"): string {
@@ -39,6 +41,7 @@ export function SleepHypnogramChart({
   sleepEndUtc?: string | null;
   className?: string;
 }) {
+  const t = useTranslations("SleepHypnogramChart");
   const w = 400;
   const bandTop = 8;
   const bandH = 56;
@@ -49,10 +52,8 @@ export function SleepHypnogramChart({
       <div className={cn("rounded-xl border border-white/10 bg-black/40 p-4", className)}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-bold text-white">Sleep · stages</p>
-            <p className="text-xs text-gray-500">
-              No stage data for this night: make sure the export includes sleep and mapped stages.
-            </p>
+            <p className="text-sm font-bold text-white">{t("emptyTitle")}</p>
+            <p className="text-xs text-gray-500">{t("emptyBody")}</p>
           </div>
         </div>
       </div>
@@ -65,11 +66,9 @@ export function SleepHypnogramChart({
     <div className={cn("rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-white">Sleep · stages (timeline)</p>
+          <p className="text-sm font-bold text-white">{t("timelineTitle")}</p>
           <p className="text-xs text-gray-500">
-            {approximated
-              ? "Model reconstructed from per-stage totals (the WHOOP API does not expose the real sequence). This is not the device's clinical hypnogram."
-              : "Sequence from vendor segments when available."}
+            {approximated ? t("descApproximated") : t("descVendor")}
           </p>
         </div>
         {hasWindow ? (
@@ -86,9 +85,9 @@ export function SleepHypnogramChart({
         className="mt-3 h-40 w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Distribution of sleep stages across the night"
+        aria-label={t("chartLabel")}
       >
-        <title>Distribution of sleep stages across the night</title>
+        <title>{t("chartLabel")}</title>
         <rect width={w} height={h} fill="transparent" />
 
         {/* Asse */}
@@ -121,7 +120,7 @@ export function SleepHypnogramChart({
         })}
 
         <text x={8} y={bandTop - 2} fill="rgba(148,163,184,0.85)" fontSize={9} fontFamily="monospace">
-          Night start
+          {t("nightStart")}
         </text>
         <text
           x={w - 8}
@@ -131,7 +130,7 @@ export function SleepHypnogramChart({
           fontFamily="monospace"
           textAnchor="end"
         >
-          Wake-up
+          {t("wakeUp")}
         </text>
       </svg>
 
@@ -143,7 +142,7 @@ export function SleepHypnogramChart({
               style={{ backgroundColor: SLEEP_HYPNO_STAGE_FILL[L.stage] ?? "#64748b" }}
               aria-hidden
             />
-            {L.label}
+            {t(L.labelKey)}
           </li>
         ))}
       </ul>
