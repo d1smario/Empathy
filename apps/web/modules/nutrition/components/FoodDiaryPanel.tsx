@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Activity,
   Apple,
@@ -189,6 +190,7 @@ export function FoodDiaryPanel({
   weightKg = null,
   metabolicEfficiencyIndex = null,
 }: Props) {
+  const t = useTranslations("FoodDiaryPanel");
   const complianceCbRef = useRef(onComplianceRowsChange);
   complianceCbRef.current = onComplianceRowsChange;
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -313,12 +315,10 @@ export function FoodDiaryPanel({
       fat: loggedForDate.fat + pending.fat,
     };
     if (protFloor != null && after.protein < protFloor * 0.82) {
-      lines.push(
-        `Protein below ~${Math.round(protFloor)} g/day (estimate from weight): more dairy/legumes/lean meat or supplementation if prescribed.`,
-      );
+      lines.push(t("hintProteinLow", { g: Math.round(protFloor) }));
     }
     if (energyTargetKcal != null && after.kcal > energyTargetKcal * 1.07) {
-      lines.push("With the draft entry you exceed the daily energy requirement set.");
+      lines.push(t("hintEnergyOver"));
     }
     if (
       macroTargetsG &&
@@ -326,10 +326,10 @@ export function FoodDiaryPanel({
       after.carbs < macroTargetsG.carbs * 0.75 &&
       after.kcal > energyTargetKcal * 0.4
     ) {
-      lines.push("CHO still low vs daily target: add starches or fruit at the end of the day.");
+      lines.push(t("hintChoLow"));
     }
     return lines.slice(0, 3);
-  }, [weightKg, pendingFromForm, loggedForDate, energyTargetKcal, macroTargetsG]);
+  }, [weightKg, pendingFromForm, loggedForDate, energyTargetKcal, macroTargetsG, t]);
 
   const range = useMemo(() => {
     const end = new Date();
@@ -408,14 +408,14 @@ export function FoodDiaryPanel({
         if (cancelled) return;
         if (!res.ok) {
           setMicroRollup(null);
-          setMicroError(j.error ?? "Micronutrients not loaded.");
+          setMicroError(j.error ?? t("microNotLoaded"));
           return;
         }
         setMicroRollup(j);
       } catch {
         if (!cancelled) {
           setMicroRollup(null);
-          setMicroError("Network error while loading micronutrients.");
+          setMicroError(t("microNetworkError"));
         }
       } finally {
         if (!cancelled) setMicroLoading(false);
@@ -424,7 +424,7 @@ export function FoodDiaryPanel({
     return () => {
       cancelled = true;
     };
-  }, [athleteId, entryDate, entries.length]);
+  }, [athleteId, entryDate, entries.length, t]);
 
   const entriesByMealForDay = useMemo(() => {
     const order = MEAL_SLOT_OPTIONS.map((o) => o.value);
@@ -462,13 +462,13 @@ export function FoodDiaryPanel({
       const payload = (await res.json()) as { items?: LookupHit[]; error?: string };
       if (!res.ok) {
         setHits([]);
-        setActionError(payload.error ?? `Search failed (HTTP ${res.status}).`);
+        setActionError(payload.error ?? t("searchFailedHttp", { status: res.status }));
         return;
       }
       setHits(Array.isArray(payload.items) ? payload.items : []);
     } catch {
       setHits([]);
-      setActionError("Food search failed.");
+      setActionError(t("searchFailed"));
     } finally {
       setLookupLoading(false);
     }
@@ -483,15 +483,15 @@ export function FoodDiaryPanel({
     const p = Number(manualProtein.replace(",", "."));
     const f = Number(manualFat.replace(",", "."));
     if (label.length < 1) {
-      setActionError("Enter the name of the food or dish.");
+      setActionError(t("errEnterFoodName"));
       return;
     }
     if (!Number.isFinite(qg) || qg <= 0) {
-      setActionError("Quantity (g) not valid.");
+      setActionError(t("errQuantityInvalid"));
       return;
     }
     if (![kcal, c, p, f].every((x) => Number.isFinite(x) && x >= 0)) {
-      setActionError("Enter kcal and macros (g) for the portion: numbers ≥ 0.");
+      setActionError(t("errEnterKcalMacros"));
       return;
     }
     const k100 = (kcal / qg) * 100;
@@ -535,7 +535,7 @@ export function FoodDiaryPanel({
   async function runPhotoEstimate(file: File) {
     if (!athleteId) return;
     if (file.size > 5 * 1024 * 1024) {
-      setActionError("Image too large (max 5 MB).");
+      setActionError(t("errImageTooLarge"));
       return;
     }
     setPhotoLoading(true);
@@ -544,7 +544,7 @@ export function FoodDiaryPanel({
     const reader = new FileReader();
     reader.onerror = () => {
       setPhotoLoading(false);
-      setActionError("File read failed.");
+      setActionError(t("errFileReadFailed"));
     };
     reader.onload = () => {
       void (async () => {
@@ -552,7 +552,7 @@ export function FoodDiaryPanel({
           const dataUrl = reader.result as string;
           const m = /^data:([^;]+);base64,(.*)$/i.exec(dataUrl);
           if (!m) {
-            setActionError("Invalid image format.");
+            setActionError(t("errInvalidImageFormat"));
             setPhotoLoading(false);
             return;
           }
@@ -578,12 +578,12 @@ export function FoodDiaryPanel({
           };
           setPhotoLoading(false);
           if (!res.ok) {
-            setActionError(j.error ?? "Photo analysis failed.");
+            setActionError(j.error ?? t("errPhotoAnalysisFailed"));
             return;
           }
           const e = j.estimate;
           if (!e) {
-            setActionError("No estimate from the photo.");
+            setActionError(t("errNoEstimate"));
             return;
           }
           setManualLabel(e.label_it);
@@ -600,10 +600,10 @@ export function FoodDiaryPanel({
           else setManualFat("");
           if (e.fdc_search_hint?.trim()) setQuery(e.fdc_search_hint.trim());
           setSelectedHit(null);
-          setVisionNote(e.notes_it ?? "Estimate from image: check portion and macros before saving.");
+          setVisionNote(e.notes_it ?? t("visionNoteDefault"));
         } catch {
           setPhotoLoading(false);
-          setActionError("Error during photo analysis.");
+          setActionError(t("errDuringPhotoAnalysis"));
         }
       })();
     };
@@ -614,7 +614,7 @@ export function FoodDiaryPanel({
     if (!athleteId || !selectedHit) return;
     const qg = Number(quantityG.replace(",", "."));
     if (!Number.isFinite(qg) || qg <= 0) {
-      setActionError("Enter a valid weight in grams (> 0).");
+      setActionError(t("errEnterValidWeight"));
       return;
     }
     setSaving(true);
@@ -650,7 +650,7 @@ export function FoodDiaryPanel({
       const p = selectedHit.protein_100;
       const f = selectedHit.fat_100;
       if (k == null || c == null || p == null || f == null) {
-        setActionError("This result does not have complete per-100g values: choose another food or a USDA one.");
+        setActionError(t("errIncompletePer100"));
         setSaving(false);
         return;
       }
@@ -697,7 +697,7 @@ export function FoodDiaryPanel({
     return (
       <section className="viz-card builder-panel" style={{ marginBottom: 12, opacity: 0.92 }}>
         <p className="muted-copy" style={{ margin: 0 }}>
-          Select an active athlete to use the persistent food diary.
+          {t("selectActiveAthlete")}
         </p>
       </section>
     );
@@ -717,13 +717,13 @@ export function FoodDiaryPanel({
   const macroSub = (c: number, p: number, f: number) => (
     <div className="nutrition-diary-tile-macros">
       <span>
-        <abbr title="Carbohydrates">CHO</abbr> {Math.round(c)} g
+        <abbr title={t("abbrCarbs")}>CHO</abbr> {Math.round(c)} g
       </span>
       <span>
-        <abbr title="Protein">PRO</abbr> {Math.round(p)} g
+        <abbr title={t("abbrProtein")}>PRO</abbr> {Math.round(p)} g
       </span>
       <span>
-        <abbr title="Fat">FAT</abbr> {Math.round(f)} g
+        <abbr title={t("abbrFat")}>FAT</abbr> {Math.round(f)} g
       </span>
     </div>
   );
@@ -740,10 +740,10 @@ export function FoodDiaryPanel({
     <section className="viz-card builder-panel nutrition-diary-shell" style={{ marginBottom: 12 }}>
       <header style={{ marginBottom: 18 }}>
         <h3 className="viz-title" style={{ marginBottom: 8 }}>
-          Food diary
+          {t("title")}
         </h3>
         <p className="muted-copy" style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
-          Log what you eat: photo or search, quantity and meal. The large numbers are estimates of your daily requirement.
+          {t("lede")}
         </p>
       </header>
 
@@ -760,48 +760,48 @@ export function FoodDiaryPanel({
 
       <div className="nutrition-diary-summary-grid">
         <div className="nutrition-diary-tile nutrition-diary-tile--efficiency">
-          <div className="nutrition-diary-tile-kicker">Metabolic efficiency</div>
+          <div className="nutrition-diary-tile-kicker">{t("tileEfficiencyKicker")}</div>
           {metabolicEfficiencyIndex != null && Number.isFinite(metabolicEfficiencyIndex) ? (
             <>
               <div className="nutrition-diary-tile-metric">{Math.round(metabolicEfficiencyIndex)}</div>
-              <div className="nutrition-diary-tile-foot">out of 100 · interpretive model</div>
+              <div className="nutrition-diary-tile-foot">{t("tileEfficiencyFoot")}</div>
             </>
           ) : (
             <>
               <div className="nutrition-diary-tile-metric">—</div>
-              <div className="nutrition-diary-tile-foot">Needs recovery / training context</div>
+              <div className="nutrition-diary-tile-foot">{t("tileEfficiencyNoContext")}</div>
             </>
           )}
         </div>
         <div className="nutrition-diary-tile nutrition-diary-tile--target">
-          <div className="nutrition-diary-tile-kicker">Planned today</div>
+          <div className="nutrition-diary-tile-kicker">{t("tilePlannedKicker")}</div>
           <div className="nutrition-diary-tile-metric">{targetK != null ? `${targetK}` : "—"}</div>
           <div className="nutrition-diary-tile-unit">{targetK != null ? "kcal" : ""}</div>
           {macroTargetsG != null
             ? macroSub(macroTargetsG.carbs, macroTargetsG.protein, macroTargetsG.fat)
             : (
                 <div className="nutrition-diary-tile-foot">
-                  Align the date to the plan day for macro targets
+                  {t("tilePlannedAlignHint")}
                 </div>
               )}
         </div>
         <div className="nutrition-diary-tile nutrition-diary-tile--actual">
-          <div className="nutrition-diary-tile-kicker">Intake</div>
+          <div className="nutrition-diary-tile-kicker">{t("tileIntakeKicker")}</div>
           <div className="nutrition-diary-tile-metric">{Math.round(afterDay.kcal)}</div>
           <div className="nutrition-diary-tile-unit">kcal</div>
           {macroSub(afterDay.carbs, afterDay.protein, afterDay.fat)}
           {pendTotals.kcal > 0 ? (
-            <div className="nutrition-diary-tile-foot">Includes the draft being filled in</div>
+            <div className="nutrition-diary-tile-foot">{t("tileIntakeDraftFoot")}</div>
           ) : null}
         </div>
         <div className="nutrition-diary-tile nutrition-diary-tile--delta">
-          <div className="nutrition-diary-tile-kicker">Remaining</div>
+          <div className="nutrition-diary-tile-kicker">{t("tileRemainingKicker")}</div>
           {targetK != null ? (
             <>
               <div className="nutrition-diary-tile-metric">{overKcal != null && overKcal > 0 ? `+${overKcal}` : remKcal}</div>
               <div className="nutrition-diary-tile-unit">kcal</div>
               {overKcal != null && overKcal > 0 ? (
-                <div className="nutrition-diary-tile-foot">Above the daily target</div>
+                <div className="nutrition-diary-tile-foot">{t("tileRemainingOverFoot")}</div>
               ) : (
                 remMacroSub
               )}
@@ -809,7 +809,7 @@ export function FoodDiaryPanel({
           ) : (
             <>
               <div className="nutrition-diary-tile-metric">—</div>
-              <div className="nutrition-diary-tile-foot">Set requirement or plan day</div>
+              <div className="nutrition-diary-tile-foot">{t("tileRemainingNoTargetFoot")}</div>
             </>
           )}
         </div>
@@ -822,8 +822,7 @@ export function FoodDiaryPanel({
       ) : null}
 
       <p className="muted-copy" style={{ fontSize: "0.78rem", margin: "-8px 0 16px", lineHeight: 1.45 }}>
-        The efficiency index combines recovery, adaptation and training signals; if data is missing the value may stay similar for
-        several days. It is not a diagnosis.
+        {t("efficiencyDisclaimer")}
       </p>
 
       <div
@@ -836,7 +835,7 @@ export function FoodDiaryPanel({
         }}
       >
         <label className="muted-copy" style={{ fontSize: "0.82rem", margin: 0 }}>
-          Intake day
+          {t("intakeDayLabel")}
         </label>
         <input
           className="form-input w-full min-w-[140px] sm:w-auto sm:max-w-[200px]"
@@ -850,7 +849,7 @@ export function FoodDiaryPanel({
             className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
             onClick={() => setEntryDate(planDateAnchor)}
           >
-            Align to plan day ({planDateAnchor})
+            {t("alignToPlanDay", { day: planDateAnchor })}
           </button>
         ) : null}
       </div>
@@ -865,11 +864,11 @@ export function FoodDiaryPanel({
       >
         <div>
           <div className="nutrition-diary-meal-destination-card">
-            <div className="nutrition-diary-section-label">Target meal</div>
+            <div className="nutrition-diary-section-label">{t("targetMealLabel")}</div>
             <p className="nutrition-diary-meal-destination-lede">
-              Select breakfast, snack, lunch or dinner. Photo, search and manual save add the entry to that meal.
+              {t("targetMealLede")}
             </p>
-            <div className="nutrition-diary-meal-picker nutrition-diary-meal-picker--primary" role="group" aria-label="Target meal">
+            <div className="nutrition-diary-meal-picker nutrition-diary-meal-picker--primary" role="group" aria-label={t("targetMealLabel")}>
               {MEAL_SLOT_OPTIONS.map((o) => {
                 const active = mealSlot === o.value;
                 return (
@@ -897,7 +896,7 @@ export function FoodDiaryPanel({
               }}
             >
               <label className="muted-copy" style={{ fontSize: "0.82rem", margin: 0 }} htmlFor="fd-entry-time">
-                Time consumed
+                {t("timeConsumedLabel")}
               </label>
               <input
                 id="fd-entry-time"
@@ -907,7 +906,7 @@ export function FoodDiaryPanel({
                 onChange={(e) => setEntryTime(e.target.value)}
               />
               <span className="muted-copy" style={{ fontSize: "0.72rem", maxWidth: 340, lineHeight: 1.45 }}>
-                Used by BioEnergetic and the timeline (post-prandial peaks). When you change meal we suggest a typical time; adjust if needed.
+                {t("timeConsumedHelp")}
               </span>
             </div>
           </div>
@@ -933,10 +932,10 @@ export function FoodDiaryPanel({
               className="btn-nutrition-cta nutrition-diary-photo-cta"
               disabled={photoLoading}
               onClick={() => photoInputRef.current?.click()}
-              aria-label="Add a photo of the meal from the device"
+              aria-label={t("addPhotoAria")}
             >
               <Camera className="h-[1.1rem] w-[1.1rem] shrink-0" aria-hidden />
-              {photoLoading ? "Analyzing…" : "Add photo"}
+              {photoLoading ? t("analyzing") : t("addPhoto")}
             </button>
             <button
               type="button"
@@ -944,13 +943,11 @@ export function FoodDiaryPanel({
               onClick={() => document.getElementById("fd-search")?.focus()}
             >
               <Search className="h-[1.05rem] w-[1.05rem] shrink-0 opacity-90" aria-hidden />
-              Search the database
+              {t("searchTheDatabase")}
             </button>
           </div>
           <p className="muted-copy nutrition-diary-photo-hint" style={{ fontSize: "0.72rem", margin: "0 0 12px", lineHeight: 1.45 }}>
-            On phone you can take a photo or choose from the gallery. The image is analyzed and you get a suggested name,
-            portion and macros. The values saved in the diary remain those from the food database (or the manual scale) after you
-            check the portion.
+            {t("photoHint")}
           </p>
           {visionNote ? (
             <p className="muted-copy" style={{ fontSize: "0.78rem", marginBottom: 14, lineHeight: 1.45 }}>
@@ -960,7 +957,7 @@ export function FoodDiaryPanel({
 
           <div className="nutrition-diary-input-deck">
             <div className="nutrition-diary-mini-tile">
-              <span className="nutrition-diary-mini-tile-label">Quantity (portion)</span>
+              <span className="nutrition-diary-mini-tile-label">{t("quantityLabel")}</span>
               <input
                 id="fd-qty"
                 className="form-input nutrition-diary-qty-input"
@@ -968,33 +965,33 @@ export function FoodDiaryPanel({
                 value={quantityG}
                 onChange={(e) => setQuantityG(e.target.value)}
                 placeholder="120"
-                aria-label="Quantity in grams or approximate milliliters"
+                aria-label={t("quantityAria")}
               />
-              <span className="nutrition-diary-mini-tile-hint">g · liquids: use ml ≈ g</span>
+              <span className="nutrition-diary-mini-tile-hint">{t("quantityHint")}</span>
             </div>
           </div>
 
           <details className="nutrition-diary-details" style={{ marginBottom: 18 }}>
-            <summary>Manual entry (home-cooked dishes)</summary>
+            <summary>{t("manualEntrySummary")}</summary>
             <p className="muted-copy" style={{ fontSize: "0.78rem", marginBottom: 10, lineHeight: 1.45 }}>
-              Same grams as the quantity box. Check the values after a photo, then save.
+              {t("manualEntryHelp")}
             </p>
             <div className="form-group">
               <label className="form-label" htmlFor="fd-manual-label">
-                Food / dish name
+                {t("manualFoodNameLabel")}
               </label>
               <input
                 id="fd-manual-label"
                 className="form-input"
                 value={manualLabel}
                 onChange={(e) => setManualLabel(e.target.value)}
-                placeholder="e.g. Pasta al pomodoro"
+                placeholder={t("manualFoodNamePlaceholder")}
               />
             </div>
             <div className="form-grid-two">
               <div className="form-group">
                 <label className="form-label" htmlFor="fd-manual-kcal">
-                  Kcal (portion)
+                  {t("manualKcalLabel")}
                 </label>
                 <input
                   id="fd-manual-kcal"
@@ -1002,12 +999,12 @@ export function FoodDiaryPanel({
                   inputMode="decimal"
                   value={manualKcal}
                   onChange={(e) => setManualKcal(e.target.value)}
-                  placeholder="e.g. 420"
+                  placeholder={t("manualKcalPlaceholder")}
                 />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="fd-manual-c">
-                  Carbohydrates (g)
+                  {t("manualCarbsLabel")}
                 </label>
                 <input
                   id="fd-manual-c"
@@ -1015,12 +1012,12 @@ export function FoodDiaryPanel({
                   inputMode="decimal"
                   value={manualCarbs}
                   onChange={(e) => setManualCarbs(e.target.value)}
-                  placeholder="e.g. 55"
+                  placeholder={t("manualCarbsPlaceholder")}
                 />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="fd-manual-p">
-                  Protein (g)
+                  {t("manualProteinLabel")}
                 </label>
                 <input
                   id="fd-manual-p"
@@ -1028,12 +1025,12 @@ export function FoodDiaryPanel({
                   inputMode="decimal"
                   value={manualProtein}
                   onChange={(e) => setManualProtein(e.target.value)}
-                  placeholder="e.g. 15"
+                  placeholder={t("manualProteinPlaceholder")}
                 />
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="fd-manual-f">
-                  Fat (g)
+                  {t("manualFatLabel")}
                 </label>
                 <input
                   id="fd-manual-f"
@@ -1041,21 +1038,21 @@ export function FoodDiaryPanel({
                   inputMode="decimal"
                   value={manualFat}
                   onChange={(e) => setManualFat(e.target.value)}
-                  placeholder="e.g. 12"
+                  placeholder={t("manualFatPlaceholder")}
                 />
               </div>
             </div>
             <button type="button" className="btn-secondary" disabled={saving} onClick={() => void addManualPortion()}>
-              {saving ? "Saving…" : "Save manual entry"}
+              {saving ? t("saving") : t("saveManualEntry")}
             </button>
           </details>
 
           <h4 className="section-title" style={{ fontSize: "0.95rem", marginBottom: 10 }}>
-            Add from database
+            {t("addFromDatabase")}
           </h4>
           <div className="form-group">
             <label className="form-label" htmlFor="fd-search">
-              Search food
+              {t("searchFoodLabel")}
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input
@@ -1067,11 +1064,11 @@ export function FoodDiaryPanel({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void runLookup();
                 }}
-                placeholder="e.g. riso basmati cotto, yogurt greco…"
+                placeholder={t("searchFoodPlaceholder")}
                 autoComplete="off"
               />
               <button type="button" className="btn-secondary" disabled={lookupLoading} onClick={() => void runLookup()}>
-                {lookupLoading ? "…" : "Search"}
+                {lookupLoading ? "…" : t("searchButton")}
               </button>
             </div>
           </div>
@@ -1085,7 +1082,7 @@ export function FoodDiaryPanel({
                 background: "color-mix(in srgb, var(--empathy-accent, #0ea5e9) 14%, transparent)",
               }}
             >
-              <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", opacity: 0.85 }}>YOU CHOSE</div>
+              <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", opacity: 0.85 }}>{t("youChose")}</div>
               <div style={{ fontSize: "1.15rem", fontWeight: 800, marginTop: 8, lineHeight: 1.35 }}>
                 {selectedHit.brand ? `${selectedHit.brand} · ` : ""}
                 {selectedHit.label}
@@ -1093,9 +1090,9 @@ export function FoodDiaryPanel({
               <div className="muted-copy" style={{ fontSize: "0.82rem", marginTop: 6, lineHeight: 1.5 }}>
                 {selectedHit.source === "usda"
                   ? selectedHit.lookupTier === "usda_fdc_cache"
-                    ? "Food database"
-                    : "Food database (values confirmed on save)"
-                  : "Product catalog (values from label)"}
+                    ? t("srcFoodDatabase")
+                    : t("srcFoodDatabaseConfirmed")
+                  : t("srcProductCatalog")}
               </div>
               {(() => {
                 const qg = parseDecimalInput(quantityG);
@@ -1111,22 +1108,24 @@ export function FoodDiaryPanel({
                 if (!okQ) {
                   return (
                     <p style={{ margin: "12px 0 0", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                      Set the <strong>quantity in grams</strong> in the field above: kcal and macros for the portion will appear here right away.
+                      {t.rich("previewSetQuantity", { b: (chunks) => <strong>{chunks}</strong> })}
                     </p>
                   );
                 }
                 if (usdaDeferred) {
                   return (
                     <p style={{ margin: "12px 0 0", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                      For this USDA entry the official nutritional values are applied <strong>on save</strong> (portion{" "}
-                      <strong>{qg} g</strong>). You will then also see them in the log below.
+                      {t.rich("previewUsdaDeferred", {
+                        qg,
+                        b: (chunks) => <strong>{chunks}</strong>,
+                      })}
                     </p>
                   );
                 }
                 if (k100 == null || c100 == null || p100 == null || f100 == null) {
                   return (
                     <p style={{ margin: "12px 0 0", fontSize: "0.9rem" }}>
-                      For this result we do not have all the per-100 g data: choose another food or use manual entry.
+                      {t("previewIncompleteData")}
                     </p>
                   );
                 }
@@ -1138,19 +1137,19 @@ export function FoodDiaryPanel({
                 return (
                   <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))", gap: 12 }}>
                     <div>
-                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>Energy (estimate)</div>
+                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>{t("previewEnergyLabel")}</div>
                       <div style={{ fontSize: "1.35rem", fontWeight: 800 }}>{kcal} kcal</div>
                     </div>
                     <div>
-                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>Carbohydrates</div>
+                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>{t("previewCarbsLabel")}</div>
                       <div style={{ fontSize: "1.15rem", fontWeight: 700 }}>{carbs} g</div>
                     </div>
                     <div>
-                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>Protein</div>
+                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>{t("previewProteinLabel")}</div>
                       <div style={{ fontSize: "1.15rem", fontWeight: 700 }}>{protein} g</div>
                     </div>
                     <div>
-                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>Fat</div>
+                      <div className="muted-copy" style={{ fontSize: "0.72rem" }}>{t("previewFatLabel")}</div>
                       <div style={{ fontSize: "1.15rem", fontWeight: 700 }}>{fat} g</div>
                     </div>
                   </div>
@@ -1159,7 +1158,7 @@ export function FoodDiaryPanel({
             </div>
           ) : (
             <p className="muted-copy" style={{ fontSize: "0.82rem", marginBottom: 10, lineHeight: 1.45 }}>
-              After searching, <strong>tap a food</strong> in the list: the name and the kcal for your portion will appear above.
+              {t.rich("tapFoodHint", { b: (chunks) => <strong>{chunks}</strong> })}
             </p>
           )}
           <ul
@@ -1172,7 +1171,7 @@ export function FoodDiaryPanel({
               border: "1px solid var(--empathy-border-subtle, rgba(255,255,255,0.12))",
               borderRadius: 8,
             }}
-            aria-label="Food search results"
+            aria-label={t("searchResultsAria")}
           >
             {hits.map((h, i) => {
               const key = `${h.source}-${h.catalogId ?? h.fdcId ?? "x"}-${h.label}-${i}`;
@@ -1197,9 +1196,9 @@ export function FoodDiaryPanel({
                     <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{h.label}</div>
                     <div className="muted-copy" style={{ fontSize: "0.78rem", marginTop: 2 }}>
                       {h.brand ? `${h.brand} · ` : ""}
-                      {h.source === "brand-site" ? "Catalog" : "Food database"}
+                      {h.source === "brand-site" ? t("hitCatalog") : t("hitFoodDatabase")}
                       {h.kcal_100 != null ? ` · ${h.kcal_100} kcal/100g` : ""}
-                      {usdaNoPreview ? " · values confirmed on save" : ""}
+                      {usdaNoPreview ? ` · ${t("hitConfirmedOnSave")}` : ""}
                     </div>
                   </button>
                 </li>
@@ -1207,19 +1206,19 @@ export function FoodDiaryPanel({
             })}
             {!hits.length && !lookupLoading && (
               <li className="muted-copy" style={{ padding: 12 }}>
-                No results. Enter at least 2 characters and press Search.
+                {t("noResults")}
               </li>
             )}
           </ul>
           <div className="form-group" style={{ marginTop: 12 }}>
             <label className="form-label" htmlFor="fd-notes">
-              Notes
+              {t("notesLabel")}
             </label>
             <textarea id="fd-notes" className="form-textarea" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="fd-supp">
-              Supplements (free text)
+              {t("supplementsLabel")}
             </label>
             <input id="fd-supp" className="form-input" value={supplements} onChange={(e) => setSupplements(e.target.value)} />
           </div>
@@ -1229,30 +1228,32 @@ export function FoodDiaryPanel({
             disabled={saving || !selectedHit}
             onClick={() => void addFromSelection()}
           >
-            {saving ? "Saving…" : "Add to diary"}
+            {saving ? t("saving") : t("addToDiary")}
           </button>
         </div>
 
         <div className="nutrition-diary-log-column">
           <div className="empathy-meal-plan-expo-shell nutrition-diary-expo-shell">
             <h4 className="nutrition-diary-expo-heading">
-              Daily log · <span className="text-white/90">{formatDateIt(entryDate)}</span>
+              {t.rich("dailyLogHeading", {
+                date: formatDateIt(entryDate),
+                s: (chunks) => <span className="text-white/90">{chunks}</span>,
+              })}
             </h4>
             <p className="nutrition-diary-expo-lede muted-copy">
-              Same grid as the meal plan: columns by time of day; below, the entries you log. The column of the meal
-              selected on the left is highlighted.
+              {t("dailyLogLede")}
             </p>
             {loading ? (
-              <p className="muted-copy">Loading…</p>
+              <p className="muted-copy">{t("loading")}</p>
             ) : (
               <div className="empathy-meal-expo-grid nutrition-diary-expo-grid">
                 {DIARY_EXPOSITION_COLUMNS.map((col) => {
                   const rows = entriesByMealForDay.get(col.mealSlot) ?? [];
-                  const t = sumEntryTotals(rows);
+                  const totals = sumEntryTotals(rows);
                   const Icon = diaryExpoIcon(col.expoVisualSlot);
-                  const kcalDenom = Math.max(1, t.kcal);
-                  const choPct = Math.round(((t.carbs * 4) / kcalDenom) * 100);
-                  const proPct = Math.round(((t.protein * 4) / kcalDenom) * 100);
+                  const kcalDenom = Math.max(1, totals.kcal);
+                  const choPct = Math.round(((totals.carbs * 4) / kcalDenom) * 100);
+                  const proPct = Math.round(((totals.protein * 4) / kcalDenom) * 100);
                   const fatPct = Math.max(0, 100 - choPct - proPct);
                   const isActiveColumn = mealSlot === col.mealSlot;
                   return (
@@ -1272,12 +1273,12 @@ export function FoodDiaryPanel({
                           <h3 className="empathy-meal-expo-title-banner">{col.labelIt}</h3>
                           <p className="empathy-meal-expo-sub-banner">
                             {rows.length === 0
-                              ? "No food"
-                              : `${rows.length} ${rows.length === 1 ? "entry" : "entries"}`}
+                              ? t("columnNoFood")
+                              : t("columnEntryCount", { count: rows.length })}
                           </p>
                         </div>
-                        <div className="empathy-meal-expo-kcal-tile" aria-label={`${Math.round(t.kcal)} kilocalories`}>
-                          <span className="empathy-meal-expo-kcal-num">{Math.round(t.kcal)}</span>
+                        <div className="empathy-meal-expo-kcal-tile" aria-label={t("kcalTileAria", { kcal: Math.round(totals.kcal) })}>
+                          <span className="empathy-meal-expo-kcal-num">{Math.round(totals.kcal)}</span>
                           <span className="empathy-meal-expo-kcal-unit">KCAL</span>
                         </div>
                       </header>
@@ -1285,18 +1286,18 @@ export function FoodDiaryPanel({
                       <div className="empathy-meal-expo-macros">
                         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--cho">
                           <Activity className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-                          <span className="empathy-meal-expo-macro-label">CARBOHYDRATES</span>
-                          <span className="empathy-meal-expo-macro-val">{Math.round(t.carbs)} g</span>
+                          <span className="empathy-meal-expo-macro-label">{t("macroCarbsFull")}</span>
+                          <span className="empathy-meal-expo-macro-val">{Math.round(totals.carbs)} g</span>
                         </div>
                         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--pro">
                           <Zap className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-                          <span className="empathy-meal-expo-macro-label">PROTEIN</span>
-                          <span className="empathy-meal-expo-macro-val">{Math.round(t.protein)} g</span>
+                          <span className="empathy-meal-expo-macro-label">{t("macroProteinFull")}</span>
+                          <span className="empathy-meal-expo-macro-val">{Math.round(totals.protein)} g</span>
                         </div>
                         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--fat">
                           <Droplets className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-                          <span className="empathy-meal-expo-macro-label">FAT</span>
-                          <span className="empathy-meal-expo-macro-val">{Math.round(t.fat)} g</span>
+                          <span className="empathy-meal-expo-macro-label">{t("macroFatFull")}</span>
+                          <span className="empathy-meal-expo-macro-val">{Math.round(totals.fat)} g</span>
                         </div>
                       </div>
 
@@ -1308,12 +1309,12 @@ export function FoodDiaryPanel({
 
                       <section className="empathy-meal-expo-detail-head">
                         <span className="empathy-meal-expo-detail-bar" aria-hidden />
-                        <h4 className="empathy-meal-expo-detail-title">Diary entries</h4>
+                        <h4 className="empathy-meal-expo-detail-title">{t("diaryEntriesTitle")}</h4>
                       </section>
 
                       <ul className="empathy-meal-expo-food-list">
                         {rows.length === 0 ? (
-                          <li className="empathy-meal-expo-food-empty muted-copy">No entry for this meal.</li>
+                          <li className="empathy-meal-expo-food-empty muted-copy">{t("noEntryForMeal")}</li>
                         ) : (
                           rows.map((row) => (
                             <li key={row.id} className="empathy-meal-expo-food-card">
@@ -1324,7 +1325,7 @@ export function FoodDiaryPanel({
                                 </div>
                                 <div className="empathy-meal-expo-food-pills">
                                   {row.entryTime ? (
-                                    <span className="empathy-meal-expo-pill empathy-meal-expo-pill--time" title="Time consumed">
+                                    <span className="empathy-meal-expo-pill empathy-meal-expo-pill--time" title={t("timeConsumedLabel")}>
                                       {row.entryTime.slice(0, 5)}
                                     </span>
                                   ) : null}
@@ -1333,7 +1334,7 @@ export function FoodDiaryPanel({
                                     <Flame className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                                     {Math.round(row.kcal)}
                                   </span>
-                                  <span className="nutrition-diary-expo-src-pill" title="Number source">
+                                  <span className="nutrition-diary-expo-src-pill" title={t("numberSourceTitle")}>
                                     {provenanceLabel(row.provenance)}
                                   </span>
                                 </div>
@@ -1361,7 +1362,7 @@ export function FoodDiaryPanel({
                                   className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                                   onClick={() => void removeEntry(row.id)}
                                 >
-                                  Delete
+                                  {t("delete")}
                                 </button>
                               </div>
                             </li>
@@ -1375,7 +1376,7 @@ export function FoodDiaryPanel({
             )}
             {!loading && !entries.some((e) => e.entryDate === entryDate) ? (
               <p className="muted-copy nutrition-diary-expo-foot" style={{ fontSize: "0.85rem", marginTop: 12 }}>
-                No entry for this date. Use photo, search or manual entry in the left column.
+                {t("noEntryForDate")}
               </p>
             ) : null}
           </div>
@@ -1385,7 +1386,7 @@ export function FoodDiaryPanel({
       <div className="nutrition-diary-micro-board">
         {microLoading ? (
           <p className="muted-copy" style={{ fontSize: "0.88rem" }}>
-            Loading…
+            {t("loading")}
           </p>
         ) : microError ? (
           <div className="alert-warning" style={{ marginBottom: 0 }}>

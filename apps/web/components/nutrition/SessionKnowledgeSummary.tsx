@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 
 /**
@@ -13,6 +15,8 @@ export function SessionKnowledgeSummary({
   contract: Pro2BuilderSessionContract | null | undefined;
   compact?: boolean;
 }) {
+  const t = useTranslations("SessionKnowledgeSummary");
+
   if (!contract) return null;
 
   const parts = [contract.discipline, contract.sessionName].filter(Boolean);
@@ -25,11 +29,11 @@ export function SessionKnowledgeSummary({
         compact ? "p-2.5" : "p-3.5"
       }`}
     >
-      <div className="font-semibold text-amber-100">Sessione builder</div>
+      <div className="font-semibold text-amber-100">{t("builderSession")}</div>
       {parts.length ? <div className="text-sm text-gray-300">{parts.join(" · ")}</div> : null}
       {target ? (
         <div className="text-xs text-gray-400">
-          Target adattamento · <span className="text-gray-200">{target}</span>
+          {t("adaptationTarget")} · <span className="text-gray-200">{target}</span>
         </div>
       ) : null}
     </div>

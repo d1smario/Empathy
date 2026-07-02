@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { AdaptationSectorBoxVm } from "@/lib/adaptation/adaptation-sector-box";
 
 export type { AdaptationSectorBoxVm } from "@/lib/adaptation/adaptation-sector-box";
@@ -15,8 +17,9 @@ export function AdaptationSectorStrip({
   emptyHint?: string;
   className?: string;
 }) {
+  const t = useTranslations("AdaptationSectorStrip");
   if (!boxes.length) {
-    return <p className={`text-xs text-gray-500 ${className ?? ""}`.trim()}>{emptyHint ?? "No sectors available."}</p>;
+    return <p className={`text-xs text-gray-500 ${className ?? ""}`.trim()}>{emptyHint ?? t("noSectors")}</p>;
   }
 
   return (
@@ -33,14 +36,14 @@ export function AdaptationSectorStrip({
               <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{b.shortLabel}</div>
               <div className="mt-1 font-mono text-sm font-bold tabular-nums text-white">{b.valueLine}</div>
               {b.pills?.length ? (
-                <div className="mt-1.5 flex flex-col gap-1" aria-label="Effect and context summary">
+                <div className="mt-1.5 flex flex-col gap-1" aria-label={t("effectContextSummary")}>
                   {b.pills.map((p) => (
                     <span
                       key={p.id}
                       title={
                         p.direction === "forward"
-                          ? "Effect of the stimulus / session on the pathway (deterministic model)."
-                          : "Athlete context (recovery, lab, diet) that modulates the pathway or the food choices."
+                          ? t("forwardTooltip")
+                          : t("backwardTooltip")
                       }
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.58rem] font-semibold leading-tight ${
                         p.direction === "forward"
@@ -55,7 +58,7 @@ export function AdaptationSectorStrip({
                 </div>
               ) : null}
               <details className="mt-1">
-                <summary className="cursor-pointer text-[0.6rem] text-gray-500">detail</summary>
+                <summary className="cursor-pointer text-[0.6rem] text-gray-500">{t("detail")}</summary>
                 <p className="mt-1 text-[0.65rem] leading-snug text-gray-400">{b.detailLine}</p>
               </details>
             </div>

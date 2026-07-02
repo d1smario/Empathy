@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { ScaledMealItemNutrients } from "@/lib/nutrition/canonical-food-composition";
 
 export type NutritionMicroLine = { name: string; value: number; unit: string };
@@ -66,14 +68,15 @@ export function NutritionMicronutrientGrid({
   otherNutrients,
   className,
 }: NutritionMicronutrientGridProps) {
+  const t = useTranslations("NutritionMicronutrientGrid");
   return (
     <div className={className ?? "nutrition-micro-grid-wrap"}>
       <div className="nutrition-diary-micro-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <MicroCol title="Vitamins" lines={vitamins} />
-        <MicroCol title="Minerals" lines={minerals} />
-        <MicroCol title="Amino acids" lines={aminoAcids} />
-        <MicroCol title="Fats (fractions)" lines={fattyAcids} />
-        <MicroCol title="Other (FDC)" lines={otherNutrients} />
+        <MicroCol title={t("vitamins")} lines={vitamins} />
+        <MicroCol title={t("minerals")} lines={minerals} />
+        <MicroCol title={t("aminoAcids")} lines={aminoAcids} />
+        <MicroCol title={t("fatsFractions")} lines={fattyAcids} />
+        <MicroCol title={t("otherFdc")} lines={otherNutrients} />
       </div>
     </div>
   );
@@ -326,6 +329,7 @@ function MicroPercentRadar({
   lines: NutritionMicroLine[];
   tone: "vitamins" | "minerals" | "amino" | "lipids";
 }) {
+  const t = useTranslations("NutritionMicronutrientGrid");
   const rows = toChartData(lines);
   const axisCount = Math.max(3, rows.length);
   return (
@@ -336,7 +340,7 @@ function MicroPercentRadar({
       </div>
       {rows.length ? (
         <div className="empathy-micro-radar-layout">
-          <svg className="empathy-micro-radar-svg" viewBox="0 0 100 100" role="img" aria-label={`${title}: percentages against target`}>
+          <svg className="empathy-micro-radar-svg" viewBox="0 0 100 100" role="img" aria-label={t("radarAriaLabel", { title })}>
             <polygon className="empathy-micro-radar-grid" points={Array.from({ length: axisCount }, (_, i) => {
               const p = polarPoint(i, axisCount, 46);
               return `${p.x},${p.y}`;
@@ -356,14 +360,14 @@ function MicroPercentRadar({
               <li key={row.name}>
                 <span>{row.name}</span>
                 <strong>
-                  {Math.min(row.pct, 999)}% <small>{row.kind === "max" ? "limit" : "target"}</small>
+                  {Math.min(row.pct, 999)}% <small>{row.kind === "max" ? t("limit") : t("target")}</small>
                 </strong>
               </li>
             ))}
           </ul>
         </div>
       ) : (
-        <p className="muted-copy text-xs">Target not available for this bucket.</p>
+        <p className="muted-copy text-xs">{t("targetNotAvailable")}</p>
       )}
     </article>
   );
@@ -377,22 +381,23 @@ export function NutritionMicronutrientDailyBoard({
   otherNutrients,
   className,
 }: NutritionMicronutrientGridProps) {
+  const t = useTranslations("NutritionMicronutrientGrid");
   const boardLines = expandMicroBoardLines({ vitamins, minerals, aminoAcids, fattyAcids, otherNutrients });
 
   return (
     <div className={className ?? "empathy-micro-daily-board"}>
       <div className="empathy-micro-daily-head">
         <div>
-          <p className="empathy-micro-daily-eyebrow">Daily totals · micronutrients</p>
-          <h4>Estimated intake and coverage against recommended values</h4>
+          <p className="empathy-micro-daily-eyebrow">{t("dailyEyebrow")}</p>
+          <h4>{t("dailyHeading")}</h4>
         </div>
-        <span>Values from the assembled meal plan; indicative adult targets.</span>
+        <span>{t("dailyCaption")}</span>
       </div>
       <div className="empathy-micro-radar-grid-wrap">
-        <MicroPercentRadar title="Vitamins" subtitle="12 daily vitamin indicators" lines={boardLines.vitamins} tone="vitamins" />
-        <MicroPercentRadar title="Minerals" subtitle="12 minerals and electrolyte proxies" lines={boardLines.minerals} tone="minerals" />
-        <MicroPercentRadar title="Amino acids" subtitle="20 amino acids: direct EAA + estimated profile" lines={boardLines.aminoAcids} tone="amino" />
-        <MicroPercentRadar title="Fats and fiber" subtitle="12 indicators: chains, omega and limits" lines={boardLines.fattyAcids} tone="lipids" />
+        <MicroPercentRadar title={t("vitamins")} subtitle={t("radarVitaminsSubtitle")} lines={boardLines.vitamins} tone="vitamins" />
+        <MicroPercentRadar title={t("minerals")} subtitle={t("radarMineralsSubtitle")} lines={boardLines.minerals} tone="minerals" />
+        <MicroPercentRadar title={t("aminoAcids")} subtitle={t("radarAminoSubtitle")} lines={boardLines.aminoAcids} tone="amino" />
+        <MicroPercentRadar title={t("fatsAndFiber")} subtitle={t("radarLipidsSubtitle")} lines={boardLines.fattyAcids} tone="lipids" />
       </div>
       <NutritionMicronutrientTable {...boardLines} />
     </div>
@@ -410,6 +415,7 @@ function MicronutrientTableSection({
   title: string;
   lines: NutritionMicroLine[];
 }) {
+  const t = useTranslations("NutritionMicronutrientGrid");
   return (
     <div className={`empathy-micro-table-section empathy-micro-table-section--${tone}`}>
       <table className="empathy-micro-table">
@@ -420,8 +426,8 @@ function MicronutrientTableSection({
             </th>
           </tr>
           <tr className="empathy-micro-table-subhead">
-            <th scope="col">Nutrient</th>
-            <th scope="col">Amount</th>
+            <th scope="col">{t("nutrient")}</th>
+            <th scope="col">{t("amount")}</th>
           </tr>
         </thead>
         <tbody>
@@ -446,14 +452,15 @@ export function NutritionMicronutrientTable({
   otherNutrients,
   className,
 }: NutritionMicronutrientGridProps) {
+  const t = useTranslations("NutritionMicronutrientGrid");
   return (
     <div className={className ?? "empathy-micro-table-outer"}>
       <div className="empathy-micro-table-stack">
-        <MicronutrientTableSection tone="vitamins" title="Vitamins" lines={vitamins} />
-        <MicronutrientTableSection tone="minerals" title="Minerals" lines={minerals} />
-        <MicronutrientTableSection tone="amino" title="Amino acids · full profile" lines={aminoAcids} />
-        <MicronutrientTableSection tone="lipids" title="Fats · chains · fiber" lines={fattyAcids} />
-        <MicronutrientTableSection tone="minerals" title="Other nutrients (USDA FDC)" lines={otherNutrients} />
+        <MicronutrientTableSection tone="vitamins" title={t("vitamins")} lines={vitamins} />
+        <MicronutrientTableSection tone="minerals" title={t("minerals")} lines={minerals} />
+        <MicronutrientTableSection tone="amino" title={t("aminoAcidsFullProfile")} lines={aminoAcids} />
+        <MicronutrientTableSection tone="lipids" title={t("fatsChainsFiber")} lines={fattyAcids} />
+        <MicronutrientTableSection tone="minerals" title={t("otherNutrientsUsdaFdc")} lines={otherNutrients} />
       </div>
     </div>
   );

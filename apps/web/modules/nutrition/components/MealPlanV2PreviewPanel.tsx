@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { IntelligentMealPlanV2Preview } from "@empathy/contracts";
 import type { IntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { Pro2Button } from "@/components/ui/empathy/Pro2Button";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
+  const t = useTranslations("MealPlanV2PreviewPanel");
   const [preview, setPreview] = useState<IntelligentMealPlanV2Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,15 +38,16 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="m-0 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-            Nutrition V2 · preview (beta)
+            {t("headerLabel")}
           </p>
           <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
-            V2 engine preview (tagged USDA FDC + substrate fueling). Production: set{" "}
-            <code className="text-amber-300/80">NUTRITION_MEAL_PLAN_ENGINE=v2</code> or shadow to compare.
+            {t.rich("headerDescription", {
+              code: (chunks) => <code className="text-amber-300/80">{chunks}</code>,
+            })}
           </p>
         </div>
         <Pro2Button type="button" variant="secondary" disabled={!planRequest || loading} onClick={() => void load()}>
-          {loading ? "Loading…" : "V2 preview"}
+          {loading ? t("loading") : t("previewButton")}
         </Pro2Button>
       </div>
 
@@ -58,15 +61,15 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
         <div className="mt-4 space-y-4 text-sm text-gray-300">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategy</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("strategy")}</p>
               <p className="m-0 font-semibold text-white">{req.strategyKind}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Diet profile (axis 4)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("dietProfileAxis")}</p>
               <p className="m-0 font-semibold text-white">{req.dietProfileActive}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Total CHO</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("totalCho")}</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.macros.total.choG} g</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
@@ -79,15 +82,15 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Meals (Diet)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("mealsDiet")}</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.energy.mealsKcal} kcal</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Fueling (CHO substrates)</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("fuelingChoSubstrates")}</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">{req.energy.fuelingKcal} kcal</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Strategy g/kg</p>
+              <p className="m-0 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("strategyGPerKg")}</p>
               <p className="m-0 font-mono font-semibold tabular-nums text-white">
                 CHO {req.dailyMacroTargetsGPerKg.choMinGPerKg}–{req.dailyMacroTargetsGPerKg.choMaxGPerKg} · PRO{" "}
                 {req.dailyMacroTargetsGPerKg.proGPerKg} · FAT {req.dailyMacroTargetsGPerKg.fatGPerKg}
@@ -98,7 +101,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {req.substrateFueling?.sessions.length ? (
             <div>
               <p className="mb-1 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Intra fueling (from CHO burned, not % training kcal)
+                {t("intraFuelingTitle")}
               </p>
               <ul className="m-0 list-none space-y-1 p-0 font-mono text-[11px] text-gray-400">
                 {req.substrateFueling.sessions.map((s) => (
@@ -114,7 +117,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
 
           {req.substrateRates.length > 0 ? (
             <div>
-              <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Session substrates</p>
+              <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("sessionSubstrates")}</p>
               <ul className="m-0 list-none space-y-1 p-0 font-mono text-[11px] text-gray-400">
                 {req.substrateRates.map((s) => (
                   <li key={s.sessionLabel}>
@@ -128,7 +131,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.dietMealSlotBudgets && preview.dietMealSlotBudgets.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Meal slots · Profile Diet
+                {t("mealSlotsTitle")}
               </p>
               <ul className="m-0 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                 {preview.dietMealSlotBudgets.map((sl) => (
@@ -143,7 +146,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.composedMealPlan && preview.composedMealPlan.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                Plan draft (composer V2)
+                {t("planDraftTitle")}
               </p>
               <div className="space-y-2">
                 {preview.composedMealPlan.map((slot) => (
@@ -155,7 +158,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                       </span>
                     </p>
                     {slot.items.length === 0 ? (
-                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">Empty pool for this slot.</p>
+                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">{t("emptyPool")}</p>
                     ) : (
                       <ul className="m-0 mt-1 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                         {slot.items.map((it) => (
@@ -174,7 +177,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
           {preview.foodPoolsBySlot.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Filtered USDA pools ({preview.taxonomyVersion})
+                {t("filteredUsdaPools", { version: preview.taxonomyVersion })}
               </p>
               <div className="space-y-3">
                 {preview.foodPoolsBySlot.map((pool) => (
@@ -184,7 +187,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                       <span className="font-normal text-gray-500">({pool.filterSummary})</span>
                     </p>
                     {pool.candidates.length === 0 ? (
-                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">No candidate — check USDA cache / migration 075.</p>
+                      <p className="m-0 mt-1 text-[11px] text-amber-200/80">{t("noCandidate")}</p>
                     ) : (
                       <ul className="m-0 mt-1 list-none space-y-0.5 p-0 text-[11px] text-gray-400">
                         {pool.candidates.slice(0, 5).map((c) => (
@@ -199,7 +202,7 @@ export function MealPlanV2PreviewPanel({ athleteId, planRequest }: Props) {
                           </li>
                         ))}
                         {pool.candidates.length > 5 ? (
-                          <li className="text-gray-600">+{pool.candidates.length - 5} more</li>
+                          <li className="text-gray-600">{t("moreCount", { count: pool.candidates.length - 5 })}</li>
                         ) : null}
                       </ul>
                     )}

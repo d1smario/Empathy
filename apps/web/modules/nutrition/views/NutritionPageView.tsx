@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
@@ -318,6 +319,7 @@ function resolveFuelingProductImage(
 
 
 export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
+  const t = useTranslations("NutritionPageView");
   const router = useRouter();
   const pathname = usePathname();
   const { athleteId, role, loading: athleteLoading, adminScoped, platformAdminView } = useActiveAthlete();
@@ -925,19 +927,19 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const integrationDynamicsSummary = useMemo(() => {
     const cards: { label: string; value: string }[] = [];
     if (pathwayModulation) {
-      cards.push({ label: "Modulated pathways", value: String(pathwayModulation.pathways.length) });
+      cards.push({ label: t("kpiModulatedPathways"), value: String(pathwayModulation.pathways.length) });
       cards.push({
-        label: "Aggregate inhibitors",
+        label: t("kpiAggregateInhibitors"),
         value: pathwayModulation.aggregateInhibitors.length ? String(pathwayModulation.aggregateInhibitors.length) : "0",
       });
       const levelHits = (["biochemical", "hormonal", "neurologic", "microbiota", "genetic"] as const).filter(
         (k) => pathwayModulation.multiLevelSummary[k].length > 0,
       ).length;
-      cards.push({ label: "Active levels", value: `${levelHits}/5` });
+      cards.push({ label: t("kpiActiveLevels"), value: `${levelHits}/5` });
     }
     if (nutritionPerformanceIntegration) {
       cards.push({
-        label: "Recovery/bio (indicator)",
+        label: t("kpiRecoveryBioIndicator"),
         value: `×${nutritionPerformanceIntegration.trainingEnergyScale.toFixed(2)}`,
       });
       cards.push({
@@ -945,19 +947,19 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         value: `×${nutritionPerformanceIntegration.fuelingChoScale.toFixed(2)}`,
       });
       cards.push({
-        label: "Protein bias",
+        label: t("kpiProteinBias"),
         value: `+${nutritionPerformanceIntegration.proteinBiasPctPoints}%`,
       });
       cards.push({
-        label: "Hydration floor",
+        label: t("kpiHydrationFloor"),
         value: `×${nutritionPerformanceIntegration.hydrationFloorMultiplier.toFixed(2)}`,
       });
     }
     if (!cards.length) {
-      return [{ label: "Integration model", value: "—" }];
+      return [{ label: t("kpiIntegrationModel"), value: "—" }];
     }
     return cards;
-  }, [pathwayModulation, nutritionPerformanceIntegration]);
+  }, [pathwayModulation, nutritionPerformanceIntegration, t]);
 
   const [functionalCatalog, setFunctionalCatalog] = useState<FunctionalNutrientCatalogEntry[]>(FUNCTIONAL_NUTRIENT_CATALOG);
   useEffect(() => {
@@ -2574,13 +2576,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     const totalSteps = fuelingSessionPackages.reduce((s, p) => s + p.timelineSteps.length, 0);
     return [
       { label: "CHO total", value: `${round(totalCho)}`, unit: "g", tone: "amber", sub: "Pre + intra + post" },
-      { label: "Fluid total", value: `${round(totalFluid)}`, unit: "ml", tone: "cyan", sub: "Session total" },
-      { label: "Sodium", value: `${round(sodiumMgPerHour)}`, unit: "mg/h", tone: "violet", sub: "Hourly target" },
-      { label: "Gut delivery", value: `${round(fuelingPhysiology.gutDeliveryPct)}`, unit: "%", tone: "green", sub: "Estimated absorption" },
-      { label: "Glycogen end", value: `${round(fuelingPlanGlycogenDepletion.finalRemaining)}`, unit: "g", tone: "rose", sub: "Plan end" },
-      { label: "Steps", value: `${totalSteps}`, unit: "", tone: "slate", sub: "Openable actions" },
+      { label: "Fluid total", value: `${round(totalFluid)}`, unit: "ml", tone: "cyan", sub: t("opsSessionTotal") },
+      { label: "Sodium", value: `${round(sodiumMgPerHour)}`, unit: "mg/h", tone: "violet", sub: t("opsHourlyTarget") },
+      { label: "Gut delivery", value: `${round(fuelingPhysiology.gutDeliveryPct)}`, unit: "%", tone: "green", sub: t("opsEstimatedAbsorption") },
+      { label: "Glycogen end", value: `${round(fuelingPlanGlycogenDepletion.finalRemaining)}`, unit: "g", tone: "rose", sub: t("opsPlanEnd") },
+      { label: "Steps", value: `${totalSteps}`, unit: "", tone: "slate", sub: t("opsOpenableActions") },
     ];
-  }, [fuelingSessionPackages, sodiumMgPerHour, fuelingPhysiology.gutDeliveryPct, fuelingPlanGlycogenDepletion.finalRemaining]);
+  }, [fuelingSessionPackages, sodiumMgPerHour, fuelingPhysiology.gutDeliveryPct, fuelingPlanGlycogenDepletion.finalRemaining, t]);
 
   const selectedExecutedKj = useMemo(
     () => selectedExecutedSessions.reduce((sum, session) => sum + n(session.kj, 0), 0),
@@ -2744,38 +2746,38 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [physio, profile, predictorEffectiveIntensityPctFtp, predictorSport, predictorEffectiveTimeMin, resolvedFuelingChoGPerHour, fuelingPhysiology, glycogenDepletion.totalHours]);
   const predictorOpsCards = useMemo(
     () => [
-      { label: "Power stimata", value: `${round(predictor.powerW)}`, unit: "W", sub: "Event power", tone: nutritionToneForLabel("Power stimata") },
+      { label: "Power stimata", value: `${round(predictor.powerW)}`, unit: "W", sub: t("predictorSubEventPower"), tone: nutritionToneForLabel("Power stimata") },
       {
         label: "Consumo energetico",
         value: `${round(predictor.metabolicKcalH)}`,
         unit: "kcal/h",
-        sub: "Metabolic cost",
+        sub: t("predictorSubMetabolicCost"),
         tone: nutritionToneForLabel("Consumo energetico"),
       },
-      { label: "CHO richiesta", value: `${round(predictor.choGH)}`, unit: "g/h", sub: "Oxidative demand", tone: nutritionToneForLabel("CHO richiesta") },
+      { label: "CHO richiesta", value: `${round(predictor.choGH)}`, unit: "g/h", sub: t("predictorSubOxidativeDemand"), tone: nutritionToneForLabel("CHO richiesta") },
       {
         label: "Serbatoio glicogeno",
         value: `${round(predictor.totalGlycogen)}`,
         unit: "g",
-        sub: "Estimated total available",
+        sub: t("predictorSubEstimatedTotalAvailable"),
         tone: nutritionToneForLabel("Serbatoio glicogeno"),
       },
       {
         label: "Esaurimento stimato",
         value: predictor.exhaustionHours > 100 ? "No risk" : `${round(predictor.exhaustionHours, 1)}`,
         unit: predictor.exhaustionHours > 100 ? "" : "h",
-        sub: "Risk horizon",
+        sub: t("predictorSubRiskHorizon"),
         tone: nutritionToneForLabel("Esaurimento stimato"),
       },
       {
         label: "% FTP sostenibile",
         value: `${predictor.maxSustainablePct}`,
         unit: "%",
-        sub: "With current fueling",
+        sub: t("predictorSubWithCurrentFueling"),
         tone: nutritionToneForLabel("% FTP sostenibile"),
       },
     ],
-    [predictor],
+    [predictor, t],
   );
 
   async function handleSaveNutrition() {
@@ -3019,31 +3021,31 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Energy, meals and fueling"
+      eyebrow={t("shellEyebrow")}
       eyebrowClassName="text-amber-400"
-      title="Nutrition"
+      title={t("shellTitle")}
       description={
         <span className="text-gray-400">
-          Meals, fueling and supplementation built on your training day: pick the day and generate the plan.
+          {t("shellDescription")}
         </span>
       }
     >
       {error && <div className="alert-error">{error}</div>}
 
       {athleteLoading || loading ? (
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-gray-500">{t("loading")}</p>
       ) : !athleteId ? (
-        <p className="text-gray-500">No active athlete. If you are a coach, set the athlete in Athletes.</p>
+        <p className="text-gray-500">{t("noActiveAthlete")}</p>
       ) : (
         <>
           {/* Aree del modulo: subnav consolidato in UN solo mount (inerte nelle schede admin, v2). */}
           <section className="viz-card builder-panel space-y-4" style={{ marginBottom: "12px" }}>
             <div className="flex flex-col gap-3">
               <div className="min-w-0 flex-1">
-                <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Nutrition areas</p>
+                <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("nutritionAreas")}</p>
                 <div
                   className={adminScoped ? "pointer-events-none cursor-default opacity-50" : undefined}
-                  title={adminScoped ? "Available in the dedicated tab (v2)" : undefined}
+                  title={adminScoped ? t("availableInDedicatedTab") : undefined}
                   aria-disabled={adminScoped || undefined}
                 >
                   <NutritionSubnav />
@@ -3109,7 +3111,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-3 sm:px-5"
             >
               <div className="flex flex-col gap-3">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Day to display</span>
+                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("dayToDisplay")}</span>
                 <NutritionPlanDatePicker
                   value={selectedPlanDate}
                   onChange={setSelectedPlanDate}
@@ -3207,25 +3209,21 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
             <Pro2Accordion
               accent="amber"
-              title="How it works"
-              subtitle="How the numbers on this page are generated, parameters and technical diagnostics"
+              title={t("howItWorksTitle")}
+              subtitle={t("howItWorksSubtitle")}
             >
               <div className="space-y-5 text-sm text-gray-300">
                 {subRoute === "meal-plan" ? (
                   <>
                     <div>
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">How the meal plan is built</p>
+                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("mealPlanHowTitle")}</p>
                       <p className="mt-1 leading-relaxed text-gray-400">
-                        The day&apos;s requirement starts from basal metabolism, lifestyle and the cost of the
-                        selected day&apos;s workouts. The share allocated to meals is distributed according to the
-                        percentages in your profile (Profile → Diet) and each meal is assembled with real foods from
-                        the USDA database, respecting exclusions, preferences and the day&apos;s active metabolic
-                        pathways. The pre/intra/post-session part lives in the Fueling area, not in the meals.
+                        {t("mealPlanHowBody")}
                       </p>
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
                       <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                        Adaptation from nutrition adherence
+                        {t("adherenceAdaptationTitle")}
                       </p>
                       <label className="inline-flex items-center gap-2 text-sm text-gray-200">
                         <input
@@ -3234,11 +3232,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                           disabled={saving || adherenceConfigLoading}
                           onChange={(event) => setAdherenceOptIn(event.target.checked)}
                         />
-                        Use plan vs. intake comparison in the adaptation calculation.
+                        {t("adherenceAdaptationToggle")}
                       </label>
                       <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
-                        Enable it only if diary and plan are filled in precisely: adherence gaps influence the
-                        nutrition dials.
+                        {t("adherenceAdaptationHint")}
                       </p>
                     </div>
                   </>
@@ -3246,12 +3243,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
                 {subRoute === "fueling" ? (
                   <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">How the fueling plan is built</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("fuelingHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
-                      The pre/intra/post plan starts from the day&apos;s session: first the one planned in the calendar,
-                      failing that the imported executed one. Duration and estimated intensity determine hourly
-                      carbohydrates, fluids and sodium; we also estimate gut absorption, Cori return and glycogen
-                      depletion to build the session steps and charts.
+                      {t("fuelingHowBody")}
                     </p>
                   </div>
                 ) : null}
@@ -3259,19 +3253,21 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 {subRoute === "integration" ? (
                   <>
                     <div>
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">How supplementation is built</p>
+                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("integrationHowTitle")}</p>
                       <p className="mt-1 leading-relaxed text-gray-400">
-                        The suggestions start from the day&apos;s active metabolic pathways (session, signals, diary) and
-                        from the nutrition levers. The product catalog is filtered on the brands and supplements in your
-                        profile; timing is expressed in qualitative half-life classes, not in medical dosages.
+                        {t("integrationHowBody")}
                       </p>
                     </div>
                     <details className="collapsible-card" style={{ marginBottom: 0 }}>
                       <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-                        Brands and catalog tokens ({profileSupplements.length ? `${profileSupplements.length} entries` : "default set"})
+                        {t("brandsCatalogTokens", {
+                          count: profileSupplements.length
+                            ? t("entriesCount", { n: profileSupplements.length })
+                            : t("defaultSet"),
+                        })}
                       </summary>
                       <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
-                        Supplements and brands from the profile (CSV + supplement_config). Used for deterministic matching to the fueling catalog.
+                        {t("supplementsMatchingNote")}
                       </p>
                       {profileSupplements.length ? (
                         <ul
@@ -3289,7 +3285,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                         </ul>
                       ) : (
                         <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
-                          No profile tokens: catalog with default brands (Enervit, SiS, Maurten, +Watt, Powerbar).
+                          {t("noProfileTokens")}
                         </p>
                       )}
                     </details>
@@ -3298,22 +3294,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
                 {subRoute === "predictor" ? (
                   <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">How the estimate is built</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("predictorHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
-                      The forecast estimates energy expenditure from sport, duration and intensity (% FTP from your
-                      physiological profile), compares it with the configured fueling and calculates the risk of
-                      glycogen depletion before the end of the event, with the suggested maximum sustainable pace.
+                      {t("predictorHowBody")}
                     </p>
                   </div>
                 ) : null}
 
                 {subRoute === "diary" ? (
                   <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">How the diary works</p>
+                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("diaryHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
-                      The diary compares what you log with the targets of the selected day (the same as the meal
-                      plan). If you enable adaptation from adherence in the meal plan, the plan vs. intake comparison
-                      enters the adaptation calculation.
+                      {t("diaryHowBody")}
                     </p>
                   </div>
                 ) : null}
@@ -3321,10 +3313,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 {showTech && subRoute === "meal-plan" ? (
                   <div className="space-y-4 border-t border-white/10 pt-4">
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                      Technical diagnostics (coach/admin)
+                      {t("technicalDiagnostics")}
                     </p>
                     {researchTraceSummaries.length ? (
-                      <ResearchTraceStatusSummary traces={researchTraceSummaries} label="Nutrition research status" />
+                      <ResearchTraceStatusSummary traces={researchTraceSummaries} label={t("nutritionResearchStatus")} />
                     ) : null}
                     {athleteId && isMealPlanV2PreviewUiEnabled() ? (
                       <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
@@ -3335,27 +3327,27 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                 {showTech && subRoute === "fueling" && fuelingReadiness.ready ? (
                   <div className="space-y-3 border-t border-white/10 pt-4">
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                      Technical diagnostics (coach/admin) · fueling engine context
+                      {t("technicalDiagnosticsFueling")}
                     </p>
                     <div className="nutrition-detail-rail" style={{ marginBottom: 0 }}>
-                      <span><strong>Day:</strong> {selectedPlanDateShort}</span>
-                      <span><strong>Planned duration:</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
-                      <span><strong>Planned intensity:</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
-                      <span><strong>Fueling tier:</strong> {resolvedFuelingTierBand}</span>
+                      <span><strong>{t("diagDay")}</strong> {selectedPlanDateShort}</span>
+                      <span><strong>{t("diagPlannedDuration")}</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
+                      <span><strong>{t("diagPlannedIntensity")}</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
+                      <span><strong>{t("diagFuelingTier")}</strong> {resolvedFuelingTierBand}</span>
                       {fuelingPlannedEstimatedAvgPowerW != null && (
-                        <span><strong>Estimated average power:</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>
+                        <span><strong>{t("diagEstimatedAvgPower")}</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>
                       )}
-                      <span><strong>CHO delivery:</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
-                      <span><strong>Cori return:</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
-                      <span><strong>Redox:</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
+                      <span><strong>{t("diagChoDelivery")}</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
+                      <span><strong>{t("diagCoriReturn")}</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
+                      <span><strong>{t("diagRedox")}</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
                       {fuelingTrainingContext.length ? (
                         <span>
-                          <strong>Session TSS:</strong> {round(fuelingPlannedSummary.totalTss)}
+                          <strong>{t("diagSessionTss")}</strong> {round(fuelingPlannedSummary.totalTss)}
                         </span>
                       ) : null}
                       {fuelingIntraChoSplitBySession?.length ? (
                         <span>
-                          <strong>Intra CHO (session split):</strong>{" "}
+                          <strong>{t("diagIntraChoSplit")}</strong>{" "}
                           {fuelingIntraChoSplitBySession.map((x) => `${x.label}: ${x.choG}g`).join(" · ")}
                         </span>
                       ) : null}

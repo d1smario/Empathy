@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Zap } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
@@ -74,6 +75,7 @@ export function NutritionMealPlanDailyTargets({
   round,
   energyLedger,
 }: NutritionMealPlanDailyTargetsProps) {
+  const t = useTranslations("NutritionMealPlanView");
   const { role: viewerRole, adminScoped } = useActiveAthlete();
   /** Bilancio kcal (solver / Σ USDA / BMR): dettaglio motore, solo coach/admin. */
   const showTech = viewerRole === "coach" || adminScoped;
@@ -89,7 +91,7 @@ export function NutritionMealPlanDailyTargets({
 
   return (
     <div>
-      <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Daily target</p>
+      <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("dailyTarget")}</p>
       <NutritionDayKpiStrip
         targets={{
           kcal: complianceTargets.kcal,
@@ -103,52 +105,50 @@ export function NutritionMealPlanDailyTargets({
         <div
           className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-gray-400"
           role="region"
-          aria-label="Daily energy balance"
+          aria-label={t("dailyEnergyBalanceAria")}
         >
-          <p className="mb-1.5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">kcal balance · what you are summing</p>
+          <p className="mb-1.5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kcalBalanceHeading")}</p>
           <ul className="m-0 list-none space-y-1 p-0 font-mono">
             <li>
-              <span className="text-gray-500">Σ meal slots (grid above):</span>{" "}
+              <span className="text-gray-500">{t("mealSlotsSum")}</span>{" "}
               <span className="font-semibold tabular-nums text-white">{slotSumKcal} kcal</span>
             </li>
             {ledger.mealsKcalSolver != null ? (
               <li>
-                <span className="text-gray-500">Solver meals target (BMR+lifestyle+training share on meals):</span>{" "}
+                <span className="text-gray-500">{t("solverMealsTarget")}</span>{" "}
                 <span className="font-semibold tabular-nums text-white">{round(ledger.mealsKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.fuelingKcalSolver != null ? (
               <li>
-                <span className="text-gray-500">Fueling share (pre/intra/post, not in meals):</span>{" "}
+                <span className="text-gray-500">{t("fuelingShare")}</span>{" "}
                 <span className="font-semibold tabular-nums text-white">{round(ledger.fuelingKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.dailyKcalSolver != null ? (
               <li>
-                <span className="text-gray-500">Daily metabolic total (BMR+lifestyle+training):</span>{" "}
+                <span className="text-gray-500">{t("dailyMetabolicTotal")}</span>{" "}
                 <span className="font-semibold tabular-nums text-white">{round(ledger.dailyKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.trainingKcalSolver != null && ledger.trainingKcalSolver > 0 ? (
               <li>
-                <span className="text-gray-500">Planned training cost (Builder, aligned to calendar):</span>{" "}
+                <span className="text-gray-500">{t("plannedTrainingCost")}</span>{" "}
                 <span className="tabular-nums text-gray-300">{round(ledger.trainingKcalSolver)} kcal</span>
               </li>
             ) : null}
             {ledger.assembledUsdaKcalSum != null ? (
               <li>
-                <span className="text-gray-500">Σ assembled USDA plan (food items):</span>{" "}
+                <span className="text-gray-500">{t("assembledUsdaSum")}</span>{" "}
                 <span className="font-semibold tabular-nums text-white">{round(ledger.assembledUsdaKcalSum)} kcal</span>
                 {ledger.mealsKcalSolver != null && ledger.mealsKcalSolver > 0 ? (
                   ledger.assembledUsdaKcalSum < ledger.mealsKcalSolver - 60 ? (
                     <span className="block pt-1 text-[10px] text-amber-300/90">
-                      Below the solver meals target: incomplete assembly or conservative portions — try regenerating the plan or reviewing the
-                      items.
+                      {t("belowSolverTarget")}
                     </span>
                   ) : ledger.assembledUsdaKcalSum > ledger.mealsKcalSolver + 120 ? (
                     <span className="block pt-1 text-[10px] text-gray-500">
-                      Above the solver meals target: the USDA sum is indicative (approximate portions) and is not constrained slot-by-slot to the
-                      solver&apos;s meal needs.
+                      {t("aboveSolverTarget")}
                     </span>
                   ) : null
                 ) : null}
@@ -158,15 +158,15 @@ export function NutritionMealPlanDailyTargets({
         </div>
       ) : null}
       <p className="mt-2 text-xs text-gray-500">
-        Minimum hydration: <span className="font-mono font-semibold tabular-nums text-gray-300">{hydrationMinDailyMl} ml</span>
+        {t("minimumHydration")} <span className="font-mono font-semibold tabular-nums text-gray-300">{hydrationMinDailyMl} ml</span>
         {" · "}
         {selectedExecutedKj > 0 ? (
           <>
-            Session energy (kj): <span className="font-mono font-semibold tabular-nums text-gray-300">{round(selectedExecutedKj)} kJ</span>
+            {t("sessionEnergyKj")} <span className="font-mono font-semibold tabular-nums text-gray-300">{round(selectedExecutedKj)} kJ</span>
           </>
         ) : (
           <>
-            Session load estimate: <span className="font-mono font-semibold tabular-nums text-gray-300">{round(sessionLoadKcalEstimate)} kcal</span>
+            {t("sessionLoadEstimate")} <span className="font-mono font-semibold tabular-nums text-gray-300">{round(sessionLoadKcalEstimate)} kcal</span>
           </>
         )}
       </p>
@@ -185,21 +185,22 @@ export function NutritionMealPlanLeadPanels({
   nutritionSectorBoxes,
   functionalFoodRecommendations,
 }: NutritionMealPlanLeadPanelsProps) {
+  const t = useTranslations("NutritionMealPlanView");
   const router = useRouter();
   const { adminScoped } = useActiveAthlete();
   return (
     <Pro2Accordion
       accent="amber"
-      title="Day adaptation and functional pills"
-      subtitle="Adaptation sectors and suggestions from the day&apos;s signals"
+      title={t("leadPanelsTitle")}
+      subtitle={t("leadPanelsSubtitle")}
     >
       <div className="space-y-3">
-        <AdaptationSectorStrip title="Sectors · adaptation (day)" boxes={nutritionSectorBoxes} />
+        <AdaptationSectorStrip title={t("sectorsAdaptationDay")} boxes={nutritionSectorBoxes} />
 
         {functionalFoodRecommendations.targets.length ? (
           <div style={{ fontSize: "0.8rem" }}>
-            <strong>Adaptive nutritional pills</strong>
-            <span className="nutrition-muted"> — functional suggestions from the day&apos;s signals: </span>
+            <strong>{t("adaptivePills")}</strong>
+            <span className="nutrition-muted"> {t("adaptivePillsSuffix")} </span>
             <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px", verticalAlign: "middle" }}>
               {functionalFoodRecommendations.targets.slice(0, 8).map((t) => (
                 <span
@@ -220,7 +221,7 @@ export function NutritionMealPlanLeadPanels({
                 router.push("/nutrition/integration");
               }}
             >
-              Go to Integration
+              {t("goToIntegration")}
             </button>
           </div>
         ) : null}
@@ -292,6 +293,7 @@ export function NutritionMealPlanWorkspace({
   saving,
   onSaveNutrition,
 }: NutritionMealPlanWorkspaceProps) {
+  const t = useTranslations("NutritionMealPlanView");
   const router = useRouter();
   const { role: viewerRole, adminScoped } = useActiveAthlete();
   /** Numeri/etichette motore (solver/composer/pathway/planDate, cache USDA): solo coach/admin. */
@@ -304,9 +306,9 @@ export function NutritionMealPlanWorkspace({
     <>
       <section id="nutrition-meal-plan" className="scroll-mt-28 mb-10 space-y-4">
         <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-          <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Meal plan · selected day</p>
+          <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("mealPlanSelectedDay")}</p>
           {mealPathwayCatalogPending ? (
-            <p className="mb-3 text-xs text-gray-500">Loading USDA integration for the day&apos;s meal slots… then you can generate the plan.</p>
+            <p className="mb-3 text-xs text-gray-500">{t("loadingUsdaIntegration")}</p>
           ) : null}
           {raceDayPreRaceNotice ? (
             <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100" role="status">
@@ -322,7 +324,7 @@ export function NutritionMealPlanWorkspace({
             <div className="alert-error" style={{ marginBottom: 10, fontSize: 13 }}>
               {intelligentMealError}
               {/\b503\b|timeout|ECONNRESET/i.test(intelligentMealError)
-                ? " — server temporarily unavailable or timed out: try again shortly."
+                ? t("serverUnavailableSuffix")
                 : null}
             </div>
           ) : null}
@@ -331,12 +333,10 @@ export function NutritionMealPlanWorkspace({
               className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-100/90"
               role="status"
             >
-              Food catalog updating: the plan is complete, but some suggestions for more
-              nutrient-rich foods may arrive shortly. Try again later.
+              {t("foodCatalogUpdating")}
               {showTech ? (
                 <span className="mt-1 block text-[11px] text-amber-200/70">
-                  Pathway active: food swaps applied in the plan, but the USDA cache (top foods ranking) is not
-                  available.
+                  {t("pathwayActiveCacheMiss")}
                 </span>
               ) : null}
             </div>
@@ -346,7 +346,7 @@ export function NutritionMealPlanWorkspace({
               className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] leading-relaxed text-gray-200"
               role="status"
             >
-              <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">Pathway · target vs day rollup</p>
+              <p className="mb-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">{t("pathwayTargetVsRollup")}</p>
               <ul className="mb-0 grid gap-1 sm:grid-cols-2">
                 {intelligentMealPlan.pathwayTargetRollup.map((line) => (
                   <li key={line.nutrientId} className="flex items-baseline justify-between gap-2">
@@ -365,22 +365,22 @@ export function NutritionMealPlanWorkspace({
                 {coachMealRemovalKeys.size > 0 || coachSessionFoodExclusions.length > 0 ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
                     <span className="muted-copy" style={{ fontSize: 12 }}>
-                      Coach changes: {coachMealRemovalKeys.size} items hidden
-                      {coachSessionFoodExclusions.length ? ` · ${coachSessionFoodExclusions.length} exclusions for regeneration` : ""}
+                      {t("coachChangesHidden", { count: coachMealRemovalKeys.size })}
+                      {coachSessionFoodExclusions.length ? t("coachExclusionsForRegen", { count: coachSessionFoodExclusions.length }) : ""}
                     </span>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                       onClick={onCoachShowAllItems}
                     >
-                      Show all items
+                      {t("showAllItems")}
                     </button>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                       onClick={onCoachClearSessionExclusions}
                     >
-                      Clear session exclusions
+                      {t("clearSessionExclusions")}
                     </button>
                   </div>
                 ) : null}
@@ -452,7 +452,7 @@ export function NutritionMealPlanWorkspace({
                 {/* Σ kcal USDA assemblato: vive in UN solo posto, nel «Bilancio kcal» del target giornaliero. */}
               </div>
               <details className="collapsible-card" style={{ marginBottom: 12 }}>
-                <summary style={{ fontSize: 13, cursor: "pointer" }}>Legal notice and additional notes</summary>
+                <summary style={{ fontSize: 13, cursor: "pointer" }}>{t("legalNoticeSummary")}</summary>
                 <p className="muted-copy" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>
                   {intelligentMealPlan.disclaimer}
                 </p>
@@ -469,23 +469,25 @@ export function NutritionMealPlanWorkspace({
                     className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20"
                   >
                     <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                    Go to Integration →
+                    {t("goToIntegrationArrow")}
                   </button>
                   <span className="text-[10px] text-gray-500">
-                    All operational details are collected in the Integration module.
+                    {t("integrationDetailsCollected")}
                   </span>
                 </div>
               </details>
               {showTech ? (
               <details className="collapsible-card" style={{ marginBottom: 12 }}>
                 <summary style={{ fontSize: 13, cursor: "pointer" }}>
-                  Technical numbers for the day (training, routine, target per meal)
+                  {t("technicalNumbersSummary")}
                 </summary>
                 <div className="muted-copy" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
                   <p style={{ marginBottom: 8 }}>
-                    This plan <strong>combines</strong> the grid targets (kcal/macros per meal from the daily model with the selected
-                    session) with the assembly of food items. Σ meals kcal:{" "}
-                    <strong>{intelligentMealPlan.solverBasis.dailyMealsKcalTotal}</strong> · date {intelligentMealPlan.solverBasis.planDate}
+                    {t.rich("planCombinesNote", {
+                      b: (chunks) => <strong>{chunks}</strong>,
+                      total: intelligentMealPlan.solverBasis.dailyMealsKcalTotal,
+                      date: intelligentMealPlan.solverBasis.planDate,
+                    })}
                   </p>
                   {intelligentMealPlan.solverBasis.profileConstraintLines.length ? (
                     <ul style={{ margin: "0 0 8px 18px" }}>
@@ -496,17 +498,17 @@ export function NutritionMealPlanWorkspace({
                   ) : null}
                   {intelligentMealPlan.solverBasis.pathwayModulationActiveLabels?.trim() ? (
                     <p style={{ marginBottom: 8 }}>
-                      <strong>Active pathway modulation</strong>:{" "}
+                      <strong>{t("activePathwayModulation")}</strong>:{" "}
                       {intelligentMealPlan.solverBasis.pathwayModulationActiveLabels.trim()}
                       {" · "}
                       <span className="text-gray-400">
-                        The micronutrient boosts in the notes follow the cofactors of these pathways, not the composer&apos;s food list.
+                        {t("micronutrientBoostsNote")}
                       </span>
                     </p>
                   ) : null}
                   {intelligentMealPlan.solverBasis.integrationLeverLines.length ? (
                     <p style={{ marginBottom: 8 }}>
-                      <strong>Operational integration (solver)</strong>: {intelligentMealPlan.solverBasis.integrationLeverLines.join(" · ")}
+                      <strong>{t("operationalIntegration")}</strong>: {intelligentMealPlan.solverBasis.integrationLeverLines.join(" · ")}
                     </p>
                   ) : null}
                   {intelligentMealPlan.solverBasis.routineDigest ? (
@@ -516,14 +518,14 @@ export function NutritionMealPlanWorkspace({
                   ) : null}
                   {intelligentMealPlan.solverBasis.trainingDayLines.length ? (
                     <p style={{ marginBottom: 8 }}>
-                      <strong>Training for the day</strong>: {intelligentMealPlan.solverBasis.trainingDayLines.join(" | ")}
+                      <strong>{t("trainingForTheDay")}</strong>: {intelligentMealPlan.solverBasis.trainingDayLines.join(" | ")}
                     </p>
                   ) : null}
                   <ul style={{ margin: 0, paddingLeft: 18, fontSize: 10 }}>
                     {intelligentMealPlan.solverBasis.slots.map((s) => (
                       <li key={s.slot}>
                         {s.labelIt} {s.scheduledTimeLocal ? `@ ${s.scheduledTimeLocal}` : ""}: {s.targetKcal} kcal · {s.targetCarbsG} CHO ·{" "}
-                        {s.targetProteinG} PRO · {s.targetFatG} fat
+                        {s.targetProteinG} PRO · {s.targetFatG} {t("fatUnit")}
                       </li>
                     ))}
                   </ul>
@@ -532,23 +534,25 @@ export function NutritionMealPlanWorkspace({
               ) : null}
               {intelligentMealPlan.hydrationRoutine ? (
                 <details className="collapsible-card" style={{ marginBottom: 12 }}>
-                  <summary style={{ fontSize: 13, cursor: "pointer" }}>How much to drink today (water and salts) — detail</summary>
+                  <summary style={{ fontSize: 13, cursor: "pointer" }}>{t("hydrationDetailSummary")}</summary>
                   <p className="nutrition-muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
-                    Estimated daily fluid target ~{intelligentMealPlan.hydrationRoutine.totalTargetMl} ml (baseline{" "}
-                    {intelligentMealPlan.hydrationRoutine.baselineDailyMl} ml + training extra ~{intelligentMealPlan.hydrationRoutine.trainingExtraMl}{" "}
-                    ml). Educational values, adapt to climate and sweat rate.
+                    {t("hydrationIntro", {
+                      total: intelligentMealPlan.hydrationRoutine.totalTargetMl,
+                      baseline: intelligentMealPlan.hydrationRoutine.baselineDailyMl,
+                      extra: intelligentMealPlan.hydrationRoutine.trainingExtraMl,
+                    })}
                   </p>
                   <div className="mt-2.5 overflow-x-auto">
                     <table className="w-full min-w-[560px] text-xs sm:min-w-[720px]">
                       <thead>
                         <tr>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Window</th>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Time</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableWindow")}</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableTime")}</th>
                           <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Volume (ml)</th>
                           <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Na (mg)</th>
                           <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">K (mg)</th>
                           <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Mg (mg)</th>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Notes</th>
+                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableNotes")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -574,12 +578,12 @@ export function NutritionMealPlanWorkspace({
             <div className="empathy-meal-plan-expo-shell">
               <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
                 {intelligentMealLoading
-                  ? "Generating the meal plan aligned to your profile (deterministic calculation + USDA)…"
+                  ? t("generatingMealPlan")
                   : canRequestIntelligentPlan
-                    ? "Ready to generate the plan. Auto-generation in progress…"
+                    ? t("readyToGenerate")
                     : mealPathwayCatalogPending
-                      ? "Loading USDA catalog for the selected day…"
-                      : "Profile → Diet requires a % split per meal. Save the profile and reload."}
+                      ? t("loadingUsdaCatalog")
+                      : t("profileDietRequired")}
               </p>
               <div className="empathy-meal-expo-grid">
                 {/* Scheletro card con solo i target del solver. Nessun item farlocco
@@ -589,9 +593,9 @@ export function NutritionMealPlanWorkspace({
                   const slotKey = meal.key as PathwayMealSlotKey;
                   const bundle = mealPathwayBySlot[slotKey];
                   const subline = !bundle || bundle.loading
-                    ? `${meal.time} · loading metabolic pathways`
+                    ? t("sublineLoadingPathways", { time: meal.time })
                     : intelligentMealLoading
-                      ? `${meal.time} · generation in progress`
+                      ? t("sublineGenerationInProgress", { time: meal.time })
                       : meal.time;
                   return (
                     <EmpathyMealPlanExpositionCard
@@ -610,7 +614,7 @@ export function NutritionMealPlanWorkspace({
               </div>
               <EmpathyMealPlanGlycemicLegend />
               <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
-                Metabolic pathways and USDA food database:{" "}
+                {t("metabolicPathwaysUsda")}{" "}
                 <button
                   type="button"
                   className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 align-middle text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
@@ -619,15 +623,15 @@ export function NutritionMealPlanWorkspace({
                     router.push("/nutrition/integration");
                   }}
                 >
-                  Open Integration
+                  {t("openIntegration")}
                 </button>
               </p>
             </div>
           ) : null}
           <Pro2Accordion
             accent="amber"
-            title="Micronutrients and day status"
-            subtitle="Plan micronutrient board and bioenergetic/adaptation indicators"
+            title={t("micronutrientsTitle")}
+            subtitle={t("micronutrientsSubtitle")}
           >
             <section className="nutrition-report-shell">
               <div className="nutrition-meal-plan-micro">
@@ -657,10 +661,10 @@ export function NutritionMealPlanWorkspace({
             className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
             onClick={onSaveNutrition}
           >
-            {saving ? "Saving..." : "Save nutrition configuration"}
+            {saving ? t("saving") : t("saveNutritionConfig")}
           </button>
           <span className="text-xs text-gray-500">
-            Saves meal split, refueling and forecast to the profile (does not regenerate the plan).
+            {t("saveNutritionHint")}
           </span>
         </div>
       </section>

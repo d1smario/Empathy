@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { Pro2Link } from "@/components/ui/empathy";
 import { readSwrCache, writeSwrCache } from "@/lib/client-swr-cache";
@@ -14,6 +15,7 @@ type BiomarkerPanelRow = {
 };
 
 export function HealthBiomarkerPanelsCard() {
+  const t = useTranslations("HealthBiomarkerPanelsCard");
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [panels, setPanels] = useState<BiomarkerPanelRow[]>([]);
@@ -23,7 +25,7 @@ export function HealthBiomarkerPanelsCard() {
     if (ctxLoading) return;
     if (!athleteId) {
       setPanels([]);
-      setErr("Nessun atleta attivo.");
+      setErr(t("noActiveAthlete"));
       setLoading(false);
       return;
     }
@@ -62,7 +64,7 @@ export function HealthBiomarkerPanelsCard() {
         setPanels(compactRows);
         writeSwrCache(cacheKey, compactRows);
       } catch {
-        if (!c && !cached) setErr("Errore di rete.");
+        if (!c && !cached) setErr(t("networkError"));
       } finally {
         if (!c) setLoading(false);
       }
@@ -77,8 +79,8 @@ export function HealthBiomarkerPanelsCard() {
       className="w-full rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
       aria-label="Panel biomarkers"
     >
-      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Salute · dati reali</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Biomarcatori recenti</h2>
+      <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">{t("eyebrow")}</p>
+      <h2 className="mt-2 text-lg font-bold text-white">{t("title")}</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-36 animate-pulse rounded-full bg-white/10" />
@@ -91,7 +93,7 @@ export function HealthBiomarkerPanelsCard() {
       ) : null}
 
       {!ctxLoading && !loading && !err && panels.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">Nessun referto ancora. Aggiungi i tuoi esami in Health.</p>
+        <p className="mt-4 text-sm text-gray-500">{t("emptyState")}</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && panels.length > 0 ? (
@@ -115,7 +117,7 @@ export function HealthBiomarkerPanelsCard() {
         variant="ghost"
         className="mt-4 inline-flex justify-center border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/15"
       >
-        Apri Health
+        {t("openHealth")}
       </Pro2Link>
     </section>
   );

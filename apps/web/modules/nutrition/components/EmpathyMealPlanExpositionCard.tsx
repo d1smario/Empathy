@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Activity,
   Apple,
@@ -167,6 +168,7 @@ export function EmpathyMealPlanExpositionCard({
   boostNote,
   integrationHref,
 }: EmpathyMealPlanExpositionCardProps) {
+  const t = useTranslations("EmpathyMealPlanExpositionCard");
   const { adminScoped, platformAdminView } = useActiveAthlete();
   const Icon = slotHeaderIcon(slot);
   const kcalDenom = Math.max(1, totalKcal);
@@ -194,7 +196,7 @@ export function EmpathyMealPlanExpositionCard({
           </div>
         </header>
         <p className="empathy-meal-expo-placeholder-note">
-          Visual placeholder · the plan works on the five main meals; the pre-sleep snack is optional.
+          {t("placeholderNote")}
         </p>
       </article>
     );
@@ -210,7 +212,7 @@ export function EmpathyMealPlanExpositionCard({
           <h3 className="empathy-meal-expo-title-banner">{titleUpper}</h3>
           {subline ? <p className="empathy-meal-expo-sub-banner">{subline}</p> : null}
         </div>
-        <div className="empathy-meal-expo-kcal-tile" aria-label={`${totalKcal} kilocalories`}>
+        <div className="empathy-meal-expo-kcal-tile" aria-label={t("kcalAria", { totalKcal })}>
           <span className="empathy-meal-expo-kcal-num">{Math.round(totalKcal)}</span>
           <span className="empathy-meal-expo-kcal-unit">KCAL</span>
         </div>
@@ -220,17 +222,17 @@ export function EmpathyMealPlanExpositionCard({
       <div className="empathy-meal-expo-macros">
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--cho">
           <Activity className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">CARBOHYDRATES</span>
+          <span className="empathy-meal-expo-macro-label">{t("macroCarbs")}</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(carbsG)} g</span>
         </div>
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--pro">
           <Zap className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">PROTEIN</span>
+          <span className="empathy-meal-expo-macro-label">{t("macroProtein")}</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(proteinG)} g</span>
         </div>
         <div className="empathy-meal-expo-macro empathy-meal-expo-macro--fat">
           <Droplets className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
-          <span className="empathy-meal-expo-macro-label">FATS</span>
+          <span className="empathy-meal-expo-macro-label">{t("macroFats")}</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(fatG)} g</span>
         </div>
       </div>
@@ -239,7 +241,7 @@ export function EmpathyMealPlanExpositionCard({
         <div className="empathy-meal-expo-igbar-left">
           <TrendingUp className="empathy-meal-expo-ig-ic" strokeWidth={1.6} aria-hidden />
           <div>
-            <div className="empathy-meal-expo-ig-label">Average Glycemic Index</div>
+            <div className="empathy-meal-expo-ig-label">{t("avgGiLabel")}</div>
             <div className="empathy-meal-expo-ig-num">{igWeighted}</div>
           </div>
         </div>
@@ -271,7 +273,7 @@ export function EmpathyMealPlanExpositionCard({
       {boostNote ? (
         <aside
           className="mt-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2"
-          aria-label="Complementary suggestions from the intelligent system"
+          aria-label={t("boostAsideAria")}
         >
           <div className="flex items-start gap-2">
             <Zap
@@ -281,11 +283,11 @@ export function EmpathyMealPlanExpositionCard({
             />
             <div className="flex-1 min-w-0">
               <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/90">
-                Complementary suggestions (intelligent system)
+                {t("boostTitle")}
               </div>
               <p className="mt-0.5 text-[11px] leading-snug text-amber-50/90">{boostNote}</p>
               <p className="mt-1 text-[10px] leading-snug text-amber-200/70">
-                These are add-ons to include or prefer for the meal, they do not replace the chosen foods.
+                {t("boostBody")}
                 {integrationHref ? (
                   <>
                     {" "}
@@ -293,16 +295,16 @@ export function EmpathyMealPlanExpositionCard({
                       /* Nelle schede admin il link cross-shell è inerte (v2). */
                       <span
                         className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100 cursor-default opacity-50"
-                        title="Available in the dedicated tab (v2)"
+                        title={t("openIntegrationDisabledTitle")}
                       >
-                        Open Integration →
+                        {t("openIntegration")}
                       </span>
                     ) : (
                       <Link
                         href={integrationHref}
                         className="font-semibold text-amber-200 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-100"
                       >
-                        Open Integration →
+                        {t("openIntegration")}
                       </Link>
                     )}
                   </>
@@ -316,12 +318,12 @@ export function EmpathyMealPlanExpositionCard({
       <div className="empathy-meal-expo-detail">
       <section className="empathy-meal-expo-detail-head">
         <span className="empathy-meal-expo-detail-bar" aria-hidden />
-        <h4 className="empathy-meal-expo-detail-title">DETAILED FOODS</h4>
+        <h4 className="empathy-meal-expo-detail-title">{t("detailedFoodsTitle")}</h4>
       </section>
 
       <ul className="empathy-meal-expo-food-list">
         {items.length === 0 ? (
-          <li className="empathy-meal-expo-food-empty muted-copy">No items for this meal.</li>
+          <li className="empathy-meal-expo-food-empty muted-copy">{t("noItems")}</li>
         ) : (
           items.map((food) => {
             const b = bandFromGi(food.ig);
@@ -376,7 +378,7 @@ export function EmpathyMealPlanExpositionCard({
                       className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
                       onClick={() => onCoachRemove(food.sourceIndex)}
                     >
-                      Remove
+                      {t("coachRemove")}
                     </button>
                     <button
                       type="button"
@@ -384,7 +386,7 @@ export function EmpathyMealPlanExpositionCard({
                       disabled={!athleteId || busy}
                       onClick={() => onCoachExcludeProfile(food.sourceIndex)}
                     >
-                      {busy ? "Saving…" : "Exclude from profile"}
+                      {busy ? t("coachSaving") : t("coachExcludeProfile")}
                     </button>
                   </div>
                 ) : null}
@@ -399,32 +401,33 @@ export function EmpathyMealPlanExpositionCard({
 }
 
 export function EmpathyMealPlanGlycemicLegend() {
+  const t = useTranslations("EmpathyMealPlanExpositionCard");
   return (
-    <section className="empathy-meal-expo-legend" aria-label="Glycemic index legend">
+    <section className="empathy-meal-expo-legend" aria-label={t("legendAria")}>
       <div className="empathy-meal-expo-detail-head empathy-meal-expo-detail-head--legend">
         <TrendingUp className="h-4 w-4 text-[var(--nutri-expo-pink)]" strokeWidth={2} aria-hidden />
-        <h4 className="empathy-meal-expo-detail-title">GLYCEMIC INDEX (GI) LEGEND</h4>
+        <h4 className="empathy-meal-expo-detail-title">{t("legendTitle")}</h4>
       </div>
       <div className="empathy-meal-expo-legend-grid">
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--low">
-          <strong>LOW</strong>
+          <strong>{t("legendLow")}</strong>
           <span>&lt; 35</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--med">
-          <strong>MEDIUM</strong>
+          <strong>{t("legendMedium")}</strong>
           <span>35–55</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--high">
-          <strong>HIGH</strong>
+          <strong>{t("legendHigh")}</strong>
           <span>55–70</span>
         </div>
         <div className="empathy-meal-expo-legend-card empathy-meal-expo-legend-card--vhigh">
-          <strong>VERY HIGH</strong>
+          <strong>{t("legendVeryHigh")}</strong>
           <span>&gt; 70</span>
         </div>
       </div>
       <p className="empathy-meal-expo-legend-note muted-copy text-[11px] leading-snug">
-        The GI values shown are educational estimates from estimated macro composition, not laboratory values or an official per-food GI table.
+        {t("legendNote")}
       </p>
     </section>
   );

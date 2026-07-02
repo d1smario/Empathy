@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, HeartPulse, Microscope, Wrench } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
@@ -78,6 +79,7 @@ let healthTimelineCache: {
 } | null = null;
 
 export default function HealthPageView() {
+  const t = useTranslations("HealthPageView");
   const { athleteId, loading: ctxLoading, adminScoped, platformAdminView, scopeOwnerUserId, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const [panels, setPanels] = useState<HealthPanelTimelineRow[]>([]);
@@ -145,7 +147,7 @@ export default function HealthPageView() {
         if (direct.ok && json.ok) {
           resolvedPanels = Array.isArray(json.panels) ? json.panels : [];
         } else if (!direct.ok || !json.ok) {
-          resolvedErr = ("error" in json && json.error) || resolvedErr || "Timeline unavailable";
+          resolvedErr = ("error" in json && json.error) || resolvedErr || t("timelineUnavailable");
           resolvedDiag = {
             requestedAthleteId: ("requestedAthleteId" in json ? json.requestedAthleteId : athleteId) ?? athleteId,
             userProfileAthleteId: ("userProfileAthleteId" in json ? json.userProfileAthleteId : null) ?? null,
@@ -163,7 +165,7 @@ export default function HealthPageView() {
     healthTimelineCache = { panels: resolvedPanels, error: resolvedErr, diagnostics: resolvedDiag };
     healthTimelineCacheId = athleteId;
     setLoadingTimeline(false);
-  }, [athleteId]);
+  }, [athleteId, t]);
 
   /** Mappa di sistema (diagnostica coach/admin): caricata solo quando si apre «Dettagli e motore». */
   const loadSystemMap = useCallback(async () => {
@@ -424,10 +426,10 @@ export default function HealthPageView() {
       const res = await uploadHealthDocument({ athleteId, panelType, sampleDate, file });
       setUploadBusy(null);
       if (!res.ok) {
-        setToast(res.error ?? "Upload error");
+        setToast(res.error ?? t("uploadError"));
         return;
       }
-      setToast(res.message ?? "Upload recorded.");
+      setToast(res.message ?? t("uploadRecorded"));
       void loadTimeline();
       /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma
        *  (in scope coach resta dentro la scheda atleta: /athletes/[id]/health/staging/[runId]). */
@@ -438,7 +440,7 @@ export default function HealthPageView() {
         }, 600);
       }
     },
-    [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId],
+    [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId, t],
   );
 
   const onAnalyzePanelWithAi = useCallback(
@@ -449,10 +451,10 @@ export default function HealthPageView() {
       const res = await analyzePanelWithAi({ panelId, athleteId });
       setAnalyzeBusyPanelId(null);
       if (!res.ok) {
-        setToast(res.error ?? "Report extraction failed");
+        setToast(res.error ?? t("reportExtractionFailed"));
         return;
       }
-      setToast(res.message ?? "Report extraction started.");
+      setToast(res.message ?? t("reportExtractionStarted"));
       void loadTimeline();
       if (res.reviewUrl) {
         const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
@@ -461,7 +463,7 @@ export default function HealthPageView() {
         }, 600);
       }
     },
-    [athleteId, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId],
+    [athleteId, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId, t],
   );
 
   const onBulkReanalyze = useCallback(async () => {
@@ -471,12 +473,12 @@ export default function HealthPageView() {
     const res = await bulkReanalyzePanelsWithAi({ athleteId });
     setBulkBusy(false);
     if (!res.ok) {
-      setToast(res.error ?? "Bulk re-analyze failed");
+      setToast(res.error ?? t("bulkReanalyzeFailed"));
       return;
     }
-    setToast(res.message ?? "Bulk re-analyze completed.");
+    setToast(res.message ?? t("bulkReanalyzeCompleted"));
     void loadTimeline();
-  }, [athleteId, loadTimeline]);
+  }, [athleteId, loadTimeline, t]);
 
   const onPatchStagingRun = useCallback(
     async (runId: string, status: HealthStagingRunAction) => {
@@ -495,50 +497,50 @@ export default function HealthPageView() {
       });
       setStagingBusy(null);
       if (!res.ok) {
-        setToast(res.error ?? "Staging update failed");
+        setToast(res.error ?? t("stagingUpdateFailed"));
         return;
       }
       setToast(
-        status === "committed" ? "Staging validated." : status === "rejected" ? "Staging rejected." : "Staging archived.",
+        status === "committed" ? t("stagingValidated") : status === "rejected" ? t("stagingRejected") : t("stagingArchived"),
       );
       void loadTimeline();
       void loadSystemMap();
     },
-    [loadTimeline, loadSystemMap],
+    [loadTimeline, loadSystemMap, t],
   );
 
   if (ctxLoading) {
     return (
-      <div className="min-h-[40vh] px-6 py-16 text-center text-sm text-gray-500">Loading athlete context…</div>
+      <div className="min-h-[40vh] px-6 py-16 text-center text-sm text-gray-500">{t("loadingAthleteContext")}</div>
     );
   }
 
   if (!athleteId) {
     return (
       <Pro2ModulePageShell
-        eyebrow="Health"
+        eyebrow={t("eyebrow")}
         eyebrowClassName={moduleEyebrowClass("health")}
-        title="Health and clinical analysis"
-        description="Select an active athlete to upload reports and view trends."
+        title={t("pageTitle")}
+        description={t("selectActiveAthlete")}
       >
-        <p className="text-sm text-amber-200/90">No active athlete.</p>
+        <p className="text-sm text-amber-200/90">{t("noActiveAthlete")}</p>
       </Pro2ModulePageShell>
     );
   }
 
   const tabItems: ModulePillAnchorItem[] = [
-    { key: "aree", anchor: "aree", label: "Detailed analysis", icon: Microscope, style: MODULE_PILL_ROSE },
-    { key: "stato", anchor: "stato", label: "Health status", icon: HeartPulse, style: MODULE_PILL_ROSE },
-    { key: "dettagli", anchor: "dettagli", label: "Engine details", icon: Wrench, style: MODULE_PILL_ROSE },
+    { key: "aree", anchor: "aree", label: t("tabDetailedAnalysis"), icon: Microscope, style: MODULE_PILL_ROSE },
+    { key: "stato", anchor: "stato", label: t("tabHealthStatus"), icon: HeartPulse, style: MODULE_PILL_ROSE },
+    { key: "dettagli", anchor: "dettagli", label: t("tabEngineDetails"), icon: Wrench, style: MODULE_PILL_ROSE },
   ];
   const hasMatrici = bloodComparisonCols.length > 0 || Boolean(microComparisonCols);
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Health"
+      eyebrow={t("eyebrow")}
       eyebrowClassName={moduleEyebrowClass("health")}
-      title="Health and clinical analysis"
-      description="Upload your reports and track trends over time."
+      title={t("pageTitle")}
+      description={t("pageDescription")}
     >
       {/* Tab di navigazione: una sola sezione montata alla volta */}
       <div className="sticky top-0 z-30 -mx-1 border-b border-white/10 bg-slate-950/90 px-1 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/80">
@@ -547,7 +549,7 @@ export default function HealthPageView() {
           items={tabItems}
           activeAnchor={activeTab}
           onSelect={(tab) => setActiveTab(tab as HealthTabId)}
-          ariaLabel="Health sections"
+          ariaLabel={t("sectionsAriaLabel")}
         />
       </div>
 
@@ -588,7 +590,7 @@ export default function HealthPageView() {
               <div className="mb-4 flex items-center justify-center gap-2">
                 <Activity className="h-4 w-4 text-rose-400" />
                 <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-                  Blood test history
+                  {t("bloodTestHistory")}
                 </h2>
               </div>
               <HealthBloodTrendSection
@@ -623,7 +625,7 @@ export default function HealthPageView() {
           {hasMatrici ? (
             <div className="space-y-3">
               <h2 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-                Longitudinal matrices
+                {t("longitudinalMatrices")}
               </h2>
               <HealthLongitudinalTables bloodCols={bloodComparisonCols} microCols={microComparisonCols} />
             </div>
@@ -635,20 +637,9 @@ export default function HealthPageView() {
       {activeTab === "dettagli" ? (
         <div className="space-y-6">
           <div className="space-y-3 text-sm leading-relaxed text-gray-400">
-            <p>
-              Every uploaded report is read and its values end up in a per-athlete archive. Cards and charts always use
-              the numbers from the most recent report per type (blood, microbiota, epigenetics, hormones, inflammation,
-              oxidative stress).
-            </p>
-            <p>
-              The summary scores in «Health status» appear when they are present in the uploaded reports. Trends over
-              time activate from the second compatible report onward: with a single report you still see all the values
-              extracted in the «Health status» section.
-            </p>
-            <p>
-              When the report is a photo or a PDF, extraction can propose values to confirm before they become final in
-              the charts.
-            </p>
+            <p>{t("methodologyParagraph1")}</p>
+            <p>{t("methodologyParagraph2")}</p>
+            <p>{t("methodologyParagraph3")}</p>
           </div>
 
           {showTech ? (

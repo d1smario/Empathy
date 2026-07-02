@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Check, ShieldCheck, X } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
@@ -69,32 +70,18 @@ function fieldFromPatch(p: Record<string, unknown>): EditableField | null {
   };
 }
 
-function confidenceBadge(confidence: number): { label: string; className: string } {
+function confidenceBadge(confidence: number): { level: "high" | "medium" | "low"; className: string } {
   if (confidence >= 0.8) {
-    return { label: "high", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
+    return { level: "high", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
   }
   if (confidence >= 0.55) {
-    return { label: "medium", className: "border-amber-500/40 bg-amber-500/10 text-amber-200" };
+    return { level: "medium", className: "border-amber-500/40 bg-amber-500/10 text-amber-200" };
   }
-  return { label: "low", className: "border-rose-500/40 bg-rose-500/10 text-rose-200" };
-}
-
-function formatPanelTitle(panel: HealthStagingPanelSnapshot | null): string {
-  if (!panel) return "Report";
-  const t = panel.type ?? "";
-  const labels: Record<string, string> = {
-    blood: "Blood",
-    microbiota: "Microbiota",
-    epigenetics: "Epigenetics",
-    hormones: "Hormones",
-    inflammation: "Inflammation",
-    oxidative_stress: "Oxidative stress",
-  };
-  const label = labels[t] ?? t;
-  return panel.sampleDate ? `${label} · ${panel.sampleDate}` : label;
+  return { level: "low", className: "border-rose-500/40 bg-rose-500/10 text-rose-200" };
 }
 
 export default function HealthStagingReviewView({ runId }: { runId: string }) {
+  const t = useTranslations("HealthStagingReviewView");
   const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   // Atleta: role "private" + adminScoped false → showTech false.
   // Coach/admin (showTech true) vedono i dettagli tecnici e i bottoni di validazione.
@@ -111,6 +98,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
   const [busy, setBusy] = useState<null | "confirm" | "reject">(null);
   const [toast, setToast] = useState<string | null>(null);
   const [done, setDone] = useState<boolean>(false);
+  const [rejected, setRejected] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +108,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
       const r = await fetchHealthStagingRunDetail(runId);
       if (cancelled) return;
       if (!r.ok || !r.run) {
-        setError(r.error ?? "Review not available");
+        setError(r.error ?? t("reviewNotAvailable"));
         setLoading(false);
         return;
       }
@@ -152,6 +140,21 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     setFields((prev) => prev.map((f, i) => (i === idx ? { ...f, ...patch } : f)));
   }
 
+  function formatPanelTitle(p: HealthStagingPanelSnapshot | null): string {
+    if (!p) return t("panelReport");
+    const type = p.type ?? "";
+    const labels: Record<string, string> = {
+      blood: t("panelBlood"),
+      microbiota: t("panelMicrobiota"),
+      epigenetics: t("panelEpigenetics"),
+      hormones: t("panelHormones"),
+      inflammation: t("panelInflammation"),
+      oxidative_stress: t("panelOxidativeStress"),
+    };
+    const label = labels[type] ?? type;
+    return p.sampleDate ? `${label} · ${p.sampleDate}` : label;
+  }
+
   async function handleConfirm() {
     if (!run) return;
     const confirmed: HealthStagingApplyPatch[] = fields
@@ -163,7 +166,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
         confidence: f.confidence,
       }));
     if (!confirmed.length) {
-      setToast("No field selected.");
+      setToast(t("noFieldSelected"));
       return;
     }
     setBusy("confirm");
@@ -175,11 +178,12 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     });
     setBusy(null);
     if (!res.ok) {
-      setToast(res.error ?? "Confirmation failed");
+      setToast(res.error ?? t("confirmationFailed"));
       return;
     }
     setDone(true);
-    setToast(`${res.confirmedCount ?? confirmed.length} parameters added to the archive.`);
+    const count = res.confirmedCount ?? confirmed.length;
+    setToast(t("parametersAddedToArchive", { count }));
   }
 
   async function handleReject() {
@@ -193,11 +197,12 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     });
     setBusy(null);
     if (!res.ok) {
-      setToast(res.error ?? "Staging update failed");
+      setToast(res.error ?? t("stagingUpdateFailed"));
       return;
     }
     setDone(true);
-    setToast("Review rejected.");
+    setRejected(true);
+    setToast(t("reviewRejected"));
   }
 
   const triggerSource = run?.triggerSource ?? null;
@@ -208,22 +213,16 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Health · Report review"
+      eyebrow={t("eyebrow")}
       eyebrowClassName={moduleEyebrowClass("health")}
       title={formatPanelTitle(panel)}
       description={
         <span className="flex flex-wrap items-center gap-2 text-zinc-400">
           <ShieldCheck className="inline h-4 w-4 text-emerald-400" />
           {showTech ? (
-            <span>
-              Assisted confirmation: the AI proposed the values, you validate them and they become the archive. Nothing
-              enters the archive without your ok.
-            </span>
+            <span>{t("descriptionTech")}</span>
           ) : (
-            <span>
-              Your reports are under review. Below you&apos;ll find the values read: they become part of your archive after
-              validation by the coach.
-            </span>
+            <span>{t("descriptionAthlete")}</span>
           )}
         </span>
       }
@@ -234,21 +233,21 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
             href={backToHealthHref}
             className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 transition hover:border-fuchsia-500/40 hover:text-white"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Health
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("backToHealth")}
           </Link>
         ) : (
           // Fallback inerte: solo se l'href scoped non è ricostruibile (scope coach senza
           // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
-            title="Available in the dedicated tab (v2)"
+            title={t("availableInDedicatedTab")}
             className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-200 opacity-50 transition"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Health
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("backToHealth")}
           </span>
         )}
         {showTech && detectedProvider ? (
           <span className="rounded-md border border-fuchsia-500/30 bg-fuchsia-950/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-fuchsia-200">
-            Lab detected: {detectedProvider}
+            {t("labDetected", { provider: detectedProvider })}
           </span>
         ) : null}
         {showTech && triggerSource ? (
@@ -258,44 +257,39 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
         ) : null}
         {showTech ? (
           <span className="rounded-md border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-zinc-400">
-            Average confidence: {(overallConfidence * 100).toFixed(0)}%
+            {t("averageConfidence", { pct: (overallConfidence * 100).toFixed(0) })}
           </span>
         ) : null}
       </div>
 
       {loading ? (
-        <p className="text-sm text-zinc-500">Loading review…</p>
+        <p className="text-sm text-zinc-500">{t("loadingReview")}</p>
       ) : error ? (
         <p className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-4 py-3 text-sm text-rose-200">{error}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Pane sinistro — file originale */}
           <section className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">Original document</h2>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">{t("originalDocument")}</h2>
             {signedUrl ? (
               /\.pdf(\?|$)/i.test(signedUrl) ? (
                 <iframe
                   src={signedUrl}
                   className="h-[60vh] max-h-[640px] min-h-[360px] w-full rounded-md border border-white/10 bg-white sm:h-[640px]"
-                  title="Report document"
+                  title={t("reportDocument")}
                 />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={signedUrl}
-                  alt="Uploaded report"
+                  alt={t("uploadedReport")}
                   className="max-h-[640px] w-full rounded-md border border-white/10 bg-black object-contain"
                 />
               )
             ) : showTech ? (
-              <p className="text-xs text-zinc-500">
-                File not available in storage (HEALTH_UPLOADS_BUCKET not configured or file expired). You can still
-                confirm the values by checking the proposals on the right.
-              </p>
+              <p className="text-xs text-zinc-500">{t("fileNotAvailableTech")}</p>
             ) : (
-              <p className="text-xs text-zinc-500">
-                The original document is not available at the moment. The values read from the report are shown alongside.
-              </p>
+              <p className="text-xs text-zinc-500">{t("fileNotAvailableAthlete")}</p>
             )}
           </section>
 
@@ -303,9 +297,11 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
           <section className="rounded-2xl border border-fuchsia-500/30 bg-black/40 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wider text-fuchsia-200">
-                {showTech ? `Proposed values · ${fields.length} fields` : `Read values · ${fields.length} parameters`}
+                {showTech
+                  ? t("proposedValuesCount", { count: fields.length })
+                  : t("readValuesCount", { count: fields.length })}
               </h2>
-              {showTech ? <span className="text-[11px] text-zinc-500">{enabledCount} active</span> : null}
+              {showTech ? <span className="text-[11px] text-zinc-500">{t("activeCount", { count: enabledCount })}</span> : null}
             </div>
 
             <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[600px]">
@@ -326,7 +322,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                           checked={f.enabled}
                           onChange={(e) => updateField(i, { enabled: e.target.checked })}
                           className="mt-1 h-4 w-4 accent-fuchsia-500"
-                          aria-label={`Enable field ${f.field}`}
+                          aria-label={t("enableFieldAria", { field: f.field })}
                         />
                       ) : null}
                       <div className="flex-1">
@@ -335,7 +331,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                             <>
                               <span className="font-mono text-xs text-zinc-200">{f.field}</span>
                               <span className={`rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${badge.className}`}>
-                                {badge.label} · {(f.confidence * 100).toFixed(0)}%
+                                {t(`confidence_${badge.level}`)} · {(f.confidence * 100).toFixed(0)}%
                               </span>
                             </>
                           ) : (
@@ -364,7 +360,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                                 type="button"
                                 onClick={() => updateField(i, { value: f.proposedValue })}
                                 className="text-[10px] text-fuchsia-300 hover:text-fuchsia-200"
-                                title="Restore proposed value"
+                                title={t("restoreProposedValue")}
                               >
                                 ↺
                               </button>
@@ -383,16 +379,14 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               })}
               {fields.length === 0 ? (
                 <p className="text-xs text-zinc-500">
-                  {showTech ? "No proposals in the staging run." : "No values read from the report."}
+                  {showTech ? t("noProposalsInStagingRun") : t("noValuesReadFromReport")}
                 </p>
               ) : null}
             </div>
 
             {showTech ? (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] text-zinc-500">
-                  Only active fields with a value are written to the archive.
-                </span>
+                <span className="text-[11px] text-zinc-500">{t("onlyActiveFieldsWritten")}</span>
                 <div className="flex gap-2">
                   <Pro2Button
                     type="button"
@@ -402,10 +396,10 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                     onClick={handleReject}
                   >
                     {busy === "reject" ? (
-                      "Rejecting…"
+                      t("rejecting")
                     ) : (
                       <>
-                        <X className="mr-1.5 h-4 w-4" /> Reject
+                        <X className="mr-1.5 h-4 w-4" /> {t("reject")}
                       </>
                     )}
                   </Pro2Button>
@@ -416,10 +410,10 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                     onClick={handleConfirm}
                   >
                     {busy === "confirm" ? (
-                      "Saving…"
+                      t("saving")
                     ) : (
                       <>
-                        <Check className="mr-1.5 h-4 w-4" /> Confirm {enabledCount ? `(${enabledCount})` : ""}
+                        <Check className="mr-1.5 h-4 w-4" /> {t("confirm")} {enabledCount ? `(${enabledCount})` : ""}
                       </>
                     )}
                   </Pro2Button>
@@ -427,14 +421,14 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               </div>
             ) : (
               <p className="mt-4 rounded-md border border-white/10 bg-black/40 px-3 py-2 text-[11px] text-zinc-400">
-                These values are awaiting validation by your coach before entering the archive.
+                {t("awaitingCoachValidation")}
               </p>
             )}
 
             {showTech && toast ? (
               <p
                 className={`mt-3 rounded-md border px-3 py-2 text-xs ${
-                  done && !toast.toLowerCase().includes("reject")
+                  done && !rejected
                     ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-200"
                     : "border-amber-500/30 bg-amber-950/30 text-amber-200"
                 }`}
@@ -447,14 +441,14 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               <div className="mt-4 text-right">
                 {backToHealthHref ? (
                   <Pro2Link href={backToHealthHref} className="text-[11px] uppercase tracking-wider text-fuchsia-200 hover:text-white">
-                    → Back to the Health archive
+                    {t("backToHealthArchive")}
                   </Pro2Link>
                 ) : (
                   <span
-                    title="Available in the dedicated tab (v2)"
+                    title={t("availableInDedicatedTab")}
                     className="cursor-default text-[11px] uppercase tracking-wider text-fuchsia-200 opacity-50"
                   >
-                    → Back to the Health archive
+                    {t("backToHealthArchive")}
                   </span>
                 )}
               </div>
