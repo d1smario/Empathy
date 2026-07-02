@@ -1,11 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { GymExerciseMediaThumb } from "@/components/training/GymExerciseMediaThumb";
 
-function gymRxLine(rx: NonNullable<Pro2BuilderBlockContract["gymRx"]>): string {
+function gymRxLine(
+  rx: NonNullable<Pro2BuilderBlockContract["gymRx"]>,
+  t: ReturnType<typeof useTranslations>,
+): string {
   const parts: string[] = [];
-  if (rx.sets != null) parts.push(`${rx.sets} sets`);
+  if (rx.sets != null) parts.push(t("setsCount", { count: rx.sets }));
   if (rx.reps?.trim()) parts.push(rx.reps.trim());
   if (rx.pct1Rm != null && rx.pct1Rm > 0) parts.push(`${Math.round(rx.pct1Rm)}% 1RM`);
   if (rx.weightKg != null && rx.weightKg > 0) parts.push(`${rx.weightKg} kg`);
@@ -22,14 +26,16 @@ export function Pro2GymSchedaBlockList({
   contract: Pro2BuilderSessionContract;
   compact?: boolean;
 }) {
+  const t = useTranslations("Pro2GymSchedaBlockList");
   const blocks = (contract.blocks ?? []).filter((b) => b.gymRx || b.kind === "gym_exercise" || b.kind === "strength_sets");
   const withCatalog = blocks.filter((b) => Boolean(b.gymRx?.catalogExerciseId));
 
   if (!blocks.length) {
     return (
       <p className="text-sm text-amber-200/90">
-        No gym program in the contract (missing <code className="text-amber-100/80">gymRx</code>). Regenerate from the Builder
-        or republish the VIRYA gym plan.
+        {t.rich("noGymProgram", {
+          code: (chunks) => <code className="text-amber-100/80">{chunks}</code>,
+        })}
       </p>
     );
   }
@@ -38,12 +44,13 @@ export function Pro2GymSchedaBlockList({
     <div className="space-y-3">
       {withCatalog.length > 0 ? (
         <p className="font-mono text-[0.65rem] text-orange-200/80">
-          {withCatalog.length} catalog exercises · {contract.sessionName?.trim() || contract.discipline || "Gym"}
+          {t("catalogExercises", {
+            count: withCatalog.length,
+            name: contract.sessionName?.trim() || contract.discipline || "Gym",
+          })}
         </p>
       ) : (
-        <p className="text-xs text-amber-200/90">
-          Gym session with no catalog link (images unavailable). Republish from VIRYA or regenerate in the Builder.
-        </p>
+        <p className="text-xs text-amber-200/90">{t("noCatalogLink")}</p>
       )}
       <ul className={compact ? "flex flex-col gap-2" : "flex flex-col gap-4"}>
         {blocks.map((block, idx) => (
@@ -72,7 +79,7 @@ export function Pro2GymSchedaBlockList({
                 </p>
                 {block.gymRx ? (
                   <>
-                    <p className="mt-2 font-mono text-sm text-orange-200/95">{gymRxLine(block.gymRx)}</p>
+                    <p className="mt-2 font-mono text-sm text-orange-200/95">{gymRxLine(block.gymRx, t)}</p>
                     {block.intensityCue ? (
                       <p className="mt-1 text-xs text-orange-200/75">{block.intensityCue}</p>
                     ) : null}

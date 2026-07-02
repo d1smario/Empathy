@@ -1,6 +1,7 @@
 "use client";
 
 import { Heart, Moon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SleepHypnogramChart } from "@/components/physiology/SleepHypnogramChart";
@@ -48,6 +49,7 @@ export type CalendarDayWellnessDetailProps = {
 };
 
 export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarDayWellnessDetailProps) {
+  const t = useTranslations("CalendarDayWellnessDetail");
   const [state, setState] = useState<LoadState>({ kind: "idle" });
 
   const panel = state.kind === "ok" ? state.panel : null;
@@ -73,14 +75,14 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
         if (!res.ok || !("ok" in json) || !json.ok) {
           setState({
             kind: "error",
-            message: ("error" in json && json.error) || res.statusText || "Loading error.",
+            message: ("error" in json && json.error) || res.statusText || t("loadingError"),
           });
           return;
         }
         setState({ kind: "ok", panel: json });
       } catch (err) {
         if (cancelled) return;
-        setState({ kind: "error", message: err instanceof Error ? err.message : "Network error." });
+        setState({ kind: "error", message: err instanceof Error ? err.message : t("networkError") });
       }
     })();
     return () => {
@@ -88,7 +90,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
     };
   }, [athleteId, selectedDate]);
 
-  const subtitle = `Sleep · recovery · day · ${selectedDate}`;
+  const subtitle = t("subtitle", { date: selectedDate });
 
   if (!athleteId) {
     return null;
@@ -97,8 +99,8 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   if (state.kind === "loading") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
-          <p className="text-sm text-gray-500">Loading day panel…</p>
+        <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+          <p className="text-sm text-gray-500">{t("loadingPanel")}</p>
         </Pro2SectionCard>
       </div>
     );
@@ -107,8 +109,8 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   if (state.kind === "error") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
-          <p className="text-sm text-amber-300/90">Read failed: {state.message}</p>
+        <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+          <p className="text-sm text-amber-300/90">{t("readFailed", { message: state.message })}</p>
         </Pro2SectionCard>
       </div>
     );
@@ -128,10 +130,10 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
   const sleepDurH = panel.recovery?.sleepDurationHours ?? totalSleepHours;
 
   const stagesBars = [
-    { key: "deep", label: "Deep", color: "#22d3ee", value: panel.sleepStages.deepHours },
+    { key: "deep", label: t("stageDeep"), color: "#22d3ee", value: panel.sleepStages.deepHours },
     { key: "rem", label: "REM", color: "#a78bfa", value: panel.sleepStages.remHours },
-    { key: "light", label: "Light", color: "#34d399", value: panel.sleepStages.lightHours },
-    { key: "awake", label: "Awake", color: "#fb923c", value: panel.sleepStages.awakeHours },
+    { key: "light", label: t("stageLight"), color: "#34d399", value: panel.sleepStages.lightHours },
+    { key: "awake", label: t("stageAwake"), color: "#fb923c", value: panel.sleepStages.awakeHours },
   ];
 
   const hasAnyKpi =
@@ -144,37 +146,40 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
 
   return (
     <div id="day-wellness-detail" className="scroll-mt-24">
-      <Pro2SectionCard accent="orange" title="Day · wellness" subtitle={subtitle} icon={Moon}>
+      <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
         {!hasAnyKpi ? (
           <p className="text-sm text-gray-500">
-            No day data available (connect Garmin/Whoop or upload a Health panel with
-            <code className="mx-1 rounded bg-white/5 px-1 py-0.5 font-mono text-xs">sample_date</code>
-            aligned to {selectedDate}).
+            {t.rich("noData", {
+              date: selectedDate,
+              code: (chunks) => (
+                <code className="mx-1 rounded bg-white/5 px-1 py-0.5 font-mono text-xs">{chunks}</code>
+              ),
+            })}
           </p>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              <KpiCell label="Total sleep" value={fmtHoursLabel(sleepDurH)} />
+              <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
-              <KpiCell label="Resting HR" value={fmtInt(restingHr)} unit="bpm" />
+              <KpiCell label={t("kpiRestingHr")} value={fmtInt(restingHr)} unit="bpm" />
               <KpiCell
-                label="Recovery"
+                label={t("kpiRecovery")}
                 value={recoveryScore != null ? fmtInt(recoveryScore) : "—"}
                 unit={recoveryScore != null ? "%" : undefined}
               />
-              <KpiCell label="Steps" value={fmtInt(panel.activity.steps)} />
+              <KpiCell label={t("kpiSteps")} value={fmtInt(panel.activity.steps)} />
               <KpiCell
-                label="Active calories"
+                label={t("kpiActiveCalories")}
                 value={fmtInt(panel.activity.activeCaloriesKcal)}
                 unit="kcal"
               />
               <KpiCell
-                label="Resp."
+                label={t("kpiResp")}
                 value={fmtNumber(panel.activity.respiratoryRateRpm, 1)}
                 unit="rpm"
               />
               <KpiCell
-                label="Skin temp"
+                label={t("kpiSkinTemp")}
                 value={fmtNumber(panel.activity.skinTempC, 1)}
                 unit="°C"
               />
@@ -182,7 +187,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
 
             <div>
               <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Sleep stages (hours)
+                {t("sleepStagesHeading")}
               </p>
               <div className="space-y-2">
                 {stagesBars.map((row) => {
@@ -210,7 +215,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
             {panel.sleepHypnogram.length > 0 ? (
               <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
                 <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  <Heart className="h-3.5 w-3.5" aria-hidden /> Stages · night line
+                  <Heart className="h-3.5 w-3.5" aria-hidden /> {t("stagesNightLine")}
                 </p>
                 <SleepHypnogramChart
                   segments={panel.sleepHypnogram}

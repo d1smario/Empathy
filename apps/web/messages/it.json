@@ -853,5 +853,67 @@
     "colWeeklyHours": "Ore sett.",
     "colGoals": "Obiettivi (multipli)",
     "footerNote": "Valori iniziali dalle fasi; modifiche qui hanno priorità sulla generazione. Le ore settimanali (macro aerobico) ripartiscono la durata media per seduta."
+  },
+  "CalendarDaySessionDetail": {
+    "sessionFallback": "Sessione",
+    "gpsRoute": "Percorso GPS",
+    "routeStartPointOnly": "solo punto di partenza (Activity Details Garmin non ancora ricevuto)",
+    "routeSingleGpsPoint": "solo un punto GPS — nessun tracciato interpolato",
+    "channel": "Canale",
+    "noHighResSeries": "Nessuna serie temporale ad alta risoluzione disponibile per questa sessione (il summary device non le espone; per curve dense importa il file FIT/TCX/GPX).",
+    "subtitle": "{count, plural, one {# eseguito} other {# eseguiti}} · {date}",
+    "sessionOfTheDay": "Sessione del giorno",
+    "emptyState": "Nessuna sessione eseguita registrata per questo giorno. Importa un file (FIT/TCX/GPX) o attendi il sync da Garmin/Strava/Wahoo.",
+    "sessionNumbered": "Sessione · {n}"
+  },
+  "CalendarDayWellnessDetail": {
+    "loadingError": "Errore caricamento.",
+    "networkError": "Errore di rete.",
+    "subtitle": "Sonno · recovery · giornata · {date}",
+    "cardTitle": "Giornata · wellness",
+    "loadingPanel": "Carico panel giornata…",
+    "readFailed": "Lettura non riuscita: {message}",
+    "noData": "Nessun dato giornata disponibile (collega Garmin/Whoop oppure carica un pannello Health con <code>sample_date</code> allineato a {date}).",
+    "kpiTotalSleep": "Sonno totale",
+    "kpiRestingHr": "FC riposo",
+    "kpiRecovery": "Recovery",
+    "kpiSteps": "Passi",
+    "kpiActiveCalories": "Calorie attive",
+    "kpiResp": "Resp.",
+    "kpiSkinTemp": "Temp pelle",
+    "sleepStagesHeading": "Fasi sonno (ore)",
+    "stagesNightLine": "Fasi · linea notte",
+    "stageDeep": "Profondo",
+    "stageLight": "Leggero",
+    "stageAwake": "Sveglia"
+  },
+  "PlannedSessionKpiStrip": {
+    "durationLabel": "Durata",
+    "loadTssLabel": "Carico · TSS",
+    "kjMechanicalLabel": "kJ · meccanico",
+    "kcalMetabolicLabel": "Kcal · metabolico"
+  },
+  "Pro2GymSchedaBlockList": {
+    "setsCount": "{count} serie",
+    "noGymProgram": "Nessuna scheda palestra nel contratto (manca <code>gymRx</code>). Rigenera dal Builder o ripubblica il piano VIRYA gym.",
+    "catalogExercises": "{count} esercizi catalogo · {name}",
+    "noCatalogLink": "Seduta gym senza legame catalogo (immagini non disponibili). Ripubblica da VIRYA o rigenera nel Builder."
+  },
+  "SessionRouteMap": {
+    "startPointLabel": "Punto di partenza GPS",
+    "trackLabel": "Traccia GPS — {count} punti"
+  },
+  "TechnicalPlaybookSchemaFrame": {
+    "executionSchemaAlt": "Schema esecuzione: {title}",
+    "visualMemoryLabel": "Memoria visiva · Pro 2",
+    "generativeRasterNote": "Raster generativo: in arrivo (oggi SVG campo V1)"
+  },
+  "TrainingViryaActivePlanStrip": {
+    "activePlanLabel": "Piano VIRYA attivo",
+    "loadingPlans": "Caricamento piani…",
+    "noPlanOnCalendar": "Nessun piano VIRYA su Calendar — <link>crea da VIRYA</link>",
+    "planMeta": "{count} sedute · {dateMin} → {dateMax} · <tagSpan>{tag}</tagSpan>",
+    "switchPlan": "Cambia piano",
+    "staleWarning": "Il piano VIRYA preferito non ha più sedute in calendario (es. sostituito da Builder). Scegli un altro piano o ripubblica da VIRYA."
   }
 }

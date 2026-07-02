@@ -2,6 +2,7 @@
 
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import { Activity, Gauge, Map as MapIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SessionRouteMap } from "@/components/training/SessionRouteMap";
@@ -107,6 +108,7 @@ function SessionDetailCard({
   dayExecutedDuration: number | null;
   athleteId: string | null | undefined;
 }) {
+  const t = useTranslations("CalendarDaySessionDetail");
   const traceRoutePoints = useMemo(() => geoPointsFromWorkoutTrace(workout), [workout]);
   const [dbSeries, setDbSeries] = useState<ExtendedSeriesBundle[]>([]);
   const [routeBundle, setRouteBundle] = useState<RouteBundle | null>(null);
@@ -227,7 +229,7 @@ function SessionDetailCard({
         {vm.sportGlyph ? <SportDisciplineGlyph glyph={vm.sportGlyph} className="h-9 w-9" /> : null}
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-            {vm.sport ?? "Session"} · {vm.sourceLabel}
+            {vm.sport ?? t("sessionFallback")} · {vm.sourceLabel}
           </p>
           {vm.fileName ? (
             <p className="truncate text-xs text-gray-500" title={vm.fileName}>
@@ -262,7 +264,7 @@ function SessionDetailCard({
           <div className="flex items-center gap-2">
             <MapIcon className="h-3.5 w-3.5 text-orange-400" />
             <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-              GPS Route
+              {t("gpsRoute")}
             </p>
             <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">
               {routeBundle.points.length} pt
@@ -270,8 +272,8 @@ function SessionDetailCard({
               routeBundle.points[0]!.lat === routeBundle.points[1]!.lat &&
               routeBundle.points[0]!.lon === routeBundle.points[1]!.lon
                 ? vm.parserEngine === "garmin_wellness_api_summary"
-                  ? " · start point only (Garmin Activity Details not yet received)"
-                  : " · single GPS point — no interpolated track"
+                  ? ` · ${t("routeStartPointOnly")}`
+                  : ` · ${t("routeSingleGpsPoint")}`
                 : ""}
             </span>
           </div>
@@ -284,7 +286,7 @@ function SessionDetailCard({
           <table className="w-full divide-y divide-white/5 text-sm">
             <thead>
               <tr className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
-                <th className="px-3 py-2 text-left">Channel</th>
+                <th className="px-3 py-2 text-left">{t("channel")}</th>
                 <th className="px-3 py-2 text-right">min</th>
                 <th className="px-3 py-2 text-right">avg</th>
                 <th className="px-3 py-2 text-right">max</th>
@@ -344,7 +346,7 @@ function SessionDetailCard({
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
-          No high-resolution time series available for this session (the device summary does not expose them; for dense curves import the FIT/TCX/GPX file).
+          {t("noHighResSeries")}
         </p>
       )}
     </div>
@@ -358,26 +360,26 @@ export type CalendarDaySessionDetailProps = {
 };
 
 export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId }: CalendarDaySessionDetailProps) {
+  const t = useTranslations("CalendarDaySessionDetail");
   const sortedExecuted = useMemo(() => {
     const primary = pickPrimaryExecutedWorkout(dayExecuted);
     if (!primary) return dayExecuted;
     return [primary, ...dayExecuted.filter((w) => w.id !== primary.id)];
   }, [dayExecuted]);
   const vms = useMemo(() => sortedExecuted.map((w) => buildSessionDetailVM(w)), [sortedExecuted]);
-  const subtitle = `${dayExecuted.length} executed session${dayExecuted.length === 1 ? "" : "s"} · ${selectedDate}`;
+  const subtitle = t("subtitle", { count: dayExecuted.length, date: selectedDate });
 
   if (dayExecuted.length === 0) {
     return (
       <div id="day-session-detail" className="scroll-mt-24">
         <Pro2SectionCard
           accent="orange"
-          title="Session of the day"
+          title={t("sessionOfTheDay")}
           subtitle={subtitle}
           icon={Activity}
         >
           <p className="text-sm text-gray-400">
-            No executed session recorded for this day. Import a file (FIT/TCX/GPX) or wait for the sync from
-            Garmin/Strava/Wahoo.
+            {t("emptyState")}
           </p>
         </Pro2SectionCard>
       </div>
@@ -393,8 +395,8 @@ export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId 
           <Pro2SectionCard
             key={vm.workoutId}
             accent="orange"
-            title={idx === 0 ? "Session of the day" : `Session · ${idx + 1}`}
-            subtitle={idx === 0 ? subtitle : `${vm.sport ?? "Session"} · ${vm.sourceLabel}`}
+            title={idx === 0 ? t("sessionOfTheDay") : t("sessionNumbered", { n: idx + 1 })}
+            subtitle={idx === 0 ? subtitle : `${vm.sport ?? t("sessionFallback")} · ${vm.sourceLabel}`}
             icon={idx === 0 ? Activity : Gauge}
           >
             <SessionDetailCard

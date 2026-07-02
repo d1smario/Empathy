@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles } from "lucide-react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { Pro2Link } from "@/components/ui/empathy";
@@ -48,6 +49,7 @@ export function TrainingViryaActivePlanStrip({
   loadErr: string | null;
   plansLoading?: boolean;
 }) {
+  const t = useTranslations("TrainingViryaActivePlanStrip");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,16 +79,19 @@ export function TrainingViryaActivePlanStrip({
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-orange-200/90">
           <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
-          <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em]">Active VIRYA plan</span>
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.14em]">{t("activePlanLabel")}</span>
         </div>
-        {plansLoading ? <span className="text-xs text-gray-500">Loading plans…</span> : null}
+        {plansLoading ? <span className="text-xs text-gray-500">{t("loadingPlans")}</span> : null}
         {loadErr ? <span className="text-xs text-amber-300/90">{loadErr}</span> : null}
         {!plansLoading && !loadErr && plans && plans.length === 0 ? (
           <span className="text-sm text-gray-500">
-            No VIRYA plan on Calendar —{" "}
-            <Pro2Link href="/training/vyria" variant="ghost" className="!inline text-orange-200/90">
-              create from VIRYA
-            </Pro2Link>
+            {t.rich("noPlanOnCalendar", {
+              link: (chunks) => (
+                <Pro2Link href="/training/vyria" variant="ghost" className="!inline text-orange-200/90">
+                  {chunks}
+                </Pro2Link>
+              ),
+            })}
           </span>
         ) : null}
         {!plansLoading && !loadErr && plans && plans.length > 0 ? (
@@ -103,13 +108,18 @@ export function TrainingViryaActivePlanStrip({
               </p>
               {activePlan ? (
                 <p className="mt-0.5 font-mono text-[0.65rem] text-gray-500">
-                  {activePlan.sessionCount} sessions · {activePlan.dateMin} → {activePlan.dateMax} ·{" "}
-                  <span className="text-orange-300/80">{activePlan.tag}</span>
+                  {t.rich("planMeta", {
+                    count: activePlan.sessionCount,
+                    dateMin: activePlan.dateMin,
+                    dateMax: activePlan.dateMax,
+                    tag: activePlan.tag,
+                    tagSpan: (chunks) => <span className="text-orange-300/80">{chunks}</span>,
+                  })}
                 </p>
               ) : null}
             </div>
             <label className="flex flex-col gap-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
-              Switch plan
+              {t("switchPlan")}
               <select
                 className="min-w-[12rem] rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-white"
                 value={activeTag ?? ""}
@@ -137,8 +147,7 @@ export function TrainingViryaActivePlanStrip({
         ) : null}
         {activeTag && plans && !plans.some((p) => p.tag === activeTag) ? (
           <p className="mt-2 w-full text-xs text-amber-200/90">
-            The preferred VIRYA plan no longer has sessions in the calendar (e.g. replaced by Builder). Choose another plan or
-            republish from VIRYA.
+            {t("staleWarning")}
           </p>
         ) : null}
       </div>

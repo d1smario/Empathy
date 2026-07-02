@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/cn";
@@ -28,6 +29,7 @@ const VIEW_W = 600;
 const PADDING = 16;
 
 export function SessionRouteMap({ points, className, height = 240 }: SessionRouteMapProps) {
+  const t = useTranslations("SessionRouteMap");
   const projection = useMemo(() => {
     if (!points || points.length === 0) return null;
 
@@ -81,7 +83,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
         viewBox={`0 0 ${VIEW_W} ${height}`}
         className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
         role="img"
-        aria-label="GPS start point"
+        aria-label={t("startPointLabel")}
       >
         <defs>
           <radialGradient id="markerGlow" cx="50%" cy="50%" r="50%">
@@ -116,7 +118,7 @@ export function SessionRouteMap({ points, className, height = 240 }: SessionRout
       viewBox={`0 0 ${VIEW_W} ${height}`}
       className={cn("w-full rounded-2xl border border-white/10 bg-black/80", className)}
       role="img"
-      aria-label={`GPS track — ${distinct.length} points`}
+      aria-label={t("trackLabel", { count: distinct.length })}
     >
       <defs>
         <linearGradient id="routeStroke" x1="0%" y1="0%" x2="100%" y2="0%">
