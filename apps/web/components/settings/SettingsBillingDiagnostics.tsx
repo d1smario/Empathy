@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2Link } from "@/components/ui/empathy";
 
 type StripeKeyKind = "live" | "test" | "restricted" | "unknown";
@@ -25,6 +26,7 @@ type CheckoutConfigPayload = {
 };
 
 function BoolPill({ value }: { value: boolean }) {
+  const t = useTranslations("SettingsBillingDiagnostics");
   return (
     <span
       className={
@@ -33,7 +35,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Yes" : "No"}
+      {value ? t("yes") : t("no")}
     </span>
   );
 }
@@ -51,6 +53,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  * Solo flag pubblici da `GET /api/billing/checkout-config` — nessun segreto in pagina.
  */
 export function SettingsBillingDiagnostics() {
+  const t = useTranslations("SettingsBillingDiagnostics");
   const [data, setData] = useState<CheckoutConfigPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -62,12 +65,12 @@ export function SettingsBillingDiagnostics() {
         const json = (await res.json()) as CheckoutConfigPayload | { ok?: false; error?: string };
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Unable to read billing configuration.");
+          setErr(t("errorReadConfig"));
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Request failed.");
+        if (!cancelled) setErr(t("errorRequestFailed"));
       }
     })();
     return () => {
@@ -78,7 +81,7 @@ export function SettingsBillingDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Billing diagnostics"
+      aria-label={t("ariaLabel")}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-500/80 via-pink-500/80 to-orange-500/80 opacity-70"
@@ -89,7 +92,7 @@ export function SettingsBillingDiagnostics() {
           Billing · Stripe
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Local status (env) without exposing keys. Endpoint:{" "}
+          {t("localStatusIntro")}{" "}
           <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
             /api/billing/checkout-config
           </code>
@@ -110,26 +113,26 @@ export function SettingsBillingDiagnostics() {
 
         {data ? (
           <div className="mt-6 font-mono text-xs">
-            <Row label="Anonymous checkout enabled (STRIPE_CHECKOUT_ANON_ENABLED)">
+            <Row label={t("rowAnonCheckoutEnabled")}>
               <BoolPill value={data.anonCheckoutEnabled} />
             </Row>
-            <Row label="STRIPE_SECRET_KEY present">
+            <Row label={t("rowSecretKeyPresent")}>
               <BoolPill value={data.stripeSecretConfigured ?? false} />
             </Row>
-            <Row label="Stripe key mode (prefix)">
+            <Row label={t("rowKeyMode")}>
               <span className="text-gray-300">{data.stripeKeyKind ?? "—"}</span>
             </Row>
-            <Row label="Public payment link">
+            <Row label={t("rowPublicPaymentLink")}>
               <BoolPill value={data.paymentLinkConfigured} />
             </Row>
-            <Row label="Webhook secret configured">
+            <Row label={t("rowWebhookSecretConfigured")}>
               <BoolPill value={data.webhookSecretConfigured} />
             </Row>
-            <Row label="Trial checkout configured">
+            <Row label={t("rowTrialCheckoutConfigured")}>
               <span className="flex items-center gap-2">
                 <BoolPill value={data.trialConfigured} />
                 {data.trialDays != null ? (
-                  <span className="text-gray-500">({data.trialDays} d)</span>
+                  <span className="text-gray-500">{t("trialDays", { days: data.trialDays })}</span>
                 ) : null}
               </span>
             </Row>
@@ -156,7 +159,7 @@ export function SettingsBillingDiagnostics() {
 
         <div className="mt-8 border-t border-white/10 pt-6">
           <Pro2Link href="/pricing" variant="secondary" className="justify-center">
-Open pricing
+            {t("openPricing")}
           </Pro2Link>
         </div>
       </div>

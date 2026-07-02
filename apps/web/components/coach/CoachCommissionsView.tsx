@@ -1,33 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { HandCoins, RefreshCw, Search } from "lucide-react";
 import { filterRowsByQuery } from "@/lib/admin/table-search";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { Pro2Button } from "@/components/ui/empathy";
 import { cn } from "@/lib/cn";
 
-const COPY = {
-  loading: "Loading commissions…",
-  noSupabase: "Missing Supabase configuration.",
-  errPrefix: "Error",
-  reload: "Reload",
-  searchPlaceholder: "Search all fields…",
-  cardAccrued: "Accrued",
-  cardRequested: "Requested",
-  cardPaid: "Paid",
-  colDate: "Date",
-  colSale: "Sale",
-  colAmount: "Amount",
-  colStatus: "Status",
-  colActions: "Actions",
-  requestOne: "Request payment",
-  requestAll: "Request all",
-  empty: "No commissions yet — they will accrue with sales linked to your account.",
-  emptyFiltered: "No commissions for this filter.",
-  actionUnavailable: "Operation failed: please try again later.",
-  saleUnknown: "—",
-} as const;
+const SALE_UNKNOWN = "—";
 
 type CommissionStatus = "accrued" | "requested" | "paid" | "cancelled";
 
@@ -50,20 +31,15 @@ type CommissionRow = {
   sale: SaleRef;
 };
 
-const STATUS_META: Record<CommissionStatus, { label: string; pill: string }> = {
-  accrued: { label: "Accrued", pill: "border-white/15 bg-white/5 text-gray-300" },
-  requested: { label: "Requested", pill: "border-amber-400/40 bg-amber-500/10 text-amber-200" },
-  paid: { label: "Paid", pill: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" },
-  cancelled: { label: "Cancelled", pill: "border-red-400/40 bg-red-500/10 text-red-300" },
+const STATUS_PILL: Record<CommissionStatus, string> = {
+  accrued: "border-white/15 bg-white/5 text-gray-300",
+  requested: "border-amber-400/40 bg-amber-500/10 text-amber-200",
+  paid: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200",
+  cancelled: "border-red-400/40 bg-red-500/10 text-red-300",
 };
 
-const FILTERS: { key: "tutte" | CommissionStatus; label: string }[] = [
-  { key: "tutte", label: "All" },
-  { key: "accrued", label: "Accrued" },
-  { key: "requested", label: "Requested" },
-  { key: "paid", label: "Paid" },
-  { key: "cancelled", label: "Cancelled" },
-];
+const FILTER_KEYS = ["tutte", "accrued", "requested", "paid", "cancelled"] as const;
+type FilterKey = (typeof FILTER_KEYS)[number];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -94,7 +70,7 @@ function fmtByCurrency(map: Map<string, number>): string {
 function saleLabel(row: CommissionRow): string {
   if (row.sale?.product_name) return row.sale.product_name;
   if (row.note) return row.note;
-  return COPY.saleUnknown;
+  return SALE_UNKNOWN;
 }
 
 /**
@@ -105,18 +81,21 @@ function saleLabel(row: CommissionRow): string {
  * sales_coach_read) con fallback sulla note quando assente.
  */
 export function CoachCommissionsView() {
+  const t = useTranslations("CoachCommissionsView");
   const [rows, setRows] = useState<CommissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("tutte");
+  const [filter, setFilter] = useState<FilterKey>("tutte");
   const [query, setQuery] = useState("");
+
+  const statusLabel = useCallback((status: CommissionStatus) => t(`status_${status}`), [t]);
 
   const load = useCallback(async () => {
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setErr(COPY.noSupabase);
+      setErr(t("noSupabase"));
       setLoading(false);
       return;
     }
@@ -128,7 +107,7 @@ export function CoachCommissionsView() {
       } = await supabase.auth.getSession();
       const uid = session?.user?.id;
       if (!uid) {
-        setErr(`${COPY.errPrefix}: no active session.`);
+        setErr(`${t("errPrefix")}: ${t("noSession")}`);
         return;
       }
       const { data, error } = await supabase
@@ -140,14 +119,14 @@ export function CoachCommissionsView() {
         .order("created_at", { ascending: false })
         .limit(1000);
       if (error) {
-        setErr(`${COPY.errPrefix}: ${error.message}`);
+        setErr(`${t("errPrefix")}: ${error.message}`);
         return;
       }
       setRows((data ?? []) as unknown as CommissionRow[]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -158,7 +137,7 @@ export function CoachCommissionsView() {
     if (commissionIds.length === 0) return;
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setActionErr(COPY.noSupabase);
+      setActionErr(t("noSupabase"));
       return;
     }
     setBusy(true);
@@ -171,17 +150,17 @@ export function CoachCommissionsView() {
         .eq("status", "accrued")
         .select("id");
       if (error || !data || data.length === 0) {
-        setActionErr(COPY.actionUnavailable);
+        setActionErr(t("actionUnavailable"));
         return;
       }
       const updated = new Set(data.map((row) => (row as { id: string }).id));
       setRows((prev) => prev.map((c) => (updated.has(c.id) ? { ...c, status: "requested" as const } : c)));
     } catch {
-      setActionErr(COPY.actionUnavailable);
+      setActionErr(t("actionUnavailable"));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const sums = useMemo(() => {
     const by = (status: CommissionStatus) => {
@@ -205,17 +184,17 @@ export function CoachCommissionsView() {
   const visible = useMemo(() => {
     const base = filter === "tutte" ? rows : rows.filter((r) => r.status === filter);
     return filterRowsByQuery(
-      base.map((r) => ({ ...r, _saleLabel: saleLabel(r), _statusLabel: STATUS_META[r.status].label })),
+      base.map((r) => ({ ...r, _saleLabel: saleLabel(r), _statusLabel: statusLabel(r.status) })),
       query,
     );
-  }, [rows, filter, query]);
+  }, [rows, filter, query, statusLabel]);
 
   const accruedIds = useMemo(() => rows.filter((r) => r.status === "accrued").map((r) => r.id), [rows]);
 
   const summaryCards = [
-    { label: COPY.cardAccrued, value: fmtByCurrency(sums.accrued), tone: "text-gray-200", border: "border-white/15" },
-    { label: COPY.cardRequested, value: fmtByCurrency(sums.requested), tone: "text-amber-300", border: "border-amber-400/30" },
-    { label: COPY.cardPaid, value: fmtByCurrency(sums.paid), tone: "text-emerald-300", border: "border-emerald-400/30" },
+    { label: t("cardAccrued"), value: fmtByCurrency(sums.accrued), tone: "text-gray-200", border: "border-white/15" },
+    { label: t("cardRequested"), value: fmtByCurrency(sums.requested), tone: "text-amber-300", border: "border-amber-400/30" },
+    { label: t("cardPaid"), value: fmtByCurrency(sums.paid), tone: "text-emerald-300", border: "border-emerald-400/30" },
   ];
 
   return (
@@ -233,19 +212,19 @@ export function CoachCommissionsView() {
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
         {/* Filtri + ricerca + azioni */}
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-3">
-          {FILTERS.map((f) => (
+          {FILTER_KEYS.map((key) => (
             <button
-              key={f.key}
+              key={key}
               type="button"
-              onClick={() => setFilter(f.key)}
+              onClick={() => setFilter(key)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                filter === f.key
+                filter === key
                   ? "border-transparent bg-gradient-to-r from-purple-600 to-pink-600 text-white"
                   : "border-white/10 bg-white/5 text-gray-400 hover:border-purple-500/40 hover:text-gray-200",
               )}
             >
-              {f.label} <span className="opacity-60">{counts[f.key]}</span>
+              {t(`filter_${key}`)} <span className="opacity-60">{counts[key]}</span>
             </button>
           ))}
           <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
@@ -255,7 +234,7 @@ export function CoachCommissionsView() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={COPY.searchPlaceholder}
+                placeholder={t("searchPlaceholder")}
                 className="w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none"
               />
             </div>
@@ -267,14 +246,14 @@ export function CoachCommissionsView() {
                 onClick={() => void requestPayment(accruedIds)}
               >
                 <HandCoins className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
-                {COPY.requestAll}
+                {t("requestAll")}
               </Pro2Button>
             ) : null}
             <button
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              title={COPY.reload}
+              title={t("reload")}
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-400 transition hover:border-white/25 hover:text-white disabled:opacity-50"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden />
@@ -294,26 +273,26 @@ export function CoachCommissionsView() {
         ) : null}
 
         {loading && rows.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-gray-500">{COPY.loading}</p>
+          <p className="px-4 py-10 text-center text-sm text-gray-500">{t("loading")}</p>
         ) : visible.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-gray-500">
-            {rows.length === 0 ? COPY.empty : COPY.emptyFiltered}
+            {rows.length === 0 ? t("empty") : t("emptyFiltered")}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm text-gray-300">
               <thead className="border-b border-white/10 bg-white/5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">{COPY.colDate}</th>
-                  <th className="px-4 py-3 font-semibold">{COPY.colSale}</th>
-                  <th className="px-4 py-3 font-semibold">{COPY.colAmount}</th>
-                  <th className="px-4 py-3 font-semibold">{COPY.colStatus}</th>
-                  <th className="px-4 py-3 font-semibold">{COPY.colActions}</th>
+                  <th className="px-4 py-3 font-semibold">{t("colDate")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("colSale")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("colAmount")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("colStatus")}</th>
+                  <th className="px-4 py-3 font-semibold">{t("colActions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((c) => {
-                  const meta = STATUS_META[c.status];
+                  const pill = STATUS_PILL[c.status];
                   return (
                     <tr key={c.id} className="border-b border-white/5 last:border-0">
                       <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(c.created_at)}</td>
@@ -327,8 +306,8 @@ export function CoachCommissionsView() {
                       </td>
                       <td className="px-4 py-3 font-semibold text-white">{fmtAmount(c.amount, c.currency)}</td>
                       <td className="px-4 py-3">
-                        <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", meta.pill)}>
-                          {meta.label}
+                        <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", pill)}>
+                          {statusLabel(c.status)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -340,12 +319,12 @@ export function CoachCommissionsView() {
                             disabled={busy}
                             onClick={() => void requestPayment([c.id])}
                           >
-                            {COPY.requestOne}
+                            {t("requestOne")}
                           </Pro2Button>
                         ) : c.status === "requested" ? (
-                          <span className="text-xs text-gray-500">Being processed by Empathy</span>
+                          <span className="text-xs text-gray-500">{t("beingProcessed")}</span>
                         ) : c.status === "paid" ? (
-                          <span className="text-xs text-gray-500">Settled {fmtDate(c.paid_at)}</span>
+                          <span className="text-xs text-gray-500">{t("settled", { date: fmtDate(c.paid_at) })}</span>
                         ) : (
                           <span className="text-xs text-gray-600">—</span>
                         )}

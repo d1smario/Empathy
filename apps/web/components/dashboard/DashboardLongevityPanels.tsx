@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Activity, HeartPulse } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
@@ -28,34 +29,37 @@ type LongevityFitnessPayload = {
   snapshotDate: string;
 };
 
-const SCALES: Array<{ key: keyof CheckinForm; label: string; hint: string }> = [
-  { key: "energy", label: "Energy", hint: "1 drained · 5 peak" },
-  { key: "mood", label: "Mood", hint: "1 low · 5 great" },
-  { key: "sleepQuality", label: "Sleep quality", hint: "1 poor · 5 excellent" },
-  { key: "motivation", label: "Motivation", hint: "1 none · 5 high" },
-  { key: "soreness", label: "Soreness", hint: "1 none · 5 severe" },
-  { key: "stress", label: "Stress", hint: "1 none · 5 severe" },
+// I label/hint di ScaleRow, gli SYMPTOM_LABELS e i PILLAR_LABELS sono stringhe
+// visibili: le chiavi i18n vengono risolte a runtime dentro il componente, così
+// restano localizzate. Qui teniamo solo la mappatura chiave-di-dominio → chiave-i18n.
+const SCALE_KEYS: Array<{ key: keyof CheckinForm; labelKey: string; hintKey: string }> = [
+  { key: "energy", labelKey: "scaleEnergyLabel", hintKey: "scaleEnergyHint" },
+  { key: "mood", labelKey: "scaleMoodLabel", hintKey: "scaleMoodHint" },
+  { key: "sleepQuality", labelKey: "scaleSleepQualityLabel", hintKey: "scaleSleepQualityHint" },
+  { key: "motivation", labelKey: "scaleMotivationLabel", hintKey: "scaleMotivationHint" },
+  { key: "soreness", labelKey: "scaleSorenessLabel", hintKey: "scaleSorenessHint" },
+  { key: "stress", labelKey: "scaleStressLabel", hintKey: "scaleStressHint" },
 ];
 
-const SYMPTOM_LABELS: Record<DailyCheckinSymptom, string> = {
-  fever: "Fever",
-  headache: "Headache",
-  sore_throat: "Sore throat",
-  gi_upset: "GI upset",
-  cold_flu: "Cold/flu",
-  injury: "Injury",
-  other: "Other",
+const SYMPTOM_LABEL_KEYS: Record<DailyCheckinSymptom, string> = {
+  fever: "symptomFever",
+  headache: "symptomHeadache",
+  sore_throat: "symptomSoreThroat",
+  gi_upset: "symptomGiUpset",
+  cold_flu: "symptomColdFlu",
+  injury: "symptomInjury",
+  other: "symptomOther",
 };
 
-const PILLAR_LABELS: Record<EpiPillarId, string> = {
-  activity_load: "Load & activity",
-  recovery: "Recovery",
-  hrv: "HRV",
-  sleep: "Sleep",
-  nutrition: "Nutrition",
-  body_composition: "Body composition",
-  protocol_adherence: "Protocol adherence",
-  subjective_wellness: "Subjective wellness",
+const PILLAR_LABEL_KEYS: Record<EpiPillarId, string> = {
+  activity_load: "pillarActivityLoad",
+  recovery: "pillarRecovery",
+  hrv: "pillarHrv",
+  sleep: "pillarSleep",
+  nutrition: "pillarNutrition",
+  body_composition: "pillarBodyComposition",
+  protocol_adherence: "pillarProtocolAdherence",
+  subjective_wellness: "pillarSubjectiveWellness",
 };
 
 type CheckinForm = {
@@ -163,6 +167,7 @@ function ScaleRow({
 }
 
 export function DashboardLongevityPanels() {
+  const t = useTranslations("DashboardLongevityPanels");
   const { athleteId, adminScoped, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   // In scope coach/admin (adminScoped) il check-in è in SOLA LETTURA: è un dato
@@ -215,19 +220,19 @@ export function DashboardLongevityPanels() {
           cache: "no-store",
         });
         const json = (await res.json()) as LongevityFitnessPayload & { error?: string };
-        if (!res.ok) throw new Error(json.error ?? "Loading error");
+        if (!res.ok) throw new Error(json.error ?? t("loadingError"));
         setData(json);
         hydrateFromCheckin(json.checkin);
         writeLongevityCache(cacheKey, json);
       } catch (err) {
         // Con cache già mostrata teniamo i dati validi a schermo: il banner
         // d'errore avviserebbe a vuoto su un refresh di sfondo fallito.
-        if (!cached) setError(err instanceof Error ? err.message : "Loading error");
+        if (!cached) setError(err instanceof Error ? err.message : t("loadingError"));
       } finally {
         setLoading(false);
       }
     },
-    [hydrateFromCheckin, adminScoped],
+    [hydrateFromCheckin, adminScoped, t],
   );
 
   useEffect(() => {
@@ -249,14 +254,14 @@ export function DashboardLongevityPanels() {
         body: JSON.stringify({ athleteId, ...form, illnessFlags: symptoms, note }),
       });
       const json = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Save error");
+      if (!res.ok) throw new Error(json.error ?? t("saveError"));
       await loadIndex(athleteId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save error");
+      setError(err instanceof Error ? err.message : t("saveError"));
     } finally {
       setSaving(false);
     }
-  }, [athleteId, scoped, form, symptoms, note, loadIndex]);
+  }, [athleteId, scoped, form, symptoms, note, loadIndex, t]);
 
   const epi = data?.epi ?? null;
 
@@ -270,16 +275,16 @@ export function DashboardLongevityPanels() {
 
       <Pro2SectionCard
         accent="fuchsia"
-        title="Today's check-in"
-        subtitle={scoped ? "How the athlete feels · read only" : "How you feel · flag any symptoms"}
+        title={t("checkinTitle")}
+        subtitle={scoped ? t("checkinSubtitleScoped") : t("checkinSubtitleSelf")}
         icon={Activity}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          {SCALES.map((s) => (
+          {SCALE_KEYS.map((s) => (
             <ScaleRow
               key={s.key}
-              label={s.label}
-              hint={s.hint}
+              label={t(s.labelKey)}
+              hint={t(s.hintKey)}
               value={form[s.key]}
               onChange={(v) => setForm((prev) => ({ ...prev, [s.key]: v }))}
               readOnly={scoped}
@@ -288,7 +293,7 @@ export function DashboardLongevityPanels() {
         </div>
 
         <div className="mt-5">
-          <p className="mb-2 text-xs font-medium text-gray-400">Symptoms (optional)</p>
+          <p className="mb-2 text-xs font-medium text-gray-400">{t("symptomsLabel")}</p>
           <div className="flex flex-wrap gap-2">
             {DAILY_CHECKIN_SYMPTOMS.map((s) => (
               <button
@@ -309,7 +314,7 @@ export function DashboardLongevityPanels() {
                       : "hover:border-amber-500/40 hover:text-amber-100",
                 )}
               >
-                {SYMPTOM_LABELS[s]}
+                {t(SYMPTOM_LABEL_KEYS[s])}
               </button>
             ))}
           </div>
@@ -317,7 +322,7 @@ export function DashboardLongevityPanels() {
 
         <div className="mt-5">
           <label htmlFor="longevity-note" className="mb-1.5 block text-xs font-medium text-gray-400">
-            Note (optional)
+            {t("noteLabel")}
           </label>
           <textarea
             id="longevity-note"
@@ -325,7 +330,7 @@ export function DashboardLongevityPanels() {
             onChange={(e) => setNote(e.target.value.slice(0, 500))}
             readOnly={scoped}
             rows={2}
-            placeholder={scoped ? "No note" : "E.g. restless night, knee pain…"}
+            placeholder={scoped ? t("notePlaceholderScoped") : t("notePlaceholderSelf")}
             className={cn(
               "w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-gray-500",
               scoped ? "cursor-default opacity-80" : "focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500",
@@ -334,24 +339,24 @@ export function DashboardLongevityPanels() {
         </div>
 
         {scoped ? (
-          <p className="mt-5 text-xs text-gray-500">The check-in is the athlete&apos;s own subjective input: you review it, you don&apos;t log it on their behalf.</p>
+          <p className="mt-5 text-xs text-gray-500">{t("scopedReadOnlyNote")}</p>
         ) : (
           <div className="mt-5 flex justify-end">
             <Pro2Button onClick={saveCheckin} disabled={saving || !athleteId}>
-              {saving ? "Saving…" : "Save check-in"}
+              {saving ? t("saving") : t("saveCheckin")}
             </Pro2Button>
           </div>
         )}
       </Pro2SectionCard>
 
-      <Pro2SectionCard accent="fuchsia" title="Longevity & Fitness Index" subtitle="Computed from your real data and the check-in" icon={HeartPulse}>
+      <Pro2SectionCard accent="fuchsia" title={t("indexTitle")} subtitle={t("indexSubtitle")} icon={HeartPulse}>
         {loading && !epi ? (
-          <p className="text-sm text-gray-400">Calculating…</p>
+          <p className="text-sm text-gray-400">{t("calculating")}</p>
         ) : epi && (epi.dataTier === "standard" || epi.dataTier === "extended") ? (
           <div className="space-y-5">
             {data?.snapshotDate ? (
               <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                Today · {formatSnapshotDate(data.snapshotDate)}
+                {t("todayPrefix", { date: formatSnapshotDate(data.snapshotDate) })}
               </p>
             ) : null}
 
@@ -364,20 +369,20 @@ export function DashboardLongevityPanels() {
               </div>
               <div className="text-xs text-gray-400">
                 {showTech ? (
-                  <p>Confidence {Math.round(epi.confidence * 100)}% · coverage {epi.dataTier}</p>
+                  <p>{t("confidenceCoverage", { confidence: Math.round(epi.confidence * 100), coverage: epi.dataTier })}</p>
                 ) : null}
                 <p className="mt-1">
                   {epi.efficientDay ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-emerald-300">
-                      Efficient day
+                      {t("efficientDay")}
                     </span>
                   ) : epi.illnessDay ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
-                      Symptom day · goal suspended
+                      {t("symptomDay")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">
-                      Not an efficient day yet
+                      {t("notEfficientDayYet")}
                     </span>
                   )}
                 </p>
@@ -386,14 +391,14 @@ export function DashboardLongevityPanels() {
 
             {epi.illnessDay ? (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-                You flagged a symptom: no penalty on the index, recovery comes first.
+                {t("illnessBanner")}
               </div>
             ) : null}
 
             <div className="space-y-2.5">
               {pillars.map((p) => (
                 <div key={p.pillar} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-xs text-gray-400 sm:w-44">{PILLAR_LABELS[p.pillar]}</span>
+                  <span className="w-28 shrink-0 truncate text-xs text-gray-400 sm:w-44">{t(PILLAR_LABEL_KEYS[p.pillar])}</span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-400"
@@ -407,17 +412,16 @@ export function DashboardLongevityPanels() {
               ))}
               {!pillars.length ? (
                 <p className="text-xs text-gray-500">
-                  No signal available yet. Fill in the check-in and connect a device to feed the index.
+                  {t("noSignal")}
                 </p>
               ) : null}
             </div>
           </div>
         ) : (
           <div className="space-y-1">
-            <p className="text-sm text-gray-300">Index not available yet.</p>
+            <p className="text-sm text-gray-300">{t("indexNotAvailable")}</p>
             <p className="text-xs text-gray-500">
-              Real data is required: complete today&apos;s check-in above and connect a device (sleep, recovery, HRV) to
-              compute the index. While coverage stays minimal we don&apos;t show an estimated score.
+              {t("indexNotAvailableHint")}
             </p>
           </div>
         )}

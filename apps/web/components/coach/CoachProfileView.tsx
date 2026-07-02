@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Clock, Eye, EyeOff, LogOut, ShieldAlert, ShieldCheck } from "lucide-react";
 import { BillingProfileForm } from "@/components/access/BillingProfileForm";
 import { PasswordStrengthMeter } from "@/components/access/PasswordStrengthMeter";
@@ -9,31 +10,7 @@ import { clearPro2ClientSessionKeys } from "@/lib/app-session";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { Pro2Button } from "@/components/ui/empathy";
 
-const COPY = {
-  noSupabase: "Missing Supabase configuration: profile unavailable.",
-  loading: "Loading profile…",
-  noSession: "No active session. Sign in again to view your profile.",
-  accountTitle: "Account",
-  email: "Email",
-  registeredAt: "Registration",
-  lastSignInAt: "Last sign-in",
-  passwordTitle: "Change password",
-  passwordIntro: "Set a new password for your coach account.",
-  newPassword: "New password",
-  confirmPassword: "Confirm password",
-  showPassword: "Show password",
-  hidePassword: "Hide password",
-  mismatch: "The passwords do not match.",
-  tooShort: "The password must be at least 8 characters.",
-  submit: "Update password",
-  submitting: "Updating…",
-  success: "Password updated.",
-  genericError: "Password update failed. Try again.",
-  sessionTitle: "Session",
-  sessionIntro: "Sign out of the session on this device.",
-  signOut: "Sign out",
-  signingOut: "Signing out…",
-} as const;
+type Translator = ReturnType<typeof useTranslations>;
 
 type AccountInfo = {
   email: string | null;
@@ -56,41 +33,44 @@ function fmtDateTime(iso: string | null | undefined): string {
 }
 
 /** Traduce in italiano gli errori più comuni di `auth.updateUser({ password })`. */
-function formatUpdateError(message: string): string {
+function formatUpdateError(message: string, t: Translator): string {
   const m = message.toLowerCase();
   if (m.includes("different from the old password") || m.includes("should be different")) {
-    return "The new password must be different from the current one.";
+    return t("errorSamePassword");
   }
   if (m.includes("password") && (m.includes("at least") || m.includes("too short") || m.includes("length"))) {
-    return COPY.tooShort;
+    return t("tooShort");
   }
   if (m.includes("session") || m.includes("not authenticated") || m.includes("jwt")) {
-    return "Session expired: sign in again and retry.";
+    return t("errorSessionExpired");
   }
   if (m.includes("rate limit") || m.includes("too many")) {
-    return "Too many attempts: wait a few minutes and retry.";
+    return t("errorRateLimit");
   }
-  return COPY.genericError;
+  return t("genericError");
 }
 
 /** Badge di stato coach: lo stato operativo arriva dal DB via pagina server. */
-function coachStatusBadge(status: string | null): { label: string; className: string; Icon: typeof ShieldCheck } {
+function coachStatusBadge(
+  status: string | null,
+  t: Translator,
+): { label: string; className: string; Icon: typeof ShieldCheck } {
   if (status === "approved") {
     return {
-      label: "Coach active",
+      label: t("badgeActive"),
       className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-200",
       Icon: ShieldCheck,
     };
   }
   if (status === "suspended") {
     return {
-      label: "Account suspended",
+      label: t("badgeSuspended"),
       className: "border-rose-400/40 bg-rose-500/10 text-rose-200",
       Icon: ShieldAlert,
     };
   }
   return {
-    label: "Awaiting approval",
+    label: t("badgeAwaiting"),
     className: "border-amber-400/40 bg-amber-500/10 text-amber-200",
     Icon: Clock,
   };
@@ -111,6 +91,7 @@ const sectionLabelClass = "font-mono text-[0.6rem] uppercase tracking-[0.16em] t
  * /athletes/[id]. Nessuna nuova API: solo supabase-js own-row.
  */
 export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus: string | null }) {
+  const t = useTranslations("CoachProfileView");
   const configured = useMemo(() => Boolean(createEmpathyBrowserSupabase()), []);
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -124,7 +105,7 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
   const [signingOut, setSigningOut] = useState(false);
 
   const strength = useMemo(() => passwordStrength(newPassword), [newPassword]);
-  const badge = coachStatusBadge(platformCoachStatus);
+  const badge = coachStatusBadge(platformCoachStatus, t);
 
   useEffect(() => {
     const supabase = createEmpathyBrowserSupabase();
@@ -161,28 +142,28 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
     setMsg(null);
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setMsg({ text: COPY.noSupabase, tone: "error" });
+      setMsg({ text: t("noSupabase"), tone: "error" });
       return;
     }
     if (newPassword.length < 8) {
-      setMsg({ text: COPY.tooShort, tone: "error" });
+      setMsg({ text: t("tooShort"), tone: "error" });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setMsg({ text: COPY.mismatch, tone: "error" });
+      setMsg({ text: t("mismatch"), tone: "error" });
       return;
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setBusy(false);
     if (error) {
-      setMsg({ text: formatUpdateError(error.message), tone: "error" });
+      setMsg({ text: formatUpdateError(error.message, t), tone: "error" });
       return;
     }
     setNewPassword("");
     setConfirmPassword("");
     setShowPassword(false);
-    setMsg({ text: COPY.success, tone: "success" });
+    setMsg({ text: t("success"), tone: "success" });
   }
 
   // Stesso pattern di SidebarSessionActions, con redirect pieno alla porta di accesso.
@@ -197,7 +178,7 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
   if (!configured) {
     return (
       <p className="text-sm text-amber-300/90" role="alert">
-        {COPY.noSupabase}
+        {t("noSupabase")}
       </p>
     );
   }
@@ -207,7 +188,7 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
       type="button"
       tabIndex={-1}
       onClick={() => setShowPassword((v) => !v)}
-      aria-label={showPassword ? COPY.hidePassword : COPY.showPassword}
+      aria-label={showPassword ? t("hidePassword") : t("showPassword")}
       aria-pressed={showPassword}
       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-200"
     >
@@ -217,17 +198,17 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
 
   const accountRows: { label: string; value: string }[] = account
     ? [
-        { label: COPY.email, value: account.email ?? "—" },
-        { label: COPY.registeredAt, value: fmtDate(account.createdAt) },
-        { label: COPY.lastSignInAt, value: fmtDateTime(account.lastSignInAt) },
+        { label: t("email"), value: account.email ?? "—" },
+        { label: t("registeredAt"), value: fmtDate(account.createdAt) },
+        { label: t("lastSignInAt"), value: fmtDateTime(account.lastSignInAt) },
       ]
     : [];
 
   return (
     <div className="max-w-2xl space-y-4">
-      <section className={cardClass} aria-label={COPY.accountTitle}>
+      <section className={cardClass} aria-label={t("accountTitle")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className={sectionLabelClass}>{COPY.accountTitle}</h2>
+          <h2 className={sectionLabelClass}>{t("accountTitle")}</h2>
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-medium ${badge.className}`}
           >
@@ -236,10 +217,10 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
           </span>
         </div>
         {loading ? (
-          <p className="mt-4 text-xs text-gray-500">{COPY.loading}</p>
+          <p className="mt-4 text-xs text-gray-500">{t("loading")}</p>
         ) : !account ? (
           <p className="mt-4 text-sm text-amber-300/90" role="alert">
-            {COPY.noSession}
+            {t("noSession")}
           </p>
         ) : (
           <dl className="mt-4 space-y-3">
@@ -256,12 +237,12 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
       {/* Anagrafica fatturazione own-row (user_billing_profiles): la card è autonoma. */}
       <BillingProfileForm />
 
-      <section className={cardClass} aria-label={COPY.passwordTitle}>
-        <h2 className={sectionLabelClass}>{COPY.passwordTitle}</h2>
-        <p className="mt-2 text-xs text-gray-500">{COPY.passwordIntro}</p>
+      <section className={cardClass} aria-label={t("passwordTitle")}>
+        <h2 className={sectionLabelClass}>{t("passwordTitle")}</h2>
+        <p className="mt-2 text-xs text-gray-500">{t("passwordIntro")}</p>
         <form onSubmit={onSubmitPassword} className="mt-4 flex flex-col gap-3">
           <label className="text-left">
-            <span className={labelClass}>{COPY.newPassword}</span>
+            <span className={labelClass}>{t("newPassword")}</span>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -277,7 +258,7 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
           </label>
 
           <label className="text-left">
-            <span className={labelClass}>{COPY.confirmPassword}</span>
+            <span className={labelClass}>{t("confirmPassword")}</span>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -290,12 +271,12 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
               {eyeButton}
             </div>
             {confirmPassword && newPassword !== confirmPassword ? (
-              <span className="mt-1 block text-[0.65rem] text-red-400">{COPY.mismatch}</span>
+              <span className="mt-1 block text-[0.65rem] text-red-400">{t("mismatch")}</span>
             ) : null}
           </label>
 
           <Pro2Button type="submit" disabled={busy} className="w-full justify-center">
-            {busy ? COPY.submitting : COPY.submit}
+            {busy ? t("submitting") : t("submit")}
           </Pro2Button>
 
           {msg ? (
@@ -311,9 +292,9 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
         </form>
       </section>
 
-      <section className={cardClass} aria-label={COPY.sessionTitle}>
-        <h2 className={sectionLabelClass}>{COPY.sessionTitle}</h2>
-        <p className="mt-2 text-xs text-gray-500">{COPY.sessionIntro}</p>
+      <section className={cardClass} aria-label={t("sessionTitle")}>
+        <h2 className={sectionLabelClass}>{t("sessionTitle")}</h2>
+        <p className="mt-2 text-xs text-gray-500">{t("sessionIntro")}</p>
         <Pro2Button
           type="button"
           variant="secondary"
@@ -322,7 +303,7 @@ export function CoachProfileView({ platformCoachStatus }: { platformCoachStatus:
           className="mt-4 w-full justify-center text-xs"
         >
           <LogOut className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          {signingOut ? COPY.signingOut : COPY.signOut}
+          {signingOut ? t("signingOut") : t("signOut")}
         </Pro2Button>
       </section>
     </div>

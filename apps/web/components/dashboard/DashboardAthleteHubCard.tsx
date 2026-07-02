@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import type { EmpathyApplicationPlaybook } from "@empathy/contracts";
 import { useAthleteOperationalHub } from "@/lib/dashboard/use-athlete-operational-hub";
 import { Pro2Link } from "@/components/ui/empathy";
@@ -85,6 +86,7 @@ function HubOperationalDocs({
   signals: OperationalSignalsBundle;
   dynamicsLines: string[];
 }) {
+  const t = useTranslations("DashboardAthleteHubCard");
   const ag = signals.adaptationGuidance;
   const loop = signals.adaptationLoop;
   const nut = signals.nutritionPerformanceIntegration;
@@ -93,52 +95,58 @@ function HubOperationalDocs({
   const observed = ag.observedAdaptation;
   const scoreFormula =
     expected > 0
-      ? `scorePct = clamp((observed / expected) × 100, 0, 100) → (${observed} / ${expected}) × 100 ≈ ${ag.scorePct}%`
-      : `expected = 0: scorePct derives from clamped observed only (buildAdaptationGuidance implementation).`;
+      ? t("scoreFormulaWithValues", { observed, expected, scorePct: ag.scorePct })
+      : t("scoreFormulaExpectedZero");
 
   return (
     <details className="mt-3 mb-4 rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-gray-400">
       <summary className="cursor-pointer font-mono text-[0.6rem] uppercase tracking-wider text-gray-300">
-        Logic, formulas and data provenance
+        {t("docsSummary")}
       </summary>
       <div className="mt-3 space-y-4 border-t border-white/10 pt-3 leading-relaxed">
         <div>
-          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-orange-300/90">Adaptation (twin)</p>
+          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-orange-300/90">{t("adaptationTwinTitle")}</p>
           <p className="mt-1">
-            <span className="text-gray-300">expected / observed</span> values from{" "}
-            <span className="text-gray-300">athlete_memory.twin</span> (expectedAdaptation, realAdaptation; fallback adaptationScore).
+            {t.rich("adaptationTwinSource", {
+              v: (chunks) => <span className="text-gray-300">{chunks}</span>,
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+            })}
           </p>
           <p className="mt-1 font-mono text-[0.65rem] text-gray-500">{scoreFormula}</p>
           <p className="mt-1">
-            Traffic light: green if score ≥ 75%; yellow 50–75% (suggested volume reduction 30–50%); red &lt;50% (50–75%). See{" "}
-            <span className="text-gray-300">lib/adaptation/adaptation-guidance.ts</span>.
+            {t.rich("adaptationTrafficLightRule", {
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+            })}
           </p>
           {ag.guidance ? <p className="mt-1 text-gray-500">{ag.guidance}</p> : null}
         </div>
         <div>
-          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-cyan-300/90">Calendar loop (7 days)</p>
+          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-cyan-300/90">{t("calendarLoopTitle")}</p>
           <p className="mt-1">
-            <span className="text-gray-300">divergenceScore</span>: from twin if present, otherwise{" "}
-            <span className="font-mono text-gray-500">clamp(|ΔTSS 7d planned − executed| × 0.5, 0, 100)</span> with Δ from{" "}
-            <span className="text-gray-300">planned_workouts</span> vs <span className="text-gray-300">executed_workouts</span>.
+            {t.rich("calendarLoopDivergence", {
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+              m: (chunks) => <span className="font-mono text-gray-500">{chunks}</span>,
+            })}
           </p>
           <p className="mt-1">
-            Status <span className="font-mono text-cyan-200/80">{loop.status}</span> and action{" "}
-            <span className="font-mono text-cyan-200/80">{loop.nextAction}</span> from rules in{" "}
-            <span className="text-gray-300">adaptation-regeneration-loop.ts</span> (compliance, recovery, protective mode, divergence
-            thresholds).
+            {t.rich("calendarLoopStatusAction", {
+              status: loop.status,
+              action: loop.nextAction,
+              val: (chunks) => <span className="font-mono text-cyan-200/80">{chunks}</span>,
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+            })}
           </p>
           {loop.guidance ? <p className="mt-1 text-gray-500">{loop.guidance}</p> : null}
         </div>
         <div>
-          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-violet-300/90">Nutrition ↔ training dial</p>
+          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-violet-300/90">{t("nutritionDialTitle")}</p>
           <p className="mt-1">
-            Deterministic engine <span className="text-gray-300">buildNutritionPerformanceIntegration</span>:{" "}
-            <span className="font-mono text-gray-500">trainingEnergyScale = clamp(bioScale × opScale, 0.35, 1.02)</span> then diary
-            multipliers (adequacy), loop (×0.96 regenerate, ×0.985 watch), final clamp; intra CHO and protein bias from traffic light,
-            bioenergetics, loop and diary. See <span className="text-gray-300">lib/nutrition/performance-integration-scaler.ts</span>.
-            <br />
-            <span className="text-amber-200/80">Note: trainingEnergyScale is a recovery/bio indicator — the solver uses it for meal↔fueling timing and composition, not to reduce the total daily energy requirement (= BMR + lifestyle + planned training).</span>
+            {t.rich("nutritionDialBody", {
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+              m: (chunks) => <span className="font-mono text-gray-500">{chunks}</span>,
+              br: () => <br />,
+              note: (chunks) => <span className="text-amber-200/80">{chunks}</span>,
+            })}
           </p>
           {nut.rationale.length > 0 ? (
             <ul className="mt-2 list-inside list-disc text-gray-500">
@@ -149,10 +157,12 @@ function HubOperationalDocs({
           ) : null}
         </div>
         <div>
-          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-cyan-300/90">Cross-module dynamics (rows)</p>
+          <p className="font-mono text-[0.58rem] uppercase tracking-wider text-cyan-300/90">{t("crossModuleRowsTitle")}</p>
           <p className="mt-1">
-            Strings from <span className="text-gray-300">buildOperationalDynamicsLines</span> (same hub API payload): adaptation,
-            operational context{op ? ` (~${op.loadScalePct}% · ${op.mode})` : ""}, loop, nutrition dial.
+            {t.rich("crossModuleRowsBody", {
+              s: (chunks) => <span className="text-gray-300">{chunks}</span>,
+              opctx: op ? ` (~${op.loadScalePct}% · ${op.mode})` : "",
+            })}
           </p>
           {dynamicsLines.length > 0 ? (
             <ul className="mt-2 list-inside list-disc font-mono text-[0.65rem] text-gray-500">
@@ -189,6 +199,7 @@ function HubRow({
 }
 
 export function DashboardAthleteHubCard() {
+  const t = useTranslations("DashboardAthleteHubCard");
   const { athleteId, ctxLoading, loading, error: err, hub } = useAthleteOperationalHub();
   const [playbookPreview, setPlaybookPreview] = useState<EmpathyApplicationPlaybook | null>(null);
   const showLoading = ctxLoading || loading;
@@ -218,22 +229,21 @@ export function DashboardAthleteHubCard() {
   return (
     <section
       className="w-full max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-4 text-left backdrop-blur-md sm:p-6"
-      aria-label="Athlete summary"
+      aria-label={t("sectionAriaLabel")}
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-orange-300">Dashboard · real data</p>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-orange-300">{t("kicker")}</p>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-lg font-bold text-white">Operational hub</h2>
+        <h2 className="text-lg font-bold text-white">{t("title")}</h2>
         <Pro2Link
           href="/physiology/bioenergetics"
           variant="secondary"
           className="shrink-0 border border-emerald-500/35 bg-emerald-500/10 text-xs hover:bg-emerald-500/15"
         >
-          Transparency
+          {t("transparency")}
         </Pro2Link>
       </div>
       <p className="mt-1 text-xs text-gray-500">
-        Summary from Supabase for the active athlete; training with calendar window (default −7 / +28 days). Same payload as the
-        Physiology Bioenergetics page.
+        {t("summaryLine")}
       </p>
 
       {showLoading ? (
@@ -251,21 +261,21 @@ export function DashboardAthleteHubCard() {
           {hub.operationalSignals ? (
             <div className="mb-4 rounded-xl border border-orange-400/25 bg-orange-950/20 px-4 py-3 text-sm text-gray-200">
               <p className="font-mono text-[0.65rem] uppercase tracking-wider text-orange-300/90">
-                Bioenergetics · twin → adaptation loop → nutrition dial
+                {t("bioenergeticsHeader")}
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                 <HubOpCell
-                  label="Twin · expected"
+                  label={t("cellTwinExpected")}
                   value={hub.operationalSignals.adaptationGuidance.expectedAdaptation.toFixed(2)}
                   tone="orange"
                 />
                 <HubOpCell
-                  label="Twin · observed"
+                  label={t("cellTwinObserved")}
                   value={hub.operationalSignals.adaptationGuidance.observedAdaptation.toFixed(2)}
                   tone="orange"
                 />
                 <HubOpCell
-                  label="Traffic light"
+                  label={t("cellTrafficLight")}
                   value={
                     <span className={trafficLightTextClass(hub.operationalSignals.adaptationGuidance.trafficLight)}>
                       {hub.operationalSignals.adaptationGuidance.trafficLight}
@@ -273,53 +283,53 @@ export function DashboardAthleteHubCard() {
                   }
                   tone={trafficLightTone(hub.operationalSignals.adaptationGuidance.trafficLight)}
                 />
-                <HubOpCell label="Score %" value={`${hub.operationalSignals.adaptationGuidance.scorePct}%`} tone="slate" />
+                <HubOpCell label={t("cellScorePct")} value={`${hub.operationalSignals.adaptationGuidance.scorePct}%`} tone="slate" />
                 <HubOpCell
-                  label="Loop · status"
+                  label={t("cellLoopStatus")}
                   value={<span className="text-cyan-200">{hub.operationalSignals.adaptationLoop.status}</span>}
                   tone="cyan"
                 />
                 <HubOpCell
-                  label="Loop · next action"
+                  label={t("cellLoopNextAction")}
                   value={<span className="break-all text-cyan-200/90">{hub.operationalSignals.adaptationLoop.nextAction}</span>}
                   tone="cyan"
                 />
                 <HubOpCell
-                  label="Loop · divergence"
+                  label={t("cellLoopDivergence")}
                   value={hub.operationalSignals.adaptationLoop.divergenceScore.toFixed(2)}
-                  sub="Score 0–100 (twin or |ΔTSS|×0.5)"
+                  sub={t("cellLoopDivergenceSub")}
                   tone="cyan"
                 />
                 <HubOpCell
-                  label="Recovery/bio (indicator)"
+                  label={t("cellRecoveryBio")}
                   value={`×${hub.operationalSignals.nutritionPerformanceIntegration.trainingEnergyScale.toFixed(2)}`}
                   tone="violet"
-                  sub="does not reduce energy requirement"
+                  sub={t("cellRecoveryBioSub")}
                 />
                 <HubOpCell
-                  label="CHO fueling"
+                  label={t("cellChoFueling")}
                   value={`×${hub.operationalSignals.nutritionPerformanceIntegration.fuelingChoScale.toFixed(2)}`}
                   tone="violet"
                 />
                 <HubOpCell
-                  label="Protein bias"
+                  label={t("cellProteinBias")}
                   value={`+${hub.operationalSignals.nutritionPerformanceIntegration.proteinBiasPctPoints.toFixed(1)} pt`}
                   tone="violet"
                 />
                 <HubOpCell
-                  label="Meal / training share"
+                  label={t("cellMealTrainingShare")}
                   value={`${Math.round(hub.operationalSignals.nutritionPerformanceIntegration.mealTrainingFraction * 100)}%`}
                   tone="violet"
                 />
                 <HubOpCell
-                  label="Hydration (floor)"
+                  label={t("cellHydrationFloor")}
                   value={`×${hub.operationalSignals.nutritionPerformanceIntegration.hydrationFloorMultiplier.toFixed(2)}`}
                   tone="violet"
                 />
                 <HubOpCell
-                  label="Coach trace in memory"
+                  label={t("cellCoachTrace")}
                   value={hub.operationalSignals.coachValidatedApplicationTraceCount}
-                  sub="`coach_manual_action` evidence entries in the bundle"
+                  sub={t("cellCoachTraceSub")}
                   tone="green"
                 />
               </div>
@@ -330,7 +340,7 @@ export function DashboardAthleteHubCard() {
             hub.expectedVsObtainedPreview.date ||
             hub.expectedVsObtainedPreview.recentCoachTracesInHint > 0) ? (
             <div className="mb-4 rounded-xl border border-slate-500/25 bg-slate-950/25 px-4 py-3 text-xs text-gray-300">
-              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-slate-400">Plan vs reality · last delta</p>
+              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-slate-400">{t("planVsRealityHeader")}</p>
               {hub.expectedVsObtainedPreview.date ? (
                 <p className="mt-2 font-mono text-[0.7rem] text-gray-400">
                   {hub.expectedVsObtainedPreview.date}
@@ -342,7 +352,7 @@ export function DashboardAthleteHubCard() {
               ) : null}
               {hub.expectedVsObtainedPreview.recentCoachTracesInHint > 0 ? (
                 <p className="mt-2 text-[0.65rem] text-slate-500">
-                  Delta hint includes {hub.expectedVsObtainedPreview.recentCoachTracesInHint} recent coach traces.
+                  {t("deltaHintTraces", { count: hub.expectedVsObtainedPreview.recentCoachTracesInHint })}
                 </p>
               ) : null}
             </div>
@@ -351,10 +361,10 @@ export function DashboardAthleteHubCard() {
             <div className="mb-4 rounded-xl border border-fuchsia-500/25 bg-fuchsia-950/15 px-4 py-3 text-sm text-gray-200">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-[0.65rem] uppercase tracking-wider text-fuchsia-300/90">
-                  EMPATHY playbook · today
+                  {t("playbookHeader")}
                 </p>
                 <Pro2Link href="/nutrition/integration" variant="ghost" className="text-[0.65rem] text-pink-300">
-                  Integration
+                  {t("integrationLink")}
                 </Pro2Link>
               </div>
               <p className="mt-2 text-xs text-gray-400">{playbookPreview.playbookHeadlineIt}</p>
@@ -371,14 +381,14 @@ export function DashboardAthleteHubCard() {
           {hub.crossModuleDynamicsLines.length > 0 ? (
             <div className="mb-4 rounded-xl border border-cyan-500/25 bg-cyan-950/15 px-4 py-3 text-sm text-gray-200">
               <p className="font-mono text-[0.65rem] uppercase tracking-wider text-cyan-300/90">
-                Cross-module dynamics · training ↔ nutrition
+                {t("crossModuleHeader")}
               </p>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {hub.crossModuleDynamicsLines.slice(0, 8).map((line, i) => {
                   const parsed = parseDynamicsBracketLine(line);
                   if (!parsed) {
                     return (
-                      <HubOpCell key={i} label={`Row ${i + 1}`} value={line} tone="slate" />
+                      <HubOpCell key={i} label={t("rowLabel", { n: i + 1 })} value={line} tone="slate" />
                     );
                   }
                   return <HubOpCell key={i} label={parsed.tag} value={parsed.body} tone="cyan" />;
@@ -391,19 +401,19 @@ export function DashboardAthleteHubCard() {
           ) : null}
           <details className="mb-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-300">
             <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-cyan-300/90">
-              Read spine (athlete-memory) · coverage {hub.readSpineCoverage.spineScore}%
+              {t("readSpineSummary", { coverage: hub.readSpineCoverage.spineScore })}
             </summary>
             <div className="mt-3 flex flex-wrap gap-2">
               {(
                 [
-                  ["Profile", hub.readSpineCoverage.hasProfile],
-                  ["Physiology", hub.readSpineCoverage.hasPhysiology],
+                  [t("spineProfile"), hub.readSpineCoverage.hasProfile],
+                  [t("spinePhysiology"), hub.readSpineCoverage.hasPhysiology],
                   ["Twin", hub.readSpineCoverage.hasTwin],
-                  ["Nutrition", hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
+                  [t("spineNutrition"), hub.readSpineCoverage.hasNutritionConstraints || hub.readSpineCoverage.hasNutritionDiary],
                   ["Health panels", hub.readSpineCoverage.hasHealthPanels],
                   ["Reality ingest", hub.readSpineCoverage.hasRealityIngestions],
                   ["Evidence items", hub.readSpineCoverage.hasEvidenceItems],
-                  ["Coach applications memory", hub.readSpineCoverage.hasCoachApplicationMemory],
+                  [t("spineCoachApplicationsMemory"), hub.readSpineCoverage.hasCoachApplicationMemory],
                 ] as const
               ).map(([label, on]) => (
                 <span
@@ -418,66 +428,76 @@ export function DashboardAthleteHubCard() {
             </div>
             {hub.readSpineCoverage.physiologySources ? (
               <p className="mt-2 text-xs text-gray-500">
-                Physiology sources: profile {hub.readSpineCoverage.physiologySources.physiologicalProfile ? "✓" : "—"} · metabolic lab{" "}
-                {hub.readSpineCoverage.physiologySources.metabolicRun ? "✓" : "—"} · lactate{" "}
-                {hub.readSpineCoverage.physiologySources.lactateRun ? "✓" : "—"} · max ox{" "}
-                {hub.readSpineCoverage.physiologySources.performanceRun ? "✓" : "—"} · biomarkers{" "}
-                {hub.readSpineCoverage.physiologySources.biomarkerPanel ? "✓" : "—"}
+                {t("physiologySources", {
+                  profile: hub.readSpineCoverage.physiologySources.physiologicalProfile ? "✓" : "—",
+                  metabolic: hub.readSpineCoverage.physiologySources.metabolicRun ? "✓" : "—",
+                  lactate: hub.readSpineCoverage.physiologySources.lactateRun ? "✓" : "—",
+                  maxox: hub.readSpineCoverage.physiologySources.performanceRun ? "✓" : "—",
+                  biomarkers: hub.readSpineCoverage.physiologySources.biomarkerPanel ? "✓" : "—",
+                })}
               </p>
             ) : null}
           </details>
           <p className="mb-2 font-mono text-[0.6rem] text-gray-500">
-            Training window: {hub.window.from} → {hub.window.to}
+            {t("trainingWindow", { from: hub.window.from, to: hub.window.to })}
           </p>
           <HubRow href="/profile" title="Profile">
-            {hub.profile?.line ?? "No record in athlete_profiles."}
+            {hub.profile?.line ?? t("noProfileRecord")}
           </HubRow>
           <HubRow href="/training" title="Training">
             <span>
-              {hub.training.plannedCount} planned · {hub.training.executedCount} executed
+              {t("trainingPlannedExecuted", {
+                planned: hub.training.plannedCount,
+                executed: hub.training.executedCount,
+              })}
             </span>
             <span className="mt-2 block text-xs text-gray-400">
-              Analyzer 7d (TSS) {hub.training.analyzerAligned.last7.planned.toFixed(0)} /{" "}
-              {hub.training.analyzerAligned.last7.executed.toFixed(0)} · compliance{" "}
-              {hub.training.analyzerAligned.last7.compliancePct.toFixed(0)}%
+              {t("analyzer7d", {
+                planned: hub.training.analyzerAligned.last7.planned.toFixed(0),
+                executed: hub.training.analyzerAligned.last7.executed.toFixed(0),
+                compliance: hub.training.analyzerAligned.last7.compliancePct.toFixed(0),
+              })}
             </span>
             <span className="mt-1 block text-xs text-gray-500">
-              28d {hub.training.analyzerAligned.last28.planned.toFixed(0)} /{" "}
-              {hub.training.analyzerAligned.last28.executed.toFixed(0)} ·{" "}
-              {hub.training.analyzerAligned.last28.compliancePct.toFixed(0)}% (
-              {hub.training.analyzerAligned.fromDate} → {hub.training.analyzerAligned.toDate})
+              {t("analyzer28d", {
+                planned: hub.training.analyzerAligned.last28.planned.toFixed(0),
+                executed: hub.training.analyzerAligned.last28.executed.toFixed(0),
+                compliance: hub.training.analyzerAligned.last28.compliancePct.toFixed(0),
+                from: hub.training.analyzerAligned.fromDate,
+                to: hub.training.analyzerAligned.toDate,
+              })}
             </span>
             <span className="mt-2 block">
               <Pro2Link href="/training/builder" variant="secondary" className="text-xs">
-                Open builder (dense KPI + families view)
+                {t("openBuilder")}
               </Pro2Link>
             </span>
           </HubRow>
           <HubRow href="/nutrition" title="Nutrition">
-            {hub.nutrition.constraintsLine ?? "No constraint in nutrition_constraints."}
+            {hub.nutrition.constraintsLine ?? t("noNutritionConstraint")}
             {hub.nutrition.plansCount > 0 ? (
-              <span className="text-gray-500"> · {hub.nutrition.plansCount} plans</span>
+              <span className="text-gray-500"> · {t("nutritionPlans", { count: hub.nutrition.plansCount })}</span>
             ) : (
-              <span className="text-gray-500"> · 0 plans</span>
+              <span className="text-gray-500"> · {t("nutritionPlans", { count: 0 })}</span>
             )}
           </HubRow>
           <HubRow href="/physiology" title="Physiology">
-            {hub.physiology?.line ?? "No recent physiological_profiles."}
+            {hub.physiology?.line ?? t("noPhysiologyRecent")}
           </HubRow>
           <HubRow href="/health" title="Health">
-            {hub.health.panelsCount} biomarker panels
+            {t("healthBiomarkerPanels", { count: hub.health.panelsCount })}
             {hub.health.lastPanelLabel ? (
-              <span className="text-gray-500"> · last: {hub.health.lastPanelLabel}</span>
+              <span className="text-gray-500"> · {t("healthLastPanel", { label: hub.health.lastPanelLabel })}</span>
             ) : null}
             {hub.health.lastSampleDate ? (
-              <span className="mt-1 block text-xs text-gray-500">Last sample: {hub.health.lastSampleDate}</span>
+              <span className="mt-1 block text-xs text-gray-500">{t("healthLastSample", { date: hub.health.lastSampleDate })}</span>
             ) : null}
             {hub.health.timelineDays != null ? (
-              <span className="mt-1 block text-xs text-gray-500">History covered: ~{hub.health.timelineDays} days</span>
+              <span className="mt-1 block text-xs text-gray-500">{t("healthHistoryCovered", { days: hub.health.timelineDays })}</span>
             ) : null}
             {hub.health.byType.length > 0 ? (
               <span className="mt-1 block text-xs text-gray-500">
-                Types:{" "}
+                {t("healthTypes")}{" "}
                 {hub.health.byType
                   .slice(0, 5)
                   .map((row) => `${row.type} (${row.count})`)

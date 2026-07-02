@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -9,6 +10,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
  * L'atleta lo inserisce a registrazione per essere collegato (ESCLUSIVO) a questo coach.
  */
 export function CoachCodeCard() {
+  const t = useTranslations("CoachCodeCard");
   const { role, coachOperationalApproved, loading: ctxLoading } = useActiveAthlete();
   const disabled = ctxLoading || role !== "coach" || (role === "coach" && !coachOperationalApproved);
   const [busy, setBusy] = useState(false);
@@ -31,10 +33,10 @@ export function CoachCodeCard() {
         if (res.ok && j.ok) {
           setCode(j.code ?? null);
         } else {
-          setErr(j.error ?? "Unable to read the code.");
+          setErr(j.error ?? t("errorRead"));
         }
       } catch {
-        if (!cancelled) setErr("Network error.");
+        if (!cancelled) setErr(t("errorNetwork"));
       } finally {
         if (!cancelled) setLoadingCode(false);
       }
@@ -52,12 +54,12 @@ export function CoachCodeCard() {
       const res = await fetch("/api/coach/code", { method: "POST" });
       const j = (await res.json()) as { ok?: boolean; code?: string; error?: string };
       if (!res.ok || !j.ok || !j.code) {
-        setErr(j.error ?? "Unable to generate the code.");
+        setErr(j.error ?? t("errorGenerate"));
         return;
       }
       setCode(j.code);
     } catch {
-      setErr("Network error.");
+      setErr(t("errorNetwork"));
     } finally {
       setBusy(false);
     }
@@ -70,7 +72,7 @@ export function CoachCodeCard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setErr("Copy failed.");
+      setErr(t("errorCopy"));
     }
   }, [code]);
 
@@ -81,23 +83,23 @@ export function CoachCodeCard() {
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
-      aria-label="Your coach code"
+      aria-label={t("ariaLabel")}
     >
       <div className="relative">
-        <h2 className="text-lg font-bold text-white">Your code</h2>
+        <h2 className="text-lg font-bold text-white">{t("title")}</h2>
         <p className="mt-1 text-sm text-gray-500">
           {disabled && role === "coach"
-            ? "Available after administrator approval."
-            : "Share it: the athlete enters it at registration to be linked to you."}
+            ? t("approvalHint")
+            : t("shareHint")}
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
           <Pro2Button type="button" disabled={busy || disabled || loadingCode} onClick={() => void generate()}>
-            {busy ? "Generating…" : code ? "Regenerate code" : "Generate code"}
+            {busy ? t("generating") : code ? t("regenerate") : t("generate")}
           </Pro2Button>
           {code ? (
             <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
-              {copied ? "Copied" : "Copy code"}
+              {copied ? t("copied") : t("copy")}
             </Pro2Button>
           ) : null}
         </div>
@@ -112,7 +114,7 @@ export function CoachCodeCard() {
           <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
             <p className="font-mono text-lg font-bold uppercase tracking-[0.25em] text-white">{code}</p>
             <p className="mt-2 text-xs text-gray-500">
-              Regenerating the code deactivates the previous one.
+              {t("regenerateNote")}
             </p>
           </div>
         ) : null}

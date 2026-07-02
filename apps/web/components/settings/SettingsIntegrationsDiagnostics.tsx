@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -23,6 +24,7 @@ type IntegrationFlagsPayload = {
 };
 
 function BoolPill({ value }: { value: boolean }) {
+  const t = useTranslations("SettingsIntegrationsDiagnostics");
   return (
     <span
       className={
@@ -31,7 +33,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Yes" : "No"}
+      {value ? t("yes") : t("no")}
     </span>
   );
 }
@@ -49,6 +51,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
  * Flag presenza integrazioni da `GET /api/settings/integration-flags` — nessun valore sensibile.
  */
 export function SettingsIntegrationsDiagnostics() {
+  const t = useTranslations("SettingsIntegrationsDiagnostics");
   const [data, setData] = useState<IntegrationFlagsPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -60,12 +63,12 @@ export function SettingsIntegrationsDiagnostics() {
         const json = (await res.json()) as IntegrationFlagsPayload | { ok?: false };
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Unable to read integration flags.");
+          setErr(t("errorReadFlags"));
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Request failed.");
+        if (!cancelled) setErr(t("errorRequestFailed"));
       }
     })();
     return () => {
@@ -76,7 +79,7 @@ export function SettingsIntegrationsDiagnostics() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Integrations diagnostics"
+      aria-label={t("sectionAriaLabel")}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500/80 via-blue-500/80 to-violet-500/80 opacity-70"
@@ -84,18 +87,19 @@ export function SettingsIntegrationsDiagnostics() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-cyan-300">
-          Integrations · env presence
+          {t("headerEyebrow")}
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Only Yes/No (no secrets). Endpoint:{" "}
+          {t("endpointHint")}{" "}
           <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
             /api/settings/integration-flags
           </code>
         </p>
         <p className="mt-1 text-[0.65rem] text-gray-600">
-          In production, for the JSON dump with Bearer use{" "}
-          <code className="text-gray-500">/api/integrations/status</code> e{" "}
-          <code className="text-gray-500">INTEGRATIONS_STATUS_SECRET</code>.
+          {t.rich("productionHint", {
+            path: () => <code className="text-gray-500">/api/integrations/status</code>,
+            secret: () => <code className="text-gray-500">INTEGRATIONS_STATUS_SECRET</code>,
+          })}
         </p>
 
         {err ? (
@@ -125,25 +129,25 @@ export function SettingsIntegrationsDiagnostics() {
             <Row label="Stripe · webhook secret">
               <BoolPill value={data.integrations.stripeWebhook} />
             </Row>
-            <Row label="Stripe · Silver price">
+            <Row label={t("rowStripePriceSilver")}>
               <BoolPill value={data.integrations.stripePriceSilver} />
             </Row>
-            <Row label="Stripe · Gold price">
+            <Row label={t("rowStripePriceGold")}>
               <BoolPill value={data.integrations.stripePriceGold} />
             </Row>
-            <Row label="Stripe · Coach Elite price">
+            <Row label={t("rowStripePriceCoachElite")}>
               <BoolPill value={data.integrations.stripeCoachPriceElite} />
             </Row>
-            <Row label="Stripe · Coach Pro price">
+            <Row label={t("rowStripePriceCoachPro")}>
               <BoolPill value={data.integrations.stripeCoachPricePro} />
             </Row>
-            <Row label="Stripe · Coach Olimpic price">
+            <Row label={t("rowStripePriceCoachOlimpic")}>
               <BoolPill value={data.integrations.stripeCoachPriceOlimpic} />
             </Row>
-            <Row label="Public payment link">
+            <Row label={t("rowPublicPaymentLink")}>
               <BoolPill value={data.integrations.stripePaymentLinkPublic} />
             </Row>
-            <Row label="Anonymous checkout enabled">
+            <Row label={t("rowAnonymousCheckoutEnabled")}>
               <BoolPill value={data.integrations.stripeCheckoutAnonEnabled} />
             </Row>
             <Row label="LogMeal">

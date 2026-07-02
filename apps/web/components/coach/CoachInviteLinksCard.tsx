@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -8,6 +9,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
  * Link di invito per coach abilitato.
  */
 export function CoachInviteLinksCard() {
+  const t = useTranslations("CoachInviteLinksCard");
   const { role, coachOperationalApproved, loading: ctxLoading } = useActiveAthlete();
   const inviteDisabled =
     ctxLoading || role !== "coach" || (role === "coach" && !coachOperationalApproved);
@@ -31,7 +33,7 @@ export function CoachInviteLinksCard() {
         ttlDays?: number;
       };
       if (!res.ok || !j.ok || !j.token) {
-        setErr(j.error ?? "Unable to create the invite.");
+        setErr(j.error ?? t("errCreate"));
         setInviteUrl(null);
         setExpiresAt(null);
         return;
@@ -40,7 +42,7 @@ export function CoachInviteLinksCard() {
       setInviteUrl(`${origin}/invite/${j.token}`);
       setExpiresAt(j.expiresAt ?? null);
     } catch {
-      setErr("Network error.");
+      setErr(t("errNetwork"));
       setInviteUrl(null);
     } finally {
       setBusy(false);
@@ -54,7 +56,7 @@ export function CoachInviteLinksCard() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setErr("Copy failed.");
+      setErr(t("errCopy"));
     }
   }, [inviteUrl]);
 
@@ -65,23 +67,23 @@ export function CoachInviteLinksCard() {
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
-      aria-label="Invite athlete"
+      aria-label={t("inviteAthlete")}
     >
       <div className="relative">
-        <h2 className="text-lg font-bold text-white">Invite athlete</h2>
+        <h2 className="text-lg font-bold text-white">{t("inviteAthlete")}</h2>
         <p className="mt-1 text-sm text-gray-500">
           {inviteDisabled && role === "coach"
-            ? "Available after administrator enablement."
-            : "Generate a link (7 days) and send it to the athlete."}
+            ? t("availableAfterEnablement")
+            : t("generateHint")}
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
           <Pro2Button type="button" disabled={busy || inviteDisabled} onClick={() => void createInvite()}>
-            {busy ? "Creating…" : "Generate link"}
+            {busy ? t("creating") : t("generateLink")}
           </Pro2Button>
           {inviteUrl ? (
             <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
-              {copied ? "Copied" : "Copy link"}
+              {copied ? t("copied") : t("copyLink")}
             </Pro2Button>
           ) : null}
         </div>
@@ -95,7 +97,7 @@ export function CoachInviteLinksCard() {
         {inviteUrl ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
             <p className="break-all font-mono text-xs text-gray-300">{inviteUrl}</p>
-            {expiresAt ? <p className="mt-2 text-xs text-gray-500">Expires: {new Date(expiresAt).toLocaleString()}</p> : null}
+            {expiresAt ? <p className="mt-2 text-xs text-gray-500">{t("expires", { date: new Date(expiresAt).toLocaleString() })}</p> : null}
           </div>
         ) : null}
       </div>

@@ -8,6 +8,7 @@ import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 function Pill({ children, className }: { children: ReactNode; className: string }) {
   return (
@@ -20,37 +21,38 @@ function Pill({ children, className }: { children: ReactNode; className: string 
  */
 export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?: string }) {
   const { role, coachOperationalApproved, platformCoachStatus, loading, signedIn } = useActiveAthlete();
+  const t = useTranslations("CoachAthletesModulePanel");
 
   const showStatus = !loading && signedIn;
 
   return (
-    <Pro2SectionCard accent="violet" title="Atleti" subtitle="Stato, roster e inviti" icon={Users}>
+    <Pro2SectionCard accent="violet" title={t("title")} subtitle={t("subtitle")} icon={Users}>
       <div className="flex flex-col gap-8">
         {showStatus ? (
           <div className="flex flex-wrap items-center gap-3 border-b border-white/10 pb-6">
             {role === "private" ? (
               <>
-                <Pill className="bg-white/10 text-gray-200">Account atleta</Pill>
+                <Pill className="bg-white/10 text-gray-200">{t("athleteAccount")}</Pill>
                 <Pro2Link
                   href="/access"
                   variant="secondary"
                   className="justify-center border border-cyan-500/40 bg-cyan-500/15 text-sm hover:bg-cyan-500/25"
                 >
-                  Diventa coach
+                  {t("becomeCoach")}
                 </Pro2Link>
               </>
             ) : null}
             {role === "coach" && coachOperationalApproved ? (
-              <Pill className="bg-emerald-500/20 text-emerald-100">Coach · attivo</Pill>
+              <Pill className="bg-emerald-500/20 text-emerald-100">{t("coachActive")}</Pill>
             ) : null}
             {role === "coach" && !coachOperationalApproved && (platformCoachStatus === "pending" || platformCoachStatus === null) ? (
               <>
-                <Pill className="bg-amber-500/20 text-amber-100">Coach · in attesa</Pill>
-                <span className="text-sm text-gray-400">L’abilitazione arriva dall’amministratore.</span>
+                <Pill className="bg-amber-500/20 text-amber-100">{t("coachPending")}</Pill>
+                <span className="text-sm text-gray-400">{t("enablementNote")}</span>
               </>
             ) : null}
             {role === "coach" && platformCoachStatus === "suspended" ? (
-              <Pill className="bg-rose-500/20 text-rose-100">Coach · sospeso</Pill>
+              <Pill className="bg-rose-500/20 text-rose-100">{t("coachSuspended")}</Pill>
             ) : null}
           </div>
         ) : null}
@@ -63,7 +65,7 @@ export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?
 
         <div className="flex flex-wrap gap-2 border-t border-white/10 pt-6">
           <Pro2Link href="/dashboard" variant="secondary" className="justify-center border border-white/15 text-sm">
-            Dashboard
+            {t("dashboard")}
           </Pro2Link>
         </div>
       </div>

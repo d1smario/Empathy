@@ -8,6 +8,7 @@
  */
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 
 import { DashboardTwinRadial } from "@/components/dashboard/DashboardTwinRadial";
 import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
@@ -48,13 +49,14 @@ const EMPTY_KPIS = {
 };
 
 export function NewDashboardView() {
+  const t = useTranslations("NewDashboardView");
   const { athleteId, role, loading: athleteLoading } = useActiveAthlete();
   const { data, loading, error } = useDashboardScores();
 
   if (!athleteId && !athleteLoading) {
     return (
       <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-400">
-        {role === "coach" ? "Select an active athlete to view the dashboard." : "Athlete profile not available."}
+        {role === "coach" ? t("selectActiveAthlete") : t("athleteProfileUnavailable")}
       </p>
     );
   }
@@ -62,7 +64,7 @@ export function NewDashboardView() {
   if (loading && !data) {
     return (
       <p className="rounded-2xl border border-white/10 bg-black/30 px-4 py-6 text-sm text-gray-500">
-        Loading dashboard…
+        {t("loadingDashboard")}
       </p>
     );
   }
@@ -80,7 +82,7 @@ export function NewDashboardView() {
   return (
     <div className="space-y-10">
       {/* CORPO + AREE: umanoide point-cloud con i 9 contatori ad arco. */}
-      <section aria-label="Physiological areas" className="relative">
+      <section aria-label={t("physiologicalAreasLabel")} className="relative">
         <div className="absolute right-0 top-0 z-10">
           <DashboardReadinessHeader />
         </div>
@@ -88,13 +90,13 @@ export function NewDashboardView() {
       </section>
 
       {/* STRISCIA 24 H: box Bioenergetica della giornata (ex modulo /bioenergetics) */}
-      <section aria-label="24 h strip">
+      <section aria-label={t("strip24hLabel")}>
         <DashboardBioenergeticStrip />
       </section>
 
       {/* PROFILO FISIOLOGICO */}
-      <section aria-label="Physiological profile">
-        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Physiological profile</p>
+      <section aria-label={t("physiologicalProfileLabel")}>
+        <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("physiologicalProfileTitle")}</p>
         <DashboardKpiGrid kpis={data?.kpis ?? EMPTY_KPIS} columns={3} />
       </section>
 
@@ -104,7 +106,7 @@ export function NewDashboardView() {
       </section>
 
       {/* LONGEVITÀ & FITNESS: check-in di oggi + indice (ex modulo /longevity) */}
-      <section aria-label="Longevity & Fitness">
+      <section aria-label={t("longevityFitnessLabel")}>
         <DashboardLongevityPanels />
       </section>
     </div>

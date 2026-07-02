@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { LineChart } from "lucide-react";
 import type { BioenergeticsDayViewModel } from "@/api/bioenergetics/contracts";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
@@ -67,6 +68,7 @@ function writeBioDayCache(key: string, vm: BioenergeticsDayViewModel): void {
 }
 
 export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean }) {
+  const t = useTranslations("DashboardBioenergeticStrip");
   const { athleteId, loading: athleteLoading, adminScoped, role } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const date = toIsoDate(new Date());
@@ -112,7 +114,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           // Con cache già mostrata, non sovrascriverla con un errore di refresh in background.
           if (!cached) {
             setVm(null);
-            setError(json.error ?? "Could not load today's data.");
+            setError(json.error ?? t("errorCouldNotLoad"));
           }
           return;
         }
@@ -140,7 +142,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
         // Con cache già mostrata, lascia i dati visibili e non mostrare l'errore di rete del refresh.
         if (!cancelled && !cached) {
           setVm(null);
-          setError("Network error while loading.");
+          setError(t("errorNetwork"));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -165,8 +167,8 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
   return (
     <Pro2SectionCard
       accent="lime"
-      title="24 h Strip"
-      subtitle="How your day is trending, constantly updated. When a real measurement comes in, it replaces the estimate."
+      title={t("cardTitle")}
+      subtitle={t("cardSubtitle")}
       icon={LineChart}
     >
       {error ? (
@@ -184,8 +186,8 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           {vm.continuousMonitoring.channels.length === 0 && vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
             <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
               {showTech
-                ? "No curves generated: check the curve generator configuration and JSON response (see disclaimer)."
-                : "Curves not available for this day: try refreshing later."}
+                ? t("noCurvesTech")
+                : t("noCurvesUser")}
             </p>
           ) : null}
           {vm.continuousMonitoring.channels.length > 0 ? (
@@ -193,9 +195,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           ) : null}
         </div>
       ) : (
-        <p className="text-sm text-gray-500">
-          No data for today. The 24 h strip fills up with real measurements from devices, meals, workouts or tests.
-        </p>
+        <p className="text-sm text-gray-500">{t("noData")}</p>
       )}
     </Pro2SectionCard>
   );

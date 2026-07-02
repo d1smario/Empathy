@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 /**
@@ -65,6 +66,7 @@ const DOMAIN_META: Array<{
 ];
 
 export function SettingsDataSourcePreference() {
+  const t = useTranslations("SettingsDataSourcePreference");
   const { loading: ctxLoading, signedIn, athleteId } = useActiveAthlete();
   const [pref, setPref] = useState<Preferences | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -82,16 +84,16 @@ export function SettingsDataSourcePreference() {
       });
       const json = (await res.json()) as { ok?: boolean; preferences?: Preferences; error?: string };
       if (!res.ok || json.ok !== true) {
-        setErr(json.error ?? "Unable to load provider preferences.");
+        setErr(json.error ?? t("loadError"));
         setPref(null);
         return;
       }
       setPref(json.preferences ?? {});
     } catch {
-      setErr("Request failed.");
+      setErr(t("requestFailed"));
       setPref(null);
     }
-  }, [athleteId]);
+  }, [athleteId, t]);
 
   useEffect(() => {
     if (ctxLoading || !signedIn) return;
@@ -114,12 +116,12 @@ export function SettingsDataSourcePreference() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || json.ok !== true) {
-        setErr(json.error ?? "Save failed.");
+        setErr(json.error ?? t("saveError"));
         return;
       }
       await load();
     } catch {
-      setErr("Save failed.");
+      setErr(t("saveError"));
     } finally {
       setBusyDomain(null);
     }
@@ -142,7 +144,7 @@ export function SettingsDataSourcePreference() {
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Provider choice per domain"
+      aria-label={t("sectionAriaLabel")}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500/80 via-violet-500/80 to-orange-500/80 opacity-70"
@@ -150,14 +152,14 @@ export function SettingsDataSourcePreference() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300">
-          Canonical provider per domain
+          {t("eyebrow")}
         </p>
-        <h3 className="mt-2 text-lg font-semibold text-white">Which device drives what</h3>
+        <h3 className="mt-2 text-lg font-semibold text-white">{t("heading")}</h3>
         <p className="mt-2 text-sm text-gray-400">
-          Choose which device to take each data group from. Example: <em>Sleep → WHOOP</em>,{" "}
-          <em>Training → Garmin</em>. When a preference is set, the other integrations keep ingesting
-          (the athlete memory stays canonical) but on read the KPIs use only the chosen provider: no more inconsistent
-          mixing across devices.
+          {t.rich("intro", {
+            sleep: (chunks) => <em>{chunks}</em>,
+            training: (chunks) => <em>{chunks}</em>,
+          })}
         </p>
         <p className="mt-1 text-[0.65rem] text-gray-600">
           API:{" "}
@@ -194,7 +196,7 @@ export function SettingsDataSourcePreference() {
                   <p className="mt-1 text-[0.7rem] leading-snug text-gray-500">{item.hint}</p>
 
                   <label className="mt-3 block text-[0.65rem] uppercase tracking-wide text-gray-500">
-                    Chosen provider
+                    {t("chosenProvider")}
                   </label>
                   <select
                     aria-label={`Provider ${item.title}`}
@@ -211,13 +213,17 @@ export function SettingsDataSourcePreference() {
                   </select>
 
                   {busy ? (
-                    <p className="mt-2 text-[0.65rem] text-gray-500">Saving…</p>
+                    <p className="mt-2 text-[0.65rem] text-gray-500">{t("saving")}</p>
                   ) : current ? (
                     <p className="mt-2 text-[0.65rem] text-emerald-300/80">
-                      Active: the {item.title.toLowerCase()} KPIs come only from <strong>{current}</strong>.
+                      {t.rich("activeStatus", {
+                        domain: item.title.toLowerCase(),
+                        provider: current,
+                        b: (chunks) => <strong>{chunks}</strong>,
+                      })}
                     </p>
                   ) : (
-                    <p className="mt-2 text-[0.65rem] text-gray-500">No choice: automatic behavior.</p>
+                    <p className="mt-2 text-[0.65rem] text-gray-500">{t("noChoice")}</p>
                   )}
                 </li>
               );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Button } from "@/components/ui/empathy";
 import { coachOrgIdForClient } from "@/lib/coach-org-id";
@@ -35,15 +36,18 @@ function formatDateIt(iso: string): string {
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function inviteStatus(invite: CoachReferralInviteRow): { label: string; className: string; active: boolean } {
+function inviteStatus(
+  invite: CoachReferralInviteRow,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): { label: string; className: string; active: boolean } {
   if (invite.consumed_at) {
-    return { label: "Used", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200", active: false };
+    return { label: t("statusUsed"), className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200", active: false };
   }
   if (new Date(invite.expires_at).getTime() <= Date.now()) {
-    return { label: "Expired", className: "border-amber-500/40 bg-amber-500/10 text-amber-200", active: false };
+    return { label: t("statusExpired"), className: "border-amber-500/40 bg-amber-500/10 text-amber-200", active: false };
   }
   return {
-    label: `Active until ${formatDateIt(invite.expires_at)}`,
+    label: t("statusActiveUntil", { date: formatDateIt(invite.expires_at) }),
     className: "border-cyan-500/40 bg-cyan-500/10 text-cyan-100",
     active: true,
   };
@@ -55,6 +59,7 @@ function inviteStatus(invite: CoachReferralInviteRow): { label: string; classNam
  * si registra o accede e viene collegato; l'attivazione finale resta all'admin Empathy.
  */
 export function InviteCoachCard() {
+  const t = useTranslations("InviteCoachCard");
   const { athleteId, userId } = useActiveAthlete();
   const [invites, setInvites] = useState<CoachReferralInviteRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +71,7 @@ export function InviteCoachCard() {
   const loadInvites = useCallback(async () => {
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setError("Supabase not configured: coach invites unavailable.");
+      setError(t("errorSupabaseNotConfigured"));
       setLoading(false);
       return;
     }
@@ -83,7 +88,7 @@ export function InviteCoachCard() {
       setInvites((data as CoachReferralInviteRow[]) ?? []);
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadInvites();
@@ -93,7 +98,7 @@ export function InviteCoachCard() {
     if (busy) return;
     const supabase = createEmpathyBrowserSupabase();
     if (!supabase) {
-      setError("Supabase not configured: coach invites unavailable.");
+      setError(t("errorSupabaseNotConfigured"));
       return;
     }
     setBusy(true);
@@ -104,11 +109,11 @@ export function InviteCoachCard() {
       } = await supabase.auth.getSession();
       const uid = session?.user?.id ?? userId;
       if (!uid) {
-        setError("Session unavailable: try again after logging in.");
+        setError(t("errorSessionUnavailable"));
         return;
       }
       if (!athleteId) {
-        setError("Athlete profile not ready yet: try again in a few seconds.");
+        setError(t("errorAthleteNotReady"));
         return;
       }
       const token = randomInviteToken();
@@ -129,7 +134,7 @@ export function InviteCoachCard() {
     } finally {
       setBusy(false);
     }
-  }, [athleteId, busy, loadInvites, userId]);
+  }, [athleteId, busy, loadInvites, userId, t]);
 
   const copyInviteLink = useCallback(async (token: string) => {
     try {
@@ -137,9 +142,9 @@ export function InviteCoachCard() {
       setCopiedToken(token);
       window.setTimeout(() => setCopiedToken((current) => (current === token ? null : current)), 2500);
     } catch {
-      setError("Copy failed: select and copy the link manually.");
+      setError(t("errorCopyFailed"));
     }
-  }, []);
+  }, [t]);
 
   const deleteInvite = useCallback(
     async (invite: CoachReferralInviteRow) => {
@@ -160,14 +165,14 @@ export function InviteCoachCard() {
     <Pro2SectionCard
       accent="emerald"
       icon={UserPlus}
-      title="Invite your coach"
-      subtitle="Connect the coach you train with"
+      title={t("title")}
+      subtitle={t("subtitle")}
     >
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-gray-400">
-          Generate a personal link and send it to your <span className="font-semibold text-gray-200">coach</span>: opening it, they
-          sign up on Empathy (or log in if they already have an account) and get connected to your profile. The final activation of
-          their coach account is completed by Empathy.
+          {t.rich("intro", {
+            b: (chunks) => <span className="font-semibold text-gray-200">{chunks}</span>,
+          })}
         </p>
 
         {error ? (
@@ -178,35 +183,35 @@ export function InviteCoachCard() {
 
         <div className="flex flex-wrap items-center gap-3">
           <Pro2Button type="button" disabled={busy || !athleteId} onClick={() => void generateInvite()}>
-            {busy ? "Generating…" : "Generate invite link"}
+            {busy ? t("generating") : t("generateInviteLink")}
           </Pro2Button>
-          {!athleteId ? <span className="text-xs text-gray-500">Athlete profile loading…</span> : null}
+          {!athleteId ? <span className="text-xs text-gray-500">{t("athleteProfileLoading")}</span> : null}
         </div>
 
         {lastToken ? (
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">Link generated</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-200">{t("linkGenerated")}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <code className="min-w-0 break-all rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-emerald-100">
                 {inviteHref(lastToken)}
               </code>
               <Pro2Button type="button" variant="secondary" onClick={() => void copyInviteLink(lastToken)}>
-                {copiedToken === lastToken ? "Copied!" : "Copy link"}
+                {copiedToken === lastToken ? t("copied") : t("copyLink")}
               </Pro2Button>
             </div>
           </div>
         ) : null}
 
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Your invites</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("yourInvites")}</p>
           {loading ? (
-            <p className="mt-2 text-sm text-gray-500">Loading invites…</p>
+            <p className="mt-2 text-sm text-gray-500">{t("loadingInvites")}</p>
           ) : invites.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-500">No invites generated yet.</p>
+            <p className="mt-2 text-sm text-gray-500">{t("noInvitesYet")}</p>
           ) : (
             <ul className="mt-3 space-y-2">
               {invites.map((invite) => {
-                const status = inviteStatus(invite);
+                const status = inviteStatus(invite, t);
                 return (
                   <li
                     key={invite.id}
@@ -217,11 +222,11 @@ export function InviteCoachCard() {
                     >
                       {status.label}
                     </span>
-                    <span className="text-xs text-gray-500">Created on {formatDateIt(invite.created_at)}</span>
+                    <span className="text-xs text-gray-500">{t("createdOn", { date: formatDateIt(invite.created_at) })}</span>
                     <span className="min-w-0 flex-1" aria-hidden />
                     {status.active ? (
                       <Pro2Button type="button" variant="ghost" onClick={() => void copyInviteLink(invite.token)}>
-                        {copiedToken === invite.token ? "Copied!" : "Copy"}
+                        {copiedToken === invite.token ? t("copied") : t("copy")}
                       </Pro2Button>
                     ) : null}
                     {!invite.consumed_at ? (
@@ -231,7 +236,7 @@ export function InviteCoachCard() {
                         className="text-rose-300 hover:text-rose-200"
                         onClick={() => void deleteInvite(invite)}
                       >
-                        Delete
+                        {t("delete")}
                       </Pro2Button>
                     ) : null}
                   </li>

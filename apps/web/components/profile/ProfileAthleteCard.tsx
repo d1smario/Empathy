@@ -2,6 +2,7 @@
 
 import { formatAthleteProfileStrip, type AthleteProfileRowView } from "@/lib/profile/athlete-profile-strip";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 type ApiOk = { ok: true; athleteId: string; profile: AthleteProfileRowView | null };
@@ -14,6 +15,7 @@ let athleteCardCacheId: string | null = null;
 let athleteCardCache: { profile: AthleteProfileRowView | null; err: string | null } | null = null;
 
 export function ProfileAthleteCard() {
+  const t = useTranslations("ProfileAthleteCard");
   const { athleteId, loading: ctxLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<AthleteProfileRowView | null>(null);
@@ -23,7 +25,7 @@ export function ProfileAthleteCard() {
     if (ctxLoading) return;
     if (!athleteId) {
       setProfile(null);
-      setErr("No active athlete.");
+      setErr(t("noActiveAthlete"));
       setLoading(false);
       return;
     }
@@ -48,7 +50,7 @@ export function ProfileAthleteCard() {
         if (c) return;
         if (!res.ok || !json.ok) {
           setProfile(null);
-          const nextErr = ("error" in json && json.error) || "Read failed.";
+          const nextErr = ("error" in json && json.error) || t("readFailed");
           setErr(nextErr);
           athleteCardCache = { profile: null, err: nextErr };
           athleteCardCacheId = athleteId;
@@ -59,7 +61,7 @@ export function ProfileAthleteCard() {
         athleteCardCache = { profile: json.profile, err: null };
         athleteCardCacheId = athleteId;
       } catch {
-        if (!c) setErr("Network error.");
+        if (!c) setErr(t("networkError"));
       } finally {
         if (!c) setLoading(false);
       }
@@ -72,10 +74,10 @@ export function ProfileAthleteCard() {
   return (
     <section
       className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/30 p-6 text-left backdrop-blur-md"
-      aria-label="Athlete profile"
+      aria-label={t("ariaLabel")}
     >
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-violet-300">Profile · real data</p>
-      <h2 className="mt-2 text-lg font-bold text-white">Personal details & availability</h2>
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-violet-300">{t("realDataLabel")}</p>
+      <h2 className="mt-2 text-lg font-bold text-white">{t("heading")}</h2>
 
       {ctxLoading || loading ? (
         <div className="mt-4 h-2 w-40 animate-pulse rounded-full bg-white/10" />
@@ -88,7 +90,7 @@ export function ProfileAthleteCard() {
       ) : null}
 
       {!ctxLoading && !loading && !err && !profile ? (
-        <p className="mt-4 text-sm text-gray-500">No row in athlete_profiles for this id.</p>
+        <p className="mt-4 text-sm text-gray-500">{t("noRow")}</p>
       ) : null}
 
       {!ctxLoading && !loading && !err && profile ? (

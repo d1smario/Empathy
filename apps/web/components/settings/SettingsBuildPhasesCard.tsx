@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 type PhaseStatus = "done" | "active" | "planned";
 
@@ -51,8 +52,9 @@ const PHASES: Array<{
 ];
 
 function StatusPill({ status }: { status: PhaseStatus }) {
+  const t = useTranslations("SettingsBuildPhasesCard");
   const label =
-    status === "done" ? "Done" : status === "active" ? "In progress" : "Planned";
+    status === "done" ? t("statusDone") : status === "active" ? t("statusActive") : t("statusPlanned");
   const cls =
     status === "done"
       ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
@@ -76,12 +78,13 @@ npm run dev
 # Windows: build dev in apps/.empathy-pro2-next-dev (NEXT_DIST_DIR relativo). URL: localhost:3020 o porta in console`;
 
 export function SettingsBuildPhasesCard() {
+  const t = useTranslations("SettingsBuildPhasesCard");
   const [open, setOpen] = useState(true);
 
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Empathy Pro 2 build roadmap"
+      aria-label={t("cardAriaLabel")}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500/80 via-fuchsia-500/80 to-rose-500/80 opacity-70"
@@ -91,10 +94,10 @@ export function SettingsBuildPhasesCard() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300">
-              Roadmap · phases
+              {t("roadmapEyebrow")}
             </p>
             <p className="mt-2 max-w-xl text-sm text-gray-400">
-              High-level status of the Pro 2 scaffold. Update the labels in code when you close a phase.
+              {t("roadmapDescription")}
             </p>
           </div>
           <button
@@ -102,7 +105,7 @@ export function SettingsBuildPhasesCard() {
             onClick={() => setOpen((o) => !o)}
             className="rounded-xl border border-white/15 bg-black/30 px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-gray-300 hover:border-white/25"
           >
-            {open ? "Collapse" : "Expand"}
+            {open ? t("collapse") : t("expand")}
           </button>
         </div>
 
@@ -125,11 +128,13 @@ export function SettingsBuildPhasesCard() {
 
         <div className="mt-10 border-t border-white/10 pt-8">
           <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-300">
-            Terminal commands (copy when you return)
+            {t("terminalHeader")}
           </p>
           <p className="mt-2 text-xs text-gray-500">
-            Adjust the path if the repo is not under Documents. On OneDrive, if the build fails with readlink, delete{" "}
-            <code className="text-gray-400">apps/web/.next</code> before <code className="text-gray-400">npm run verify</code>.
+            {t.rich("terminalNote", {
+              c1: (chunks) => <code className="text-gray-400">{chunks}</code>,
+              c2: (chunks) => <code className="text-gray-400">{chunks}</code>,
+            })}
           </p>
           <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-white/10 bg-black/50 p-4 font-mono text-[0.7rem] leading-relaxed text-gray-300 select-all">
             {TERMINAL_SNIPPET}

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2Link } from "@/components/ui/empathy";
 
 type SessionPayload =
@@ -15,6 +16,7 @@ type SessionPayload =
   | { ok?: false };
 
 function BoolPill({ value }: { value: boolean }) {
+  const t = useTranslations("SettingsAuthSessionDiagnostics");
   return (
     <span
       className={
@@ -23,7 +25,7 @@ function BoolPill({ value }: { value: boolean }) {
           : "rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-gray-500"
       }
     >
-      {value ? "Yes" : "No"}
+      {value ? t("yes") : t("no")}
     </span>
   );
 }
@@ -47,6 +49,7 @@ function maskUserId(id: string | null): string {
  * Probe `GET /api/auth/session` — niente PII oltre a un id mascherato opzionale.
  */
 export function SettingsAuthSessionDiagnostics() {
+  const t = useTranslations("SettingsAuthSessionDiagnostics");
   const [data, setData] = useState<SessionPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -58,23 +61,23 @@ export function SettingsAuthSessionDiagnostics() {
         const json = (await res.json()) as SessionPayload;
         if (cancelled) return;
         if (!res.ok || !("ok" in json) || json.ok !== true) {
-          setErr("Unable to read session state.");
+          setErr(t("errorReadSession"));
           return;
         }
         setData(json);
       } catch {
-        if (!cancelled) setErr("Request failed.");
+        if (!cancelled) setErr(t("errorRequestFailed"));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl sm:p-8"
-      aria-label="Supabase auth diagnostics"
+      aria-label={t("ariaLabel")}
     >
       <div
         className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-500/80 via-teal-500/80 to-emerald-500/80 opacity-70"
@@ -82,15 +85,17 @@ export function SettingsAuthSessionDiagnostics() {
       />
       <div className="relative">
         <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-teal-300">
-          Auth · session (Supabase SSR)
+          {t("header")}
         </p>
         <p className="mt-2 text-sm text-gray-400">
-          Endpoint:{" "}
-          <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
-            /api/auth/session
-          </code>
-          . Middleware refreshes cookies when{" "}
-          <code className="text-gray-500">NEXT_PUBLIC_SUPABASE_*</code> is configured.
+          {t.rich("endpointDescription", {
+            endpoint: () => (
+              <code className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-xs text-pink-300">
+                /api/auth/session
+              </code>
+            ),
+            env: () => <code className="text-gray-500">NEXT_PUBLIC_SUPABASE_*</code>,
+          })}
         </p>
 
         {err ? (
@@ -108,21 +113,24 @@ export function SettingsAuthSessionDiagnostics() {
 
         {data && data.ok ? (
           <div className="mt-6 font-mono text-xs">
-            <Row label="Supabase project configured (public env)">
+            <Row label={t("rowConfigured")}>
               <BoolPill value={data.configured} />
             </Row>
-            <Row label="Valid session (cookie)">
+            <Row label={t("rowValidSession")}>
               <BoolPill value={data.signedIn} />
             </Row>
             {"authError" in data && data.authError ? (
               <p className="mt-3 text-amber-400">
-                Invalid or expired token/cookie (try logging out from the client or reload after login).
+                {t("authErrorWarning")}
               </p>
             ) : null}
             {data.signedIn && data.userId ? (
               <p className="mt-3 text-gray-500">
-                User id (masked):{" "}
-                <span className="text-gray-400">{maskUserId(data.userId)}</span>
+                {t.rich("maskedUserId", {
+                  id: () => (
+                    <span className="text-gray-400">{maskUserId(data.userId)}</span>
+                  ),
+                })}
               </p>
             ) : null}
           </div>
@@ -130,7 +138,7 @@ export function SettingsAuthSessionDiagnostics() {
 
         <div className="mt-8 border-t border-white/10 pt-6">
           <Pro2Link href="/access" variant="secondary" className="justify-center">
-            Access page
+            {t("accessPage")}
           </Pro2Link>
         </div>
       </div>
