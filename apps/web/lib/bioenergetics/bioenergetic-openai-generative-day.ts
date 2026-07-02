@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import type {
   BioenergeticMetricTile,
   BioenergeticMetricTileCategory,
@@ -11,6 +12,63 @@ import {
   parseStripAiOpenAiContent,
   shouldSkipGlucosePredictor,
 } from "@/lib/bioenergetics/bioenergetic-continuous-strip-ai-inputs";
+
+/**
+ * Cache DB content-addressed dell'output OpenAI (tabella `bioenergetics_ai_overlays`,
+ * solo service-role). Lettura/scrittura best-effort: qualunque errore → si procede
+ * come senza cache (la vista non deve mai rompersi per la cache).
+ * Import dinamico di `@/lib/supabase/admin` (marcato `server-only`): statico
+ * romperebbe i test tsx di questo modulo, che non toccano la cache.
+ */
+async function loadAdminClient() {
+  try {
+    const mod = await import("@/lib/supabase/admin");
+    return mod.createSupabaseAdminClient();
+  } catch {
+    return null;
+  }
+}
+
+async function readCachedOverlayText(inputDigest: string): Promise<string | null> {
+  const admin = await loadAdminClient();
+  if (!admin) return null;
+  try {
+    const { data } = await admin
+      .from("bioenergetics_ai_overlays")
+      .select("response_text")
+      .eq("input_digest", inputDigest)
+      .maybeSingle();
+    const text = (data as { response_text?: unknown } | null)?.response_text;
+    return typeof text === "string" && text.trim() !== "" ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCachedOverlayText(row: {
+  athleteId: string;
+  date: string;
+  inputDigest: string;
+  model: string;
+  responseText: string;
+}): Promise<void> {
+  const admin = await loadAdminClient();
+  if (!admin) return;
+  try {
+    await admin.from("bioenergetics_ai_overlays").upsert(
+      {
+        athlete_id: row.athleteId,
+        date: row.date,
+        input_digest: row.inputDigest,
+        model: row.model,
+        response_text: row.responseText,
+      },
+      { onConflict: "input_digest" },
+    );
+  } catch {
+    /* best-effort */
+  }
+}
 
 /** Catalogo tile mostrate in UI (allineato alle categorie prodotto + screenshot). */
 export type BioenergeticGenerativeTileSpec = {
@@ -229,23 +287,40 @@ export async function applyBioenergeticOpenAiGenerativeOverlay(
   };
 
   const model = (process.env.OPENAI_BIOENERGETIC_MODEL ?? "").trim() || "gpt-4o-mini";
-  const ai = await requestOpenAiGenerativeBioenergeticDay(compact, { apiKey, model });
-  if (!ai.ok) {
-    return {
-      ...vm,
-      metricTiles: placeholderTiles(),
-      chart24h: [],
-      series: [],
-      evidenceConditionedLayer: null,
-      interactionSkeleton: null,
-      biaLiteratureSummary: null,
-      interpretationHints: [],
-      continuousMonitoring: { layer: "ai_from_inputs_v1", channels: [] },
-      disclaimers: [...SHORT_DISCLAIMERS, `OpenAI: ${ai.error}`],
-    };
+
+  // Cache content-addressed su DB: chiave = sha256(model + payload esatto inviato al
+  // modello). Stessi input → risposta riusata (la vista non paga 5-20s di OpenAI a ogni
+  // GET e la striscia non cambia tra reload); un pasto/seduta nuovi cambiano `compact`
+  // → digest nuovo → rigenerazione. Best-effort: senza admin client si chiama OpenAI.
+  const inputDigest = createHash("sha256").update(`${model}\n${JSON.stringify(compact)}`, "utf8").digest("hex");
+  let aiText = await readCachedOverlayText(inputDigest);
+  if (!aiText) {
+    const ai = await requestOpenAiGenerativeBioenergeticDay(compact, { apiKey, model });
+    if (!ai.ok) {
+      return {
+        ...vm,
+        metricTiles: placeholderTiles(),
+        chart24h: [],
+        series: [],
+        evidenceConditionedLayer: null,
+        interactionSkeleton: null,
+        biaLiteratureSummary: null,
+        interpretationHints: [],
+        continuousMonitoring: { layer: "ai_from_inputs_v1", channels: [] },
+        disclaimers: [...SHORT_DISCLAIMERS, `OpenAI: ${ai.error}`],
+      };
+    }
+    aiText = ai.text;
+    await writeCachedOverlayText({
+      athleteId: slice.athleteId,
+      date: slice.date,
+      inputDigest,
+      model,
+      responseText: aiText,
+    });
   }
 
-  const root = extractJsonObject(ai.text);
+  const root = extractJsonObject(aiText);
   if (!root) {
     return {
       ...vm,
@@ -261,7 +336,7 @@ export async function applyBioenergeticOpenAiGenerativeOverlay(
     };
   }
 
-  const stripParsed = parseStripAiOpenAiContent(ai.text);
+  const stripParsed = parseStripAiOpenAiContent(aiText);
   const tilesById = parseTilesFromGenerativeResponse(root);
   const metricTiles = buildMetricTilesFromGenerativeMap(tilesById);
   const channels = stripParsed ? buildMonitoringChannelsFromStripAiParse(vm, stripParsed) : [];
