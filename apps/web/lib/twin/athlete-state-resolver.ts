@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { resolveCanonicalPhysiologyState, type CanonicalPhysiologyState } from "@/lib/physiology/profile-resolver";
 import type { TwinState } from "@/lib/empathy/schemas";
 import type { AdaptationScoreV1 } from "@/lib/empathy/schemas/adaptation";
-import type { RecoveryDataTier } from "@/lib/empathy/schemas/internal-load";
+import type { InternalLoadState, RecoveryDataTier } from "@/lib/empathy/schemas/internal-load";
 import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
 import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-signals";
 import { resolveInternalLoadState } from "@/lib/internal-load/internal-load-resolver";
@@ -29,6 +29,13 @@ export type CanonicalTwinState = TwinState & {
     lastExternalLoad: number;
     lastInternalLoad: number;
   };
+  /**
+   * Stato internal-load GIÀ risolto dentro questo twin (stesse righe executed/planned).
+   * Esposto per il dedup nei chiamanti che altrimenti lo ri-risolverebbero (es.
+   * dashboard/scores → resolveEpiForDate): campo additivo, i consumatori esistenti
+   * non cambiano.
+   */
+  internalLoadState: InternalLoadState;
 };
 
 function asNum(value: unknown): number | null {
@@ -358,6 +365,7 @@ export async function resolveCanonicalTwinState(
       lastExternalLoad: latest ? Number(latest.external.toFixed(1)) : 0,
       lastInternalLoad: latest ? Number(latest.internal.toFixed(1)) : 0,
     },
+    internalLoadState,
   };
 }
 

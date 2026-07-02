@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
 
     const { db } = await requireAthleteReadContext(req, athleteId);
 
-    const [profRes, physRes, panelsRes, deviceRes, twin, recovery, resolvedEpi] = await Promise.all([
+    const [profRes, physRes, panelsRes, deviceRes, twin, recovery] = await Promise.all([
       db.from("athlete_profiles").select("weight_kg, body_fat_pct, birth_date").eq("id", athleteId).maybeSingle(),
       db
         .from("physiological_profiles")
@@ -247,8 +247,13 @@ export async function GET(req: NextRequest) {
         .limit(64),
       resolveCanonicalTwinState(athleteId).catch(() => null),
       resolveLatestRecoverySummary(athleteId).catch(() => null),
-      resolveEpiForDate(athleteId, date).catch(() => null),
     ]);
+
+    // EPI dopo il twin: riusa il suo internal-load già risolto (stesse righe executed/
+    // planned) invece di ri-risolverlo — via un intero run duplicato con scan a 42 giorni.
+    const resolvedEpi = await resolveEpiForDate(athleteId, date, {
+      internalLoadState: twin?.internalLoadState,
+    }).catch(() => null);
 
     const errMsg =
       profRes.error?.message ?? physRes.error?.message ?? panelsRes.error?.message ?? deviceRes.error?.message ?? null;

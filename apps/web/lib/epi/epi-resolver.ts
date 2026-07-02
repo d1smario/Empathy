@@ -13,6 +13,7 @@ import { resolveInternalLoadState } from "@/lib/internal-load/internal-load-reso
 import { extractDiaryAdaptiveSignals } from "@/lib/nutrition/diary-adaptive-signals";
 import { computeEpi } from "@/lib/epi/epi-engine";
 import type { DailyCheckin, EpiInputs, EpiResult } from "@/lib/empathy/schemas";
+import type { InternalLoadState } from "@/lib/empathy/schemas/internal-load";
 
 function utcTodayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -135,8 +136,14 @@ export type ResolvedEpi = {
 /**
  * Resolve the EPI for an athlete on a given date (default today, UTC). Authorization must already
  * have happened in the caller (route context); reads use the canonical resolvers.
+ * `opts.internalLoadState`: stato internal-load GIÀ risolto dal chiamante (es. quello esposto dal
+ * twin in dashboard/scores) — evita di ri-risolverlo qui (scan executed/planned a 42 giorni).
  */
-export async function resolveEpiForDate(athleteId: string, dateIso?: string): Promise<ResolvedEpi> {
+export async function resolveEpiForDate(
+  athleteId: string,
+  dateIso?: string,
+  opts?: { internalLoadState?: InternalLoadState },
+): Promise<ResolvedEpi> {
   const snapshotDate = dateIso && /^\d{4}-\d{2}-\d{2}$/.test(dateIso) ? dateIso : utcTodayIso();
   const supabase = createServerSupabaseClient();
 
@@ -151,10 +158,12 @@ export async function resolveEpiForDate(athleteId: string, dateIso?: string): Pr
     complianceAndStreak(athleteId, snapshotDate),
   ]);
 
-  const internalLoad = await resolveInternalLoadState({
-    athleteId,
-    physiologyState: memory.physiology ?? undefined,
-  });
+  const internalLoad =
+    opts?.internalLoadState ??
+    (await resolveInternalLoadState({
+      athleteId,
+      physiologyState: memory.physiology ?? undefined,
+    }));
 
   const checkin = dailyCheckinFromRow(athleteId, (checkinRes.data ?? null) as Record<string, unknown> | null);
   const twin = memory.twin;
