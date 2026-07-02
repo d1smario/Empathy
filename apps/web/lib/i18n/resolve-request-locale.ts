@@ -33,9 +33,21 @@ export const LOCALE_COOKIE_NAME = "EMPATHY_LOCALE";
 const FALLBACK_ENABLED: readonly SupportedLocale[] = ["it", "en"];
 
 /**
+ * Memo in-memory (per istanza server calda) della lista lingue attive: la tabella
+ * `supported_locales` cambia quasi mai ma veniva letta su OGNI render SSR (via
+ * i18n/request.ts). TTL breve; si cacheano SOLO letture riuscite, così un errore
+ * DB transitorio non blocca il fallback fino alla scadenza.
+ */
+const ENABLED_LOCALES_TTL_MS = 5 * 60 * 1000;
+let enabledLocalesCache: { value: readonly SupportedLocale[]; expiresAt: number } | null = null;
+
+/**
  * Lista lingue attive (DB) con fallback. Letta da Route Handler / Server Component.
  */
 export async function loadEnabledLocales(): Promise<readonly SupportedLocale[]> {
+  if (enabledLocalesCache && enabledLocalesCache.expiresAt > Date.now()) {
+    return enabledLocalesCache.value;
+  }
   const supabase = createSupabaseCookieClient();
   if (!supabase) return FALLBACK_ENABLED;
   const { data, error } = await supabase
@@ -48,7 +60,9 @@ export async function loadEnabledLocales(): Promise<readonly SupportedLocale[]> 
     .map((row) => (row as { code?: unknown }).code)
     .filter((c): c is string => typeof c === "string")
     .filter(isKnownLocale);
-  return codes.length > 0 ? codes : FALLBACK_ENABLED;
+  if (codes.length === 0) return FALLBACK_ENABLED;
+  enabledLocalesCache = { value: codes, expiresAt: Date.now() + ENABLED_LOCALES_TTL_MS };
+  return codes;
 }
 
 /** Locale attualmente memorizzata in cookie, normalizzata. */
