@@ -455,8 +455,8 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
                     void redeemPromo();
                   }
                 }}
-                placeholder="Enter your code"
-                aria-label="Promo code"
+                placeholder={t("promoPlaceholder")}
+                aria-label={t("promoAriaLabel")}
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-mono uppercase tracking-wide text-white placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-600 focus:border-purple-400/60 focus:outline-none sm:max-w-xs"
               />
               <Pro2Button

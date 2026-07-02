@@ -203,7 +203,9 @@
     "errGenericWithStatus": "Errore {status}",
     "errStripeKeyKind": "Chiave Stripe: {kind}",
     "errNoUrl": "URL di pagamento non disponibile.",
-    "errRequestFailed": "Richiesta non riuscita."
+    "errRequestFailed": "Richiesta non riuscita.",
+    "promoPlaceholder": "Inserisci il codice",
+    "promoAriaLabel": "Codice promo"
   },
   "SettingsLocale": {
     "title": "Lingua interfaccia",
@@ -3912,5 +3914,13 @@
     "dataController": "<b>Titolare:</b> Day One Sagl, Via Nassa 15, 6900 Lugano, Svizzera",
     "privacyPolicyLabel": "Informativa privacy:",
     "disclaimer": "Nota: EMPATHY non è un dispositivo medico e non fornisce diagnosi cliniche. Le informazioni hanno finalità informative e di supporto alla performance; consulta un medico prima di intraprendere o modificare un programma di allenamento o alimentare. Documento soggetto ad aggiornamenti."
+  },
+  "FooterSection": {
+    "tagline": "Piattaforma di performance e adattamento metabolico",
+    "contactLabel": "Contatti",
+    "rights": "Tutti i diritti riservati.",
+    "linkPrivacy": "Privacy",
+    "linkTermini": "Termini",
+    "linkAccedi": "Accedi"
   }
 }

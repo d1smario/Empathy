@@ -203,7 +203,9 @@
     "errGenericWithStatus": "Error {status}",
     "errStripeKeyKind": "Stripe key: {kind}",
     "errNoUrl": "Payment URL unavailable.",
-    "errRequestFailed": "Request failed."
+    "errRequestFailed": "Request failed.",
+    "promoPlaceholder": "Enter your code",
+    "promoAriaLabel": "Promo code"
   },
   "SettingsLocale": {
     "title": "Interface language",
@@ -3912,5 +3914,13 @@
     "dataController": "<b>Data controller:</b> Day One Sagl, Via Nassa 15, 6900 Lugano, Switzerland",
     "privacyPolicyLabel": "Privacy policy:",
     "disclaimer": "Note: EMPATHY is not a medical device and does not provide clinical diagnoses. The information is provided for informational and performance-support purposes; consult a physician before starting or changing a training or nutrition program. This document is subject to updates."
+  },
+  "FooterSection": {
+    "tagline": "Performance & metabolic adaptation platform",
+    "contactLabel": "Contacts",
+    "rights": "All rights reserved.",
+    "linkPrivacy": "Privacy",
+    "linkTermini": "Terms",
+    "linkAccedi": "Log in"
   }
 }

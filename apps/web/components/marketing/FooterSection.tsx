@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 /**
@@ -11,23 +12,21 @@ import Link from "next/link";
 
 const FOOTER = {
   wordmark: "EMPATHY",
-  tagline: "Performance & metabolic adaptation platform",
   links: [
-    { label: "Privacy", href: "/privacy" },
-    { label: "Termini", href: "/termini" },
-    { label: "Accedi", href: "/access" },
+    { labelKey: "linkPrivacy", href: "/privacy" },
+    { labelKey: "linkTermini", href: "/termini" },
+    { labelKey: "linkAccedi", href: "/access" },
   ],
-  contactLabel: "Contatti",
   contactEmail: "hello@empathy.pro",
   company: {
     name: "Day One Sciences Sagl",
     address: "Via Nassa 15, 6900 Lugano",
     vat: "CHE-248.668.947",
   },
-  rights: "Tutti i diritti riservati.",
 } as const;
 
 export function FooterSection() {
+  const t = useTranslations("FooterSection");
   const year = new Date().getFullYear();
 
   return (
@@ -45,7 +44,7 @@ export function FooterSection() {
               className="h-7 w-auto"
             />
             <p className="mt-3 text-sm leading-relaxed text-gray-500">
-              {FOOTER.tagline}
+              {t("tagline")}
             </p>
           </div>
 
@@ -59,14 +58,14 @@ export function FooterSection() {
                 href={link.href}
                 className="underline-offset-4 transition-colors hover:text-pink-300 hover:underline"
               >
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             ))}
             <a
               href={`mailto:${FOOTER.contactEmail}`}
               className="underline-offset-4 transition-colors hover:text-pink-300 hover:underline"
             >
-              {FOOTER.contactLabel}
+              {t("contactLabel")}
             </a>
           </nav>
         </div>
@@ -84,7 +83,7 @@ export function FooterSection() {
             <span className="font-mono tracking-tight">{FOOTER.company.vat}</span>
           </p>
           <p className="text-center text-gray-600 sm:text-right">
-            © {year} {FOOTER.company.name}. {FOOTER.rights}
+            © {year} {FOOTER.company.name}. {t("rights")}
           </p>
         </div>
       </div>
