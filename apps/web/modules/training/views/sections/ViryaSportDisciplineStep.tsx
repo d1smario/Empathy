@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { cn } from "@/lib/cn";
@@ -33,15 +34,16 @@ export function ViryaSportDisciplineStep({
   setSportTargetValue,
   setViryaStep,
 }: ViryaSportDisciplineStepProps) {
+  const t = useTranslations("ViryaSportDisciplineStep");
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="2 · Sport e disciplina"
-      subtitle="Scegli la disciplina operativa coerente con la macro"
+      title={t("cardTitle")}
+      subtitle={t("cardSubtitle")}
       icon={Dumbbell}
     >
       <p className="mb-3 text-xs text-slate-400">
-        Macro attiva:{" "}
+        {t("activeMacro")}{" "}
         <span className="font-semibold text-cyan-200">
           {sportFamilies.find((x) => x.id === sportFamily)?.label ?? sportFamily}
         </span>
@@ -73,14 +75,14 @@ export function ViryaSportDisciplineStep({
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5"
           onClick={() => setViryaStep(1)}
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden /> Indietro
+          <ChevronLeft className="h-4 w-4" aria-hidden /> {t("back")}
         </button>
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
           onClick={() => setViryaStep(3)}
         >
-          Continua <ChevronRight className="h-4 w-4" aria-hidden />
+          {t("continue")} <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
     </Pro2SectionCard>

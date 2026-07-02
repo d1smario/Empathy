@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { CalendarRange } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
@@ -31,20 +32,25 @@ export function ViryaSaveToCalendarCard({
   selectedAthleteId,
   phases,
 }: ViryaSaveToCalendarCardProps) {
+  const t = useTranslations("ViryaSaveToCalendarCard");
+  const displayPlanName = planName.trim() || t("untitledPlan");
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="Save to Calendar"
-      subtitle="Bulk-save the plan's sessions to the Calendar"
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={CalendarRange}
     >
       <p className="mb-3 text-sm text-slate-300">
-        Plan <strong className="text-white">«{planName.trim() || "Untitled"}»</strong> · tag{" "}
-        <code className="rounded bg-black/40 px-1 text-cyan-200">{viryaPlanTag(planName)}</code>.{" "}
-        <strong className="text-amber-200">
-          Configuring May–Jun in VIRYA does not write to the Calendar: this button is required.
-        </strong>{" "}
-        After success, open Calendar on the indicated dates (e.g. May–June).
+        {t.rich("planLine", {
+          name: displayPlanName,
+          tag: viryaPlanTag(planName),
+          strong: (chunks) => <strong className="text-white">{chunks}</strong>,
+          warn: (chunks) => <strong className="text-amber-200">{chunks}</strong>,
+          code: (chunks) => (
+            <code className="rounded bg-black/40 px-1 text-cyan-200">{chunks}</code>
+          ),
+        })}
       </p>
       <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-slate-200">
         <input
@@ -54,8 +60,11 @@ export function ViryaSaveToCalendarCard({
           onChange={(e) => setReplacePrevious(e.target.checked)}
         />
         <span>
-          Replace VIRYA sessions already saved in the same date range as the plan (marker{" "}
-          <code className="rounded bg-black/40 px-1">[VIRYA:…]</code> in the notes)
+          {t.rich("replaceLabel", {
+            code: (chunks) => (
+              <code className="rounded bg-black/40 px-1">{chunks}</code>
+            ),
+          })}
         </span>
       </label>
       <div className="flex flex-wrap items-center gap-3">
@@ -66,19 +75,19 @@ export function ViryaSaveToCalendarCard({
           disabled={saving || !selectedAthleteId || phases.length === 0}
           title={
             !selectedAthleteId
-              ? "Select / load athlete context"
+              ? t("titleSelectAthlete")
               : phases.length === 0
-                ? "Add phases (step 4) before generating"
+                ? t("titleAddPhases")
                 : undefined
           }
         >
-          {saving ? "Generating…" : "Generate annual plan on Calendar"}
+          {saving ? t("generating") : t("generateButton")}
         </button>
         <Link
           href="/training/calendar"
           className="text-sm font-semibold text-cyan-300 underline decoration-cyan-500/40 hover:text-cyan-200"
         >
-          Open Calendar →
+          {t("openCalendar")}
         </Link>
       </div>
     </Pro2SectionCard>

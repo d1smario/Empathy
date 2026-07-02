@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 
 /**
@@ -18,6 +19,7 @@ export function BuilderViryaEntryBanner({
   dismissViryaEntryBanner,
   setDismissViryaEntryBanner,
 }: BuilderViryaEntryBannerProps) {
+  const t = useTranslations("BuilderViryaEntryBanner");
   return (
     <>
         {viryaEntry && !dismissViryaEntryBanner ? (
@@ -27,16 +29,16 @@ export function BuilderViryaEntryBanner({
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <p className="max-w-3xl leading-relaxed">
-                Path from <strong className="text-orange-200">VIRYA</strong>: here you materialize the{" "}
-                <strong className="text-orange-200">single session</strong> with the builder engine. The calendar updates only after
-                explicit save.
+                {t.rich("note", {
+                  b: (chunks) => <strong className="text-orange-200">{chunks}</strong>,
+                })}
               </p>
               <button
                 type="button"
                 className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-xs text-gray-300 hover:border-white/30 hover:text-white"
                 onClick={() => setDismissViryaEntryBanner(true)}
               >
-                Close
+                {t("close")}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import {
   GYM_WEEK_DAY_SLOTS,
@@ -64,26 +65,27 @@ export function ViryaStrengthConfigBlock({
   setGymPrimaryGoal,
   loadStatusLabel,
 }: ViryaStrengthConfigBlockProps) {
+  const t = useTranslations("ViryaStrengthConfigBlock");
   return (
     <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
       <div className="profile-subpanel">
-        <div className="session-title-copy">1 · Period range</div>
+        <div className="session-title-copy">{t("periodRangeTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Plan start date</span>
+            <span>{t("planStartDate")}</span>
             <input className="form-input" type="date" value={gymPlanStart} onChange={(e) => setGymPlanStart(e.target.value)} />
           </label>
           <label className="form-field">
-            <span>Plan end date</span>
+            <span>{t("planEndDate")}</span>
             <input className="form-input" type="date" value={gymPlanEnd} onChange={(e) => setGymPlanEnd(e.target.value)} />
           </label>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">2 · Macro-phases</div>
+        <div className="session-title-copy">{t("macroPhasesTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Number of macro-phases</span>
+            <span>{t("numberOfMacroPhases")}</span>
             <input
               className="form-input"
               type="number"
@@ -95,26 +97,29 @@ export function ViryaStrengthConfigBlock({
           </label>
           <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
             <button type="button" className="btn-secondary" onClick={regenerateGymMacroPlan}>
-              Generate automatic macro-phases
+              {t("generateAutomaticMacroPhases")}
             </button>
           </div>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">3 · Coach weekly module</div>
+        <div className="session-title-copy">{t("coachWeeklyModuleTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Week to customize</span>
+            <span>{t("weekToCustomize")}</span>
             <select className="form-select" value={selectedGymWeekStart} onChange={(e) => setSelectedGymWeekStart(e.target.value)}>
-              {programWeekRows.slice(0, 52).map((w) => (
+              {programWeekRows.slice(0, 52).map((w) => {
+                const weekDate = new Date(w.weekStart).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+                return (
                 <option key={`gym-week-opt-${w.weekStart}`} value={w.weekStart}>
-                  Week {w.week} · {new Date(w.weekStart).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })}
+                  {t("weekOptionLabel", { week: w.week, date: weekDate })}
                 </option>
-              ))}
+                );
+              })}
             </select>
           </label>
           <label className="form-field">
-            <span>Training days / week</span>
+            <span>{t("trainingDaysPerWeek")}</span>
             <select
               className="form-select"
               value={selectedWeekConfig().sessionsPerWeek}
@@ -129,13 +134,13 @@ export function ViryaStrengthConfigBlock({
             >
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <option key={`gym-days-${d}`} value={d}>
-                  {d} days
+                  {t("daysCount", { d })}
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Week volume (% vs {VIRYA_LOAD_SHORT.toLowerCase()} macro-phase)</span>
+            <span>{t("weekVolumeLabel", { load: VIRYA_LOAD_SHORT.toLowerCase() })}</span>
             <input
               className="form-input"
               type="number"
@@ -149,7 +154,7 @@ export function ViryaStrengthConfigBlock({
             />
           </label>
           <label className="form-field">
-            <span>Annual Gym goal</span>
+            <span>{t("annualGymGoal")}</span>
             <select className="form-select" value={gymPrimaryGoal} onChange={(e) => setGymPrimaryGoal(e.target.value as GymPrimaryGoal)}>
               {gymGoalLabels.map((g) => (
                 <option key={`gym-goal-select-${g.id}`} value={g.id}>
@@ -161,25 +166,24 @@ export function ViryaStrengthConfigBlock({
         </div>
         <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
           <span className="builder-zone-chip">
-            Volume status: {loadStatusLabel(selectedWeekConfig().loadPct)} ({selectedWeekConfig().loadPct}%)
+            {t("volumeStatus", { status: loadStatusLabel(selectedWeekConfig().loadPct), pct: selectedWeekConfig().loadPct })}
           </span>
           <Link href={`/training/calendar?date=${selectedGymWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-            Open week in Calendar →
+            {t("openWeekInCalendar")}
           </Link>
         </div>
         <small style={{ color: "var(--empathy-text-muted)" }}>
-          Volume rule: Unload 50-99% · Stable 100% · Load 101-180%. Configure up to {GYM_WEEK_DAY_SLOTS}{" "}
-          days; during Calendar generation the first {selectedWeekConfig().sessionsPerWeek} days of the table are used.
+          {t("volumeRule", { slots: GYM_WEEK_DAY_SLOTS, sessions: selectedWeekConfig().sessionsPerWeek })}
         </small>
         <div style={{ marginTop: "8px", overflowX: "auto" }}>
           <table className="table-shell">
             <thead>
               <tr>
-                <th>Day</th>
-                <th>Trained districts (multiple)</th>
-                <th>District objective</th>
-                <th>Exercise type</th>
-                <th>Methodology</th>
+                <th>{t("colDay")}</th>
+                <th>{t("colTrainedDistricts")}</th>
+                <th>{t("colDistrictObjective")}</th>
+                <th>{t("colExerciseType")}</th>
+                <th>{t("colMethodology")}</th>
               </tr>
             </thead>
             <tbody>
@@ -192,12 +196,12 @@ export function ViryaStrengthConfigBlock({
                   title={
                     active
                       ? undefined
-                      : "Day beyond the sessions/week — not used in generation until you increase the training days"
+                      : t("dayBeyondSessionsTitle")
                   }
                 >
                   <td>
-                    Day {row.dayIndex}
-                    {!active ? <span className="ml-1 text-[0.65rem] text-slate-500">(reserve)</span> : null}
+                    {t("dayLabel", { day: row.dayIndex })}
+                    {!active ? <span className="ml-1 text-[0.65rem] text-slate-500">{t("reserve")}</span> : null}
                   </td>
                   <td>
                     <div className="flex max-w-[420px] flex-wrap gap-1">

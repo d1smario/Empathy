@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { LineChart } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type {
@@ -27,20 +28,21 @@ export function ViryaOperationalModulationCard({
   bioenergeticModulation,
   adaptationLoop,
 }: ViryaOperationalModulationCardProps) {
+  const t = useTranslations("ViryaOperationalModulationCard");
   return (
     <Pro2SectionCard
       accent="emerald"
-      title="Operational modulation"
-      subtitle="Scaled load, recovery, bio signals and plan vs actual"
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={LineChart}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Load</div>
+          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">{t("load")}</div>
           <div className="mt-1 text-lg font-semibold text-white">{operationalContext.loadScalePct}%</div>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Mode</div>
+          <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">{t("mode")}</div>
           <div className="mt-1 text-sm text-slate-200">{operationalContext.headline}</div>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
@@ -59,16 +61,16 @@ export function ViryaOperationalModulationCard({
         </div>
         {bioenergeticModulation ? (
           <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2 lg:col-span-1">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Bioenergetics</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">{t("bioenergetics")}</div>
             <div className="mt-1 text-sm text-slate-200">
-              {bioenergeticModulation.mitochondrialReadinessScore}/100 · coverage{" "}
+              {bioenergeticModulation.mitochondrialReadinessScore}/100 · {t("coverage")}{" "}
               {bioenergeticModulation.signalCoveragePct}% · ±{bioenergeticModulation.inputUncertaintyPct}%
             </div>
           </div>
         ) : null}
         {adaptationLoop ? (
           <div className="rounded-xl border border-white/10 bg-black/30 p-3 sm:col-span-2">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Plan / actual</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">{t("planActual")}</div>
             <div className="mt-1 text-sm text-slate-200">
               {adaptationLoop.executionCompliancePct.toFixed(0)}% compliance · Δ
               {adaptationLoop.executionDeltaTss > 0 ? "+" : ""}

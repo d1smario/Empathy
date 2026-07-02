@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { TechnicalDayModule } from "@/lib/training/virya/virya-day-module-types";
 import {
@@ -49,26 +50,27 @@ export function ViryaTechnicalConfigBlock({
   updateSelectedTechnicalWeekConfig,
   loadStatusLabel,
 }: ViryaTechnicalConfigBlockProps) {
+  const t = useTranslations("ViryaTechnicalConfigBlock");
   return (
     <div style={{ marginTop: "10px", display: "grid", gap: "10px" }}>
       <div className="profile-subpanel">
-        <div className="session-title-copy">1 · Period range</div>
+        <div className="session-title-copy">{t("periodRangeTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Plan start date</span>
+            <span>{t("planStartDate")}</span>
             <input className="form-input" type="date" value={technicalPlanStart} onChange={(e) => setTechnicalPlanStart(e.target.value)} />
           </label>
           <label className="form-field">
-            <span>Plan end date</span>
+            <span>{t("planEndDate")}</span>
             <input className="form-input" type="date" value={technicalPlanEnd} onChange={(e) => setTechnicalPlanEnd(e.target.value)} />
           </label>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">2 · Macro-phases</div>
+        <div className="session-title-copy">{t("macroPhasesTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Number of macro-phases</span>
+            <span>{t("numberOfMacroPhases")}</span>
             <input
               className="form-input"
               type="number"
@@ -80,26 +82,29 @@ export function ViryaTechnicalConfigBlock({
           </label>
           <div className="form-field" style={{ display: "flex", alignItems: "end" }}>
             <button type="button" className="btn-secondary" onClick={regenerateTechnicalMacroPlan}>
-              Generate automatic macro-phases
+              {t("generateAutomaticMacroPhases")}
             </button>
           </div>
         </div>
       </div>
       <div className="profile-subpanel">
-        <div className="session-title-copy">3 · Coach weekly module</div>
+        <div className="session-title-copy">{t("coachWeeklyModuleTitle")}</div>
         <div className="form-grid-two">
           <label className="form-field">
-            <span>Week to customize</span>
+            <span>{t("weekToCustomize")}</span>
             <select className="form-select" value={selectedTechnicalWeekStart} onChange={(e) => setSelectedTechnicalWeekStart(e.target.value)}>
               {programWeekRows.slice(0, 52).map((w) => (
                 <option key={`tech-week-opt-${w.weekStart}`} value={w.weekStart}>
-                  Week {w.week} · {new Date(w.weekStart).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" })}
+                  {t("weekOption", {
+                    week: w.week,
+                    date: new Date(w.weekStart).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }),
+                  })}
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Training days / week</span>
+            <span>{t("trainingDaysPerWeek")}</span>
             <select
               className="form-select"
               value={selectedTechnicalWeekConfig().sessionsPerWeek}
@@ -122,13 +127,13 @@ export function ViryaTechnicalConfigBlock({
             >
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <option key={`tech-days-${d}`} value={d}>
-                  {d} days
+                  {t("daysCount", { d })}
                 </option>
               ))}
             </select>
           </label>
           <label className="form-field">
-            <span>Week volume (% vs macro-phase TSS)</span>
+            <span>{t("weekVolumeLabel")}</span>
             <input
               className="form-input"
               type="number"
@@ -144,30 +149,33 @@ export function ViryaTechnicalConfigBlock({
         </div>
         <div className="builder-zone-legend" style={{ marginTop: "8px" }}>
           <span className="builder-zone-chip">
-            Volume status: {loadStatusLabel(selectedTechnicalWeekConfig().loadPct)} ({selectedTechnicalWeekConfig().loadPct}%)
+            {t("volumeStatus", {
+              status: loadStatusLabel(selectedTechnicalWeekConfig().loadPct),
+              pct: selectedTechnicalWeekConfig().loadPct,
+            })}
           </span>
           <Link href={`/training/calendar?date=${selectedTechnicalWeekStart}`} style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-            Open week in Calendar →
+            {t("openWeekInCalendar")}
           </Link>
         </div>
         <small style={{ color: "var(--empathy-text-muted)" }}>
-          Volume rule: Unload 50-99% · Stable 100% · Load 101-180%.
+          {t("volumeRule")}
         </small>
         <div style={{ marginTop: "8px", overflowX: "auto" }}>
           <table className="table-shell">
             <thead>
               <tr>
-                <th>Day</th>
-                <th>Day goal (sequence)</th>
-                <th>Exercise type</th>
-                <th>Intensity</th>
-                <th>Method</th>
+                <th>{t("colDay")}</th>
+                <th>{t("colDayGoal")}</th>
+                <th>{t("colExerciseType")}</th>
+                <th>{t("colIntensity")}</th>
+                <th>{t("colMethod")}</th>
               </tr>
             </thead>
             <tbody>
               {selectedTechnicalWeekConfig().modules.slice(0, selectedTechnicalWeekConfig().sessionsPerWeek).map((row) => (
                 <tr key={`tech-day-module-${row.dayIndex}`}>
-                  <td>Day {row.dayIndex}</td>
+                  <td>{t("dayLabel", { day: row.dayIndex })}</td>
                   <td>
                     <div className="builder-zone-legend" style={{ marginBottom: "6px" }}>
                       {row.objectives.map((obj, idx) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { Flag } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { RacePlan, RaceType } from "@/lib/training/virya/virya-annual-plan-kit";
 
@@ -22,11 +23,12 @@ export function ViryaEventsCard({
   updateRace,
   removeRace,
 }: ViryaEventsCardProps) {
+  const t = useTranslations("ViryaEventsCard");
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="Events and intermediate dates"
-      subtitle="Races, tests, milestones — they anchor taper and peak"
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={Flag}
     >
       <div className="mb-3 flex justify-end">
@@ -35,7 +37,7 @@ export function ViryaEventsCard({
           className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20"
           onClick={addRace}
         >
-          + Add event
+          {t("addEvent")}
         </button>
       </div>
       <div className="space-y-2">
@@ -54,17 +56,17 @@ export function ViryaEventsCard({
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
               value={race.name}
               onChange={(e) => updateRace(race.id, { name: e.target.value })}
-              placeholder="Event name"
+              placeholder={t("eventNamePlaceholder")}
             />
             <select
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
               value={race.raceType}
               onChange={(e) => updateRace(race.id, { raceType: e.target.value as RaceType })}
             >
-              <option value="warmup">Warm-up</option>
-              <option value="milestone">Milestone / intermediate</option>
-              <option value="test">Test</option>
-              <option value="goal">Goal race</option>
+              <option value="warmup">{t("raceTypeWarmup")}</option>
+              <option value="milestone">{t("raceTypeMilestone")}</option>
+              <option value="test">{t("raceTypeTest")}</option>
+              <option value="goal">{t("raceTypeGoal")}</option>
             </select>
             <select
               className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"

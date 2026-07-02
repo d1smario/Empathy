@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   phaseColor,
   phaseRowBackground,
@@ -23,19 +24,20 @@ export type ViryaMasterPlanCardProps = {
 export function ViryaMasterPlanCard({
   programWeekRows,
 }: ViryaMasterPlanCardProps) {
+  const t = useTranslations("ViryaMasterPlanCard");
   return (
         <article className="viz-card builder-panel">
-          <h3 className="viz-title">Master plan annuale (week/day navigator)</h3>
+          <h3 className="viz-title">{t("title")}</h3>
           <div style={{ maxHeight: "340px", overflowY: "auto" }}>
             <table className="table-shell">
               <thead>
                 <tr>
-                  <th>Week</th>
-                  <th>Start</th>
-                  <th>Phase</th>
-                  <th>Sessions</th>
+                  <th>{t("colWeek")}</th>
+                  <th>{t("colStart")}</th>
+                  <th>{t("colPhase")}</th>
+                  <th>{t("colSessions")}</th>
                   <th>TSS</th>
-                  <th>Open</th>
+                  <th>{t("colOpen")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -62,7 +64,7 @@ export function ViryaMasterPlanCard({
                     <td style={{ color: pc, fontWeight: 800 }}>{w.displayTss}</td>
                     <td>
                       <Link href={`/training/calendar?date=${w.weekStart}`} style={{ color: pc, textDecoration: "none", fontWeight: 600 }}>
-                        Week/Day →
+                        {t("openLink")}
                       </Link>
                     </td>
                   </tr>
@@ -72,7 +74,7 @@ export function ViryaMasterPlanCard({
             </table>
           </div>
           <p style={{ marginTop: "10px", color: "var(--empathy-text-muted)", fontSize: "12px" }}>
-            Apri una week specifica in Calendar e modifica/sostituisci la singola seduta direttamente dal giorno.
+            {t("hint")}
           </p>
         </article>
   );

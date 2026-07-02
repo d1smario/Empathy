@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { TableProperties } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { cn } from "@/lib/cn";
@@ -50,12 +51,17 @@ export function ViryaWeeklyProgramTable({
   clearWeeklyHours,
   toggleWeekObjective,
 }: ViryaWeeklyProgramTableProps) {
+  const t = useTranslations("ViryaWeeklyProgramTable");
   return (
     <Pro2SectionCard
       accent="violet"
       className="!border-pink-500/35 !bg-black bg-none from-transparent via-transparent to-transparent shadow-[inset_0_1px_0_rgba(251,113,133,0.12)]"
-      title="5 · Weekly program"
-      subtitle={`${programWeekRows.length} weeks (step 3 window: ${planWindowWeekCount || "—"}) · ${VIRYA_LOAD_LABEL}, sessions, hours and focus — used in Calendar`}
+      title={t("cardTitle")}
+      subtitle={t("cardSubtitle", {
+        weeks: programWeekRows.length,
+        window: planWindowWeekCount || "—",
+        load: VIRYA_LOAD_LABEL,
+      })}
       icon={TableProperties}
     >
       <div className="max-h-[min(520px,60vh)] overflow-auto rounded-xl border border-pink-500/20 bg-black">
@@ -63,12 +69,12 @@ export function ViryaWeeklyProgramTable({
           <thead className="sticky top-0 z-10 border-b border-pink-500/25 bg-black backdrop-blur-sm">
             <tr>
               <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">#</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Week start</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">Phase</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">{t("colWeekStart")}</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-pink-200/80">{t("colPhase")}</th>
               <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">{VIRYA_LOAD_SHORT}</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Sessions</th>
-              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">Weekly hours</th>
-              <th className="min-w-[260px] p-2 font-semibold text-pink-200/80">Goals (multiple)</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">{t("colSessions")}</th>
+              <th className="whitespace-nowrap p-2 font-semibold text-orange-200/90">{t("colWeeklyHours")}</th>
+              <th className="min-w-[260px] p-2 font-semibold text-pink-200/80">{t("colGoals")}</th>
             </tr>
           </thead>
           <tbody>
@@ -177,8 +183,7 @@ export function ViryaWeeklyProgramTable({
         </table>
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Initial values from the phases; changes here take priority over generation. Weekly hours (aerobic macro)
-        distribute the average duration per session.
+        {t("footerNote")}
       </p>
     </Pro2SectionCard>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { LineChart } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type { ApprovedApplicationPatch } from "@/lib/dashboard/resolve-operational-signals-bundle";
@@ -38,11 +39,12 @@ export function ViryaApprovedDecisionsCard({
   adaptationControlPct,
   setAdaptationControlPct,
 }: ViryaApprovedDecisionsCardProps) {
+  const t = useTranslations("ViryaApprovedDecisionsCard");
   return (
     <Pro2SectionCard
       accent="cyan"
-      title="Decisioni approvate · input VIRYA"
-      subtitle="Patch validate dalla Reasoning Dashboard: influenzano il retune, ma la sessione resta materializzata dal Builder."
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={LineChart}
     >
       {viryaRetuneDirective ? (
@@ -65,7 +67,7 @@ export function ViryaApprovedDecisionsCard({
       {viryaRetuneProposalVm ? (
         <div className="mb-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
           <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-violet-200/80">
-            Proposta retune server (strutturata)
+            {t("serverRetuneProposal")}
           </div>
           <div className="mt-2 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
             <div>Mode {viryaRetuneProposalVm.recommendedMode.replaceAll("_", " ")}</div>
@@ -89,10 +91,10 @@ export function ViryaApprovedDecisionsCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-amber-200/80">
-                Adattamento automatico microciclo · {viryaRetuneProposal.mode.replaceAll("_", " ")}
+                {t("microcycleAutoAdaptPrefix")} · {viryaRetuneProposal.mode.replaceAll("_", " ")}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                Se il recupero e&apos; inefficiente, VIRYA adatta automaticamente il programma secondo la percentuale coach. Calendar viene scritto solo quando salvi.
+                {t("autoAdaptDescription")}
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/30 p-2">
@@ -111,7 +113,7 @@ export function ViryaApprovedDecisionsCard({
                         : "border-white/10 bg-black/35 text-slate-300 hover:border-amber-300/45"
                     }`}
                   >
-                    {pct === 0 ? "Mantieni piano" : `${pct}%`}
+                    {pct === 0 ? t("keepPlan") : `${pct}%`}
                   </button>
                 ))}
               </div>
@@ -124,10 +126,10 @@ export function ViryaApprovedDecisionsCard({
                   Week {week.week} · {week.weekStart} · {week.phase}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-white">
-                  TSS {week.currentTss} → {week.proposedTss} · sedute {week.currentSessions} → {week.proposedSessions}
+                  TSS {week.currentTss} → {week.proposedTss} · {t("sessionsLabel")} {week.currentSessions} → {week.proposedSessions}
                 </div>
                 <div className="mt-1 text-xs text-slate-400">
-                  Focus: {week.objectives.length ? week.objectives.join(" · ") : "invariato"}
+                  {t("focusLabel")}: {week.objectives.length ? week.objectives.join(" · ") : t("unchanged")}
                 </div>
               </div>
             ))}
@@ -138,7 +140,7 @@ export function ViryaApprovedDecisionsCard({
         {viryaApprovedPatches.slice(0, 6).map((patch) => (
           <div key={patch.id} className="rounded-xl border border-cyan-500/20 bg-black/30 p-3">
             <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/80">
-              {patch.target} · {patch.confidence != null ? `${Math.round(patch.confidence * 100)}%` : "n/d"}
+              {patch.target} · {patch.confidence != null ? `${Math.round(patch.confidence * 100)}%` : t("notAvailable")}
             </div>
             <div className="mt-1 text-sm font-semibold text-white">{patch.action.replaceAll("_", " ")}</div>
             {typeof patch.reason === "string" && patch.reason.trim() ? (

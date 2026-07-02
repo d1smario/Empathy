@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGrid } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Dispatch, SetStateAction } from "react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { SPORT_MACRO_SECTORS, type SportMacroId } from "@/lib/training/builder/sport-macro-palette";
@@ -22,9 +23,10 @@ export function BuilderSportMacroSectorPicker({
   sport,
   setSport,
 }: BuilderSportMacroSectorPickerProps) {
+  const t = useTranslations("BuilderSportMacroSectorPicker");
   return (
         <section
-          aria-label="Famiglie sessione"
+          aria-label={t("sessionFamiliesAriaLabel")}
           className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-5 lg:p-6"
         >
           <div className="mb-5 flex flex-wrap items-start gap-3">
@@ -36,11 +38,10 @@ export function BuilderSportMacroSectorPicker({
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
                   1
                 </span>
-                Sport per settore (A → D)
+                {t("sportBySectorTitle")}
               </h2>
               <p className="mt-1 text-sm text-gray-400">
-                Prima scegli macro e disciplina; dominio motore (endurance / gym / hyrox / crossfit / team_sport / combat /
-                mind_body) alimenta generazione engine e builder manuale sotto.
+                {t("sportBySectorDescription")}
               </p>
             </div>
           </div>

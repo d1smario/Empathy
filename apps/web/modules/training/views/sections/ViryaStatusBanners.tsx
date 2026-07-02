@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export type ViryaStatusBannersProps = {
   error: string | null;
   success: string | null;
@@ -11,6 +13,7 @@ export function ViryaStatusBanners({
   success,
   contextLoading,
 }: ViryaStatusBannersProps) {
+  const t = useTranslations("ViryaStatusBanners");
   return (
     <>
       {error ? (
@@ -23,7 +26,7 @@ export function ViryaStatusBanners({
       ) : null}
       {contextLoading ? (
         <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Sincronizzazione contesto atleta (recovery / operativo)…
+          {t("contextSyncing")}
         </div>
       ) : null}
     </>

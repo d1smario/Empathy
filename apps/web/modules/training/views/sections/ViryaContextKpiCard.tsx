@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 
 /**
@@ -15,11 +16,12 @@ export type ViryaContextKpiCardProps = {
 export function ViryaContextKpiCard({
   viryaSummaryCards,
 }: ViryaContextKpiCardProps) {
+  const t = useTranslations("ViryaContextKpiCard");
   return (
     <Pro2SectionCard
       accent="slate"
-      title="Contesto · KPI"
-      subtitle="Goal, readiness, loop adattamento (da memoria atleta)"
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={Activity}
     >
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

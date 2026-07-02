@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import {
   phaseColor,
   phaseLabels,
@@ -16,9 +18,10 @@ export function ViryaPhaseRecapGrid({
   phases,
   strengthPhaseLoadHints,
 }: ViryaPhaseRecapGridProps) {
+  const t = useTranslations("ViryaPhaseRecapGrid");
   return (
           <div className="mt-5">
-            <div className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-pink-300">Resoconto fasi</div>
+            <div className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-pink-300">{t("phaseRecapTitle")}</div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {phases.map((p) => (
                 <div
@@ -33,15 +36,15 @@ export function ViryaPhaseRecapGrid({
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="rounded-md border border-orange-400/40 bg-orange-500/15 px-2 py-0.5 text-[0.65rem] font-semibold text-orange-100">
-                        {VIRYA_LOAD_SHORT} {p.weeklyTss}/sett.
+                        {VIRYA_LOAD_SHORT} {t("weeklyLoad", { weeklyTss: p.weeklyTss })}
                         {strengthPhaseLoadHints.get(p.id) ? (
                           <span className="ml-1 text-[0.6rem] font-normal text-slate-500">
-                            (prog. {strengthPhaseLoadHints.get(p.id)!.avgLoad})
+                            {t("progressionHint", { avgLoad: strengthPhaseLoadHints.get(p.id)!.avgLoad })}
                           </span>
                         ) : null}
                       </span>
                       <span className="rounded-md border border-pink-400/40 bg-pink-500/15 px-2 py-0.5 text-[0.65rem] font-semibold text-pink-100">
-                        {p.sessionsPerWeek} sedute/sett.
+                        {t("sessionsPerWeek", { sessions: p.sessionsPerWeek })}
                       </span>
                     </div>
                     {p.mesocycle ? <div className="mt-2 text-[0.65rem] text-slate-500">{p.mesocycle}</div> : null}

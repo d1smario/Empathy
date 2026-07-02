@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronRight, Layers } from "lucide-react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { cn } from "@/lib/cn";
@@ -30,11 +31,12 @@ export function ViryaMacroFamilyStep({
   setSportTargetValue,
   setViryaStep,
 }: ViryaMacroFamilyStepProps) {
+  const t = useTranslations("ViryaMacroFamilyStep");
   return (
     <Pro2SectionCard
       accent="violet"
-      title="1 · Macro famiglia"
-      subtitle="Aerobico, Gym, Tecnico-tattico o Lifestyle — una sola guida la struttura annuale"
+      title={t("cardTitle")}
+      subtitle={t("cardSubtitle")}
       icon={Layers}
     >
       <div className="grid gap-3 sm:grid-cols-2">
@@ -72,7 +74,7 @@ export function ViryaMacroFamilyStep({
           className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/45 bg-cyan-500/15 px-4 py-2.5 text-sm font-semibold text-cyan-50 hover:bg-cyan-500/25"
           onClick={() => setViryaStep(2)}
         >
-          Continua <ChevronRight className="h-4 w-4" aria-hidden />
+          {t("continue")} <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
     </Pro2SectionCard>

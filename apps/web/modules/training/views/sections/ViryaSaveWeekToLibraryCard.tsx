@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { BookMarked } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 
 type LibraryProgramWeekRow = {
@@ -36,20 +37,20 @@ export function ViryaSaveWeekToLibraryCard({
   saving,
   selectedAthleteId,
 }: ViryaSaveWeekToLibraryCardProps) {
+  const t = useTranslations("ViryaSaveWeekToLibraryCard");
   return (
     <Pro2SectionCard
       accent="violet"
-      title="Save week to library"
-      subtitle="Export VIRYA → N coach templates (Builder contract, same materialization as the Calendar)"
+      title={t("title")}
+      subtitle={t("subtitle")}
       icon={BookMarked}
     >
       <p className="mb-3 text-sm text-slate-300">
-        Export a <strong className="text-white">sample week</strong> as reusable templates in the coach
-        library — without writing to the Calendar. Same materialization pipeline as the Calendar batch.
+        {t.rich("intro", { b: (chunks) => <strong className="text-white">{chunks}</strong> })}
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-slate-400">
-          Week
+          {t("weekLabel")}
           <select
             className="min-w-[200px] rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
             value={libraryWeekStart}
@@ -58,7 +59,7 @@ export function ViryaSaveWeekToLibraryCard({
           >
             {programWeekRows.map((w) => (
               <option key={w.weekStart} value={w.weekStart}>
-                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} sess · TSS {w.displayTss}
+                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} {t("sessionsSuffix")} · TSS {w.displayTss}
               </option>
             ))}
           </select>
@@ -70,13 +71,13 @@ export function ViryaSaveWeekToLibraryCard({
           disabled={savingLibrary || saving || !selectedAthleteId || !libraryWeekStart}
           title={
             !selectedAthleteId
-              ? "Select / load athlete context"
+              ? t("selectAthleteHint")
               : !libraryWeekStart
-                ? "No week in the plan"
+                ? t("noWeekHint")
                 : undefined
           }
         >
-          {savingLibrary ? "Materializing…" : "Save week to library"}
+          {savingLibrary ? t("materializing") : t("saveButton")}
         </button>
       </div>
     </Pro2SectionCard>

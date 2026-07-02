@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export type ViryaAnnualLoadProjectionCardProps = {
   annualLoad: number[];
   maxAnnual: number;
@@ -9,6 +11,7 @@ export function ViryaAnnualLoadProjectionCard({
   annualLoad,
   maxAnnual,
 }: ViryaAnnualLoadProjectionCardProps) {
+  const t = useTranslations("ViryaAnnualLoadProjectionCard");
   return (
         <article className="viz-card builder-panel">
           <h3 className="viz-title">Annual Load Projection</h3>
@@ -35,7 +38,7 @@ export function ViryaAnnualLoadProjectionCard({
             <span className="builder-zone-chip" style={{ borderColor: "#ff00a8", color: "#ff00a8", backgroundColor: "#ff00a822" }}>Peak</span>
           </div>
           <p style={{ marginTop: "10px", color: "var(--empathy-text-muted)", fontSize: "12px" }}>
-            Annual plan ready for the dynamic loop: Calendar → Analyzer → Adaptation.
+            {t("dynamicLoopNote")}
           </p>
         </article>
   );
