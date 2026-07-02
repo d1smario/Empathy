@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Maximize2 } from "lucide-react";
 import type {
   BioenergeticContinuousMonitoringDay,
@@ -39,6 +40,7 @@ const CHART_H = 92;
 const CHART_H_LITE = 36;
 
 export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = false, lite = false }: Props) {
+  const t = useTranslations("BioenergeticsContinuousMonitoringGrid");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const sorted = [...monitoring.channels].sort(
@@ -58,7 +60,7 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
               key={ch.id}
               role="button"
               tabIndex={0}
-              aria-label={`Expand chart ${ch.labelIt}`}
+              aria-label={t("expandChart", { label: ch.labelIt })}
               onClick={() => setExpandedId(ch.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {

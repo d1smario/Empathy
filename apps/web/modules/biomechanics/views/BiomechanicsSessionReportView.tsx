@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Printer } from "lucide-react";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
@@ -26,6 +27,7 @@ let biomechReportCacheKey: string | null = null;
 let biomechReportCache: BiomechReportCacheEntry | null = null;
 
 export default function BiomechanicsSessionReportView({ sessionId }: { sessionId: string }) {
+  const t = useTranslations("BiomechanicsSessionReportView");
   const { athleteId, loading: athleteLoading } = useActiveAthlete();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
       if (cancelled) return;
       let nextEntry: BiomechReportCacheEntry;
       if (!result.ok || !result.session) {
-        nextEntry = { reportData: null, signedUrl: null, error: result.error ?? "Report not available" };
+        nextEntry = { reportData: null, signedUrl: null, error: result.error ?? t("reportNotAvailable") };
       } else {
         nextEntry = {
           reportData: sessionToReportData(result.session),
@@ -77,24 +79,24 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
     <Pro2ModulePageShell
       eyebrow="Biomechanics · Report"
       eyebrowClassName={moduleEyebrowClass("biomechanics")}
-      title="Biomechanics session report"
-      description="Deterministic KPIs, joint ROM and per-region risk — exportable to PDF."
+      title={t("title")}
+      description={t("description")}
       headerActions={
         <div className="flex flex-wrap gap-2 print:hidden">
           <Pro2Link href="/biomechanics#biomech-report" variant="secondary" className="justify-center border border-white/15">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Archive
+            {t("archive")}
           </Pro2Link>
         </div>
       }
     >
       <div className="print:text-black">
-        {loading ? <p className="text-sm text-gray-400">Loading report...</p> : null}
+        {loading ? <p className="text-sm text-gray-400">{t("loadingReport")}</p> : null}
         {error ? (
           <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             {error}{" "}
             <Link href="/biomechanics" className="underline">
-              Back to Biomechanics
+              {t("backToBiomechanics")}
             </Link>
           </p>
         ) : null}
@@ -107,9 +109,9 @@ export default function BiomechanicsSessionReportView({ sessionId }: { sessionId
             disabled={!reportData}
           >
             <Printer className="mr-2 h-4 w-4" />
-            Save PDF
+            {t("savePdf")}
           </Pro2Button>
-          <small className="text-xs text-gray-500">Export the report as PDF.</small>
+          <small className="text-xs text-gray-500">{t("exportReportAsPdf")}</small>
         </div>
       </div>
     </Pro2ModulePageShell>

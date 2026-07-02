@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Activity, Crosshair, Ruler, ShieldAlert, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { BiomechanicsCameraPlane } from "@empathy/contracts";
@@ -103,6 +104,7 @@ export function BiomechanicsReportPanels({
   ) => void;
   cameraPlane?: BiomechanicsCameraPlane;
 }) {
+  const t = useTranslations("BiomechanicsReportPanels");
   const { role, adminScoped } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   const viewMode: BiomechanicsCaptureViewMode = capturePlaneToViewMode(cameraPlane);
@@ -119,16 +121,16 @@ export function BiomechanicsReportPanels({
     <div className="space-y-5">
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
         <p>
-          <span className="text-gray-500">Discipline</span> · {data.discipline ?? "—"} ·{" "}
-          <span className="text-gray-500">Source</span> · {data.source ?? "—"}
+          <span className="text-gray-500">{t("discipline")}</span> · {data.discipline ?? "—"} ·{" "}
+          <span className="text-gray-500">{t("source")}</span> · {data.source ?? "—"}
         </p>
         {data.recordedAt ? (
-          <p className="mt-1 text-xs text-gray-400">Recorded {formatDateTime(data.recordedAt)}</p>
+          <p className="mt-1 text-xs text-gray-400">{t("recorded", { value: formatDateTime(data.recordedAt) })}</p>
         ) : null}
         {mode === "preview" ? (
           <p className="mt-2 text-xs text-amber-300">
-            Proposed preview
-            {showTech && typeof data.confidence01 === "number" ? ` · confidence ${pct01(data.confidence01)}` : ""}
+            {t("proposedPreview")}
+            {showTech && typeof data.confidence01 === "number" ? ` · ${t("confidenceSuffix", { value: pct01(data.confidence01) })}` : ""}
             {showTech && data.provider ? ` · ${data.provider}` : ""}
           </p>
         ) : null}
@@ -136,30 +138,30 @@ export function BiomechanicsReportPanels({
 
       {efficiency ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label="Efficiency" value={pct01(efficiency.biomechanicalEfficiency01)} />
-          <KpiTile label="Movement quality" value={pct01(efficiency.movementQuality01)} />
-          <KpiTile label="Symmetry" value={pct01(efficiency.symmetry01)} />
-          <KpiTile label="Injury risk" value={pct01(efficiency.injuryRisk01)} />
+          <KpiTile label={t("efficiency")} value={pct01(efficiency.biomechanicalEfficiency01)} />
+          <KpiTile label={t("movementQuality")} value={pct01(efficiency.movementQuality01)} />
+          <KpiTile label={t("symmetry")} value={pct01(efficiency.symmetry01)} />
+          <KpiTile label={t("injuryRisk")} value={pct01(efficiency.injuryRisk01)} />
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-400">
-          No angle sample available to compute the KPIs.
+          {t("noAngleSample")}
         </p>
       )}
 
       {envelopes.length ? (
-        <Section title="Joint angles (ROM)" subtitle="Min, max, range and mean per joint and side." icon={Ruler}>
+        <Section title={t("jointAnglesTitle")} subtitle={t("jointAnglesSubtitle")} icon={Ruler}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-xs">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Joint</th>
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Side</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Min</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Max</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">ROM</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Mean</th>
-                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Samples</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colJoint")}</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colSide")}</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colMin")}</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colMax")}</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colRom")}</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colMean")}</th>
+                  <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colSamples")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -181,7 +183,7 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {movementEntries.length ? (
-        <Section title="Movement patterns" subtitle="Indicators normalized 0–100%." icon={Activity}>
+        <Section title={t("movementPatternsTitle")} subtitle={t("movementPatternsSubtitle")} icon={Activity}>
           <div className="grid gap-2 sm:grid-cols-2">
             {movementEntries.map((key) => (
               <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -192,14 +194,14 @@ export function BiomechanicsReportPanels({
           </div>
           {data.compensationFlags?.length ? (
             <p className="mt-3 text-xs text-amber-300">
-              Compensations: {data.compensationFlags.join(", ")}
+              {t("compensationsLabel")}: {data.compensationFlags.join(", ")}
             </p>
           ) : null}
         </Section>
       ) : null}
 
       {riskEntries.length ? (
-        <Section title="Risk by body region" subtitle={showTech ? "Scores normalized from the CV motor + domain engine." : "Risk scores normalized by body region."} icon={ShieldAlert}>
+        <Section title={t("riskByRegionTitle")} subtitle={showTech ? t("riskByRegionSubtitleTech") : t("riskByRegionSubtitle")} icon={ShieldAlert}>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {riskEntries.map(([key, label]) => (
               <div key={key} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
@@ -214,27 +216,27 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       {data.calibration ? (
-        <Section title="Scale calibration" subtitle="Metric reference used for the capture." icon={Crosshair}>
+        <Section title={t("scaleCalibrationTitle")} subtitle={t("scaleCalibrationSubtitle")} icon={Crosshair}>
           <p className="text-sm text-gray-300">
             {data.calibration.referenceLabel} · {Math.round(data.calibration.referenceValueMm)} mm ·{" "}
             {data.calibration.method}
             {showTech && typeof data.calibration.confidence01 === "number"
-              ? ` · confidence ${pct01(data.calibration.confidence01)}`
+              ? ` · ${t("confidenceSuffix", { value: pct01(data.calibration.confidence01) })}`
               : ""}
           </p>
         </Section>
       ) : null}
 
       {data.anthropometrics ? (
-        <Section title="Anthropometric segments" subtitle="Estimated lengths (mm)." icon={Ruler}>
+        <Section title={t("anthropometricTitle")} subtitle={t("anthropometricSubtitle")} icon={Ruler}>
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
-                ["femurMm", "Femur"],
-                ["tibiaMm", "Tibia"],
-                ["torsoMm", "Torso"],
-                ["humerusMm", "Humerus"],
-                ["forearmMm", "Forearm"],
+                ["femurMm", t("segmentFemur")],
+                ["tibiaMm", t("segmentTibia")],
+                ["torsoMm", t("segmentTorso")],
+                ["humerusMm", t("segmentHumerus")],
+                ["forearmMm", t("segmentForearm")],
               ] as const
             )
               .filter(([key]) => typeof data.anthropometrics?.[key] === "number")
@@ -252,12 +254,12 @@ export function BiomechanicsReportPanels({
       ) : null}
 
       <Section
-        title="Angle overlay"
+        title={t("angleOverlayTitle")}
         icon={Video}
         subtitle={
           editable
-            ? "Drag the points on the video; angles and KPIs update after each correction."
-            : "Skeleton, arcs and degree values on the key frame (cycle phase)."
+            ? t("angleOverlaySubtitleEditable")
+            : t("angleOverlaySubtitle")
         }
       >
         <BiomechanicsAngleOverlay
@@ -271,9 +273,9 @@ export function BiomechanicsReportPanels({
           title={
             mode === "preview"
               ? editable
-                ? "Correct the CV points before confirming the session."
-                : "Preview on the capture — confirm to promote to the canonical report."
-              : "Angle annotation on the confirmed session."
+                ? t("overlayCorrectPoints")
+                : t("overlayPreviewCapture")
+              : t("overlayConfirmedAnnotation")
           }
         />
       </Section>

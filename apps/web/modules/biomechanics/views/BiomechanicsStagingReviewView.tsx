@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Check, X } from "lucide-react";
 import type { BiomechanicsJointAngleSample, BiomechanicsLandmark3D } from "@empathy/contracts";
 import { computeBiomechanicsEfficiencyScores } from "@empathy/domain-biomechanics";
@@ -51,6 +52,7 @@ function parseCameraPlaneFromBundle(bundle: Record<string, unknown> | null): Bio
 }
 
 export default function BiomechanicsStagingReviewView({ runId }: { runId: string }) {
+  const t = useTranslations("BiomechanicsStagingReviewView");
   const { role, adminScoped, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   // Back-link al modulo: scoped in scope coach/admin, globale per l'atleta.
@@ -80,24 +82,24 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     });
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Correction save failed");
+      setError(result.error ?? t("errorCorrectionSaveFailed"));
       return false;
     }
     pendingSaveRef.current = null;
-    setSaveHint("Point correction saved");
+    setSaveHint(t("hintCorrectionSaved"));
     return true;
-  }, [runId]);
+  }, [runId, t]);
 
   const schedulePoseSave = useCallback(
     (landmarks: BiomechanicsLandmark3D[], jointAngles: BiomechanicsJointAngleSample[]) => {
       pendingSaveRef.current = { landmarks, jointAngles };
-      setSaveHint("Saving correction...");
+      setSaveHint(t("hintSavingCorrection"));
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         void flushPoseSave();
       }, 600);
     },
-    [flushPoseSave],
+    [flushPoseSave, t],
   );
 
   const handlePoseAdjust = useCallback(
@@ -115,7 +117,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       const detail = await fetchBiomechanicsStagingRunDetail(runId);
       if (cancelled) return;
       if (!detail.ok) {
-        setError(detail.error ?? "Review not available");
+        setError(detail.error ?? t("errorReviewNotAvailable"));
         setLoading(false);
         return;
       }
@@ -137,7 +139,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       cancelled = true;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [runId]);
+  }, [runId, t]);
 
   async function onConfirm() {
     setBusy("confirm");
@@ -154,7 +156,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     const result = await applyBiomechanicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Confirmation failed");
+      setError(result.error ?? t("errorConfirmationFailed"));
       return;
     }
     setDone(true);
@@ -166,7 +168,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
     const result = await rejectBiomechanicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Rejection failed");
+      setError(result.error ?? t("errorRejectionFailed"));
       return;
     }
     setDone(true);
@@ -176,14 +178,10 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
 
   return (
     <Pro2ModulePageShell
-      eyebrow={showTech ? "Biomechanics · CV Review" : "Biomechanics · Capture"}
+      eyebrow={showTech ? t("eyebrowTech") : t("eyebrowAthlete")}
       eyebrowClassName="text-emerald-300"
-      title={showTech ? "Pose proposal validation" : "Capture under review"}
-      description={
-        showTech
-          ? "Align the points on the video, check angles and KPIs, then confirm the session."
-          : "Your data has been recorded and is awaiting validation from the coach."
-      }
+      title={showTech ? t("titleTech") : t("titleAthlete")}
+      description={showTech ? t("descriptionTech") : t("descriptionAthlete")}
       headerActions={
         backHref ? (
           <Pro2Link href={backHref} variant="secondary" className="justify-center border border-white/15">
@@ -193,7 +191,7 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
         ) : (
           <span
             className="inline-flex cursor-default items-center justify-center rounded-md border border-white/15 px-3 py-1.5 text-sm opacity-50"
-            title="Available in the dedicated tab (v2)"
+            title={t("backUnavailableTitle")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Biomechanics
@@ -202,25 +200,25 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
       }
     >
       {loading ? (
-        <p className="text-sm text-gray-400">{showTech ? "Loading review..." : "Loading..."}</p>
+        <p className="text-sm text-gray-400">{showTech ? t("loadingReview") : t("loading")}</p>
       ) : null}
       {!loading && reportData ? (
         showTech ? (
           <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            {angleCount} angle samples · drag the pink points to correct the CV
+            {t("angleSamplesHint", { angleCount })}
             {saveHint ? ` · ${saveHint}` : ""}
           </p>
         ) : (
           <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Your capture is recorded and awaiting validation from the coach.
+            {t("captureRecordedAthlete")}
           </p>
         )
       ) : null}
       {signedUrl ? (
         <p className="mt-3 text-xs text-gray-400 print:hidden">
-          Media:{" "}
+          {t("mediaLabel")}{" "}
           <Link href={signedUrl} target="_blank" className="text-cyan-200 underline">
-            open capture in full screen
+            {t("mediaOpenFullScreen")}
           </Link>
         </p>
       ) : null}
@@ -237,32 +235,28 @@ export default function BiomechanicsStagingReviewView({ runId }: { runId: string
         </div>
       ) : !loading ? (
         <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          {showTech
-            ? "CV proposal without structured angles — check the sidecar or re-process the job."
-            : "The capture is awaiting validation from the coach. Try again later."}
+          {showTech ? t("noStructuredAnglesTech") : t("awaitingValidationAthlete")}
         </p>
       ) : null}
       {error ? <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</p> : null}
       {done ? (
         <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          {showTech
-            ? "Review closed. Go back to the module to see updated sessions and twin."
-            : "Capture completed. Go back to the module to see the updated sessions."}
+          {showTech ? t("doneTech") : t("doneAthlete")}
         </p>
       ) : showTech ? (
         <div className="mt-6 flex flex-wrap gap-3 print:hidden">
           <Pro2Button onClick={onConfirm} disabled={busy != null || loading} className="justify-center">
             <Check className="mr-2 h-4 w-4" />
-            {busy === "confirm" ? "Confirming..." : busy === "save" ? "Saving..." : "Confirm session"}
+            {busy === "confirm" ? t("confirming") : busy === "save" ? t("saving") : t("confirmSession")}
           </Pro2Button>
           <Pro2Button variant="secondary" onClick={onReject} disabled={busy != null || loading} className="justify-center">
             <X className="mr-2 h-4 w-4" />
-            {busy === "reject" ? "Rejecting..." : "Reject"}
+            {busy === "reject" ? t("rejecting") : t("reject")}
           </Pro2Button>
         </div>
       ) : (
         <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300 print:hidden">
-          Validation will be completed by your coach. You will receive the report when it is ready.
+          {t("athleteFooter")}
         </p>
       )}
     </Pro2ModulePageShell>

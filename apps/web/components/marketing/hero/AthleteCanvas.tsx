@@ -1,19 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 type Vec2 = { x: number; y: number };
 type Sport = "cyclist" | "runner" | "soccer" | "skier" | "lifter";
 
 // Solo le animazioni rifinite restano in rotazione (runner/soccer ancora da rifare).
 const SPORTS: Sport[] = ["cyclist", "lifter", "skier"];
-const SPORT_LABELS: Record<Sport, string> = {
-  cyclist: "Cycling",
-  runner: "Running",
-  soccer: "Soccer",
-  skier: "Skiing",
-  lifter: "Weightlifting",
-};
 
 const SPORT_DURATION = 6000;
 /** Cross-sport SHAPE MORPH duration (seconds). Only used right after a switch. */
@@ -907,6 +901,7 @@ export function AthleteCanvas({
   /** Sizing/posizionamento dal contenitore (sostituisce il wrapper di default). */
   className?: string;
 } = {}) {
+  const t = useTranslations("AthleteCanvas");
   const idle = mode === "idle";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sportIndex, setSportIndex] = useState(0);
@@ -1191,7 +1186,7 @@ export function AthleteCanvas({
         <canvas
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"
-          aria-label="Athlete twin in a neutral pose built from data streams"
+          aria-label={t("idleAriaLabel")}
         />
       </div>
     );
@@ -1202,13 +1197,13 @@ export function AthleteCanvas({
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
-        aria-label="Athlete animation built from data streams"
+        aria-label={t("loopAriaLabel")}
       />
 
       {/* Sport label */}
       <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
         <span className="rounded-full border border-white/10 bg-black/50 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.2em] text-white backdrop-blur-md">
-          {SPORT_LABELS[SPORTS[sportIndex]]}
+          {t(SPORTS[sportIndex])}
         </span>
       </div>
 

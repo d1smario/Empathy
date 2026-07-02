@@ -12,6 +12,7 @@ import {
   Flame,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import {
   AreaChart,
   Area,
@@ -38,6 +39,7 @@ const STYLE_LABELS: Record<VisualStyle, string> = {
 };
 
 export function EmpathyProMarketingDemo() {
+  const t = useTranslations("EmpathyProMarketingDemo");
   const [visualStyle, setVisualStyle] = useState<VisualStyle>("finale");
 
   const matrixEnabled =
@@ -152,7 +154,7 @@ export function EmpathyProMarketingDemo() {
     <BrutalistAppBackdrop matrix={matrixEnabled}>
       <div className="container mx-auto px-8 py-12">
         <p className="text-center text-xs uppercase tracking-widest text-amber-200/90 mb-6 border border-amber-400/30 rounded-full py-2 px-4 max-w-xl mx-auto bg-amber-500/5">
-          Demo data — marketing UI illustration, not real telemetry
+          {t("demoDataBanner")}
         </p>
 
         <motion.div

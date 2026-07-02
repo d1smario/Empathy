@@ -7,6 +7,7 @@ import type {
 } from "@/api/bioenergetics/contracts";
 import type { BioenergeticCurveGovernanceHintV1 } from "@empathy/contracts";
 import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
+import { useTranslations } from "next-intl";
 
 /**
  * Base condivisa (recharts-FREE) del canale "Striscia 24 h": tipi, normalizzazione
@@ -204,6 +205,7 @@ export function BioenergeticSparkline({
   prepared: PreparedChannel;
   height?: number;
 }) {
+  const t = useTranslations("BioenergeticChannelChart");
   const { streamRows, rows, isStream } = prepared;
   const values = isStream
     ? (streamRows ?? []).map((r) => r.v)
@@ -213,7 +215,7 @@ export function BioenergeticSparkline({
   const H = height;
 
   if (values.length === 0) {
-    return <p className="text-[0.65rem] text-gray-600">No data</p>;
+    return <p className="text-[0.65rem] text-gray-600">{t("noData")}</p>;
   }
 
   const current = values[values.length - 1];

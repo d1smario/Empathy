@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { BioenergeticMonitoringChannel24 } from "@/api/bioenergetics/contracts";
 import {
   channelAxisNote,
@@ -29,6 +30,7 @@ export function BioenergeticChannelExpandModal({
   showTech?: boolean;
   onClose: () => void;
 }) {
+  const t = useTranslations("BioenergeticChannelExpandModal");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -40,13 +42,14 @@ export function BioenergeticChannelExpandModal({
   if (typeof document === "undefined") return null;
 
   const prepared = prepareBioenergeticChannel(channel);
+  const label = channel.labelIt;
 
   return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/80 p-3 backdrop-blur-sm sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label={`Chart ${channel.labelIt}`}
+      aria-label={t("chartAriaLabel", { label })}
       onClick={onClose}
     >
       <style>{`html,body{overflow:hidden!important}`}</style>
@@ -56,7 +59,7 @@ export function BioenergeticChannelExpandModal({
       >
         <button
           type="button"
-          aria-label="Close chart"
+          aria-label={t("closeChart")}
           onClick={onClose}
           className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-black/40 text-gray-300 transition hover:bg-white/10"
         >

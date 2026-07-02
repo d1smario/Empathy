@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
 import { fetchMultiscaleBottleneck } from "@/modules/physiology/services/multiscale-bottleneck-api";
 import type { MultiscaleBottleneckApiOk } from "@/lib/knowledge/multiscale-bottleneck-contract";
@@ -21,6 +22,7 @@ let multiscaleBottleneckCacheId: string | null = null;
 let multiscaleBottleneckCache: MultiscaleBottleneckApiOk | null = null;
 
 export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
+  const t = useTranslations("MultiscaleBottleneckPanelPro2");
   const [data, setData] = useState<MultiscaleBottleneckApiOk | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -46,12 +48,12 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
     } catch (e) {
       if (!cached) {
         setData(null);
-        setErr(e instanceof Error ? e.message : "Loading error");
+        setErr(e instanceof Error ? e.message : t("loadingError"));
       }
     } finally {
       setLoading(false);
     }
-  }, [athleteId]);
+  }, [athleteId, t]);
 
   useEffect(() => {
     void load();
@@ -60,7 +62,7 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
   if (!athleteId) {
     return (
       <p className="text-sm text-slate-500">
-        Select an active athlete to see the multiscale view (interpretation, does not replace the engines).
+        {t("selectAthlete")}
       </p>
     );
   }
@@ -75,11 +77,11 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
           disabled={loading}
           onClick={() => void load()}
         >
-          {loading ? "Updating…" : "Update from twin / lab"}
+          {loading ? t("updating") : t("updateFromTwinLab")}
         </Pro2Button>
         {data ? (
           <span className="font-mono text-[0.65rem] text-slate-500">
-            Ontology {data.bottleneck.ontologyVersion}
+            {t("ontology", { version: data.bottleneck.ontologyVersion })}
           </span>
         ) : null}
       </div>
@@ -87,22 +89,25 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
       {err ? <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">{err}</div> : null}
 
       {!data && !loading && !err ? (
-        <p className="text-sm text-slate-500">No data loaded yet.</p>
+        <p className="text-sm text-slate-500">{t("noDataYet")}</p>
       ) : null}
 
       {data ? (
         <>
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/90">Dominant bottleneck (L1–L6)</div>
+            <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/90">{t("dominantBottleneck")}</div>
             <div className="mt-1 text-lg font-bold text-slate-100">{data.dominantLevelLabelIt}</div>
             <div className="mt-2 text-sm text-slate-300">
-              Interpretive weight: <strong className="text-cyan-100">{formatPct01(data.bottleneck.dominantBottleneck.score)}</strong>
+              {t.rich("interpretiveWeight", {
+                value: formatPct01(data.bottleneck.dominantBottleneck.score),
+                b: (chunks) => <strong className="text-cyan-100">{chunks}</strong>,
+              })}
             </div>
             <p className="mt-2 text-xs leading-relaxed text-slate-500">{data.bottleneck.dominantBottleneck.rationaleIt}</p>
           </div>
 
           <div>
-            <div className="physiology-pro2-mini-banner mb-2">Level order (from greatest constraint)</div>
+            <div className="physiology-pro2-mini-banner mb-2">{t("levelOrder")}</div>
             <ul className="space-y-2">
               {data.bottleneck.orderedLevels.map((row) => (
                 <li key={row.level} className="flex items-center gap-3 text-sm text-slate-300">
@@ -121,7 +126,7 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
 
           {data.bottleneck.suggestedInterpretationTags.length > 0 ? (
             <div>
-              <div className="physiology-pro2-mini-banner mb-2">Interpretive tags</div>
+              <div className="physiology-pro2-mini-banner mb-2">{t("interpretiveTags")}</div>
               <div className="flex flex-wrap gap-2">
                 {data.bottleneck.suggestedInterpretationTags.map((t) => (
                   <span
@@ -136,21 +141,29 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
           ) : null}
 
           <details className="rounded-lg border border-white/10 bg-black/25 p-3 text-sm text-slate-400">
-            <summary className="cursor-pointer text-slate-300">Activated ontology nodes + subgraph</summary>
+            <summary className="cursor-pointer text-slate-300">{t("activatedNodes")}</summary>
             <div className="mt-2 space-y-2 font-mono text-[0.65rem] leading-relaxed">
               <div>
                 <span className="text-slate-500">IDs:</span> {data.bottleneck.activatedNodeIds.join(", ")}
               </div>
               {data.subgraph ? (
                 <div>
-                  Subgraph (1-hop): {data.subgraph.nodes.length} nodes, {data.subgraph.edges.length} edges.
+                  {t("subgraph", {
+                    nodes: data.subgraph.nodes.length,
+                    edges: data.subgraph.edges.length,
+                  })}
                 </div>
               ) : null}
               <div className="text-slate-500">
-                Input proxies: redox {data.snapshot.redoxStressIndex ?? "—"}, inflammation{" "}
-                {data.snapshot.twinInflammationRisk ?? "—"}, glycogen {data.snapshot.glycogenStatus ?? "—"}, readiness{" "}
-                {data.snapshot.readiness ?? "—"}, gut% {data.snapshot.gutStressScorePct ?? "—"}, CHO delivery%{" "}
-                {data.snapshot.choDeliveryPctOfIngested ?? "—"}, oxidative {data.snapshot.oxidativeBottleneckIndex ?? "—"}.
+                {t("inputProxies", {
+                  redox: data.snapshot.redoxStressIndex ?? "—",
+                  inflammation: data.snapshot.twinInflammationRisk ?? "—",
+                  glycogen: data.snapshot.glycogenStatus ?? "—",
+                  readiness: data.snapshot.readiness ?? "—",
+                  gut: data.snapshot.gutStressScorePct ?? "—",
+                  choDelivery: data.snapshot.choDeliveryPctOfIngested ?? "—",
+                  oxidative: data.snapshot.oxidativeBottleneckIndex ?? "—",
+                })}
               </div>
             </div>
           </details>

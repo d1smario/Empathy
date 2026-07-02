@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2AthleteRequiredGate } from "@/components/shell/Pro2AthleteRequiredGate";
@@ -8,13 +9,14 @@ import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
 
 export default function LongevityFitnessPageView() {
   const { signedIn } = useActiveAthlete();
+  const t = useTranslations("LongevityFitnessPageView");
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Daily wellbeing"
+      eyebrow={t("eyebrow")}
       eyebrowClassName={moduleEyebrowClass("longevity")}
-      title="Longevity"
-      description="Complete today's check-in and track your longevity and fitness index."
+      title={t("title")}
+      description={t("description")}
     >
       <Pro2AthleteRequiredGate enabled={signedIn}>
         <DashboardLongevityPanels />

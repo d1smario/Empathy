@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import type { BioenergeticDaySeriesChannel } from "@/api/bioenergetics/contracts";
 
 function downsample<T>(rows: T[], maxPoints: number): T[] {
@@ -38,9 +39,10 @@ type Props = {
 };
 
 export function BioenergeticsDaySeriesPanel({ series }: Props) {
+  const t = useTranslations("BioenergeticsDaySeriesPanel");
   const plot = series.filter((s) => s.points.length >= 2);
   if (!plot.length) {
-    return <p className="text-xs text-gray-500">No time series long enough for additional curves (at least 2 points per channel required).</p>;
+    return <p className="text-xs text-gray-500">{t("noSeries")}</p>;
   }
 
   const strokeFor = (id: string): string => {
@@ -58,10 +60,10 @@ export function BioenergeticsDaySeriesPanel({ series }: Props) {
   };
 
   const provenanceUi = (p: BioenergeticDaySeriesChannel["provenance"]): string => {
-    if (p === "measured") return "measured";
-    if (p === "estimated") return "estimated";
-    if (p === "planned") return "from plan";
-    return "absent";
+    if (p === "measured") return t("provenanceMeasured");
+    if (p === "estimated") return t("provenanceEstimated");
+    if (p === "planned") return t("provenancePlanned");
+    return t("provenanceAbsent");
   };
 
   return (

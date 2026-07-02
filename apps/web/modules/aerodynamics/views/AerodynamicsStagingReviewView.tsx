@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, X } from "lucide-react";
 import type { AerodynamicsScenarioCompareV1 } from "@empathy/contracts";
@@ -19,6 +20,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export default function AerodynamicsStagingReviewView({ runId }: { runId: string }) {
+  const t = useTranslations("AerodynamicsStagingReviewView");
   const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const showTech = role === "coach" || adminScoped;
   // Back-link al modulo: scoped in scope coach/admin, globale per l'atleta.
@@ -39,7 +41,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       const detail = await fetchAerodynamicsStagingRunDetail(runId);
       if (cancelled) return;
       if (!detail.ok) {
-        setError(detail.error ?? "Review not available");
+        setError(detail.error ?? t("reviewNotAvailable"));
         setLoading(false);
         return;
       }
@@ -52,7 +54,11 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       const proposal = asRecord(patches?.aeroGeometryProposal);
       const conf = typeof proposal?.confidence01 === "number" ? Math.round(proposal.confidence01 * 100) : null;
       setSummary(
-        `Surrogate model · CV confidence ${conf ?? "—"}% · provider ${String(proposal?.provider ?? "—")} · ${compare?.candidates.length ?? 0} scenarios`,
+        t("summary", {
+          conf: conf ?? "—",
+          provider: String(proposal?.provider ?? "—"),
+          scenarios: compare?.candidates.length ?? 0,
+        }),
       );
       setLoading(false);
     })();
@@ -67,7 +73,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
     const result = await applyAerodynamicsStagingRun(runId, selectedScenarioId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Confirmation failed");
+      setError(result.error ?? t("confirmationFailed"));
       return;
     }
     setDone(true);
@@ -79,7 +85,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
     const result = await rejectAerodynamicsStagingRun(runId);
     setBusy(null);
     if (!result.ok) {
-      setError(result.error ?? "Rejection failed");
+      setError(result.error ?? t("rejectionFailed"));
       return;
     }
     setDone(true);
@@ -87,14 +93,10 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
 
   return (
     <Pro2ModulePageShell
-      eyebrow={showTech ? "Aerodynamics · CV Review" : "Aerodynamics · Position"}
+      eyebrow={showTech ? t("eyebrowTech") : t("eyebrowAthlete")}
       eyebrowClassName="text-cyan-300"
-      title={showTech ? "Geometry proposal validation" : "Your position is under review"}
-      description={
-        showTech
-          ? "Choose the position scenario to promote. The deterministic engine computes CdA and score."
-          : "We reconstructed a few scenarios of your riding position. They are awaiting validation from the coach."
-      }
+      title={showTech ? t("titleTech") : t("titleAthlete")}
+      description={showTech ? t("descriptionTech") : t("descriptionAthlete")}
       headerActions={
         backHref ? (
           <Pro2Link href={backHref} variant="secondary" className="justify-center border border-white/15">
@@ -106,7 +108,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
           // athleteId / admin senza scopeOwnerUserId). Via le rotte scoped non accade.
           <span
             className={pro2ButtonClassName("secondary", "justify-center border border-white/15 cursor-default opacity-50")}
-            title="Available in the dedicated tab (v2)"
+            title={t("availableInDedicatedTab")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Aerodynamics
@@ -114,14 +116,14 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
         )
       }
     >
-      {loading ? <p className="text-sm text-gray-400">Loading review...</p> : null}
+      {loading ? <p className="text-sm text-gray-400">{t("loadingReview")}</p> : null}
       {showTech ? (
         summary ? (
           <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{summary}</p>
         ) : null
       ) : !loading ? (
         <p className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-          Your data is under review. The scenarios of your position are awaiting validation from the coach.
+          {t("athleteUnderReviewBanner")}
         </p>
       ) : null}
       {scenarioCompare?.candidates.length ? (
@@ -132,9 +134,11 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
                 <th className="px-3 py-2">Scenario</th>
                 <th className="px-3 py-2">CdA m²</th>
                 <th className="px-3 py-2">
-                  {showTech ? `ΔW @ ${scenarioCompare.referenceSpeedKph} km/h` : `Watt savings @ ${scenarioCompare.referenceSpeedKph} km/h`}
+                  {showTech
+                    ? t("deltaWattHeader", { speed: scenarioCompare.referenceSpeedKph })
+                    : t("wattSavingsHeader", { speed: scenarioCompare.referenceSpeedKph })}
                 </th>
-                {showTech ? <th className="px-3 py-2">Select</th> : null}
+                {showTech ? <th className="px-3 py-2">{t("selectHeader")}</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -163,7 +167,7 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
         <p className="mt-3 text-xs text-gray-400">
           Media:{" "}
           <Link href={signedUrl} target="_blank" className="text-cyan-200 underline">
-            open capture
+            {t("openCapture")}
           </Link>
         </p>
       ) : null}
@@ -171,23 +175,23 @@ export default function AerodynamicsStagingReviewView({ runId }: { runId: string
       {showTech ? (
         done ? (
           <p className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-            Review closed. Go back to the module to see updated tests and twin.
+            {t("reviewClosed")}
           </p>
         ) : (
           <div className="mt-6 flex flex-wrap gap-3">
             <Pro2Button onClick={onConfirm} disabled={busy != null || loading} className="justify-center">
               <Check className="mr-2 h-4 w-4" />
-              {busy === "confirm" ? "Confirming..." : "Confirm scenario"}
+              {busy === "confirm" ? t("confirming") : t("confirmScenario")}
             </Pro2Button>
             <Pro2Button variant="secondary" onClick={onReject} disabled={busy != null || loading} className="justify-center">
               <X className="mr-2 h-4 w-4" />
-              {busy === "reject" ? "Rejecting..." : "Reject"}
+              {busy === "reject" ? t("rejecting") : t("reject")}
             </Pro2Button>
           </div>
         )
       ) : (
         <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-300">
-          When the coach validates the position, the test becomes final and you&apos;ll find the CdA in the Aerodynamics module.
+          {t("athleteFinalNote")}
         </p>
       )}
     </Pro2ModulePageShell>
