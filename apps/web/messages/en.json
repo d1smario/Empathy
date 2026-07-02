@@ -3167,5 +3167,22 @@
     "rowStripePriceCoachOlimpic": "Stripe · Coach Olimpic price",
     "rowPublicPaymentLink": "Public payment link",
     "rowAnonymousCheckoutEnabled": "Anonymous checkout enabled"
+  },
+  "SettingsCoachAccountCard": {
+    "ariaLabel": "Coach account",
+    "signedOutHint": "Sign in to see your account role. The athlete / coach type is chosen on the <access>Access</access> page (not here).",
+    "accountRoleTitle": "Account role",
+    "accountTypeCoach": "coach",
+    "accountTypeAthlete": "athlete (private)",
+    "accountRoleDescription": "Current account type: <typeStrong>{accountType}</typeStrong>. The choice between <strong>Athlete</strong> and <strong>Coach</strong> must be made on the <access>access page</access> (login or sign-up): the role <strong>cannot</strong> be changed from Settings, so administration has a single control point besides the <admin>/admin</admin> console.",
+    "platformStatusLabel": "Platform status:",
+    "platformStatusOperational": " — operational (invites and roster active).",
+    "platformStatusPending": " — awaiting administrator approval.",
+    "coachOperationsTitle": "Coach operations",
+    "opsRoster": "Roster and invites: <strong>Athletes</strong> module (<path></path>).",
+    "opsEnablement": "Enablement from <strong>Admin · Platform</strong> (<status></status> status).",
+    "opsServer": "Server: <key></key>, tables <table></table>, org <org></org>.",
+    "athletesButton": "Athletes",
+    "accessButton": "Access page (change account)"
   }
 }
