@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { BookOpen, Utensils } from "lucide-react";
+import { BookOpen, Utensils, Zap } from "lucide-react";
 import { MobileModulePageShell } from "@/components/shell/MobileModulePageShell";
 import { Pro2Link } from "@/components/ui/empathy";
 
@@ -23,6 +23,16 @@ export default function MobileNutritionHubView() {
           <div>
             <p className="font-semibold text-white">{t("mealPlanTitle")}</p>
             <p className="text-xs text-gray-400">{t("mealPlanSubtitle")}</p>
+          </div>
+        </Link>
+        <Link
+          href="/m/nutrition/fueling"
+          className="flex items-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-4 transition hover:border-cyan-400/50"
+        >
+          <Zap className="h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+          <div>
+            <p className="font-semibold text-white">{t("fuelingTitle")}</p>
+            <p className="text-xs text-gray-400">{t("fuelingSubtitle")}</p>
           </div>
         </Link>
         <Link

@@ -3821,7 +3821,9 @@
     "mealPlanSubtitle": "Daily targets and meals",
     "diaryTitle": "Diary",
     "diarySubtitle": "Logged meals and adherence",
-    "openDesktopMealPlan": "Open desktop meal plan"
+    "openDesktopMealPlan": "Open desktop meal plan",
+    "fuelingTitle": "Fueling",
+    "fuelingSubtitle": "Pre, intra and post workout"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Physiological profile"

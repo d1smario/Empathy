@@ -303,17 +303,21 @@ function resolveFuelingProductImage(
     ?? pro2Local
     ?? product?.imageUrl;
   const trustedImage = isTrustedFuelingImage(mediaCandidate) ? mediaCandidate : null;
-  const logoFallback = product?.logoDomain ? `https://logo.clearbit.com/${product.logoDomain}` : null;
+  // NIENTE logo.clearbit.com: il servizio è dismesso (DNS morto) e vinceva sul
+  // packshot locale → tutte le card prodotto mostravano immagini rotte. Il
+  // packshot SVG generato (brand+prodotto+categoria) è il fallback effettivo.
   const brandedPackshotFallback = buildFuelingPackshot(
     product?.brand ?? "Fuel Brand",
     product?.product ?? "Fuel Product",
     category,
     product?.format,
   );
-  const displayImage = trustedImage ?? logoFallback ?? brandedPackshotFallback;
+  const displayImage = trustedImage ?? brandedPackshotFallback;
   return {
     displayImage,
-    isLogoFallback: !trustedImage && displayImage === logoFallback,
+    // true = packshot generato (nessuna immagine reale): il contatore a valle
+    // conta i prodotti con immagine vera.
+    isLogoFallback: !trustedImage,
   };
 }
 
@@ -1130,11 +1134,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!physio) {
       missing.push("physiological profile");
     } else {
+      // Gate SOLO su ciò che il motore fueling usa davvero: FTP (base dei blocchi
+      // potenza) — il resto era richiesto per errore: LT1/LT2 non compaiono nei
+      // calcoli fueling, il VO2 è stimato dalla potenza e VLaMax è opzionale con
+      // fallback (fueling-planned-session-analysis). Il gate stretto bloccava per
+      // sempre chi non aveva il test lattato ("Still missing: LT1, LT2, VLaMax…").
       if (!hasPositiveNumber(physio.ftp_watts)) missing.push("FTP");
-      if (!hasPositiveNumber(physio.lt1_watts)) missing.push("LT1");
-      if (!hasPositiveNumber(physio.lt2_watts)) missing.push("LT2");
-      if (!hasPositiveNumber(physio.v_lamax)) missing.push("VLaMax");
-      if (!hasPositiveNumber(physio.vo2max_ml_min_kg)) missing.push("VO2max");
     }
     /** Fueling: seduta in calendario oppure giorno gara in routine (start + durata). */
     if (!selectedPlanSessions.length && !routineRaceDay) {

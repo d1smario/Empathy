@@ -3821,7 +3821,9 @@
     "mealPlanSubtitle": "Target giornalieri e pasti",
     "diaryTitle": "Diario",
     "diarySubtitle": "Pasti registrati e aderenza",
-    "openDesktopMealPlan": "Apri meal plan desktop"
+    "openDesktopMealPlan": "Apri meal plan desktop",
+    "fuelingTitle": "Fueling",
+    "fuelingSubtitle": "Pre, intra e post workout"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Profilo fisiologico"

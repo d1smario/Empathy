@@ -154,6 +154,9 @@ export function toMobilePath(pathname: string): string | null {
   if (n === "/nutrition/diary" || n.startsWith("/nutrition/diary/")) {
     return `${MOBILE_APP_PREFIX}/nutrition/diary`;
   }
+  if (n === "/nutrition/fueling" || n.startsWith("/nutrition/fueling/")) {
+    return `${MOBILE_APP_PREFIX}/nutrition/fueling`;
+  }
 
   return null;
 }
@@ -176,6 +179,7 @@ export function toDesktopPath(mobilePathname: string): string {
     [`${MOBILE_APP_PREFIX}/training/session`]: "/training/session",
     [`${MOBILE_APP_PREFIX}/nutrition`]: "/nutrition/meal-plan",
     [`${MOBILE_APP_PREFIX}/nutrition/diary`]: "/nutrition/diary",
+    [`${MOBILE_APP_PREFIX}/nutrition/fueling`]: "/nutrition/fueling",
   };
 
   if (moduleMap[n]) return moduleMap[n];
