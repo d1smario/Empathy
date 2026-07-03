@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { SPORTS, n, round } from "@/lib/nutrition/nutrition-view-helpers";
 
 /**
@@ -53,14 +54,15 @@ export function PredictorSection({
   selectedPlanDateShort,
   resolvedFuelingTierBand,
 }: PredictorSectionProps) {
+  const t = useTranslations("PredictorSection");
   return (
     <section id="nutrition-predictor" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Prediction</h2>
-        <p className="mt-1 text-sm text-gray-400">Estimate energy expenditure, CHO and glycogen depletion risk.</p>
+        <h2 className="text-lg font-bold text-white">{t("title")}</h2>
+        <p className="mt-1 text-sm text-gray-400">{t("subtitle")}</p>
       </header>
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-        <h3 className="viz-title">Performance prediction · consumption and energy depletion risk</h3>
+        <h3 className="viz-title">{t("panelTitle")}</h3>
         <div style={{ display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
           <button
             type="button"
@@ -71,7 +73,7 @@ export function PredictorSection({
             }`}
             onClick={() => setPredictorUsePlanDay((v) => !v)}
           >
-            {predictorUsePlanDay ? "Active day context" : "Manual mode"}
+            {predictorUsePlanDay ? t("activeDayContext") : t("manualMode")}
           </button>
           {predictorUsePlanDay && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[0.7rem] font-semibold tabular-nums text-amber-300">
@@ -88,9 +90,9 @@ export function PredictorSection({
               ))}
             </select>
           </div>
-          <div className="form-group"><label className="form-label">Distance (km)</label><input className="form-input" type="number" value={predictorDistanceKm} onChange={(e) => setPredictorDistanceKm(n(e.target.value, 0))} /></div>
+          <div className="form-group"><label className="form-label">{t("distanceKm")}</label><input className="form-input" type="number" value={predictorDistanceKm} onChange={(e) => setPredictorDistanceKm(n(e.target.value, 0))} /></div>
           <div className="form-group">
-            <label className="form-label">Expected time (min)</label>
+            <label className="form-label">{t("expectedTimeMin")}</label>
             <input
               className="form-input"
               type="number"
@@ -100,7 +102,7 @@ export function PredictorSection({
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Intensity % FTP</label>
+            <label className="form-label">{t("intensityPctFtp")}</label>
             <input
               className="form-input"
               type="number"
@@ -123,12 +125,16 @@ export function PredictorSection({
           ))}
         </div>
         <details className="collapsible-card">
-          <summary>Prediction notes</summary>
+          <summary>{t("predictionNotes")}</summary>
           <div className="alert-warning" style={{ marginBottom: 0 }}>
-            Event energy: {round(predictor.totalEnergy)} kcal · Suggested total fueling: {round(predictor.fuelingTotal)} g CHO · tier {resolvedFuelingTierBand}.
+            {t("eventEnergySummary", {
+              totalEnergy: round(predictor.totalEnergy),
+              fuelingTotal: round(predictor.fuelingTotal),
+              tier: resolvedFuelingTierBand,
+            })}{" "}
             {predictor.exhaustionHours < predictor.eventHours
-              ? ` Depletion risk before the finish: lower your pace toward ${predictor.maxSustainablePct}% FTP or increase fueling.`
-              : " Sustainable pace with the configured fueling."}
+              ? t("depletionRisk", { maxSustainablePct: predictor.maxSustainablePct })
+              : t("sustainablePace")}
           </div>
         </details>
       </section>

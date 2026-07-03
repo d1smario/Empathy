@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { HealthPanelTimelineRow } from "@/modules/health/services/health-module-api";
 import { panelRawDisplayRows, type BloodPanelRow } from "@/modules/health/lib/health-panel-readers";
 
@@ -8,17 +9,18 @@ export function BloodSnapshotTable({
   row: BloodPanelRow;
   sampleLabel?: string | null;
 }) {
+  const t = useTranslations("HealthPanelCards");
   const cells: Array<{ label: string; value: string | null; unit: string }> = [
-    { label: "Emoglobina", value: row.emoglobina != null ? String(row.emoglobina) : null, unit: "g/dL" },
-    { label: "Ferritina", value: row.ferritina != null ? String(row.ferritina) : null, unit: "ng/mL" },
-    { label: "Vit. D", value: row.vit_d != null ? String(row.vit_d) : null, unit: "ng/mL" },
-    { label: "B12", value: row.b12 != null ? String(row.b12) : null, unit: "pg/mL" },
-    { label: "Glicemia", value: row.glicemia != null ? String(row.glicemia) : null, unit: "mg/dL" },
+    { label: t("hemoglobin"), value: row.emoglobina != null ? String(row.emoglobina) : null, unit: "g/dL" },
+    { label: t("ferritin"), value: row.ferritina != null ? String(row.ferritina) : null, unit: "ng/mL" },
+    { label: t("vitD"), value: row.vit_d != null ? String(row.vit_d) : null, unit: "ng/mL" },
+    { label: t("b12"), value: row.b12 != null ? String(row.b12) : null, unit: "pg/mL" },
+    { label: t("glucose"), value: row.glicemia != null ? String(row.glicemia) : null, unit: "mg/dL" },
   ];
   return (
     <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4">
       <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-        Ultimo referto ematico
+        {t("latestBloodPanel")}
         {sampleLabel ? <span className="ml-2 font-sans font-normal normal-case text-gray-400">· {sampleLabel}</span> : null}
       </p>
       <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
@@ -48,6 +50,7 @@ export function RawPanelValuesCard({
   /** false per l'atleta: solo etichette note, niente chiavi grezze/sconosciute né JSON annidato. */
   showTech?: boolean;
 }) {
+  const t = useTranslations("HealthPanelCards");
   const rows = panelRawDisplayRows(panel, { showTech });
   if (rows.length === 0) return null;
   const when = panel.sample_date ?? panel.created_at?.slice(0, 10) ?? null;
@@ -59,7 +62,7 @@ export function RawPanelValuesCard({
           {when ? <span className="ml-2 font-sans font-normal normal-case text-gray-500">· {when}</span> : null}
         </p>
       ) : when ? (
-        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Data referto · {when}</p>
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("reportDate", { when })}</p>
       ) : null}
       <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (

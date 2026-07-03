@@ -1,6 +1,7 @@
 "use client";
 
 import { Layers, Network } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { MultiscaleBottleneckPanelPro2 } from "@/components/knowledge/MultiscaleBottleneckPanelPro2";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Button, Pro2Accordion } from "@/components/ui/empathy";
@@ -68,43 +69,39 @@ export function MetabolicLabDetailsSection({
   selectedHistoryRow,
   onImportHistoryRow,
 }: Props) {
+  const t = useTranslations("MetabolicLabDetailsSection");
   return (
     <div className="space-y-8">
       <Pro2SectionCard
         accent="emerald"
         icon={Network}
-        title="Biological multiscale · bottleneck (interpretation)"
-        subtitle="Narrative and interpretive tags only: it does not modify your profile data"
+        title={t("multiscaleTitle")}
+        subtitle={t("multiscaleSubtitle")}
       >
         <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          L1–L6 priorities and ontology nodes activated <strong>deterministically</strong>. The canonical numbers remain in the
-          physiology / bioenergetics engines.
+          {t.rich("multiscaleNote", { b: (chunks) => <strong>{chunks}</strong> })}
         </p>
         <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
       </Pro2SectionCard>
 
       <Pro2Accordion
         id="mod-dettagli-motore"
-        title="How it works"
-        subtitle="How to read the three analyses and what we save for you"
+        title={t("howItWorksTitle")}
+        subtitle={t("howItWorksSubtitle")}
         accent="slate"
       >
         <div className="space-y-3 text-sm leading-relaxed text-gray-400">
           <p>
-            <strong className="text-gray-200">Metabolic profile</strong> — From your power curve we derive thresholds (CP, FTP, LT),
-            estimated VO₂max and the training zones with the predicted carbohydrate and fat consumption. When you save, the value stays
-            on your profile and the next time you open it you find your latest analysis again.
+            {t.rich("metabolicProfile", { b: (chunks) => <strong className="text-gray-200">{chunks}</strong> })}
           </p>
           <p>
-            <strong className="text-gray-200">Lactate analysis</strong> — Estimates how much fuel (carbohydrates) you use at a given intensity,
-            how much you absorb and how much you reconvert. It helps you understand how to fuel during long efforts.
+            {t.rich("lactateAnalysis", { b: (chunks) => <strong className="text-gray-200">{chunks}</strong> })}
           </p>
           <p>
-            <strong className="text-gray-200">Oxidative capacity</strong> — Measures how deeply you can use oxygen and where the
-            limit lies (heart/blood, muscle, or aerobic ceiling). Useful for prolonged aerobic efforts.
+            {t.rich("oxidativeCapacity", { b: (chunks) => <strong className="text-gray-200">{chunks}</strong> })}
           </p>
           <p className="text-xs text-gray-500">
-            The numbers update on their own when you change the inputs; the history keeps every analysis you save, so you can compare your progress.
+            {t("numbersUpdateNote")}
           </p>
         </div>
       </Pro2Accordion>
@@ -112,14 +109,14 @@ export function MetabolicLabDetailsSection({
       {showTech ? (
         <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <small className="text-xs text-gray-400">Internal validation console (visible only to coach/staff).</small>
+            <small className="text-xs text-gray-400">{t("validationConsoleNote")}</small>
             <Pro2Button
               type="button"
               variant="secondary"
               className="border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-400/50 hover:bg-emerald-500/20"
               onClick={onToggleValidationConsole}
             >
-              {showValidationConsole ? "Hide validation" : "Show validation"}
+              {showValidationConsole ? t("hideValidation") : t("showValidation")}
             </Pro2Button>
           </div>
         </div>
@@ -175,13 +172,13 @@ export function MetabolicLabDetailsSection({
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
                 <strong className="text-emerald-300">Aligned (published): {alignedRows.length}</strong>
                 <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {alignedRows.length === 0 ? <span>No aligned value.</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
+                  {alignedRows.length === 0 ? <span>{t("noAlignedValue")}</span> : alignedRows.map((row) => <span key={`ok-${row.key}`}>{row.label}: {row.valueText}</span>)}
                 </div>
               </div>
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-3">
                 <strong className="text-rose-300">Blocked (not published): {blockedRows.length}</strong>
                 <div className="mt-1.5 grid gap-1 text-xs text-gray-300">
-                  {blockedRows.length === 0 ? <span>All values are aligned.</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
+                  {blockedRows.length === 0 ? <span>{t("allValuesAligned")}</span> : blockedRows.map((row) => <span key={`ko-${row.key}`}>{row.label}</span>)}
                 </div>
               </div>
             </div>
@@ -217,7 +214,7 @@ export function MetabolicLabDetailsSection({
               </table>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Rule: a value is publishable only if source-check valid + physiological range in literature + evidence available.
+              {t("publishableRule")}
             </p>
           </div>
         )}
@@ -228,29 +225,33 @@ export function MetabolicLabDetailsSection({
       <Pro2SectionCard
         accent="slate"
         icon={Layers}
-        title="Metabolic Lab history"
-        subtitle="Snapshot list + import into inputs — technical detail below"
+        title={t("historyTitle")}
+        subtitle={t("historySubtitle")}
       >
         <p className="mb-3 text-xs leading-relaxed text-gray-500">
-          The KPIs on the page use the <strong>current engine</strong> (
-          <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">{METABOLIC_CP_ENGINE_REVISION}</code>
-          ). Below is the <strong>frozen snapshot</strong> at save time.
+          {t.rich("engineNote", {
+            b: (chunks) => <strong>{chunks}</strong>,
+            code: (chunks) => (
+              <code className="rounded bg-black/30 px-1 font-mono text-[0.65rem]">{chunks}</code>
+            ),
+            rev: METABOLIC_CP_ENGINE_REVISION,
+          })}
         </p>
         {historyLoading ? (
-          <p className="text-sm text-gray-500">Loading history…</p>
+          <p className="text-sm text-gray-500">{t("loadingHistory")}</p>
         ) : history.length === 0 ? (
-          <p className="text-sm text-gray-500">No saved snapshot.</p>
+          <p className="text-sm text-gray-500">{t("noSavedSnapshot")}</p>
         ) : (
           <>
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <label className="flex min-w-[min(100%,280px)] flex-1 flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Snapshot archive
+                {t("snapshotArchive")}
                 <select
                   className="w-full max-w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
                   value={selectedHistoryId ?? ""}
                   onChange={(e) => onSelectHistoryId(e.target.value ? e.target.value : null)}
                 >
-                  <option value="">Select a snapshot…</option>
+                  <option value="">{t("selectSnapshot")}</option>
                   {history.map((row) => (
                     <option key={row.id} value={row.id}>
                       {new Date(row.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })} ·{" "}
@@ -269,7 +270,7 @@ export function MetabolicLabDetailsSection({
                     if (selectedHistoryRow) onImportHistoryRow(selectedHistoryRow);
                   }}
                 >
-                  Import into inputs
+                  {t("importIntoInputs")}
                 </Pro2Button>
                 <Pro2Button
                   type="button"
@@ -278,7 +279,7 @@ export function MetabolicLabDetailsSection({
                   disabled={!selectedHistoryRow}
                   onClick={() => onSelectHistoryId(null)}
                 >
-                  Deselect
+                  {t("deselect")}
                 </Pro2Button>
               </div>
             </div>
@@ -318,7 +319,10 @@ export function MetabolicLabDetailsSection({
 
       {showTech ? (
         <p className="text-xs text-gray-600">
-          Context: {role === "coach" ? "Coach" : "Private"} · Athlete {athleteId.slice(0, 8)}…
+          {t("contextLine", {
+            role: role === "coach" ? t("roleCoach") : t("rolePrivate"),
+            id: athleteId.slice(0, 8),
+          })}
         </p>
       ) : null}
     </div>

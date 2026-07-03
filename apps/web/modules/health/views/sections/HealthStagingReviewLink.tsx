@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -15,18 +16,19 @@ const BASE =
  * AeroStagingLink. Usato da HealthSystemMapPanel e HealthArchiveSection.
  */
 export function HealthStagingReviewLink({ runId }: { runId: string }) {
+  const t = useTranslations("HealthStagingReviewLink");
   const { athleteId, adminScoped, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const href = scopedShellHref(`/health/staging/${runId}`, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
   if (!href) {
     return (
-      <span title="Available in the dedicated tab (v2)" className={`${BASE} cursor-default opacity-50 transition`}>
-        Open review
+      <span title={t("availableInDedicatedTab")} className={`${BASE} cursor-default opacity-50 transition`}>
+        {t("openReview")}
       </span>
     );
   }
   return (
     <Link href={href} className={`${BASE} transition-colors hover:border-fuchsia-400/50 hover:bg-fuchsia-500/20`}>
-      Open review
+      {t("openReview")}
     </Link>
   );
 }

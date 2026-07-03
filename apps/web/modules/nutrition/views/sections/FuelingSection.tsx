@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
 import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
 import type { NutritionPerformanceIntegrationDials } from "@/api/nutrition/contracts";
@@ -104,13 +105,13 @@ export function FuelingSection({
   nutritionPerformanceIntegration,
   fuelingPhysiology,
 }: FuelingSectionProps) {
+  const t = useTranslations("FuelingSection");
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Fueling</h2>
+        <h2 className="text-lg font-bold text-white">{t("heading")}</h2>
         <p className="mt-1 text-sm text-gray-300">
-          Pre, intra and post plan for the day&apos;s session (Builder planned takes priority; if missing, uses
-          duration/TSS from the imported executed workout). Summary numbers first, expandable details when needed.
+          {t("intro")}
         </p>
       </header>
       {athleteId ? (
@@ -118,11 +119,12 @@ export function FuelingSection({
           className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
           style={{ marginBottom: 12 }}
         >
-          <h3 className="viz-title text-base">Fueling intake</h3>
+          <h3 className="viz-title text-base">{t("intakeTitle")}</h3>
           <p className="mt-1 text-sm text-gray-400">
-            Confirm that you followed the plan (pre / intra / post) for{" "}
-            <strong className="text-white">{selectedPlanDate}</strong>. The confirmation is saved and can support
-            the plan vs actual comparison if you enable nutrition adherence on the meal plan.
+            {t.rich("intakeDescription", {
+              date: selectedPlanDate,
+              b: (chunks) => <strong className="text-white">{chunks}</strong>,
+            })}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
@@ -132,54 +134,58 @@ export function FuelingSection({
               onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
             >
               {fuelingConfirmBusy
-                ? "Saving…"
+                ? t("saving")
                 : fuelingConfirmedForSelectedDate
-                  ? "Undo confirmation for this day"
-                  : "I confirm fueling intake for this day"}
+                  ? t("undoConfirmation")
+                  : t("confirmIntake")}
             </button>
             {fuelingConfirmedForSelectedDate ? (
               <span className="text-xs text-emerald-300">
-                Confirmed
+                {t("confirmed")}
                 {fuelingExecutionConfirmations[selectedPlanDate]?.at
                   ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("en-US")}`
                   : null}
               </span>
             ) : (
-              <span className="text-xs text-gray-500">No confirmation for this date.</span>
+              <span className="text-xs text-gray-500">{t("noConfirmation")}</span>
             )}
           </div>
         </section>
       ) : null}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
-          <h3 className="viz-title">Fueling plan · pre / intra / post</h3>
+          <h3 className="viz-title">{t("planTitle")}</h3>
         </div>
         {!fuelingReadiness.ready ? (
           <div className="alert-warning" style={{ marginBottom: 0 }}>
             <p className="m-0 mb-2">
-              <strong>Still missing:</strong> {fuelingReadiness.missing.join(", ")}.
+              <strong>{t("stillMissing")}</strong> {fuelingReadiness.missing.join(", ")}.
             </p>
             {fuelingReadiness.onlyDayTrainingMissing ? (
               <p className="m-0 text-sm leading-relaxed opacity-95">
-                For the date above the module finds no workout in the loaded period: no row in{" "}
-                <strong>Training → Calendar</strong> and no <strong>executed workout</strong> with that date.
-                Fueling is tied to the <strong>day</strong>: move the date or add/import the session —
-                this is not a Physiology problem.
+                {t.rich("noWorkoutNote", {
+                  b1: (chunks) => <strong>{chunks}</strong>,
+                  b2: (chunks) => <strong>{chunks}</strong>,
+                  b3: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
             ) : (
               <>
                 {fuelingReadiness.hasProfileOrPhysiologyGap ? (
                   <p className="m-0 text-sm leading-relaxed opacity-95">
-                    Without the elements above (profile and physiology for fueling) we do not estimate CHO/h and lactate
-                    with made-up numbers. Fill them in under <strong>Profile</strong> and <strong>Physiology</strong>.
+                    {t.rich("profileGapNote", {
+                      b1: (chunks) => <strong>{chunks}</strong>,
+                      b2: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </p>
                 ) : null}
                 {fuelingReadiness.dayTrainingAlsoMissing ? (
                   <p
                     className={`m-0 text-sm leading-relaxed opacity-95 ${fuelingReadiness.hasProfileOrPhysiologyGap ? "mt-2" : ""}`}
                   >
-                    On top of that you need a <strong>workout for that day</strong> (planned in the calendar or
-                    imported as executed), otherwise there is no session to compute pre/intra/post on.
+                    {t.rich("dayWorkoutNote", {
+                      b: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </p>
                 ) : null}
               </>
@@ -203,10 +209,10 @@ export function FuelingSection({
               ))}
             </div>
             {fuelingSessionPackages.length ? (
-              <section className="fueling-visible-plan-strip" aria-label="Visible fueling plan">
+              <section className="fueling-visible-plan-strip" aria-label={t("visiblePlanAria")}>
                 {fuelingSessionPackages.map((pkg) => (
                   <article key={`fueling-visible-plan-${pkg.id}`} className="fueling-visible-plan-card">
-                    <span className="fueling-visible-plan-kicker">Fueling plan</span>
+                    <span className="fueling-visible-plan-kicker">{t("visiblePlanKicker")}</span>
                     <strong>{pkg.title}</strong>
                     <small>
                       ~{pkg.durationMin} min · {round(pkg.intensityPctFtp)}% FTP · CHO/h ~{pkg.choPerHourSession} g/h
@@ -217,17 +223,17 @@ export function FuelingSection({
             ) : null}
             {recoverySummary?.status === "poor" || recoverySummary?.status === "moderate" ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Recovery notes</summary>
+                <summary>{t("recoveryNotesSummary")}</summary>
                 <div className="alert-warning" style={{ marginBottom: 0 }}>
                   {recoverySummary.status === "poor"
-                    ? "Low recovery: favor a simpler, progressive fueling approach, watch GI tolerance and avoid needless aggressiveness during the day."
-                    : "Intermediate recovery: keep an eye on fueling density, hydration and the post-workout window."}
+                    ? t("recoveryPoor")
+                    : t("recoveryModerate")}
                 </div>
               </details>
             ) : null}
             {showTech && fuelingTrainingContext.length ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Session and substrate analysis</summary>
+                <summary>{t("sessionSubstrateSummary")}</summary>
                 <section
                   style={{
                     display: "grid",
@@ -260,16 +266,23 @@ export function FuelingSection({
                     </div>
                     {session.substrate ? (
                       <div style={{ color: "var(--empathy-text-muted)", fontSize: 11, lineHeight: 1.45 }}>
-                        <strong>Substrates (engine estimate):</strong> induced intensity ~{session.substrate.estimatedIntensityPctFtp}% FTP · lact
-                        ~{session.substrate.lactateProducedG} g · Cori glucose ~{session.substrate.glucoseFromCoriG} g (net{" "}
-                        ~{session.substrate.glucoseNetFromCoriG} g) · exogenous CHO oxidized ~{session.substrate.exogenousOxidizedG} g · CHO
-                        available ~{session.substrate.choAvailableG} g · CHO energy share ~{session.substrate.glycolyticSharePct}% ·
-                        gut pathway risk: {session.substrate.gutPathwayRisk} · blood delivery ~{session.substrate.bloodDeliveryPctOfIngested}%
+                        {t.rich("substratesLine", {
+                          b: (chunks) => <strong>{chunks}</strong>,
+                          intensity: session.substrate.estimatedIntensityPctFtp,
+                          lact: session.substrate.lactateProducedG,
+                          cori: session.substrate.glucoseFromCoriG,
+                          coriNet: session.substrate.glucoseNetFromCoriG,
+                          exo: session.substrate.exogenousOxidizedG,
+                          choAvail: session.substrate.choAvailableG,
+                          share: session.substrate.glycolyticSharePct,
+                          gutRisk: session.substrate.gutPathwayRisk,
+                          delivery: session.substrate.bloodDeliveryPctOfIngested,
+                        })}
                       </div>
                     ) : null}
                     {intraSplitRow ? (
                       <div style={{ color: "var(--empathy-text-muted)", fontSize: 11 }}>
-                        <strong>Intra CHO share (day split):</strong> ~{intraSplitRow.choG} g
+                        <strong>{t("intraChoLabel")}</strong> ~{intraSplitRow.choG} g
                       </div>
                     ) : null}
                     {session.target ? (
@@ -290,7 +303,7 @@ export function FuelingSection({
                     {session.family === "strength" && session.builderContract ? (
                       <details className="mt-2" open>
                         <summary style={{ fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                          Gym program (Builder) · intra workout
+                          {t("gymProgramSummary")}
                         </summary>
                         <div style={{ marginTop: 8 }}>
                           <Pro2GymSchedaBlockList contract={session.builderContract} compact />
@@ -321,21 +334,21 @@ export function FuelingSection({
             ) : null}
             {knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Fueling context from evidence</summary>
+                <summary>{t("fuelingContextSummary")}</summary>
                 <div style={{ display: "grid", gap: 8 }}>
                   {knowledgeFuelingHints.intents.length ? (
                     <div className="session-sub-copy">
-                      Physiological intent · {knowledgeFuelingHints.intents.join(" · ")}
+                      {t("physiologicalIntentLabel")} · {knowledgeFuelingHints.intents.join(" · ")}
                     </div>
                   ) : null}
                   {knowledgeFuelingHints.supports.length ? (
                     <div className="session-sub-copy">
-                      Priority supports · {knowledgeFuelingHints.supports.join(" · ")}
+                      {t("prioritySupportsLabel")} · {knowledgeFuelingHints.supports.join(" · ")}
                     </div>
                   ) : null}
                   {knowledgeFuelingHints.risks.length ? (
                     <div className="muted-copy">
-                      Constraints and risks · {knowledgeFuelingHints.risks.join(" · ")}
+                      {t("constraintsRisksLabel")} · {knowledgeFuelingHints.risks.join(" · ")}
                     </div>
                   ) : null}
                 </div>
@@ -357,7 +370,11 @@ export function FuelingSection({
                 >
                   <summary>{pkg.title}</summary>
                   <p className="nutrition-muted" style={{ fontSize: 12, marginBottom: 10 }}>
-                    ~{pkg.durationMin} min · estimated intensity ~{round(pkg.intensityPctFtp)}% FTP · session CHO/h ~{pkg.choPerHourSession} g/h
+                    {t("packageMeta", {
+                      duration: pkg.durationMin,
+                      intensity: round(pkg.intensityPctFtp),
+                      cho: pkg.choPerHourSession,
+                    })}
                   </p>
                   <div className="fueling-vertical-timeline">
                     {pkg.timelineSteps.map((step, idx) => (
@@ -431,7 +448,7 @@ export function FuelingSection({
                                       rel="noopener noreferrer"
                                       className="fueling-step-link"
                                     >
-                                      Manufacturer page
+                                      {t("manufacturerPage")}
                                     </a>
                                   </div>
                                 </div>
@@ -440,8 +457,8 @@ export function FuelingSection({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="fueling-step-media-link flex items-center justify-center"
-                                  aria-label={step.product?.product ?? "Fueling product"}
-                                  title={step.isLogoFallback ? "Brand logo fallback" : "Catalog / archive image"}
+                                  aria-label={step.product?.product ?? t("fuelingProductAria")}
+                                  title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
                                   style={{ minHeight: 132, background: "rgba(0,0,0,0.28)", padding: 10, position: "relative" }}
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -492,7 +509,7 @@ export function FuelingSection({
                   </details>
 
                   <section className="fueling-visual-report">
-                    <h4>Fueling report · {pkg.title}</h4>
+                    <h4>{t("fuelingReportTitle")} · {pkg.title}</h4>
                     <div className="fueling-metric-grid">
                       {pkg.visualMetrics.map((metric) => (
                         <article key={`${pkg.id}-${metric.label}`} className="fueling-metric-card">
@@ -509,13 +526,13 @@ export function FuelingSection({
                       ))}
                     </div>
                     <div className="fueling-glyco-future">
-                      <h5>Glycogen depletion (session)</h5>
+                      <h5>{t("glycogenDepletionTitle")}</h5>
                       <div className="nutrition-detail-rail" style={{ marginBottom: "8px" }}>
                         <span>
                           <strong>Intake raw:</strong> {gDep.totalIntake} g
                         </span>
                         <span>
-                          <strong>Absorbed:</strong> {gDep.totalAbsorbed} g
+                          <strong>{t("absorbedLabel")}</strong> {gDep.totalAbsorbed} g
                         </span>
                         <span>
                           <strong>Cori:</strong> {gDep.totalCori} g
@@ -612,10 +629,10 @@ export function FuelingSection({
                           </text>
                         ))}
                         <text x={gPlot.w - 188} y={16} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
-                          Y: available glycogen (g / %)
+                          {t("axisYLabel")}
                         </text>
                         <text x={gPlot.w - 118} y={gPlot.h - 8} fill={FUELING_CHART_THEME_PRO2.text} fontSize="10">
-                          X: time
+                          {t("axisXLabel")}
                         </text>
                       </svg>
                     </div>

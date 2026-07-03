@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Pro2Button } from "@/components/ui/empathy";
 import type {
   HealthPanelTimelineRow,
@@ -42,104 +44,105 @@ export function HealthArchiveSection({
   onToggleExpanded,
   onReloadTimeline,
 }: HealthArchiveSectionProps) {
+  const t = useTranslations("HealthArchiveSection");
   return (
-    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-5 shadow-inner" aria-label="Report archive">
+    <section className="rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-5 shadow-inner" aria-label={t("reportArchive")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Report archive</h3>
+        <h3 className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">{t("reportArchive")}</h3>
         {athleteId ? (
           <span
             className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.7rem] uppercase tracking-[0.16em] text-gray-400"
-            title={`active athleteId: ${athleteId}`}
+            title={t("activeAthleteIdTitle", { athleteId })}
           >
             athlete: {athleteId.slice(0, 8)}…
           </span>
         ) : null}
       </div>
       <p className="mt-1 text-sm text-gray-400">
-        Panels from <code className="text-gray-300">biomarker_panels</code> for the active athlete
-        {!loadingTimeline && !timelineErr ? ` · ${panels.length} in memory` : ""}.
+        {t.rich("panelsIntro", { c: (chunks) => <code className="text-gray-300">{chunks}</code> })}
+        {!loadingTimeline && !timelineErr ? t("inMemorySuffix", { count: panels.length }) : ""}.
       </p>
       {!loadingTimeline && !timelineErr && archiveDiagnostics.total > 0 ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums tracking-wider text-gray-300">
             <span>
               <span className="text-emerald-300">{archiveDiagnostics.withCanonicalValues}</span>
-              <span className="text-gray-500"> canonical</span>
+              <span className="text-gray-500">{t("canonicalSuffix")}</span>
             </span>
             <span>
               <span className="text-fuchsia-300">{archiveDiagnostics.withProposalsOnly}</span>
-              <span className="text-gray-500"> with proposed values</span>
+              <span className="text-gray-500">{t("withProposedValuesSuffix")}</span>
             </span>
             <span>
               <span className="text-amber-300">{archiveDiagnostics.importOnly}</span>
-              <span className="text-gray-500"> files only (empty)</span>
+              <span className="text-gray-500">{t("filesOnlySuffix")}</span>
             </span>
             {archiveDiagnostics.vlmPending > 0 ? (
               <span>
                 <span className="text-violet-300">{archiveDiagnostics.vlmPending}</span>
-                <span className="text-gray-500"> reviews to confirm</span>
+                <span className="text-gray-500">{t("reviewsToConfirmSuffix")}</span>
               </span>
             ) : null}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
-            The cards and charts read the numbers from <code className="text-gray-300">values</code> of the most recent panel
-            per type (e.g. <code>crp_mg_l</code>, <code>cortisol_am</code>, <code>firmicutes_pct</code>,{" "}
-            <code>methylation_score</code>) and fall back to the <code>vlm_proposals</code> not yet confirmed.{" "}
+            {t.rich("valuesExplanation", {
+              c1: (chunks) => <code className="text-gray-300">{chunks}</code>,
+              c: (chunks) => <code>{chunks}</code>,
+            })}{" "}
             {archiveDiagnostics.withCanonicalValues + archiveDiagnostics.withProposalsOnly === 0
-              ? "No report has readable numbers: upload an exam or apply a canonical seed."
+              ? t("noReadableNumbers")
               : archiveDiagnostics.vlmPending > 0
-                ? "Open reviews update the canonical state in the DB; until you confirm them, the numbers stay in «proposed» mode."
-                : "The charts are aligned with the athlete's memory."}
+                ? t("openReviewsUpdateCanonical")
+                : t("chartsAligned")}
           </p>
         </div>
       ) : null}
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {loadingTimeline ? (
-          <li className="col-span-full py-6 text-center text-sm text-gray-500">Loading archive…</li>
+          <li className="col-span-full py-6 text-center text-sm text-gray-500">{t("loadingArchive")}</li>
         ) : null}
         {!loadingTimeline && timelineErr ? (
           <li className="col-span-full py-4" role="alert">
             <p className="rounded-xl border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-sm text-amber-100">
-              Failed to read archive: {timelineErr}
+              {t("failedToReadArchive", { timelineErr })}
             </p>
             {timelineDiag ? (
               <div className="mt-2 space-y-1 text-xs text-gray-500">
                 {timelineDiag.requestedAthleteId ? (
                   <p>
-                    Requested athlete: <code className="text-gray-300">{timelineDiag.requestedAthleteId}</code>
+                    {t("requestedAthlete")} <code className="text-gray-300">{timelineDiag.requestedAthleteId}</code>
                   </p>
                 ) : null}
                 {timelineDiag.userProfileAthleteId &&
                 timelineDiag.userProfileAthleteId !== timelineDiag.requestedAthleteId ? (
                   <p className="text-amber-300/90">
-                    Athlete linked to your profile:{" "}
-                    <code className="text-amber-100">{timelineDiag.userProfileAthleteId}</code> — the athlete active
-                    in the UI does not match. Open Athletes / Access and select the one with the reports, or re-run the
-                    SQL seed on <code className="text-amber-100">{timelineDiag.requestedAthleteId}</code>.
+                    {t.rich("profileAthleteMismatch", {
+                      c: (chunks) => <code className="text-amber-100">{chunks}</code>,
+                      userProfileAthleteId: timelineDiag.userProfileAthleteId,
+                      requestedAthleteId: timelineDiag.requestedAthleteId,
+                    })}
                   </p>
                 ) : null}
                 {timelineDiag.errorCode ? (
                   <p className="text-gray-600">
-                    Code: <code className="text-gray-400">{timelineDiag.errorCode}</code>
+                    {t("codeLabel")} <code className="text-gray-400">{timelineDiag.errorCode}</code>
                     {typeof timelineDiag.httpStatus === "number" ? ` · HTTP ${timelineDiag.httpStatus}` : ""}
                   </p>
                 ) : null}
               </div>
             ) : (
               <p className="mt-2 text-xs text-gray-500">
-                If the problem persists, sign out and back in or verify that the selected athlete is the one with the
-                reports in the database.
+                {t("problemPersistsHint")}
               </p>
             )}
             <Pro2Button type="button" variant="secondary" className="mt-3 border-white/15 text-xs" onClick={() => onReloadTimeline()}>
-              Retry
+              {t("retry")}
             </Pro2Button>
           </li>
         ) : null}
         {!loadingTimeline && !timelineErr && panels.length === 0 ? (
           <li className="col-span-full py-6 text-center text-sm text-gray-500">
-            No report in the archive for this athlete. Use «Upload exam» above, or apply the SQL seed on the
-            same active <code className="text-gray-400">athlete_id</code>
+            {t.rich("noReportsInArchive", { c: (chunks) => <code className="text-gray-400">{chunks}</code> })}
             {athleteId ? (
               <>
                 {" "}(<code className="text-gray-400">{athleteId}</code>)
@@ -178,12 +181,12 @@ export function HealthArchiveSection({
                   <span className="font-semibold capitalize text-white">{p.type.replace(/_/g, " ")}</span>
                   {isPendingVlm ? (
                     <span className="inline-flex items-center rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-fuchsia-300">
-                      Pending
+                      {t("pending")}
                     </span>
                   ) : null}
                   {nFields > 0 ? (
                     <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold tabular-nums text-emerald-300">
-                      {nFields} fields
+                      {t("fieldsBadge", { nFields })}
                     </span>
                   ) : null}
                 </div>
@@ -191,7 +194,7 @@ export function HealthArchiveSection({
                   className="mt-1 truncate font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500"
                   title={p.source ?? ""}
                 >
-                  {p.source ? `Source: ${p.source}` : "Source: —"}
+                  {p.source ? t("sourceWithValue", { source: p.source }) : t("sourceEmpty")}
                 </div>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-gray-400">
                   <span className="whitespace-nowrap font-mono tabular-nums text-gray-400">
@@ -205,8 +208,9 @@ export function HealthArchiveSection({
                       </>
                     ) : (
                       <span>
-                        Structured values{nFields > 0 ? ` · ${nFields} fields` : ""}
-                        {nFields === 0 ? " (empty payload or import only)" : ""}
+                        {t("structuredValues")}
+                        {nFields > 0 ? t("fieldsSuffix", { nFields }) : ""}
+                        {nFields === 0 ? t("emptyPayloadSuffix") : ""}
                       </span>
                     )}
                   </span>
@@ -224,7 +228,7 @@ export function HealthArchiveSection({
                     onClick={() => onToggleExpanded(expanded ? null : p.id)}
                     className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-rose-500/40 hover:text-white"
                   >
-                    {expanded ? "Close" : "Open"}
+                    {expanded ? t("close") : t("open")}
                   </button>
                   {reviewRunId ? <HealthStagingReviewLink runId={reviewRunId} /> : null}
                 </div>
@@ -233,7 +237,7 @@ export function HealthArchiveSection({
                 {expanded ? (
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                     {valueEntries.length === 0 ? (
-                      <p className="text-xs text-gray-500">No structured value in this panel.</p>
+                      <p className="text-xs text-gray-500">{t("noStructuredValue")}</p>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-4">
                         {valueEntries.map(([k, v]) => (
@@ -250,7 +254,7 @@ export function HealthArchiveSection({
                     )}
                     {Array.isArray(vals?.vlm_proposals) && (vals?.vlm_proposals as unknown[]).length > 0 ? (
                       <p className="mt-3 text-[11px] text-fuchsia-300">
-                        {(vals?.vlm_proposals as unknown[]).length} proposed values to confirm. Open the review to accept them.
+                        {t("proposedValuesToConfirm", { count: (vals?.vlm_proposals as unknown[]).length })}
                       </p>
                     ) : null}
                   </div>

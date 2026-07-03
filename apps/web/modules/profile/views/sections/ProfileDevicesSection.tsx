@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ManualIntegrationPullButton } from "@/components/integrations/ManualIntegrationPullButton";
 import { SettingsDataSourcePreference } from "@/components/settings/SettingsDataSourcePreference";
 import { SettingsDeviceIngestPolicy } from "@/components/settings/SettingsDeviceIngestPolicy";
@@ -31,6 +32,7 @@ export function ProfileDevicesSection({
   hasActivePlan: boolean;
   active: boolean;
 }) {
+  const t = useTranslations("ProfileDevicesSection");
   const [garminLink, setGarminLink] = useState<{ linked: boolean } | null>(null);
   const [garminReturn, setGarminReturn] = useState<string | null>(null);
   const [garminDisconnecting, setGarminDisconnecting] = useState(false);
@@ -153,7 +155,7 @@ export function ProfileDevicesSection({
 
   async function disconnectGarmin() {
     if (!activeAthleteId || garminDisconnecting) return;
-    if (!window.confirm("Disconnect Garmin from this athlete? Data will no longer be synced from Garmin.")) {
+    if (!window.confirm(t("confirmDisconnectGarmin"))) {
       return;
     }
     setGarminDisconnecting(true);
@@ -164,17 +166,15 @@ export function ProfileDevicesSection({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string; garminPartnerDeregistered?: boolean };
       if (!r.ok) {
-        window.alert(j.error ?? "Disconnection failed.");
+        window.alert(j.error ?? t("disconnectFailed"));
         return;
       }
       if (j.garminPartnerDeregistered === false) {
-        window.alert(
-          "Link removed in Empathy; if Garmin did not accept the revocation, remove the consent from Garmin Connect as well.",
-        );
+        window.alert(t("garminRevocationNotice"));
       }
       setGarminLink({ linked: false });
     } catch {
-      window.alert("Network error during disconnection.");
+      window.alert(t("disconnectNetworkError"));
     } finally {
       setGarminDisconnecting(false);
     }
@@ -200,14 +200,16 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setWahooPullNotice(
-          `Workout pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          t("workoutPullComplete", { inserted: j.inserted ?? 0, skipped: j.skipped ?? 0 }) +
+            (Array.isArray(j.errors) && j.errors.length > 0
+              ? ` ${t("pullWarnings", { warnings: j.errors.slice(0, 3).join(" · ") })}`
+              : ""),
         );
       } else {
-        setWahooPullNotice(j.error ?? `HTTP error ${r.status}`);
+        setWahooPullNotice(j.error ?? t("httpError", { status: r.status }));
       }
     } catch {
-      setWahooPullNotice("Network error.");
+      setWahooPullNotice(t("networkError"));
     } finally {
       setWahooPullBusy(false);
     }
@@ -233,14 +235,16 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setWhoopPullNotice(
-          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          t("pullComplete", { inserted: j.inserted ?? 0, skipped: j.skipped ?? 0 }) +
+            (Array.isArray(j.errors) && j.errors.length > 0
+              ? ` ${t("pullWarnings", { warnings: j.errors.slice(0, 3).join(" · ") })}`
+              : ""),
         );
       } else {
-        setWhoopPullNotice(j.error ?? `HTTP error ${r.status}`);
+        setWhoopPullNotice(j.error ?? t("httpError", { status: r.status }));
       }
     } catch {
-      setWhoopPullNotice("Network error.");
+      setWhoopPullNotice(t("networkError"));
     } finally {
       setWhoopPullBusy(false);
     }
@@ -266,14 +270,16 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setPolarPullNotice(
-          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          t("pullComplete", { inserted: j.inserted ?? 0, skipped: j.skipped ?? 0 }) +
+            (Array.isArray(j.errors) && j.errors.length > 0
+              ? ` ${t("pullWarnings", { warnings: j.errors.slice(0, 3).join(" · ") })}`
+              : ""),
         );
       } else {
-        setPolarPullNotice(j.error ?? `HTTP error ${r.status}`);
+        setPolarPullNotice(j.error ?? t("httpError", { status: r.status }));
       }
     } catch {
-      setPolarPullNotice("Network error.");
+      setPolarPullNotice(t("networkError"));
     } finally {
       setPolarPullBusy(false);
     }
@@ -299,14 +305,16 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setSuuntoPullNotice(
-          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          t("pullComplete", { inserted: j.inserted ?? 0, skipped: j.skipped ?? 0 }) +
+            (Array.isArray(j.errors) && j.errors.length > 0
+              ? ` ${t("pullWarnings", { warnings: j.errors.slice(0, 3).join(" · ") })}`
+              : ""),
         );
       } else {
-        setSuuntoPullNotice(j.error ?? `HTTP error ${r.status}`);
+        setSuuntoPullNotice(j.error ?? t("httpError", { status: r.status }));
       }
     } catch {
-      setSuuntoPullNotice("Network error.");
+      setSuuntoPullNotice(t("networkError"));
     } finally {
       setSuuntoPullBusy(false);
     }
@@ -332,14 +340,16 @@ export function ProfileDevicesSection({
       };
       if (j.ok) {
         setKarooPullNotice(
-          `Pull complete: ${j.inserted ?? 0} inserted, ${j.skipped ?? 0} skipped.` +
-            (Array.isArray(j.errors) && j.errors.length > 0 ? ` Warnings: ${j.errors.slice(0, 3).join(" · ")}` : ""),
+          t("pullComplete", { inserted: j.inserted ?? 0, skipped: j.skipped ?? 0 }) +
+            (Array.isArray(j.errors) && j.errors.length > 0
+              ? ` ${t("pullWarnings", { warnings: j.errors.slice(0, 3).join(" · ") })}`
+              : ""),
         );
       } else {
-        setKarooPullNotice(j.error ?? `HTTP error ${r.status}`);
+        setKarooPullNotice(j.error ?? t("httpError", { status: r.status }));
       }
     } catch {
-      setKarooPullNotice("Network error.");
+      setKarooPullNotice(t("networkError"));
     } finally {
       setKarooPullBusy(false);
     }
@@ -351,51 +361,51 @@ export function ProfileDevicesSection({
     <div>
       <div className="profile-subpanel tone-slate" style={{ marginTop: "12px" }}>
         <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Devices</h4>
-        <p className="muted-copy">Connect your devices to automatically sync workouts and health data.</p>
+        <p className="muted-copy">{t("devicesIntro")}</p>
         {garminReturn === "connected" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Garmin connected ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("garminConnectedCheck")}</p>
         ) : null}
         {garminReturn && garminReturn !== "connected" ? (
           <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>
             {garminReturn === "server_config"
-              ? "Garmin integration is not yet configured on the server (missing OAuth credentials)."
+              ? t("garminServerConfig")
               : garminReturn === "forbidden"
-                ? "You do not have access to this athlete's data."
+                ? t("garminForbidden")
                 : garminReturn === "missing_athlete"
-                  ? "No athlete selected."
-                  : "Connection failed, try again."}
+                  ? t("noAthleteSelected")
+                  : t("connectionFailed")}
           </p>
         ) : null}
         {whoopReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>WHOOP connected ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("whoopConnectedCheck")}</p>
         ) : null}
         {whoopReturn && whoopReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>{t("connectionFailed")}</p>
         ) : null}
         {polarReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Polar connected ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("polarConnectedCheck")}</p>
         ) : null}
         {polarReturn && polarReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>{t("connectionFailed")}</p>
         ) : null}
         {wahooReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Wahoo connected ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("wahooConnectedCheck")}</p>
         ) : null}
         {wahooReturn && wahooReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>{t("connectionFailed")}</p>
         ) : null}
         {stravaReturn === "ok" ? (
-          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>Strava connected ✓</p>
+          <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("stravaConnectedCheck")}</p>
         ) : null}
         {stravaReturn && stravaReturn !== "ok" ? (
-          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>Connection failed, try again.</p>
+          <p className="text-sm text-rose-400/90" style={{ marginTop: 8 }}>{t("connectionFailed")}</p>
         ) : null}
         {activeAthleteId && garminLink && whoopLink && wahooLink && stravaLink ? (
           <div className="flex flex-col gap-2" style={{ marginTop: 12 }}>
             {garminLink.linked ? (
-              <p className="muted-copy text-sm">Garmin connected</p>
+              <p className="muted-copy text-sm">{t("garminConnected")}</p>
             ) : (
-              <p className="muted-copy text-sm">Garmin not connected</p>
+              <p className="muted-copy text-sm">{t("garminNotConnected")}</p>
             )}
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <a
@@ -404,7 +414,7 @@ export function ProfileDevicesSection({
                 rel="noopener noreferrer"
                 className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
               >
-                {garminLink.linked ? "Reconnect Garmin" : "Connect Garmin"}
+                {garminLink.linked ? t("reconnectGarmin") : t("connectGarmin")}
               </a>
               {garminLink.linked ? (
                 <Pro2Button
@@ -414,7 +424,7 @@ export function ProfileDevicesSection({
                   className="border border-rose-500/40 bg-rose-500/15 text-rose-100 hover:bg-rose-500/25"
                   onClick={() => void disconnectGarmin()}
                 >
-                  {garminDisconnecting ? "Disconnecting…" : "Disconnect Garmin"}
+                  {garminDisconnecting ? t("disconnecting") : t("disconnectGarmin")}
                 </Pro2Button>
               ) : null}
             </div>
@@ -428,9 +438,9 @@ export function ProfileDevicesSection({
                 WHOOP
               </h4>
               {whoopLink.linked ? (
-                <p className="muted-copy text-sm">WHOOP connected</p>
+                <p className="muted-copy text-sm">{t("whoopConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">WHOOP not connected</p>
+                <p className="muted-copy text-sm">{t("whoopNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -439,7 +449,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {whoopLink.linked ? "Reconnect WHOOP" : "Connect WHOOP"}
+                  {whoopLink.linked ? t("reconnectWhoop") : t("connectWhoop")}
                 </a>
                 {whoopLink.linked ? (
                   <Pro2Button
@@ -449,7 +459,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runWhoopPullNow()}
                   >
-                    {whoopPullBusy ? "Pull…" : "Refresh WHOOP data"}
+                    {whoopPullBusy ? "Pull…" : t("refreshWhoopData")}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -467,9 +477,9 @@ export function ProfileDevicesSection({
                 Polar
               </h4>
               {polarLink?.linked ? (
-                <p className="muted-copy text-sm">Polar connected</p>
+                <p className="muted-copy text-sm">{t("polarConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">Polar not connected</p>
+                <p className="muted-copy text-sm">{t("polarNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -478,7 +488,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {polarLink?.linked ? "Reconnect Polar" : "Connect Polar"}
+                  {polarLink?.linked ? t("reconnectPolar") : t("connectPolar")}
                 </a>
                 {polarLink?.linked ? (
                   <Pro2Button
@@ -488,7 +498,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runPolarPullNow()}
                   >
-                    {polarPullBusy ? "Pull…" : "Refresh Polar data"}
+                    {polarPullBusy ? "Pull…" : t("refreshPolarData")}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -506,15 +516,15 @@ export function ProfileDevicesSection({
                 Suunto
               </h4>
               {suuntoReturn === "ok" ? (
-                <p className="text-sm text-emerald-300/90">Suunto connected ✓</p>
+                <p className="text-sm text-emerald-300/90">{t("suuntoConnectedCheck")}</p>
               ) : null}
               {suuntoReturn && suuntoReturn !== "ok" ? (
-                <p className="text-sm text-rose-400/90">Connection failed, try again.</p>
+                <p className="text-sm text-rose-400/90">{t("connectionFailed")}</p>
               ) : null}
               {suuntoLink?.linked ? (
-                <p className="muted-copy text-sm">Suunto connected</p>
+                <p className="muted-copy text-sm">{t("suuntoConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">Suunto not connected</p>
+                <p className="muted-copy text-sm">{t("suuntoNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -523,7 +533,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {suuntoLink?.linked ? "Reconnect Suunto" : "Connect Suunto"}
+                  {suuntoLink?.linked ? t("reconnectSuunto") : t("connectSuunto")}
                 </a>
                 {suuntoLink?.linked ? (
                   <Pro2Button
@@ -533,7 +543,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runSuuntoPullNow()}
                   >
-                    {suuntoPullBusy ? "Pull…" : "Refresh Suunto data"}
+                    {suuntoPullBusy ? "Pull…" : t("refreshSuuntoData")}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -551,15 +561,15 @@ export function ProfileDevicesSection({
                 Karoo (Hammerhead)
               </h4>
               {karooReturn === "ok" ? (
-                <p className="text-sm text-emerald-300/90">Karoo connected ✓</p>
+                <p className="text-sm text-emerald-300/90">{t("karooConnectedCheck")}</p>
               ) : null}
               {karooReturn && karooReturn !== "ok" ? (
-                <p className="text-sm text-rose-400/90">Connection failed, try again.</p>
+                <p className="text-sm text-rose-400/90">{t("connectionFailed")}</p>
               ) : null}
               {karooLink?.linked ? (
-                <p className="muted-copy text-sm">Karoo connected</p>
+                <p className="muted-copy text-sm">{t("karooConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">Karoo not connected</p>
+                <p className="muted-copy text-sm">{t("karooNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -568,7 +578,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {karooLink?.linked ? "Reconnect Karoo" : "Connect Karoo"}
+                  {karooLink?.linked ? t("reconnectKaroo") : t("connectKaroo")}
                 </a>
                 {karooLink?.linked ? (
                   <Pro2Button
@@ -578,7 +588,7 @@ export function ProfileDevicesSection({
                     className="border border-violet-500/35 bg-violet-500/10 text-violet-50 hover:bg-violet-500/20"
                     onClick={() => void runKarooPullNow()}
                   >
-                    {karooPullBusy ? "Pull…" : "Refresh Karoo data"}
+                    {karooPullBusy ? "Pull…" : t("refreshKarooData")}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -593,10 +603,10 @@ export function ProfileDevicesSection({
             >
               <h4 className="profile-editor-subtitle" style={{ marginBottom: 8 }}>
                 <span className="profile-kpi-dot" />
-                Zepp <span className="text-white/50">· coming soon</span>
+                Zepp <span className="text-white/50">{t("comingSoonSuffix")}</span>
               </h4>
               <p className="muted-copy text-sm">
-                Zepp integration coming soon: the connection will be enabled shortly.
+                {t("zeppComingSoon")}
               </p>
             </div>
 
@@ -609,9 +619,9 @@ export function ProfileDevicesSection({
                 Wahoo Cloud
               </h4>
               {wahooLink.linked ? (
-                <p className="muted-copy text-sm">Wahoo connected</p>
+                <p className="muted-copy text-sm">{t("wahooConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">Wahoo not connected</p>
+                <p className="muted-copy text-sm">{t("wahooNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -620,7 +630,7 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15"
                 >
-                  {wahooLink.linked ? "Reconnect Wahoo" : "Connect Wahoo"}
+                  {wahooLink.linked ? t("reconnectWahoo") : t("connectWahoo")}
                 </a>
                 {wahooLink.linked ? (
                   <Pro2Button
@@ -630,7 +640,7 @@ export function ProfileDevicesSection({
                     className="border border-sky-500/35 bg-sky-500/10 text-sky-50 hover:bg-sky-500/20"
                     onClick={() => void runWahooPullNow()}
                   >
-                    {wahooPullBusy ? "Pull…" : "Refresh Wahoo workouts"}
+                    {wahooPullBusy ? "Pull…" : t("refreshWahooWorkouts")}
                   </Pro2Button>
                 ) : null}
               </div>
@@ -648,9 +658,9 @@ export function ProfileDevicesSection({
                 Strava
               </h4>
               {stravaLink.linked ? (
-                <p className="muted-copy text-sm">Strava connected</p>
+                <p className="muted-copy text-sm">{t("stravaConnected")}</p>
               ) : (
-                <p className="muted-copy text-sm">Strava not connected</p>
+                <p className="muted-copy text-sm">{t("stravaNotConnected")}</p>
               )}
               <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <a
@@ -659,13 +669,13 @@ export function ProfileDevicesSection({
                   rel="noopener noreferrer"
                   className="inline-flex max-w-fit items-center justify-center rounded-lg border border-orange-500/35 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-50 hover:bg-orange-500/20"
                 >
-                  {stravaLink.linked ? "Reconnect Strava" : "Connect Strava"}
+                  {stravaLink.linked ? t("reconnectStrava") : t("connectStrava")}
                 </a>
                 <ManualIntegrationPullButton
                   athleteId={activeAthleteId}
                   linked={Boolean(stravaLink.linked)}
                   endpoint="/api/integrations/strava/pull/run"
-                  label="Refresh Strava activities"
+                  label={t("refreshStravaActivities")}
                 />
               </div>
             </div>
@@ -673,9 +683,9 @@ export function ProfileDevicesSection({
         ) : null}
         {hasActivePlan ? (
           <div className="mt-6 border-t border-white/10 pt-5">
-            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Which data to pull from devices</h4>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("whichDataTitle")}</h4>
             <p className="muted-copy" style={{ marginBottom: 8 }}>
-              Choose which device provides sleep, recovery and workouts, and which data each device can sync.
+              {t("whichDataDescription")}
             </p>
             <div className="flex flex-col gap-6" style={{ marginTop: 8 }}>
               <SettingsDataSourcePreference />

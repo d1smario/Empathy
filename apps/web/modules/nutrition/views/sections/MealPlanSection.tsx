@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useTranslations } from "next-intl";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
 import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
 import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
@@ -131,6 +132,7 @@ export function MealPlanSection({
   nutritionSectorBoxes,
   functionalFoodRecommendations,
 }: MealPlanSectionProps) {
+  const t = useTranslations("MealPlanSection");
   return (
     <>
       {athleteId ? (
@@ -139,9 +141,9 @@ export function MealPlanSection({
           className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
           style={{ marginBottom: "12px" }}
         >
-          <h2 className="viz-title text-base">Meal plan for the day</h2>
+          <h2 className="viz-title text-base">{t("dayPlanTitle")}</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Choose the day and generate the meal plan calibrated on profile, workouts and signals of the day.
+            {t("dayPlanDescription")}
           </p>
           <div className="mt-3 flex flex-col gap-3">
             <NutritionPlanDatePicker
@@ -164,7 +166,7 @@ export function MealPlanSection({
                     }
                     onClick={() => void handleGenerateIntelligentMealPlan()}
                   >
-                    {intelligentMealLoading ? "Generating plan…" : "Generate my meal plan"}
+                    {intelligentMealLoading ? t("generatingPlan") : t("generatePlanCta")}
                   </button>
                   {intelligentMealPlan ? (
                     <button
@@ -176,14 +178,14 @@ export function MealPlanSection({
                         setCoachSessionFoodExclusions([]);
                       }}
                     >
-                      Regenerate plan
+                      {t("regeneratePlan")}
                     </button>
                   ) : null}
                 </>
               ) : null}
               {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
-                  Meal plan generated
+                  {t("planGenerated")}
                 </span>
               ) : null}
             </div>
@@ -193,11 +195,12 @@ export function MealPlanSection({
               className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
               role="status"
             >
-              <strong className="font-semibold">Warning — meal budget very low.</strong>{" "}
-              Meal target ~{Math.round(lowMealsBudgetWarning.meals)} kcal with estimated training ~
-              {Math.round(lowMealsBudgetWarning.train)} kcal: usually weight/height/date of birth are missing in the profile
-              (BMR not computable). The breakfast/lunch/dinner percentages from the profile apply to that low total;
-              check <span className="font-medium">Profile</span> and regenerate the plan after saving.
+              {t.rich("lowMealsBudgetWarning", {
+                meals: Math.round(lowMealsBudgetWarning.meals),
+                train: Math.round(lowMealsBudgetWarning.train),
+                b: (chunks) => <strong className="font-semibold">{chunks}</strong>,
+                s1: (chunks) => <span className="font-medium">{chunks}</span>,
+              })}
             </div>
           ) : null}
         </section>
@@ -207,10 +210,10 @@ export function MealPlanSection({
       <Pro2StickyAnchorSubnav
         accent={MODULE_PILL_AMBER}
         items={[
-          { id: "mod-target-giorno", label: "Daily target" },
-          { id: "nutrition-meal-plan", label: "Meal plan" },
-          { id: "mod-approfondimenti", label: "Insights" },
-          { id: "mod-dettagli-motore", label: "How it works" },
+          { id: "mod-target-giorno", label: t("anchorDailyTarget") },
+          { id: "nutrition-meal-plan", label: t("anchorMealPlan") },
+          { id: "mod-approfondimenti", label: t("anchorInsights") },
+          { id: "mod-dettagli-motore", label: t("anchorHowItWorks") },
         ]}
       />
 
@@ -256,24 +259,28 @@ export function MealPlanSection({
           }
           raceDayPreRaceNotice={
             raceDayPreRaceContext
-              ? `Race day: pre-race meal (${raceDayPreRaceContext.mealSlot === "breakfast" ? "breakfast" : "lunch"}) at ${raceDayPreRaceContext.lunchTimeLocal} — pasta/rice ${raceDayPreRaceContext.rule.carbsPerKgG} g CHO/kg, grana cheese, oil 15 g. Meals before/during race → Fueling; solids in the afternoon/post-race.`
+              ? t("raceDayPreRaceNotice", {
+                  meal: raceDayPreRaceContext.mealSlot === "breakfast" ? t("mealBreakfast") : t("mealLunch"),
+                  time: raceDayPreRaceContext.lunchTimeLocal,
+                  carbs: raceDayPreRaceContext.rule.carbsPerKgG,
+                })
               : null
           }
           dietDayNotice={
             mealRows.length > 0
               ? [
                   suppressedSnackSlots.length > 0
-                    ? `Snacks in the training window (${suppressedSnackSlots.join(", ")}) → carbs during the session in the Fueling module, not as an extra solid meal.`
+                    ? t("snacksInTrainingWindow", { slots: suppressedSnackSlots.join(", ") })
                     : null,
                   mealRows.length < 6 && effectiveMealCountMode === "6"
-                    ? "6 meals expected: save Profile → Diet (Tuesday) with three snack % and regenerate the plan."
+                    ? t("sixMealsExpected")
                     : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
-                      ? "Plan generated with fewer slots than Diet: use «Regenerate plan» to recompute."
+                      ? t("fewerSlotsThanDiet")
                       : null,
                 ]
                   .filter(Boolean)
                   .join(" ")
-              : `No readable % split for ${resolvedDietDay.weekDayKey}: Profile → Diet (week_plan) with 6 meals and three snack %, then Save profile.`
+              : t("noReadableSplit", { weekDayKey: resolvedDietDay.weekDayKey })
           }
           coachMealRemovalKeys={coachMealRemovalKeys}
           coachSessionFoodExclusions={coachSessionFoodExclusions}

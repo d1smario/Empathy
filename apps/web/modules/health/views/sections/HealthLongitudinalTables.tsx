@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+
 import { readNum, type BloodPanelRow } from "@/modules/health/lib/health-panel-readers";
 
 export interface BloodMatrixColumn {
@@ -23,22 +25,22 @@ export interface HealthLongitudinalTablesProps {
  * qui i parametri si confrontano nel tempo, non si ripetono i valori singoli.
  */
 export function HealthLongitudinalTables({ bloodCols, microCols }: HealthLongitudinalTablesProps) {
+  const t = useTranslations("HealthLongitudinalTables");
   if (bloodCols.length === 0 && !microCols) return null;
   return (
     <div className="space-y-6">
       <p className="max-w-3xl text-sm leading-relaxed text-gray-400">
-        Each column is a report in the archive (sample date). The rows are the same parameters used by the charts above,
-        so you can compare values over time.
+        {t("intro")}
       </p>
 
       {bloodCols.length > 0 ? (
         <div className="rounded-xl border border-rose-500/25 bg-white/[0.03] p-3 sm:p-4">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Blood — key parameters</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">{t("bloodTitle")}</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[480px] text-xs sm:min-w-[520px]">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Parameter</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("parameterHeader")}</th>
                   {bloodCols.map((c) => (
                     <th key={c.id} className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
                       <div>{c.label}</div>
@@ -84,12 +86,12 @@ export function HealthLongitudinalTables({ bloodCols, microCols }: HealthLongitu
 
       {microCols ? (
         <div className="rounded-xl border border-emerald-500/25 bg-white/[0.03] p-3 sm:p-4">
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">Microbiota — abundances / diversity</p>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{t("microbiotaTitle")}</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[440px] text-xs sm:min-w-[480px]">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Indicator</th>
+                  <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("indicatorHeader")}</th>
                   {microCols.map((c) => (
                     <th key={c.id} className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
                       {c.label}

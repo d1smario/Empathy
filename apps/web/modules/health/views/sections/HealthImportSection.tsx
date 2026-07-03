@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AlertTriangle, Dna, Droplets, Heart, HeartPulse, Upload, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
 
 /** Tipi di esame supportati dall'import. Il primo (blood) è la scelta di default. */
@@ -90,6 +91,7 @@ export function HealthImportSection({
   loadingTimeline = false,
   timelineErr = null,
 }: HealthImportSectionProps) {
+  const t = useTranslations("HealthImportSection");
   const [selectedType, setSelectedType] = useState<string>(HEALTH_EXAM_TYPES[0].panelType);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -101,18 +103,18 @@ export function HealthImportSection({
     <section
       id="mod-import"
       className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
-      aria-label="Upload an exam"
+      aria-label={t("uploadExamAria")}
     >
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">Reports</p>
-          <h2 className="mt-1 text-lg font-bold text-white">Upload an exam</h2>
+          <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">{t("reportsLabel")}</p>
+          <h2 className="mt-1 text-lg font-bold text-white">{t("uploadExamTitle")}</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Choose the date and type of the report, then upload the file (PDF or photo). We&apos;ll read it and add it to your trends.
+            {t("uploadHint")}
           </p>
         </div>
         <label className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-gray-400">
-          Sample date
+          {t("sampleDateLabel")}
           <input
             type="date"
             className="rounded-xl border border-white/15 bg-black/40 px-2 py-1 font-mono tabular-nums text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
@@ -122,7 +124,7 @@ export function HealthImportSection({
         </label>
       </div>
 
-      <p className="mt-5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Exam type</p>
+      <p className="mt-5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("examTypeLabel")}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {HEALTH_EXAM_TYPES.map((t) => {
           const Icon = t.icon;
@@ -183,18 +185,18 @@ export function HealthImportSection({
         onClick={() => fileRef.current?.click()}
       >
         {busy ? (
-          "Sending…"
+          t("sending")
         ) : (
           <>
             <Upload className="mr-2 h-5 w-5" strokeWidth={2.5} />
-            Upload exam
+            {t("uploadExamButton")}
           </>
         )}
       </Pro2Button>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
         {timelineErr ? <span className="text-amber-300">{timelineErr}</span> : null}
-        {loadingTimeline ? <span>Syncing archive…</span> : null}
+        {loadingTimeline ? <span>{t("syncingArchive")}</span> : null}
       </div>
     </section>
   );

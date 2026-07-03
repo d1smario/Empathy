@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
 import {
   FUNCTIONAL_EXAMPLE_CELL_CLASSES,
@@ -49,6 +50,7 @@ function IntegrationProductCard({
   qtyHint: string;
   accent: IntegrationTimingBucket;
 }) {
+  const t = useTranslations("IntegrationSection");
   const metaChips = [
     FUELING_FORMAT_IT[product.format],
     FUELING_CATEGORY_IT[product.category],
@@ -131,7 +133,7 @@ function IntegrationProductCard({
           className="nutrition-product-link"
           style={{ marginTop: 12, fontSize: "0.68rem", fontWeight: 600 }}
         >
-          Manufacturer sheet
+          {t("manufacturerSheet")}
         </a>
       </div>
       <a
@@ -148,7 +150,7 @@ function IntegrationProductCard({
           background: "rgba(0,0,0,0.35)",
           padding: 12,
         }}
-        title={product.isLogoFallback ? "Brand logo fallback" : "Catalog / archive image"}
+        title={product.isLogoFallback ? t("brandLogoFallback") : t("catalogArchiveImage")}
       >
         <img
           src={product.displayImage}
@@ -219,19 +221,19 @@ export function IntegrationSection({
   integrationProductsByTiming,
   resolvedFuelingChoGPerHour,
 }: IntegrationSectionProps) {
+  const t = useTranslations("IntegrationSection");
   return (
           <section id="nutrition-integration" className="scroll-mt-28 mb-10 space-y-4">
             <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-              <h2 className="text-lg font-bold text-white">Integration</h2>
-              <p className="mt-1 text-sm text-gray-400">Metabolic pathways, KPIs, USDA and products — same signals as the module.</p>
+              <h2 className="text-lg font-bold text-white">{t("integrationTitle")}</h2>
+              <p className="mt-1 text-sm text-gray-400">{t("integrationSubtitle")}</p>
             </header>
             <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-              <h3 className="viz-title">Integration</h3>
+              <h3 className="viz-title">{t("integrationTitle")}</h3>
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Integration overview · metabolic pathways</summary>
+                <summary>{t("overviewSummary")}</summary>
                 <p className="nutrition-muted" style={{ fontSize: "0.82rem", marginTop: "8px", marginBottom: 0 }}>
-                  The numbers below derive from the same fueling levers: active metabolic pathways, daily signals, diary insight and
-                  operational constraints. Timing expressed as qualitative half-life classes.
+                  {t("overviewBody")}
                 </p>
               </details>
               <div className="fueling-main-kpi-grid" style={{ marginBottom: "14px" }}>
@@ -241,12 +243,12 @@ export function IntegrationSection({
                       {card.label}
                     </div>
                     <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
-                    <div className="fueling-main-kpi-sub">Metabolic pathways</div>
+                    <div className="fueling-main-kpi-sub">{t("metabolicPathways")}</div>
                   </div>
                 ))}
               </div>
               <div className="nutrition-section-band" style={{ fontSize: "0.9rem", marginBottom: "8px" }}>
-                Supplement catalog · numeric summary
+                {t("supplementCatalogSummary")}
               </div>
               <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
                 {integrationStackSummary.map((card) => (
@@ -255,7 +257,7 @@ export function IntegrationSection({
                       {card.label}
                     </div>
                     <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
-                    <div className="fueling-main-kpi-sub">Integration catalog</div>
+                    <div className="fueling-main-kpi-sub">{t("integrationCatalog")}</div>
                   </div>
                 ))}
               </div>
@@ -265,7 +267,7 @@ export function IntegrationSection({
                   style={{ marginBottom: "10px", padding: "10px 12px", borderColor: "rgba(251,191,36,0.35)" }}
                 >
                   <summary className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                    Performance integration · levers ({nutritionPerformanceIntegration.rationale.length})
+                    {t("performanceIntegrationLevers", { count: nutritionPerformanceIntegration.rationale.length })}
                   </summary>
                   <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.85rem", lineHeight: 1.45 }}>
                     {nutritionPerformanceIntegration.rationale.map((line) => (
@@ -279,24 +281,26 @@ export function IntegrationSection({
               {nutritionPerformanceIntegration?.diaryInsight ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                   <summary>
-                    Real diary · {nutritionPerformanceIntegration.diaryInsight.loggedDays}/
-                    {nutritionPerformanceIntegration.diaryInsight.windowDays} days
+                    {t("realDiaryDays", {
+                      logged: nutritionPerformanceIntegration.diaryInsight.loggedDays,
+                      window: nutritionPerformanceIntegration.diaryInsight.windowDays,
+                    })}
                     {nutritionPerformanceIntegration.diaryInsight.energyAdequacyRatio != null
                       ? ` · ${Math.round(nutritionPerformanceIntegration.diaryInsight.energyAdequacyRatio * 100)}% target`
                       : ""}
                   </summary>
                   <p className="muted-copy" style={{ fontSize: 12, marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
-                    Average energy ~{nutritionPerformanceIntegration.diaryInsight.avgDailyKcal ?? "—"} kcal
+                    {t("averageEnergy", { kcal: nutritionPerformanceIntegration.diaryInsight.avgDailyKcal ?? "—" })}
                     {nutritionPerformanceIntegration.diaryInsight.estimatedMaintenanceKcal != null
-                      ? ` vs estimated requirement ~${nutritionPerformanceIntegration.diaryInsight.estimatedMaintenanceKcal} kcal`
+                      ? ` ${t("vsEstimatedRequirement", { kcal: nutritionPerformanceIntegration.diaryInsight.estimatedMaintenanceKcal })}`
                       : ""}
-                    . This signal modulates the training-nutrition levers but does not replace the physiological engines.
+                    {t("signalModulates")}
                   </p>
                 </details>
               ) : null}
               {applicationPlaybook ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                  <summary>+ Application playbook · EMPATHY</summary>
+                  <summary>{t("applicationPlaybookSummary")}</summary>
                   <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
                     {applicationPlaybook.playbookHeadlineIt}
                   </p>
@@ -330,14 +334,14 @@ export function IntegrationSection({
                     <ul className="mb-3 list-none space-y-1 pl-0 text-[0.72rem] text-gray-400">
                       {applicationPlaybook.timingProtocols.slice(0, 4).map((tp) => (
                         <li key={tp.id}>
-                          [{tp.pathwayLabel ?? "Protocol"}] {tp.windowLabelIt}: {tp.actionsIt.join(" · ")}
+                          [{tp.pathwayLabel ?? t("protocol")}] {tp.windowLabelIt}: {tp.actionsIt.join(" · ")}
                         </li>
                       ))}
                     </ul>
                   ) : null}
                   {applicationPlaybook.fuelingAdvice ? (
                     <p className="nutrition-muted mb-0 text-[0.72rem] leading-snug">
-                      Fueling · {applicationPlaybook.fuelingAdvice.sessionLabel}:{" "}
+                      {t("fuelingLabel", { session: applicationPlaybook.fuelingAdvice.sessionLabel })}{" "}
                       {applicationPlaybook.fuelingAdvice.protocolNotes.join(" · ")}
                     </p>
                   ) : null}
@@ -346,7 +350,7 @@ export function IntegrationSection({
               ) : null}
               {showTech && crossDomainInterpretationRoadmap ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                  <summary>+ Cross-domain roadmap · wired domains vs backlog</summary>
+                  <summary>{t("crossDomainRoadmapSummary")}</summary>
                   <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
                     {crossDomainInterpretationRoadmap.roadmapHeadlineIt}
                   </p>
@@ -366,16 +370,16 @@ export function IntegrationSection({
                   </ul>
                   {crossDomainInterpretationRoadmap.edges.length ? (
                     <p className="nutrition-muted mb-0 text-[0.72rem]">
-                      {crossDomainInterpretationRoadmap.edges.length} active links between domains (qualitative interpretation).
+                      {t("activeLinks", { count: crossDomainInterpretationRoadmap.edges.length })}
                     </p>
                   ) : null}
                 </details>
               ) : null}
               {showTech && nutrientInterrogation?.items.length ? (
                 <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                  <summary>+ Nutrient interrogation · multiscale ontology</summary>
+                  <summary>{t("nutrientInterrogationSummary")}</summary>
                   <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
-                    Dominant bottleneck: {nutrientInterrogation.dominantBottleneckLevelIt} · ontology{" "}
+                    {t("dominantBottleneck", { level: nutrientInterrogation.dominantBottleneckLevelIt })} · ontology{" "}
                     {nutrientInterrogation.ontologyVersion}
                   </p>
                   <ul className="mb-0 list-none space-y-2 pl-0 text-[0.78rem]">
@@ -394,17 +398,17 @@ export function IntegrationSection({
                         </div>
                         {item.geneSymbols.length ? (
                           <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
-                            Genes: {item.geneSymbols.join(", ")}
+                            {t("genesLabel", { genes: item.geneSymbols.join(", ") })}
                           </p>
                         ) : null}
                         {item.activatedNodes.length ? (
                           <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
-                            Nodes: {item.activatedNodes.map((n) => n.labelIt).slice(0, 3).join(" · ")}
+                            {t("nodesLabel", { nodes: item.activatedNodes.map((n) => n.labelIt).slice(0, 3).join(" · ") })}
                           </p>
                         ) : null}
                         {item.preferredSlotsIt?.length ? (
                           <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">
-                            Preferred meals: {item.preferredSlotsIt.join(", ")}
+                            {t("preferredMeals", { meals: item.preferredSlotsIt.join(", ") })}
                           </p>
                         ) : null}
                         <p className="nutrition-muted mt-1 mb-0 text-[0.72rem]">{item.rationaleIt}</p>
@@ -414,21 +418,21 @@ export function IntegrationSection({
                 </details>
               ) : null}
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>+ Metabolic pathways · substrates, cofactors, inhibitors, timing</summary>
+                <summary>{t("metabolicPathwaysSummary")}</summary>
                 <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
-                  Four color-coded columns: pathway/stimulus · signal source · substrate strategy · supplement support and attenuations.
+                  {t("fourColumns")}
                 </p>
                 <div className="table-shell mt-2 overflow-hidden rounded-xl border border-white/10">
                   <table className="w-full border-collapse text-left text-[0.8rem]">
                     <thead>
                       <tr className="text-[0.65rem] font-bold uppercase tracking-[0.06em]">
-                        <th className="border border-white/10 bg-violet-500/25 px-3 py-2.5 text-violet-100">Pathway / stimulus</th>
-                        <th className="border border-white/10 bg-fuchsia-500/22 px-3 py-2.5 text-fuchsia-100">Signal source</th>
+                        <th className="border border-white/10 bg-violet-500/25 px-3 py-2.5 text-violet-100">{t("thPathwayStimulus")}</th>
+                        <th className="border border-white/10 bg-fuchsia-500/22 px-3 py-2.5 text-fuchsia-100">{t("thSignalSource")}</th>
                         <th className="border border-white/10 bg-orange-500/20 px-3 py-2.5 text-orange-100">
-                          Strategy (substrates)
+                          {t("thStrategy")}
                         </th>
                         <th className="border border-white/10 bg-sky-500/18 px-3 py-2.5 text-sky-100">
-                          Supplement support &amp; attenuations
+                          {t("thSupplementSupport")}
                         </th>
                       </tr>
                     </thead>
@@ -450,11 +454,11 @@ export function IntegrationSection({
                             </td>
                             <td className="border border-white/10 bg-sky-500/[0.07] px-3 py-2 text-[0.78rem] text-gray-100">
                               <span className="mb-1 block">
-                                <strong>Cofactors:</strong> {pw.cofactors.join("; ") || "—"}
+                                <strong>{t("cofactors")}</strong> {pw.cofactors.join("; ") || "—"}
                               </span>
                               {pw.inhibitorsToAvoid.length ? (
                                 <span className="text-[0.8rem]">
-                                  <strong>Attenuate:</strong> {pw.inhibitorsToAvoid.join("; ")}
+                                  <strong>{t("attenuate")}</strong> {pw.inhibitorsToAvoid.join("; ")}
                                 </span>
                               ) : null}
                             </td>
@@ -463,9 +467,10 @@ export function IntegrationSection({
                       ) : (
                         <tr>
                           <td className="border border-white/10 bg-white/[0.03] px-3 py-3 text-[0.82rem] text-gray-300" colSpan={4}>
-                            No pathway computed for <strong className="text-white">{selectedPlanDateLabel}</strong>: add a planned session
-                            or check twin/physiology. The models (glycogen, redox, gut) appear when there are
-                            stimuli or signals.
+                            {t.rich("noPathwayComputed", {
+                              date: selectedPlanDateLabel,
+                              b: (chunks) => <strong className="text-white">{chunks}</strong>,
+                            })}
                           </td>
                         </tr>
                       )}
@@ -475,7 +480,7 @@ export function IntegrationSection({
                 {pathwayModulation?.pathways.length ? (
                   <div className="mt-4 flex flex-col gap-3">
                     <div className="nutrition-muted text-[0.78rem]">
-                      Operational timing — color per phase (acute pre · peri-session · early recovery · late recovery)
+                      {t("operationalTiming")}
                     </div>
                     {pathwayModulation.pathways.map((pw) => (
                       <div
@@ -488,14 +493,14 @@ export function IntegrationSection({
                             <li key={`${pw.id}-${ph.phase}-${ph.windowLabel}`} className={cn(pathwayOperationalPhaseRowClass(ph.phase))}>
                               <strong className="text-white">
                                 {ph.phase === "pre_acute"
-                                  ? "Acute pre"
+                                  ? t("phaseAcutePre")
                                   : ph.phase === "peri_workout"
-                                    ? "Peri-session"
+                                    ? t("phasePeriSession")
                                     : ph.phase === "early_recovery"
-                                      ? "Early recovery"
+                                      ? t("phaseEarlyRecovery")
                                       : ph.phase === "late_recovery"
-                                        ? "Late recovery"
-                                        : "Daily support"}
+                                        ? t("phaseLateRecovery")
+                                        : t("phaseDailySupport")}
                               </strong>
                               {" · "}
                               {ph.windowLabel}{" "}
@@ -511,52 +516,51 @@ export function IntegrationSection({
                 ) : null}
               </details>
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>Functional foods (vitamins, amino acids, cofactors) per nutrient</summary>
+                <summary>{t("functionalFoodsSummary")}</summary>
                 <p className="nutrition-muted" style={{ fontSize: "0.8rem", marginTop: "8px", marginBottom: "10px" }}>
-                  For each <strong>nutrient</strong> linked to the active pathways you&apos;ll find curated examples and product search in the Meals tab, with a
-                  list of foods ordered by nutrient density: choose and cross-reference with your profile.
+                  {t.rich("functionalFoodsIntro", { b: (chunks) => <strong>{chunks}</strong> })}
                 </p>
                 {functionalFoodRecommendations.targets.length ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    {functionalFoodRecommendations.targets.map((t) => (
+                    {functionalFoodRecommendations.targets.map((target) => (
                       <div
-                        key={t.nutrientId}
+                        key={target.nutrientId}
                         className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[0.84rem]"
                       >
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
-                          <strong>{t.displayNameIt}</strong>
+                          <strong>{target.displayNameIt}</strong>
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300">
-                            {t.kind === "vitamin"
-                              ? "Vitamin"
-                              : t.kind === "mineral"
-                                ? "Mineral"
-                                : t.kind === "amino_acid"
-                                  ? "Amino acid"
-                                  : t.kind === "fatty_acid"
-                                    ? "Fatty acid"
-                                    : "Other"}
+                            {target.kind === "vitamin"
+                              ? t("kindVitamin")
+                              : target.kind === "mineral"
+                                ? t("kindMineral")
+                                : target.kind === "amino_acid"
+                                  ? t("kindAminoAcid")
+                                  : target.kind === "fatty_acid"
+                                    ? t("kindFattyAcid")
+                                    : t("kindOther")}
                           </span>
                         </div>
                         <p className="nutrition-muted" style={{ margin: "0 0 8px", fontSize: "0.8rem" }}>
-                          {t.rationaleIt}
+                          {target.rationaleIt}
                         </p>
                         <div className="nutrition-muted" style={{ fontSize: "0.75rem", marginBottom: "8px" }}>
-                          Pathways: {t.pathwayLabel}
+                          {t("pathwaysLabel", { pathways: target.pathwayLabel })}
                         </div>
                         <div className="mb-2">
-                          <strong className="text-[0.8rem] text-white">Food examples</strong>
+                          <strong className="text-[0.8rem] text-white">{t("foodExamples")}</strong>
                           <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                            {t.curatedExamples.slice(0, 3).map((ex, idx) => (
-                              <div key={`${t.nutrientId}-${ex.name}`} className={FUNCTIONAL_EXAMPLE_CELL_CLASSES[idx % 3]}>
+                            {target.curatedExamples.slice(0, 3).map((ex, idx) => (
+                              <div key={`${target.nutrientId}-${ex.name}`} className={FUNCTIONAL_EXAMPLE_CELL_CLASSES[idx % 3]}>
                                 <div className="text-[0.78rem] font-semibold leading-snug text-white">{ex.name}</div>
                                 <div className="mt-1 text-[0.72rem] leading-snug text-gray-300">{ex.why}</div>
                               </div>
                             ))}
                           </div>
-                          {t.curatedExamples.length > 3 ? (
+                          {target.curatedExamples.length > 3 ? (
                             <ul className="nutrition-muted mb-0 mt-2 list-disc pl-[1.1rem] text-[0.74rem]">
-                              {t.curatedExamples.slice(3).map((ex) => (
-                                <li key={`${t.nutrientId}-${ex.name}-more`} className="mb-1">
+                              {target.curatedExamples.slice(3).map((ex) => (
+                                <li key={`${target.nutrientId}-${ex.name}-more`} className="mb-1">
                                   <strong className="text-gray-200">{ex.name}</strong> — {ex.why}
                                 </li>
                               ))}
@@ -564,50 +568,50 @@ export function IntegrationSection({
                           ) : null}
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                          {t.searchQueries.map((sq) => (
+                          {target.searchQueries.map((sq) => (
                             <button
-                              key={`${t.nutrientId}-${sq}`}
+                              key={`${target.nutrientId}-${sq}`}
                               type="button"
                               className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                               style={{ cursor: "pointer" }}
                               disabled={foodLookupLoading}
                               onClick={() => void runFoodLookupFromPathway(sq)}
                             >
-                              Search: {sq}
+                              {t("searchLabel", { query: sq })}
                             </button>
                           ))}
                         </div>
-                        {t.usdaRichSearch ? (
+                        {target.usdaRichSearch ? (
                           <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed rgba(148,163,184,0.35)" }}>
                             <button
                               type="button"
                               className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                               style={{ cursor: "pointer", fontWeight: 600 }}
-                              disabled={usdaRichByCatalogId[t.nutrientId]?.loading === true}
-                              onClick={() => void fetchUsdaRichForCatalog(t.nutrientId)}
+                              disabled={usdaRichByCatalogId[target.nutrientId]?.loading === true}
+                              onClick={() => void fetchUsdaRichForCatalog(target.nutrientId)}
                             >
-                              {usdaRichByCatalogId[t.nutrientId]?.loading
-                                ? "USDA: loading…"
-                                : `USDA (Foundation/SR): rich in ${t.usdaRichSearch.nutrientShortLabel}`}
+                              {usdaRichByCatalogId[target.nutrientId]?.loading
+                                ? t("usdaLoading")
+                                : t("usdaRichIn", { label: target.usdaRichSearch.nutrientShortLabel })}
                             </button>
-                            {usdaRichByCatalogId[t.nutrientId]?.error ? (
+                            {usdaRichByCatalogId[target.nutrientId]?.error ? (
                               <p className="nutrition-muted" style={{ fontSize: "0.78rem", marginTop: "8px", marginBottom: 0 }}>
-                                {usdaRichByCatalogId[t.nutrientId]?.error}
+                                {usdaRichByCatalogId[target.nutrientId]?.error}
                               </p>
                             ) : null}
-                            {usdaRichByCatalogId[t.nutrientId]?.foods?.length ? (
+                            {usdaRichByCatalogId[target.nutrientId]?.foods?.length ? (
                               <div className="mt-2.5 overflow-x-auto">
                                 <table className="w-full text-xs">
                                   <thead>
                                     <tr>
-                                      <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Food (USDA)</th>
+                                      <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thFoodUsda")}</th>
                                       <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Target /100 g</th>
                                       <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">P/C/F</th>
                                       <th className="px-3 py-2" />
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-white/5">
-                                    {usdaRichByCatalogId[t.nutrientId]!.foods!.map((row) => (
+                                    {usdaRichByCatalogId[target.nutrientId]!.foods!.map((row) => (
                                       <tr key={row.fdcId} className="transition-colors hover:bg-white/[0.03]">
                                         <td className="px-3 py-2 align-top text-gray-300">
                                           <span className="text-white">{row.description}</span>
@@ -646,7 +650,7 @@ export function IntegrationSection({
                   </div>
                 ) : (
                   <p className="nutrition-muted" style={{ fontSize: "0.85rem" }}>
-                    No food target yet: active metabolic pathways are needed (session + signals). The queries will appear here.
+                    {t("noFoodTarget")}
                   </p>
                 )}
                 {effectiveFunctionalMealSelector ? (
@@ -658,7 +662,7 @@ export function IntegrationSection({
                     }}
                   >
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
-                      <strong>Functional meal selector</strong>
+                      <strong>{t("functionalMealSelector")}</strong>
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">{effectiveFunctionalMealSelector.status}</span>
                       <span className="nutrition-muted" style={{ fontSize: "0.75rem" }}>
                         {effectiveFunctionalMealSelector.date}
@@ -693,8 +697,11 @@ export function IntegrationSection({
                                 <strong className="text-white">{candidate.name}</strong>
                                 <span className="text-gray-300"> — {candidate.reason}</span>
                                 <div className="nutrition-muted mt-1 text-[0.68rem] leading-snug">
-                                  Elements: {candidate.functionalElements.join(", ")} · timing {candidate.timing}
-                                  {candidate.caution ? ` · caution: ${candidate.caution}` : ""}
+                                  {t("elementsTiming", {
+                                    elements: candidate.functionalElements.join(", "),
+                                    timing: candidate.timing,
+                                  })}
+                                  {candidate.caution ? ` · ${t("cautionLabel", { caution: candidate.caution })}` : ""}
                                 </div>
                               </div>
                             ))}
@@ -723,17 +730,17 @@ export function IntegrationSection({
                       {
                         key: "pre" as const,
                         title: "Pre workout",
-                        subtitle: "Pre-hydration, caffeine, moderate loads before the stimulus",
+                        subtitle: t("preWorkoutSubtitle"),
                       },
                       {
                         key: "intra" as const,
                         title: "Intra workout",
-                        subtitle: "Gels, bars and drinks during the session (tolerance)",
+                        subtitle: t("intraWorkoutSubtitle"),
                       },
                       {
                         key: "post" as const,
                         title: "Post workout",
-                        subtitle: "Recovery, protein, creatine — after the stimulus",
+                        subtitle: t("postWorkoutSubtitle"),
                       },
                     ] as const
                   ).map((col) => (
@@ -777,7 +784,7 @@ export function IntegrationSection({
                           })
                         ) : (
                           <p className="nutrition-muted m-0 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
-                            No supplement classified here from the current selection (primary bucket from catalog timing).
+                            {t("noSupplementClassified")}
                           </p>
                         )}
                       </div>

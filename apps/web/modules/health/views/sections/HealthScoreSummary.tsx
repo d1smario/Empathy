@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { SHOW_HEALTH_DEMO_FALLBACK_DATA } from "@/modules/health/lib/health-panel-readers";
 
 export interface HealthGlobalScores {
@@ -9,26 +10,27 @@ export interface HealthGlobalScores {
 
 /** Sintesi unica dello stato di salute (health score globale). */
 export function HealthScoreSummary({ scores }: { scores: HealthGlobalScores }) {
+  const t = useTranslations("HealthScoreSummary");
   return (
     <section
       id="mod-score"
       className="scroll-mt-20 rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-950/[0.14] via-pink-950/[0.08] to-black/85 p-4 shadow-inner sm:scroll-mt-28 sm:p-6"
-      aria-label="Stato di salute"
+      aria-label={t("healthStatusAria")}
     >
       <h2 className="text-center font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
-        Stato di salute · sintesi
+        {t("title")}
       </h2>
       {!SHOW_HEALTH_DEMO_FALLBACK_DATA ? (
         <p className="mx-auto mt-3 max-w-lg text-center text-sm text-gray-400">
-          I punteggi sintetici compaiono quando sono presenti nei referti caricati.
+          {t("scoresHint")}
         </p>
       ) : null}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {([
-          { k: "Ematici", v: scores.ematici },
-          { k: "Microbiota", v: scores.microbiota },
-          { k: "Epigenetica", v: scores.epigenetica },
-          { k: "Score totale", v: scores.totale },
+          { k: t("bloodLabel"), v: scores.ematici },
+          { k: t("microbiotaLabel"), v: scores.microbiota },
+          { k: t("epigeneticsLabel"), v: scores.epigenetica },
+          { k: t("totalScoreLabel"), v: scores.totale },
         ] satisfies Array<{ k: string; v: number | null }>).map((c) => (
           <div
             key={c.k}
