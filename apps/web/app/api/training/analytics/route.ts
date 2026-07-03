@@ -270,6 +270,8 @@ export async function GET(req: NextRequest) {
       { data: deviceExportsData, error: deviceExportsError },
       { data: biomarkerData, error: biomarkerError },
       athleteMemory,
+      dataSourcePref,
+      recoverySummary,
     ] = await Promise.all([
       db
         .from("executed_workouts")
@@ -306,15 +308,18 @@ export async function GET(req: NextRequest) {
         .lte("sample_date", to)
         .order("sample_date", { ascending: true }),
       resolveAthleteMemorySlice(athleteId, { slice: "training" }),
+      // Preferenze cliente per dominio (Settings → Devices). Se ha scelto WHOOP per
+      // recovery, gli export Garmin (anche se presenti) non contribuiscono ai trace
+      // recovery degli analytics. Se non c'è preferenza, comportamento storico.
+      // In parallelo: dipende solo da db+athleteId, non dalle altre letture.
+      loadDataSourcePreferenceMap(db, athleteId),
+      // In parallelo per lo stesso motivo (prima era un'ondata sequenziale dedicata).
+      resolveLatestRecoverySummary(athleteId).catch(() => null),
     ]);
 
     const error = executedError?.message ?? plannedError?.message ?? deviceExportsError?.message ?? biomarkerError?.message ?? null;
     if (error) return NextResponse.json({ error, rows: [] }, { status: 500, headers: NO_STORE });
 
-    // Preferenze cliente per dominio (Settings → Devices). Se ha scelto WHOOP per
-    // recovery, gli export Garmin (anche se presenti) non contribuiscono ai trace
-    // recovery degli analytics. Se non c'è preferenza, comportamento storico.
-    const dataSourcePref = await loadDataSourcePreferenceMap(db, athleteId);
     const preferRecovery = pickPreferredProvider(dataSourcePref, "wellness_recovery");
     const filteredDeviceExports = preferRecovery
       ? ((deviceExportsData ?? []) as Array<Record<string, unknown>>).filter(
@@ -455,12 +460,6 @@ export async function GET(req: NextRequest) {
     const planFullRange = summarizePlanWindow(compareSeries, compareSeries.length);
     const executedVolumeRollup = rollupExecutedVolumeFromLoadRows(rows as ExecutedWorkoutLoadRow[]);
     const recoveryContinuousRollup = rollupRecoveryContinuousFromLoadRows(enrichedRows as ExecutedWorkoutLoadRow[]);
-    let recoverySummary: Awaited<ReturnType<typeof resolveLatestRecoverySummary>> = null;
-    try {
-      recoverySummary = await resolveLatestRecoverySummary(athleteId);
-    } catch {
-      recoverySummary = null;
-    }
     const adaptationGuidance = buildAdaptationGuidance({
       expectedAdaptation: twinExpectedAdaptationForGuidance(twinState),
       observedAdaptation: twinObservedAdaptationForGuidance(twinState),
