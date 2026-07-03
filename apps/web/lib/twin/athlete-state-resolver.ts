@@ -38,6 +38,19 @@ export type CanonicalTwinState = TwinState & {
   internalLoadState: InternalLoadState;
 };
 
+/**
+ * Type-guard: il twin dentro AthleteMemory è tipizzato come TwinState (schema wire),
+ * ma il resolver della memory lo produce SEMPRE via resolveCanonicalTwinState (unico
+ * punto di patch). Questo guard verifica i campi canonici a runtime invece di castare
+ * alla cieca: se l'invariante si rompesse, ritorna null e il chiamante fa fallback.
+ */
+export function asCanonicalTwinState(twin: TwinState | null | undefined): CanonicalTwinState | null {
+  if (!twin) return null;
+  return "internalLoadState" in twin && "sources" in twin && "loadSnapshot" in twin
+    ? (twin as CanonicalTwinState)
+    : null;
+}
+
 function asNum(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { physiologicalProfileFromDbRow, type PhysiologicalProfileDbRow } from "@empathy/domain-physiology";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { resolveCanonicalTwinState } from "@/lib/twin/athlete-state-resolver";
+import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver";
+import { asCanonicalTwinState, resolveCanonicalTwinState } from "@/lib/twin/athlete-state-resolver";
 import { resolveLatestRecoverySummary, buildRecoverySummaryFromRows, type RecoverySummary } from "@/lib/reality/recovery-summary";
 import { resolveEpiForDate } from "@/lib/epi/epi-resolver";
 import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-signals";
@@ -222,7 +223,7 @@ export async function GET(req: NextRequest) {
 
     const { db } = await requireAthleteReadContext(req, athleteId);
 
-    const [profRes, physRes, panelsRes, deviceRes, twin, recovery] = await Promise.all([
+    const [profRes, physRes, panelsRes, deviceRes, memory, recovery] = await Promise.all([
       db.from("athlete_profiles").select("weight_kg, body_fat_pct, birth_date").eq("id", athleteId).maybeSingle(),
       db
         .from("physiological_profiles")
@@ -245,12 +246,22 @@ export async function GET(req: NextRequest) {
         .gte("created_at", `${recoveryFrom}T00:00:00.000Z`)
         .order("created_at", { ascending: false })
         .limit(64),
-      resolveCanonicalTwinState(athleteId).catch(() => null),
+      // Spina canonica al posto del twin diretto: la memory-slice risolve twin (+ IL +
+      // physiology) UNA volta e resta in cache in-process — l'EPI subito sotto, che
+      // risolve la STESSA slice, la trova in cache. Prima: twin 2× e internal-load 2×
+      // nella stessa richiesta (diretto + dentro la memory dell'EPI).
+      resolveAthleteMemorySlice(athleteId, { slice: "bioenergetics" }).catch(() => null),
       resolveLatestRecoverySummary(athleteId).catch(() => null),
     ]);
 
-    // EPI dopo il twin: riusa il suo internal-load già risolto (stesse righe executed/
-    // planned) invece di ri-risolverlo — via un intero run duplicato con scan a 42 giorni.
+    // Type-guard (non cast cieco): memory.twin è tipizzato TwinState ma il resolver
+    // lo produce sempre canonico. Fallback al resolver diretto sia se la memory è
+    // fallita del tutto, sia se l'invariante del guard si rompesse.
+    const twin =
+      asCanonicalTwinState(memory?.twin) ?? (await resolveCanonicalTwinState(athleteId).catch(() => null));
+
+    // EPI dopo: memory in cache (stessa slice, stesso processo) + internal-load del twin
+    // iniettato — niente run duplicati con scan a 42 giorni.
     const resolvedEpi = await resolveEpiForDate(athleteId, date, {
       internalLoadState: twin?.internalLoadState,
     }).catch(() => null);
