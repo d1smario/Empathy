@@ -3907,5 +3907,10 @@
     "linkPrivacy": "Privacy",
     "linkTermini": "Terms",
     "linkAccedi": "Log in"
+  },
+  "DashboardTrendsSection": {
+    "title": "Area trends · 30 days",
+    "subtitle": "Daily snapshots — the series grows with use",
+    "emptyHint": "Trends build up from daily dashboard visits: come back tomorrow to see the first curves."
   }
 }

@@ -14,6 +14,7 @@ import { DashboardTwinRadial } from "@/components/dashboard/DashboardTwinRadial"
 import { DashboardReadinessHeader } from "@/components/dashboard/DashboardReadinessHeader";
 import { DashboardKpiGrid } from "@/components/dashboard/DashboardKpiGrid";
 import { DashboardSystemStatus } from "@/components/dashboard/DashboardSystemStatus";
+import { DashboardTrendsSection } from "@/components/dashboard/DashboardTrendsSection";
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -104,6 +105,9 @@ export function NewDashboardView() {
       <section aria-label="Human System Status">
         <DashboardSystemStatus pct={systemStatus.pct} label={systemStatus.label} trend={systemStatus.trend} />
       </section>
+
+      {/* TREND PER-AREA (F3): snapshot giornalieri → serie ~30g, sparkline per area. */}
+      <DashboardTrendsSection areas={data?.areas ?? []} />
 
       {/* LONGEVITÀ & FITNESS: check-in di oggi + indice (ex modulo /longevity) */}
       <section aria-label={t("longevityFitnessLabel")}>
