@@ -12,6 +12,10 @@ export type ProductRow = {
   name: string;
   subtitle: string | null;
   description: string | null;
+  /** Traduzione EN opzionale (null → gli utenti EN vedono il testo italiano). */
+  name_en: string | null;
+  subtitle_en: string | null;
+  description_en: string | null;
   kind: ProductKind;
   price: number;
   currency: string;

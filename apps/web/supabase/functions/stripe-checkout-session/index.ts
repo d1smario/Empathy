@@ -15,7 +15,7 @@
 //   - Quando il codice viene effettivamente speso (sessione Stripe creata o
 //     attivazione gratuita andata a buon fine) incrementa `redemption_count`.
 //
-// Input  JSON: { productCode: string, addonCodes?: string[], promoCode?: string, successUrl: string, cancelUrl: string }
+// Input  JSON: { productCode: string, addonCodes?: string[], promoCode?: string, locale?: string, successUrl: string, cancelUrl: string }
 // Output JSON: { url } (Stripe) oppure { freeActivated: true } (gratuito)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -36,6 +36,9 @@ type ProductRow = {
   code: string;
   name: string;
   subtitle: string | null;
+  /** Traduzioni EN: usate SOLO per i nomi voce sul checkout Stripe (fallback IT). */
+  name_en: string | null;
+  subtitle_en: string | null;
   kind: "base" | "addon";
   price: number;
   currency: string;
@@ -189,6 +192,8 @@ Deno.serve(async (req: Request) => {
   const cancelUrl = asTrimmedString(input.cancelUrl);
   const addonCodes = asStringArray(input.addonCodes);
   const promoCode = asTrimmedString(input.promoCode);
+  // Lingua utente (dalla UI): influenza SOLO il display dei line item su Stripe.
+  const locale = asTrimmedString((input as { locale?: unknown }).locale)?.toLowerCase() ?? null;
   if (!productCode) return badRequest("productCode mancante.");
   if (!successUrl || !cancelUrl) return badRequest("successUrl/cancelUrl mancanti.");
 
@@ -224,7 +229,7 @@ Deno.serve(async (req: Request) => {
   const { data: productRows, error: productsError } = await admin
     .from("products")
     .select(
-      "id, code, name, subtitle, kind, price, currency, billing_interval, duration_days, show_addons, is_active, is_hidden",
+      "id, code, name, subtitle, name_en, subtitle_en, kind, price, currency, billing_interval, duration_days, show_addons, is_active, is_hidden",
     )
     .in("code", wantedCodes);
   if (productsError) {
@@ -369,12 +374,16 @@ Deno.serve(async (req: Request) => {
     const prefix = `line_items[${i}]`;
     // Lo sconto promo vale solo sul prodotto base (i == 0); gli add-on a prezzo pieno.
     const unitPrice = i === 0 ? basePrice : (Number(item.price) || 0);
+    // Display localizzato sul checkout Stripe (utente EN → colonne *_en, fallback IT).
+    // Metadata, sales e note restano sull'italiano canonico (name).
+    const displayName = locale === "en" ? (item.name_en?.trim() || item.name) : item.name;
+    const displaySubtitle = locale === "en" ? (item.subtitle_en?.trim() || item.subtitle) : item.subtitle;
     params.set(`${prefix}[quantity]`, "1");
     params.set(`${prefix}[price_data][currency]`, item.currency.toLowerCase());
     params.set(`${prefix}[price_data][unit_amount]`, String(Math.round(unitPrice * 100)));
-    params.set(`${prefix}[price_data][product_data][name]`, item.name);
-    if (item.subtitle) {
-      params.set(`${prefix}[price_data][product_data][description]`, item.subtitle);
+    params.set(`${prefix}[price_data][product_data][name]`, displayName);
+    if (displaySubtitle) {
+      params.set(`${prefix}[price_data][product_data][description]`, displaySubtitle);
     }
     // In mode=subscription ogni line item ricorrente dichiara l'intervallo.
     if (mode === "subscription" && (item.billing_interval === "month" || item.billing_interval === "year")) {

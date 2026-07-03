@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, CreditCard, Sparkles, Tag, UserCheck, UserPlus } from "lucide-react";
 import {
   isBillingProfileComplete,
@@ -25,6 +25,10 @@ type ProductRow = {
   name: string;
   subtitle: string | null;
   description: string | null;
+  /** Traduzioni EN (colonne *_en): usate quando la lingua utente è inglese, fallback IT. */
+  name_en?: string | null;
+  subtitle_en?: string | null;
+  description_en?: string | null;
   kind: "base" | "addon";
   price: number | string;
   currency: string;
@@ -129,6 +133,7 @@ function discountBadgeLabel(discount: PromoDiscount): string {
  */
 export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
   const t = useTranslations("Checkout");
+  const locale = useLocale();
   const [products, setProducts] = useState<ProductRow[] | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -193,13 +198,21 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
   }, []);
 
   // Catalogo + eventuale prodotto sbloccato (nascosto) iniettato in lista.
+  // Localizzazione in un punto unico: con lingua EN, name/subtitle/description
+  // vengono sostituiti dalle colonne *_en (fallback sull'italiano se assenti).
   const catalog = useMemo(() => {
-    const list = [...(products ?? [])];
-    if (unlockedProduct && !list.some((p) => p.code === unlockedProduct.code)) {
-      list.push(unlockedProduct);
+    const raw = [...(products ?? [])];
+    if (unlockedProduct && !raw.some((p) => p.code === unlockedProduct.code)) {
+      raw.push(unlockedProduct);
     }
-    return list;
-  }, [products, unlockedProduct]);
+    if (locale !== "en") return raw;
+    return raw.map((p) => ({
+      ...p,
+      name: p.name_en?.trim() || p.name,
+      subtitle: p.subtitle_en?.trim() || p.subtitle,
+      description: p.description_en?.trim() || p.description,
+    }));
+  }, [products, unlockedProduct, locale]);
 
   const basePlans = useMemo(() => catalog.filter((p) => p.kind === "base"), [catalog]);
   const addons = useMemo(() => catalog.filter((p) => p.kind === "addon"), [catalog]);
@@ -348,6 +361,9 @@ export function SignupPlanCards({ billingFlash }: SignupPlanCardsProps) {
           productCode: plan.code,
           addonCodes: plan.show_addons ? addonCodes : [],
           ...(promoForPlan ? { promoCode: promoForPlan } : {}),
+          // Lingua utente: l'edge la usa SOLO per i nomi voce sul checkout Stripe
+          // (name_en con fallback IT); metadata/contabilità restano canonici.
+          locale,
           successUrl: `${origin}/access/plan?billing=success`,
           cancelUrl: `${origin}/access/plan?billing=cancel`,
         },

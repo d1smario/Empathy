@@ -31,6 +31,15 @@ const COPY = {
   descriptionPh: "es. Piani alimentari automatici",
   descriptionAdd: "Aggiungi badge",
   descriptionRemove: "Rimuovi badge",
+  // Traduzione EN — tutti i campi opzionali: vuoto → gli utenti EN vedono il testo italiano
+  secTranslationEn: "Traduzione inglese (EN)",
+  secTranslationEnHint: "Campi opzionali: se vuoti, gli utenti EN vedono il testo italiano.",
+  nameEn: "Nome (EN)",
+  nameEnPh: "es. Gold",
+  subtitleEn: "Sottotitolo (EN)",
+  subtitleEnPh: "es. Automated nutrition by Empathy",
+  descriptionEn: "Punti della card (EN) — un campo = un badge",
+  descriptionEnPh: "es. Automated meal plans",
   kind: "Tipo",
   kindBase: "Base",
   kindAddon: "Add-on",
@@ -80,6 +89,11 @@ type ProductDraft = {
   subtitle: string;
   /** Un elemento = un badge della card (persistito in `description`, una riga per badge). */
   descriptionItems: string[];
+  /** Traduzione EN opzionale (vuoto → fallback italiano per gli utenti EN). */
+  nameEn: string;
+  subtitleEn: string;
+  /** Badge EN (persistiti in `description_en`, una riga per badge). */
+  descriptionItemsEn: string[];
   kind: ProductKind;
   price: string;
   currency: string;
@@ -97,6 +111,25 @@ type ProductDraft = {
   sort_order: string;
 };
 
+/** Da testo multiriga a lista badge (una riga = un badge); sempre almeno un campo per l'editor. */
+function splitBadges(text: string | null | undefined): string[] {
+  const items = (text ?? "")
+    .split(/\r?\n+/)
+    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : [""];
+}
+
+/** Da lista badge a testo multiriga per il DB (null se nessun badge compilato). */
+function joinBadges(items: string[]): string | null {
+  return (
+    items
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join("\n") || null
+  );
+}
+
 function draftFromProduct(p: ProductRow | null): ProductDraft {
   if (!p) {
     return {
@@ -104,6 +137,9 @@ function draftFromProduct(p: ProductRow | null): ProductDraft {
       name: "",
       subtitle: "",
       descriptionItems: [""],
+      nameEn: "",
+      subtitleEn: "",
+      descriptionItemsEn: [""],
       kind: "base",
       price: "",
       currency: "CHF",
@@ -121,15 +157,14 @@ function draftFromProduct(p: ProductRow | null): ProductDraft {
       sort_order: "0",
     };
   }
-  const items = (p.description ?? "")
-    .split(/\r?\n+/)
-    .map((line) => line.replace(/^[-•*]\s*/, "").trim())
-    .filter(Boolean);
   return {
     code: p.code ?? "",
     name: p.name ?? "",
     subtitle: p.subtitle ?? "",
-    descriptionItems: items.length > 0 ? items : [""],
+    descriptionItems: splitBadges(p.description),
+    nameEn: p.name_en ?? "",
+    subtitleEn: p.subtitle_en ?? "",
+    descriptionItemsEn: splitBadges(p.description_en),
     kind: p.kind,
     price: p.price != null ? String(p.price) : "",
     currency: p.currency ?? "CHF",
@@ -160,6 +195,50 @@ function Field({ label, className, children }: { label: string; className?: stri
     <div className={className}>
       <span className={LABEL}>{label}</span>
       {children}
+    </div>
+  );
+}
+
+/** Editor lista badge (un input = un badge, con rimozione/aggiunta riga) — pattern condiviso IT/EN. */
+function BadgeListEditor({
+  items,
+  onChange,
+  placeholder,
+}: {
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={item}
+            onChange={(e) => onChange(items.map((v, j) => (j === i ? e.target.value : v)))}
+            placeholder={placeholder}
+            className={INPUT}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [""])}
+            title={COPY.descriptionRemove}
+            aria-label={COPY.descriptionRemove}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-500 transition hover:border-rose-500/40 hover:text-rose-300"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-200 transition hover:border-purple-400/50 hover:bg-purple-500/15"
+      >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        {COPY.descriptionAdd}
+      </button>
     </div>
   );
 }
@@ -227,11 +306,11 @@ export function AdminProductFormDialog({
       code,
       name: draft.name.trim(),
       subtitle: draft.subtitle.trim() || null,
-      description:
-        draft.descriptionItems
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .join("\n") || null,
+      description: joinBadges(draft.descriptionItems),
+      // Traduzione EN opzionale: stringa vuota → null (fallback italiano per gli utenti EN)
+      name_en: draft.nameEn.trim() || null,
+      subtitle_en: draft.subtitleEn.trim() || null,
+      description_en: joinBadges(draft.descriptionItemsEn),
       kind: draft.kind,
       price: price as number,
       currency: (draft.currency.trim() || "CHF").toUpperCase(),
@@ -334,48 +413,46 @@ export function AdminProductFormDialog({
               />
             </Field>
             <Field label={COPY.description}>
-              <div className="space-y-2">
-                {draft.descriptionItems.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={item}
-                      onChange={(e) =>
-                        set(
-                          "descriptionItems",
-                          draft.descriptionItems.map((v, j) => (j === i ? e.target.value : v)),
-                        )
-                      }
-                      placeholder={COPY.descriptionPh}
-                      className={INPUT}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        set(
-                          "descriptionItems",
-                          draft.descriptionItems.length > 1
-                            ? draft.descriptionItems.filter((_, j) => j !== i)
-                            : [""],
-                        )
-                      }
-                      title={COPY.descriptionRemove}
-                      aria-label={COPY.descriptionRemove}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-500 transition hover:border-rose-500/40 hover:text-rose-300"
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => set("descriptionItems", [...draft.descriptionItems, ""])}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-200 transition hover:border-purple-400/50 hover:bg-purple-500/15"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  {COPY.descriptionAdd}
-                </button>
-              </div>
+              <BadgeListEditor
+                items={draft.descriptionItems}
+                onChange={(items) => set("descriptionItems", items)}
+                placeholder={COPY.descriptionPh}
+              />
+            </Field>
+          </section>
+
+          {/* Traduzione inglese — tutti i campi opzionali: vuoto → fallback italiano per gli utenti EN */}
+          <section className="space-y-3">
+            <div>
+              <p className={SECTION}>{COPY.secTranslationEn}</p>
+              <p className="mt-0.5 text-xs text-gray-500">{COPY.secTranslationEnHint}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={COPY.nameEn}>
+                <input
+                  type="text"
+                  value={draft.nameEn}
+                  onChange={(e) => set("nameEn", e.target.value)}
+                  placeholder={COPY.nameEnPh}
+                  className={INPUT}
+                />
+              </Field>
+              <Field label={COPY.subtitleEn}>
+                <input
+                  type="text"
+                  value={draft.subtitleEn}
+                  onChange={(e) => set("subtitleEn", e.target.value)}
+                  placeholder={COPY.subtitleEnPh}
+                  className={INPUT}
+                />
+              </Field>
+            </div>
+            <Field label={COPY.descriptionEn}>
+              <BadgeListEditor
+                items={draft.descriptionItemsEn}
+                onChange={(items) => set("descriptionItemsEn", items)}
+                placeholder={COPY.descriptionEnPh}
+              />
             </Field>
           </section>
 

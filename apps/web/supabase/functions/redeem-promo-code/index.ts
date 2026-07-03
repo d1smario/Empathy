@@ -52,6 +52,10 @@ type ProductRow = {
   name: string;
   subtitle: string | null;
   description: string | null;
+  /** Traduzioni EN (la UI le usa con fallback IT quando la lingua utente è inglese). */
+  name_en: string | null;
+  subtitle_en: string | null;
+  description_en: string | null;
   kind: "base" | "addon";
   price: number;
   currency: string;
@@ -151,7 +155,7 @@ Deno.serve(async (req: Request) => {
     const { data: prodRow, error: prodError } = await admin
       .from("products")
       .select(
-        "id, code, name, subtitle, description, kind, price, currency, billing_interval, duration_days, includes_own_coach, includes_empathy_coach, show_addons, sort_order, is_active, is_hidden",
+        "id, code, name, subtitle, description, name_en, subtitle_en, description_en, kind, price, currency, billing_interval, duration_days, includes_own_coach, includes_empathy_coach, show_addons, sort_order, is_active, is_hidden",
       )
       .eq("id", promo.target_product_id)
       .maybeSingle();
