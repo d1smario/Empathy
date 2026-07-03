@@ -18,7 +18,6 @@ type IntegrationFlagsPayload = {
     stripeCoachPriceOlimpic: boolean;
     stripePaymentLinkPublic: boolean;
     stripeCheckoutAnonEnabled: boolean;
-    logmeal: boolean;
     spline: boolean;
   };
 };
@@ -149,9 +148,6 @@ export function SettingsIntegrationsDiagnostics() {
             </Row>
             <Row label={t("rowAnonymousCheckoutEnabled")}>
               <BoolPill value={data.integrations.stripeCheckoutAnonEnabled} />
-            </Row>
-            <Row label="LogMeal">
-              <BoolPill value={data.integrations.logmeal} />
             </Row>
             <Row label="Spline">
               <BoolPill value={data.integrations.spline} />

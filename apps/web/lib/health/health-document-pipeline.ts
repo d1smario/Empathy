@@ -21,13 +21,18 @@ import {
   type HealthPanelTypeForParse,
 } from "@/lib/health/lab-text-extractors";
 import { extractTextFromPdfBuffer } from "@/lib/health/parse-health-pdf";
-import {
-  decodeHealthDocumentWithVlm,
-  type HealthFieldProposal,
-  type HealthPanelKindForVlm,
-} from "@/lib/health/health-vlm-decode";
 import { persistNormalizedObservations } from "@/lib/health/health-observation-normalizer";
 import { buildAndPersistHealthCausalInteractions } from "@/lib/health/health-causal-interactions";
+
+/** Proposta di valore letta da un referto (ex output VLM; ora vive negli staging run storici). */
+export type HealthFieldProposal = {
+  field: string;
+  value: number | string | null;
+  unit?: string | null;
+  referenceRange?: { low: number | null; high: number | null } | null;
+  confidence: number;
+  notes?: string | null;
+};
 
 export type HealthDecodeImportStatus =
   | "parsed_full"
@@ -58,9 +63,12 @@ function isPdfMime(mime: string, filename: string): boolean {
 }
 
 /**
- * Decode puro (no DB): tenta parser deterministico (solo PDF testuale) e in
- * fallback VLM (Claude → GPT-4o, image/* o application/pdf nativo). Idempotente:
- * stesso buffer + stesso panelType → stesso risultato (a meno di drift VLM).
+ * Decode puro (no DB): SOLO parser deterministico (PDF testuale). Il fallback VLM
+ * (Claude → GPT-4o) è stato RIMOSSO (decisione 2026-07: piattaforma senza chiamate
+ * AI): immagini e PDF scansionati finiscono in `needs_manual_review` (inserimento
+ * manuale in review, percorso già previsto). Idempotente: stesso buffer + stesso
+ * panelType → stesso risultato. I campi vlm* restano nel contratto per compatibilità
+ * con gli staging run storici già salvati.
  */
 export async function decodeHealthDocument(input: {
   buffer: Buffer;
@@ -85,34 +93,13 @@ export async function decodeHealthDocument(input: {
   const parsed: Record<string, unknown> = pdfText
     ? extractStructuredValuesFromLabText(pdfText, panelType)
     : {};
-  const heuristicEmpty = Object.keys(parsed).length === 0;
   const isPdfScan = isPdf && !pdfText;
 
-  let vlmProposals: HealthFieldProposal[] = [];
-  let vlmProvider: "anthropic" | "openai" | null = null;
-  let vlmModel: string | null = null;
-  let vlmDetectedProvider: string | null = null;
-  let vlmQualityNotes: string[] = [];
-
-  // VLM fallback solo se il parser è muto e l'input è image/* o PDF.
-  if (heuristicEmpty && (isImage || isPdf)) {
-    try {
-      const vlm = await decodeHealthDocumentWithVlm({
-        buffer,
-        mime: isPdf ? "application/pdf" : mime,
-        panelType: panelType as HealthPanelKindForVlm,
-      });
-      if (vlm) {
-        vlmProposals = vlm.fields;
-        vlmProvider = vlm.providerUsed;
-        vlmModel = vlm.modelUsed;
-        vlmDetectedProvider = vlm.detectedProvider;
-        vlmQualityNotes = vlm.qualityNotes;
-      }
-    } catch {
-      // best-effort: provider mancante o errore di rete, restiamo su parsed/empty.
-    }
-  }
+  const vlmProposals: HealthFieldProposal[] = [];
+  const vlmProvider: "anthropic" | "openai" | null = null;
+  const vlmModel: string | null = null;
+  const vlmDetectedProvider: string | null = null;
+  const vlmQualityNotes: string[] = [];
 
   let importStatus: HealthDecodeImportStatus;
   if (Object.keys(parsed).length > 0) {

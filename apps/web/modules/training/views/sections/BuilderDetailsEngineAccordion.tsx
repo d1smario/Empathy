@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { Activity, Flame, Heart, Timer } from "lucide-react";
 import { ResearchTraceScientificPanel } from "@/components/training/ResearchTraceScientificPanel";
-import { ReplicateStatusStrip } from "@/components/training/ReplicateStatusStrip";
 import { Pro2Accordion, Pro2Button } from "@/components/ui/empathy";
 import { ACCENT_KPI } from "@/lib/training/training-builder-rich-kit";
 
@@ -106,7 +105,6 @@ export function BuilderDetailsEngineAccordion({
               ) : (
                 <div className="mt-4 space-y-4">
                   <ResearchTraceScientificPanel athleteId={athleteId} limit={16} traceSurface="latest_primary" />
-                  <ReplicateStatusStrip />
                   <div className="rounded-xl border border-orange-500/25 bg-orange-950/10 p-3 sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>

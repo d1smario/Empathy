@@ -1784,11 +1784,6 @@ body {
   margin-bottom: 0.65rem;
 }
 
-.nutrition-diary-photo-cta {
-  flex: 1 1 160px;
-  min-height: 2.75rem;
-}
-
 .nutrition-diary-big-btn {
   display: inline-flex;
   align-items: center;

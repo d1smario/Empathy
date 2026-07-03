@@ -1,6 +1,5 @@
 import "server-only";
 
-import { logMealConfigFromEnv } from "@empathy/integrations-logmeal";
 import { splineSceneBaseUrlFromEnv } from "@empathy/integrations-spline";
 import { isSupabasePublicConfigured, type SupabasePublicConfig } from "@empathy/integrations-supabase";
 import { isAnonymousStripeCheckoutEnabled } from "@/lib/billing/stripe-checkout-availability";
@@ -39,7 +38,6 @@ export type IntegrationPresence = {
   stripePaymentLinkPublic: boolean;
   /** `POST /api/billing/checkout-session` senza auth (solo demo). */
   stripeCheckoutAnonEnabled: boolean;
-  logmeal: boolean;
   spline: boolean;
 };
 
@@ -56,7 +54,6 @@ export function getIntegrationPresence(): IntegrationPresence {
     stripeCoachPriceOlimpic: envNonEmpty("STRIPE_PRICE_COACH_OLIMPIC_EUR"),
     stripePaymentLinkPublic: getStripePaymentLink() != null,
     stripeCheckoutAnonEnabled: isAnonymousStripeCheckoutEnabled(),
-    logmeal: logMealConfigFromEnv(readEnv) != null,
     spline: splineSceneBaseUrlFromEnv(readEnv) != null,
   };
 }

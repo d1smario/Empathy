@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import {
   Activity,
   Apple,
-  Camera,
   Droplets,
   Flame,
   Moon,
@@ -193,7 +192,6 @@ export function FoodDiaryPanel({
   const t = useTranslations("FoodDiaryPanel");
   const complianceCbRef = useRef(onComplianceRowsChange);
   complianceCbRef.current = onComplianceRowsChange;
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [entries, setEntries] = useState<FoodDiaryEntryViewModel[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -218,8 +216,6 @@ export function FoodDiaryPanel({
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualProtein, setManualProtein] = useState("");
   const [manualFat, setManualFat] = useState("");
-  const [photoLoading, setPhotoLoading] = useState(false);
-  const [visionNote, setVisionNote] = useState<string | null>(null);
 
   const [microRollup, setMicroRollup] = useState<MicroRollupResponse | null>(null);
   const [microLoading, setMicroLoading] = useState(false);
@@ -527,87 +523,8 @@ export function FoodDiaryPanel({
     setManualCarbs("");
     setManualProtein("");
     setManualFat("");
-    setVisionNote(null);
     setSelectedHit(null);
     await reload();
-  }
-
-  async function runPhotoEstimate(file: File) {
-    if (!athleteId) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setActionError(t("errImageTooLarge"));
-      return;
-    }
-    setPhotoLoading(true);
-    setActionError(null);
-    setVisionNote(null);
-    const reader = new FileReader();
-    reader.onerror = () => {
-      setPhotoLoading(false);
-      setActionError(t("errFileReadFailed"));
-    };
-    reader.onload = () => {
-      void (async () => {
-        try {
-          const dataUrl = reader.result as string;
-          const m = /^data:([^;]+);base64,(.*)$/i.exec(dataUrl);
-          if (!m) {
-            setActionError(t("errInvalidImageFormat"));
-            setPhotoLoading(false);
-            return;
-          }
-          const mime = m[1] ?? "image/jpeg";
-          const imageBase64 = m[2] ?? "";
-          const res = await fetch("/api/nutrition/food-photo-estimate", {
-            method: "POST",
-            headers: await buildSupabaseAuthHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ athleteId, imageBase64, mimeType: mime }),
-          });
-          const j = (await res.json().catch(() => ({}))) as {
-            error?: string;
-            estimate?: {
-              label_it: string;
-              portion_g_estimate: number | null;
-              kcal_estimate: number | null;
-              carbs_g: number | null;
-              protein_g: number | null;
-              fat_g: number | null;
-              fdc_search_hint: string | null;
-              notes_it: string | null;
-            };
-          };
-          setPhotoLoading(false);
-          if (!res.ok) {
-            setActionError(j.error ?? t("errPhotoAnalysisFailed"));
-            return;
-          }
-          const e = j.estimate;
-          if (!e) {
-            setActionError(t("errNoEstimate"));
-            return;
-          }
-          setManualLabel(e.label_it);
-          if (e.portion_g_estimate != null && Number.isFinite(e.portion_g_estimate)) {
-            setQuantityG(String(Math.max(10, Math.round(e.portion_g_estimate))));
-          }
-          if (e.kcal_estimate != null) setManualKcal(String(Math.round(e.kcal_estimate)));
-          else setManualKcal("");
-          if (e.carbs_g != null) setManualCarbs(String(Math.round(e.carbs_g * 10) / 10));
-          else setManualCarbs("");
-          if (e.protein_g != null) setManualProtein(String(Math.round(e.protein_g * 10) / 10));
-          else setManualProtein("");
-          if (e.fat_g != null) setManualFat(String(Math.round(e.fat_g * 10) / 10));
-          else setManualFat("");
-          if (e.fdc_search_hint?.trim()) setQuery(e.fdc_search_hint.trim());
-          setSelectedHit(null);
-          setVisionNote(e.notes_it ?? t("visionNoteDefault"));
-        } catch {
-          setPhotoLoading(false);
-          setActionError(t("errDuringPhotoAnalysis"));
-        }
-      })();
-    };
-    reader.readAsDataURL(file);
   }
 
   async function addFromSelection() {
@@ -912,31 +829,6 @@ export function FoodDiaryPanel({
           </div>
 
           <div className="nutrition-diary-action-row">
-            <input
-              ref={photoInputRef}
-              id="food-diary-photo-input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="physiology-pro2-sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              disabled={photoLoading}
-              onChange={(ev) => {
-                const f = ev.target.files?.[0];
-                ev.target.value = "";
-                if (f) void runPhotoEstimate(f);
-              }}
-            />
-            <button
-              type="button"
-              className="btn-nutrition-cta nutrition-diary-photo-cta"
-              disabled={photoLoading}
-              onClick={() => photoInputRef.current?.click()}
-              aria-label={t("addPhotoAria")}
-            >
-              <Camera className="h-[1.1rem] w-[1.1rem] shrink-0" aria-hidden />
-              {photoLoading ? t("analyzing") : t("addPhoto")}
-            </button>
             <button
               type="button"
               className="nutrition-diary-big-btn nutrition-diary-big-btn--ghost"
@@ -946,14 +838,6 @@ export function FoodDiaryPanel({
               {t("searchTheDatabase")}
             </button>
           </div>
-          <p className="muted-copy nutrition-diary-photo-hint" style={{ fontSize: "0.72rem", margin: "0 0 12px", lineHeight: 1.45 }}>
-            {t("photoHint")}
-          </p>
-          {visionNote ? (
-            <p className="muted-copy" style={{ fontSize: "0.78rem", marginBottom: 14, lineHeight: 1.45 }}>
-              {visionNote}
-            </p>
-          ) : null}
 
           <div className="nutrition-diary-input-deck">
             <div className="nutrition-diary-mini-tile">

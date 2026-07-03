@@ -41,7 +41,6 @@ import {
 import { enumerateInclusiveIsoDates } from "@/lib/bioenergetics/bioenergetic-window-range";
 import { num } from "@/lib/bioenergetics/bioenergetic-day-payload-parsers";
 import { buildBioenergeticDayTimeline } from "@/lib/bioenergetics/bioenergetic-day-timeline";
-import { applyBioenergeticOpenAiGenerativeOverlay } from "@/lib/bioenergetics/bioenergetic-openai-generative-day";
 import { buildBioenergeticMonitoringStripAuditV1 } from "@/lib/bioenergetics/monitoring-strip-audit-v1";
 import {
   fusePlanRealityGluLacSim,
@@ -331,7 +330,7 @@ export async function assembleBioenergeticDay(
   const forMerge = options?.includeDeterministicMonitoringStripForMergeEndpoint === true;
   const evidenceLinks = forMerge
     ? await loadBioenergeticEvidenceAxisFluidLinks(db)
-    : ({ ok: false as const, links: [], error: "skipped_generative_product_path" } satisfies LoadBioenergeticEvidenceLinksResult);
+    : ({ ok: false as const, links: [], error: "skipped_product_path" } satisfies LoadBioenergeticEvidenceLinksResult);
 
   if (forMerge) {
     const body = buildBioenergeticDayViewModelFromSlice({
@@ -353,37 +352,17 @@ export async function assembleBioenergeticDay(
     return { ok: true, body };
   }
 
-  const deterministicVm = buildBioenergeticDayViewModelFromSlice({
+  // Percorso prodotto INTERAMENTE deterministico (decisione 2026-07: niente OpenAI).
+  // Il vecchio overlay generativo contribuiva di fatto solo le tile ormonali STIMATE
+  // (i suoi canali monitoring venivano già scartati nel merge): ora le tile mostrano
+  // solo biomarcatori REALI dai panel, il resto era e resta calcolo deterministico.
+  const body = buildBioenergeticDayViewModelFromSlice({
     athleteId,
     date,
     slice,
     evidenceLinks,
     omitMonitoringStrip: false,
   });
-
-  const overlaid = await applyBioenergeticOpenAiGenerativeOverlay(
-    buildBioenergeticDayViewModelFromSlice({
-      athleteId,
-      date,
-      slice,
-      evidenceLinks,
-      omitMonitoringStrip: true,
-    }),
-    slice,
-  );
-
-  let body: BioenergeticsDayViewModel = {
-    ...overlaid,
-    continuousMonitoring: deterministicVm.continuousMonitoring,
-    chart24h: deterministicVm.chart24h,
-    planRealityFusionV1: deterministicVm.planRealityFusionV1,
-    series: deterministicVm.series,
-    evidenceConditionedLayer: deterministicVm.evidenceConditionedLayer,
-    interactionSkeleton: deterministicVm.interactionSkeleton,
-    biaLiteratureSummary: deterministicVm.biaLiteratureSummary,
-    interpretationHints: deterministicVm.interpretationHints,
-    disclaimers: [...deterministicVm.disclaimers, ...overlaid.disclaimers.filter((d) => !d.includes("OpenAI"))],
-  };
 
   if (options?.stripAudit === true) {
     return {

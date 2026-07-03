@@ -11,8 +11,6 @@ import { MODULE_PILL_ROSE } from "@/components/navigation/module-pill-styles";
 import { scopedReviewUrl } from "@/lib/athlete-scope/scoped-athlete-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
-  analyzePanelWithAi,
-  bulkReanalyzePanelsWithAi,
   fetchHealthPanelsTimeline,
   fetchHealthSystemMap,
   patchHealthStagingRun,
@@ -98,8 +96,6 @@ export default function HealthPageView() {
   const [toast, setToast] = useState<string | null>(null);
   const [sampleDate, setSampleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
-  const [analyzeBusyPanelId, setAnalyzeBusyPanelId] = useState<string | null>(null);
-  const [bulkBusy, setBulkBusy] = useState(false);
   /** Tab di navigazione: si monta solo la sezione attiva (apertura su «Analisi dettagliata»). */
   const [activeTab, setActiveTab] = useState<HealthTabId>("aree");
   /** athleteId per cui la mappa di sistema è già stata caricata (lazy, solo tab «Dettagli e motore»). */
@@ -173,9 +169,6 @@ export default function HealthPageView() {
     let withProposalsOnly = 0;
     let importOnly = 0;
     let vlmPending = 0;
-    let bulkCandidates = 0;
-    let importOnlyNoStorage = 0;
-    let importOnlyUnsupported = 0;
     for (const p of panels) {
       const vals = (p.values ?? null) as Record<string, unknown> | null;
       const flatFields = vals
@@ -193,14 +186,6 @@ export default function HealthPageView() {
       if (flatFields > 0) withCanonicalValues++;
       else if (proposalCount > 0) withProposalsOnly++;
       else importOnly++;
-      const storagePath = typeof importBlock?.storage_path === "string" ? (importBlock?.storage_path as string) : null;
-      const mimeStr = typeof importBlock?.mime === "string" ? (importBlock?.mime as string).toLowerCase() : "";
-      const filenameStr = typeof importBlock?.filename === "string" ? (importBlock?.filename as string).toLowerCase() : "";
-      const supports = mimeStr.startsWith("image/") || mimeStr === "application/pdf" || filenameStr.endsWith(".pdf");
-      const noValues = flatFields === 0 && proposalCount === 0;
-      if (storagePath && supports && noValues) bulkCandidates++;
-      if (noValues && !storagePath && (supports || filenameStr || mimeStr)) importOnlyNoStorage++;
-      else if (noValues && storagePath && !supports) importOnlyUnsupported++;
     }
     return {
       total: panels.length,
@@ -208,9 +193,6 @@ export default function HealthPageView() {
       withProposalsOnly,
       importOnly,
       vlmPending,
-      bulkCandidates,
-      importOnlyNoStorage,
-      importOnlyUnsupported,
     };
   }, [panels]);
 
@@ -412,43 +394,6 @@ export default function HealthPageView() {
     [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId, t],
   );
 
-  const onAnalyzePanelWithAi = useCallback(
-    async (panelId: string) => {
-      if (!athleteId || !panelId) return;
-      setAnalyzeBusyPanelId(panelId);
-      setToast(null);
-      const res = await analyzePanelWithAi({ panelId, athleteId });
-      setAnalyzeBusyPanelId(null);
-      if (!res.ok) {
-        setToast(res.error ?? t("reportExtractionFailed"));
-        return;
-      }
-      setToast(res.message ?? t("reportExtractionStarted"));
-      void loadTimeline();
-      if (res.reviewUrl) {
-        const url = scopedReviewUrl(res.reviewUrl as string, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
-        setTimeout(() => {
-          window.location.assign(url);
-        }, 600);
-      }
-    },
-    [athleteId, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId, t],
-  );
-
-  const onBulkReanalyze = useCallback(async () => {
-    if (!athleteId) return;
-    setBulkBusy(true);
-    setToast(null);
-    const res = await bulkReanalyzePanelsWithAi({ athleteId });
-    setBulkBusy(false);
-    if (!res.ok) {
-      setToast(res.error ?? t("bulkReanalyzeFailed"));
-      return;
-    }
-    setToast(res.message ?? t("bulkReanalyzeCompleted"));
-    void loadTimeline();
-  }, [athleteId, loadTimeline, t]);
-
   const onPatchStagingRun = useCallback(
     async (runId: string, status: HealthStagingRunAction) => {
       if (!runId) return;
@@ -627,12 +572,8 @@ export default function HealthPageView() {
                 timelineDiag={timelineDiag}
                 archiveDiagnostics={archiveDiagnostics}
                 pendingVlmRunByPanelId={pendingVlmRunByPanelId}
-                bulkBusy={bulkBusy}
-                analyzeBusyPanelId={analyzeBusyPanelId}
                 expandedPanelId={expandedPanelId}
                 onToggleExpanded={setExpandedPanelId}
-                onBulkReanalyze={onBulkReanalyze}
-                onAnalyzePanelWithAi={onAnalyzePanelWithAi}
                 onReloadTimeline={loadTimeline}
               />
             </div>

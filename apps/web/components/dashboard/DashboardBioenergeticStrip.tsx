@@ -129,10 +129,7 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           series: Array.isArray(json.series) ? json.series : [],
           evidenceConditionedLayer: json.evidenceConditionedLayer ?? null,
           continuousMonitoring:
-            cm &&
-            typeof cm === "object" &&
-            (cm.layer === "model_continuous_v1" || cm.layer === "ai_from_inputs_v1") &&
-            Array.isArray(cm.channels)
+            cm && typeof cm === "object" && cm.layer === "model_continuous_v1" && Array.isArray(cm.channels)
               ? cm
               : undefined,
         };
@@ -178,21 +175,9 @@ export function DashboardBioenergeticStrip({ lite = false }: { lite?: boolean })
           <div className="h-3 w-full max-w-xl animate-pulse rounded bg-white/10" />
           <div className="h-24 w-full animate-pulse rounded-2xl bg-white/5" />
         </div>
-      ) : vm &&
-        hasRealInputs &&
-        vm.continuousMonitoring &&
-        (vm.continuousMonitoring.channels.length > 0 || vm.continuousMonitoring.layer === "ai_from_inputs_v1") ? (
+      ) : vm && hasRealInputs && vm.continuousMonitoring && vm.continuousMonitoring.channels.length > 0 ? (
         <div className="space-y-4">
-          {vm.continuousMonitoring.channels.length === 0 && vm.continuousMonitoring.layer === "ai_from_inputs_v1" ? (
-            <p className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3 py-2 text-[0.7rem] leading-relaxed text-lime-100/95">
-              {showTech
-                ? t("noCurvesTech")
-                : t("noCurvesUser")}
-            </p>
-          ) : null}
-          {vm.continuousMonitoring.channels.length > 0 ? (
-            <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} showTech={showTech} lite={lite} />
-          ) : null}
+          <BioenergeticsContinuousMonitoringGrid monitoring={vm.continuousMonitoring} showTech={showTech} lite={lite} />
         </div>
       ) : (
         <p className="text-sm text-gray-500">{t("noData")}</p>

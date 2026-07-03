@@ -14,9 +14,6 @@ export interface HealthArchiveDiagnostics {
   withProposalsOnly: number;
   importOnly: number;
   vlmPending: number;
-  bulkCandidates: number;
-  importOnlyNoStorage: number;
-  importOnlyUnsupported: number;
 }
 
 export interface HealthArchiveSectionProps {
@@ -27,12 +24,8 @@ export interface HealthArchiveSectionProps {
   timelineDiag: HealthTimelineFetchDiagnostics | null;
   archiveDiagnostics: HealthArchiveDiagnostics;
   pendingVlmRunByPanelId: Map<string, string>;
-  bulkBusy: boolean;
-  analyzeBusyPanelId: string | null;
   expandedPanelId: string | null;
   onToggleExpanded: (panelId: string | null) => void;
-  onBulkReanalyze: () => void;
-  onAnalyzePanelWithAi: (panelId: string) => void;
   onReloadTimeline: () => void;
 }
 
@@ -45,12 +38,8 @@ export function HealthArchiveSection({
   timelineDiag,
   archiveDiagnostics,
   pendingVlmRunByPanelId,
-  bulkBusy,
-  analyzeBusyPanelId,
   expandedPanelId,
   onToggleExpanded,
-  onBulkReanalyze,
-  onAnalyzePanelWithAi,
   onReloadTimeline,
 }: HealthArchiveSectionProps) {
   return (
@@ -102,36 +91,6 @@ export function HealthArchiveSection({
                 ? "Open reviews update the canonical state in the DB; until you confirm them, the numbers stay in «proposed» mode."
                 : "The charts are aligned with the athlete's memory."}
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={bulkBusy || archiveDiagnostics.bulkCandidates === 0}
-              onClick={() => onBulkReanalyze()}
-              className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-rose-100 transition-colors hover:border-rose-400/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-              title={
-                archiveDiagnostics.bulkCandidates > 0
-                  ? "Start bulk re-analyze on the files in storage"
-                  : "No reusable file (no report with a file in Storage and image/pdf format)"
-              }
-            >
-              {bulkBusy
-                ? "Processing…"
-                : archiveDiagnostics.bulkCandidates > 0
-                  ? `Turn ${archiveDiagnostics.bulkCandidates} files into proposed values`
-                  : "Turn files into proposed values (0 candidates)"}
-            </button>
-            <span className="text-[10px] text-gray-500">
-              {archiveDiagnostics.bulkCandidates > 0
-                ? "Routes the reports without values onto the canonical pipeline; the numbers land in the charts as «proposed» and stay pending confirmation in review."
-                : archiveDiagnostics.importOnlyNoStorage > 0
-                  ? `${archiveDiagnostics.importOnlyNoStorage} reports have no file in Storage (uploaded before the bucket was configured, or upload failed). To analyze them, re-upload the file from the «Upload exam» module above.`
-                  : archiveDiagnostics.importOnlyUnsupported > 0
-                    ? `${archiveDiagnostics.importOnlyUnsupported} reports have an unsupported format (only image/* or application/pdf can be processed).`
-                    : archiveDiagnostics.importOnly === 0
-                      ? "All reports already have canonical or proposed values: nothing to reprocess."
-                      : "No candidate for the bulk (check that the reports have an image/pdf file in Storage)."}
-            </span>
-          </div>
         </div>
       ) : null}
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -199,15 +158,6 @@ export function HealthArchiveSection({
             const expanded = expandedPanelId === p.id;
             const reviewRunId = pendingVlmRunByPanelId.get(p.id) ?? null;
             const importStatus = imp?.status ?? "";
-            const mimeLower = (imp?.mime ?? "").toLowerCase();
-            const hasImage = mimeLower.startsWith("image/");
-            const hasPdf = mimeLower === "application/pdf" || (imp?.filename ?? "").toLowerCase().endsWith(".pdf");
-            const hasStorage = Boolean(imp?.storage_path);
-            const canAnalyzeWithAi =
-              hasStorage &&
-              (hasImage || hasPdf) &&
-              ["needs_manual_review", "failed", undefined, ""].includes(importStatus) &&
-              reviewRunId == null;
             const isPendingVlm =
               Boolean(vals?.vlm_pending_validation) || importStatus === "vlm_proposed" || reviewRunId != null;
             const valueEntries =
@@ -217,7 +167,6 @@ export function HealthArchiveSection({
                     .filter(([, v]) => v !== null && typeof v !== "object")
                     .slice(0, 24)
                 : [];
-            const analyzing = analyzeBusyPanelId === p.id;
             return (
               <li
                 key={p.id}
@@ -278,25 +227,13 @@ export function HealthArchiveSection({
                     {expanded ? "Close" : "Open"}
                   </button>
                   {reviewRunId ? <HealthStagingReviewLink runId={reviewRunId} /> : null}
-                  {canAnalyzeWithAi ? (
-                    <button
-                      type="button"
-                      disabled={analyzing}
-                      onClick={() => onAnalyzePanelWithAi(p.id)}
-                      className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-rose-100 transition-colors hover:border-rose-400/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {analyzing ? "Extracting…" : "Extract from report"}
-                    </button>
-                  ) : null}
                 </div>
 
                 {/* Dettagli espansi */}
                 {expanded ? (
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                     {valueEntries.length === 0 ? (
-                      <p className="text-xs text-gray-500">
-                        No structured value in this panel. If you have a file in storage, try «Extract from report».
-                      </p>
+                      <p className="text-xs text-gray-500">No structured value in this panel.</p>
                     ) : (
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3 lg:grid-cols-4">
                         {valueEntries.map(([k, v]) => (
