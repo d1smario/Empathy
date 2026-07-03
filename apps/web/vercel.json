@@ -5,11 +5,11 @@
   "crons": [
     {
       "path": "/api/integrations/garmin/pull/cron",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/integrations/whoop/pull/cron",
-      "schedule": "5,20,35,50 * * * *"
+      "schedule": "30 5 * * *"
     }
   ]
 }
