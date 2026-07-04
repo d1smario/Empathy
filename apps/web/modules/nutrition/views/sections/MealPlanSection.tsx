@@ -3,8 +3,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
-import { Pro2StickyAnchorSubnav } from "@/components/navigation/Pro2StickyAnchorSubnav";
-import { MODULE_PILL_AMBER } from "@/components/navigation/module-pill-styles";
 import { round } from "@/lib/nutrition/nutrition-view-helpers";
 import {
   NutritionMealPlanDailyTargets,
@@ -201,18 +199,9 @@ export function MealPlanSection({
         </section>
       ) : null}
 
-      {/* Ancore reali della pagina meal plan (le altre aree hanno una sezione sola). */}
-      <Pro2StickyAnchorSubnav
-        accent={MODULE_PILL_AMBER}
-        items={[
-          { id: "mod-target-giorno", label: t("anchorDailyTarget") },
-          { id: "nutrition-meal-plan", label: t("anchorMealPlan") },
-          { id: "mod-approfondimenti", label: t("anchorInsights") },
-          { id: "mod-dettagli-motore", label: t("anchorHowItWorks") },
-        ]}
-      />
-
-      {/* Macro/kcal del giorno: UN dato in UN solo posto. */}
+      {/* Macro/kcal del giorno: UN dato in UN solo posto. La barra di ancore
+          in-page è stata rimossa (feedback utente 2026-07: la pagina scorre,
+          le sezioni si susseguono senza bisogno di un secondo menù). */}
       <section id="mod-target-giorno" className="viz-card builder-panel scroll-mt-28" style={{ marginBottom: "12px" }}>
         <NutritionMealPlanDailyTargets
           complianceTargets={{
