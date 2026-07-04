@@ -453,7 +453,14 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
         return;
       }
       if (session?.user) {
-        void load();
+        // Ricarica SOLO se l'utente autenticato è cambiato davvero. Supabase emette
+        // TOKEN_REFRESHED (~ogni ora) e ri-emette SIGNED_IN a ogni ritorno sulla tab:
+        // rifare il bootstrap su quegli eventi ricaricava l'intera shell — percepito
+        // come "auto refresh" periodico delle pagine. Il cambio atleta tra tab resta
+        // coperto dal listener storage qui sotto.
+        if (session.user.id !== lastAuthenticatedUserIdRef.current) {
+          void load();
+        }
       }
     });
 

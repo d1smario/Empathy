@@ -3139,6 +3139,25 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
+          {/* «Oggi»: prima COSA MANGIARE (diario/target del giorno), poi il fueling
+              attorno alla seduta — feedback utente 2026-07. Le altre route sono
+              esclusive, quindi l'ordine dei blocchi conta solo per today. */}
+          {subRoute === "today" ? (
+            <DiarySection
+              athleteId={athleteId}
+              onComplianceRowsChange={onDiaryComplianceRows}
+              planDateForSolverTargets={selectedPlanDate}
+              planDateAnchor={selectedPlanDate}
+              diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
+              diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
+              diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
+              diaryMacroTargetFatG={diaryDayMacroTargets.fat}
+              fallbackDailyEnergyKcal={dailyEnergyKcal}
+              weightKg={profile?.weight_kg ?? null}
+              metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
+            />
+          ) : null}
+
           {subRoute === "fueling" || subRoute === "today" ? (
             <FuelingSection
               athleteId={athleteId}
@@ -3205,7 +3224,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {subRoute === "diary" || subRoute === "today" ? (
+          {subRoute === "diary" ? (
             <DiarySection
               athleteId={athleteId}
               onComplianceRowsChange={onDiaryComplianceRows}
