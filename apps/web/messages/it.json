@@ -3819,11 +3819,9 @@
     "description": "Meal plan e diario — per editing avanzato usa la versione desktop.",
     "mealPlanTitle": "Meal plan",
     "mealPlanSubtitle": "Target giornalieri e pasti",
-    "diaryTitle": "Diario",
-    "diarySubtitle": "Pasti registrati e aderenza",
     "openDesktopMealPlan": "Apri meal plan desktop",
-    "fuelingTitle": "Fueling",
-    "fuelingSubtitle": "Pre, intra e post workout"
+    "todayTitle": "Oggi",
+    "todaySubtitle": "Rifornimento e diario del giorno"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Profilo fisiologico"
@@ -4372,5 +4370,22 @@
     "training2Planned": "Training 2 previsto",
     "training2Start": "Training 2 inizio",
     "training2Duration": "Training 2 durata (min)"
+  },
+  "NutritionSubnav": {
+    "today": "Oggi",
+    "plan": "Piano",
+    "tools": "Strumenti",
+    "ariaLabel": "Sezioni nutrition"
+  },
+  "NutritionToolsPage": {
+    "eyebrow": "Nutrition",
+    "title": "Strumenti",
+    "description": "Analisi e utilità del modulo: previsione energetica, integratori e il ponte con la bioenergetica.",
+    "predictorTitle": "Previsione",
+    "predictorSubtitle": "Stima consumo energetico, CHO e rischio deplezione glicogeno per una seduta.",
+    "integrationTitle": "Integratori",
+    "integrationSubtitle": "Prodotti e protocolli di integrazione sportiva.",
+    "bioenergeticsTitle": "Bioenergetica",
+    "bioenergeticsSubtitle": "Curve e monitoraggio della giornata — apre il modulo Physiology."
   }
 }

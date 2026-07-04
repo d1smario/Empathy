@@ -206,7 +206,11 @@ import {
 
 
 
-export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary";
+/**
+ * "today" = vista unificata del giorno (Rifornimento + Diario sulla stessa data,
+ * riorganizzazione menù 2026-07): stessi blocchi di fueling+diary, un solo date picker.
+ */
+export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary" | "today";
 
 // Cache cross-mount del contesto modulo nutrition: ri-atterrando sulla pagina i
 // dati compaiono subito (niente spinner "Caricamento…"); il refetch parte comunque
@@ -3135,7 +3139,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
-          {subRoute === "fueling" ? (
+          {subRoute === "fueling" || subRoute === "today" ? (
             <FuelingSection
               athleteId={athleteId}
               selectedPlanDate={selectedPlanDate}
@@ -3201,7 +3205,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {subRoute === "diary" ? (
+          {subRoute === "diary" || subRoute === "today" ? (
             <DiarySection
               athleteId={athleteId}
               onComplianceRowsChange={onDiaryComplianceRows}
@@ -3253,7 +3257,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </>
                 ) : null}
 
-                {subRoute === "fueling" ? (
+                {subRoute === "fueling" || subRoute === "today" ? (
                   <div>
                     <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("fuelingHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
@@ -3313,7 +3317,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </div>
                 ) : null}
 
-                {subRoute === "diary" ? (
+                {subRoute === "diary" || subRoute === "today" ? (
                   <div>
                     <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("diaryHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
@@ -3336,7 +3340,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </div>
                 ) : null}
 
-                {showTech && subRoute === "fueling" && fuelingReadiness.ready ? (
+                {showTech && (subRoute === "fueling" || subRoute === "today") && fuelingReadiness.ready ? (
                   <div className="space-y-3 border-t border-white/10 pt-4">
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
                       {t("technicalDiagnosticsFueling")}

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 
-/** Una schermata per area: meal plan è l'hub di default (come V1 con tab dedicate). */
+/**
+ * Riorganizzazione menù nutrition (2026-07, «per momento d'uso»): l'ingresso nel
+ * modulo atterra su «Oggi» (rifornimento + diario del giorno), non più sul meal plan.
+ */
 export default function NutritionIndexPage() {
-  redirect("/nutrition/meal-plan");
+  redirect("/nutrition/today");
 }

@@ -1,24 +1,6 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import nextDynamic from "next/dynamic";
+import { redirect } from "next/navigation";
 
-const NutritionPageView = nextDynamic(() => import("@/modules/nutrition/views/NutritionPageView"), {
-  loading: () => <div className="min-h-[40vh] animate-pulse rounded-2xl bg-white/5" aria-hidden />,
-});
-
-export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "Nutrition · Fueling",
-  description: "Pre, intra e post workout — app mobile.",
-};
-
+/** Assorbita in «Oggi» (riorganizzazione menù 2026-07): redirect per i deep-link storici. */
 export default function MobileNutritionFuelingPage() {
-  return (
-    <Suspense fallback={<div className="min-h-[40vh] animate-pulse rounded-2xl bg-white/5" />}>
-      <div className="mx-auto max-w-lg px-1 pb-4 pt-1">
-        <NutritionPageView subRoute="fueling" />
-      </div>
-    </Suspense>
-  );
+  redirect("/m/nutrition/today");
 }

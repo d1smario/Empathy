@@ -12,7 +12,10 @@ test("toMobilePath: dashboard e training session", () => {
   assert.equal(toMobilePath("/dashboard"), "/m/dashboard");
   assert.equal(toMobilePath("/training/calendar"), "/m/training/calendar");
   assert.equal(toMobilePath("/training/session/2026-06-03"), "/m/training/session/2026-06-03");
-  assert.equal(toMobilePath("/nutrition/diary"), "/m/nutrition/diary");
+  // «Oggi» assorbe diary/fueling (riorganizzazione menù 2026-07).
+  assert.equal(toMobilePath("/nutrition/diary"), "/m/nutrition/today");
+  assert.equal(toMobilePath("/nutrition/fueling"), "/m/nutrition/today");
+  assert.equal(toMobilePath("/nutrition/today"), "/m/nutrition/today");
   assert.equal(toMobilePath("/nutrition/meal-plan"), "/m/nutrition/meal-plan");
   assert.equal(toMobilePath("/health"), "/m/health");
   assert.equal(toMobilePath("/physiology"), "/m/physiology");
@@ -44,7 +47,7 @@ test("drawer per ruolo, derivato dalla sidebar desktop", () => {
 
 test("stripMobileAppPrefix e toDesktopPath roundtrip", () => {
   assert.equal(stripMobileAppPrefix("/m/training/calendar"), "/training/calendar");
-  assert.equal(toDesktopPath("/m/nutrition/diary"), "/nutrition/diary");
+  assert.equal(toDesktopPath("/m/nutrition/today"), "/nutrition/today");
   assert.equal(isMobileAppPath("/m/dashboard"), true);
   assert.equal(isMobileAppPath("/dashboard"), false);
 });
