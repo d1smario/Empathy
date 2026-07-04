@@ -3913,10 +3913,6 @@
     "subtitle": "Daily snapshots — the series grows with use",
     "emptyHint": "Trends build up from daily dashboard visits: come back tomorrow to see the first curves."
   },
-  "DiarySection": {
-    "foodDiaryTitle": "Food Diary",
-    "foodDiarySubtitle": "Actual intake vs target — USDA catalog and adherence."
-  },
   "FuelingSection": {
     "heading": "Fueling",
     "intro": "Pre, intra and post plan for the day's session (Builder planned takes priority; if missing, uses duration/TSS from the imported executed workout). Summary numbers first, expandable details when needed.",

@@ -3913,10 +3913,6 @@
     "subtitle": "Snapshot giornalieri — la serie cresce con l'uso",
     "emptyHint": "I trend si accumulano con le visite quotidiane alla dashboard: torna domani per vedere le prime curve."
   },
-  "DiarySection": {
-    "foodDiaryTitle": "Diario alimentare",
-    "foodDiarySubtitle": "Ingesta reale vs target — catalogo USDA e aderenza."
-  },
   "FuelingSection": {
     "heading": "Rifornimento",
     "intro": "Piano pre, intra e post per la seduta del giorno (priorità pianificato Builder; se manca, usa durata/TSS dell'eseguito importato). Numeri sintetici prima, dettagli apribili quando servono.",
