@@ -4163,7 +4163,6 @@
     "generatingPlan": "Generating plan…",
     "generatePlanCta": "Generate my meal plan",
     "regeneratePlan": "Regenerate plan",
-    "planGenerated": "Meal plan generated",
     "lowMealsBudgetWarning": "<b>Warning — meal budget very low.</b> Meal target ~{meals} kcal with estimated training ~{train} kcal: usually weight/height/date of birth are missing in the profile (BMR not computable). The breakfast/lunch/dinner percentages from the profile apply to that low total; check <s1>Profile</s1> and regenerate the plan after saving.",
     "anchorDailyTarget": "Daily target",
     "anchorMealPlan": "Meal plan",

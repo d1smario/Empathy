@@ -4163,7 +4163,6 @@
     "generatingPlan": "Generazione piano…",
     "generatePlanCta": "Genera il mio piano pasti",
     "regeneratePlan": "Rigenera piano",
-    "planGenerated": "Piano pasti generato",
     "lowMealsBudgetWarning": "<b>Attenzione — budget pasti molto basso.</b> Target pasti ~{meals} kcal con allenamento stimato ~{train} kcal: di solito mancano peso/altezza/data di nascita nel profilo (BMR non calcolabile). Le percentuali colazione/pranzo/cena del profilo si applicano su quel totale basso; controlla <s1>Profilo</s1> e rigenera il piano dopo il salvataggio.",
     "anchorDailyTarget": "Target del giorno",
     "anchorMealPlan": "Piano pasti",

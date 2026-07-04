@@ -183,11 +183,6 @@ export function MealPlanSection({
                   ) : null}
                 </>
               ) : null}
-              {intelligentMealPlan?.layer === "deterministic_meal_assembly_v1" ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-500">
-                  {t("planGenerated")}
-                </span>
-              ) : null}
             </div>
           </div>
           {lowMealsBudgetWarning ? (
