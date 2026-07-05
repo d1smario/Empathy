@@ -2320,6 +2320,7 @@
     "macroProtein": "PROTEIN",
     "macroFats": "FATS",
     "avgGiLabel": "Average Glycemic Index",
+    "avgGiShort": "AVG GI",
     "boostAsideAria": "Complementary suggestions from the intelligent system",
     "boostTitle": "Complementary suggestions (intelligent system)",
     "boostBody": "These are add-ons to include or prefer for the meal, they do not replace the chosen foods.",

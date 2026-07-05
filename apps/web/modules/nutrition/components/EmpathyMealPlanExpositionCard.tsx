@@ -299,29 +299,23 @@ export function EmpathyMealPlanExpositionCard({
           <span className="empathy-meal-expo-macro-label">{t("macroFats")}</span>
           <span className="empathy-meal-expo-macro-val">{Math.round(fatG)} g</span>
         </div>
-      </div>
-
-      <div className="empathy-meal-expo-igbar">
-        <div className="empathy-meal-expo-igbar-left">
-          <TrendingUp className="empathy-meal-expo-ig-ic" strokeWidth={1.6} aria-hidden />
-          <div>
-            <div className="empathy-meal-expo-ig-label">{t("avgGiLabel")}</div>
-            <div className="empathy-meal-expo-ig-num">{igWeighted}</div>
-          </div>
-        </div>
-        <div className="empathy-meal-expo-igbar-pills">
-          <span className={cn("empathy-meal-expo-igpill", giPillClass(slotBand))}>
-            IG {igWeighted} · {giBandLabelIt(slotBand)}
+        {/* IG medio come quarta colonna accanto alle macro: la riga dedicata
+            occupava ~60px verticali in ogni card (feedback utente 2026-07). */}
+        <div className="empathy-meal-expo-macro empathy-meal-expo-macro--ig">
+          <TrendingUp className="empathy-meal-expo-macro-ic" strokeWidth={1.6} aria-hidden />
+          <span className="empathy-meal-expo-macro-label">{t("avgGiShort")}</span>
+          <span className="empathy-meal-expo-macro-val">{igWeighted}</span>
+          <span className={cn("empathy-meal-expo-macro-igband", giPillClass(slotBand))}>
+            {giBandLabelIt(slotBand)}
           </span>
           <span
             className={cn(
-              "empathy-meal-expo-stimpill",
-              stimulus.tone === "alto" && "empathy-meal-expo-stimpill--high",
-              stimulus.tone === "medio" && "empathy-meal-expo-stimpill--med",
-              stimulus.tone === "basso" && "empathy-meal-expo-stimpill--low",
+              "empathy-meal-expo-macro-stim",
+              stimulus.tone === "alto" && "empathy-meal-expo-macro-stim--high",
+              stimulus.tone === "medio" && "empathy-meal-expo-macro-stim--med",
+              stimulus.tone === "basso" && "empathy-meal-expo-macro-stim--low",
             )}
           >
-            <Zap className="inline h-3.5 w-3.5 opacity-90" strokeWidth={2.2} aria-hidden />
             {stimulus.text}
           </span>
         </div>

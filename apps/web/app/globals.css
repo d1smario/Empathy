@@ -666,10 +666,16 @@ body {
 
 .empathy-meal-expo-macros {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   padding: 12px;
   background: rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 560px) {
+  .empathy-meal-expo-macros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .empathy-meal-expo-macro {
@@ -729,6 +735,42 @@ body {
   color: var(--nutri-expo-fat);
 }
 
+/* Quarta colonna: IG medio del pasto (banda + stimolo compatti sotto il numero). */
+.empathy-meal-expo-macro--ig {
+  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(139, 92, 246, 0.08);
+}
+.empathy-meal-expo-macro--ig .empathy-meal-expo-macro-ic {
+  color: #a78bfa;
+}
+
+.empathy-meal-expo-macro-igband {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.empathy-meal-expo-macro-stim {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.empathy-meal-expo-macro-stim--high {
+  color: #fdba74;
+}
+.empathy-meal-expo-macro-stim--med {
+  color: #fbcfe8;
+}
+.empathy-meal-expo-macro-stim--low {
+  color: #cbd5e1;
+}
+
 .empathy-meal-expo-macro-label {
   display: block;
   font-size: 9px;
@@ -744,64 +786,9 @@ body {
   color: #f8fafc;
 }
 
-.empathy-meal-expo-igbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 12px 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background:
-    linear-gradient(90deg, rgba(255, 63, 174, 0.08), rgba(255, 138, 28, 0.055), transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.006)),
-    rgba(2, 6, 23, 0.46);
-  border: 1px solid rgba(255, 63, 174, 0.2);
-}
-
-.empathy-meal-expo-igbar-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.empathy-meal-expo-ig-ic {
-  width: 22px;
-  height: 22px;
-  color: var(--nutri-expo-pink);
-  flex-shrink: 0;
-}
-
-.empathy-meal-expo-ig-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: rgba(226, 232, 240, 0.65);
-}
-
-.empathy-meal-expo-ig-num {
-  font-size: 22px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.1;
-}
-
-.empathy-meal-expo-igbar-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.empathy-meal-expo-igpill {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
+/* Vecchia riga IG dedicata rimossa (2026-07): l'IG medio vive nella quarta
+   colonna della griglia macro. Le varianti colore igpill-- restano: usate
+   dalle pillole IG delle singole voci alimento. */
 .empathy-meal-expo-igpill--low {
   background: rgba(148, 163, 184, 0.1);
   color: #cbd5e1;
@@ -824,33 +811,6 @@ body {
   background: rgba(255, 45, 146, 0.16);
   color: #ffe4e6;
   border-color: rgba(255, 63, 174, 0.38);
-}
-
-.empathy-meal-expo-stimpill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.empathy-meal-expo-stimpill--high {
-  background: rgba(255, 138, 28, 0.14);
-  color: #fed7aa;
-  border-color: rgba(255, 138, 28, 0.34);
-}
-.empathy-meal-expo-stimpill--med {
-  background: rgba(255, 63, 174, 0.14);
-  color: #fbcfe8;
-  border-color: rgba(255, 63, 174, 0.34);
-}
-.empathy-meal-expo-stimpill--low {
-  background: rgba(148, 163, 184, 0.1);
-  color: #cbd5e1;
-  border-color: rgba(148, 163, 184, 0.24);
 }
 
 .empathy-meal-expo-macro-bar {
@@ -979,10 +939,11 @@ body {
   }
 }
 
+/* Niente min-height: il grid stira il thumb ESATTAMENTE quanto la colonna
+   contenuti, così il bordo inferiore è allineato ai pod CHO/PRO/FAT. */
 .empathy-meal-expo-food-thumb {
   width: 100%;
   height: 100%;
-  min-height: 104px;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -991,12 +952,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.45);
   overflow: hidden;
-}
-
-@media (max-width: 520px) {
-  .empathy-meal-expo-food-thumb {
-    min-height: 84px;
-  }
 }
 
 .empathy-meal-expo-food-thumb-icon {

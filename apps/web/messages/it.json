@@ -2320,6 +2320,7 @@
     "macroProtein": "PROTEINE",
     "macroFats": "GRASSI",
     "avgGiLabel": "Indice Glicemico Medio",
+    "avgGiShort": "IG MEDIO",
     "boostAsideAria": "Suggerimenti complementari dal sistema intelligente",
     "boostTitle": "Suggerimenti complementari (sistema intelligente)",
     "boostBody": "Sono complementi da aggiungere o preferire al pasto, non sostituiscono gli alimenti scelti.",
