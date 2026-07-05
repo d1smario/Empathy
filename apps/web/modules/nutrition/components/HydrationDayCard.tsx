@@ -92,14 +92,16 @@ export function HydrationDayCard({ routine }: { routine: HydrationRoutineVm }) {
           <div className="flex items-end gap-2 sm:gap-3" style={{ minHeight: 120 }}>
             {windows.map((w, i) => {
               const training = isTrainingWindow(w.labelIt);
-              const hPct = Math.max(14, Math.round((w.volumeMl / maxVolume) * 100));
+              // Altezza in PIXEL (contenitore h-24 = 96px): la % dentro il flex
+              // non risolveva e le colonne restavano vuote (bug segnalato).
+              const fillPx = Math.max(14, Math.round((w.volumeMl / maxVolume) * 96));
               return (
                 <div key={`hyd-col-${i}`} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={w.notesIt}>
                   <span className="text-[0.65rem] font-bold tabular-nums text-white">{w.volumeMl}</span>
                   <div className="flex h-24 w-full max-w-[52px] items-end overflow-hidden rounded-lg border border-white/10 bg-black/40">
                     <div
                       className={`w-full rounded-t-sm ${training ? "bg-amber-400/80" : "bg-cyan-400/80"}`}
-                      style={{ height: `${hPct}%` }}
+                      style={{ height: `${fillPx}px` }}
                       aria-hidden
                     />
                   </div>

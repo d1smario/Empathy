@@ -360,7 +360,8 @@ function MicroPercentRadar({
               <li key={row.name}>
                 <span>{row.name}</span>
                 <strong>
-                  {Math.min(row.pct, 999)}% <small>{row.kind === "max" ? t("limit") : t("target")}</small>
+                  {formatMicroValue(row.value, row.unit)}
+                  <small> · {Math.min(row.pct, 999)}% {row.kind === "max" ? t("limit") : t("target")}</small>
                 </strong>
               </li>
             ))}
@@ -409,7 +410,8 @@ export function NutritionMicronutrientDailyBoard({
         <MicroPercentRadar title={t("aminoAcids")} subtitle={t("radarAminoSubtitle")} lines={boardLines.aminoAcids} tone="amino" />
         <MicroPercentRadar title={t("fatsAndFiber")} subtitle={t("radarLipidsSubtitle")} lines={boardLines.fattyAcids} tone="lipids" />
       </div>
-      <NutritionMicronutrientTable {...boardLines} />
+      {/* Tabelle quantità rimosse (feedback utente 2026-07): la quantità assoluta
+          vive ora nelle righe accanto ai radar — un nutriente, un solo posto. */}
     </div>
   );
 }
