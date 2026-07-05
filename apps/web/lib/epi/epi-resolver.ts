@@ -110,7 +110,13 @@ async function complianceAndStreak(
   const executedRows = (executedRes.data ?? []) as Array<Record<string, unknown>>;
   const plannedTss = plannedRows.reduce((s, r) => s + Math.max(0, num(r.tss_target) ?? 0), 0);
   const executedTss = executedRows.reduce((s, r) => s + Math.max(0, num(r.tss) ?? 0), 0);
-  const compliancePct = plannedTss > 0 ? Math.round((executedTss / plannedTss) * 1000) / 10 : null;
+  // Zero eseguiti nella finestra = nessuna evidenza di esecuzione (spesso: dati non
+  // registrati), NON aderenza 0 misurata: si lascia null così il pilastro EPI cade
+  // sul ramo hasActivePlan (baseline neutra, confidenza bassa) invece di trascinare
+  // la longevità con uno 0 ad alta confidenza. Con anche solo un eseguito il
+  // rapporto resta reale, incluse aderenze basse.
+  const compliancePct =
+    plannedTss > 0 && executedRows.length > 0 ? Math.round((executedTss / plannedTss) * 1000) / 10 : null;
 
   const dates = new Set<string>();
   for (const r of (streakRes.data ?? []) as Array<Record<string, unknown>>) {
