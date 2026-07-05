@@ -2049,6 +2049,8 @@ body {
 }
 
 .fueling-vcard .fueling-step-body > strong {
+  /* block: inline si incollava alla pillola fase («Pre-workout · -30'Isocarb») */
+  display: block;
   margin-top: 6px;
   font-size: 15px;
   font-weight: 700;

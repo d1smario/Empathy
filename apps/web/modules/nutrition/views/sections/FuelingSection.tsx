@@ -31,10 +31,74 @@ import type {
   RecoverySummaryRow,
 } from "@/lib/nutrition/nutrition-view-types";
 import { cn } from "@/lib/cn";
-import {
-  IntegrationProductCard,
-  type IntegrationProductCardProduct,
-} from "@/modules/nutrition/views/sections/IntegrationSection";
+import type { IntegrationProductCardProduct } from "@/modules/nutrition/views/sections/IntegrationSection";
+
+/** Bordo colonna per bucket (stesse tinte delle intestazioni colonna). */
+const STACK_ACCENT_BORDER: Record<StackTimingBucket, string> = {
+  pre: "rgba(167,139,250,0.38)",
+  intra: "rgba(232,121,249,0.36)",
+  post: "rgba(251,146,60,0.4)",
+  daily: "rgba(34,211,238,0.36)",
+};
+
+/**
+ * Card prodotto COMPATTA per le colonne dello stack (feedback 2026-07: la card
+ * grande a due pannelli era ammassata nelle colonne strette). Solo l'essenziale:
+ * brand, nome, badge «consigliato oggi», una riga di dose, 2 chip e il link.
+ */
+function StackCompactProductCard({
+  product,
+  qtyHint,
+  accent,
+  recommendedLabel,
+  manufacturerLabel,
+}: {
+  product: IntegrationProductCardProduct;
+  qtyHint: string;
+  accent: StackTimingBucket;
+  recommendedLabel: string;
+  manufacturerLabel: string;
+}) {
+  const chips = [
+    FUELING_FORMAT_IT[product.format],
+    product.functionalFocus?.[0] ? FOCUS_IT[product.functionalFocus[0]] ?? product.functionalFocus[0] : null,
+  ]
+    .filter((chip): chip is string => Boolean(chip))
+    .filter((chip, idx, arr) => arr.indexOf(chip) === idx);
+  return (
+    <article
+      className="rounded-xl border bg-black/30 px-3 py-2.5"
+      style={{ borderColor: STACK_ACCENT_BORDER[accent] }}
+    >
+      {product.recommendedTodayLabels?.length ? (
+        <span className="mb-1 inline-block rounded-full border border-emerald-500/50 bg-emerald-900/45 px-2 py-0.5 text-[0.6rem] font-semibold text-emerald-300">
+          {recommendedLabel} · {product.recommendedTodayLabels.join(", ")}
+        </span>
+      ) : null}
+      <div className="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-gray-500">{product.brand}</div>
+      <strong className="block text-sm leading-snug text-gray-50">{product.product}</strong>
+      <p className="m-0 mt-1 text-[0.7rem] leading-relaxed text-gray-400">{qtyHint}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {chips.map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-gray-400"
+          >
+            {chip}
+          </span>
+        ))}
+        <a
+          href={product.productUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto text-[0.64rem] text-gray-500 underline underline-offset-2 transition-colors hover:text-white"
+        >
+          {manufacturerLabel}
+        </a>
+      </div>
+    </article>
+  );
+}
 
 /**
  * Sezione "Fueling" di NutritionPageView (decomposizione del God-component).
@@ -60,8 +124,6 @@ type FuelingSessionPackage = {
   intensityPctFtp: number;
   choPerHourSession: number;
   timelineSteps: FuelingTimelineStep[];
-  hydrationTimeline: { minuteLabel: string; note: string }[];
-  visualMetrics: { label: string; value: number; unit: string; pct: number; color: string }[];
   glycogenDepletion: FuelingGlycogenDepletionModel;
   glycogenPlot: ReturnType<typeof buildGlycogenPlotGeometry>;
 };
@@ -211,19 +273,8 @@ export function FuelingSection({
                 </div>
               ))}
             </div>
-            {fuelingSessionPackages.length ? (
-              <section className="fueling-visible-plan-strip" aria-label={t("visiblePlanAria")}>
-                {fuelingSessionPackages.map((pkg) => (
-                  <article key={`fueling-visible-plan-${pkg.id}`} className="fueling-visible-plan-card">
-                    <span className="fueling-visible-plan-kicker">{t("visiblePlanKicker")}</span>
-                    <strong>{pkg.title}</strong>
-                    <small>
-                      ~{pkg.durationMin} min · {round(pkg.intensityPctFtp)}% FTP · CHO/h ~{pkg.choPerHourSession} g/h
-                    </small>
-                  </article>
-                ))}
-              </section>
-            ) : null}
+            {/* Strip «Piano integrazione» RIMOSSA (feedback 2026-07): ripeteva
+                titolo e sottotitolo dell'accordion seduta subito sotto. */}
             {recoverySummary?.status === "poor" || recoverySummary?.status === "moderate" ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                 <summary>{t("recoveryNotesSummary")}</summary>
@@ -335,7 +386,10 @@ export function FuelingSection({
                 </section>
               </details>
             ) : null}
-            {knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length ? (
+            {/* «Contesto rifornimento dalle evidenze»: gergo motore (modello
+                lattato, quota energetica stimata) — solo staff (2026-07). */}
+            {showTech &&
+            (knowledgeFuelingHints.intents.length || knowledgeFuelingHints.supports.length || knowledgeFuelingHints.risks.length) ? (
               <details className="collapsible-card" style={{ marginBottom: "10px" }}>
                 <summary>{t("fuelingContextSummary")}</summary>
                 <div style={{ display: "grid", gap: 8 }}>
@@ -429,12 +483,22 @@ export function FuelingSection({
                                   <strong>{step.product?.product ?? "Fuel product"}</strong>
                                   <small>{step.product?.brand ?? "Brand"}</small>
                                   <div className="fueling-step-chip-row">
-                                    <span>CHO {step.cho}g</span>
-                                    <span>Fluid {step.fluid}ml</span>
-                                    {step.product?.format ? <span>{FUELING_FORMAT_IT[step.product.format]}</span> : null}
-                                    {step.product?.category ? <span>{FUELING_CATEGORY_IT[step.product.category]}</span> : null}
-                                    {step.product?.functionalFocus?.[0] ? <span>{FOCUS_IT[step.product.functionalFocus[0]] ?? step.product.functionalFocus[0]}</span> : null}
-                                    {step.product?.timing?.[0] ? <span>{TIMING_IT[step.product.timing[0]] ?? step.product.timing[0]}</span> : null}
+                                    {/* Chip dedup (feedback 2026-07: «Recovery Recovery», «Gel Gel»);
+                                        niente chip timing — la fase è già nella pillola dello step. */}
+                                    {[
+                                      `CHO ${step.cho}g`,
+                                      `${t("chipFluid")} ${step.fluid}ml`,
+                                      step.product?.format ? FUELING_FORMAT_IT[step.product.format] : null,
+                                      step.product?.category ? FUELING_CATEGORY_IT[step.product.category] : null,
+                                      step.product?.functionalFocus?.[0]
+                                        ? FOCUS_IT[step.product.functionalFocus[0]] ?? step.product.functionalFocus[0]
+                                        : null,
+                                    ]
+                                      .filter((chip): chip is string => Boolean(chip))
+                                      .filter((chip, idx, arr) => arr.indexOf(chip) === idx)
+                                      .map((chip) => (
+                                        <span key={chip}>{chip}</span>
+                                      ))}
                                   </div>
                                   <p className="muted-copy" style={{ fontSize: 11, margin: "8px 0 0", lineHeight: 1.4 }}>
                                     {buildIntegrationQuantityHint(step.product ?? FUELING_PRODUCT_CATALOG[0], {
@@ -497,53 +561,26 @@ export function FuelingSection({
                     ))}
                   </div>
 
-                  <details className="collapsible-card">
-                    <summary>Hydration protocol · {pkg.title}</summary>
-                    <section className="fueling-hydration-strip" style={{ marginBottom: 0 }}>
-                      <div className="fueling-hydration-grid">
-                        {pkg.hydrationTimeline.map((h) => (
-                          <div key={`hydration-${pkg.id}-${h.minuteLabel}`} className="fueling-hydration-chip">
-                            <strong>{h.minuteLabel}</strong>
-                            <span>{h.note}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  </details>
-
+                  {/* Accordion «Hydration protocol» (chip identiche «500ml + mineral
+                      salts» ogni 20') e barre report RIMOSSI (feedback 2026-07):
+                      doppioni delle KPI in testa e dei liquidi già in ogni step. */}
                   <section className="fueling-visual-report">
-                    <h4>{t("fuelingReportTitle")} · {pkg.title}</h4>
-                    <div className="fueling-metric-grid">
-                      {pkg.visualMetrics.map((metric) => (
-                        <article key={`${pkg.id}-${metric.label}`} className="fueling-metric-card">
-                          <div className="fueling-metric-head">
-                            <label>{metric.label}</label>
-                            <strong>
-                              {metric.value} {metric.unit}
-                            </strong>
-                          </div>
-                          <div className="fueling-metric-bar">
-                            <div className="fueling-metric-fill" style={{ width: `${metric.pct}%`, background: metric.color }} />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
                     <div className="fueling-glyco-future">
                       <h5>{t("glycogenDepletionTitle")}</h5>
-                      <div className="nutrition-detail-rail" style={{ marginBottom: "8px" }}>
-                        <span>
-                          <strong>Intake raw:</strong> {gDep.totalIntake} g
-                        </span>
-                        <span>
-                          <strong>{t("absorbedLabel")}</strong> {gDep.totalAbsorbed} g
-                        </span>
-                        <span>
-                          <strong>Cori:</strong> {gDep.totalCori} g
-                        </span>
-                        <span>
-                          <strong>Gut risk:</strong> {fuelingPhysiology.gutPathwayRisk}
-                        </span>
-                      </div>
+                      {/* Una frase leggibile al posto del rail tecnico
+                          («Intake raw / Cori / Gut risk» era gergo motore in EN). */}
+                      <p className="nutrition-muted" style={{ fontSize: 12, margin: "0 0 8px", lineHeight: 1.5 }}>
+                        {t("glycogenIntakeLine", {
+                          intake: gDep.totalIntake,
+                          absorbed: gDep.totalAbsorbed,
+                          gutRisk:
+                            fuelingPhysiology.gutPathwayRisk === "low"
+                              ? t("gutRiskLow")
+                              : fuelingPhysiology.gutPathwayRisk === "high"
+                                ? t("gutRiskHigh")
+                                : t("gutRiskModerate"),
+                        })}
+                      </p>
                       <svg viewBox={`0 0 ${gPlot.w} ${gPlot.h}`} className="fueling-glyco-svg">
                         <defs>
                           <linearGradient id={glyId} x1="0" y1="0" x2="0" y2="1">
@@ -708,11 +745,13 @@ export function FuelingSection({
                           fuelingChoScale: stackHintContext?.fuelingChoScale ?? 1,
                         });
                         return (
-                          <IntegrationProductCard
+                          <StackCompactProductCard
                             key={`${col.key}-${key}`}
                             product={product}
                             qtyHint={qtyHint}
                             accent={col.key}
+                            recommendedLabel={t("recommendedToday")}
+                            manufacturerLabel={t("manufacturerPage")}
                           />
                         );
                       })

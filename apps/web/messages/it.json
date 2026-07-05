@@ -2666,9 +2666,7 @@
     "kpiIntegrationModel": "Modello integrativo",
     "opsSessionTotal": "Totale seduta",
     "opsHourlyTarget": "Target orario",
-    "opsEstimatedAbsorption": "Assorbimento stimato",
     "opsPlanEnd": "Fine piano",
-    "opsOpenableActions": "Azioni apribili",
     "predictorSubEventPower": "Potenza evento",
     "predictorSubMetabolicCost": "Costo metabolico",
     "predictorSubOxidativeDemand": "Richiesta ossidativa",
@@ -2682,7 +2680,12 @@
     "predictorWhatIfSubtitle": "Simula una seduta o una gara non a calendario: consumo, CHO e rischio glicogeno. Non modifica il piano.",
     "sectorsAdaptationDay": "Settori · adattamento (giorno)",
     "engineDiagnosticsTitle": "Diagnostica e motore",
-    "engineDiagnosticsSubtitle": "Parametri del motore, stato dati e aderenza — area staff"
+    "engineDiagnosticsSubtitle": "Parametri del motore, stato dati e aderenza — area staff",
+    "opsChoTotal": "CHO totali",
+    "opsFluidTotal": "Liquidi totali",
+    "opsSodium": "Sodio",
+    "opsGlycogenEnd": "Glicogeno a fine",
+    "opsPreIntraPost": "Pre + intra + post"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Giorno precedente",
@@ -3926,8 +3929,6 @@
     "noWorkoutNote": "Per la data in alto il modulo non trova allenamento nel periodo caricato: niente riga in <b1>Training → Calendario</b1> e nessun <b2>eseguito</b2> con quella data. Il fueling è legato al <b3>giorno</b3>: sposta la data o aggiungi/importa la sessione — qui non è un problema di Physiology.",
     "profileGapNote": "Senza gli elementi sopra (profilo e fisiologia per il rifornimento) non stimiamo CHO/h e il lattato con numeri inventati. Compila in <b1>Profilo</b1> e <b2>Physiology</b2>.",
     "dayWorkoutNote": "In più serve un <b>allenamento per quel giorno</b> (pianificato nel calendario o importato come eseguito), altrimenti non c’è seduta su cui calcolare pre/intra/post.",
-    "visiblePlanAria": "Piano di integrazione visibile",
-    "visiblePlanKicker": "Piano integrazione",
     "recoveryNotesSummary": "Note recupero",
     "recoveryPoor": "Recupero basso: privilegia un rifornimento piu' semplice e progressivo, controlla tolleranza GI e evita aggressivita' inutile nella giornata.",
     "recoveryModerate": "Recupero intermedio: mantieni attenzione a densita' del rifornimento, idratazione e finestra post-workout.",
@@ -3944,9 +3945,7 @@
     "fuelingProductAria": "Prodotto fueling",
     "brandLogoFallbackTitle": "Fallback logo marchio",
     "catalogArchiveTitle": "Immagine catalogo / archivio",
-    "fuelingReportTitle": "Report rifornimento",
-    "glycogenDepletionTitle": "Glycogen depletion (seduta)",
-    "absorbedLabel": "Assorbiti:",
+    "glycogenDepletionTitle": "Glicogeno durante la seduta",
     "axisYLabel": "Y: glicogeno disponibile (g / %)",
     "axisXLabel": "X: tempo",
     "stackTitle": "Il tuo stack integrazione",
@@ -3957,7 +3956,13 @@
     "stackColIntraSub": "Durante la seduta di oggi",
     "stackColPostSub": "Recupero post seduta",
     "stackInProtocol": "Già nel protocollo di oggi",
-    "stackEmptyColumn": "Nessun prodotto classificato qui"
+    "stackEmptyColumn": "Nessun prodotto classificato qui",
+    "chipFluid": "Liquidi",
+    "glycogenIntakeLine": "Nella seduta assumi ~{intake} g di CHO e ne assorbi ~{absorbed} g · rischio intestinale: {gutRisk}.",
+    "gutRiskLow": "basso",
+    "gutRiskModerate": "moderato",
+    "gutRiskHigh": "alto",
+    "recommendedToday": "Consigliato oggi"
   },
   "HealthArchiveSection": {
     "reportArchive": "Archivio referti",

@@ -43,8 +43,6 @@ export type MealPlanDisplayRow = {
   portionHint?: string;
 };
 
-export type NutritionMealPlanStateTone = "amber" | "cyan" | "green" | "rose" | "slate";
-
 export type NutritionMealPlanEnergyLedger = {
   /** BMR + lifestyle + quota training destinata ai pasti (solver). */
   mealsKcalSolver: number | null;
@@ -223,7 +221,6 @@ export type NutritionMealPlanWorkspaceProps = {
   persistFoodExclusionToProfile: (slot: MealSlotKey, index: number, label: string) => void | Promise<void>;
   profileFoodExcludeBusy: string | null;
   mealTabMicronutrientProps: NutritionMicronutrientGridProps;
-  nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
   /** Companion di giornata: conferme consumo per pasto + quick-add extra (carosello). */
   selectedPlanDate: string;
   mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
@@ -265,7 +262,6 @@ export function NutritionMealPlanWorkspace({
   persistFoodExclusionToProfile,
   profileFoodExcludeBusy,
   mealTabMicronutrientProps,
-  nutritionStateCards,
   selectedPlanDate,
   mealConfirmations,
   mealConfirmBusySlot,
@@ -622,17 +618,9 @@ export function NutritionMealPlanWorkspace({
                 <NutritionMicronutrientDailyBoard {...mealPlanMicroBoardProps} />
               </div>
             </section>
-            <div className="kpi-grid nutrition-score-grid" style={{ marginTop: 12 }}>
-              {nutritionStateCards.map((card) => (
-                <div key={card.label} className={`kpi-card signal-board-card tone-${card.tone} nutrition-score-card`}>
-                  <div className="kpi-card-label">
-                    <span className="signal-board-dot" />
-                    {card.label}
-                  </div>
-                  <div className="kpi-card-value">{card.value}</div>
-                </div>
-              ))}
-            </div>
+            {/* Card «Bioenergetic / Adaptation loop X/100» RIMOSSE (feedback 2026-07):
+                punteggi motore con default finto 55, in inglese — quel livello vive
+                nel pannello Previsioni della dashboard, non in fondo ai pasti. */}
           </div>
         </section>
       </section>

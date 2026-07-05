@@ -10,7 +10,6 @@ import {
   NutritionMealPlanWorkspace,
   type MealPlanDisplayRow,
   type NutritionMealPlanEnergyLedger,
-  type NutritionMealPlanStateTone,
 } from "@/modules/nutrition/views/NutritionMealPlanView";
 import type {
   NutritionApplicationDirectiveViewModel,
@@ -73,7 +72,6 @@ export type MealPlanSectionProps = {
   persistFoodExclusionToProfile: (slot: MealSlotKey, index: number, label: string) => void | Promise<void>;
   profileFoodExcludeBusy: string | null;
   mealTabMicronutrientProps: NutritionMicronutrientGridProps;
-  nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
   /** Conferme di consumo per pasto del giorno selezionato (carosello companion). */
   mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
   mealConfirmBusySlot: string | null;
@@ -127,7 +125,6 @@ export function MealPlanSection({
   persistFoodExclusionToProfile,
   profileFoodExcludeBusy,
   mealTabMicronutrientProps,
-  nutritionStateCards,
   mealConfirmations,
   mealConfirmBusySlot,
   persistMealConfirmation,
@@ -288,7 +285,6 @@ export function MealPlanSection({
           persistFoodExclusionToProfile={persistFoodExclusionToProfile}
           profileFoodExcludeBusy={profileFoodExcludeBusy}
           mealTabMicronutrientProps={mealTabMicronutrientProps}
-          nutritionStateCards={nutritionStateCards}
           selectedPlanDate={selectedPlanDate}
           mealConfirmations={mealConfirmations}
           mealConfirmBusySlot={mealConfirmBusySlot}

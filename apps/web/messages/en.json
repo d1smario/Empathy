@@ -2666,9 +2666,7 @@
     "kpiIntegrationModel": "Integration model",
     "opsSessionTotal": "Session total",
     "opsHourlyTarget": "Hourly target",
-    "opsEstimatedAbsorption": "Estimated absorption",
     "opsPlanEnd": "Plan end",
-    "opsOpenableActions": "Openable actions",
     "predictorSubEventPower": "Event power",
     "predictorSubMetabolicCost": "Metabolic cost",
     "predictorSubOxidativeDemand": "Oxidative demand",
@@ -2682,7 +2680,12 @@
     "predictorWhatIfSubtitle": "Simulate a session or a race not yet scheduled: expenditure, CHO and glycogen risk. Does not change the plan.",
     "sectorsAdaptationDay": "Sectors · adaptation (day)",
     "engineDiagnosticsTitle": "Engine diagnostics",
-    "engineDiagnosticsSubtitle": "Engine parameters, data status and adherence — staff area"
+    "engineDiagnosticsSubtitle": "Engine parameters, data status and adherence — staff area",
+    "opsChoTotal": "Total CHO",
+    "opsFluidTotal": "Total fluids",
+    "opsSodium": "Sodium",
+    "opsGlycogenEnd": "Glycogen at end",
+    "opsPreIntraPost": "Pre + intra + post"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Previous day",
@@ -3926,8 +3929,6 @@
     "noWorkoutNote": "For the date above the module finds no workout in the loaded period: no row in <b1>Training → Calendar</b1> and no <b2>executed workout</b2> with that date. Fueling is tied to the <b3>day</b3>: move the date or add/import the session — this is not a Physiology problem.",
     "profileGapNote": "Without the elements above (profile and physiology for fueling) we do not estimate CHO/h and lactate with made-up numbers. Fill them in under <b1>Profile</b1> and <b2>Physiology</b2>.",
     "dayWorkoutNote": "On top of that you need a <b>workout for that day</b> (planned in the calendar or imported as executed), otherwise there is no session to compute pre/intra/post on.",
-    "visiblePlanAria": "Visible fueling plan",
-    "visiblePlanKicker": "Fueling plan",
     "recoveryNotesSummary": "Recovery notes",
     "recoveryPoor": "Low recovery: favor a simpler, progressive fueling approach, watch GI tolerance and avoid needless aggressiveness during the day.",
     "recoveryModerate": "Intermediate recovery: keep an eye on fueling density, hydration and the post-workout window.",
@@ -3944,9 +3945,7 @@
     "fuelingProductAria": "Fueling product",
     "brandLogoFallbackTitle": "Brand logo fallback",
     "catalogArchiveTitle": "Catalog / archive image",
-    "fuelingReportTitle": "Fueling report",
-    "glycogenDepletionTitle": "Glycogen depletion (session)",
-    "absorbedLabel": "Absorbed:",
+    "glycogenDepletionTitle": "Glycogen during the session",
     "axisYLabel": "Y: available glycogen (g / %)",
     "axisXLabel": "X: time",
     "stackTitle": "Your supplement stack",
@@ -3957,7 +3956,13 @@
     "stackColIntraSub": "During today's session",
     "stackColPostSub": "Post-session recovery",
     "stackInProtocol": "Already in today's protocol",
-    "stackEmptyColumn": "No product classified here"
+    "stackEmptyColumn": "No product classified here",
+    "chipFluid": "Fluids",
+    "glycogenIntakeLine": "During the session you take in ~{intake} g of CHO and absorb ~{absorbed} g · gut risk: {gutRisk}.",
+    "gutRiskLow": "low",
+    "gutRiskModerate": "moderate",
+    "gutRiskHigh": "high",
+    "recommendedToday": "Recommended today"
   },
   "HealthArchiveSection": {
     "reportArchive": "Report archive",

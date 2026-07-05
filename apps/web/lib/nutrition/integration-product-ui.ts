@@ -105,22 +105,24 @@ export function buildIntegrationQuantityHint(product: FuelingProduct, ctx: Integ
   if (product.timing.includes("pre") && (product.functionalFocus.includes("preworkout") || product.functionalFocus.includes("caffeine"))) {
     lines.push("Pre: dose singola 20–45 min prima; valutare tolleranza individuale alla caffeina.");
   }
+  // Testi in linguaggio umano (feedback 2026-07): mai gergo motore
+  // («target intra solver», «scala fueling ×1.00», «leve») nelle card prodotto.
   if (gPer != null && gPer > 0 && (product.timing.includes("intra") || product.timing.includes("pre")) && choH > 3) {
     const porzH = Math.max(0.25, choH / gPer);
     lines.push(
-      `CHO catalogo ~${gPer} g/porzione · target intra solver ~${round(choH, 0)} g/h (scala fueling ×${ctx.fuelingChoScale.toFixed(2)}) → ordine di grandezza ~${round(porzH, 1)} porzioni/h se questo fosse l'unico riferimento.`,
+      `≈${round(porzH, 1)} porzioni/h per coprire ~${round(choH, 0)} g/h di CHO (1 porzione = ${gPer} g).`,
     );
   } else if (gPer != null && gPer > 0) {
-    lines.push(`CHO dichiarato in catalogo ~${gPer} g/porzione; confronta con piano fueling del giorno.`);
+    lines.push(`1 porzione ≈ ${gPer} g di CHO.`);
   }
   if (ctx.energyAdequacyRatio != null && ctx.energyAdequacyRatio < 0.88) {
-    lines.push("Diario: energia sotto target — non stringere recovery; allinea con pasto principale.");
+    lines.push("Oggi hai mangiato sotto il target: non tagliare il recovery, abbinalo al pasto principale.");
   }
   if (ctx.proteinBiasPctPoints >= 2 && (product.functionalFocus.includes("protein") || product.functionalFocus.includes("eaa"))) {
-    lines.push(`Leve solver: bias proteico pasti +${ctx.proteinBiasPctPoints} pt — far coincidere recovery con piano pasti.`);
+    lines.push("Giornata a maggior fabbisogno proteico: prendi il recovery insieme al pasto.");
   }
   if (!lines.length) {
-    lines.push("Quantità: seguire etichetta e accordo con lo staff; leve giornata modulano training↔nutrizione.");
+    lines.push("Quantità: segui l'etichetta del prodotto e le indicazioni dello staff.");
   }
   return lines.slice(0, 2).join(" ");
 }

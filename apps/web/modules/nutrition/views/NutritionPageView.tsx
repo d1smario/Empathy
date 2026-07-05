@@ -2459,47 +2459,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         resolvedFuelingChoGPerHour: choPerHourSession,
       });
       const glyPlot = buildGlycogenPlotGeometry(glyc);
-      const hydrationTimeline = Array.from({ length: Math.max(1, Math.ceil(args.durationMin / 20)) }, (_, i) => {
-        const minute = i * 20;
-        return { minuteLabel: minute === 0 ? "0'" : `+${minute}'`, note: "500ml + mineral salts" };
-      });
-      const totalHydration = steps.reduce((s, st) => s + st.fluid, 0);
-      const totalCho = steps.reduce((s, st) => s + st.cho, 0);
-      const visualMetrics = [
-        {
-          label: "CHO/h",
-          value: round(choPerHourSession),
-          unit: "g/h",
-          pct: clamp((choPerHourSession / 130) * 100, 8, 100),
-          color: "#ff6b00",
-        },
-        {
-          label: "Total hydration",
-          value: round(totalHydration),
-          unit: "ml",
-          pct: clamp((totalHydration / 3000) * 100, 8, 100),
-          color: "#0ea5e9",
-        },
-        {
-          label: "Sodium/h",
-          value: round(sodiumMgPerHour),
-          unit: "mg/h",
-          pct: clamp((sodiumMgPerHour / 1200) * 100, 8, 100),
-          color: "#8b5cf6",
-        },
-        {
-          label: "Protocol kcal",
-          value: round(totalCho * 4),
-          unit: "kcal",
-          pct: clamp(((totalCho * 4) / 1000) * 100, 8, 100),
-          color: "#10b981",
-        },
-      ];
-      const opsCards = [
-        { label: "Session CHO", value: `${round(totalCho)} g` },
-        { label: "Session fluid", value: `${round(totalHydration)} ml` },
-        { label: "Steps", value: `${timelineSteps.length}` },
-      ];
+      /* Barre report («CHO/h / Total hydration / Sodium/h / Protocol kcal»),
+         timeline idratazione «500ml + mineral salts» e opsCards per pacchetto
+         RIMOSSE (feedback 2026-07): doppioni delle KPI in testa al pannello;
+         i liquidi per step sono già in ogni riga della timeline. */
       return {
         id: args.id,
         title: args.title,
@@ -2508,9 +2471,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         choPerHourSession: round(choPerHourSession, 1),
         steps,
         timelineSteps,
-        hydrationTimeline,
-        visualMetrics,
-        opsCards,
         glycogenDepletion: glyc,
         glycogenPlot: glyPlot,
       };
@@ -2583,7 +2543,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     fuelingPhysiology,
     fuelingMediaByKey,
     normalizedPreferredBrands,
-    sodiumMgPerHour,
     supplementCatalog,
   ]);
 
@@ -2718,52 +2677,27 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [profile, fuelingPlannedSummary, fuelingPhysiology, resolvedFuelingChoGPerHour],
   );
 
+  /** 4 numeri essenziali (feedback 2026-07): via «Gut delivery» (tecnico, vive
+      in diagnostica) e «Steps» (contatore inutile); etichette localizzate. */
   const fuelingOpsCards = useMemo(() => {
     const totalCho = fuelingSessionPackages.reduce((s, p) => s + p.steps.reduce((x, st) => x + st.cho, 0), 0);
     const totalFluid = fuelingSessionPackages.reduce((s, p) => s + p.steps.reduce((x, st) => x + st.fluid, 0), 0);
-    const totalSteps = fuelingSessionPackages.reduce((s, p) => s + p.timelineSteps.length, 0);
     return [
-      { label: "CHO total", value: `${round(totalCho)}`, unit: "g", tone: "amber", sub: "Pre + intra + post" },
-      { label: "Fluid total", value: `${round(totalFluid)}`, unit: "ml", tone: "cyan", sub: t("opsSessionTotal") },
-      { label: "Sodium", value: `${round(sodiumMgPerHour)}`, unit: "mg/h", tone: "violet", sub: t("opsHourlyTarget") },
-      { label: "Gut delivery", value: `${round(fuelingPhysiology.gutDeliveryPct)}`, unit: "%", tone: "green", sub: t("opsEstimatedAbsorption") },
-      { label: "Glycogen end", value: `${round(fuelingPlanGlycogenDepletion.finalRemaining)}`, unit: "g", tone: "rose", sub: t("opsPlanEnd") },
-      { label: "Steps", value: `${totalSteps}`, unit: "", tone: "slate", sub: t("opsOpenableActions") },
+      { label: t("opsChoTotal"), value: `${round(totalCho)}`, unit: "g", tone: "amber", sub: t("opsPreIntraPost") },
+      { label: t("opsFluidTotal"), value: `${round(totalFluid)}`, unit: "ml", tone: "cyan", sub: t("opsSessionTotal") },
+      { label: t("opsSodium"), value: `${round(sodiumMgPerHour)}`, unit: "mg/h", tone: "violet", sub: t("opsHourlyTarget") },
+      { label: t("opsGlycogenEnd"), value: `${round(fuelingPlanGlycogenDepletion.finalRemaining)}`, unit: "g", tone: "rose", sub: t("opsPlanEnd") },
     ];
-  }, [fuelingSessionPackages, sodiumMgPerHour, fuelingPhysiology.gutDeliveryPct, fuelingPlanGlycogenDepletion.finalRemaining, t]);
+  }, [fuelingSessionPackages, sodiumMgPerHour, fuelingPlanGlycogenDepletion.finalRemaining, t]);
 
   const selectedExecutedKj = useMemo(
     () => selectedExecutedSessions.reduce((sum, session) => sum + n(session.kj, 0), 0),
     [selectedExecutedSessions],
   );
 
-  const nutritionStateCards = useMemo<
-    Array<{ label: string; value: string; tone: "amber" | "cyan" | "green" | "rose" | "slate" }>
-  >(
-    () => [
-      {
-        label: "Bioenergetic",
-        value: `${round(bioenergeticModulation?.mitochondrialReadinessScore ?? 55)}/100`,
-        tone:
-          bioenergeticModulation?.state === "protective"
-            ? "rose"
-            : bioenergeticModulation?.state === "watch"
-              ? "amber"
-              : "cyan",
-      },
-      {
-        label: "Adaptation loop",
-        value: `${round(adaptationLoop?.adaptationScore ?? 55)}/100`,
-        tone:
-          adaptationLoop?.status === "regenerate"
-            ? "rose"
-            : adaptationLoop?.status === "watch"
-              ? "amber"
-              : "green",
-      },
-    ],
-    [adaptationLoop, bioenergeticModulation],
-  );
+  /* Card «Bioenergetic / Adaptation loop X/100» RIMOSSE dal workspace pasti
+     (feedback 2026-07): punteggi motore col default finto 55 — quel livello
+     vive nel pannello Previsioni della dashboard. */
 
   const garminPayload = useMemo(() => {
     const ftp = n(physio?.ftp_watts, 0);
@@ -3233,7 +3167,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               persistFoodExclusionToProfile={persistFoodExclusionToProfile}
               profileFoodExcludeBusy={profileFoodExcludeBusy}
               mealTabMicronutrientProps={mealTabMicronutrientProps}
-              nutritionStateCards={nutritionStateCards}
               mealConfirmations={mealConfirmationsForSelectedDate}
               mealConfirmBusySlot={mealConfirmBusySlot}
               persistMealConfirmation={persistMealConfirmation}
