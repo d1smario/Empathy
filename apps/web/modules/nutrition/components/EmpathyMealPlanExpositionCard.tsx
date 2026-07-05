@@ -5,15 +5,33 @@ import { useTranslations } from "next-intl";
 import {
   Activity,
   Apple,
+  Banana,
   Bed,
+  Beef,
+  Carrot,
+  Cherry,
+  Citrus,
   Coffee,
+  Cookie,
+  Croissant,
+  Droplet,
   Droplets,
+  Drumstick,
+  Egg,
+  Fish,
   Flame,
+  Grape,
+  Milk,
   Moon,
+  Nut,
+  Pill,
+  Salad,
   ShoppingBag,
+  Soup,
   Sunrise,
   Sun,
   TrendingUp,
+  Wheat,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +64,52 @@ function looksLikeMultiIngredientPortionHint(hint: string): boolean {
     s.includes("piatto") ||
     s.includes("combo")
   );
+}
+
+/**
+ * Icona-cibo deterministica dal nome (IT/EN): il dataset FDC locale non ha
+ * foto (image_url vuoto su tutte le righe, verificato 2026-07), quindi il
+ * thumb grande mostra un'icona coerente con l'alimento invece del placeholder
+ * generico. Solo mapping per parole chiave, zero AI. Ordine = priorità.
+ */
+const FOOD_ICON_RULES: Array<[RegExp, LucideIcon]> = [
+  [/uovo|uova|\begg/i, Egg],
+  [/salmone|salmon|tonno|tuna|merluzzo|sgombro|orata|branzino|pesce|fish|gamber|shrimp/i, Fish],
+  [/pollo|chicken|tacchino|turkey/i, Drumstick],
+  [/manzo|beef|vitello|maiale|pork|bresaola|prosciutto|\bham\b|carne/i, Beef],
+  [/latte|milk|yogurt|kefir|ricotta|formaggio|cheese|parmigiano|grana|mozzarella/i, Milk],
+  [/croissant|cornetto|brioche/i, Croissant],
+  [/biscott|cookie|fette biscottate/i, Cookie],
+  [/riso|rice|pasta|pane|bread|crack|avena|\boat|cereal|quinoa|farro|orzo|couscous|patat|potato/i, Wheat],
+  [/banana/i, Banana],
+  [/mela|apple/i, Apple],
+  [/carota|carrot|zucca|pumpkin/i, Carrot],
+  [/insalata|salad|verdur|spinaci|broccol|zucchin|lattuga|contorno|vegetabl|pepero|pomodor|tomato/i, Salad],
+  [/mandorl|noci|\bnut|almond|walnut|nocciol|anacard|pistacch|arachid|peanut|semi di|\bseed/i, Nut],
+  [/aranc|limone|lemon|citrus|agrum|pompelmo|grapefruit/i, Citrus],
+  [/\buva\b|grape\b/i, Grape],
+  [/mirtill|berr|frutti di bosco|cilieg|cherry|fragol|marmellata|\bjam\b/i, Cherry],
+  [/olio|\boil\b|burro|butter|avocado/i, Droplet],
+  [/caff|coffee|\btè\b|\btea\b/i, Coffee],
+  [/zuppa|minestra|soup|brodo|vellutata/i, Soup],
+  [/integrazion|integrator|supplement|whey|niacin|omega|vitamin|creatin|magnesio|ferro\b/i, Pill],
+];
+
+function foodItemIcon(name: string): LucideIcon {
+  for (const [re, icon] of FOOD_ICON_RULES) {
+    if (re.test(name)) return icon;
+  }
+  return Apple;
+}
+
+/** Tinta del thumb: macro dominante in kcal (CHO/PRO 4 kcal/g, FAT 9). */
+function foodThumbToneClass(carbsG: number, proteinG: number, fatG: number): string {
+  const cho = carbsG * 4;
+  const pro = proteinG * 4;
+  const fat = fatG * 9;
+  if (cho >= pro && cho >= fat) return "empathy-meal-expo-food-thumb--cho";
+  if (pro >= fat) return "empathy-meal-expo-food-thumb--pro";
+  return "empathy-meal-expo-food-thumb--fat";
 }
 
 function slotHeaderIcon(slot: MealSlotKey | "pre_sleep"): LucideIcon {
@@ -328,49 +392,54 @@ export function EmpathyMealPlanExpositionCard({
           items.map((food) => {
             const b = bandFromGi(food.ig);
             const busy = profileFoodExcludeBusyLabel === food.name.trim();
+            const FoodIcon = foodItemIcon(food.name);
             return (
               <li key={`${food.name}-${food.sourceIndex}`} className="empathy-meal-expo-food-card">
-                <div className="empathy-meal-expo-food-head">
-                  {/* Campo immagine alimento (placeholder; sostituibile con la foto quando disponibile) */}
-                  <div className="empathy-meal-expo-food-thumb" aria-hidden>
-                    <Apple className="h-5 w-5" strokeWidth={1.75} />
-                  </div>
-                  <div className="empathy-meal-expo-food-top">
-                    <div className="empathy-meal-expo-food-name-row">
-                      <span className="empathy-meal-expo-dot" aria-hidden />
-                      <span className="empathy-meal-expo-food-name">{food.name}</span>
-                    </div>
-                    <div className="empathy-meal-expo-food-pills">
-                      {food.weightG != null ? (
-                        <span className="empathy-meal-expo-pill empathy-meal-expo-pill--wt">{food.weightG}g</span>
-                      ) : null}
-                      <span className="empathy-meal-expo-pill empathy-meal-expo-pill--kcal">
-                        <Flame className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                        {food.kcal}
-                      </span>
-                      <span className={cn("empathy-meal-expo-pill", "empathy-meal-expo-pill--ig", giPillClass(b))}>
-                        IG {food.ig} · {giBandLabelIt(b)}
-                      </span>
-                    </div>
-                  </div>
+                {/* Thumb grande a tutta altezza: icona deterministica dal nome +
+                    tinta macro dominante (foto reale quando il dataset ne avrà). */}
+                <div
+                  className={cn(
+                    "empathy-meal-expo-food-thumb",
+                    foodThumbToneClass(food.carbsG, food.proteinG, food.fatG),
+                  )}
+                  aria-hidden
+                >
+                  <FoodIcon className="empathy-meal-expo-food-thumb-icon" strokeWidth={1.4} />
                 </div>
-                <div className="empathy-meal-expo-food-macros">
-                  <div className="empathy-meal-expo-pod empathy-meal-expo-pod--cho">
-                    <span className="empathy-meal-expo-pod-dot" />
-                    <span className="empathy-meal-expo-pod-lab">CHO</span>
-                    <span className="empathy-meal-expo-pod-val">{food.carbsG}g</span>
+                <div className="empathy-meal-expo-food-body">
+                  <div className="empathy-meal-expo-food-name-row">
+                    <span className="empathy-meal-expo-dot" aria-hidden />
+                    <span className="empathy-meal-expo-food-name">{food.name}</span>
                   </div>
-                  <div className="empathy-meal-expo-pod empathy-meal-expo-pod--pro">
-                    <span className="empathy-meal-expo-pod-dot" />
-                    <span className="empathy-meal-expo-pod-lab">PRO</span>
-                    <span className="empathy-meal-expo-pod-val">{food.proteinG}g</span>
+                  <div className="empathy-meal-expo-food-pills">
+                    {food.weightG != null ? (
+                      <span className="empathy-meal-expo-pill empathy-meal-expo-pill--wt">{food.weightG}g</span>
+                    ) : null}
+                    <span className="empathy-meal-expo-pill empathy-meal-expo-pill--kcal">
+                      <Flame className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                      {food.kcal}
+                    </span>
+                    <span className={cn("empathy-meal-expo-pill", "empathy-meal-expo-pill--ig", giPillClass(b))}>
+                      IG {food.ig} · {giBandLabelIt(b)}
+                    </span>
                   </div>
-                  <div className="empathy-meal-expo-pod empathy-meal-expo-pod--fat">
-                    <span className="empathy-meal-expo-pod-dot" />
-                    <span className="empathy-meal-expo-pod-lab">FAT</span>
-                    <span className="empathy-meal-expo-pod-val">{food.fatG}g</span>
+                  <div className="empathy-meal-expo-food-macros">
+                    <div className="empathy-meal-expo-pod empathy-meal-expo-pod--cho">
+                      <span className="empathy-meal-expo-pod-dot" />
+                      <span className="empathy-meal-expo-pod-lab">CHO</span>
+                      <span className="empathy-meal-expo-pod-val">{food.carbsG}g</span>
+                    </div>
+                    <div className="empathy-meal-expo-pod empathy-meal-expo-pod--pro">
+                      <span className="empathy-meal-expo-pod-dot" />
+                      <span className="empathy-meal-expo-pod-lab">PRO</span>
+                      <span className="empathy-meal-expo-pod-val">{food.proteinG}g</span>
+                    </div>
+                    <div className="empathy-meal-expo-pod empathy-meal-expo-pod--fat">
+                      <span className="empathy-meal-expo-pod-dot" />
+                      <span className="empathy-meal-expo-pod-lab">FAT</span>
+                      <span className="empathy-meal-expo-pod-val">{food.fatG}g</span>
+                    </div>
                   </div>
-                </div>
                 {showCoachControls && platformAdminView && onCoachRemove && onCoachExcludeProfile ? (
                   <div className="empathy-meal-expo-coach">
                     <button
@@ -390,6 +459,7 @@ export function EmpathyMealPlanExpositionCard({
                     </button>
                   </div>
                 ) : null}
+                </div>
               </li>
             );
           })
