@@ -45,6 +45,49 @@ const MITO_TONE: Record<TrainingBioenergeticModulationViewModel["state"], string
   protective: "border-rose-500/40 bg-rose-500/10 text-rose-200",
 };
 
+/** Accenti per card: il pannello deve reggere visivamente twin e striscia, non sparire. */
+const CARD_ACCENTS = {
+  purple: {
+    border: "border-purple-500/35",
+    kicker: "text-purple-300",
+    background: "linear-gradient(140deg, rgba(88,28,135,0.30), rgba(0,0,0,0.62))",
+    glow: "0 0 42px rgba(168,85,247,0.14), inset 0 1px 0 rgba(255,255,255,0.07)",
+  },
+  emerald: {
+    border: "border-emerald-500/35",
+    kicker: "text-emerald-300",
+    background: "linear-gradient(140deg, rgba(6,78,59,0.38), rgba(0,0,0,0.62))",
+    glow: "0 0 42px rgba(52,211,153,0.13), inset 0 1px 0 rgba(255,255,255,0.07)",
+  },
+  orange: {
+    border: "border-orange-500/35",
+    kicker: "text-orange-300",
+    background: "linear-gradient(140deg, rgba(124,45,18,0.34), rgba(0,0,0,0.62))",
+    glow: "0 0 42px rgba(251,146,60,0.13), inset 0 1px 0 rgba(255,255,255,0.07)",
+  },
+} as const;
+
+function PredictionCard({
+  accent,
+  kicker,
+  children,
+}: {
+  accent: keyof typeof CARD_ACCENTS;
+  kicker: string;
+  children: ReactNode;
+}) {
+  const tone = CARD_ACCENTS[accent];
+  return (
+    <article
+      className={`rounded-2xl border ${tone.border} p-4`}
+      style={{ background: tone.background, boxShadow: tone.glow }}
+    >
+      <p className={`m-0 font-mono text-[0.6rem] font-bold uppercase tracking-[0.18em] ${tone.kicker}`}>{kicker}</p>
+      {children}
+    </article>
+  );
+}
+
 function ActionLink({
   href,
   icon,
@@ -59,16 +102,16 @@ function ActionLink({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 transition-colors hover:border-purple-500/40 hover:bg-purple-500/10"
+      className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 transition-colors hover:border-orange-400/50 hover:bg-orange-500/10"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-purple-300">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-orange-500/25 bg-black/30 text-orange-300">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-gray-100">{label}</span>
-        <span className="block truncate text-[0.7rem] text-gray-500">{sub}</span>
+        <span className="block truncate text-[0.7rem] text-gray-400">{sub}</span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-gray-600 transition-colors group-hover:text-purple-300" aria-hidden />
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-500 transition-colors group-hover:text-orange-300" aria-hidden />
     </Link>
   );
 }
@@ -144,8 +187,7 @@ export function DashboardPredictionsPanel() {
       <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kicker")}</p>
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Adattamento: stato del loop piano↔risposta e mossa consigliata. */}
-        <article className="rounded-2xl border border-white/10 bg-black/30 p-4">
-          <p className="m-0 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-gray-500">{t("adaptationTitle")}</p>
+        <PredictionCard accent="purple" kicker={t("adaptationTitle")}>
           {loading && !slice ? (
             <p className="m-0 mt-3 text-sm text-gray-500">{t("loadingLabel")}</p>
           ) : loop ? (
@@ -166,11 +208,10 @@ export function DashboardPredictionsPanel() {
           ) : (
             <p className="m-0 mt-3 text-sm leading-relaxed text-gray-500">{t("noLoopData")}</p>
           )}
-        </article>
+        </PredictionCard>
 
         {/* Prontezza mitocondriale: scala automaticamente le prossime sedute. */}
-        <article className="rounded-2xl border border-white/10 bg-black/30 p-4">
-          <p className="m-0 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-gray-500">{t("mitoTitle")}</p>
+        <PredictionCard accent="emerald" kicker={t("mitoTitle")}>
           {loading && !slice ? (
             <p className="m-0 mt-3 text-sm text-gray-500">{t("loadingLabel")}</p>
           ) : mito ? (
@@ -197,12 +238,11 @@ export function DashboardPredictionsPanel() {
           ) : (
             <p className="m-0 mt-3 text-sm leading-relaxed text-gray-500">{t("noMitoData")}</p>
           )}
-        </article>
+        </PredictionCard>
 
         {/* Le previsioni operative vivono dove sta l'azione: solo rimandi. */}
-        <article className="rounded-2xl border border-white/10 bg-black/30 p-4">
-          <p className="m-0 mb-3 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-gray-500">{t("linksTitle")}</p>
-          <div className="space-y-2">
+        <PredictionCard accent="orange" kicker={t("linksTitle")}>
+          <div className="mt-3 space-y-2">
             <ActionLink
               href="/training/builder"
               icon={<Activity className="h-4 w-4" aria-hidden />}
@@ -222,11 +262,11 @@ export function DashboardPredictionsPanel() {
               sub={t("linkNutritionSub")}
             />
           </div>
-          <p className="m-0 mt-3 flex items-center gap-1.5 text-[0.68rem] text-gray-600">
+          <p className="m-0 mt-3 flex items-center gap-1.5 text-[0.68rem] text-gray-500">
             <Flame className="h-3 w-3" aria-hidden />
             {t("footnote")}
           </p>
-        </article>
+        </PredictionCard>
       </div>
     </section>
   );
