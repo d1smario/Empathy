@@ -7,7 +7,6 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
-import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
 import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
 import { Pro2Accordion } from "@/components/ui/empathy";
@@ -485,7 +484,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   /** Etichette aggiunte per la prossima rigenerazione (vincolo deterministico sul request). */
   const [coachSessionFoodExclusions, setCoachSessionFoodExclusions] = useState<string[]>([]);
   const [profileFoodExcludeBusy, setProfileFoodExcludeBusy] = useState<string | null>(null);
-  const [fuelingConfirmBusy, setFuelingConfirmBusy] = useState(false);
   /** Slot pasto in salvataggio conferma consumo (carosello Piano), null = nessuno. */
   const [mealConfirmBusySlot, setMealConfirmBusySlot] = useState<string | null>(null);
 
@@ -640,7 +638,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     selectedPlanDate,
     nutritionModuleWindow: nutritionModuleWindowRef.current,
     nutritionContextVersion,
-    enabled: pathname?.includes("/nutrition/predictor") || pathname?.includes("/nutrition/integration"),
+    // Integratori e Previsione vivono nel Piano (2026-07): l'enrichment pesante
+    // parte dopo il first paint della pagina unica.
+    enabled: subRoute === "meal-plan",
     onResearchTraces: setResearchTraceSummaries,
     onMetabolicModel: setMetabolicEfficiencyGenerativeModel,
     onCrossDomainRoadmap: setCrossDomainInterpretationRoadmap,
@@ -1315,24 +1315,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       dayTrainingAlsoMissing,
     };
   }, [profile, physio, selectedPlanSessions.length, routineRaceDay]);
-
-  const fuelingExecutionConfirmations = useMemo(() => {
-    const raw = record(profile?.nutrition_config).fueling_execution_confirmations;
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return {} as Record<string, { confirmed?: boolean; at?: string }>;
-    }
-    const out: Record<string, { confirmed?: boolean; at?: string }> = {};
-    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-      const vr = record(v);
-      out[k] = {
-        confirmed: Boolean(vr.confirmed),
-        at: typeof vr.at === "string" ? vr.at : undefined,
-      };
-    }
-    return out;
-  }, [profile?.nutrition_config]);
-
-  const fuelingConfirmedForSelectedDate = Boolean(fuelingExecutionConfirmations[selectedPlanDate]?.confirmed);
 
   /** Ml bevuti registrati per la data selezionata (nutrition_config.hydration_intake[date].ml). */
   const hydrationIntakeMlForSelectedDate = useMemo(() => {
@@ -3051,40 +3033,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     setSaving(false);
   }
 
-  async function persistFuelingExecutionConfirmation(nextConfirmed: boolean) {
-    if (!athleteId || !profile) return;
-    setFuelingConfirmBusy(true);
-    setError(null);
-    const prevConfigSnapshot = nutritionConfigRef.current;
-    try {
-      const existingNutrition = record(nutritionConfigRef.current ?? profile.nutrition_config);
-      const prev = record(existingNutrition.fueling_execution_confirmations);
-      const merged: Record<string, unknown> = { ...prev };
-      if (nextConfirmed) {
-        merged[selectedPlanDate] = { confirmed: true, at: new Date().toISOString() };
-      } else {
-        delete merged[selectedPlanDate];
-      }
-      const nextConfig = {
-        ...existingNutrition,
-        fueling_execution_confirmations: merged,
-      };
-      // Ref aggiornato PRIMA dell'await + coda FIFO: raffiche concatenate e serializzate.
-      nutritionConfigRef.current = nextConfig;
-      await enqueueNutritionConfigSave(() =>
-        saveNutritionProfileConfig({
-          athleteId,
-          nutrition_config: nextConfig,
-          routine_config: record(profile.routine_config),
-        }),
-      );
-      applyNutritionConfigLocally(nextConfig);
-    } catch (err) {
-      nutritionConfigRef.current = prevConfigSnapshot;
-      setError(err instanceof Error ? err.message : "Failed to save fueling confirmation");
-    }
-    setFuelingConfirmBusy(false);
-  }
+  /* Conferma «Assunzione rifornimento» rimossa (feedback 2026-07): doppione
+     della conferma per pasto del carosello. */
 
   /**
    * Applica subito in locale un nutrition_config appena salvato (stato profile
@@ -3350,21 +3300,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         <p className="text-gray-500">{t("noActiveAthlete")}</p>
       ) : (
         <>
-          {/* Aree del modulo: subnav consolidato in UN solo mount (inerte nelle schede admin, v2). */}
-          <section className="viz-card builder-panel space-y-4" style={{ marginBottom: "12px" }}>
-            <div className="flex flex-col gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("nutritionAreas")}</p>
-                <div
-                  className={adminScoped ? "pointer-events-none cursor-default opacity-50" : undefined}
-                  title={adminScoped ? t("availableInDedicatedTab") : undefined}
-                  aria-disabled={adminScoped || undefined}
-                >
-                  <NutritionSubnav />
-                </div>
-              </div>
-            </div>
-          </section>
+          {/* La sezione «Aree nutrition» è stata fusa nel primary job del Piano
+              (pillola + titolo + selettore giorno su una riga, 2026-07). */}
 
           {/* PRIMARY JOB sopra la piega: scegli il giorno e genera il piano pasti — UNA sola CTA primaria. */}
           {subRoute === "meal-plan" ? (
@@ -3409,8 +3346,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               profileFoodExcludeBusy={profileFoodExcludeBusy}
               mealTabMicronutrientProps={mealTabMicronutrientProps}
               nutritionStateCards={nutritionStateCards}
-              saving={saving}
-              handleSaveNutrition={handleSaveNutrition}
               nutritionSectorBoxes={nutritionSectorBoxes}
               functionalFoodRecommendations={functionalFoodRecommendations}
               mealConfirmations={mealConfirmationsForSelectedDate}
@@ -3427,52 +3362,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {/* Selettore di contesto PRIMA dei numeri per le aree giorno-dipendenti (nel meal plan è nel primary job). */}
-          {subRoute !== "meal-plan" ? (
-            <section
-              id="mod-giorno"
-              className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-3 sm:px-5"
-            >
-              <div className="flex flex-col gap-3">
-                <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("dayToDisplay")}</span>
-                <NutritionPlanDatePicker
-                  value={selectedPlanDate}
-                  onChange={setSelectedPlanDate}
-                  minOffsetDays={-400}
-                  maxOffsetDays={400}
-                  className="w-full"
-                />
-              </div>
-            </section>
-          ) : null}
-
-          {/* DIARIO eliminato (2026-07): il PIANO è l'unica pagina della giornata.
-              Registro, conferme pasti/fueling e idratazione vivono nel companion;
-              le route /nutrition/today e /nutrition/diary reindirizzano al Piano. */}
-          {subRoute === "fueling" || subRoute === "meal-plan" ? (
-            <FuelingSection
-              mode={subRoute === "meal-plan" ? "protocol" : "full"}
-              athleteId={athleteId}
-              selectedPlanDate={selectedPlanDate}
-              fuelingConfirmBusy={fuelingConfirmBusy}
-              saving={saving}
-              fuelingConfirmedForSelectedDate={fuelingConfirmedForSelectedDate}
-              fuelingExecutionConfirmations={fuelingExecutionConfirmations}
-              persistFuelingExecutionConfirmation={persistFuelingExecutionConfirmation}
-              fuelingReadiness={fuelingReadiness}
-              fuelingOpsCards={fuelingOpsCards}
-              fuelingSessionPackages={fuelingSessionPackages}
-              recoverySummary={recoverySummary}
-              showTech={showTech}
-              fuelingTrainingContext={fuelingTrainingContext}
-              fuelingIntraChoSplitBySession={fuelingIntraChoSplitBySession}
-              knowledgeFuelingHints={knowledgeFuelingHints}
-              nutritionPerformanceIntegration={nutritionPerformanceIntegration}
-              fuelingPhysiology={fuelingPhysiology}
-            />
-          ) : null}
-
-          {subRoute === "integration" ? (
+          {/* Integratori DENTRO il Piano, sotto pasti e alimentazione (2026-07:
+              Strumenti eliminato — /nutrition/integration reindirizza qui). */}
+          {subRoute === "meal-plan" ? (
             <IntegrationSection
               integrationDynamicsSummary={integrationDynamicsSummary}
               integrationStackSummary={integrationStackSummary}
@@ -3495,7 +3387,30 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {subRoute === "predictor" ? (
+          {/* DIARIO eliminato (2026-07): il PIANO è l'unica pagina della giornata.
+              Registro, conferme pasti e idratazione vivono nel companion;
+              today/diary/fueling/integration/predictor/tools reindirizzano qui. */}
+          {subRoute === "meal-plan" ? (
+            <FuelingSection
+              mode="protocol"
+              athleteId={athleteId}
+              selectedPlanDate={selectedPlanDate}
+              fuelingReadiness={fuelingReadiness}
+              fuelingOpsCards={fuelingOpsCards}
+              fuelingSessionPackages={fuelingSessionPackages}
+              recoverySummary={recoverySummary}
+              showTech={showTech}
+              fuelingTrainingContext={fuelingTrainingContext}
+              fuelingIntraChoSplitBySession={fuelingIntraChoSplitBySession}
+              knowledgeFuelingHints={knowledgeFuelingHints}
+              nutritionPerformanceIntegration={nutritionPerformanceIntegration}
+              fuelingPhysiology={fuelingPhysiology}
+            />
+          ) : null}
+
+          {/* Previsione dentro il Piano, dopo il rifornimento (alimenta le scelte
+              di fueling); accanto, il salvataggio delle sue manopole. */}
+          {subRoute === "meal-plan" ? (
             <PredictorSection
               predictorSport={predictorSport}
               setPredictorSport={setPredictorSport}
@@ -3516,6 +3431,24 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
+          {/* Salva le manopole di previsione/fueling nel profilo: vive qui,
+              accanto a chi le modifica (spostato dal fondo dei pasti, 2026-07). */}
+          {subRoute === "meal-plan" ? (
+            <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
+                  onClick={() => void handleSaveNutrition()}
+                >
+                  {saving ? t("savingLabel") : t("savePredictorFuelingConfig")}
+                </button>
+                <span className="text-xs text-gray-500">{t("savePredictorFuelingHint")}</span>
+              </div>
+            </section>
+          ) : null}
+
           {/* In fondo: accordion unico «Dettagli e motore» (metodologia, parametri, diagnostica coach/admin). */}
           <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
             <Pro2Accordion
@@ -3524,92 +3457,61 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               subtitle={t("howItWorksSubtitle")}
             >
               <div className="space-y-5 text-sm text-gray-300">
+                {/* «Come funziona» rimosso (feedback 2026-07): in futuro un popup
+                    di info dedicato. Qui restano solo il toggle aderenza e la
+                    diagnostica tecnica coach/admin. */}
                 {subRoute === "meal-plan" ? (
-                  <>
-                    <div>
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("mealPlanHowTitle")}</p>
-                      <p className="mt-1 leading-relaxed text-gray-400">
-                        {t("mealPlanHowBody")}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                      <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                        {t("adherenceAdaptationTitle")}
-                      </p>
-                      <label className="inline-flex items-center gap-2 text-sm text-gray-200">
-                        <input
-                          type="checkbox"
-                          checked={adherenceOptIn}
-                          disabled={saving || adherenceConfigLoading}
-                          onChange={(event) => setAdherenceOptIn(event.target.checked)}
-                        />
-                        {t("adherenceAdaptationToggle")}
-                      </label>
-                      <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
-                        {t("adherenceAdaptationHint")}
-                      </p>
-                    </div>
-                  </>
-                ) : null}
-
-                {subRoute === "fueling" || subRoute === "meal-plan" ? (
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("fuelingHowTitle")}</p>
-                    <p className="mt-1 leading-relaxed text-gray-400">
-                      {t("fuelingHowBody")}
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                    <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+                      {t("adherenceAdaptationTitle")}
+                    </p>
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={adherenceOptIn}
+                        disabled={saving || adherenceConfigLoading}
+                        onChange={(event) => setAdherenceOptIn(event.target.checked)}
+                      />
+                      {t("adherenceAdaptationToggle")}
+                    </label>
+                    <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
+                      {t("adherenceAdaptationHint")}
                     </p>
                   </div>
                 ) : null}
 
-                {subRoute === "integration" ? (
-                  <>
-                    <div>
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("integrationHowTitle")}</p>
-                      <p className="mt-1 leading-relaxed text-gray-400">
-                        {t("integrationHowBody")}
-                      </p>
-                    </div>
-                    <details className="collapsible-card" style={{ marginBottom: 0 }}>
-                      <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-                        {t("brandsCatalogTokens", {
-                          count: profileSupplements.length
-                            ? t("entriesCount", { n: profileSupplements.length })
-                            : t("defaultSet"),
-                        })}
-                      </summary>
-                      <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
-                        {t("supplementsMatchingNote")}
-                      </p>
-                      {profileSupplements.length ? (
-                        <ul
-                          className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
-                          style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
-                        >
-                          {profileSupplements.map((token) => (
-                            <li
-                              key={token}
-                              className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.65rem] font-semibold text-gray-300"
-                            >
-                              {token}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
-                          {t("noProfileTokens")}
-                        </p>
-                      )}
-                    </details>
-                  </>
-                ) : null}
-
-                {subRoute === "predictor" ? (
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("predictorHowTitle")}</p>
-                    <p className="mt-1 leading-relaxed text-gray-400">
-                      {t("predictorHowBody")}
+                {showTech && subRoute === "meal-plan" ? (
+                  <details className="collapsible-card" style={{ marginBottom: 0 }}>
+                    <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                      {t("brandsCatalogTokens", {
+                        count: profileSupplements.length
+                          ? t("entriesCount", { n: profileSupplements.length })
+                          : t("defaultSet"),
+                      })}
+                    </summary>
+                    <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
+                      {t("supplementsMatchingNote")}
                     </p>
-                  </div>
+                    {profileSupplements.length ? (
+                      <ul
+                        className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
+                        style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
+                      >
+                        {profileSupplements.map((token) => (
+                          <li
+                            key={token}
+                            className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.65rem] font-semibold text-gray-300"
+                          >
+                            {token}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
+                        {t("noProfileTokens")}
+                      </p>
+                    )}
+                  </details>
                 ) : null}
 
                 {showTech && subRoute === "meal-plan" ? (
@@ -3626,7 +3528,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </div>
                 ) : null}
 
-                {showTech && (subRoute === "fueling" || subRoute === "meal-plan") && fuelingReadiness.ready ? (
+                {showTech && subRoute === "meal-plan" && fuelingReadiness.ready ? (
                   <div className="space-y-3 border-t border-white/10 pt-4">
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
                       {t("technicalDiagnosticsFueling")}

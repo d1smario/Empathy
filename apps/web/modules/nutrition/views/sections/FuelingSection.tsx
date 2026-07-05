@@ -63,11 +63,6 @@ type FuelingSessionPackage = {
 export type FuelingSectionProps = {
   athleteId: string | null;
   selectedPlanDate: string;
-  fuelingConfirmBusy: boolean;
-  saving: boolean;
-  fuelingConfirmedForSelectedDate: boolean;
-  fuelingExecutionConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
-  persistFuelingExecutionConfirmation: (nextConfirmed: boolean) => Promise<void>;
   fuelingReadiness: {
     ready: boolean;
     missing: string[];
@@ -95,11 +90,6 @@ export type FuelingSectionProps = {
 export function FuelingSection({
   athleteId,
   selectedPlanDate,
-  fuelingConfirmBusy,
-  saving,
-  fuelingConfirmedForSelectedDate,
-  fuelingExecutionConfirmations,
-  persistFuelingExecutionConfirmation,
   fuelingReadiness,
   fuelingOpsCards,
   fuelingSessionPackages,
@@ -114,45 +104,6 @@ export function FuelingSection({
 }: FuelingSectionProps) {
   const t = useTranslations("FuelingSection");
 
-  const confirmationBlock = athleteId ? (
-    <section
-      className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
-      style={{ marginBottom: 12 }}
-    >
-      <h3 className="viz-title text-base">{t("intakeTitle")}</h3>
-      <p className="mt-1 text-sm text-gray-400">
-        {t.rich("intakeDescription", {
-          date: selectedPlanDate,
-          b: (chunks) => <strong className="text-white">{chunks}</strong>,
-        })}
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          className="btn-nutrition-cta"
-          disabled={fuelingConfirmBusy || saving}
-          onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
-        >
-          {fuelingConfirmBusy
-            ? t("saving")
-            : fuelingConfirmedForSelectedDate
-              ? t("undoConfirmation")
-              : t("confirmIntake")}
-        </button>
-        {fuelingConfirmedForSelectedDate ? (
-          <span className="text-xs text-emerald-300">
-            {t("confirmed")}
-            {fuelingExecutionConfirmations[selectedPlanDate]?.at
-              ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("en-US")}`
-              : null}
-          </span>
-        ) : (
-          <span className="text-xs text-gray-500">{t("noConfirmation")}</span>
-        )}
-      </div>
-    </section>
-  ) : null;
-
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       {/* Nel Piano (mode="protocol") niente banner introduttivo: il pannello sotto
@@ -165,9 +116,8 @@ export function FuelingSection({
           </p>
         </header>
       ) : null}
-      {/* Conferma assunzione anche in mode="protocol": col Diario eliminato
-          (2026-07) il Piano è l'unica pagina della giornata. */}
-      {confirmationBlock}
+      {/* Conferma «Assunzione rifornimento» RIMOSSA (feedback 2026-07):
+          doppione della conferma per pasto del carosello. */}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
           <h3 className="viz-title">{t("planTitle")}</h3>

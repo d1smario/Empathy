@@ -1,17 +1,6 @@
-import type { Metadata } from "next";
-import nextDynamic from "next/dynamic";
+import { redirect } from "next/navigation";
 
-const NutritionPageView = nextDynamic(() => import("@/modules/nutrition/views/NutritionPageView"), {
-  loading: () => <div className="min-h-[40vh] animate-pulse rounded-2xl bg-white/5" aria-hidden />,
-});
-
-export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "Nutrition · Integrazione",
-  description: "Pathway, USDA e stack integrativo.",
-};
-
-export default function NutritionIntegrationPage() {
-  return <NutritionPageView subRoute="integration" />;
+/** Strumenti eliminato (2026-07): integratori e previsione vivono nel Piano, bioenergetica in Physiology. */
+export default function NutritionRedirectPage() {
+  redirect("/nutrition/meal-plan");
 }

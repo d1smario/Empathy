@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
+import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
 import { round } from "@/lib/nutrition/nutrition-view-helpers";
 import {
   NutritionMealPlanDailyTargets,
@@ -79,8 +80,6 @@ export type MealPlanSectionProps = {
   profileFoodExcludeBusy: string | null;
   mealTabMicronutrientProps: NutritionMicronutrientGridProps;
   nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
-  saving: boolean;
-  handleSaveNutrition: () => void;
   nutritionSectorBoxes: AdaptationSectorBoxVm[];
   functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
   /** Conferme di consumo per pasto del giorno selezionato (carosello companion). */
@@ -140,8 +139,6 @@ export function MealPlanSection({
   profileFoodExcludeBusy,
   mealTabMicronutrientProps,
   nutritionStateCards,
-  saving,
-  handleSaveNutrition,
   nutritionSectorBoxes,
   functionalFoodRecommendations,
   mealConfirmations,
@@ -165,18 +162,22 @@ export function MealPlanSection({
           className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
           style={{ marginBottom: "12px" }}
         >
-          <h2 className="viz-title text-base">{t("dayPlanTitle")}</h2>
-          <p className="mt-1 text-sm text-gray-400">
-            {t("dayPlanDescription")}
-          </p>
+          {/* Una riga sola (feedback 2026-07): pillola Piano + titolo + selettore
+              giorno — niente sezione «Aree nutrition» separata né descrizione. */}
+          <div className="flex flex-wrap items-center gap-3">
+            <NutritionSubnav />
+            <h2 className="viz-title min-w-0 text-base">{t("dayPlanTitle")}</h2>
+            <div className="min-w-[260px] flex-1">
+              <NutritionPlanDatePicker
+                value={selectedPlanDate}
+                onChange={setSelectedPlanDate}
+                minOffsetDays={-400}
+                maxOffsetDays={400}
+                className="w-full"
+              />
+            </div>
+          </div>
           <div className="mt-3 flex flex-col gap-3">
-            <NutritionPlanDatePicker
-              value={selectedPlanDate}
-              onChange={setSelectedPlanDate}
-              minOffsetDays={-400}
-              maxOffsetDays={400}
-              className="w-full"
-            />
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
               {/* Generazione piano: azione riservata allo staff (admin). Nascosta ad atleta e coach. */}
               {platformAdminView ? (
@@ -296,8 +297,6 @@ export function MealPlanSection({
           profileFoodExcludeBusy={profileFoodExcludeBusy}
           mealTabMicronutrientProps={mealTabMicronutrientProps}
           nutritionStateCards={nutritionStateCards}
-          saving={saving}
-          onSaveNutrition={handleSaveNutrition}
           selectedPlanDate={selectedPlanDate}
           mealConfirmations={mealConfirmations}
           mealConfirmBusySlot={mealConfirmBusySlot}

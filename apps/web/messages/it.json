@@ -2675,7 +2675,10 @@
     "predictorSubOxidativeDemand": "Richiesta ossidativa",
     "predictorSubEstimatedTotalAvailable": "Stima totale disponibile",
     "predictorSubRiskHorizon": "Orizzonte di rischio",
-    "predictorSubWithCurrentFueling": "Con rifornimento corrente"
+    "predictorSubWithCurrentFueling": "Con rifornimento corrente",
+    "savingLabel": "Salvataggio…",
+    "savePredictorFuelingConfig": "Salva impostazioni previsione e rifornimento",
+    "savePredictorFuelingHint": "Persiste nel profilo le manopole di previsione e rifornimento (non rigenera il piano)."
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Giorno precedente",

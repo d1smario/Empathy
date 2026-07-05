@@ -2675,7 +2675,10 @@
     "predictorSubOxidativeDemand": "Oxidative demand",
     "predictorSubEstimatedTotalAvailable": "Estimated total available",
     "predictorSubRiskHorizon": "Risk horizon",
-    "predictorSubWithCurrentFueling": "With current fueling"
+    "predictorSubWithCurrentFueling": "With current fueling",
+    "savingLabel": "Saving…",
+    "savePredictorFuelingConfig": "Save predictor and fueling settings",
+    "savePredictorFuelingHint": "Persists predictor and fueling knobs to the profile (does not regenerate the plan)."
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Previous day",

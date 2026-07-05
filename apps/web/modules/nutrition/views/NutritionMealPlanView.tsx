@@ -283,8 +283,6 @@ export type NutritionMealPlanWorkspaceProps = {
   profileFoodExcludeBusy: string | null;
   mealTabMicronutrientProps: NutritionMicronutrientGridProps;
   nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
-  saving: boolean;
-  onSaveNutrition: () => void;
   /** Companion di giornata: conferme consumo per pasto + quick-add extra (carosello). */
   selectedPlanDate: string;
   mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
@@ -327,8 +325,6 @@ export function NutritionMealPlanWorkspace({
   profileFoodExcludeBusy,
   mealTabMicronutrientProps,
   nutritionStateCards,
-  saving,
-  onSaveNutrition,
   selectedPlanDate,
   mealConfirmations,
   mealConfirmBusySlot,
@@ -674,11 +670,12 @@ export function NutritionMealPlanWorkspace({
               </p>
             </div>
           ) : null}
-          <Pro2Accordion
-            accent="amber"
-            title={t("micronutrientsTitle")}
-            subtitle={t("micronutrientsSubtitle")}
-          >
+          {/* Micronutrienti SEMPRE aperti (feedback 2026-07: niente tendina). */}
+          <div className="mt-4">
+            <div className="mb-3">
+              <h3 className="viz-title text-base">{t("micronutrientsTitle")}</h3>
+              <p className="mt-0.5 text-xs text-gray-400">{t("micronutrientsSubtitle")}</p>
+            </div>
             <section className="nutrition-report-shell">
               <div className="nutrition-meal-plan-micro">
                 <NutritionMicronutrientDailyBoard {...mealPlanMicroBoardProps} />
@@ -695,25 +692,12 @@ export function NutritionMealPlanWorkspace({
                 </div>
               ))}
             </div>
-          </Pro2Accordion>
+          </div>
         </section>
       </section>
-
-      <section className="viz-card builder-panel">
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            disabled={saving}
-            className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
-            onClick={onSaveNutrition}
-          >
-            {saving ? t("saving") : t("saveNutritionConfig")}
-          </button>
-          <span className="text-xs text-gray-500">
-            {t("saveNutritionHint")}
-          </span>
-        </div>
-      </section>
+      {/* Bottone «Salva configurazione nutrizione» spostato accanto alla
+          Previsione (2026-07): salva le manopole previsione/fueling, che ora
+          vivono nel Piano — in fondo ai pasti confondeva. */}
     </>
   );
 }
