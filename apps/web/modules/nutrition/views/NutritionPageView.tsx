@@ -379,6 +379,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   /** Firma input solver dell'ultimo applyModuleData: dati identici → niente reset di piano/selector (evita doppia rigenerazione su revisit). */
   const lastSolverInputsSigRef = useRef<string | null>(null);
   /**
+   * nutrition_config più recente, aggiornato SINCRONO (prima dell'await e dei
+   * re-render): le scritture a raffica (±ml, conferme) leggono da qui, non dal
+   * profile catturato nel render — chiude la race residua a stesso frame.
+   */
+  const nutritionConfigRef = useRef<Record<string, unknown> | null>(null);
+  /**
    * La finestra modulo vive in un ref: questo stato la rende OSSERVABILE dagli
    * effetti (allineamento pathway del giorno, espansione on-demand). Senza,
    * tolta l'espansione eager, la prima data scelta fuori ±7 non riallineava mai
@@ -792,6 +798,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         const pl = (data.planned as PlannedRow[]) ?? [];
 
         setProfile(p);
+        nutritionConfigRef.current = record(p?.nutrition_config);
         setPhysio(ph);
         setPhysiologyState(physiology);
         setTwinState(twin);
@@ -3048,8 +3055,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!athleteId || !profile) return;
     setFuelingConfirmBusy(true);
     setError(null);
+    const prevConfigSnapshot = nutritionConfigRef.current;
     try {
-      const existingNutrition = record(profile.nutrition_config);
+      const existingNutrition = record(nutritionConfigRef.current ?? profile.nutrition_config);
       const prev = record(existingNutrition.fueling_execution_confirmations);
       const merged: Record<string, unknown> = { ...prev };
       if (nextConfirmed) {
@@ -3061,13 +3069,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         ...existingNutrition,
         fueling_execution_confirmations: merged,
       };
-      await saveNutritionProfileConfig({
-        athleteId,
-        nutrition_config: nextConfig,
-        routine_config: record(profile.routine_config),
-      });
+      // Ref aggiornato PRIMA dell'await + coda FIFO: raffiche concatenate e serializzate.
+      nutritionConfigRef.current = nextConfig;
+      await enqueueNutritionConfigSave(() =>
+        saveNutritionProfileConfig({
+          athleteId,
+          nutrition_config: nextConfig,
+          routine_config: record(profile.routine_config),
+        }),
+      );
       applyNutritionConfigLocally(nextConfig);
     } catch (err) {
+      nutritionConfigRef.current = prevConfigSnapshot;
       setError(err instanceof Error ? err.message : "Failed to save fueling confirmation");
     }
     setFuelingConfirmBusy(false);
@@ -3080,8 +3093,23 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
    * (verifica avversariale 2026-07). Niente più reload del modulo per queste
    * micro-scritture: il server ha già confermato, il locale si allinea qui.
    */
+  /**
+   * Coda FIFO delle scritture nutrition_config: la PATCH sostituisce l'intero
+   * documento, quindi PATCH concorrenti in volo vincono per ordine d'ARRIVO,
+   * non di invio (burst-test live: 3 click stesso tick → 2 registrati).
+   * Serializzandole, l'ultima inviata — che col ref contiene già la somma di
+   * tutte — atterra per ultima.
+   */
+  const nutritionConfigSaveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueueNutritionConfigSave = useCallback(<T,>(job: () => Promise<T>): Promise<T> => {
+    const next = nutritionConfigSaveQueueRef.current.then(job, job);
+    nutritionConfigSaveQueueRef.current = next.catch(() => undefined);
+    return next;
+  }, []);
+
   const applyNutritionConfigLocally = useCallback(
     (nextNutritionConfig: Record<string, unknown>) => {
+      nutritionConfigRef.current = nextNutritionConfig;
       setProfile((prev) => (prev ? { ...prev, nutrition_config: nextNutritionConfig } : prev));
       if (nutritionModuleCacheId === athleteId && nutritionModuleCache && !nutritionModuleCache.error) {
         const cachedProfile = nutritionModuleCache.profile;
@@ -3101,8 +3129,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!athleteId || !profile) return;
     setMealConfirmBusySlot(slotKey);
     setError(null);
+    const prevConfigSnapshot = nutritionConfigRef.current;
     try {
-      const existingNutrition = record(profile.nutrition_config);
+      const existingNutrition = record(nutritionConfigRef.current ?? profile.nutrition_config);
       const prevAll = record(existingNutrition.meal_confirmations);
       const prevDay = record(prevAll[selectedPlanDate]);
       const nextDay: Record<string, unknown> = { ...prevDay };
@@ -3121,13 +3150,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         ...existingNutrition,
         meal_confirmations: merged,
       };
-      await saveNutritionProfileConfig({
-        athleteId,
-        nutrition_config: nextConfig,
-        routine_config: record(profile.routine_config),
-      });
+      // Ref aggiornato PRIMA dell'await + coda FIFO: raffiche concatenate e serializzate.
+      nutritionConfigRef.current = nextConfig;
+      await enqueueNutritionConfigSave(() =>
+        saveNutritionProfileConfig({
+          athleteId,
+          nutrition_config: nextConfig,
+          routine_config: record(profile.routine_config),
+        }),
+      );
       applyNutritionConfigLocally(nextConfig);
     } catch (err) {
+      nutritionConfigRef.current = prevConfigSnapshot;
       setError(err instanceof Error ? err.message : "Failed to save meal confirmation");
     }
     setMealConfirmBusySlot(null);
@@ -3139,8 +3173,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!athleteId || !profile) return;
     setHydrationIntakeBusy(true);
     setError(null);
+    const prevConfigSnapshot = nutritionConfigRef.current;
     try {
-      const existingNutrition = record(profile.nutrition_config);
+      const existingNutrition = record(nutritionConfigRef.current ?? profile.nutrition_config);
       const prevAll = record(existingNutrition.hydration_intake);
       const prevMl = Number(record(prevAll[selectedPlanDate]).ml);
       const nextMl = Math.max(0, Math.min(20000, (Number.isFinite(prevMl) ? prevMl : 0) + deltaMl));
@@ -3154,13 +3189,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         ...existingNutrition,
         hydration_intake: merged,
       };
-      await saveNutritionProfileConfig({
-        athleteId,
-        nutrition_config: nextConfig,
-        routine_config: record(profile.routine_config),
-      });
+      // Ref aggiornato PRIMA dell'await + coda FIFO: raffiche concatenate e serializzate.
+      nutritionConfigRef.current = nextConfig;
+      await enqueueNutritionConfigSave(() =>
+        saveNutritionProfileConfig({
+          athleteId,
+          nutrition_config: nextConfig,
+          routine_config: record(profile.routine_config),
+        }),
+      );
       applyNutritionConfigLocally(nextConfig);
     } catch (err) {
+      nutritionConfigRef.current = prevConfigSnapshot;
       setError(err instanceof Error ? err.message : "Failed to save hydration intake");
     }
     setHydrationIntakeBusy(false);

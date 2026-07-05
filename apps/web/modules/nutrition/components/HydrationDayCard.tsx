@@ -85,14 +85,17 @@ export function HydrationDayCard({
           </div>
           <p className="mt-1 text-xs text-gray-400">{t("subtitle")}</p>
         </div>
-        <div className="text-right">
+        {/* Etichetta e minimo AFFIANCO al numero, non sotto (feedback utente 2026-07). */}
+        <div className="flex items-center gap-2.5">
           <p className="text-3xl font-black tabular-nums text-cyan-200">
             {liters(routine.totalTargetMl)} <span className="text-base font-bold text-cyan-300/70">L</span>
           </p>
-          <p className="text-[0.65rem] uppercase tracking-wider text-gray-500">{t("dailyTotal")}</p>
-          {minDailyMl != null && minDailyMl > 0 ? (
-            <p className="text-[0.65rem] text-gray-500">{t("minDaily", { liters: liters(minDailyMl) })}</p>
-          ) : null}
+          <div className="text-left leading-tight">
+            <p className="text-[0.65rem] uppercase tracking-wider text-gray-500">{t("dailyTotal")}</p>
+            {minDailyMl != null && minDailyMl > 0 ? (
+              <p className="text-[0.65rem] text-gray-500">{t("minDaily", { liters: liters(minDailyMl) })}</p>
+            ) : null}
+          </div>
         </div>
       </div>
 
