@@ -25,6 +25,7 @@ import {
   EmpathyMealPlanExpositionCard,
   EmpathyMealPlanGlycemicLegend,
 } from "@/modules/nutrition/components/EmpathyMealPlanExpositionCard";
+import { HydrationDayCard } from "@/modules/nutrition/components/HydrationDayCard";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { PathwayMealSlotKey } from "@/lib/nutrition/pathway-meal-usda-slots";
 
@@ -451,31 +452,9 @@ export function NutritionMealPlanWorkspace({
                 <EmpathyMealPlanGlycemicLegend />
                 {/* Σ kcal USDA assemblato: vive in UN solo posto, nel «Bilancio kcal» del target giornaliero. */}
               </div>
-              <details className="collapsible-card" style={{ marginBottom: 12 }}>
-                <summary style={{ fontSize: 13, cursor: "pointer" }}>{t("legalNoticeSummary")}</summary>
-                <p className="muted-copy" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>
-                  {intelligentMealPlan.disclaimer}
-                </p>
-                <p className="muted-copy" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                  {intelligentMealPlan.dayInteractionSummary}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
-                      router.push("/nutrition/integration");
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold text-amber-100 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20"
-                  >
-                    <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-                    {t("goToIntegrationArrow")}
-                  </button>
-                  <span className="text-[10px] text-gray-500">
-                    {t("integrationDetailsCollected")}
-                  </span>
-                </div>
-              </details>
+              {/* «Avviso legale e note aggiuntive» rimosso (feedback utente 2026-07):
+                  il disclaimer piattaforma vive in /termini, il rimando a Integratori
+                  sta già in «Adattamento del giorno». */}
               {showTech ? (
               <details className="collapsible-card" style={{ marginBottom: 12 }}>
                 <summary style={{ fontSize: 13, cursor: "pointer" }}>
@@ -533,44 +512,7 @@ export function NutritionMealPlanWorkspace({
               </details>
               ) : null}
               {intelligentMealPlan.hydrationRoutine ? (
-                <details className="collapsible-card" style={{ marginBottom: 12 }}>
-                  <summary style={{ fontSize: 13, cursor: "pointer" }}>{t("hydrationDetailSummary")}</summary>
-                  <p className="nutrition-muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
-                    {t("hydrationIntro", {
-                      total: intelligentMealPlan.hydrationRoutine.totalTargetMl,
-                      baseline: intelligentMealPlan.hydrationRoutine.baselineDailyMl,
-                      extra: intelligentMealPlan.hydrationRoutine.trainingExtraMl,
-                    })}
-                  </p>
-                  <div className="mt-2.5 overflow-x-auto">
-                    <table className="w-full min-w-[560px] text-xs sm:min-w-[720px]">
-                      <thead>
-                        <tr>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableWindow")}</th>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableTime")}</th>
-                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Volume (ml)</th>
-                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Na (mg)</th>
-                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">K (mg)</th>
-                          <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Mg (mg)</th>
-                          <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("hydTableNotes")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {intelligentMealPlan.hydrationRoutine.windows.map((w, wi) => (
-                          <tr key={`hyd-${wi}-${w.labelIt}`} className="transition-colors hover:bg-white/[0.03]">
-                            <td className="px-3 py-2 text-gray-300">{w.labelIt}</td>
-                            <td className="px-3 py-2 font-mono tabular-nums text-gray-300">{w.scheduledTimeLocal}</td>
-                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.volumeMl}</td>
-                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.sodiumMg}</td>
-                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.potassiumMg}</td>
-                            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{w.magnesiumMg}</td>
-                            <td className="max-w-[280px] px-3 py-2 text-gray-400">{w.notesIt}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
+                <HydrationDayCard routine={intelligentMealPlan.hydrationRoutine} />
               ) : null}
             </>
           ) : null}

@@ -161,12 +161,16 @@ export function FuelingSection({
 
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
-      <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">{t("heading")}</h2>
-        <p className="mt-1 text-sm text-gray-300">
-          {t("intro")}
-        </p>
-      </header>
+      {/* Nel Piano (mode="protocol") niente banner introduttivo: il pannello sotto
+          ha già il titolo «Piano rifornimento · pre / intra / post» — era un doppione. */}
+      {mode === "full" ? (
+        <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+          <h2 className="text-lg font-bold text-white">{t("heading")}</h2>
+          <p className="mt-1 text-sm text-gray-300">
+            {t("intro")}
+          </p>
+        </header>
+      ) : null}
       {mode === "full" ? confirmationBlock : null}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">

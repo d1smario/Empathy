@@ -2570,20 +2570,12 @@
     "coachExclusionsForRegen": " · {count} exclusions for regeneration",
     "showAllItems": "Show all items",
     "clearSessionExclusions": "Clear session exclusions",
-    "legalNoticeSummary": "Legal notice and additional notes",
-    "goToIntegrationArrow": "Go to Integration →",
-    "integrationDetailsCollected": "All operational details are collected in the Integration module.",
     "technicalNumbersSummary": "Technical numbers for the day (training, routine, target per meal)",
     "planCombinesNote": "This plan <b>combines</b> the grid targets (kcal/macros per meal from the daily model with the selected session) with the assembly of food items. Σ meals kcal: <b>{total}</b> · date {date}",
     "activePathwayModulation": "Active pathway modulation",
     "micronutrientBoostsNote": "The micronutrient boosts in the notes follow the cofactors of these pathways, not the composer's food list.",
     "operationalIntegration": "Operational integration (solver)",
     "trainingForTheDay": "Training for the day",
-    "hydrationDetailSummary": "How much to drink today (water and salts) — detail",
-    "hydrationIntro": "Estimated daily fluid target ~{total} ml (baseline {baseline} ml + training extra ~{extra} ml). Educational values, adapt to climate and sweat rate.",
-    "hydTableWindow": "Window",
-    "hydTableTime": "Time",
-    "hydTableNotes": "Notes",
     "generatingMealPlan": "Generating the meal plan aligned to your profile (deterministic calculation + USDA)…",
     "readyToGenerate": "Ready to generate the plan. Auto-generation in progress…",
     "loadingUsdaCatalog": "Loading USDA catalog for the selected day…",
@@ -4378,5 +4370,13 @@
     "integrationSubtitle": "Sports supplementation products and protocols.",
     "bioenergeticsTitle": "Bioenergetics",
     "bioenergeticsSubtitle": "Day curves and monitoring — opens the Physiology module."
+  },
+  "HydrationDayCard": {
+    "title": "How much to drink today",
+    "subtitle": "Water and electrolytes across the day, calibrated on plan and training",
+    "dailyTotal": "daily target",
+    "baseLabel": "Daily baseline · {liters} L",
+    "trainingLabel": "Training extra · {liters} L",
+    "columnsUnit": "columns in ml per window"
   }
 }

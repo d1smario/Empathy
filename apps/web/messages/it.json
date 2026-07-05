@@ -2570,20 +2570,12 @@
     "coachExclusionsForRegen": " · {count} esclusioni per rigenerazione",
     "showAllItems": "Mostra tutte le voci",
     "clearSessionExclusions": "Azzera esclusioni sessione",
-    "legalNoticeSummary": "Avviso legale e note aggiuntive",
-    "goToIntegrationArrow": "Vai a Integrazione →",
-    "integrationDetailsCollected": "Tutti i dettagli operativi sono raccolti nel modulo Integrazione.",
     "technicalNumbersSummary": "Numeri tecnici del giorno (allenamento, routine, target per pasto)",
     "planCombinesNote": "Questo piano <b>combina</b> i target della griglia (kcal/macro per pasto da modello giornaliero con seduta selezionata) con l'assemblaggio delle voci alimentari. Σ kcal pasti: <b>{total}</b> · data {date}",
     "activePathwayModulation": "Pathway modulation attivi",
     "micronutrientBoostsNote": "I boost micronutrienti nelle note seguono i cofactors di questi pathway, non la lista alimenti del composer.",
     "operationalIntegration": "Integrazione operativa (solver)",
     "trainingForTheDay": "Training sul giorno",
-    "hydrationDetailSummary": "Quanto bere oggi (acqua e sali) — dettaglio",
-    "hydrationIntro": "Target fluido giornaliero stimato ~{total} ml (baseline {baseline} ml + extra training ~{extra} ml). Valori educativi, adatta a clima e sudorazione.",
-    "hydTableWindow": "Finestra",
-    "hydTableTime": "Orario",
-    "hydTableNotes": "Note",
     "generatingMealPlan": "Sto generando il piano pasti allineato al tuo profilo (calcolo deterministico + USDA)…",
     "readyToGenerate": "Pronto a generare il piano. Auto-generazione in corso…",
     "loadingUsdaCatalog": "Caricamento catalogo USDA per il giorno selezionato…",
@@ -4378,5 +4370,13 @@
     "integrationSubtitle": "Prodotti e protocolli di integrazione sportiva.",
     "bioenergeticsTitle": "Bioenergetica",
     "bioenergeticsSubtitle": "Curve e monitoraggio della giornata — apre il modulo Physiology."
+  },
+  "HydrationDayCard": {
+    "title": "Quanto bere oggi",
+    "subtitle": "Acqua e sali distribuiti sulla giornata, calibrati su piano e allenamento",
+    "dailyTotal": "obiettivo del giorno",
+    "baseLabel": "Base giornaliera · {liters} L",
+    "trainingLabel": "Extra allenamento · {liters} L",
+    "columnsUnit": "colonne in ml per finestra"
   }
 }
