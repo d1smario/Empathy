@@ -85,12 +85,11 @@ export type FuelingSectionProps = {
   nutritionPerformanceIntegration: NutritionPerformanceIntegrationDials | null;
   fuelingPhysiology: { gutPathwayRisk: string };
   /**
-   * Split prescrittivo/consuntivo (riorganizzazione 2026-07):
-   * - "protocol": solo il protocollo pre/intra/post (vive nel Piano);
-   * - "confirmation": solo il blocco «Assunzione rifornimento» (vive nel Diario);
-   * - "full" (default): entrambi, comportamento storico.
+   * Diario eliminato (2026-07): il consuntivo vive nel Piano.
+   * - "protocol": protocollo pre/intra/post + conferma assunzione, senza header (Piano);
+   * - "full" (default): tutto, comportamento storico (pagina fueling legacy).
    */
-  mode?: "full" | "protocol" | "confirmation";
+  mode?: "full" | "protocol";
 };
 
 export function FuelingSection({
@@ -154,11 +153,6 @@ export function FuelingSection({
     </section>
   ) : null;
 
-  // Diario: solo il consuntivo («ho seguito il piano di rifornimento»).
-  if (mode === "confirmation") {
-    return <section id="nutrition-fueling-confirm" className="scroll-mt-28 mb-10 space-y-4">{confirmationBlock}</section>;
-  }
-
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       {/* Nel Piano (mode="protocol") niente banner introduttivo: il pannello sotto
@@ -171,7 +165,9 @@ export function FuelingSection({
           </p>
         </header>
       ) : null}
-      {mode === "full" ? confirmationBlock : null}
+      {/* Conferma assunzione anche in mode="protocol": col Diario eliminato
+          (2026-07) il Piano è l'unica pagina della giornata. */}
+      {confirmationBlock}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
           <h3 className="viz-title">{t("planTitle")}</h3>

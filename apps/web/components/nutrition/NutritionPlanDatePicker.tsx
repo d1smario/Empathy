@@ -58,19 +58,6 @@ export function NutritionPlanDatePicker({
   const atMin = value <= min;
   const atMax = value >= max;
 
-  const labelIt = (() => {
-    try {
-      return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    } catch {
-      return value;
-    }
-  })();
-
   return (
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-3", className)}>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -111,9 +98,8 @@ export function NutritionPlanDatePicker({
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
         </div>
-        <p className="px-1 text-center text-[0.7rem] capitalize leading-snug text-amber-200/80 sm:text-xs" aria-hidden>
-          {labelIt}
-        </p>
+        {/* Sottotitolo con la data per esteso rimosso (feedback utente 2026-07:
+            duplicava il valore già leggibile nell'input). */}
       </div>
       <button
         type="button"

@@ -148,24 +148,20 @@ export function toMobilePath(pathname: string): string | null {
     return `${MOBILE_APP_PREFIX}${n}`;
   }
 
-  // Landing del modulo = PIANO; il fueling storico è assorbito nel piano (split 2026-07).
+  // Landing del modulo = PIANO; fueling storico E il vecchio Diario (today/diary)
+  // sono assorbiti nel piano (Diario eliminato 2026-07).
   if (
     n === "/nutrition" ||
     n === "/nutrition/meal-plan" ||
     n.startsWith("/nutrition/meal-plan/") ||
     n === "/nutrition/fueling" ||
-    n.startsWith("/nutrition/fueling/")
-  ) {
-    return `${MOBILE_APP_PREFIX}/nutrition/meal-plan`;
-  }
-  // Il DIARIO vive su today (il vecchio /nutrition/diary vi reindirizza).
-  if (
+    n.startsWith("/nutrition/fueling/") ||
     n === "/nutrition/today" ||
     n.startsWith("/nutrition/today/") ||
     n === "/nutrition/diary" ||
     n.startsWith("/nutrition/diary/")
   ) {
-    return `${MOBILE_APP_PREFIX}/nutrition/today`;
+    return `${MOBILE_APP_PREFIX}/nutrition/meal-plan`;
   }
 
   return null;
@@ -188,7 +184,7 @@ export function toDesktopPath(mobilePathname: string): string {
     [`${MOBILE_APP_PREFIX}/training/calendar`]: "/training/calendar",
     [`${MOBILE_APP_PREFIX}/training/session`]: "/training/session",
     [`${MOBILE_APP_PREFIX}/nutrition`]: "/nutrition/meal-plan",
-    [`${MOBILE_APP_PREFIX}/nutrition/today`]: "/nutrition/today",
+    [`${MOBILE_APP_PREFIX}/nutrition/today`]: "/nutrition/meal-plan",
   };
 
   if (moduleMap[n]) return moduleMap[n];

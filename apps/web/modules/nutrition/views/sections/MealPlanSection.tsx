@@ -19,6 +19,7 @@ import type {
 } from "@/api/nutrition/contracts";
 import type { AdaptationSectorBoxVm } from "@/lib/adaptation/adaptation-sector-box";
 import type { NutritionMicronutrientGridProps } from "@/modules/nutrition/components/NutritionMicronutrientGrid";
+import type { FoodDiaryEntryViewModel } from "@/api/nutrition/contracts";
 import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { RacePreLunchDayContext } from "@/lib/nutrition/race-day-pre-race-lunch";
@@ -87,6 +88,15 @@ export type MealPlanSectionProps = {
   mealConfirmBusySlot: string | null;
   persistMealConfirmation: (slotKey: string, nextConfirmed: boolean) => void | Promise<void>;
   onMealExtraSaved: () => void;
+  /** Registro diario del giorno sul Piano (Diario eliminato 2026-07). */
+  dayDiaryEntries: FoodDiaryEntryViewModel[];
+  dayConsumedTotals: { kcal: number; carbs: number; protein: number; fat: number; count: number };
+  onDeleteDiaryEntry: (entryId: string) => void | Promise<void>;
+  diaryEntryDeleteBusyId: string | null;
+  /** Contatore idratazione bevuta del giorno (card «Quanto bere oggi»). */
+  hydrationIntakeMl: number;
+  onAddHydrationIntake: (deltaMl: number) => void;
+  hydrationIntakeBusy: boolean;
 };
 
 export function MealPlanSection({
@@ -138,6 +148,13 @@ export function MealPlanSection({
   mealConfirmBusySlot,
   persistMealConfirmation,
   onMealExtraSaved,
+  dayDiaryEntries,
+  dayConsumedTotals,
+  onDeleteDiaryEntry,
+  diaryEntryDeleteBusyId,
+  hydrationIntakeMl,
+  onAddHydrationIntake,
+  hydrationIntakeBusy,
 }: MealPlanSectionProps) {
   const t = useTranslations("MealPlanSection");
   return (
@@ -220,12 +237,7 @@ export function MealPlanSection({
             fat: complianceOverview.target.fat,
           }}
           dateLabel={selectedPlanDateLabel}
-          hydrationMinDailyMl={hydrationPlan.minDailyMl}
-          selectedExecutedKj={selectedExecutedKj}
-          sessionLoadKcalEstimate={Math.max(
-            nutritionDayModel?.training.kcal ?? 0,
-            effectiveDayContext.summary.totalKcal,
-          )}
+          dayConsumed={dayConsumedTotals}
           round={round}
           energyLedger={mealPlanEnergyLedger}
         />
@@ -291,6 +303,13 @@ export function MealPlanSection({
           mealConfirmBusySlot={mealConfirmBusySlot}
           persistMealConfirmation={persistMealConfirmation}
           onMealExtraSaved={onMealExtraSaved}
+          dayDiaryEntries={dayDiaryEntries}
+          onDeleteDiaryEntry={onDeleteDiaryEntry}
+          diaryEntryDeleteBusyId={diaryEntryDeleteBusyId}
+          hydrationMinDailyMl={hydrationPlan.minDailyMl}
+          hydrationIntakeMl={hydrationIntakeMl}
+          onAddHydrationIntake={onAddHydrationIntake}
+          hydrationIntakeBusy={hydrationIntakeBusy}
         />
       ) : null}
 

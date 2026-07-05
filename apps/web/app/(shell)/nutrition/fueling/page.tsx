@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Assorbita in «Oggi» (riorganizzazione menù 2026-07): redirect per i deep-link storici. */
+/** Il fueling vive nel Piano (Diario eliminato 2026-07): redirect diretto, niente doppio salto. */
 export default function NutritionFuelingPage() {
-  redirect("/nutrition/today");
+  redirect("/nutrition/meal-plan");
 }

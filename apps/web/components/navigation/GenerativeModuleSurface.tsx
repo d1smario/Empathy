@@ -206,7 +206,7 @@ export async function GenerativeModuleSurface({ module }: { module: ProductModul
               {t("dailyReportCharts")}
             </Pro2Link>
             <Pro2Link
-              href="/nutrition/today"
+              href="/nutrition/meal-plan"
               variant="secondary"
               className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
             >

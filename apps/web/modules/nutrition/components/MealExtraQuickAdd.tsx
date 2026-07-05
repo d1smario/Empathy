@@ -32,6 +32,20 @@ export function MealExtraQuickAdd({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  /** Inserimento manuale (cibo non in database): unica via ora che il Diario è stato eliminato. */
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualLabel, setManualLabel] = useState("");
+  const [manualKcal, setManualKcal] = useState("");
+  const [manualCho, setManualCho] = useState("");
+  const [manualPro, setManualPro] = useState("");
+  const [manualFat, setManualFat] = useState("");
+
+  function toNum(v: string): number | null {
+    const s = v.trim();
+    if (!s) return null; // campo vuoto ≠ 0: deve fallire la validazione
+    const n = Number(s.replace(",", "."));
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
 
   async function runSearch() {
     const q = query.trim();
@@ -123,12 +137,64 @@ export function MealExtraQuickAdd({
     onSaved?.();
   }
 
+  /** Porzione manuale: macro della porzione mangiata, salvate come per-100g su 100 g. */
+  async function saveManual() {
+    if (!athleteId) return;
+    const label = manualLabel.trim();
+    const kcal = toNum(manualKcal);
+    const cho = toNum(manualCho);
+    const pro = toNum(manualPro);
+    const fat = toNum(manualFat);
+    if (!label || kcal == null || cho == null || pro == null || fat == null) {
+      setError(t("manualIncomplete"));
+      return;
+    }
+    const diarySlot = mealSlot.startsWith("snack")
+      ? "snack"
+      : ["breakfast", "lunch", "dinner"].includes(mealSlot)
+        ? mealSlot
+        : "other";
+    setBusy(true);
+    setError(null);
+    const result = await postFoodDiaryEntry({
+      athleteId,
+      entryDate,
+      mealSlot: diarySlot,
+      mode: "scaled_reference",
+      foodLabel: label,
+      quantityG: 100,
+      kcalPer100g: kcal,
+      carbsPer100g: cho,
+      proteinPer100g: pro,
+      fatPer100g: fat,
+      referenceSourceTag: "manual_portion",
+    });
+    setBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setManualLabel("");
+    setManualKcal("");
+    setManualCho("");
+    setManualPro("");
+    setManualFat("");
+    setManualOpen(false);
+    setOpen(false);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 2500);
+    onSaved?.();
+  }
+
   if (!open) {
     return (
       <button
         type="button"
         className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         {savedFlash ? t("savedFlash") : t("addExtra")}
@@ -208,6 +274,74 @@ export function MealExtraQuickAdd({
           </button>
         </div>
       ) : null}
+      {/* Anteprima macro scalate ai grammi (portata dal Diario): niente salvataggi alla cieca. */}
+      {selected && grams > 0 ? (
+        selected.kcal_100 != null && selected.carbs_100 != null && selected.protein_100 != null && selected.fat_100 != null ? (
+          <p className="mt-1.5 font-mono text-[0.68rem] tabular-nums text-cyan-200/90">
+            ≈ {Math.round((selected.kcal_100 * grams) / 100)} kcal · CHO {Math.round((selected.carbs_100 * grams) / 10) / 10}g · PRO{" "}
+            {Math.round((selected.protein_100 * grams) / 10) / 10}g · FAT {Math.round((selected.fat_100 * grams) / 10) / 10}g
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[0.68rem] text-gray-500">{t("previewDeferred")}</p>
+        )
+      ) : null}
+      {/* Porzione manuale per cibi non trovati in database. */}
+      {!manualOpen ? (
+        <button
+          type="button"
+          className="mt-2 text-[0.68rem] text-gray-500 underline decoration-gray-600 underline-offset-2 hover:text-gray-300"
+          onClick={() => setManualOpen(true)}
+        >
+          {t("manualToggle")}
+        </button>
+      ) : (
+        <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-2.5">
+          <p className="text-[0.68rem] font-bold uppercase tracking-wider text-gray-400">{t("manualTitle")}</p>
+          <input
+            type="text"
+            value={manualLabel}
+            onChange={(e) => setManualLabel(e.target.value)}
+            placeholder={t("manualLabelPlaceholder")}
+            className="mt-1.5 w-full rounded-lg border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs text-white placeholder:text-gray-600"
+          />
+          <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+            {[
+              { v: manualKcal, set: setManualKcal, ph: "kcal" },
+              { v: manualCho, set: setManualCho, ph: "CHO g" },
+              { v: manualPro, set: setManualPro, ph: "PRO g" },
+              { v: manualFat, set: setManualFat, ph: "FAT g" },
+            ].map((f) => (
+              <input
+                key={f.ph}
+                type="text"
+                inputMode="decimal"
+                value={f.v}
+                onChange={(e) => f.set(e.target.value)}
+                placeholder={f.ph}
+                className="min-w-0 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-xs tabular-nums text-white placeholder:text-gray-600"
+              />
+            ))}
+          </div>
+          <p className="mt-1 text-[0.62rem] text-gray-600">{t("manualHint")}</p>
+          <div className="mt-1.5 flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void saveManual()}
+              className="btn-nutrition-cta px-3 py-1.5 text-xs"
+            >
+              {busy ? t("saving") : t("manualSave")}
+            </button>
+            <button
+              type="button"
+              className="text-[0.7rem] text-gray-500 hover:text-gray-300"
+              onClick={() => setManualOpen(false)}
+            >
+              {t("close")}
+            </button>
+          </div>
+        </div>
+      )}
       {error ? (
         <p className="mt-2 text-[0.7rem] text-rose-300" role="alert">
           {error}

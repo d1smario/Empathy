@@ -2552,9 +2552,9 @@
     "assembledUsdaSum": "Σ assembled USDA plan (food items):",
     "belowSolverTarget": "Below the solver meals target: incomplete assembly or conservative portions — try regenerating the plan or reviewing the items.",
     "aboveSolverTarget": "Above the solver meals target: the USDA sum is indicative (approximate portions) and is not constrained slot-by-slot to the solver's meal needs.",
-    "minimumHydration": "Minimum hydration:",
-    "sessionEnergyKj": "Session energy (kj):",
-    "sessionLoadEstimate": "Session load estimate:",
+    "consumedSoFar": "Consumed today:",
+    "remainingToday": "Remaining:",
+    "overTarget": "Over target:",
     "leadPanelsTitle": "Day adaptation and functional pills",
     "leadPanelsSubtitle": "Adaptation sectors and suggestions from the day's signals",
     "sectorsAdaptationDay": "Sectors · adaptation (day)",
@@ -3809,12 +3809,10 @@
   "MobileNutritionHubView": {
     "eyebrow": "Nutrition",
     "title": "Nutrition",
-    "description": "Meal plan and diary — for advanced editing use the desktop version.",
+    "description": "Meal plan with intake log and hydration — for advanced editing use the desktop version.",
     "mealPlanTitle": "Meal plan",
-    "mealPlanSubtitle": "Daily targets and meals",
-    "openDesktopMealPlan": "Open desktop meal plan",
-    "todayTitle": "Diary",
-    "todaySubtitle": "Log what you ate and confirm fueling"
+    "mealPlanSubtitle": "Daily targets, meals, confirmations and hydration",
+    "openDesktopMealPlan": "Open desktop meal plan"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Physiological profile"
@@ -4378,14 +4376,19 @@
     "dailyTotal": "daily target",
     "baseLabel": "Daily baseline · {liters} L",
     "trainingLabel": "Training extra · {liters} L",
-    "columnsUnit": "columns in ml per window"
+    "columnsUnit": "columns in ml per window",
+    "minDaily": "minimum {liters} L",
+    "drunkToday": "Drunk today",
+    "savingIntake": "Saving…"
   },
   "MealDayCarousel": {
     "prev": "Previous meal",
     "next": "Next meal",
     "confirmEaten": "Mark as eaten",
     "eaten": "Eaten",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "loggedTitle": "Logged on this meal ({count})",
+    "deleteEntry": "Delete entry"
   },
   "MealExtraQuickAdd": {
     "addExtra": "I ate something else",
@@ -4399,6 +4402,13 @@
     "incompleteData": "Incomplete nutrition data for this food",
     "quantity": "Quantity",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "previewDeferred": "Nutrition values computed on save",
+    "manualToggle": "Can't find it? Enter it manually",
+    "manualTitle": "Manual portion",
+    "manualLabelPlaceholder": "Food name (e.g. homemade cake)",
+    "manualHint": "Values for the eaten portion, not per 100 g",
+    "manualSave": "Save portion",
+    "manualIncomplete": "Fill in name and all values (kcal, CHO, PRO, FAT)"
   }
 }

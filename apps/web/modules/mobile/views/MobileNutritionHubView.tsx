@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { BookOpen, Utensils } from "lucide-react";
+import { Utensils } from "lucide-react";
 import { MobileModulePageShell } from "@/components/shell/MobileModulePageShell";
 import { Pro2Link } from "@/components/ui/empathy";
 
+/** Hub mobile nutrition: solo il Piano (Diario eliminato 2026-07 — registro,
+    conferme e idratazione vivono dentro il Piano). */
 export default function MobileNutritionHubView() {
   const t = useTranslations("MobileNutritionHubView");
   return (
@@ -23,16 +25,6 @@ export default function MobileNutritionHubView() {
           <div>
             <p className="font-semibold text-white">{t("mealPlanTitle")}</p>
             <p className="text-xs text-gray-400">{t("mealPlanSubtitle")}</p>
-          </div>
-        </Link>
-        <Link
-          href="/m/nutrition/today"
-          className="flex items-center gap-3 rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-4 transition hover:border-fuchsia-400/50"
-        >
-          <BookOpen className="h-5 w-5 shrink-0 text-fuchsia-300" aria-hidden />
-          <div>
-            <p className="font-semibold text-white">{t("todayTitle")}</p>
-            <p className="text-xs text-gray-400">{t("todaySubtitle")}</p>
           </div>
         </Link>
       </div>

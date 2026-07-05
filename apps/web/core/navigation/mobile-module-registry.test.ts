@@ -12,13 +12,13 @@ test("toMobilePath: dashboard e training session", () => {
   assert.equal(toMobilePath("/dashboard"), "/m/dashboard");
   assert.equal(toMobilePath("/training/calendar"), "/m/training/calendar");
   assert.equal(toMobilePath("/training/session/2026-06-03"), "/m/training/session/2026-06-03");
-  // Split prescrittivo/consuntivo (2026-07): Piano = landing (assorbe il fueling
-  // storico); Diario vive su today (assorbe il vecchio /nutrition/diary).
+  // Diario eliminato (2026-07): il Piano è l'unica pagina della giornata e
+  // assorbe fueling storico + today/diary.
   assert.equal(toMobilePath("/nutrition"), "/m/nutrition/meal-plan");
   assert.equal(toMobilePath("/nutrition/fueling"), "/m/nutrition/meal-plan");
   assert.equal(toMobilePath("/nutrition/meal-plan"), "/m/nutrition/meal-plan");
-  assert.equal(toMobilePath("/nutrition/diary"), "/m/nutrition/today");
-  assert.equal(toMobilePath("/nutrition/today"), "/m/nutrition/today");
+  assert.equal(toMobilePath("/nutrition/diary"), "/m/nutrition/meal-plan");
+  assert.equal(toMobilePath("/nutrition/today"), "/m/nutrition/meal-plan");
   assert.equal(toMobilePath("/health"), "/m/health");
   assert.equal(toMobilePath("/physiology"), "/m/physiology");
   assert.equal(toMobilePath("/bioenergetics"), "/m/bioenergetics");
@@ -49,7 +49,7 @@ test("drawer per ruolo, derivato dalla sidebar desktop", () => {
 
 test("stripMobileAppPrefix e toDesktopPath roundtrip", () => {
   assert.equal(stripMobileAppPrefix("/m/training/calendar"), "/training/calendar");
-  assert.equal(toDesktopPath("/m/nutrition/today"), "/nutrition/today");
+  assert.equal(toDesktopPath("/m/nutrition/today"), "/nutrition/meal-plan");
   assert.equal(isMobileAppPath("/m/dashboard"), true);
   assert.equal(isMobileAppPath("/dashboard"), false);
 });

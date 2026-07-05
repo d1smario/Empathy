@@ -55,7 +55,6 @@ import {
   round,
 } from "@/lib/nutrition/nutrition-view-helpers";
 import { PredictorSection } from "@/modules/nutrition/views/sections/PredictorSection";
-import { DiarySection } from "@/modules/nutrition/views/sections/DiarySection";
 import { FuelingSection } from "@/modules/nutrition/views/sections/FuelingSection";
 import { IntegrationSection, type IntegrationProductCardProduct } from "@/modules/nutrition/views/sections/IntegrationSection";
 import { MealPlanSection } from "@/modules/nutrition/views/sections/MealPlanSection";
@@ -145,7 +144,6 @@ import {
   computeGlycogenDepletionForFueling,
   type FuelingProtocolSlot,
 } from "@/lib/nutrition/fueling-session-protocol";
-import { FoodDiaryPanel } from "@/modules/nutrition/components/FoodDiaryPanel";
 import {
   NutritionMicronutrientGrid,
   mealPlanDayTotalsToMicroLines,
@@ -188,7 +186,13 @@ import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intel
 import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { updateProfilePayload } from "@/modules/profile/services/profile-api";
-import type { FoodDiaryComplianceRow } from "@/modules/nutrition/services/food-diary-api";
+import {
+  deleteFoodDiaryEntry,
+  entriesToComplianceRows,
+  fetchFoodDiary,
+  type FoodDiaryComplianceRow,
+} from "@/modules/nutrition/services/food-diary-api";
+import type { FoodDiaryEntryViewModel } from "@/api/nutrition/contracts";
 import {
   aggregateStapleCountsForWeek,
   isoWeekBucketId,
@@ -206,11 +210,8 @@ import {
 
 
 
-/**
- * "today" = vista unificata del giorno (Rifornimento + Diario sulla stessa data,
- * riorganizzazione menù 2026-07): stessi blocchi di fueling+diary, un solo date picker.
- */
-export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor" | "diary" | "today";
+/** Diario eliminato (2026-07): il Piano (meal-plan) è l'unica pagina della giornata. */
+export type NutritionSubRoute = "meal-plan" | "fueling" | "integration" | "predictor";
 
 // Cache cross-mount del contesto modulo nutrition: ri-atterrando sulla pagina i
 // dati compaiono subito (niente spinner "Caricamento…"); il refetch parte comunque
@@ -645,9 +646,93 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     },
   });
 
-  const onDiaryComplianceRows = useCallback((rows: FoodDiaryComplianceRow[]) => {
-    setDiaryMacroRows(rows);
-  }, []);
+  /**
+   * Registro diario caricato dal PIANO (Diario eliminato 2026-07): alimenta il
+   * mini-registro per pasto nel carosello, i tile assunto/rimanente e le righe
+   * compliance per le derive a valle (aderenza, energy adequacy) che prima
+   * arrivavano solo con la pagina Diario montata. Finestra come nel vecchio
+   * pannello (−45/+7 su oggi) estesa alla data selezionata.
+   */
+  const [diaryEntries, setDiaryEntries] = useState<FoodDiaryEntryViewModel[]>([]);
+  const [diaryRefreshToken, setDiaryRefreshToken] = useState(0);
+  const [diaryEntryDeleteBusyId, setDiaryEntryDeleteBusyId] = useState<string | null>(null);
+  const loadedDiaryWindowKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!athleteId) {
+      setDiaryEntries([]);
+      setDiaryMacroRows([]);
+      loadedDiaryWindowKeyRef.current = null;
+      return;
+    }
+    const addDays = (iso: string, days: number) => {
+      const d = new Date(`${iso}T12:00:00`);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    };
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const from = selectedPlanDate < addDays(todayIso, -45) ? selectedPlanDate : addDays(todayIso, -45);
+    const to = selectedPlanDate > addDays(todayIso, 7) ? selectedPlanDate : addDays(todayIso, 7);
+    const key = `${athleteId}|${from}|${to}|${nutritionContextVersion}|${diaryRefreshToken}`;
+    if (loadedDiaryWindowKeyRef.current === key) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchFoodDiary({ athleteId, from, to });
+      if (cancelled) return;
+      if (res.error) {
+        // Niente 0-assunto spacciato per dato reale: errore visibile come nel vecchio pannello.
+        setError(res.error);
+        return;
+      }
+      loadedDiaryWindowKeyRef.current = key;
+      setDiaryEntries(res.entries ?? []);
+      setDiaryMacroRows(entriesToComplianceRows(res.entries ?? []));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, selectedPlanDate, nutritionContextVersion, diaryRefreshToken]);
+
+  const selectedDayDiaryEntries = useMemo(
+    () => diaryEntries.filter((e) => e.entryDate === selectedPlanDate),
+    [diaryEntries, selectedPlanDate],
+  );
+
+  /** Assunto del giorno (kcal + macro) per i tile del target giornaliero. */
+  const selectedDayConsumedTotals = useMemo(() => {
+    let kcal = 0;
+    let carbs = 0;
+    let protein = 0;
+    let fat = 0;
+    for (const e of selectedDayDiaryEntries) {
+      kcal += e.kcal;
+      carbs += e.carbsG;
+      protein += e.proteinG;
+      fat += e.fatG;
+    }
+    return {
+      kcal: Math.round(kcal),
+      carbs: Math.round(carbs),
+      protein: Math.round(protein),
+      fat: Math.round(fat),
+      count: selectedDayDiaryEntries.length,
+    };
+  }, [selectedDayDiaryEntries]);
+
+  const handleDeleteDiaryEntry = useCallback(
+    async (entryId: string) => {
+      if (!athleteId) return;
+      setDiaryEntryDeleteBusyId(entryId);
+      const res = await deleteFoodDiaryEntry({ athleteId, id: entryId });
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setDiaryRefreshToken((v) => v + 1);
+      }
+      setDiaryEntryDeleteBusyId(null);
+    },
+    [athleteId],
+  );
 
 
   useEffect(() => {
@@ -729,12 +814,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
          * ondata pathway per niente (audit 2026-07). Con input invariati, lo
          * stato derivato resta in piedi.
          */
-        /* Le conferme (pasto/fueling) vivono in nutrition_config ma NON sono
-           input del solver: escluse dalla firma, così spuntare un pasto non
-           rigenera il piano. */
+        /* Le conferme (pasto/fueling) e l'idratazione bevuta vivono in
+           nutrition_config ma NON sono input del solver: escluse dalla firma,
+           così spuntare un pasto o registrare acqua non rigenera il piano. */
         const {
           meal_confirmations: _mealConfirmations,
           fueling_execution_confirmations: _fuelingConfirmations,
+          hydration_intake: _hydrationIntake,
           ...nutritionConfigForSig
         } = record(p?.nutrition_config);
         const solverInputsSig = JSON.stringify({
@@ -1240,6 +1326,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [profile?.nutrition_config]);
 
   const fuelingConfirmedForSelectedDate = Boolean(fuelingExecutionConfirmations[selectedPlanDate]?.confirmed);
+
+  /** Ml bevuti registrati per la data selezionata (nutrition_config.hydration_intake[date].ml). */
+  const hydrationIntakeMlForSelectedDate = useMemo(() => {
+    const raw = record(record(profile?.nutrition_config).hydration_intake)[selectedPlanDate];
+    const ml = Number(record(raw).ml);
+    return Number.isFinite(ml) && ml > 0 ? Math.round(ml) : 0;
+  }, [profile?.nutrition_config, selectedPlanDate]);
 
   /** Conferme di consumo per pasto del giorno selezionato (nutrition_config.meal_confirmations[date][slot]). */
   const mealConfirmationsForSelectedDate = useMemo(() => {
@@ -1777,15 +1870,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     effectiveMacroSplit,
     mealTimes,
   ]);
-
-  const diaryDayMacroTargets = useMemo(
-    () => ({
-      carbs: mealRows.reduce((s, m) => s + m.carbs, 0),
-      protein: mealRows.reduce((s, m) => s + m.protein, 0),
-      fat: mealRows.reduce((s, m) => s + m.fat, 0),
-    }),
-    [mealRows],
-  );
 
   const mealPlanCards = useMemo(() => {
     return mealRows.map((row) => {
@@ -2973,20 +3057,44 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       } else {
         delete merged[selectedPlanDate];
       }
+      const nextConfig = {
+        ...existingNutrition,
+        fueling_execution_confirmations: merged,
+      };
       await saveNutritionProfileConfig({
         athleteId,
-        nutrition_config: {
-          ...existingNutrition,
-          fueling_execution_confirmations: merged,
-        },
+        nutrition_config: nextConfig,
         routine_config: record(profile.routine_config),
       });
-      setNutritionContextVersion((v) => v + 1);
+      applyNutritionConfigLocally(nextConfig);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save fueling confirmation");
     }
     setFuelingConfirmBusy(false);
   }
+
+  /**
+   * Applica subito in locale un nutrition_config appena salvato (stato profile
+   * + cache cross-mount): senza, tap ravvicinati su conferme/±ml leggevano il
+   * profile STANTIO e perdevano incrementi o clobberavano l'ultima conferma
+   * (verifica avversariale 2026-07). Niente più reload del modulo per queste
+   * micro-scritture: il server ha già confermato, il locale si allinea qui.
+   */
+  const applyNutritionConfigLocally = useCallback(
+    (nextNutritionConfig: Record<string, unknown>) => {
+      setProfile((prev) => (prev ? { ...prev, nutrition_config: nextNutritionConfig } : prev));
+      if (nutritionModuleCacheId === athleteId && nutritionModuleCache && !nutritionModuleCache.error) {
+        const cachedProfile = nutritionModuleCache.profile;
+        if (cachedProfile && typeof cachedProfile === "object") {
+          nutritionModuleCache = {
+            ...nutritionModuleCache,
+            profile: { ...(cachedProfile as Record<string, unknown>), nutrition_config: nextNutritionConfig },
+          };
+        }
+      }
+    },
+    [athleteId],
+  );
 
   /** Gemella per-pasto di persistFuelingExecutionConfirmation: mappa annidata data→slot. */
   async function persistMealConfirmation(slotKey: string, nextConfirmed: boolean) {
@@ -3009,19 +3117,53 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       } else {
         delete merged[selectedPlanDate];
       }
+      const nextConfig = {
+        ...existingNutrition,
+        meal_confirmations: merged,
+      };
       await saveNutritionProfileConfig({
         athleteId,
-        nutrition_config: {
-          ...existingNutrition,
-          meal_confirmations: merged,
-        },
+        nutrition_config: nextConfig,
         routine_config: record(profile.routine_config),
       });
-      setNutritionContextVersion((v) => v + 1);
+      applyNutritionConfigLocally(nextConfig);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save meal confirmation");
     }
     setMealConfirmBusySlot(null);
+  }
+
+  /** Contatore idratazione bevuta (delta ±ml), persistito per data come le conferme pasto. */
+  const [hydrationIntakeBusy, setHydrationIntakeBusy] = useState(false);
+  async function persistHydrationIntake(deltaMl: number) {
+    if (!athleteId || !profile) return;
+    setHydrationIntakeBusy(true);
+    setError(null);
+    try {
+      const existingNutrition = record(profile.nutrition_config);
+      const prevAll = record(existingNutrition.hydration_intake);
+      const prevMl = Number(record(prevAll[selectedPlanDate]).ml);
+      const nextMl = Math.max(0, Math.min(20000, (Number.isFinite(prevMl) ? prevMl : 0) + deltaMl));
+      const merged: Record<string, unknown> = { ...prevAll };
+      if (nextMl > 0) {
+        merged[selectedPlanDate] = { ml: nextMl, at: new Date().toISOString() };
+      } else {
+        delete merged[selectedPlanDate];
+      }
+      const nextConfig = {
+        ...existingNutrition,
+        hydration_intake: merged,
+      };
+      await saveNutritionProfileConfig({
+        athleteId,
+        nutrition_config: nextConfig,
+        routine_config: record(profile.routine_config),
+      });
+      applyNutritionConfigLocally(nextConfig);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save hydration intake");
+    }
+    setHydrationIntakeBusy(false);
   }
 
   async function runFoodLookupForQuery(rawQuery: string) {
@@ -3234,7 +3376,14 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               mealConfirmations={mealConfirmationsForSelectedDate}
               mealConfirmBusySlot={mealConfirmBusySlot}
               persistMealConfirmation={persistMealConfirmation}
-              onMealExtraSaved={() => setNutritionContextVersion((v) => v + 1)}
+              onMealExtraSaved={() => setDiaryRefreshToken((v) => v + 1)}
+              dayDiaryEntries={selectedDayDiaryEntries}
+              dayConsumedTotals={selectedDayConsumedTotals}
+              onDeleteDiaryEntry={handleDeleteDiaryEntry}
+              diaryEntryDeleteBusyId={diaryEntryDeleteBusyId}
+              hydrationIntakeMl={hydrationIntakeMlForSelectedDate}
+              onAddHydrationIntake={(delta) => void persistHydrationIntake(delta)}
+              hydrationIntakeBusy={hydrationIntakeBusy}
             />
           ) : null}
 
@@ -3257,47 +3406,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
-          {/* Split prescrittivo/consuntivo (2026-07): il DIARIO («today») è solo
-              consuntivo — registra cosa hai mangiato + conferma del rifornimento.
-              Il protocollo fueling (prescrittivo) vive nel PIANO, sotto il meal plan. */}
-          {subRoute === "today" ? (
-            <>
-              <DiarySection
-                athleteId={athleteId}
-                onComplianceRowsChange={onDiaryComplianceRows}
-                planDateForSolverTargets={selectedPlanDate}
-                planDateAnchor={selectedPlanDate}
-                diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
-                diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
-                diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
-                diaryMacroTargetFatG={diaryDayMacroTargets.fat}
-                fallbackDailyEnergyKcal={dailyEnergyKcal}
-                weightKg={profile?.weight_kg ?? null}
-                metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
-              />
-              <FuelingSection
-                mode="confirmation"
-                athleteId={athleteId}
-                selectedPlanDate={selectedPlanDate}
-                fuelingConfirmBusy={fuelingConfirmBusy}
-                saving={saving}
-                fuelingConfirmedForSelectedDate={fuelingConfirmedForSelectedDate}
-                fuelingExecutionConfirmations={fuelingExecutionConfirmations}
-                persistFuelingExecutionConfirmation={persistFuelingExecutionConfirmation}
-                fuelingReadiness={fuelingReadiness}
-                fuelingOpsCards={fuelingOpsCards}
-                fuelingSessionPackages={fuelingSessionPackages}
-                recoverySummary={recoverySummary}
-                showTech={showTech}
-                fuelingTrainingContext={fuelingTrainingContext}
-                fuelingIntraChoSplitBySession={fuelingIntraChoSplitBySession}
-                knowledgeFuelingHints={knowledgeFuelingHints}
-                nutritionPerformanceIntegration={nutritionPerformanceIntegration}
-                fuelingPhysiology={fuelingPhysiology}
-              />
-            </>
-          ) : null}
-
+          {/* DIARIO eliminato (2026-07): il PIANO è l'unica pagina della giornata.
+              Registro, conferme pasti/fueling e idratazione vivono nel companion;
+              le route /nutrition/today e /nutrition/diary reindirizzano al Piano. */}
           {subRoute === "fueling" || subRoute === "meal-plan" ? (
             <FuelingSection
               mode={subRoute === "meal-plan" ? "protocol" : "full"}
@@ -3362,22 +3473,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               effectiveSessionIntensityPctFtp={effectiveSessionIntensityPctFtp}
               selectedPlanDateShort={selectedPlanDateShort}
               resolvedFuelingTierBand={resolvedFuelingTierBand}
-            />
-          ) : null}
-
-          {subRoute === "diary" ? (
-            <DiarySection
-              athleteId={athleteId}
-              onComplianceRowsChange={onDiaryComplianceRows}
-              planDateForSolverTargets={selectedPlanDate}
-              planDateAnchor={selectedPlanDate}
-              diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
-              diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
-              diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
-              diaryMacroTargetFatG={diaryDayMacroTargets.fat}
-              fallbackDailyEnergyKcal={dailyEnergyKcal}
-              weightKg={profile?.weight_kg ?? null}
-              metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
             />
           ) : null}
 
@@ -3473,15 +3568,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("predictorHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
                       {t("predictorHowBody")}
-                    </p>
-                  </div>
-                ) : null}
-
-                {subRoute === "diary" || subRoute === "today" ? (
-                  <div>
-                    <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("diaryHowTitle")}</p>
-                    <p className="mt-1 leading-relaxed text-gray-400">
-                      {t("diaryHowBody")}
                     </p>
                   </div>
                 ) : null}

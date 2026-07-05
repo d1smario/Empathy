@@ -2552,9 +2552,9 @@
     "assembledUsdaSum": "Σ piano USDA assemblato (voci alimenti):",
     "belowSolverTarget": "Sotto il target pasti solver: assemblaggio incompleto o porzioni conservative — prova a rigenerare il piano o rivedere le voci.",
     "aboveSolverTarget": "Sopra il target pasti solver: la somma USDA è orientativa (porzioni indicative) e non è vincolata slot-per-slot al fabbisogno pasti del solver.",
-    "minimumHydration": "Idratazione minima:",
-    "sessionEnergyKj": "Energia seduta (kj):",
-    "sessionLoadEstimate": "Stima carico seduta:",
+    "consumedSoFar": "Assunto oggi:",
+    "remainingToday": "Rimanente:",
+    "overTarget": "Oltre target:",
     "leadPanelsTitle": "Adattamento del giorno e pillole funzionali",
     "leadPanelsSubtitle": "Settori di adattamento e suggerimenti sui segnali della giornata",
     "sectorsAdaptationDay": "Settori · adattamento (giorno)",
@@ -3809,12 +3809,10 @@
   "MobileNutritionHubView": {
     "eyebrow": "Nutrition",
     "title": "Alimentazione",
-    "description": "Meal plan e diario — per editing avanzato usa la versione desktop.",
+    "description": "Meal plan con registro consumi e idratazione — per editing avanzato usa la versione desktop.",
     "mealPlanTitle": "Meal plan",
-    "mealPlanSubtitle": "Target giornalieri e pasti",
-    "openDesktopMealPlan": "Apri meal plan desktop",
-    "todayTitle": "Diario",
-    "todaySubtitle": "Segna cosa hai mangiato e conferma il rifornimento"
+    "mealPlanSubtitle": "Target, pasti, conferme e idratazione del giorno",
+    "openDesktopMealPlan": "Apri meal plan desktop"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Profilo fisiologico"
@@ -4378,14 +4376,19 @@
     "dailyTotal": "obiettivo del giorno",
     "baseLabel": "Base giornaliera · {liters} L",
     "trainingLabel": "Extra allenamento · {liters} L",
-    "columnsUnit": "colonne in ml per finestra"
+    "columnsUnit": "colonne in ml per finestra",
+    "minDaily": "minimo {liters} L",
+    "drunkToday": "Bevuto oggi",
+    "savingIntake": "Salvataggio…"
   },
   "MealDayCarousel": {
     "prev": "Pasto precedente",
     "next": "Pasto successivo",
     "confirmEaten": "Segna come consumato",
     "eaten": "Consumato",
-    "saving": "Salvataggio…"
+    "saving": "Salvataggio…",
+    "loggedTitle": "Registrato su questo pasto ({count})",
+    "deleteEntry": "Elimina voce"
   },
   "MealExtraQuickAdd": {
     "addExtra": "Ho mangiato altro",
@@ -4399,6 +4402,13 @@
     "incompleteData": "Dati nutrizionali incompleti per questo alimento",
     "quantity": "Quantità",
     "save": "Salva",
-    "saving": "Salvataggio…"
+    "saving": "Salvataggio…",
+    "previewDeferred": "Valori nutrizionali calcolati al salvataggio",
+    "manualToggle": "Non lo trovi? Inseriscilo a mano",
+    "manualTitle": "Porzione manuale",
+    "manualLabelPlaceholder": "Nome alimento (es. torta della nonna)",
+    "manualHint": "Valori della porzione mangiata, non per 100 g",
+    "manualSave": "Salva porzione",
+    "manualIncomplete": "Compila nome e tutti i valori (kcal, CHO, PRO, FAT)"
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { MealExtraQuickAdd } from "@/modules/nutrition/components/MealExtraQuickAdd";
 
 /**
@@ -18,6 +18,8 @@ export type MealCarouselItem = {
   label: string;
   time: string;
   confirmed: boolean;
+  /** Voci diario già registrate su questo pasto (mini-registro, Diario eliminato 2026-07). */
+  entries?: { id: string; label: string; quantityG: number | null; kcal: number }[];
   card: ReactNode;
 };
 
@@ -52,12 +54,17 @@ export function MealDayCarousel({
   onConfirmMeal,
   confirmBusySlot,
   extraAdd,
+  onDeleteEntry,
+  deleteBusyId,
 }: {
   items: MealCarouselItem[];
   onConfirmMeal: (slotKey: string, next: boolean) => void;
   confirmBusySlot: string | null;
   /** null = quick-add nascosto (es. schede admin/coach in sola lettura). */
   extraAdd: { athleteId: string; entryDate: string; onSaved?: () => void } | null;
+  /** Eliminazione voce del mini-registro; assente = sola lettura. */
+  onDeleteEntry?: (entryId: string) => void;
+  deleteBusyId?: string | null;
 }) {
   const t = useTranslations("MealDayCarousel");
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -167,6 +174,37 @@ export function MealDayCarousel({
             }}
           >
             {it.card}
+            {/* Mini-registro del pasto (portato dal Diario): quello che hai
+                registrato è visibile e correggibile QUI, senza cambiare pagina. */}
+            {it.entries?.length ? (
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-2">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-200/80">
+                  {t("loggedTitle", { count: it.entries.length })}
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {it.entries.map((e) => (
+                    <li key={e.id} className="flex items-center justify-between gap-2 text-[0.75rem] text-gray-200">
+                      <span className="min-w-0 truncate">{e.label}</span>
+                      <span className="flex shrink-0 items-center gap-2 font-mono tabular-nums text-gray-400">
+                        {e.quantityG != null ? `${Math.round(e.quantityG)}g · ` : ""}
+                        {Math.round(e.kcal)} kcal
+                        {onDeleteEntry ? (
+                          <button
+                            type="button"
+                            aria-label={t("deleteEntry")}
+                            disabled={deleteBusyId === e.id}
+                            onClick={() => onDeleteEntry(e.id)}
+                            className="rounded-full p-1 text-gray-500 transition-colors hover:bg-rose-500/15 hover:text-rose-300 disabled:opacity-40"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"

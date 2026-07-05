@@ -9,6 +9,7 @@ import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorSt
 import { NutritionDayKpiStrip } from "@/components/nutrition/NutritionDayKpiStrip";
 import { Pro2Accordion } from "@/components/ui/empathy";
 import type {
+  FoodDiaryEntryViewModel,
   FunctionalFoodRecommendationsViewModel,
   NutritionApplicationDirectiveViewModel,
   NutritionPathwayModulationViewModel,
@@ -63,9 +64,8 @@ export type NutritionMealPlanEnergyLedger = {
 export type NutritionMealPlanDailyTargetsProps = {
   complianceTargets: { kcal: number; carbs: number; protein: number; fat: number };
   dateLabel: string;
-  hydrationMinDailyMl: number;
-  selectedExecutedKj: number;
-  sessionLoadKcalEstimate: number;
+  /** Assunto del giorno dal registro diario (Diario eliminato 2026-07: vive sul Piano). */
+  dayConsumed?: { kcal: number; carbs: number; protein: number; fat: number; count: number } | null;
   round: (v: number, digits?: number) => number;
   /** Chiarimento 3954 vs 3555: pasti vs giornata vs fueling vs assemblaggio USDA. */
   energyLedger?: NutritionMealPlanEnergyLedger | null;
@@ -75,9 +75,7 @@ export type NutritionMealPlanDailyTargetsProps = {
 export function NutritionMealPlanDailyTargets({
   complianceTargets,
   dateLabel,
-  hydrationMinDailyMl,
-  selectedExecutedKj,
-  sessionLoadKcalEstimate,
+  dayConsumed,
   round,
   energyLedger,
 }: NutritionMealPlanDailyTargetsProps) {
@@ -163,19 +161,37 @@ export function NutritionMealPlanDailyTargets({
           </ul>
         </div>
       ) : null}
-      <p className="mt-2 text-xs text-gray-500">
-        {t("minimumHydration")} <span className="font-mono font-semibold tabular-nums text-gray-300">{hydrationMinDailyMl} ml</span>
-        {" · "}
-        {selectedExecutedKj > 0 ? (
-          <>
-            {t("sessionEnergyKj")} <span className="font-mono font-semibold tabular-nums text-gray-300">{round(selectedExecutedKj)} kJ</span>
-          </>
-        ) : (
-          <>
-            {t("sessionLoadEstimate")} <span className="font-mono font-semibold tabular-nums text-gray-300">{round(sessionLoadKcalEstimate)} kcal</span>
-          </>
-        )}
-      </p>
+      {/* Assunto vs rimanente del giorno (portato dal Diario, 2026-07): quello
+          che registri dal carosello si riflette QUI, non su un'altra pagina.
+          L'idratazione minima è migrata nella card «Quanto bere oggi». */}
+      {dayConsumed && dayConsumed.count > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+          <span className="text-gray-400">
+            {t("consumedSoFar")}{" "}
+            <span className="font-mono font-bold tabular-nums text-emerald-300">{dayConsumed.kcal} kcal</span>{" "}
+            <span className="font-mono tabular-nums text-gray-500">
+              · C {dayConsumed.carbs}g · P {dayConsumed.protein}g · F {dayConsumed.fat}g
+            </span>
+          </span>
+          <span className="text-gray-400">
+            {complianceTargets.kcal - dayConsumed.kcal >= 0 ? (
+              <>
+                {t("remainingToday")}{" "}
+                <span className="font-mono font-bold tabular-nums text-cyan-200">
+                  {round(complianceTargets.kcal - dayConsumed.kcal)} kcal
+                </span>
+              </>
+            ) : (
+              <>
+                {t("overTarget")}{" "}
+                <span className="font-mono font-bold tabular-nums text-amber-300">
+                  +{round(dayConsumed.kcal - complianceTargets.kcal)} kcal
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -275,6 +291,15 @@ export type NutritionMealPlanWorkspaceProps = {
   mealConfirmBusySlot: string | null;
   persistMealConfirmation: (slotKey: string, nextConfirmed: boolean) => void | Promise<void>;
   onMealExtraSaved: () => void;
+  /** Registro diario del giorno (mini-registro per pasto, Diario eliminato 2026-07). */
+  dayDiaryEntries: FoodDiaryEntryViewModel[];
+  onDeleteDiaryEntry: (entryId: string) => void | Promise<void>;
+  diaryEntryDeleteBusyId: string | null;
+  /** Idratazione: minimo del giorno + contatore bevuto (card «Quanto bere oggi»). */
+  hydrationMinDailyMl: number;
+  hydrationIntakeMl: number;
+  onAddHydrationIntake: (deltaMl: number) => void;
+  hydrationIntakeBusy: boolean;
 };
 
 export function NutritionMealPlanWorkspace({
@@ -309,10 +334,29 @@ export function NutritionMealPlanWorkspace({
   mealConfirmBusySlot,
   persistMealConfirmation,
   onMealExtraSaved,
+  dayDiaryEntries,
+  onDeleteDiaryEntry,
+  diaryEntryDeleteBusyId,
+  hydrationMinDailyMl,
+  hydrationIntakeMl,
+  onAddHydrationIntake,
+  hydrationIntakeBusy,
 }: NutritionMealPlanWorkspaceProps) {
   const t = useTranslations("NutritionMealPlanView");
   const router = useRouter();
   const { role: viewerRole, adminScoped } = useActiveAthlete();
+
+  /** Slot diario per slot piano: gli snack del piano collassano su "snack" (contratto POST diary). */
+  const diaryEntriesForSlot = (slotKey: string) => {
+    const diarySlot = slotKey.startsWith("snack")
+      ? "snack"
+      : ["breakfast", "lunch", "dinner"].includes(slotKey)
+        ? slotKey
+        : "other";
+    return dayDiaryEntries
+      .filter((e) => e.mealSlot === diarySlot)
+      .map((e) => ({ id: e.id, label: e.foodLabel, quantityG: e.quantityG, kcal: e.kcal }));
+  };
   /** Numeri/etichette motore (solver/composer/pathway/planDate, cache USDA): solo coach/admin. */
   const showTech = viewerRole === "coach" || adminScoped;
   const mealPlanMicroBoardProps = intelligentMealPlan?.nutrientRollup?.dayTotals
@@ -473,6 +517,7 @@ export function NutritionMealPlanWorkspace({
                       label: meta?.labelIt ?? mealRow.label,
                       time: meta?.scheduledTimeLocal?.trim() || mealRow.time,
                       confirmed: Boolean(mealConfirmations[slotKey]?.confirmed),
+                      entries: diaryEntriesForSlot(slotKey),
                       card,
                     };
                   }))}
@@ -481,6 +526,8 @@ export function NutritionMealPlanWorkspace({
                   }}
                   confirmBusySlot={mealConfirmBusySlot}
                   extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
+                  onDeleteEntry={adminScoped ? undefined : (entryId) => void onDeleteDiaryEntry(entryId)}
+                  deleteBusyId={diaryEntryDeleteBusyId}
                 />
                 {/* Legenda IG rimossa (feedback utente 2026-07): le pillole IG
                     sulle singole voci restano, la spiegazione statica no. */}
@@ -488,7 +535,13 @@ export function NutritionMealPlanWorkspace({
               </div>
               {intelligentMealPlan.hydrationRoutine ? (
                 <div className="empathy-plan-companion-aside">
-                  <HydrationDayCard routine={intelligentMealPlan.hydrationRoutine} />
+                  <HydrationDayCard
+                    routine={intelligentMealPlan.hydrationRoutine}
+                    minDailyMl={hydrationMinDailyMl}
+                    intakeMl={hydrationIntakeMl}
+                    onAddIntake={adminScoped ? undefined : onAddHydrationIntake}
+                    intakeBusy={hydrationIntakeBusy}
+                  />
                 </div>
               ) : null}
               </div>
@@ -583,6 +636,7 @@ export function NutritionMealPlanWorkspace({
                     label: meal.label,
                     time: meal.time,
                     confirmed: Boolean(mealConfirmations[slotKey]?.confirmed),
+                    entries: diaryEntriesForSlot(slotKey),
                     card: (
                       <EmpathyMealPlanExpositionCard
                         slot={slotKey}
@@ -602,6 +656,8 @@ export function NutritionMealPlanWorkspace({
                 }}
                 confirmBusySlot={mealConfirmBusySlot}
                 extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
+                onDeleteEntry={adminScoped ? undefined : (entryId) => void onDeleteDiaryEntry(entryId)}
+                deleteBusyId={diaryEntryDeleteBusyId}
               />
               <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
                 {t("metabolicPathwaysUsda")}{" "}

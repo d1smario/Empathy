@@ -5,10 +5,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Nutrition",
-  description: "Meal plan and diary — mobile app.",
+  description: "Meal plan with intake log and hydration — mobile app.",
 };
 
-// Il confinamento coach → roster è nel layout (copre indice + meal-plan + diary).
+// Il confinamento coach → roster è nel layout (copre indice + meal-plan).
 export default function MobileNutritionPage() {
   return <MobileNutritionHubView />;
 }
