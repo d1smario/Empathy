@@ -24,6 +24,29 @@ export type MealCarouselItem = {
 /** Spazio tra le slide: visibile solo durante lo scorrimento. */
 const TRACK_GAP = 16;
 
+/**
+ * Ordina i pasti per orario programmato (colazione→spuntino→pranzo→cena):
+ * l'ordine di configurazione Diet metteva lo spuntino delle 10:30 DOPO la cena
+ * (feedback utente 2026-07). Orari non parsabili mantengono l'ordine originale
+ * in coda.
+ */
+export function sortMealCarouselItemsByTime(items: MealCarouselItem[]): MealCarouselItem[] {
+  const minutesOf = (t: string): number | null => {
+    const m = /^(\d{1,2}):(\d{2})/.exec((t ?? "").trim());
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2]);
+  };
+  return items
+    .map((it, i) => ({ it, i, m: minutesOf(it.time) }))
+    .sort((a, b) => {
+      if (a.m != null && b.m != null && a.m !== b.m) return a.m - b.m;
+      if (a.m != null && b.m == null) return -1;
+      if (a.m == null && b.m != null) return 1;
+      return a.i - b.i;
+    })
+    .map((x) => x.it);
+}
+
 export function MealDayCarousel({
   items,
   onConfirmMeal,

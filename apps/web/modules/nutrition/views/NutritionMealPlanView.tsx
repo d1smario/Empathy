@@ -26,7 +26,11 @@ import {
   EmpathyMealPlanExpositionCard,
 } from "@/modules/nutrition/components/EmpathyMealPlanExpositionCard";
 import { HydrationDayCard } from "@/modules/nutrition/components/HydrationDayCard";
-import { MealDayCarousel, type MealCarouselItem } from "@/modules/nutrition/components/MealDayCarousel";
+import {
+  MealDayCarousel,
+  sortMealCarouselItemsByTime,
+  type MealCarouselItem,
+} from "@/modules/nutrition/components/MealDayCarousel";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { PathwayMealSlotKey } from "@/lib/nutrition/pathway-meal-usda-slots";
 
@@ -403,7 +407,7 @@ export function NutritionMealPlanWorkspace({
                 {/* Carosello companion (2026-07): scorrimento orizzontale tra i pasti,
                     conferma di consumo sotto ogni card e quick-add «ho mangiato altro». */}
                 <MealDayCarousel
-                  items={mealPlanDisplayRows.map((mealRow): MealCarouselItem => {
+                  items={sortMealCarouselItemsByTime(mealPlanDisplayRows.map((mealRow): MealCarouselItem => {
                     const slotKey = mealRow.key as MealSlotKey;
                     const sl = intelligentMealPlan.slots.find((s) => s.slot === slotKey);
                     const meta = intelligentMealPlan.solverBasis.slots.find((x) => x.slot === slotKey);
@@ -471,7 +475,7 @@ export function NutritionMealPlanWorkspace({
                       confirmed: Boolean(mealConfirmations[slotKey]?.confirmed),
                       card,
                     };
-                  })}
+                  }))}
                   onConfirmMeal={(slot, next) => {
                     if (!adminScoped) void persistMealConfirmation(slot, next);
                   }}
@@ -566,7 +570,7 @@ export function NutritionMealPlanWorkspace({
                   Stesso carosello del piano generato: conferme ed extra funzionano
                   anche prima della generazione (i target dei pasti sono noti). */}
               <MealDayCarousel
-                items={mealPlanDisplayRows.map((meal): MealCarouselItem => {
+                items={sortMealCarouselItemsByTime(mealPlanDisplayRows.map((meal): MealCarouselItem => {
                   const slotKey = meal.key as PathwayMealSlotKey;
                   const bundle = mealPathwayBySlot[slotKey];
                   const subline = !bundle || bundle.loading
@@ -592,7 +596,7 @@ export function NutritionMealPlanWorkspace({
                       />
                     ),
                   };
-                })}
+                }))}
                 onConfirmMeal={(slot, next) => {
                   if (!adminScoped) void persistMealConfirmation(slot, next);
                 }}

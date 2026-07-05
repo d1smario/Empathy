@@ -164,6 +164,9 @@ export function MealExtraQuickAdd({
           {t("search")}
         </button>
       </div>
+      {results.length && !selected ? (
+        <p className="mt-2 text-[0.68rem] text-amber-200/80">{t("pickHint")}</p>
+      ) : null}
       {results.length ? (
         <ul className="mt-2 space-y-1">
           {results.map((r, i) => (

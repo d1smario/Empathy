@@ -4394,6 +4394,7 @@
     "searchPlaceholder": "Cerca alimento (es. banana)",
     "search": "Cerca",
     "searchError": "Ricerca non riuscita, riprova",
+    "pickHint": "Tocca un alimento per scegliere la quantità e salvarlo",
     "incompleteData": "Dati nutrizionali incompleti per questo alimento",
     "quantity": "Quantità",
     "save": "Salva",
