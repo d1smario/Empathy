@@ -146,15 +146,20 @@ export function MealPlanSection({
       {athleteId ? (
         <section
           id="mod-azione-giorno"
-          className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 bg-black/20 px-4 py-4 sm:px-5"
-          style={{ marginBottom: "12px" }}
+          className="viz-card builder-panel scroll-mt-28 border border-amber-500/25 px-4 py-4 sm:px-5"
+          style={{
+            marginBottom: "12px",
+            background: "linear-gradient(135deg, rgba(120,53,15,0.18), rgba(0,0,0,0.55))",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+          }}
         >
           {/* Una riga sola (feedback 2026-07): pillola Piano + titolo + selettore
-              giorno — niente sezione «Aree nutrition» separata né descrizione. */}
-          <div className="flex flex-wrap items-center gap-3">
+              giorno. Il selettore ha larghezza contenuta e sta a destra: se
+              riempie tutta la riga il box perde gerarchia rispetto alle card. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <NutritionSubnav />
-            <h2 className="viz-title min-w-0 text-base">{t("dayPlanTitle")}</h2>
-            <div className="min-w-[260px] flex-1">
+            <h2 className="viz-title m-0 min-w-0 text-base">{t("dayPlanTitle")}</h2>
+            <div className="w-full min-w-[260px] sm:ml-auto sm:w-auto sm:min-w-[330px] sm:max-w-[430px]">
               <NutritionPlanDatePicker
                 value={selectedPlanDate}
                 onChange={setSelectedPlanDate}

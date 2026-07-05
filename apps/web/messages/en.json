@@ -2625,8 +2625,6 @@
     "nutritionAreas": "Nutrition areas",
     "availableInDedicatedTab": "Available in the dedicated tab (v2)",
     "dayToDisplay": "Day to display",
-    "howItWorksTitle": "How it works",
-    "howItWorksSubtitle": "How the numbers on this page are generated, parameters and technical diagnostics",
     "mealPlanHowTitle": "How the meal plan is built",
     "mealPlanHowBody": "The day's requirement starts from basal metabolism, lifestyle and the cost of the selected day's workouts. The share allocated to meals is distributed according to the percentages in your profile (Profile → Diet) and each meal is assembled with real foods from the USDA database, respecting exclusions, preferences and the day's active metabolic pathways. The pre/intra/post-session part lives in the Fueling area, not in the meals.",
     "adherenceAdaptationTitle": "Adaptation from nutrition adherence",
@@ -2681,7 +2679,9 @@
     "savePredictorFuelingHint": "Persists predictor and fueling knobs to the profile (does not regenerate the plan).",
     "predictorWhatIfTitle": "Event predictor (what-if)",
     "predictorWhatIfSubtitle": "Simulate a session or a race not yet scheduled: expenditure, CHO and glycogen risk. Does not change the plan.",
-    "sectorsAdaptationDay": "Sectors · adaptation (day)"
+    "sectorsAdaptationDay": "Sectors · adaptation (day)",
+    "engineDiagnosticsTitle": "Engine diagnostics",
+    "engineDiagnosticsSubtitle": "Engine parameters, data status and adherence — staff area"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Previous day",

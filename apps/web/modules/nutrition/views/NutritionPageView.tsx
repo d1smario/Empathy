@@ -3336,17 +3336,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
-          {/* In fondo: accordion unico «Dettagli e motore» (metodologia, parametri, diagnostica coach/admin). */}
+          {/* In fondo: accordion diagnostica SOLO staff (2026-07: per l'atleta
+              conteneva solo il toggle aderenza, che però si salva col bottone
+              del predictor — visibile solo allo staff: era un controllo morto.
+              Il toggle vive qui con la diagnostica; niente accordion atleta. */}
+          {showTech ? (
           <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
             <Pro2Accordion
               accent="amber"
-              title={t("howItWorksTitle")}
-              subtitle={t("howItWorksSubtitle")}
+              title={t("engineDiagnosticsTitle")}
+              subtitle={t("engineDiagnosticsSubtitle")}
             >
               <div className="space-y-5 text-sm text-gray-300">
-                {/* «Come funziona» rimosso (feedback 2026-07): in futuro un popup
-                    di info dedicato. Qui restano solo il toggle aderenza e la
-                    diagnostica tecnica coach/admin. */}
                 {subRoute === "meal-plan" ? (
                   <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
                     <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
@@ -3451,6 +3452,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               </div>
             </Pro2Accordion>
           </section>
+          ) : null}
         </>
       )}
     </Pro2ModulePageShell>

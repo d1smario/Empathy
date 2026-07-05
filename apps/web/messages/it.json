@@ -2625,8 +2625,6 @@
     "nutritionAreas": "Aree nutrition",
     "availableInDedicatedTab": "Disponibile nella scheda dedicata (v2)",
     "dayToDisplay": "Giorno da visualizzare",
-    "howItWorksTitle": "Come funziona",
-    "howItWorksSubtitle": "Come nascono i numeri di questa pagina, parametri e diagnostica tecnica",
     "mealPlanHowTitle": "Come nasce il piano pasti",
     "mealPlanHowBody": "Il fabbisogno del giorno parte dal metabolismo basale, dallo stile di vita e dal costo degli allenamenti del giorno selezionato. La quota destinata ai pasti viene ripartita secondo le percentuali del tuo profilo (Profilo → Diet) e ogni pasto è assemblato con alimenti reali del database USDA, rispettando esclusioni, preferenze e vie metaboliche attive della giornata. La parte pre/intra/post seduta vive nell'area Rifornimento, non nei pasti.",
     "adherenceAdaptationTitle": "Adattamento da aderenza nutrizione",
@@ -2681,7 +2679,9 @@
     "savePredictorFuelingHint": "Persiste nel profilo le manopole di previsione e rifornimento (non rigenera il piano).",
     "predictorWhatIfTitle": "Previsione evento (what-if)",
     "predictorWhatIfSubtitle": "Simula una seduta o una gara non a calendario: consumo, CHO e rischio glicogeno. Non modifica il piano.",
-    "sectorsAdaptationDay": "Settori · adattamento (giorno)"
+    "sectorsAdaptationDay": "Settori · adattamento (giorno)",
+    "engineDiagnosticsTitle": "Diagnostica e motore",
+    "engineDiagnosticsSubtitle": "Parametri del motore, stato dati e aderenza — area staff"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Giorno precedente",
