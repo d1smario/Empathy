@@ -40,6 +40,12 @@ export type FuelingProduct = {
   timing: FuelingTiming[];
   /** CHO dichiarati per porzione/serving tipico (etichetta); assente = non valorizzato in catalogo. */
   carbohydrateGPerServing?: number;
+  /**
+   * NutrientTargetId coperti dal prodotto (es. "mg_mg", "na_mg"): valorizzati SOLO dalle righe di
+   * `nutrition_supplement_catalog` (curabili in DB) — nel fallback statico restano assenti.
+   * È il ponte col motore pathway: target del giorno ∩ nutrientTargets → "consigliato oggi".
+   */
+  nutrientTargets?: string[];
 };
 
 /** Intra-workout: solo carbo (± elettroliti/caffeina sullo stesso SKU), mai BCAA/EAA/protein/recovery/pre-workout “puliti”. */

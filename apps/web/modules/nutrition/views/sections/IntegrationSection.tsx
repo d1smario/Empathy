@@ -24,7 +24,12 @@ import type { CrossDomainInterpretationRoadmap } from "@empathy/contracts";
  * Render puro. La card prodotto è esportata: la usa anche la FuelingSection per
  * lo «stack per timing» (fusione rifornimento+integrazione, 2026-07).
  */
-export type IntegrationProductCardProduct = FuelingProduct & { displayImage: string; isLogoFallback: boolean };
+export type IntegrationProductCardProduct = FuelingProduct & {
+  displayImage: string;
+  isLogoFallback: boolean;
+  /** Etichette umane dei target del giorno coperti dal prodotto (motore pathway ∩ nutrient_targets DB). */
+  recommendedTodayLabels?: string[];
+};
 
 export function IntegrationProductCard({
   product,
@@ -71,6 +76,23 @@ export function IntegrationProductCard({
         }}
       >
         <div>
+          {product.recommendedTodayLabels?.length ? (
+            <span
+              style={{
+                display: "inline-block",
+                marginBottom: 6,
+                borderRadius: 999,
+                border: "1px solid rgba(52,211,153,0.5)",
+                background: "rgba(6,78,59,0.45)",
+                padding: "2px 8px",
+                fontSize: "0.62rem",
+                fontWeight: 600,
+                color: "#6ee7b7",
+              }}
+            >
+              {t("recommendedToday")} · {product.recommendedTodayLabels.join(", ")}
+            </span>
+          ) : null}
           <div className="nutrition-product-brand" style={{ fontSize: "0.65rem", letterSpacing: "0.08em" }}>
             {product.brand}
           </div>

@@ -94,11 +94,13 @@ export function buildFuelingProtocolSlots(input: {
   profileSupplements: string[];
   /** Marchi normalizzati da profilo (supplement_config); guida catalogo intra/pre/post. */
   preferredBrands: string[];
+  /** Catalogo risolto (DB-first); assente = fallback statico. */
+  catalog?: FuelingProduct[];
 }): FuelingProtocolSlot[] {
   const brands =
     input.preferredBrands.length > 0 ? input.preferredBrands : input.profileSupplements;
-  const preProduct = resolvePreWorkoutCarbProduct(brands);
-  const postProduct = resolvePostRecoveryProduct(brands);
+  const preProduct = resolvePreWorkoutCarbProduct(brands, input.catalog);
+  const postProduct = resolvePostRecoveryProduct(brands, input.catalog);
   const durationMin = Math.max(1, input.durationMin);
   const durationHours = Math.max(0.5, durationMin / 60);
   const preCho = Math.max(12, round(input.preCho));
@@ -118,6 +120,7 @@ export function buildFuelingProtocolSlots(input: {
     perStepFluid,
     preferredBrands: brands,
     tierBand: input.resolvedFuelingTierBand,
+    catalog: input.catalog,
   });
 
   const intraSteps: FuelingProtocolSlot[] = intraPlan.map((row, i) => ({

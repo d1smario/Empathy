@@ -4161,7 +4161,8 @@
     "preWorkoutSubtitle": "Pre-hydration, caffeina, carichi moderati prima dello stimolo",
     "intraWorkoutSubtitle": "Gel, barrette e drink durante seduta (tolleranza)",
     "postWorkoutSubtitle": "Recovery, proteine, creatina — dopo lo stimolo",
-    "noSupplementClassified": "Nessun integratore classificato qui dalla selezione corrente (bucket primario da timing catalogo)."
+    "noSupplementClassified": "Nessun integratore classificato qui dalla selezione corrente (bucket primario da timing catalogo).",
+    "recommendedToday": "Consigliato oggi"
   },
   "MealPlanSection": {
     "dayPlanTitle": "Piano pasti del giorno",

@@ -121,6 +121,11 @@ import {
   TIMING_IT,
   type StackTimingBucket,
 } from "@/lib/nutrition/integration-product-ui";
+import { loadSupplementCatalog } from "@/lib/nutrition/supplement-catalog-db";
+import {
+  catalogIdToNutrientTargetId,
+  labelForNutrientTargetId,
+} from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
 import { resolveFuelingPro2MediaUrlFromCandidates } from "@/lib/nutrition/fueling-pro2-media-manifest";
 import {
   fetchNutritionMediaRows,
@@ -351,6 +356,17 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [nutrientInterrogation, setNutrientInterrogation] = useState<NutrientInterrogationViewModel | null>(null);
   const [functionalMealSelector, setFunctionalMealSelector] = useState<FunctionalMealSelectorViewModel | null>(null);
   const [pathwayModulation, setPathwayModulation] = useState<NutritionPathwayModulationViewModel | null>(null);
+  /** Catalogo integratori DB-first (nutrition_supplement_catalog); parte dallo statico, si aggiorna al load. */
+  const [supplementCatalog, setSupplementCatalog] = useState<FuelingProduct[]>(FUELING_PRODUCT_CATALOG);
+  useEffect(() => {
+    let alive = true;
+    void loadSupplementCatalog().then((result) => {
+      if (alive && result.source === "db") setSupplementCatalog(result.catalog);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [nutritionApplicationDirective, setNutritionApplicationDirective] = useState<NutritionApplicationDirectiveViewModel | null>(
     null,
   );
@@ -2351,10 +2367,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       const products = slots.map((slot) => {
         if (slot.catalogProduct) return slot.catalogProduct;
         for (const brand of normalizedPreferredBrands) {
-          const product = FUELING_PRODUCT_CATALOG.find((p) => p.brand === brand && p.category === slot.category);
+          const product = supplementCatalog.find((p) => p.brand === brand && p.category === slot.category);
           if (product) return product;
         }
-        return FUELING_PRODUCT_CATALOG.find((p) => p.category === slot.category) ?? FUELING_PRODUCT_CATALOG[0];
+        return supplementCatalog.find((p) => p.category === slot.category) ?? supplementCatalog[0];
       });
       return slots.map((slot, idx) => {
         const product = products[idx];
@@ -2428,6 +2444,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         intraSplitNote: args.intraSplitNote,
         profileSupplements: supplements,
         preferredBrands: normalizedPreferredBrands,
+        catalog: supplementCatalog,
       });
       const steps = enrichSlots(slots);
       const timelineSteps = timelineFromSteps(steps);
@@ -2567,6 +2584,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     fuelingMediaByKey,
     normalizedPreferredBrands,
     sodiumMgPerHour,
+    supplementCatalog,
   ]);
 
   const integrationProductCards = useMemo(() => {
@@ -2583,11 +2601,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     ];
     const preferred = normalizedPreferredBrands.length
       ? normalizedPreferredBrands
-      : Array.from(new Set(FUELING_PRODUCT_CATALOG.map((item) => item.brand))).slice(0, 6);
+      : Array.from(new Set(supplementCatalog.map((item) => item.brand))).slice(0, 6);
     const picked: FuelingProduct[] = [];
     for (const focus of focusPriority) {
       for (const brand of preferred) {
-        const product = FUELING_PRODUCT_CATALOG.find(
+        const product = supplementCatalog.find(
           (item) => item.brand === brand && item.functionalFocus.includes(focus),
         );
         if (product && !picked.some((entry) => entry.brand === product.brand && entry.product === product.product)) {
@@ -2600,11 +2618,24 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       ...product,
       ...resolveFuelingProductImage(product, product.category, fuelingMediaByKey),
     }));
-  }, [fuelingMediaByKey, normalizedPreferredBrands]);
+  }, [fuelingMediaByKey, normalizedPreferredBrands, supplementCatalog]);
+
+  /** Target nutrienti del giorno (motore pathway → functionalFoodRecommendations):
+      ponte col catalogo DB — id NutrientTarget → etichetta umana per il badge. */
+  const dayNutrientTargetLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const target of functionalFoodRecommendations.targets) {
+      const nutrientId = catalogIdToNutrientTargetId(target.nutrientId);
+      if (nutrientId && !map.has(nutrientId)) map.set(nutrientId, labelForNutrientTargetId(nutrientId));
+    }
+    return map;
+  }, [functionalFoodRecommendations.targets]);
 
   /** Stack per timing FUSO nel rifornimento (2026-07): «daily» resta colonna
       propria — schiacciarlo su pre/intra/post creava il falso «prendi
-      integratori da seduta» nei giorni di riposo. */
+      integratori da seduta» nei giorni di riposo. I prodotti che coprono i
+      target del giorno (nutrient_targets da catalogo DB) salgono in testa
+      con badge «consigliato oggi». */
   const stackProductsByTiming = useMemo(() => {
     const buckets: Record<StackTimingBucket, IntegrationProductCardProduct[]> = {
       pre: [],
@@ -2613,10 +2644,22 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       daily: [],
     };
     for (const product of integrationProductCards) {
-      buckets[stackTimingBucket(product)].push(product);
+      const matchedLabels = (product.nutrientTargets ?? []).flatMap((id) => {
+        const label = dayNutrientTargetLabelById.get(id);
+        return label ? [label] : [];
+      });
+      buckets[stackTimingBucket(product)].push(
+        matchedLabels.length ? { ...product, recommendedTodayLabels: matchedLabels } : product,
+      );
+    }
+    for (const bucket of Object.values(buckets)) {
+      bucket.sort(
+        (a, b) =>
+          Number(Boolean(b.recommendedTodayLabels?.length)) - Number(Boolean(a.recommendedTodayLabels?.length)),
+      );
     }
     return buckets;
-  }, [integrationProductCards]);
+  }, [integrationProductCards, dayNutrientTargetLabelById]);
 
   /** Prodotti già nella timeline del protocollo di oggi: nello stack diventano badge, non card doppia. */
   const protocolProductKeys = useMemo(() => {

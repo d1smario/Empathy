@@ -11,8 +11,11 @@ function roundN(v: number, digits = 1) {
 }
 
 /** Ordina i candidati intra per marchi preferiti (profilo), poi resto catalogo. */
-export function orderIntraCarbohydrateCandidates(preferredBrands: string[]): FuelingProduct[] {
-  const eligible = FUELING_PRODUCT_CATALOG.filter(isIntraCarbohydrateEligibleProduct);
+export function orderIntraCarbohydrateCandidates(
+  preferredBrands: string[],
+  catalog: FuelingProduct[] = FUELING_PRODUCT_CATALOG,
+): FuelingProduct[] {
+  const eligible = catalog.filter(isIntraCarbohydrateEligibleProduct);
   const ordered: FuelingProduct[] = [];
   const used = new Set<string>();
   for (const brand of preferredBrands) {
@@ -58,8 +61,11 @@ export function buildIntraFuelingPlan(params: {
   perStepFluid: number;
   preferredBrands: string[];
   tierBand: string;
+  /** Catalogo risolto (DB-first); assente = fallback statico. */
+  catalog?: FuelingProduct[];
 }): IntraFuelingPlanStep[] {
   const { intraTotalCho, durationMin, perStepFluid, preferredBrands, tierBand } = params;
+  const catalog = params.catalog ?? FUELING_PRODUCT_CATALOG;
   const intraStepsCount = Math.max(1, Math.ceil(durationMin / 20));
   const raw = intraStepsCount > 0 ? intraTotalCho / intraStepsCount : intraTotalCho;
   const engineSteps: number[] = [];
@@ -70,7 +76,7 @@ export function buildIntraFuelingPlan(params: {
     engineSteps.push(isLast ? remaining : roundN(raw, 1));
   }
 
-  const candidates = orderIntraCarbohydrateCandidates(preferredBrands);
+  const candidates = orderIntraCarbohydrateCandidates(preferredBrands, catalog);
   const steps: IntraFuelingPlanStep[] = [];
 
   for (let i = 0; i < intraStepsCount; i++) {
@@ -114,25 +120,31 @@ export function buildIntraFuelingPlan(params: {
   return steps;
 }
 
-export function resolvePreWorkoutCarbProduct(preferredBrands: string[]): FuelingProduct {
+export function resolvePreWorkoutCarbProduct(
+  preferredBrands: string[],
+  catalog: FuelingProduct[] = FUELING_PRODUCT_CATALOG,
+): FuelingProduct {
   const ok = (p: FuelingProduct) =>
     p.timing.includes("pre") &&
     p.functionalFocus.includes("carbo") &&
     !p.functionalFocus.includes("bcaa") &&
     !p.functionalFocus.includes("eaa");
   for (const brand of preferredBrands) {
-    const hit = FUELING_PRODUCT_CATALOG.find((p) => p.brand === brand && ok(p));
+    const hit = catalog.find((p) => p.brand === brand && ok(p));
     if (hit) return hit;
   }
-  return FUELING_PRODUCT_CATALOG.find(ok) ?? FUELING_PRODUCT_CATALOG[0];
+  return catalog.find(ok) ?? catalog[0] ?? FUELING_PRODUCT_CATALOG[0];
 }
 
-export function resolvePostRecoveryProduct(preferredBrands: string[]): FuelingProduct {
+export function resolvePostRecoveryProduct(
+  preferredBrands: string[],
+  catalog: FuelingProduct[] = FUELING_PRODUCT_CATALOG,
+): FuelingProduct {
   for (const brand of preferredBrands) {
-    const hit = FUELING_PRODUCT_CATALOG.find(
+    const hit = catalog.find(
       (p) => p.brand === brand && p.category === "recovery" && (p.timing.includes("post") || p.timing.includes("daily")),
     );
     if (hit) return hit;
   }
-  return FUELING_PRODUCT_CATALOG.find((p) => p.category === "recovery") ?? FUELING_PRODUCT_CATALOG[0];
+  return catalog.find((p) => p.category === "recovery") ?? catalog[0] ?? FUELING_PRODUCT_CATALOG[0];
 }

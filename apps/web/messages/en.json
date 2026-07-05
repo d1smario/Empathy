@@ -4161,7 +4161,8 @@
     "preWorkoutSubtitle": "Pre-hydration, caffeine, moderate loads before the stimulus",
     "intraWorkoutSubtitle": "Gels, bars and drinks during the session (tolerance)",
     "postWorkoutSubtitle": "Recovery, protein, creatine — after the stimulus",
-    "noSupplementClassified": "No supplement classified here from the current selection (primary bucket from catalog timing)."
+    "noSupplementClassified": "No supplement classified here from the current selection (primary bucket from catalog timing).",
+    "recommendedToday": "Recommended today"
   },
   "MealPlanSection": {
     "dayPlanTitle": "Meal plan for the day",
