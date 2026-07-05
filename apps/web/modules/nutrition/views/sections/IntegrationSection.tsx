@@ -2,15 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/cn";
+import { pathwayOperationalPhaseRowClass } from "@/lib/nutrition/nutrition-view-helpers";
 import {
-  FUNCTIONAL_EXAMPLE_CELL_CLASSES,
-  functionalCandidateRowClass,
-  metabolicPhaseSlotCardClass,
-  nutritionToneForLabel,
-  pathwayOperationalPhaseRowClass,
-} from "@/lib/nutrition/nutrition-view-helpers";
-import {
-  buildIntegrationQuantityHint,
   FUELING_CATEGORY_IT,
   FUELING_FORMAT_IT,
   FOCUS_IT,
@@ -20,35 +13,27 @@ import {
 import type { FuelingProduct } from "@/lib/nutrition/fueling-product-catalog";
 import type {
   FunctionalFoodRecommendationsViewModel,
-  FunctionalMealSelectorViewModel,
   NutritionPathwayModulationViewModel,
   NutrientInterrogationViewModel,
   NutritionPerformanceIntegrationDials,
-  UsdaRichFoodItemViewModel,
 } from "@/api/nutrition/contracts";
-import type { CrossDomainInterpretationRoadmap, EmpathyApplicationPlaybook } from "@empathy/contracts";
+import type { CrossDomainInterpretationRoadmap } from "@empathy/contracts";
 
 /**
  * Sezione "Integrazione" di NutritionPageView (decomposizione del God-component).
- * Render puro: riceve lo stato relativo a USDA rich/lookup + i suoi handler dal
- * padre, e tutte le derive già calcolate (dynamics summary, stack summary,
- * pathway modulation, alimenti funzionali, selettore pasti, prodotti integrazione
- * per timing) come props read-only. Lo stato e il compute restano nel padre —
- * qui solo presentazione.
- *
- * NB: il frammento integration dentro l'accordion «Dettagli e motore» (più in
- * basso in NutritionPageView) NON fa parte di questa estrazione e resta nel padre.
+ * Render puro. La card prodotto è esportata: la usa anche la FuelingSection per
+ * lo «stack per timing» (fusione rifornimento+integrazione, 2026-07).
  */
 export type IntegrationProductCardProduct = FuelingProduct & { displayImage: string; isLogoFallback: boolean };
 
-function IntegrationProductCard({
+export function IntegrationProductCard({
   product,
   qtyHint,
   accent,
 }: {
   product: IntegrationProductCardProduct;
   qtyHint: string;
-  accent: IntegrationTimingBucket;
+  accent: IntegrationTimingBucket | "daily";
 }) {
   const t = useTranslations("IntegrationSection");
   const metaChips = [
@@ -61,7 +46,9 @@ function IntegrationProductCard({
       ? "rgba(167,139,250,0.55)"
       : accent === "intra"
         ? "rgba(232,121,249,0.5)"
-        : "rgba(251,146,60,0.5)";
+        : accent === "daily"
+          ? "rgba(34,211,238,0.45)"
+          : "rgba(251,146,60,0.5)";
   return (
     <article
       className="grid grid-cols-1 sm:grid-cols-2"
@@ -180,46 +167,32 @@ function IntegrationProductCard({
   );
 }
 
+/**
+ * Snellita (analisi 2026-07): restano SOLO i blocchi che guidano il piano
+ * (vie metaboliche → nutrientBoostTargets; target alimenti funzionali) più le
+ * leve performance (spiegano le modulazioni) e i pannelli tech coach/admin.
+ * Rimossi: KPI dynamics/stack (ridondanti), playbook display (entra nel piano
+ * solo come note), selettore pasti funzionali, esempi curati + ricerche USDA,
+ * card prodotti (fuse nel Rifornimento come «stack per timing»).
+ */
 export type IntegrationSectionProps = {
-  integrationDynamicsSummary: { label: string; value: string }[];
-  integrationStackSummary: { label: string; value: string }[];
   nutritionPerformanceIntegration: NutritionPerformanceIntegrationDials | null;
-  applicationPlaybook: EmpathyApplicationPlaybook | null;
   showTech: boolean;
   crossDomainInterpretationRoadmap: CrossDomainInterpretationRoadmap | null;
   nutrientInterrogation: NutrientInterrogationViewModel | null;
   pathwayModulation: NutritionPathwayModulationViewModel | null;
   selectedPlanDateLabel: string;
   functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
-  foodLookupLoading: boolean;
-  runFoodLookupFromPathway: (query: string) => Promise<void>;
-  usdaRichByCatalogId: Record<string, { loading: boolean; error?: string; foods?: UsdaRichFoodItemViewModel[] }>;
-  fetchUsdaRichForCatalog: (catalogId: string) => Promise<void>;
-  effectiveFunctionalMealSelector: FunctionalMealSelectorViewModel | null;
-  integrationProductCards: IntegrationProductCardProduct[];
-  integrationProductsByTiming: Record<IntegrationTimingBucket, IntegrationProductCardProduct[]>;
-  resolvedFuelingChoGPerHour: number;
 };
 
 export function IntegrationSection({
-  integrationDynamicsSummary,
-  integrationStackSummary,
   nutritionPerformanceIntegration,
-  applicationPlaybook,
   showTech,
   crossDomainInterpretationRoadmap,
   nutrientInterrogation,
   pathwayModulation,
   selectedPlanDateLabel,
   functionalFoodRecommendations,
-  foodLookupLoading,
-  runFoodLookupFromPathway,
-  usdaRichByCatalogId,
-  fetchUsdaRichForCatalog,
-  effectiveFunctionalMealSelector,
-  integrationProductCards,
-  integrationProductsByTiming,
-  resolvedFuelingChoGPerHour,
 }: IntegrationSectionProps) {
   const t = useTranslations("IntegrationSection");
   return (
@@ -230,37 +203,6 @@ export function IntegrationSection({
             </header>
             <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
               <h3 className="viz-title">{t("integrationTitle")}</h3>
-              <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                <summary>{t("overviewSummary")}</summary>
-                <p className="nutrition-muted" style={{ fontSize: "0.82rem", marginTop: "8px", marginBottom: 0 }}>
-                  {t("overviewBody")}
-                </p>
-              </details>
-              <div className="fueling-main-kpi-grid" style={{ marginBottom: "14px" }}>
-                {integrationDynamicsSummary.map((card) => (
-                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${nutritionToneForLabel(card.label)}`}>
-                    <div className="fueling-main-kpi-label">
-                      {card.label}
-                    </div>
-                    <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
-                    <div className="fueling-main-kpi-sub">{t("metabolicPathways")}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="nutrition-section-band" style={{ fontSize: "0.9rem", marginBottom: "8px" }}>
-                {t("supplementCatalogSummary")}
-              </div>
-              <div className="fueling-main-kpi-grid" style={{ marginBottom: "10px" }}>
-                {integrationStackSummary.map((card) => (
-                  <div key={card.label} className={`fueling-main-kpi-card fueling-main-kpi-card--${nutritionToneForLabel(card.label)}`}>
-                    <div className="fueling-main-kpi-label">
-                      {card.label}
-                    </div>
-                    <div className="fueling-main-kpi-value font-mono tabular-nums">{card.value}</div>
-                    <div className="fueling-main-kpi-sub">{t("integrationCatalog")}</div>
-                  </div>
-                ))}
-              </div>
               {nutritionPerformanceIntegration?.rationale.length ? (
                 <details
                   className="collapsible-card"
@@ -296,56 +238,6 @@ export function IntegrationSection({
                       : ""}
                     {t("signalModulates")}
                   </p>
-                </details>
-              ) : null}
-              {applicationPlaybook ? (
-                <details className="collapsible-card" style={{ marginBottom: "10px" }}>
-                  <summary>{t("applicationPlaybookSummary")}</summary>
-                  <p className="nutrition-muted mb-2 mt-2 text-[0.74rem] leading-snug">
-                    {applicationPlaybook.playbookHeadlineIt}
-                  </p>
-                  {applicationPlaybook.directives.length ? (
-                    <ul className="mb-3 list-none space-y-2 pl-0 text-[0.78rem]">
-                      {applicationPlaybook.directives.slice(0, 3).map((d) => (
-                        <li
-                          key={d.id}
-                          className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
-                        >
-                          <strong className="text-white">{d.headlineIt}</strong>
-                          <p className="nutrition-muted mt-1 mb-0 text-[0.74rem]">{d.actionIt}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {applicationPlaybook.nutritionAdvice.length ? (
-                    <ul className="mb-3 flex flex-wrap gap-2 list-none pl-0 text-[0.72rem]">
-                      {applicationPlaybook.nutritionAdvice.slice(0, 4).map((n) => (
-                        <li
-                          key={n.id}
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300"
-                          title={n.actionIt}
-                        >
-                          {n.headlineIt}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {applicationPlaybook.timingProtocols.length ? (
-                    <ul className="mb-3 list-none space-y-1 pl-0 text-[0.72rem] text-gray-400">
-                      {applicationPlaybook.timingProtocols.slice(0, 4).map((tp) => (
-                        <li key={tp.id}>
-                          [{tp.pathwayLabel ?? t("protocol")}] {tp.windowLabelIt}: {tp.actionsIt.join(" · ")}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {applicationPlaybook.fuelingAdvice ? (
-                    <p className="nutrition-muted mb-0 text-[0.72rem] leading-snug">
-                      {t("fuelingLabel", { session: applicationPlaybook.fuelingAdvice.sessionLabel })}{" "}
-                      {applicationPlaybook.fuelingAdvice.protocolNotes.join(" · ")}
-                    </p>
-                  ) : null}
-                  <p className="nutrition-muted mt-2 mb-0 text-[0.68rem] opacity-80">{applicationPlaybook.disclaimerIt}</p>
                 </details>
               ) : null}
               {showTech && crossDomainInterpretationRoadmap ? (
@@ -547,104 +439,6 @@ export function IntegrationSection({
                         <div className="nutrition-muted" style={{ fontSize: "0.75rem", marginBottom: "8px" }}>
                           {t("pathwaysLabel", { pathways: target.pathwayLabel })}
                         </div>
-                        <div className="mb-2">
-                          <strong className="text-[0.8rem] text-white">{t("foodExamples")}</strong>
-                          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                            {target.curatedExamples.slice(0, 3).map((ex, idx) => (
-                              <div key={`${target.nutrientId}-${ex.name}`} className={FUNCTIONAL_EXAMPLE_CELL_CLASSES[idx % 3]}>
-                                <div className="text-[0.78rem] font-semibold leading-snug text-white">{ex.name}</div>
-                                <div className="mt-1 text-[0.72rem] leading-snug text-gray-300">{ex.why}</div>
-                              </div>
-                            ))}
-                          </div>
-                          {target.curatedExamples.length > 3 ? (
-                            <ul className="nutrition-muted mb-0 mt-2 list-disc pl-[1.1rem] text-[0.74rem]">
-                              {target.curatedExamples.slice(3).map((ex) => (
-                                <li key={`${target.nutrientId}-${ex.name}-more`} className="mb-1">
-                                  <strong className="text-gray-200">{ex.name}</strong> — {ex.why}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                          {target.searchQueries.map((sq) => (
-                            <button
-                              key={`${target.nutrientId}-${sq}`}
-                              type="button"
-                              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              style={{ cursor: "pointer" }}
-                              disabled={foodLookupLoading}
-                              onClick={() => void runFoodLookupFromPathway(sq)}
-                            >
-                              {t("searchLabel", { query: sq })}
-                            </button>
-                          ))}
-                        </div>
-                        {target.usdaRichSearch ? (
-                          <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed rgba(148,163,184,0.35)" }}>
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              style={{ cursor: "pointer", fontWeight: 600 }}
-                              disabled={usdaRichByCatalogId[target.nutrientId]?.loading === true}
-                              onClick={() => void fetchUsdaRichForCatalog(target.nutrientId)}
-                            >
-                              {usdaRichByCatalogId[target.nutrientId]?.loading
-                                ? t("usdaLoading")
-                                : t("usdaRichIn", { label: target.usdaRichSearch.nutrientShortLabel })}
-                            </button>
-                            {usdaRichByCatalogId[target.nutrientId]?.error ? (
-                              <p className="nutrition-muted" style={{ fontSize: "0.78rem", marginTop: "8px", marginBottom: 0 }}>
-                                {usdaRichByCatalogId[target.nutrientId]?.error}
-                              </p>
-                            ) : null}
-                            {usdaRichByCatalogId[target.nutrientId]?.foods?.length ? (
-                              <div className="mt-2.5 overflow-x-auto">
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr>
-                                      <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("thFoodUsda")}</th>
-                                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Target /100 g</th>
-                                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">P/C/F</th>
-                                      <th className="px-3 py-2" />
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-white/5">
-                                    {usdaRichByCatalogId[target.nutrientId]!.foods!.map((row) => (
-                                      <tr key={row.fdcId} className="transition-colors hover:bg-white/[0.03]">
-                                        <td className="px-3 py-2 align-top text-gray-300">
-                                          <span className="text-white">{row.description}</span>
-                                          <div className="text-[0.68rem] text-gray-500">{row.dataType}</div>
-                                        </td>
-                                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums text-white">
-                                          {row.targetAmountPer100g != null
-                                            ? `${row.targetAmountPer100g} ${row.targetUnitName ?? ""}`.trim()
-                                            : "—"}
-                                        </td>
-                                        <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[0.7rem] tabular-nums text-white">
-                                          {row.proteinG100 != null || row.carbsG100 != null || row.fatG100 != null
-                                            ? `${row.proteinG100 ?? "—"}P / ${row.carbsG100 ?? "—"}C / ${row.fatG100 ?? "—"}F`
-                                            : "—"}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <a
-                                            href={`https://fdc.nal.usda.gov/fdc-app.html#/food-details/${row.fdcId}/nutrients`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[0.72rem] text-amber-300 underline decoration-amber-400/40 underline-offset-2 hover:text-amber-200"
-                                          >
-                                            FDC
-                                          </a>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -653,69 +447,6 @@ export function IntegrationSection({
                     {t("noFoodTarget")}
                   </p>
                 )}
-                {effectiveFunctionalMealSelector ? (
-                  <div
-                    style={{
-                      marginTop: "14px",
-                      borderTop: "1px dashed rgba(148,163,184,0.28)",
-                      paddingTop: "12px",
-                    }}
-                  >
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
-                      <strong>{t("functionalMealSelector")}</strong>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">{effectiveFunctionalMealSelector.status}</span>
-                      <span className="nutrition-muted" style={{ fontSize: "0.75rem" }}>
-                        {effectiveFunctionalMealSelector.date}
-                      </span>
-                    </div>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {effectiveFunctionalMealSelector.slots.map((slot) => (
-                        <div
-                          key={`${slot.slot}-${slot.focus}`}
-                          className={cn(
-                            "rounded-xl border-2 p-3",
-                            metabolicPhaseSlotCardClass(slot.metabolicPhase),
-                          )}
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <strong className="capitalize text-white">{slot.slot.replace("_", " ")}</strong>
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300">{slot.focus}</span>
-                            <span className="rounded-full border border-white/15 bg-black/30 px-2 py-0.5 text-[0.62rem] uppercase tracking-wide text-gray-300">
-                              {slot.metabolicPhase.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                          <p className="nutrition-muted my-2 text-[0.78rem] leading-snug">{slot.rationale}</p>
-                          <div className="flex flex-col gap-2">
-                            {slot.candidates.map((candidate) => (
-                              <div
-                                key={`${slot.slot}-${candidate.name}`}
-                                className={cn(
-                                  "rounded-xl border border-white/10 py-2 pl-3 pr-2 text-[0.76rem] leading-snug text-gray-100",
-                                  functionalCandidateRowClass(candidate.timing),
-                                )}
-                              >
-                                <strong className="text-white">{candidate.name}</strong>
-                                <span className="text-gray-300"> — {candidate.reason}</span>
-                                <div className="nutrition-muted mt-1 text-[0.68rem] leading-snug">
-                                  {t("elementsTiming", {
-                                    elements: candidate.functionalElements.join(", "),
-                                    timing: candidate.timing,
-                                  })}
-                                  {candidate.caution ? ` · ${t("cautionLabel", { caution: candidate.caution })}` : ""}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <ul className="nutrition-muted" style={{ fontSize: "0.72rem", marginTop: "10px", marginBottom: 0 }}>
-                      {effectiveFunctionalMealSelector.notes.map((n) => (
-                        <li key={n}>{n}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
                 <ul className="nutrition-muted" style={{ fontSize: "0.72rem", marginTop: "10px", marginBottom: 0 }}>
                   {functionalFoodRecommendations.notes.map((n) => (
                     <li key={n}>{n}</li>
@@ -723,75 +454,6 @@ export function IntegrationSection({
                 </ul>
               </details>
               {/* Brand e token catalogo: spostati nell'accordion «Dettagli e motore» in fondo pagina. */}
-              {integrationProductCards.length ? (
-                <div className="mt-3 grid gap-3 lg:grid-cols-3">
-                  {(
-                    [
-                      {
-                        key: "pre" as const,
-                        title: "Pre workout",
-                        subtitle: t("preWorkoutSubtitle"),
-                      },
-                      {
-                        key: "intra" as const,
-                        title: "Intra workout",
-                        subtitle: t("intraWorkoutSubtitle"),
-                      },
-                      {
-                        key: "post" as const,
-                        title: "Post workout",
-                        subtitle: t("postWorkoutSubtitle"),
-                      },
-                    ] as const
-                  ).map((col) => (
-                    <div
-                      key={col.key}
-                      className={cn(
-                        "flex min-h-[120px] flex-col gap-3 rounded-2xl border bg-black/30 p-3",
-                        col.key === "pre" && "border-violet-500/40",
-                        col.key === "intra" && "border-fuchsia-500/40",
-                        col.key === "post" && "border-orange-500/45",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "rounded-xl border border-white/10 bg-gradient-to-r px-3 py-2 to-transparent",
-                          col.key === "pre" && "from-violet-600/28",
-                          col.key === "intra" && "from-fuchsia-600/28",
-                          col.key === "post" && "from-orange-600/28",
-                        )}
-                      >
-                        <div className="text-[0.68rem] font-bold uppercase tracking-wider text-white">{col.title}</div>
-                        <div className="nutrition-muted mt-0.5 text-[0.66rem] leading-snug">{col.subtitle}</div>
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        {integrationProductsByTiming[col.key].length ? (
-                          integrationProductsByTiming[col.key].map((product) => {
-                            const qtyHint = buildIntegrationQuantityHint(product, {
-                              choGHour: resolvedFuelingChoGPerHour,
-                              energyAdequacyRatio: nutritionPerformanceIntegration?.diaryInsight?.energyAdequacyRatio,
-                              proteinBiasPctPoints: nutritionPerformanceIntegration?.proteinBiasPctPoints ?? 0,
-                              fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
-                            });
-                            return (
-                              <IntegrationProductCard
-                                key={`${col.key}-${product.brand}-${product.product}`}
-                                product={product}
-                                qtyHint={qtyHint}
-                                accent={col.key}
-                              />
-                            );
-                          })
-                        ) : (
-                          <p className="nutrition-muted m-0 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
-                            {t("noSupplementClassified")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </section>
           </section>
   );

@@ -2678,7 +2678,10 @@
     "predictorSubWithCurrentFueling": "With current fueling",
     "savingLabel": "Saving…",
     "savePredictorFuelingConfig": "Save predictor and fueling settings",
-    "savePredictorFuelingHint": "Persists predictor and fueling knobs to the profile (does not regenerate the plan)."
+    "savePredictorFuelingHint": "Persists predictor and fueling knobs to the profile (does not regenerate the plan).",
+    "predictorWhatIfTitle": "Event predictor (what-if)",
+    "predictorWhatIfSubtitle": "Simulate a session or a race not yet scheduled: expenditure, CHO and glycogen risk. Does not change the plan.",
+    "sectorsAdaptationDay": "Sectors · adaptation (day)"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Previous day",
@@ -3944,7 +3947,16 @@
     "glycogenDepletionTitle": "Glycogen depletion (session)",
     "absorbedLabel": "Absorbed:",
     "axisYLabel": "Y: available glycogen (g / %)",
-    "axisXLabel": "X: time"
+    "axisXLabel": "X: time",
+    "stackTitle": "Your supplement stack",
+    "stackIntroTraining": "Your preferred brands' products by moment of the day, dosed on today's session CHO/h.",
+    "stackIntroRest": "No session today: daily and recovery products remain — no out-of-context intra dosing.",
+    "stackColDailySub": "Also on rest days",
+    "stackColPreSub": "Before the session",
+    "stackColIntraSub": "During today's session",
+    "stackColPostSub": "Post-session recovery",
+    "stackInProtocol": "Already in today's protocol",
+    "stackEmptyColumn": "No product classified here"
   },
   "HealthArchiveSection": {
     "reportArchive": "Report archive",

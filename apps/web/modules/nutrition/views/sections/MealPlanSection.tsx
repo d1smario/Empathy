@@ -7,18 +7,15 @@ import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
 import { round } from "@/lib/nutrition/nutrition-view-helpers";
 import {
   NutritionMealPlanDailyTargets,
-  NutritionMealPlanLeadPanels,
   NutritionMealPlanWorkspace,
   type MealPlanDisplayRow,
   type NutritionMealPlanEnergyLedger,
   type NutritionMealPlanStateTone,
 } from "@/modules/nutrition/views/NutritionMealPlanView";
 import type {
-  FunctionalFoodRecommendationsViewModel,
   NutritionApplicationDirectiveViewModel,
   NutritionPathwayModulationViewModel,
 } from "@/api/nutrition/contracts";
-import type { AdaptationSectorBoxVm } from "@/lib/adaptation/adaptation-sector-box";
 import type { NutritionMicronutrientGridProps } from "@/modules/nutrition/components/NutritionMicronutrientGrid";
 import type { FoodDiaryEntryViewModel } from "@/api/nutrition/contracts";
 import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
@@ -61,9 +58,6 @@ export type MealPlanSectionProps = {
   complianceOverview: { target: { kcal: number; carbs: number; protein: number; fat: number } };
   selectedPlanDateLabel: string;
   hydrationPlan: { minDailyMl: number };
-  selectedExecutedKj: number;
-  nutritionDayModel: { training: { kcal: number } } | null;
-  effectiveDayContext: { summary: { totalKcal: number } };
   mealPlanEnergyLedger: NutritionMealPlanEnergyLedger | null;
   mealPlanWorkspaceRows: MealPlanDisplayRow[];
   mealDisplayByKey: Map<MealSlotKey, MealPlanDisplayRow>;
@@ -80,8 +74,6 @@ export type MealPlanSectionProps = {
   profileFoodExcludeBusy: string | null;
   mealTabMicronutrientProps: NutritionMicronutrientGridProps;
   nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
-  nutritionSectorBoxes: AdaptationSectorBoxVm[];
-  functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
   /** Conferme di consumo per pasto del giorno selezionato (carosello companion). */
   mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
   mealConfirmBusySlot: string | null;
@@ -120,9 +112,6 @@ export function MealPlanSection({
   complianceOverview,
   selectedPlanDateLabel,
   hydrationPlan,
-  selectedExecutedKj,
-  nutritionDayModel,
-  effectiveDayContext,
   mealPlanEnergyLedger,
   mealPlanWorkspaceRows,
   mealDisplayByKey,
@@ -139,8 +128,6 @@ export function MealPlanSection({
   profileFoodExcludeBusy,
   mealTabMicronutrientProps,
   nutritionStateCards,
-  nutritionSectorBoxes,
-  functionalFoodRecommendations,
   mealConfirmations,
   mealConfirmBusySlot,
   persistMealConfirmation,
@@ -312,16 +299,10 @@ export function MealPlanSection({
         />
       ) : null}
 
-      {/* Approfondimenti del giorno: sezioni avanzate collassate di default. */}
-      {athleteId ? (
-        <section id="mod-approfondimenti" className="scroll-mt-28" style={{ marginBottom: "12px" }}>
-          <NutritionMealPlanLeadPanels
-            nutritionSectorBoxes={nutritionSectorBoxes}
-            pathwayModulation={pathwayModulation}
-            functionalFoodRecommendations={functionalFoodRecommendations}
-          />
-        </section>
-      ) : null}
+      {/* Accordion «Adattamento del giorno e pillole funzionali» RIMOSSO
+          (analisi 2026-07): le pillole erano un teaser dei target già mostrati
+          per intero nella sezione Integrazione; la sector strip vive nella
+          diagnostica tecnica coach/admin in fondo pagina. */}
     </>
   );
 }

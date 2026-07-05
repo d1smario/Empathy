@@ -2678,7 +2678,10 @@
     "predictorSubWithCurrentFueling": "Con rifornimento corrente",
     "savingLabel": "Salvataggio…",
     "savePredictorFuelingConfig": "Salva impostazioni previsione e rifornimento",
-    "savePredictorFuelingHint": "Persiste nel profilo le manopole di previsione e rifornimento (non rigenera il piano)."
+    "savePredictorFuelingHint": "Persiste nel profilo le manopole di previsione e rifornimento (non rigenera il piano).",
+    "predictorWhatIfTitle": "Previsione evento (what-if)",
+    "predictorWhatIfSubtitle": "Simula una seduta o una gara non a calendario: consumo, CHO e rischio glicogeno. Non modifica il piano.",
+    "sectorsAdaptationDay": "Settori · adattamento (giorno)"
   },
   "NutritionPlanDatePicker": {
     "previousDay": "Giorno precedente",
@@ -3944,7 +3947,16 @@
     "glycogenDepletionTitle": "Glycogen depletion (seduta)",
     "absorbedLabel": "Assorbiti:",
     "axisYLabel": "Y: glicogeno disponibile (g / %)",
-    "axisXLabel": "X: tempo"
+    "axisXLabel": "X: tempo",
+    "stackTitle": "Il tuo stack integrazione",
+    "stackIntroTraining": "Prodotti dei tuoi brand per momento della giornata, dosati sul CHO/h della seduta di oggi.",
+    "stackIntroRest": "Giorno senza seduta: restano i prodotti giornalieri e da recupero — niente dosi intra fuori contesto.",
+    "stackColDailySub": "Anche nei giorni di riposo",
+    "stackColPreSub": "Prima della seduta",
+    "stackColIntraSub": "Durante la seduta di oggi",
+    "stackColPostSub": "Recupero post seduta",
+    "stackInProtocol": "Già nel protocollo di oggi",
+    "stackEmptyColumn": "Nessun prodotto classificato qui"
   },
   "HealthArchiveSection": {
     "reportArchive": "Archivio referti",

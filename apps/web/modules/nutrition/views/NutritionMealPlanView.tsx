@@ -5,16 +5,13 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Zap } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import { NutritionDayKpiStrip } from "@/components/nutrition/NutritionDayKpiStrip";
-import { Pro2Accordion } from "@/components/ui/empathy";
 import type {
   FoodDiaryEntryViewModel,
   FunctionalFoodRecommendationsViewModel,
   NutritionApplicationDirectiveViewModel,
   NutritionPathwayModulationViewModel,
 } from "@/api/nutrition/contracts";
-import type { AdaptationSectorBoxVm } from "@/lib/adaptation/adaptation-sector-box";
 import {
   NutritionMicronutrientDailyBoard,
   mealPlanDayTotalsToMicroLines,
@@ -193,62 +190,6 @@ export function NutritionMealPlanDailyTargets({
         </div>
       ) : null}
     </div>
-  );
-}
-
-export type NutritionMealPlanLeadPanelsProps = {
-  nutritionSectorBoxes: AdaptationSectorBoxVm[];
-  pathwayModulation: NutritionPathwayModulationViewModel | null;
-  functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
-};
-
-/** Approfondimenti del giorno (adattamento + pillole funzionali): collassati di default per canone Pro2. */
-export function NutritionMealPlanLeadPanels({
-  nutritionSectorBoxes,
-  functionalFoodRecommendations,
-}: NutritionMealPlanLeadPanelsProps) {
-  const t = useTranslations("NutritionMealPlanView");
-  const router = useRouter();
-  const { adminScoped } = useActiveAthlete();
-  return (
-    <Pro2Accordion
-      accent="amber"
-      title={t("leadPanelsTitle")}
-      subtitle={t("leadPanelsSubtitle")}
-    >
-      <div className="space-y-3">
-        <AdaptationSectorStrip title={t("sectorsAdaptationDay")} boxes={nutritionSectorBoxes} />
-
-        {functionalFoodRecommendations.targets.length ? (
-          <div style={{ fontSize: "0.8rem" }}>
-            <strong>{t("adaptivePills")}</strong>
-            <span className="nutrition-muted"> {t("adaptivePillsSuffix")} </span>
-            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px", verticalAlign: "middle" }}>
-              {functionalFoodRecommendations.targets.slice(0, 8).map((t) => (
-                <span
-                  key={t.nutrientId}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[0.7rem] font-semibold text-gray-300"
-                  title={t.rationaleIt}
-                >
-                  {t.displayNameIt.split("(")[0].trim()}
-                </span>
-              ))}
-            </span>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[0.7rem] font-semibold text-amber-300 transition-colors hover:border-amber-400/50 hover:bg-amber-500/20"
-              style={{ marginLeft: "8px", cursor: "pointer" }}
-              onClick={() => {
-                if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
-                router.push("/nutrition/integration");
-              }}
-            >
-              {t("goToIntegration")}
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </Pro2Accordion>
   );
 }
 

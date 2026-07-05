@@ -7,6 +7,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
+import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
 import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
 import { Pro2Accordion } from "@/components/ui/empathy";
@@ -65,7 +66,6 @@ import {
 } from "@/lib/nutrition/nutrition-athlete-profile-mappers";
 import type {
   ExecutedRow,
-  FoodLookupItem,
   FuelingSlot,
   FuelingTrainingContextRow,
   GarminFuelingStep,
@@ -117,9 +117,9 @@ import {
   FUELING_CATEGORY_IT,
   FUELING_FORMAT_IT,
   FOCUS_IT,
-  primaryIntegrationTimingBucket,
+  stackTimingBucket,
   TIMING_IT,
-  type IntegrationTimingBucket,
+  type StackTimingBucket,
 } from "@/lib/nutrition/integration-product-ui";
 import { resolveFuelingPro2MediaUrlFromCandidates } from "@/lib/nutrition/fueling-pro2-media-manifest";
 import {
@@ -464,14 +464,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [predictorIntensityPctFtp, setPredictorIntensityPctFtp] = useState(84);
   const [predictorUsePlanDay, setPredictorUsePlanDay] = useState(true);
   const [diaryMacroRows, setDiaryMacroRows] = useState<FoodDiaryComplianceRow[]>([]);
-  const [foodQuery, setFoodQuery] = useState("");
-  const [foodLookupResults, setFoodLookupResults] = useState<FoodLookupItem[]>([]);
-  const [foodLookupLoading, setFoodLookupLoading] = useState(false);
-  const [foodLookupError, setFoodLookupError] = useState<string | null>(null);
-  const [usdaRichByCatalogId, setUsdaRichByCatalogId] = useState<
-    Record<string, { loading: boolean; error?: string; foods?: UsdaRichFoodItemViewModel[] }>
-  >({});
-  const [savingCatalogKey, setSavingCatalogKey] = useState<string | null>(null);
   const [garminExporting, setGarminExporting] = useState(false);
   const [garminMessage, setGarminMessage] = useState<string | null>(null);
   const [fuelingMediaByKey, setFuelingMediaByKey] = useState<Record<string, string>>({});
@@ -1056,42 +1048,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   );
 
   /** Tab Integrazione: KPI da pathway + leve operative (allineati ai blocchi condivisi). */
-  const integrationDynamicsSummary = useMemo(() => {
-    const cards: { label: string; value: string }[] = [];
-    if (pathwayModulation) {
-      cards.push({ label: t("kpiModulatedPathways"), value: String(pathwayModulation.pathways.length) });
-      cards.push({
-        label: t("kpiAggregateInhibitors"),
-        value: pathwayModulation.aggregateInhibitors.length ? String(pathwayModulation.aggregateInhibitors.length) : "0",
-      });
-      const levelHits = (["biochemical", "hormonal", "neurologic", "microbiota", "genetic"] as const).filter(
-        (k) => pathwayModulation.multiLevelSummary[k].length > 0,
-      ).length;
-      cards.push({ label: t("kpiActiveLevels"), value: `${levelHits}/5` });
-    }
-    if (nutritionPerformanceIntegration) {
-      cards.push({
-        label: t("kpiRecoveryBioIndicator"),
-        value: `×${nutritionPerformanceIntegration.trainingEnergyScale.toFixed(2)}`,
-      });
-      cards.push({
-        label: "CHO fueling",
-        value: `×${nutritionPerformanceIntegration.fuelingChoScale.toFixed(2)}`,
-      });
-      cards.push({
-        label: t("kpiProteinBias"),
-        value: `+${nutritionPerformanceIntegration.proteinBiasPctPoints}%`,
-      });
-      cards.push({
-        label: t("kpiHydrationFloor"),
-        value: `×${nutritionPerformanceIntegration.hydrationFloorMultiplier.toFixed(2)}`,
-      });
-    }
-    if (!cards.length) {
-      return [{ label: t("kpiIntegrationModel"), value: "—" }];
-    }
-    return cards;
-  }, [pathwayModulation, nutritionPerformanceIntegration, t]);
 
   const [functionalCatalog, setFunctionalCatalog] = useState<FunctionalNutrientCatalogEntry[]>(FUNCTIONAL_NUTRIENT_CATALOG);
   useEffect(() => {
@@ -1709,25 +1665,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (fromProfile.length) return Array.from(new Set(fromProfile));
     return ["Enervit", "SiS", "Maurten", "+Watt", "Powerbar"];
   }, [preferredBrands]);
-
-  const restrictedTokens = useMemo(() => {
-    const tokens = [
-      ...(profile?.allergies ?? []),
-      ...(profile?.intolerances ?? []),
-      ...(profile?.food_exclusions ?? []),
-    ]
-      .map((x) => String(x).toLowerCase().trim())
-      .filter(Boolean);
-    return Array.from(new Set(tokens));
-  }, [profile]);
-
-  const filteredLookupResults = useMemo(() => {
-    if (!restrictedTokens.length) return foodLookupResults;
-    return foodLookupResults.filter((item) => {
-      const hay = `${item.label} ${item.brand ?? ""}`.toLowerCase();
-      return !restrictedTokens.some((t) => hay.includes(t));
-    });
-  }, [foodLookupResults, restrictedTokens]);
 
   /** Eseguiti ordinati per data desc (la finestra API è come il calendario: asc); per medie serve “ultimi 7”. */
   const recent7 = useMemo(() => {
@@ -2665,29 +2602,32 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     }));
   }, [fuelingMediaByKey, normalizedPreferredBrands]);
 
-  const integrationProductsByTiming = useMemo(() => {
-    const buckets: Record<IntegrationTimingBucket, IntegrationProductCardProduct[]> = {
+  /** Stack per timing FUSO nel rifornimento (2026-07): «daily» resta colonna
+      propria — schiacciarlo su pre/intra/post creava il falso «prendi
+      integratori da seduta» nei giorni di riposo. */
+  const stackProductsByTiming = useMemo(() => {
+    const buckets: Record<StackTimingBucket, IntegrationProductCardProduct[]> = {
       pre: [],
       intra: [],
       post: [],
+      daily: [],
     };
     for (const product of integrationProductCards) {
-      buckets[primaryIntegrationTimingBucket(product)].push(product);
+      buckets[stackTimingBucket(product)].push(product);
     }
     return buckets;
   }, [integrationProductCards]);
 
-  const integrationStackSummary = useMemo(() => {
-    const brandCount = new Set(integrationProductCards.map((product) => product.brand)).size;
-    const focusCount = new Set(integrationProductCards.flatMap((product) => product.functionalFocus)).size;
-    const directImages = integrationProductCards.filter((product) => !product.isLogoFallback).length;
-    return [
-      { label: "Products", value: `${integrationProductCards.length}` },
-      { label: "Brands", value: `${brandCount}` },
-      { label: "Focus", value: `${focusCount}` },
-      { label: "Official images", value: `${directImages}/${integrationProductCards.length}` },
-    ];
-  }, [integrationProductCards]);
+  /** Prodotti già nella timeline del protocollo di oggi: nello stack diventano badge, non card doppia. */
+  const protocolProductKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const pkg of fuelingSessionPackages) {
+      for (const step of pkg.timelineSteps) {
+        if (step.product) keys.add(`${step.product.brand}::${step.product.product}`);
+      }
+    }
+    return Array.from(keys);
+  }, [fuelingSessionPackages]);
 
   /** Proiezione glicogeno aggregata sulla giornata (predictor e riepilogo). */
   const glycogenDepletion = useMemo(
@@ -3156,98 +3096,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     setHydrationIntakeBusy(false);
   }
 
-  async function runFoodLookupForQuery(rawQuery: string) {
-    const q = rawQuery.trim();
-    if (!q) return;
-    setFoodLookupLoading(true);
-    setFoodLookupError(null);
-    try {
-      const url = `/api/nutrition/food-lookup?q=${encodeURIComponent(q)}&brands=${encodeURIComponent(preferredBrands.join(","))}`;
-      const res = await fetch(url, { method: "GET" });
-      const payload = (await res.json()) as { items?: FoodLookupItem[]; error?: string };
-      if (!res.ok) throw new Error(payload.error || "Lookup error");
-      setFoodLookupResults(Array.isArray(payload.items) ? payload.items : []);
-      setFoodQuery(q);
-    } catch (e) {
-      setFoodLookupError(e instanceof Error ? e.message : "Food lookup error");
-      setFoodLookupResults([]);
-    } finally {
-      setFoodLookupLoading(false);
-    }
-  }
-
-  async function runFoodLookup() {
-    await runFoodLookupForQuery(foodQuery);
-  }
-
-  async function runFoodLookupFromPathway(query: string) {
-    await runFoodLookupForQuery(query);
-    if (adminScoped) return; // nelle schede admin niente navigazione cross-shell
-    router.push("/nutrition/integration");
-  }
-
-  async function fetchUsdaRichForCatalog(catalogId: string) {
-    setUsdaRichByCatalogId((prev) => ({ ...prev, [catalogId]: { loading: true } }));
-    try {
-      const res = await fetch(`/api/nutrition/usda-by-nutrient?catalogId=${encodeURIComponent(catalogId)}`);
-      const payload = (await res.json()) as { foods?: UsdaRichFoodItemViewModel[]; error?: string };
-      if (!res.ok) {
-        setUsdaRichByCatalogId((prev) => ({
-          ...prev,
-          [catalogId]: {
-            loading: false,
-            error: payload.error || `USDA error (${res.status})`,
-            foods: [],
-          },
-        }));
-        return;
-      }
-      setUsdaRichByCatalogId((prev) => ({
-        ...prev,
-        [catalogId]: {
-          loading: false,
-          foods: Array.isArray(payload.foods) ? payload.foods : [],
-          error: undefined,
-        },
-      }));
-    } catch (e) {
-      setUsdaRichByCatalogId((prev) => ({
-        ...prev,
-        [catalogId]: {
-          loading: false,
-          error: e instanceof Error ? e.message : "Network error",
-          foods: [],
-        },
-      }));
-    }
-  }
-
-  async function saveLookupItemToCatalog(item: FoodLookupItem) {
-    const key = `${item.source}-${item.brand ?? "na"}-${item.label}`;
-    setSavingCatalogKey(key);
-    setFoodLookupError(null);
-    try {
-      await saveNutritionLookupItem({
-        source: item.source,
-        brand: item.brand,
-        product_name: item.label,
-        category: "fueling",
-        kcal_100g: item.kcal_100,
-        cho_100g: item.carbs_100,
-        protein_100g: item.protein_100,
-        fat_100g: item.fat_100,
-        sodium_mg_100g: item.sodium_mg_100,
-        metadata: {
-          saved_from: "nutrition_fueling_lookup",
-          query: foodQuery.trim(),
-          saved_at: new Date().toISOString(),
-        },
-      });
-    } catch (err) {
-      setFoodLookupError(err instanceof Error ? err.message : "Error saving to catalog");
-    }
-    setSavingCatalogKey(null);
-  }
 
   async function exportGarminFuelingPayload() {
     if (!athleteId) return;
@@ -3327,9 +3175,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               complianceOverview={complianceOverview}
               selectedPlanDateLabel={selectedPlanDateLabel}
               hydrationPlan={hydrationPlan}
-              selectedExecutedKj={selectedExecutedKj}
-              nutritionDayModel={nutritionDayModel}
-              effectiveDayContext={effectiveDayContext}
               mealPlanEnergyLedger={mealPlanEnergyLedger}
               mealPlanWorkspaceRows={mealPlanWorkspaceRows}
               mealDisplayByKey={mealDisplayByKey}
@@ -3346,8 +3191,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               profileFoodExcludeBusy={profileFoodExcludeBusy}
               mealTabMicronutrientProps={mealTabMicronutrientProps}
               nutritionStateCards={nutritionStateCards}
-              nutritionSectorBoxes={nutritionSectorBoxes}
-              functionalFoodRecommendations={functionalFoodRecommendations}
               mealConfirmations={mealConfirmationsForSelectedDate}
               mealConfirmBusySlot={mealConfirmBusySlot}
               persistMealConfirmation={persistMealConfirmation}
@@ -3366,24 +3209,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               Strumenti eliminato — /nutrition/integration reindirizza qui). */}
           {subRoute === "meal-plan" ? (
             <IntegrationSection
-              integrationDynamicsSummary={integrationDynamicsSummary}
-              integrationStackSummary={integrationStackSummary}
               nutritionPerformanceIntegration={nutritionPerformanceIntegration}
-              applicationPlaybook={applicationPlaybook}
               showTech={showTech}
               crossDomainInterpretationRoadmap={crossDomainInterpretationRoadmap}
               nutrientInterrogation={nutrientInterrogation}
               pathwayModulation={pathwayModulation}
               selectedPlanDateLabel={selectedPlanDateLabel}
               functionalFoodRecommendations={functionalFoodRecommendations}
-              foodLookupLoading={foodLookupLoading}
-              runFoodLookupFromPathway={runFoodLookupFromPathway}
-              usdaRichByCatalogId={usdaRichByCatalogId}
-              fetchUsdaRichForCatalog={fetchUsdaRichForCatalog}
-              effectiveFunctionalMealSelector={effectiveFunctionalMealSelector}
-              integrationProductCards={integrationProductCards}
-              integrationProductsByTiming={integrationProductsByTiming}
-              resolvedFuelingChoGPerHour={resolvedFuelingChoGPerHour}
             />
           ) : null}
 
@@ -3403,14 +3235,29 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               fuelingTrainingContext={fuelingTrainingContext}
               fuelingIntraChoSplitBySession={fuelingIntraChoSplitBySession}
               knowledgeFuelingHints={knowledgeFuelingHints}
+              stackProductsByTiming={stackProductsByTiming}
+              protocolProductKeys={protocolProductKeys}
+              stackHintContext={{
+                energyAdequacyRatio: nutritionPerformanceIntegration?.diaryInsight?.energyAdequacyRatio,
+                proteinBiasPctPoints: nutritionPerformanceIntegration?.proteinBiasPctPoints ?? 0,
+                fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
+              }}
               nutritionPerformanceIntegration={nutritionPerformanceIntegration}
               fuelingPhysiology={fuelingPhysiology}
             />
           ) : null}
 
-          {/* Previsione dentro il Piano, dopo il rifornimento (alimenta le scelte
-              di fueling); accanto, il salvataggio delle sue manopole. */}
+          {/* Previsione = what-if in accordion CHIUSO (analisi 2026-07): non
+              alimenta piano né fueling (fondo cieco informativo) e in modalità
+              «giorno del piano» duplica la proiezione glicogeno del rifornimento.
+              Il valore vero è simulare un evento non a calendario. */}
           {subRoute === "meal-plan" ? (
+            <section className="scroll-mt-28" style={{ marginBottom: "12px" }}>
+            <Pro2Accordion
+              accent="amber"
+              title={t("predictorWhatIfTitle")}
+              subtitle={t("predictorWhatIfSubtitle")}
+            >
             <PredictorSection
               predictorSport={predictorSport}
               setPredictorSport={setPredictorSport}
@@ -3429,23 +3276,19 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               selectedPlanDateShort={selectedPlanDateShort}
               resolvedFuelingTierBand={resolvedFuelingTierBand}
             />
-          ) : null}
-
-          {/* Salva le manopole di previsione/fueling nel profilo: vive qui,
-              accanto a chi le modifica (spostato dal fondo dei pasti, 2026-07). */}
-          {subRoute === "meal-plan" ? (
-            <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
-              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  disabled={saving}
-                  className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
-                  onClick={() => void handleSaveNutrition()}
-                >
-                  {saving ? t("savingLabel") : t("savePredictorFuelingConfig")}
-                </button>
-                <span className="text-xs text-gray-500">{t("savePredictorFuelingHint")}</span>
-              </div>
+            {/* Salvataggio delle manopole what-if: dentro l'accordion, accanto a chi le modifica. */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-60"
+                onClick={() => void handleSaveNutrition()}
+              >
+                {saving ? t("savingLabel") : t("savePredictorFuelingConfig")}
+              </button>
+              <span className="text-xs text-gray-500">{t("savePredictorFuelingHint")}</span>
+            </div>
+            </Pro2Accordion>
             </section>
           ) : null}
 
@@ -3519,6 +3362,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
                       {t("technicalDiagnostics")}
                     </p>
+                    {/* Sector strip multi-livello (ex «Adattamento del giorno»):
+                        contenuto unico, spostato qui per coach/admin (2026-07). */}
+                    <AdaptationSectorStrip title={t("sectorsAdaptationDay")} boxes={nutritionSectorBoxes} />
                     {researchTraceSummaries.length ? (
                       <ResearchTraceStatusSummary traces={researchTraceSummaries} label={t("nutritionResearchStatus")} />
                     ) : null}

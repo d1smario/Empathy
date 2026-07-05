@@ -47,6 +47,19 @@ export const TIMING_IT: Record<FuelingProduct["timing"][number], string> = {
 /** Colonna primaria per la griglia integrazione (Pre / Intra / Post). */
 export type IntegrationTimingBucket = "pre" | "intra" | "post";
 
+/**
+ * Bucket per lo «stack per timing» fuso nel Rifornimento (2026-07): «daily»
+ * resta colonna propria — creatina/omega/recovery quotidiani sono legittimi
+ * anche nei giorni di riposo, schiacciarli su pre/intra/post creava il falso
+ * messaggio «prendi integratori da seduta anche a riposo».
+ */
+export type StackTimingBucket = IntegrationTimingBucket | "daily";
+
+export function stackTimingBucket(product: FuelingProduct): StackTimingBucket {
+  if (product.timing.includes("daily")) return "daily";
+  return primaryIntegrationTimingBucket(product);
+}
+
 export function primaryIntegrationTimingBucket(product: FuelingProduct): IntegrationTimingBucket {
   const { timing, category, functionalFocus } = product;
   if (timing.includes("intra")) return "intra";
