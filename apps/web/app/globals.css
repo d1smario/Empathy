@@ -413,6 +413,11 @@ body {
   }
 }
 
+/* Traccia carosello pasti: scrollbar nascosta (si naviga con chip/frecce/swipe). */
+.empathy-meal-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
 /* ——— Piano companion (2026-07): pasti a sinistra, idratazione a destra su desktop ——— */
 .empathy-plan-companion-grid {
   display: grid;

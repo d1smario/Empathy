@@ -48,22 +48,39 @@ export type BuildMealPlanV2ProductionInput = BuildDailyRequirementsInput & {
   preferredFuelingBrands?: string[];
 };
 
+/**
+ * Pool FDC per dietProfile: catalogo statico, indipendente da atleta e data.
+ * Il for-await seriale costava ~13 round-trip Supabase per OGNI generazione
+ * (0,7–2,5 s a POST, e la POST parte a ogni primo load della pagina piano —
+ * misura live 2026-07). Qui: query in parallelo + memo di processo con TTL.
+ * Sicuro: i consumer non mutano i pool (pickCandidate ordina su copia).
+ */
+const fdcPoolCacheByDietProfile = new Map<string, { at: number; pools: FdcPoolMap }>();
+const FDC_POOL_CACHE_TTL_MS = 5 * 60_000;
+
 async function loadFdcPools(
   admin: SupabaseClient,
   dietProfile: DailyNutritionRequirementsV2["dietProfileActive"],
 ): Promise<FdcPoolMap> {
-  const excludeAmino = dietProfile === "low_histamine" ? (["histamine_rich"] as const) : undefined;
-  const map: FdcPoolMap = new Map();
-
-  for (const spec of FDC_BRANCH_POOL_SPECS) {
-    const filter: FdcFoodBrowseFilter = {
-      ...spec.filter,
-      dietProfile,
-      excludeAminoProfile: excludeAmino ? [...excludeAmino] : undefined,
-    };
-    const hits = await queryFdcBranchPool(admin, filter);
-    map.set(spec.poolKey, hits);
+  const cached = fdcPoolCacheByDietProfile.get(dietProfile);
+  if (cached && Date.now() - cached.at < FDC_POOL_CACHE_TTL_MS) {
+    return cached.pools;
   }
+
+  const excludeAmino = dietProfile === "low_histamine" ? (["histamine_rich"] as const) : undefined;
+  const entries = await Promise.all(
+    FDC_BRANCH_POOL_SPECS.map(async (spec) => {
+      const filter: FdcFoodBrowseFilter = {
+        ...spec.filter,
+        dietProfile,
+        excludeAminoProfile: excludeAmino ? [...excludeAmino] : undefined,
+      };
+      const hits = await queryFdcBranchPool(admin, filter);
+      return [spec.poolKey, hits] as const;
+    }),
+  );
+  const map: FdcPoolMap = new Map(entries);
+  fdcPoolCacheByDietProfile.set(dietProfile, { at: Date.now(), pools: map });
   return map;
 }
 

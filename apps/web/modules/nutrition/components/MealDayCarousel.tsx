@@ -21,6 +21,9 @@ export type MealCarouselItem = {
   card: ReactNode;
 };
 
+/** Spazio tra le slide: visibile solo durante lo scorrimento. */
+const TRACK_GAP = 16;
+
 export function MealDayCarousel({
   items,
   onConfirmMeal,
@@ -41,8 +44,11 @@ export function MealDayCarousel({
 
   const scrollToSlot = (slotKey: string, smooth = true) => {
     const el = slideRefs.current[slotKey];
-    if (!el) return;
-    el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
+    const track = trackRef.current;
+    if (!el || !track) return;
+    // Scroll SOLO orizzontale sulla traccia: scrollIntoView muoverebbe anche
+    // la pagina in verticale.
+    track.scrollTo({ left: el.offsetLeft - track.offsetLeft, behavior: smooth ? "smooth" : "auto" });
   };
 
   const dateKey = extraAdd?.entryDate ?? "";
@@ -64,7 +70,8 @@ export function MealDayCarousel({
   const step = (dir: -1 | 1) => {
     const track = trackRef.current;
     if (!track) return;
-    track.scrollBy({ left: dir * Math.round(track.clientWidth * 0.85), behavior: "smooth" });
+    // Una slide = larghezza traccia: il passo è un pasto intero.
+    track.scrollBy({ left: dir * (track.clientWidth + TRACK_GAP), behavior: "smooth" });
   };
 
   return (
@@ -106,16 +113,19 @@ export function MealDayCarousel({
         </button>
       </div>
 
-      {/* Traccia a scorrimento orizzontale con snap. */}
+      {/* Traccia a scorrimento orizzontale con snap: UNA slide a tutta larghezza
+          per volta (niente card successiva che sbircia tagliata a metà). */}
       <div
         ref={trackRef}
+        className="empathy-meal-carousel-track"
         style={{
           display: "flex",
-          gap: 14,
+          gap: TRACK_GAP,
           overflowX: "auto",
           scrollSnapType: "x mandatory",
           paddingBottom: 8,
           WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
         }}
       >
         {items.map((it) => (
@@ -125,9 +135,9 @@ export function MealDayCarousel({
               slideRefs.current[it.slotKey] = el;
             }}
             style={{
-              scrollSnapAlign: "center",
-              flex: "0 0 auto",
-              width: "min(100%, 520px)",
+              scrollSnapAlign: "start",
+              flex: "0 0 100%",
+              minWidth: 0,
               display: "flex",
               flexDirection: "column",
               gap: 10,

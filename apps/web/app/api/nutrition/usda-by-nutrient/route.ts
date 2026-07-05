@@ -8,6 +8,15 @@ import type { UsdaRichFoodItemViewModel } from "@/api/nutrition/contracts";
 
 export const runtime = "nodejs";
 
+/**
+ * Cache di risposta in memoria per combinazione di catalogIds: il contenuto
+ * dipende solo dal catalogo funzionale + USDA (nessun dato utente) e non cambia
+ * tra una richiesta e l'altra. Su Vercel vive per istanza (best effort); in dev
+ * azzera i 2–11 s per richiesta dalla seconda visita.
+ */
+const responseCacheByCatalogIds = new Map<string, { at: number; payload: object }>();
+const RESPONSE_CACHE_TTL_MS = 6 * 60 * 60_000;
+
 function parseQueriesParam(raw: string | null): string[] {
   if (!raw?.trim()) return [];
   return raw
@@ -45,59 +54,73 @@ export async function GET(req: NextRequest) {
       : ["Foundation", "SR Legacy"];
 
     if (catalogIds.length > 0) {
-      const foodsByCatalog: UsdaRichFoodItemViewModel[] = [];
-      let firstError: string | null = null;
-      for (const id of catalogIds) {
-        const entry = getFunctionalNutrientCatalogEntry(id, functionalCatalog);
-        if (!entry?.usdaRichSearch) {
-          firstError = firstError ?? `catalogId sconosciuto o senza mappatura USDA ricca: ${id}`;
-          continue;
-        }
-        const spec = entry.usdaRichSearch;
-        const nutrientId = catalogIdToNutrientTargetId(id);
-        if (nutrientId) {
-          const ranked = await rankFoodsForNutrient({
-            nutrientId,
-            topN: 28,
-            apiKey: key,
-            liveQueries: spec.queries.length ? [...spec.queries] : [],
-            fdcNutrientId: Math.round(spec.fdcNutrientId),
-            minimumPer100g: spec.minimumPer100g,
-          });
-          foodsByCatalog.push(
-            ...(ranked.foods ?? []).map((r) => ({
-              fdcId: r.fdcId,
-              description: r.description,
-              dataType: ranked.source === "cache" ? "cache" : "fdc_live",
-              targetNutrientId: Math.round(spec.fdcNutrientId),
-              targetAmountPer100g: r.amountPer100g,
-              targetUnitName: r.unit,
-              energyKcal100: r.kcalPer100g,
-              proteinG100: null,
-              carbsG100: null,
-              fatG100: null,
-            })),
-          );
-          continue;
-        }
-        const rows = await fetchUsdaRichFoodsMerged({
-          apiKey: key,
-          queries: spec.queries.length ? [...spec.queries] : [],
-          nutrientFilter: { id: Math.round(spec.fdcNutrientId), type: "minimum", value: spec.minimumPer100g },
-          dataTypes: spec.dataTypes?.length ? [...spec.dataTypes] : ["Foundation", "SR Legacy"],
-          pageSizePerQuery: 22,
-          resultLimit: 28,
-          delayMsBetweenQueries: 130,
-        });
-        foodsByCatalog.push(...rows.map((r) => ({ ...r })));
+      const cacheKey = catalogIds.join(",");
+      const hit = responseCacheByCatalogIds.get(cacheKey);
+      if (hit && Date.now() - hit.at < RESPONSE_CACHE_TTL_MS) {
+        return NextResponse.json(hit.payload);
       }
-      return NextResponse.json({
+
+      // Cataloghi in PARALLELO: in serie una coppia tipo leucine_mtor+zinc_seleno
+      // costava 10-11 s a richiesta (misura live 2026-07).
+      const perCatalog = await Promise.all(
+        catalogIds.map(async (id) => {
+          const entry = getFunctionalNutrientCatalogEntry(id, functionalCatalog);
+          if (!entry?.usdaRichSearch) {
+            return { foods: [] as UsdaRichFoodItemViewModel[], error: `catalogId sconosciuto o senza mappatura USDA ricca: ${id}` };
+          }
+          const spec = entry.usdaRichSearch;
+          const nutrientId = catalogIdToNutrientTargetId(id);
+          if (nutrientId) {
+            const ranked = await rankFoodsForNutrient({
+              nutrientId,
+              topN: 28,
+              apiKey: key,
+              liveQueries: spec.queries.length ? [...spec.queries] : [],
+              fdcNutrientId: Math.round(spec.fdcNutrientId),
+              minimumPer100g: spec.minimumPer100g,
+            });
+            return {
+              foods: (ranked.foods ?? []).map((r) => ({
+                fdcId: r.fdcId,
+                description: r.description,
+                dataType: ranked.source === "cache" ? "cache" : "fdc_live",
+                targetNutrientId: Math.round(spec.fdcNutrientId),
+                targetAmountPer100g: r.amountPer100g,
+                targetUnitName: r.unit,
+                energyKcal100: r.kcalPer100g,
+                proteinG100: null,
+                carbsG100: null,
+                fatG100: null,
+              })),
+              error: null as string | null,
+            };
+          }
+          const rows = await fetchUsdaRichFoodsMerged({
+            apiKey: key,
+            queries: spec.queries.length ? [...spec.queries] : [],
+            nutrientFilter: { id: Math.round(spec.fdcNutrientId), type: "minimum", value: spec.minimumPer100g },
+            dataTypes: spec.dataTypes?.length ? [...spec.dataTypes] : ["Foundation", "SR Legacy"],
+            pageSizePerQuery: 22,
+            resultLimit: 28,
+            delayMsBetweenQueries: 130,
+          });
+          return { foods: rows.map((r) => ({ ...r })), error: null as string | null };
+        }),
+      );
+
+      const foodsByCatalog = perCatalog.flatMap((p) => p.foods);
+      const firstError = perCatalog.find((p) => p.error)?.error ?? null;
+      const payload = {
         foods: foodsByCatalog,
         source: "usda_fdc",
         layer: "deterministic_nutrient_density",
-        queriesUsed: [],
+        queriesUsed: [] as string[],
         error: firstError,
-      });
+      };
+      if (!firstError && foodsByCatalog.length > 0) {
+        responseCacheByCatalogIds.set(cacheKey, { at: Date.now(), payload });
+      }
+      return NextResponse.json(payload);
     }
 
     if (catalogId) {

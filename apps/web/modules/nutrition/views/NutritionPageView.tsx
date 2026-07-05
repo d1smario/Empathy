@@ -1032,6 +1032,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [functionalFoodRecommendations.targets, selectedPlanDate, athleteId, functionalMealSelector?.slots, pathwayModulation],
   );
 
+  /** Firma dell'ultima ondata pathway lanciata: gli arrivi dati del modulo cambiano
+      l'identità di pathwayTargetsByMealSlot senza cambiarne il contenuto e
+      rilanciavano TUTTI i fetch per slot (richieste triplicate misurate live). */
+  const lastPathwayFetchSigRef = useRef<string | null>(null);
+
   useEffect(() => {
     const isMealPlanRoute =
       (pathname ?? "").replace(/\/$/, "") === "/nutrition" ||
@@ -1040,6 +1045,37 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!athleteId) return;
     const slots = pathwayTargetsByMealSlot;
     const keys: PathwayMealSlotKey[] = activeDietMealSlotKeys;
+
+    /**
+     * I fetch USDA per slot servono SOLO alla generazione del piano con
+     * candidati pathway ricchi — azione riservata allo staff (platformAdminView).
+     * Per atleta e coach il piano si genera comunque lato server (db_engine) e i
+     * bundle restano vuoti: al load erano 15 richieste da 2–11 s ciascuna per
+     * niente (misura live 2026-07, pagina ferma 20 s). Qui si riempiono solo i
+     * metadati locali (target + query di ricerca) senza rete.
+     */
+    if (!platformAdminView) {
+      setMealPathwayBySlot((prev) => {
+        const next = { ...prev };
+        for (const k of keys) {
+          next[k] = {
+            loading: false,
+            error: null,
+            foods: [],
+            pathwayTargets: slots[k],
+            usdaConfigured: true,
+            lookupQueries: collectSearchQueriesForSlot(slots[k]),
+          };
+        }
+        return next;
+      });
+      return;
+    }
+
+    const sig = JSON.stringify(keys.map((k) => [k, catalogIdsForSlot(slots[k])]));
+    if (lastPathwayFetchSigRef.current === sig) return;
+    lastPathwayFetchSigRef.current = sig;
+
     setMealPathwayBySlot((prev) => {
       const next = { ...prev };
       for (const k of keys) {
@@ -1083,7 +1119,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     return () => {
       cancelled = true;
     };
-  }, [athleteId, pathwayTargetsByMealSlot, activeDietMealSlotKeys, pathname]);
+  }, [athleteId, pathwayTargetsByMealSlot, activeDietMealSlotKeys, pathname, platformAdminView]);
 
   /** Giorno gara: pasta/riso pre-gara è deterministico — non bloccare su catalogo pathway USDA. */
   const raceDayPreRaceContext = useMemo(
