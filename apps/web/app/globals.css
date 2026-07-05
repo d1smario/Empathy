@@ -3998,6 +3998,30 @@ body {
   gap: 0.65rem;
 }
 
+/* Substrati energetici + Metabolismo affiancati; card ad altezza uguale. */
+.physiology-pro2-lab-split2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.physiology-pro2-lab-split2-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.physiology-pro2-lab-split2-col > .physiology-pro2-lab-metric {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .physiology-pro2-lab-split2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .physiology-pro2-lab-metric-row--3 {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }

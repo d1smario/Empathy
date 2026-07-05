@@ -267,21 +267,27 @@ export function PhysiologyPro2MetabolicDashboard({
         </div>
       </div>
 
-      <p className="physiology-pro2-lab-subsec">{t("subsecEnergySubstrates")}</p>
-      <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--fatmax">
-        <Droplet className="physiology-pro2-lab-metric-ico" aria-hidden />
-        <div className="physiology-pro2-lab-metric-label">FatMax</div>
-        <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--fatmax">{model.fatmax.toFixed(0)} W</div>
-      </div>
-
-      <p className="physiology-pro2-lab-subsec">{t("subsecMetabolismGlycolytic")}</p>
-      <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--vla">
-        <Zap className="physiology-pro2-lab-metric-ico" aria-hidden />
-        <div className="physiology-pro2-lab-metric-label">{t("glycolyticIndexProxy")}</div>
-        <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--vla">{model.vlamax.toFixed(2)}</div>
-        <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-gray-500">
-          {t("glycolyticProxyDescription", { peakLac: peakLacHint.toFixed(1) })}
-        </p>
+      {/* Substrati energetici e Metabolismo affiancati (feedback 2026-07). */}
+      <div className="physiology-pro2-lab-split2">
+        <div className="physiology-pro2-lab-split2-col">
+          <p className="physiology-pro2-lab-subsec">{t("subsecEnergySubstrates")}</p>
+          <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--fatmax">
+            <Droplet className="physiology-pro2-lab-metric-ico" aria-hidden />
+            <div className="physiology-pro2-lab-metric-label">FatMax</div>
+            <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--fatmax">{model.fatmax.toFixed(0)} W</div>
+          </div>
+        </div>
+        <div className="physiology-pro2-lab-split2-col">
+          <p className="physiology-pro2-lab-subsec">{t("subsecMetabolismGlycolytic")}</p>
+          <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--vla">
+            <Zap className="physiology-pro2-lab-metric-ico" aria-hidden />
+            <div className="physiology-pro2-lab-metric-label">{t("glycolyticIndexProxy")}</div>
+            <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--vla">{model.vlamax.toFixed(2)}</div>
+            <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-gray-500">
+              {t("glycolyticProxyDescription", { peakLac: peakLacHint.toFixed(1) })}
+            </p>
+          </div>
+        </div>
       </div>
 
       <p className="physiology-pro2-lab-subsec physiology-pro2-lab-subsec--with-ico">
