@@ -15,7 +15,10 @@ import {
   listNutrientPathwaySwapsForSlot,
   type NutrientPathwaySwapSpec,
 } from "@/lib/nutrition/nutrient-pathway-slot-registry";
-import type { NutrientTargetId } from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
+import {
+  labelForNutrientTargetId,
+  type NutrientTargetId,
+} from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
 
 export type PathwayAdviceResult = {
   meal: MediterraneanComposedMeal;
@@ -111,7 +114,10 @@ export function applyPathwayAdvice(
     const specs = listNutrientPathwaySwapsForSlot(id, slot, ctx?.dietType).filter((s) => s.mode === "add");
     const spec = pickRotatedSpec(specs, ctx);
     if (!spec) {
-      adviceNotes.push(`Integrazione consigliata per ${id} (rotazione o pasto già completo).`);
+      // Nome umano, mai l'ID interno; frase leggibile invece del gergo motore.
+      adviceNotes.push(
+        `${labelForNutrientTargetId(id)}: il pasto è già completo — coprilo con l'integrazione o nei prossimi giorni.`,
+      );
       continue;
     }
     if (isFruitCanonicalKey(spec.canonicalKey) && countFruitInMeal(current) >= 1) continue;

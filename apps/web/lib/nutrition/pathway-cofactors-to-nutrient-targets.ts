@@ -122,6 +122,16 @@ export function pathwayCofactorsToNutrientTargets(strings: readonly string[]): N
   return out;
 }
 
+/**
+ * Nome umano per un NutrientTargetId (es. "mg_mg" → "Magnesio"): per i testi
+ * mostrati all'utente — gli ID interni non devono MAI arrivare in UI
+ * (feedback 2026-07: «Integrazione consigliata per mg_mg»).
+ */
+export function labelForNutrientTargetId(id: NutrientTargetId): string {
+  const hit = PATTERNS.find((p) => p.nutrientId === id);
+  return hit?.labelIt ?? id;
+}
+
 export type ActiveNutrientTarget = NutrientTarget & {
   catalogId?: string;
 };

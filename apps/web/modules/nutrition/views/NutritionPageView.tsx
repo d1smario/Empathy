@@ -3205,9 +3205,11 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {/* Integratori DENTRO il Piano, sotto pasti e alimentazione (2026-07:
-              Strumenti eliminato — /nutrition/integration reindirizza qui). */}
-          {subRoute === "meal-plan" ? (
+          {/* Vie metaboliche + alimenti funzionali: linguaggio da motore, non
+              da atleta (feedback 2026-07) — SOLO coach/admin. Il contributo al
+              piano (boost micronutrienti) resta per tutti: l'atleta lo vede nei
+              «Suggerimenti complementari» delle card pasto e nello stack. */}
+          {showTech && subRoute === "meal-plan" ? (
             <IntegrationSection
               nutritionPerformanceIntegration={nutritionPerformanceIntegration}
               showTech={showTech}
@@ -3247,11 +3249,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             />
           ) : null}
 
-          {/* Previsione = what-if in accordion CHIUSO (analisi 2026-07): non
-              alimenta piano né fueling (fondo cieco informativo) e in modalità
-              «giorno del piano» duplica la proiezione glicogeno del rifornimento.
-              Il valore vero è simulare un evento non a calendario. */}
-          {subRoute === "meal-plan" ? (
+          {/* Previsione = what-if SOLO coach/admin (feedback 2026-07: l'atleta
+              non ne capisce l'uso — non alimenta piano né fueling e duplica la
+              proiezione glicogeno; simulare un evento è un gesto da staff). */}
+          {showTech && subRoute === "meal-plan" ? (
             <section className="scroll-mt-28" style={{ marginBottom: "12px" }}>
             <Pro2Accordion
               accent="amber"
