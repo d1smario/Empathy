@@ -41,7 +41,7 @@ export type ProductModuleNavItem = {
 /**
  * Single source of truth for product URLs + labels.
  * Ordine: prima le voci fisse dell'account (Dashboard, Calendario, Atleti, Commissioni, Profilo),
- * poi le colonne dell'atleta selezionato (Health → Longevity), infine il footer.
+ * poi le colonne dell'atleta selezionato (Training → Aerodynamics), infine il footer.
  */
 export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   // — Account-fixed (riferite all'operatore loggato) —
@@ -51,10 +51,11 @@ export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   { module: "commissioni", href: "/commissioni", label: "Commissioni", icon: "wallet", area: "main", scope: "account", roles: ["coach"] },
   { module: "profile", href: "/profile", label: "Profilo", icon: "user", area: "main", scope: "account" },
   // — Athlete-scoped (colonne dell'atleta selezionato) —
-  { module: "health", href: "/health", label: "Health & Bio", icon: "heart", area: "main", scope: "athlete" },
-  { module: "physiology", href: "/physiology", label: "Physiology", icon: "activity", area: "main", scope: "athlete" },
+  // Ordine voluto (2026-07): il flusso quotidiano prima (allenarsi, mangiare), poi il monitoraggio.
   { module: "training", href: "/training", label: "Training", icon: "calendar", area: "main", scope: "athlete" },
   { module: "nutrition", href: "/nutrition", label: "Nutrition", icon: "utensils", area: "main", scope: "athlete" },
+  { module: "health", href: "/health", label: "Health & Bio", icon: "heart", area: "main", scope: "athlete" },
+  { module: "physiology", href: "/physiology", label: "Physiology", icon: "activity", area: "main", scope: "athlete" },
   { module: "biomechanics", href: "/biomechanics", label: "Biomechanics", icon: "motion", area: "main", scope: "athlete" },
   { module: "aerodynamics", href: "/aerodynamics", label: "Aerodynamics", icon: "wind", area: "main", scope: "athlete" },
   // Bioenergetica (box "Striscia 24 h") assorbita nella Dashboard: nessuna voce nav dedicata (/bioenergetics → /dashboard).
