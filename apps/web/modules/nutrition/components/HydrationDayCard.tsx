@@ -29,9 +29,23 @@ function liters(ml: number): string {
   return (ml / 1000).toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
-/** Finestra legata alla seduta (pre/intra/post/durante) → tono ambra, il resto acqua/cyan. */
+/**
+ * Colori dei riempimenti INLINE (non classi Tailwind): le utility nuove in un
+ * file nuovo possono mancare dal CSS compilato finché il watcher non riparte —
+ * successo in dev: colonne e barra trasparenti (bug segnalato). Inline = sempre.
+ */
+const WATER_FILL = "rgba(34, 211, 238, 0.8)"; // cyan-400/80
+const TRAINING_FILL = "rgba(251, 191, 36, 0.8)"; // amber-400/80
+const WATER_BAR = "rgba(6, 182, 212, 0.7)"; // cyan-500/70
+const TRAINING_BAR = "rgba(245, 158, 11, 0.7)"; // amber-500/70
+
+/**
+ * Finestra legata alla SEDUTA → tono ambra, il resto acqua/cyan. Niente
+ * pre/post generici: «pre-primo pasto» è colazione, non allenamento
+ * (falso positivo visto in verifica live).
+ */
 function isTrainingWindow(labelIt: string): boolean {
-  return /pre|intra|post|durante|allenament|seduta|workout/i.test(labelIt);
+  return /allenament|seduta|workout|gara|\bintra\b/i.test(labelIt);
 }
 
 export function HydrationDayCard({ routine }: { routine: HydrationRoutineVm }) {
@@ -64,22 +78,22 @@ export function HydrationDayCard({ routine }: { routine: HydrationRoutineVm }) {
       <div className="mt-4">
         <div className="flex h-3 w-full overflow-hidden rounded-full border border-white/10 bg-black/40">
           <div
-            className="h-full bg-cyan-500/70"
-            style={{ width: `${Math.min(100, Math.max(0, basePct))}%` }}
+            className="h-full"
+            style={{ width: `${Math.min(100, Math.max(0, basePct))}%`, backgroundColor: WATER_BAR }}
             aria-hidden
           />
           {routine.trainingExtraMl > 0 ? (
-            <div className="h-full flex-1 bg-amber-500/70" aria-hidden />
+            <div className="h-full flex-1" style={{ backgroundColor: TRAINING_BAR }} aria-hidden />
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.68rem] text-gray-400">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-cyan-500/70" aria-hidden />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: WATER_BAR }} aria-hidden />
             {t("baseLabel", { liters: liters(routine.baselineDailyMl) })}
           </span>
           {routine.trainingExtraMl > 0 ? (
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-500/70" aria-hidden />
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TRAINING_BAR }} aria-hidden />
               {t("trainingLabel", { liters: liters(routine.trainingExtraMl) })}
             </span>
           ) : null}
@@ -100,8 +114,8 @@ export function HydrationDayCard({ routine }: { routine: HydrationRoutineVm }) {
                   <span className="text-[0.65rem] font-bold tabular-nums text-white">{w.volumeMl}</span>
                   <div className="flex h-24 w-full max-w-[52px] items-end overflow-hidden rounded-lg border border-white/10 bg-black/40">
                     <div
-                      className={`w-full rounded-t-sm ${training ? "bg-amber-400/80" : "bg-cyan-400/80"}`}
-                      style={{ height: `${fillPx}px` }}
+                      className="w-full rounded-t-sm"
+                      style={{ height: `${fillPx}px`, backgroundColor: training ? TRAINING_FILL : WATER_FILL }}
                       aria-hidden
                     />
                   </div>
