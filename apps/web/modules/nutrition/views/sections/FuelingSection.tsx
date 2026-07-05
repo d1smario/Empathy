@@ -84,6 +84,13 @@ export type FuelingSectionProps = {
   knowledgeFuelingHints: { supports: string[]; risks: string[]; intents: string[] };
   nutritionPerformanceIntegration: NutritionPerformanceIntegrationDials | null;
   fuelingPhysiology: { gutPathwayRisk: string };
+  /**
+   * Split prescrittivo/consuntivo (riorganizzazione 2026-07):
+   * - "protocol": solo il protocollo pre/intra/post (vive nel Piano);
+   * - "confirmation": solo il blocco «Assunzione rifornimento» (vive nel Diario);
+   * - "full" (default): entrambi, comportamento storico.
+   */
+  mode?: "full" | "protocol" | "confirmation";
 };
 
 export function FuelingSection({
@@ -104,8 +111,54 @@ export function FuelingSection({
   knowledgeFuelingHints,
   nutritionPerformanceIntegration,
   fuelingPhysiology,
+  mode = "full",
 }: FuelingSectionProps) {
   const t = useTranslations("FuelingSection");
+
+  const confirmationBlock = athleteId ? (
+    <section
+      className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
+      style={{ marginBottom: 12 }}
+    >
+      <h3 className="viz-title text-base">{t("intakeTitle")}</h3>
+      <p className="mt-1 text-sm text-gray-400">
+        {t.rich("intakeDescription", {
+          date: selectedPlanDate,
+          b: (chunks) => <strong className="text-white">{chunks}</strong>,
+        })}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className="btn-nutrition-cta"
+          disabled={fuelingConfirmBusy || saving}
+          onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
+        >
+          {fuelingConfirmBusy
+            ? t("saving")
+            : fuelingConfirmedForSelectedDate
+              ? t("undoConfirmation")
+              : t("confirmIntake")}
+        </button>
+        {fuelingConfirmedForSelectedDate ? (
+          <span className="text-xs text-emerald-300">
+            {t("confirmed")}
+            {fuelingExecutionConfirmations[selectedPlanDate]?.at
+              ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("en-US")}`
+              : null}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-500">{t("noConfirmation")}</span>
+        )}
+      </div>
+    </section>
+  ) : null;
+
+  // Diario: solo il consuntivo («ho seguito il piano di rifornimento»).
+  if (mode === "confirmation") {
+    return <section id="nutrition-fueling-confirm" className="scroll-mt-28 mb-10 space-y-4">{confirmationBlock}</section>;
+  }
+
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
       <header className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
@@ -114,44 +167,7 @@ export function FuelingSection({
           {t("intro")}
         </p>
       </header>
-      {athleteId ? (
-        <section
-          className="viz-card builder-panel border border-amber-500/25 bg-black/25 px-4 py-3 sm:px-5"
-          style={{ marginBottom: 12 }}
-        >
-          <h3 className="viz-title text-base">{t("intakeTitle")}</h3>
-          <p className="mt-1 text-sm text-gray-400">
-            {t.rich("intakeDescription", {
-              date: selectedPlanDate,
-              b: (chunks) => <strong className="text-white">{chunks}</strong>,
-            })}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              className="btn-nutrition-cta"
-              disabled={fuelingConfirmBusy || saving}
-              onClick={() => void persistFuelingExecutionConfirmation(!fuelingConfirmedForSelectedDate)}
-            >
-              {fuelingConfirmBusy
-                ? t("saving")
-                : fuelingConfirmedForSelectedDate
-                  ? t("undoConfirmation")
-                  : t("confirmIntake")}
-            </button>
-            {fuelingConfirmedForSelectedDate ? (
-              <span className="text-xs text-emerald-300">
-                {t("confirmed")}
-                {fuelingExecutionConfirmations[selectedPlanDate]?.at
-                  ? ` · ${new Date(fuelingExecutionConfirmations[selectedPlanDate]!.at!).toLocaleString("en-US")}`
-                  : null}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-500">{t("noConfirmation")}</span>
-            )}
-          </div>
-        </section>
-      ) : null}
+      {mode === "full" ? confirmationBlock : null}
       <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
         <div className="nutrition-section-head">
           <h3 className="viz-title">{t("planTitle")}</h3>

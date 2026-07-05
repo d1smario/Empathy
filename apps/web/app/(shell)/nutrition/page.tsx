@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 /**
- * Riorganizzazione menù nutrition (2026-07, «per momento d'uso»): l'ingresso nel
- * modulo atterra su «Oggi» (rifornimento + diario del giorno), non più sul meal plan.
+ * Split prescrittivo/consuntivo (2026-07): si atterra sul PIANO («cosa mangiare»:
+ * target, pasti e protocollo rifornimento); il Diario serve a segnare il consumato.
  */
 export default function NutritionIndexPage() {
-  redirect("/nutrition/today");
+  redirect("/nutrition/meal-plan");
 }

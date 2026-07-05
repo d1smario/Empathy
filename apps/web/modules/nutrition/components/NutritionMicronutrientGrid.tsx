@@ -384,6 +384,16 @@ export function NutritionMicronutrientDailyBoard({
   const t = useTranslations("NutritionMicronutrientGrid");
   const boardLines = expandMicroBoardLines({ vitamins, minerals, aminoAcids, fattyAcids, otherNutrients });
 
+  // Nessun micronutriente per il giorno (diario vuoto): niente striscia di
+  // etichette con soli "—" — il blocco compare quando ci sono dati reali.
+  const totalLines =
+    boardLines.vitamins.length +
+    boardLines.minerals.length +
+    boardLines.aminoAcids.length +
+    boardLines.fattyAcids.length +
+    boardLines.otherNutrients.length;
+  if (totalLines === 0) return null;
+
   return (
     <div className={className ?? "empathy-micro-daily-board"}>
       <div className="empathy-micro-daily-head">

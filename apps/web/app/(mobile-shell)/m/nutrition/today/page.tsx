@@ -9,8 +9,8 @@ const NutritionPageView = nextDynamic(() => import("@/modules/nutrition/views/Nu
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Nutrition · Today",
-  description: "Rifornimento e diario del giorno — app mobile.",
+  title: "Nutrition · Diary",
+  description: "Diario e conferma rifornimento — app mobile.",
 };
 
 export default function MobileNutritionTodayPage() {

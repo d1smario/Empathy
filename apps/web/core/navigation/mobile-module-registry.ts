@@ -148,18 +148,22 @@ export function toMobilePath(pathname: string): string | null {
     return `${MOBILE_APP_PREFIX}${n}`;
   }
 
-  if (n === "/nutrition/meal-plan" || n.startsWith("/nutrition/meal-plan/")) {
-    return `${MOBILE_APP_PREFIX}/nutrition/meal-plan`;
-  }
-  // «Oggi» assorbe fueling + diary (riorganizzazione menù 2026-07).
+  // Landing del modulo = PIANO; il fueling storico è assorbito nel piano (split 2026-07).
   if (
     n === "/nutrition" ||
+    n === "/nutrition/meal-plan" ||
+    n.startsWith("/nutrition/meal-plan/") ||
+    n === "/nutrition/fueling" ||
+    n.startsWith("/nutrition/fueling/")
+  ) {
+    return `${MOBILE_APP_PREFIX}/nutrition/meal-plan`;
+  }
+  // Il DIARIO vive su today (il vecchio /nutrition/diary vi reindirizza).
+  if (
     n === "/nutrition/today" ||
     n.startsWith("/nutrition/today/") ||
     n === "/nutrition/diary" ||
-    n.startsWith("/nutrition/diary/") ||
-    n === "/nutrition/fueling" ||
-    n.startsWith("/nutrition/fueling/")
+    n.startsWith("/nutrition/diary/")
   ) {
     return `${MOBILE_APP_PREFIX}/nutrition/today`;
   }
@@ -183,7 +187,7 @@ export function toDesktopPath(mobilePathname: string): string {
     [`${MOBILE_APP_PREFIX}/longevity`]: "/longevity",
     [`${MOBILE_APP_PREFIX}/training/calendar`]: "/training/calendar",
     [`${MOBILE_APP_PREFIX}/training/session`]: "/training/session",
-    [`${MOBILE_APP_PREFIX}/nutrition`]: "/nutrition/today",
+    [`${MOBILE_APP_PREFIX}/nutrition`]: "/nutrition/meal-plan",
     [`${MOBILE_APP_PREFIX}/nutrition/today`]: "/nutrition/today",
   };
 

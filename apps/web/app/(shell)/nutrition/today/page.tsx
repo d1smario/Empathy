@@ -8,11 +8,11 @@ const NutritionPageView = nextDynamic(() => import("@/modules/nutrition/views/Nu
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Nutrition · Today",
-  description: "Rifornimento e diario del giorno, sulla stessa data.",
+  title: "Nutrition · Diary",
+  description: "Segna cosa hai mangiato e conferma il rifornimento del giorno.",
 };
 
-/** «Oggi»: vista unificata del giorno — Rifornimento + Diario con un solo date picker. */
+/** DIARIO (consuntivo): registro pasti + conferma rifornimento. Il prescrittivo vive nel Piano. */
 export default function NutritionTodayPage() {
   return <NutritionPageView subRoute="today" />;
 }

@@ -3139,27 +3139,50 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
-          {/* «Oggi»: prima COSA MANGIARE (diario/target del giorno), poi il fueling
-              attorno alla seduta — feedback utente 2026-07. Le altre route sono
-              esclusive, quindi l'ordine dei blocchi conta solo per today. */}
+          {/* Split prescrittivo/consuntivo (2026-07): il DIARIO («today») è solo
+              consuntivo — registra cosa hai mangiato + conferma del rifornimento.
+              Il protocollo fueling (prescrittivo) vive nel PIANO, sotto il meal plan. */}
           {subRoute === "today" ? (
-            <DiarySection
-              athleteId={athleteId}
-              onComplianceRowsChange={onDiaryComplianceRows}
-              planDateForSolverTargets={selectedPlanDate}
-              planDateAnchor={selectedPlanDate}
-              diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
-              diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
-              diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
-              diaryMacroTargetFatG={diaryDayMacroTargets.fat}
-              fallbackDailyEnergyKcal={dailyEnergyKcal}
-              weightKg={profile?.weight_kg ?? null}
-              metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
-            />
+            <>
+              <DiarySection
+                athleteId={athleteId}
+                onComplianceRowsChange={onDiaryComplianceRows}
+                planDateForSolverTargets={selectedPlanDate}
+                planDateAnchor={selectedPlanDate}
+                diaryEnergyTargetKcal={resolvedMealDailyEnergyKcal}
+                diaryMacroTargetCarbsG={diaryDayMacroTargets.carbs}
+                diaryMacroTargetProteinG={diaryDayMacroTargets.protein}
+                diaryMacroTargetFatG={diaryDayMacroTargets.fat}
+                fallbackDailyEnergyKcal={dailyEnergyKcal}
+                weightKg={profile?.weight_kg ?? null}
+                metabolicEfficiencyIndex={metabolicEfficiencyGenerativeModel?.metabolicEfficiencyIndex ?? null}
+              />
+              <FuelingSection
+                mode="confirmation"
+                athleteId={athleteId}
+                selectedPlanDate={selectedPlanDate}
+                fuelingConfirmBusy={fuelingConfirmBusy}
+                saving={saving}
+                fuelingConfirmedForSelectedDate={fuelingConfirmedForSelectedDate}
+                fuelingExecutionConfirmations={fuelingExecutionConfirmations}
+                persistFuelingExecutionConfirmation={persistFuelingExecutionConfirmation}
+                fuelingReadiness={fuelingReadiness}
+                fuelingOpsCards={fuelingOpsCards}
+                fuelingSessionPackages={fuelingSessionPackages}
+                recoverySummary={recoverySummary}
+                showTech={showTech}
+                fuelingTrainingContext={fuelingTrainingContext}
+                fuelingIntraChoSplitBySession={fuelingIntraChoSplitBySession}
+                knowledgeFuelingHints={knowledgeFuelingHints}
+                nutritionPerformanceIntegration={nutritionPerformanceIntegration}
+                fuelingPhysiology={fuelingPhysiology}
+              />
+            </>
           ) : null}
 
-          {subRoute === "fueling" || subRoute === "today" ? (
+          {subRoute === "fueling" || subRoute === "meal-plan" ? (
             <FuelingSection
+              mode={subRoute === "meal-plan" ? "protocol" : "full"}
               athleteId={athleteId}
               selectedPlanDate={selectedPlanDate}
               fuelingConfirmBusy={fuelingConfirmBusy}
@@ -3276,7 +3299,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </>
                 ) : null}
 
-                {subRoute === "fueling" || subRoute === "today" ? (
+                {subRoute === "fueling" || subRoute === "meal-plan" ? (
                   <div>
                     <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("fuelingHowTitle")}</p>
                     <p className="mt-1 leading-relaxed text-gray-400">
@@ -3359,7 +3382,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
                   </div>
                 ) : null}
 
-                {showTech && (subRoute === "fueling" || subRoute === "today") && fuelingReadiness.ready ? (
+                {showTech && (subRoute === "fueling" || subRoute === "meal-plan") && fuelingReadiness.ready ? (
                   <div className="space-y-3 border-t border-white/10 pt-4">
                     <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
                       {t("technicalDiagnosticsFueling")}

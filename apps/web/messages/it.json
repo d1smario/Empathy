@@ -3820,8 +3820,8 @@
     "mealPlanTitle": "Meal plan",
     "mealPlanSubtitle": "Target giornalieri e pasti",
     "openDesktopMealPlan": "Apri meal plan desktop",
-    "todayTitle": "Oggi",
-    "todaySubtitle": "Rifornimento e diario del giorno"
+    "todayTitle": "Diario",
+    "todaySubtitle": "Segna cosa hai mangiato e conferma il rifornimento"
   },
   "MobileProfileSection": {
     "physiologicalProfileTitle": "Profilo fisiologico"
@@ -4363,8 +4363,8 @@
     "training2Duration": "Training 2 durata (min)"
   },
   "NutritionSubnav": {
-    "today": "Oggi",
     "plan": "Piano",
+    "diary": "Diario",
     "tools": "Strumenti",
     "ariaLabel": "Sezioni nutrition"
   },
