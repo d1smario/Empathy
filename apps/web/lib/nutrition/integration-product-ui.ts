@@ -5,6 +5,22 @@ function round(v: number, digits = 0) {
   return Math.round(v * m) / m;
 }
 
+/**
+ * True solo se l'URL è una vera pagina prodotto (path oltre la radice), non la
+ * homepage del brand. Feedback 2026-07: «Scheda produttore» che rimanda alla home
+ * è ingannevole — il link va mostrato solo quando porta davvero alla scheda.
+ * Si riaccende da solo man mano che si curano i product_url profondi nel catalogo DB.
+ */
+export function hasProductDatasheetUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    const path = new URL(url).pathname.replace(/\/+$/, "");
+    return path.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export const FUELING_FORMAT_IT: Record<FuelingProduct["format"], string> = {
   powder: "Polvere",
   gel: "Gel",

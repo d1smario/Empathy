@@ -7,6 +7,7 @@ import {
   FUELING_CATEGORY_IT,
   FUELING_FORMAT_IT,
   FOCUS_IT,
+  hasProductDatasheetUrl,
   TIMING_IT,
   type IntegrationTimingBucket,
 } from "@/lib/nutrition/integration-product-ui";
@@ -54,6 +55,8 @@ export function IntegrationProductCard({
         : accent === "daily"
           ? "rgba(34,211,238,0.45)"
           : "rgba(251,146,60,0.5)";
+  // Link «Scheda produttore» solo se pagina prodotto reale, mai homepage (feedback 2026-07).
+  const datasheetUrl = hasProductDatasheetUrl(product.productUrl) ? product.productUrl : null;
   return (
     <article
       className="grid grid-cols-1 sm:grid-cols-2"
@@ -135,56 +138,74 @@ export function IntegrationProductCard({
             ))}
           </div>
         </div>
-        <a
-          href={product.productUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="nutrition-product-link"
-          style={{ marginTop: 12, fontSize: "0.68rem", fontWeight: 600 }}
-        >
-          {t("manufacturerSheet")}
-        </a>
+        {datasheetUrl ? (
+          <a
+            href={datasheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nutrition-product-link"
+            style={{ marginTop: 12, fontSize: "0.68rem", fontWeight: 600 }}
+          >
+            {t("manufacturerSheet")}
+          </a>
+        ) : null}
       </div>
-      <a
-        href={product.productUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="nutrition-product-media-link"
-        style={{
-          position: "relative",
+      {(() => {
+        const mediaStyle = {
+          position: "relative" as const,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           minHeight: 140,
           background: "rgba(0,0,0,0.35)",
           padding: 12,
-        }}
-        title={product.isLogoFallback ? t("brandLogoFallback") : t("catalogArchiveImage")}
-      >
-        <img
-          src={product.displayImage}
-          alt={product.product}
-          className={`nutrition-product-image ${product.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
-          style={{ maxHeight: 132, width: "100%", objectFit: "contain" }}
-          loading="lazy"
-        />
-        {product.isLogoFallback ? (
-          <span
-            style={{
-              position: "absolute",
-              bottom: 8,
-              right: 8,
-              borderRadius: 4,
-              background: "rgba(0,0,0,0.55)",
-              padding: "2px 6px",
-              fontSize: "0.58rem",
-              color: "#94a3b8",
-            }}
+        };
+        const mediaTitle = product.isLogoFallback ? t("brandLogoFallback") : t("catalogArchiveImage");
+        const mediaInner = (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.displayImage}
+              alt={product.product}
+              className={`nutrition-product-image ${product.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
+              style={{ maxHeight: 132, width: "100%", objectFit: "contain" }}
+              loading="lazy"
+            />
+            {product.isLogoFallback ? (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 8,
+                  borderRadius: 4,
+                  background: "rgba(0,0,0,0.55)",
+                  padding: "2px 6px",
+                  fontSize: "0.58rem",
+                  color: "#94a3b8",
+                }}
+              >
+                Logo
+              </span>
+            ) : null}
+          </>
+        );
+        return datasheetUrl ? (
+          <a
+            href={datasheetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nutrition-product-media-link"
+            style={mediaStyle}
+            title={mediaTitle}
           >
-            Logo
-          </span>
-        ) : null}
-      </a>
+            {mediaInner}
+          </a>
+        ) : (
+          <div className="nutrition-product-media-link" style={mediaStyle} title={mediaTitle}>
+            {mediaInner}
+          </div>
+        );
+      })()}
     </article>
   );
 }

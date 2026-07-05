@@ -18,6 +18,7 @@ import {
   FUELING_CATEGORY_IT,
   FUELING_FORMAT_IT,
   FOCUS_IT,
+  hasProductDatasheetUrl,
   TIMING_IT,
   type StackTimingBucket,
 } from "@/lib/nutrition/integration-product-ui";
@@ -87,14 +88,16 @@ function StackCompactProductCard({
             {chip}
           </span>
         ))}
-        <a
-          href={product.productUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-[0.64rem] text-gray-500 underline underline-offset-2 transition-colors hover:text-white"
-        >
-          {manufacturerLabel}
-        </a>
+        {hasProductDatasheetUrl(product.productUrl) ? (
+          <a
+            href={product.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-[0.64rem] text-gray-500 underline underline-offset-2 transition-colors hover:text-white"
+          >
+            {manufacturerLabel}
+          </a>
+        ) : null}
       </div>
     </article>
   );
@@ -438,6 +441,44 @@ export function FuelingSection({
                       <article key={`step-${pkg.id}-${step.phase}-${step.time}-${idx}`} className="fueling-vstep">
                         {(() => {
                           const phaseColor = fuelingPhaseColor(step.phase);
+                          // Link solo se pagina prodotto reale, mai homepage (feedback 2026-07).
+                          const datasheetUrl = hasProductDatasheetUrl(step.product?.productUrl)
+                            ? step.product!.productUrl
+                            : null;
+                          const mediaInner = (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={step.displayImage}
+                                alt={step.product?.product ?? "Fuel product"}
+                                className={`nutrition-product-image ${step.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
+                                style={{ maxHeight: 112, width: "100%", objectFit: "contain" }}
+                                loading="lazy"
+                              />
+                              {step.isLogoFallback ? (
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    bottom: 8,
+                                    right: 8,
+                                    borderRadius: 4,
+                                    background: "rgba(0,0,0,0.55)",
+                                    padding: "2px 6px",
+                                    fontSize: "0.58rem",
+                                    color: "#94a3b8",
+                                  }}
+                                >
+                                  Logo
+                                </span>
+                              ) : null}
+                            </>
+                          );
+                          const mediaStyle = {
+                            minHeight: 132,
+                            background: "rgba(0,0,0,0.28)",
+                            padding: 10,
+                            position: "relative" as const,
+                          };
                           return (
                             <>
                               <div className="fueling-vrail">
@@ -508,51 +549,41 @@ export function FuelingSection({
                                       fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
                                     })}
                                   </p>
-                                  <div className="fueling-step-actions">
-                                    <a
-                                      href={step.product?.productUrl ?? "#"}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="fueling-step-link"
-                                    >
-                                      {t("manufacturerPage")}
-                                    </a>
-                                  </div>
-                                </div>
-                                <a
-                                  href={step.product?.productUrl ?? "#"}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="fueling-step-media-link flex items-center justify-center"
-                                  aria-label={step.product?.product ?? t("fuelingProductAria")}
-                                  title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
-                                  style={{ minHeight: 132, background: "rgba(0,0,0,0.28)", padding: 10, position: "relative" }}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={step.displayImage}
-                                    alt={step.product?.product ?? "Fuel product"}
-                                    className={`nutrition-product-image ${step.isLogoFallback ? "nutrition-product-image-logo" : ""}`}
-                                    style={{ maxHeight: 112, width: "100%", objectFit: "contain" }}
-                                    loading="lazy"
-                                  />
-                                  {step.isLogoFallback ? (
-                                    <span
-                                      style={{
-                                        position: "absolute",
-                                        bottom: 8,
-                                        right: 8,
-                                        borderRadius: 4,
-                                        background: "rgba(0,0,0,0.55)",
-                                        padding: "2px 6px",
-                                        fontSize: "0.58rem",
-                                        color: "#94a3b8",
-                                      }}
-                                    >
-                                      Logo
-                                    </span>
+                                  {datasheetUrl ? (
+                                    <div className="fueling-step-actions">
+                                      <a
+                                        href={datasheetUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="fueling-step-link"
+                                      >
+                                        {t("manufacturerPage")}
+                                      </a>
+                                    </div>
                                   ) : null}
-                                </a>
+                                </div>
+                                {datasheetUrl ? (
+                                  <a
+                                    href={datasheetUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="fueling-step-media-link flex items-center justify-center"
+                                    aria-label={step.product?.product ?? t("fuelingProductAria")}
+                                    title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
+                                    style={mediaStyle}
+                                  >
+                                    {mediaInner}
+                                  </a>
+                                ) : (
+                                  <div
+                                    className="fueling-step-media-link flex items-center justify-center"
+                                    aria-label={step.product?.product ?? t("fuelingProductAria")}
+                                    title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
+                                    style={mediaStyle}
+                                  >
+                                    {mediaInner}
+                                  </div>
+                                )}
                               </div>
                             </>
                           );
