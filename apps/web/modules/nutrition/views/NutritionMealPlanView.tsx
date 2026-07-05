@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Zap } from "lucide-react";
@@ -26,6 +27,7 @@ import {
   EmpathyMealPlanGlycemicLegend,
 } from "@/modules/nutrition/components/EmpathyMealPlanExpositionCard";
 import { HydrationDayCard } from "@/modules/nutrition/components/HydrationDayCard";
+import { MealDayCarousel, type MealCarouselItem } from "@/modules/nutrition/components/MealDayCarousel";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { PathwayMealSlotKey } from "@/lib/nutrition/pathway-meal-usda-slots";
 
@@ -264,6 +266,12 @@ export type NutritionMealPlanWorkspaceProps = {
   nutritionStateCards: Array<{ label: string; value: string; tone: NutritionMealPlanStateTone }>;
   saving: boolean;
   onSaveNutrition: () => void;
+  /** Companion di giornata: conferme consumo per pasto + quick-add extra (carosello). */
+  selectedPlanDate: string;
+  mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
+  mealConfirmBusySlot: string | null;
+  persistMealConfirmation: (slotKey: string, nextConfirmed: boolean) => void | Promise<void>;
+  onMealExtraSaved: () => void;
 };
 
 export function NutritionMealPlanWorkspace({
@@ -293,6 +301,11 @@ export function NutritionMealPlanWorkspace({
   nutritionStateCards,
   saving,
   onSaveNutrition,
+  selectedPlanDate,
+  mealConfirmations,
+  mealConfirmBusySlot,
+  persistMealConfirmation,
+  onMealExtraSaved,
 }: NutritionMealPlanWorkspaceProps) {
   const t = useTranslations("NutritionMealPlanView");
   const router = useRouter();
@@ -362,7 +375,10 @@ export function NutritionMealPlanWorkspace({
           ) : null}
           {intelligentMealPlan ? (
             <>
-              <div className="empathy-meal-plan-expo-shell">
+              {/* Companion a due colonne su desktop: pasti (carosello) a sinistra,
+                  «quanto bere oggi» a destra. Una colonna sotto i 1280px. */}
+              <div className={intelligentMealPlan.hydrationRoutine ? "empathy-plan-companion-grid" : undefined}>
+              <div className="empathy-meal-plan-expo-shell" style={{ minWidth: 0 }}>
                 {coachMealRemovalKeys.size > 0 || coachSessionFoodExclusions.length > 0 ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
                     <span className="muted-copy" style={{ fontSize: 12 }}>
@@ -385,8 +401,10 @@ export function NutritionMealPlanWorkspace({
                     </button>
                   </div>
                 ) : null}
-                <div className="empathy-meal-expo-grid">
-                  {mealPlanDisplayRows.map((mealRow) => {
+                {/* Carosello companion (2026-07): scorrimento orizzontale tra i pasti,
+                    conferma di consumo sotto ogni card e quick-add «ho mangiato altro». */}
+                <MealDayCarousel
+                  items={mealPlanDisplayRows.map((mealRow): MealCarouselItem => {
                     const slotKey = mealRow.key as MealSlotKey;
                     const sl = intelligentMealPlan.slots.find((s) => s.slot === slotKey);
                     const meta = intelligentMealPlan.solverBasis.slots.find((x) => x.slot === slotKey);
@@ -397,10 +415,10 @@ export function NutritionMealPlanWorkspace({
                       proteinG: meta?.targetProteinG ?? 0,
                       fatG: meta?.targetFatG ?? 0,
                     };
+                    let card: ReactNode;
                     if (!sl) {
-                      return (
+                      card = (
                         <EmpathyMealPlanExpositionCard
-                          key={slotKey}
                           slot={slotKey}
                           titleUpper={(meta?.labelIt ?? mealRow.label).toUpperCase()}
                           subline={meta?.scheduledTimeLocal?.trim() || mealRow.time}
@@ -411,46 +429,64 @@ export function NutritionMealPlanWorkspace({
                           items={[]}
                         />
                       );
+                    } else {
+                      const itemTotals = sumVisibleSlotMacros(sl, isVis, fallback);
+                      /** Header pasto: target % profilo (solver), non somma USDA delle voci (spesso sbilancia colazione vs pranzo). */
+                      const totals = {
+                        kcal: fallback.kcal > 0 ? fallback.kcal : itemTotals.kcal,
+                        carbsG: fallback.carbsG > 0 ? fallback.carbsG : itemTotals.carbsG,
+                        proteinG: fallback.proteinG > 0 ? fallback.proteinG : itemTotals.proteinG,
+                        fatG: fallback.fatG > 0 ? fallback.fatG : itemTotals.fatG,
+                      };
+                      const expoItems = buildExpositionItemsFromPlan(sl.items, isVis);
+                      card = (
+                        <EmpathyMealPlanExpositionCard
+                          slot={slotKey}
+                          titleUpper={(meta?.labelIt ?? mealRow.label).toUpperCase()}
+                          subline={meta?.scheduledTimeLocal?.trim() || mealRow.time}
+                          totalKcal={totals.kcal}
+                          carbsG={totals.carbsG}
+                          proteinG={totals.proteinG}
+                          fatG={totals.fatG}
+                          items={expoItems}
+                          boostNote={sl.boostNote}
+                          integrationHref="/nutrition/integration"
+                          showCoachControls={role === "coach"}
+                          athleteId={athleteId}
+                          profileFoodExcludeBusyLabel={profileFoodExcludeBusy}
+                          onCoachRemove={(si) => {
+                            const it = sl.items[si];
+                            if (it) removeCoachMealPlanItem(slotKey, si, it.name);
+                          }}
+                          onCoachExcludeProfile={(si) => {
+                            const it = sl.items[si];
+                            if (it) void persistFoodExclusionToProfile(slotKey, si, it.name);
+                          }}
+                        />
+                      );
                     }
-                    const itemTotals = sumVisibleSlotMacros(sl, isVis, fallback);
-                    /** Header pasto: target % profilo (solver), non somma USDA delle voci (spesso sbilancia colazione vs pranzo). */
-                    const totals = {
-                      kcal: fallback.kcal > 0 ? fallback.kcal : itemTotals.kcal,
-                      carbsG: fallback.carbsG > 0 ? fallback.carbsG : itemTotals.carbsG,
-                      proteinG: fallback.proteinG > 0 ? fallback.proteinG : itemTotals.proteinG,
-                      fatG: fallback.fatG > 0 ? fallback.fatG : itemTotals.fatG,
+                    return {
+                      slotKey,
+                      label: meta?.labelIt ?? mealRow.label,
+                      time: meta?.scheduledTimeLocal?.trim() || mealRow.time,
+                      confirmed: Boolean(mealConfirmations[slotKey]?.confirmed),
+                      card,
                     };
-                    const expoItems = buildExpositionItemsFromPlan(sl.items, isVis);
-                    return (
-                      <EmpathyMealPlanExpositionCard
-                        key={slotKey}
-                        slot={slotKey}
-                        titleUpper={(meta?.labelIt ?? mealRow.label).toUpperCase()}
-                        subline={meta?.scheduledTimeLocal?.trim() || mealRow.time}
-                        totalKcal={totals.kcal}
-                        carbsG={totals.carbsG}
-                        proteinG={totals.proteinG}
-                        fatG={totals.fatG}
-                        items={expoItems}
-                        boostNote={sl.boostNote}
-                        integrationHref="/nutrition/integration"
-                        showCoachControls={role === "coach"}
-                        athleteId={athleteId}
-                        profileFoodExcludeBusyLabel={profileFoodExcludeBusy}
-                        onCoachRemove={(si) => {
-                          const it = sl.items[si];
-                          if (it) removeCoachMealPlanItem(slotKey, si, it.name);
-                        }}
-                        onCoachExcludeProfile={(si) => {
-                          const it = sl.items[si];
-                          if (it) void persistFoodExclusionToProfile(slotKey, si, it.name);
-                        }}
-                      />
-                    );
                   })}
-                </div>
+                  onConfirmMeal={(slot, next) => {
+                    if (!adminScoped) void persistMealConfirmation(slot, next);
+                  }}
+                  confirmBusySlot={mealConfirmBusySlot}
+                  extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
+                />
                 <EmpathyMealPlanGlycemicLegend />
                 {/* Σ kcal USDA assemblato: vive in UN solo posto, nel «Bilancio kcal» del target giornaliero. */}
+              </div>
+              {intelligentMealPlan.hydrationRoutine ? (
+                <div className="empathy-plan-companion-aside">
+                  <HydrationDayCard routine={intelligentMealPlan.hydrationRoutine} />
+                </div>
+              ) : null}
               </div>
               {/* «Avviso legale e note aggiuntive» rimosso (feedback utente 2026-07):
                   il disclaimer piattaforma vive in /termini, il rimando a Integratori
@@ -511,9 +547,6 @@ export function NutritionMealPlanWorkspace({
                 </div>
               </details>
               ) : null}
-              {intelligentMealPlan.hydrationRoutine ? (
-                <HydrationDayCard routine={intelligentMealPlan.hydrationRoutine} />
-              ) : null}
             </>
           ) : null}
           {!intelligentMealPlan ? (
@@ -527,11 +560,13 @@ export function NutritionMealPlanWorkspace({
                       ? t("loadingUsdaCatalog")
                       : t("profileDietRequired")}
               </p>
-              <div className="empathy-meal-expo-grid">
-                {/* Scheletro card con solo i target del solver. Nessun item farlocco
-                    (in passato il piano base distribuiva kcal_target/n_righe a ciascun
-                    alimento, producendo numeri irrealistici tipo 1 banana = 320 kcal). */}
-                {mealPlanDisplayRows.map((meal) => {
+              {/* Scheletro card con solo i target del solver. Nessun item farlocco
+                  (in passato il piano base distribuiva kcal_target/n_righe a ciascun
+                  alimento, producendo numeri irrealistici tipo 1 banana = 320 kcal).
+                  Stesso carosello del piano generato: conferme ed extra funzionano
+                  anche prima della generazione (i target dei pasti sono noti). */}
+              <MealDayCarousel
+                items={mealPlanDisplayRows.map((meal): MealCarouselItem => {
                   const slotKey = meal.key as PathwayMealSlotKey;
                   const bundle = mealPathwayBySlot[slotKey];
                   const subline = !bundle || bundle.loading
@@ -539,21 +574,31 @@ export function NutritionMealPlanWorkspace({
                     : intelligentMealLoading
                       ? t("sublineGenerationInProgress", { time: meal.time })
                       : meal.time;
-                  return (
-                    <EmpathyMealPlanExpositionCard
-                      key={slotKey}
-                      slot={slotKey}
-                      titleUpper={meal.label.toUpperCase()}
-                      subline={subline}
-                      totalKcal={meal.kcal}
-                      carbsG={meal.carbs}
-                      proteinG={meal.protein}
-                      fatG={meal.fat}
-                      items={[]}
-                    />
-                  );
+                  return {
+                    slotKey,
+                    label: meal.label,
+                    time: meal.time,
+                    confirmed: Boolean(mealConfirmations[slotKey]?.confirmed),
+                    card: (
+                      <EmpathyMealPlanExpositionCard
+                        slot={slotKey}
+                        titleUpper={meal.label.toUpperCase()}
+                        subline={subline}
+                        totalKcal={meal.kcal}
+                        carbsG={meal.carbs}
+                        proteinG={meal.protein}
+                        fatG={meal.fat}
+                        items={[]}
+                      />
+                    ),
+                  };
                 })}
-              </div>
+                onConfirmMeal={(slot, next) => {
+                  if (!adminScoped) void persistMealConfirmation(slot, next);
+                }}
+                confirmBusySlot={mealConfirmBusySlot}
+                extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
+              />
               <EmpathyMealPlanGlycemicLegend />
               <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
                 {t("metabolicPathwaysUsda")}{" "}

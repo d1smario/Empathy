@@ -4378,5 +4378,25 @@
     "baseLabel": "Daily baseline · {liters} L",
     "trainingLabel": "Training extra · {liters} L",
     "columnsUnit": "columns in ml per window"
+  },
+  "MealDayCarousel": {
+    "prev": "Previous meal",
+    "next": "Next meal",
+    "confirmEaten": "Mark as eaten",
+    "eaten": "Eaten",
+    "saving": "Saving…"
+  },
+  "MealExtraQuickAdd": {
+    "addExtra": "I ate something else",
+    "savedFlash": "Added to diary ✓",
+    "panelTitle": "Add an extra to this meal",
+    "close": "Close",
+    "searchPlaceholder": "Search food (e.g. banana)",
+    "search": "Search",
+    "searchError": "Search failed, try again",
+    "incompleteData": "Incomplete nutrition data for this food",
+    "quantity": "Quantity",
+    "save": "Save",
+    "saving": "Saving…"
   }
 }

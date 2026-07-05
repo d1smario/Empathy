@@ -413,6 +413,26 @@ body {
   }
 }
 
+/* ——— Piano companion (2026-07): pasti a sinistra, idratazione a destra su desktop ——— */
+.empathy-plan-companion-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 1280px) {
+  .empathy-plan-companion-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  /* L'idratazione resta in vista mentre si scorre tra i pasti. */
+  .empathy-plan-companion-aside {
+    position: sticky;
+    top: 96px;
+  }
+}
+
 .empathy-meal-expo-card {
   position: relative;
   isolation: isolate;

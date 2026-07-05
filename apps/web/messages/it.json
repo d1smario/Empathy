@@ -4378,5 +4378,25 @@
     "baseLabel": "Base giornaliera · {liters} L",
     "trainingLabel": "Extra allenamento · {liters} L",
     "columnsUnit": "colonne in ml per finestra"
+  },
+  "MealDayCarousel": {
+    "prev": "Pasto precedente",
+    "next": "Pasto successivo",
+    "confirmEaten": "Segna come consumato",
+    "eaten": "Consumato",
+    "saving": "Salvataggio…"
+  },
+  "MealExtraQuickAdd": {
+    "addExtra": "Ho mangiato altro",
+    "savedFlash": "Aggiunto al diario ✓",
+    "panelTitle": "Aggiungi un extra a questo pasto",
+    "close": "Chiudi",
+    "searchPlaceholder": "Cerca alimento (es. banana)",
+    "search": "Cerca",
+    "searchError": "Ricerca non riuscita, riprova",
+    "incompleteData": "Dati nutrizionali incompleti per questo alimento",
+    "quantity": "Quantità",
+    "save": "Salva",
+    "saving": "Salvataggio…"
   }
 }

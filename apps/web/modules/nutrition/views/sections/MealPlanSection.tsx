@@ -82,6 +82,11 @@ export type MealPlanSectionProps = {
   handleSaveNutrition: () => void;
   nutritionSectorBoxes: AdaptationSectorBoxVm[];
   functionalFoodRecommendations: FunctionalFoodRecommendationsViewModel;
+  /** Conferme di consumo per pasto del giorno selezionato (carosello companion). */
+  mealConfirmations: Record<string, { confirmed?: boolean; at?: string }>;
+  mealConfirmBusySlot: string | null;
+  persistMealConfirmation: (slotKey: string, nextConfirmed: boolean) => void | Promise<void>;
+  onMealExtraSaved: () => void;
 };
 
 export function MealPlanSection({
@@ -129,6 +134,10 @@ export function MealPlanSection({
   handleSaveNutrition,
   nutritionSectorBoxes,
   functionalFoodRecommendations,
+  mealConfirmations,
+  mealConfirmBusySlot,
+  persistMealConfirmation,
+  onMealExtraSaved,
 }: MealPlanSectionProps) {
   const t = useTranslations("MealPlanSection");
   return (
@@ -277,6 +286,11 @@ export function MealPlanSection({
           nutritionStateCards={nutritionStateCards}
           saving={saving}
           onSaveNutrition={handleSaveNutrition}
+          selectedPlanDate={selectedPlanDate}
+          mealConfirmations={mealConfirmations}
+          mealConfirmBusySlot={mealConfirmBusySlot}
+          persistMealConfirmation={persistMealConfirmation}
+          onMealExtraSaved={onMealExtraSaved}
         />
       ) : null}
 

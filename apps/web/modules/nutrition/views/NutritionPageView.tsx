@@ -470,6 +470,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [coachSessionFoodExclusions, setCoachSessionFoodExclusions] = useState<string[]>([]);
   const [profileFoodExcludeBusy, setProfileFoodExcludeBusy] = useState<string | null>(null);
   const [fuelingConfirmBusy, setFuelingConfirmBusy] = useState(false);
+  /** Slot pasto in salvataggio conferma consumo (carosello Piano), null = nessuno. */
+  const [mealConfirmBusySlot, setMealConfirmBusySlot] = useState<string | null>(null);
 
   useEffect(() => {
     if (!athleteId) return;
@@ -1178,6 +1180,22 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [profile?.nutrition_config]);
 
   const fuelingConfirmedForSelectedDate = Boolean(fuelingExecutionConfirmations[selectedPlanDate]?.confirmed);
+
+  /** Conferme di consumo per pasto del giorno selezionato (nutrition_config.meal_confirmations[date][slot]). */
+  const mealConfirmationsForSelectedDate = useMemo(() => {
+    const rawDay = record(record(profile?.nutrition_config).meal_confirmations)[selectedPlanDate];
+    const out: Record<string, { confirmed?: boolean; at?: string }> = {};
+    if (rawDay && typeof rawDay === "object" && !Array.isArray(rawDay)) {
+      for (const [slot, v] of Object.entries(rawDay as Record<string, unknown>)) {
+        const vr = record(v);
+        out[slot] = {
+          confirmed: Boolean(vr.confirmed),
+          at: typeof vr.at === "string" ? vr.at : undefined,
+        };
+      }
+    }
+    return out;
+  }, [profile?.nutrition_config, selectedPlanDate]);
 
   const predictorEffectiveTimeMin = predictorUsePlanDay ? effectiveSessionDurationMin : predictorTimeMin;
   const predictorEffectiveIntensityPctFtp = predictorUsePlanDay ? effectiveSessionIntensityPctFtp : predictorIntensityPctFtp;
@@ -2910,6 +2928,42 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     setFuelingConfirmBusy(false);
   }
 
+  /** Gemella per-pasto di persistFuelingExecutionConfirmation: mappa annidata data→slot. */
+  async function persistMealConfirmation(slotKey: string, nextConfirmed: boolean) {
+    if (!athleteId || !profile) return;
+    setMealConfirmBusySlot(slotKey);
+    setError(null);
+    try {
+      const existingNutrition = record(profile.nutrition_config);
+      const prevAll = record(existingNutrition.meal_confirmations);
+      const prevDay = record(prevAll[selectedPlanDate]);
+      const nextDay: Record<string, unknown> = { ...prevDay };
+      if (nextConfirmed) {
+        nextDay[slotKey] = { confirmed: true, at: new Date().toISOString() };
+      } else {
+        delete nextDay[slotKey];
+      }
+      const merged: Record<string, unknown> = { ...prevAll };
+      if (Object.keys(nextDay).length > 0) {
+        merged[selectedPlanDate] = nextDay;
+      } else {
+        delete merged[selectedPlanDate];
+      }
+      await saveNutritionProfileConfig({
+        athleteId,
+        nutrition_config: {
+          ...existingNutrition,
+          meal_confirmations: merged,
+        },
+        routine_config: record(profile.routine_config),
+      });
+      setNutritionContextVersion((v) => v + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save meal confirmation");
+    }
+    setMealConfirmBusySlot(null);
+  }
+
   async function runFoodLookupForQuery(rawQuery: string) {
     const q = rawQuery.trim();
     if (!q) return;
@@ -3117,6 +3171,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               handleSaveNutrition={handleSaveNutrition}
               nutritionSectorBoxes={nutritionSectorBoxes}
               functionalFoodRecommendations={functionalFoodRecommendations}
+              mealConfirmations={mealConfirmationsForSelectedDate}
+              mealConfirmBusySlot={mealConfirmBusySlot}
+              persistMealConfirmation={persistMealConfirmation}
+              onMealExtraSaved={() => setNutritionContextVersion((v) => v + 1)}
             />
           ) : null}
 
