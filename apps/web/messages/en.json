@@ -6,7 +6,7 @@
   "Nav": {
     "ariaModules": "Product modules",
     "brandTagline": "SYS · NAV",
-    "dashboard": "Dashboard",
+    "dashboard": "Today & Tomorrow",
     "calendario": "Calendar",
     "athletes": "Athletes",
     "commissioni": "Commissions",
@@ -23,7 +23,8 @@
     "settings": "Settings",
     "admin": "Admin · Platform",
     "pricing": "Plans",
-    "marketingDemo": "Marketing demo"
+    "marketingDemo": "Marketing demo",
+    "dashboardCoach": "Dashboard"
   },
   "Session": {
     "demoNoSupabase": "Demo: no Supabase — modules accessible without sign-in.",
@@ -39,7 +40,7 @@
     "noActiveCoachPending": "Your coach account is awaiting platform approval: data modules stay disabled until enabled.",
     "noActiveAthlete": "Complete your profile in Profile to link your athlete, or wait for the account bootstrap to finish.",
     "goToProfile": "Go to Profile",
-    "goToDashboard": "Dashboard"
+    "goToDashboard": "Today & Tomorrow"
   },
   "Pricing": {
     "paywallBannerLabel": "Access required",
@@ -4426,5 +4427,35 @@
     "manualHint": "Values for the eaten portion, not per 100 g",
     "manualSave": "Save portion",
     "manualIncomplete": "Fill in name and all values (kcal, CHO, PRO, FAT)"
+  },
+  "DashboardPredictionsPanel": {
+    "actionKeepCourse": "Stay the course: the plan for the coming days holds.",
+    "actionRegenerate": "Regenerate the microcycle: plan and response are diverging.",
+    "actionRetune": "Retune your next sessions: the load should adapt to your response.",
+    "adaptationTitle": "Adaptation · week ahead",
+    "compliance7d": "Plan adherence over the last 7 days: {pct}%.",
+    "footnote": "Each operational prediction lives on its own page: here you see the state and where to start.",
+    "kicker": "Predictions · coming days",
+    "linkBuilder": "Next session · expected load",
+    "linkBuilderSub": "Generate it in the Builder with the scaled load",
+    "linkNutrition": "Session fueling · glycogen",
+    "linkNutritionSub": "Pre/intra/post protocol on the Nutrition plan",
+    "linkVirya": "1–2 week plan · retune",
+    "linkViryaSub": "Retune proposals in the annual plan",
+    "linksTitle": "Where to act",
+    "loadScaleNote": "Your next generated sessions are scaled to {pct}% of the load.",
+    "loadingLabel": "Computing predictions…",
+    "lowEvidence": "Few sessions executed recently: cautious prediction — complete your workouts to sharpen it.",
+    "mitoProtective": "Protective",
+    "mitoSupported": "Supported",
+    "mitoTitle": "Cellular readiness · next sessions",
+    "mitoWatch": "Watch",
+    "noLoopData": "Not enough training yet to predict the week ahead: plan and execute a few sessions.",
+    "noMitoData": "More signals (recovery, bioimpedance) are needed to estimate readiness for your next sessions.",
+    "sectionLabel": "Predictions",
+    "statusAligned": "On track",
+    "statusRegenerate": "Regenerate",
+    "statusWatch": "Watch",
+    "loadScaleFull": "No reduction: your next sessions stay at full load."
   }
 }

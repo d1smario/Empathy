@@ -40,14 +40,14 @@ const ICONS: Record<ProductNavIconKey, LucideIcon> = {
   settings: Settings,
 };
 
-function NavLink({ item }: { item: ProductModuleNavItem }) {
+function NavLink({ item, labelOverride }: { item: ProductModuleNavItem; labelOverride?: string }) {
   const pathname = usePathname();
   const t = useTranslations("Nav");
   const normalized = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
   const isActive =
     normalized === item.href || (item.href !== "/" && normalized.startsWith(`${item.href}/`));
   const Icon = ICONS[item.icon];
-  const label = t.has(item.module) ? t(item.module) : item.label;
+  const label = labelOverride ?? (t.has(item.module) ? t(item.module) : item.label);
 
   return (
     <Link
@@ -121,7 +121,13 @@ export function ProductSidebar({
       </div>
       <nav className="relative flex flex-1 flex-col gap-1.5 overflow-y-auto p-3" aria-label={t("ariaModules")}>
         {accountItems.map((item) => (
-          <NavLink key={item.href} item={item} />
+          <NavLink
+            key={item.href}
+            item={item}
+            // La /dashboard del coach è la sua home operativa (CoachDashboardView),
+            // non il cockpit «Oggi & Domani» dell'atleta: il nome resta Dashboard.
+            labelOverride={item.module === "dashboard" && role === "coach" ? t("dashboardCoach") : undefined}
+          />
         ))}
 
         {athleteInScope && athleteItems.length > 0 ? (

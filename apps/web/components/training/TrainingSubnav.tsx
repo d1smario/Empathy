@@ -51,7 +51,7 @@ const ITEMS: ModulePillLinkItem[] = [
   {
     key: "dashboard",
     href: "/dashboard",
-    label: "Dashboard",
+    label: "Oggi & Domani",
     icon: LayoutDashboard,
     style: MODULE_PILL_EMERALD,
   },

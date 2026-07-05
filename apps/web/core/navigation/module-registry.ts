@@ -45,7 +45,10 @@ export type ProductModuleNavItem = {
  */
 export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   // — Account-fixed (riferite all'operatore loggato) —
-  { module: "dashboard", href: "/dashboard", label: "Dashboard", icon: "chart", area: "main", scope: "account" },
+  // Rinominata (2026-07): la pagina è il cockpit oggi→24h→previsioni, non una
+  // "dashboard" generica. Il coach mantiene "Dashboard" (home operativa diversa,
+  // eccezione in ProductSidebar).
+  { module: "dashboard", href: "/dashboard", label: "Oggi & Domani", icon: "chart", area: "main", scope: "account" },
   { module: "calendario", href: "/calendario", label: "Calendario", icon: "calendar", area: "main", scope: "account", roles: ["coach"] },
   { module: "athletes", href: "/athletes", label: "Atleti", icon: "users", area: "main", scope: "account", roles: ["coach"] },
   { module: "commissioni", href: "/commissioni", label: "Commissioni", icon: "wallet", area: "main", scope: "account", roles: ["coach"] },
@@ -94,7 +97,7 @@ export function pathSegmentFromHref(href: string): string {
 export type ScopedAthleteTab = { module: ProductModuleId; label: string; icon: ProductNavIconKey };
 
 export const SCOPED_ATHLETE_TABS: ScopedAthleteTab[] = [
-  { module: "dashboard", label: "Dashboard", icon: "chart" },
+  { module: "dashboard", label: "Oggi & Domani", icon: "chart" },
   ...PRODUCT_MODULE_NAV.filter((item) => item.scope === "athlete").map((item) => ({
     module: item.module,
     label: item.label,

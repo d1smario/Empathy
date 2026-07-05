@@ -6,7 +6,7 @@
   "Nav": {
     "ariaModules": "Moduli prodotto",
     "brandTagline": "SYS · NAV",
-    "dashboard": "Dashboard",
+    "dashboard": "Oggi & Domani",
     "calendario": "Calendario",
     "athletes": "Atleti",
     "commissioni": "Commissioni",
@@ -23,7 +23,8 @@
     "settings": "Impostazioni",
     "admin": "Admin · Piattaforma",
     "pricing": "Piani",
-    "marketingDemo": "Marketing demo"
+    "marketingDemo": "Marketing demo",
+    "dashboardCoach": "Dashboard"
   },
   "Session": {
     "demoNoSupabase": "Demo: nessun Supabase — moduli accessibili senza login.",
@@ -39,7 +40,7 @@
     "noActiveCoachPending": "Il tuo account coach è in attesa di approvazione dalla piattaforma: i moduli dati restano disattivi fino all'abilitazione.",
     "noActiveAthlete": "Completa il profilo in Profilo per collegare il tuo atleta, oppure attendi il completamento del bootstrap account.",
     "goToProfile": "Vai a Profilo",
-    "goToDashboard": "Dashboard"
+    "goToDashboard": "Oggi & Domani"
   },
   "Pricing": {
     "paywallBannerLabel": "Accesso richiesto",
@@ -4426,5 +4427,35 @@
     "manualHint": "Valori della porzione mangiata, non per 100 g",
     "manualSave": "Salva porzione",
     "manualIncomplete": "Compila nome e tutti i valori (kcal, CHO, PRO, FAT)"
+  },
+  "DashboardPredictionsPanel": {
+    "actionKeepCourse": "Mantieni la rotta: il piano dei prossimi giorni resta valido.",
+    "actionRegenerate": "Rigenera il microciclo: piano e risposta stanno divergendo.",
+    "actionRetune": "Ritocca le prossime sedute: il carico va adattato alla tua risposta.",
+    "adaptationTitle": "Adattamento · settimana in arrivo",
+    "compliance7d": "Aderenza al piano negli ultimi 7 giorni: {pct}%.",
+    "footnote": "Ogni previsione operativa vive nella sua pagina: qui vedi lo stato e da dove partire.",
+    "kicker": "Previsioni · prossimi giorni",
+    "linkBuilder": "Prossima seduta · carico atteso",
+    "linkBuilderSub": "Generala nel Builder col carico già scalato",
+    "linkNutrition": "Fueling della seduta · glicogeno",
+    "linkNutritionSub": "Protocollo pre/intra/post sul Piano nutrizione",
+    "linkVirya": "Piano 1–2 settimane · ritocchi",
+    "linkViryaSub": "Proposte di ritocco nel piano annuale",
+    "linksTitle": "Dove agisci",
+    "loadScaleNote": "Le prossime sedute generate vengono scalate al {pct}% del carico.",
+    "loadingLabel": "Calcolo previsioni…",
+    "lowEvidence": "Poche sedute eseguite di recente: previsione prudente — completa gli allenamenti per affinarla.",
+    "mitoProtective": "Protettiva",
+    "mitoSupported": "Supportata",
+    "mitoTitle": "Prontezza cellulare · prossime sedute",
+    "mitoWatch": "Da osservare",
+    "noLoopData": "Non ci sono ancora abbastanza allenamenti per prevedere la settimana: pianifica ed esegui qualche seduta.",
+    "noMitoData": "Servono più segnali (recovery, bioimpedenza) per stimare la prontezza delle prossime sedute.",
+    "sectionLabel": "Previsioni",
+    "statusAligned": "In linea",
+    "statusRegenerate": "Rigenera",
+    "statusWatch": "Da osservare",
+    "loadScaleFull": "Nessuna riduzione: le prossime sedute restano a carico pieno."
   }
 }

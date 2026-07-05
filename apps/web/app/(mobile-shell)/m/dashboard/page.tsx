@@ -5,7 +5,7 @@ import { redirectCoachToMobileRoster } from "@/lib/auth/redirect-coach-to-mobile
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Oggi & Domani",
   description: "Human Performance Operating System",
 };
 

@@ -36,6 +36,10 @@ const DashboardLongevityPanels = dynamic(
   () => import("@/components/dashboard/DashboardLongevityPanels").then((m) => m.DashboardLongevityPanels),
   { ssr: false, loading: () => placeholder },
 );
+const DashboardPredictionsPanel = dynamic(
+  () => import("@/components/dashboard/DashboardPredictionsPanel").then((m) => m.DashboardPredictionsPanel),
+  { ssr: false, loading: () => placeholder },
+);
 
 const EMPTY_KPIS = {
   weightKg: null,
@@ -82,17 +86,14 @@ export function NewDashboardView() {
 
   return (
     <div className="space-y-10">
+      {/* Ordine voluto (2026-07): prima le cose di OGGI (twin, KPI, status,
+          trend, check-in), poi la striscia 24h, in fondo le PREVISIONI. */}
       {/* CORPO + AREE: umanoide point-cloud con i 9 contatori ad arco. */}
       <section aria-label={t("physiologicalAreasLabel")} className="relative">
         <div className="absolute right-0 top-0 z-10">
           <DashboardReadinessHeader />
         </div>
         <DashboardTwinRadial areas={data?.areas ?? []} />
-      </section>
-
-      {/* STRISCIA 24 H: box Bioenergetica della giornata (ex modulo /bioenergetics) */}
-      <section aria-label={t("strip24hLabel")}>
-        <DashboardBioenergeticStrip />
       </section>
 
       {/* PROFILO FISIOLOGICO */}
@@ -113,6 +114,14 @@ export function NewDashboardView() {
       <section aria-label={t("longevityFitnessLabel")}>
         <DashboardLongevityPanels />
       </section>
+
+      {/* STRISCIA 24 H: box Bioenergetica della giornata (ex modulo /bioenergetics) */}
+      <section aria-label={t("strip24hLabel")}>
+        <DashboardBioenergeticStrip />
+      </section>
+
+      {/* PREVISIONI: livello readiness/near-term unificato + rimandi operativi. */}
+      <DashboardPredictionsPanel />
     </div>
   );
 }

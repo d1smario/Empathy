@@ -91,7 +91,7 @@ export async function StandardModuleSurface({ module }: { module: ProductModuleI
               variant="secondary"
               className="justify-center border border-cyan-500/35 bg-cyan-500/10 hover:border-cyan-400/50 hover:bg-cyan-500/15"
             >
-              Dashboard
+              Oggi & Domani
             </Pro2Link>
           </>
         )

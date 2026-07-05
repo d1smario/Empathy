@@ -10,7 +10,7 @@ import { coachOperationalApproved } from "@/lib/platform-coach-status";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Oggi & Domani" };
 
 /**
  * Dashboard per ruolo: il coach entra qui dal login (porta unica) e vede la SUA

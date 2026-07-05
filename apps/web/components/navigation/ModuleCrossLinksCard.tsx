@@ -15,7 +15,7 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
     { href: "/physiology/bioenergetics", label: "Bioenergetics", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
     { href: "/nutrition", label: "Nutrition", className: "border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
-    { href: "/dashboard", label: "Dashboard", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
+    { href: "/dashboard", label: "Oggi & Domani", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
   ],
   nutrition: [
     { href: "/bioenergetics", label: "BioEnergetics", className: "border-lime-500/35 bg-lime-500/10 hover:bg-lime-500/15" },
@@ -23,7 +23,7 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
     { href: "/training", label: "Training", className: "border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
-    { href: "/dashboard", label: "Dashboard", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
+    { href: "/dashboard", label: "Oggi & Domani", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
   ],
   physiology: [
     { href: "/bioenergetics", label: "BioEnergetics", className: "border-lime-500/35 bg-lime-500/10 hover:bg-lime-500/15" },
@@ -49,12 +49,12 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
   biomechanics: [
     { href: "/training", label: "Training", className: "border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
-    { href: "/dashboard", label: "Dashboard", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
+    { href: "/dashboard", label: "Oggi & Domani", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
   ],
   aerodynamics: [
     { href: "/training", label: "Training", className: "border-orange-500/35 bg-orange-500/10 hover:bg-orange-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
-    { href: "/dashboard", label: "Dashboard", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
+    { href: "/dashboard", label: "Oggi & Domani", className: "border-cyan-500/35 bg-cyan-500/10 hover:bg-cyan-500/15" },
   ],
 };
 

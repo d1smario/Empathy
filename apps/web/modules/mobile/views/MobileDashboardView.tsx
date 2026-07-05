@@ -8,6 +8,7 @@ import { MobileProfileSection } from "@/modules/mobile/components/MobileProfileS
 import { DashboardSystemStatus } from "@/components/dashboard/DashboardSystemStatus";
 import { DashboardBioenergeticStrip } from "@/components/dashboard/DashboardBioenergeticStrip";
 import { DashboardLongevityPanels } from "@/components/dashboard/DashboardLongevityPanels";
+import { DashboardPredictionsPanel } from "@/components/dashboard/DashboardPredictionsPanel";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const EMPTY_KPIS = {
@@ -61,14 +62,16 @@ export function MobileDashboardView() {
 
   return (
     <div className="relative min-h-screen bg-black px-4 pb-28 pt-4">
+      {/* Ordine voluto (2026-07): oggi → striscia 24h → previsioni, come desktop. */}
       <div className="space-y-6">
         <MobileHeroSection score={readiness.score} label={readiness.label} />
         <MobileTwinSection areas={data?.areas ?? []} />
-        <DashboardBioenergeticStrip lite />
         <MobileTrendsSection areas={data?.areas ?? []} />
         <MobileProfileSection kpis={data?.kpis ?? EMPTY_KPIS} />
         <DashboardSystemStatus pct={systemStatus.pct} label={systemStatus.label} trend={systemStatus.trend} />
         <DashboardLongevityPanels />
+        <DashboardBioenergeticStrip lite />
+        <DashboardPredictionsPanel />
       </div>
     </div>
   );
