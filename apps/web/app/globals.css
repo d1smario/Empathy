@@ -1312,24 +1312,31 @@ body {
   min-width: 0;
 }
 
+/* Due righe per cella (feedback 2026-07): nome sopra, valore · % sotto —
+   su una riga sola il nome del nutriente restava strozzato a una lettera. */
 .empathy-micro-radar-list li {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border-radius: 999px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.34);
-  padding: 4px 7px;
+  padding: 5px 9px;
   font-size: 0.68rem;
   color: rgba(226, 232, 240, 0.86);
+  min-width: 0;
 }
 
 .empathy-micro-radar-list span {
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.72);
 }
 
 .empathy-micro-radar-list strong {
