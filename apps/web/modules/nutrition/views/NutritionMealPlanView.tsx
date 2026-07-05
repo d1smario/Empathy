@@ -24,7 +24,6 @@ import { sumVisibleSlotMacros } from "@/lib/nutrition/meal-exposition-helpers";
 import {
   buildExpositionItemsFromPlan,
   EmpathyMealPlanExpositionCard,
-  EmpathyMealPlanGlycemicLegend,
 } from "@/modules/nutrition/components/EmpathyMealPlanExpositionCard";
 import { HydrationDayCard } from "@/modules/nutrition/components/HydrationDayCard";
 import { MealDayCarousel, type MealCarouselItem } from "@/modules/nutrition/components/MealDayCarousel";
@@ -479,7 +478,8 @@ export function NutritionMealPlanWorkspace({
                   confirmBusySlot={mealConfirmBusySlot}
                   extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
                 />
-                <EmpathyMealPlanGlycemicLegend />
+                {/* Legenda IG rimossa (feedback utente 2026-07): le pillole IG
+                    sulle singole voci restano, la spiegazione statica no. */}
                 {/* Σ kcal USDA assemblato: vive in UN solo posto, nel «Bilancio kcal» del target giornaliero. */}
               </div>
               {intelligentMealPlan.hydrationRoutine ? (
@@ -599,7 +599,6 @@ export function NutritionMealPlanWorkspace({
                 confirmBusySlot={mealConfirmBusySlot}
                 extraAdd={adminScoped ? null : { athleteId, entryDate: selectedPlanDate, onSaved: onMealExtraSaved }}
               />
-              <EmpathyMealPlanGlycemicLegend />
               <p className="muted-copy mt-3 text-center text-[11px] leading-snug text-gray-500">
                 {t("metabolicPathwaysUsda")}{" "}
                 <button

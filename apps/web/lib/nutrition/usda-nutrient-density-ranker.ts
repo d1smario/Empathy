@@ -203,65 +203,75 @@ export async function rankUsdaCacheForTargets(
 
 export type RankFoodsForNutrientResult = {
   foods: UsdaRankedFood[];
-  source: "cache" | "fdc_live" | "mixed" | "empty";
+  source: "cache" | "empty";
 };
 
-/** Ranker unico cache-first; live FDC solo su miss con apiKey e queries esplicite. */
+/**
+ * Ranking FULL-TABLE via RPC `rank_fdc_foods_by_nutrient` sul dataset FDC locale
+ * (~8.2k alimenti in `nutrition_fdc_foods`). Sostituisce sia lo scan alfabetico
+ * limitato a 400 righe sia il vecchio fallback live all'API USDA: il dataset è
+ * importato nel DB (2026-07) e la piattaforma non chiama più api.nal.usda.gov.
+ */
+export async function rankFdcFoodsByFdcNutrientId(input: {
+  fdcNutrientId: number;
+  minimumPer100g?: number;
+  topN?: number;
+}): Promise<{ foods: UsdaRankedFood[]; error: string | null }> {
+  const admin = createSupabaseAdminClient();
+  // Errore esplicito, MAI lista vuota silenziosa: il client cachea i vuoti
+  // "buoni" per 10 minuti, una misconfigurazione deve restare visibile.
+  if (!admin) return { foods: [], error: "service_role_unconfigured" };
+  const topN = Math.max(1, Math.min(100, Math.trunc(input.topN ?? 28) || 28));
+  const run = (minPer100g: number) =>
+    admin.rpc("rank_fdc_foods_by_nutrient", {
+      p_fdc_nutrient_id: Math.round(input.fdcNutrientId),
+      p_min_per_100g: minPer100g,
+      p_top_n: topN,
+    });
+  let { data, error } = await run(input.minimumPer100g ?? 0);
+  // Soglia minima troppo severa per questo nutriente → riprova senza soglia.
+  if (!error && Array.isArray(data) && data.length === 0 && (input.minimumPer100g ?? 0) > 0) {
+    ({ data, error } = await run(0));
+  }
+  if (error) return { foods: [], error: error.message };
+  if (!Array.isArray(data)) return { foods: [], error: null };
+  const foods = (data as Record<string, unknown>[])
+    .map((r) => {
+      const amount = Number(r.amount_per_100g);
+      const kcal = Number(r.kcal_100g ?? 0);
+      const fdcId = Number(r.fdc_id);
+      if (!Number.isFinite(fdcId) || !Number.isFinite(amount) || amount <= 0) return null;
+      return {
+        fdcId: Math.round(fdcId),
+        description: String(r.description ?? "Alimento FDC"),
+        amountPer100g: amount,
+        amountPer100Kcal: kcal > 0 ? (amount * 100) / kcal : amount,
+        unit: typeof r.unit === "string" && r.unit ? r.unit : "mg",
+        kcalPer100g: Number.isFinite(kcal) ? kcal : 0,
+      } satisfies UsdaRankedFood;
+    })
+    .filter((r): r is UsdaRankedFood => Boolean(r));
+  return { foods, error: null };
+}
+
+/** Ranker unico sul dataset FDC locale: RPC full-table quando si conosce l'id nutriente FDC, altrimenti scan della cache canonica. Nessuna chiamata esterna. */
 export async function rankFoodsForNutrient(input: {
   nutrientId: NutrientTargetId;
   topN?: number;
-  apiKey?: string;
-  liveQueries?: string[];
   fdcNutrientId?: number;
   minimumPer100g?: number;
 }): Promise<RankFoodsForNutrientResult> {
-  const topN = Math.max(1, Math.min(10, Math.trunc(input.topN ?? 3) || 3));
-  const cached = await rankUsdaCacheForNutrient(input.nutrientId, topN);
-  if (cached.length >= topN) {
-    return { foods: cached, source: "cache" };
-  }
-  const key = input.apiKey?.trim();
-  if (!key || !input.liveQueries?.length || !input.fdcNutrientId) {
-    return { foods: cached, source: cached.length ? "cache" : "empty" };
-  }
-  try {
-    const { fetchUsdaRichFoodsMerged } = await import("@/lib/nutrition/usda-rich-foods-search");
-    const liveRows = await fetchUsdaRichFoodsMerged({
-      apiKey: key,
-      queries: input.liveQueries.slice(0, 6),
-      nutrientFilter: {
-        id: Math.round(input.fdcNutrientId),
-        type: "minimum",
-        value: input.minimumPer100g ?? 0,
-      },
-      dataTypes: ["Foundation", "SR Legacy"],
-      pageSizePerQuery: 18,
-      resultLimit: topN * 2,
-      delayMsBetweenQueries: 120,
+  const topN = Math.max(1, Math.min(100, Math.trunc(input.topN ?? 3) || 3));
+  if (input.fdcNutrientId != null && Number.isFinite(input.fdcNutrientId) && input.fdcNutrientId >= 1) {
+    const full = await rankFdcFoodsByFdcNutrientId({
+      fdcNutrientId: input.fdcNutrientId,
+      minimumPer100g: input.minimumPer100g,
+      topN,
     });
-    const liveRanked: UsdaRankedFood[] = liveRows.slice(0, topN).map((r) => ({
-      fdcId: r.fdcId,
-      description: r.description,
-      amountPer100g: r.targetAmountPer100g ?? 0,
-      amountPer100Kcal:
-        r.energyKcal100 && r.energyKcal100 > 0 && r.targetAmountPer100g != null
-          ? (r.targetAmountPer100g * 100) / r.energyKcal100
-          : r.targetAmountPer100g ?? 0,
-      unit: r.targetUnitName ?? "mg",
-      kcalPer100g: r.energyKcal100 ?? 0,
-    }));
-    const merged = [...cached];
-    for (const row of liveRanked) {
-      if (merged.length >= topN) break;
-      if (!merged.some((m) => m.fdcId === row.fdcId)) merged.push(row);
-    }
-    return {
-      foods: merged.slice(0, topN),
-      source: cached.length && liveRanked.length ? "mixed" : liveRanked.length ? "fdc_live" : cached.length ? "cache" : "empty",
-    };
-  } catch {
-    return { foods: cached, source: cached.length ? "cache" : "empty" };
+    if (full.foods.length) return { foods: full.foods.slice(0, topN), source: "cache" };
   }
+  const cached = await rankUsdaCacheForNutrient(input.nutrientId, topN);
+  return { foods: cached, source: cached.length ? "cache" : "empty" };
 }
 
 /** Per uso da test/debug: invalida la cache di processo. */

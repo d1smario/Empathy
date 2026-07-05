@@ -32,6 +32,42 @@ export type AuthenticatedTrainingUser = {
 };
 
 /**
+ * Micro-cache di processo per il gate per-richiesta: al load della pagina
+ * nutrition/training partono 4-5 chiamate API e OGNUNA ripagava 3-4 round-trip
+ * seriali identici (entitlement piattaforma + accesso atleta) — audit 2026-07.
+ * In cache entrano SOLO gli esiti positivi (TTL 60 s): un permesso revocato
+ * torna effettivo entro un minuto, un accesso negato si riverifica sempre.
+ */
+const AUTH_GATE_OK_TTL_MS = 60_000;
+const AUTH_GATE_CACHE_MAX = 5000;
+const entitlementOkAt = new Map<string, number>();
+const athleteAccessOkAt = new Map<string, number>();
+
+async function assertPlatformEntitlementCached(userId: string, rlsClient: SupabaseClient): Promise<void> {
+  const at = entitlementOkAt.get(userId);
+  if (at != null && Date.now() - at < AUTH_GATE_OK_TTL_MS) return;
+  await assertPlatformEntitlementForApi(userId, rlsClient);
+  if (entitlementOkAt.size > AUTH_GATE_CACHE_MAX) entitlementOkAt.clear();
+  entitlementOkAt.set(userId, Date.now());
+}
+
+async function canAccessAthleteDataCached(
+  rlsClient: SupabaseClient,
+  userId: string,
+  athleteId: string,
+): Promise<boolean> {
+  const key = `${userId}:${athleteId}`;
+  const at = athleteAccessOkAt.get(key);
+  if (at != null && Date.now() - at < AUTH_GATE_OK_TTL_MS) return true;
+  const allowed = await canAccessAthleteData(rlsClient, userId, athleteId, null);
+  if (allowed) {
+    if (athleteAccessOkAt.size > AUTH_GATE_CACHE_MAX) athleteAccessOkAt.clear();
+    athleteAccessOkAt.set(key, Date.now());
+  }
+  return allowed;
+}
+
+/**
  * Utente autenticato: header `Authorization: Bearer` (come V1 `training-write-api`) oppure cookie session.
  */
 export async function requireAuthenticatedTrainingUser(req: NextRequest): Promise<AuthenticatedTrainingUser> {
@@ -81,8 +117,11 @@ export async function requireTrainingAthleteWriteContext(
   }
 
   const { userId, rlsClient } = await requireAuthenticatedTrainingUser(req);
-  await assertPlatformEntitlementForApi(userId, rlsClient);
-  const allowed = await canAccessAthleteData(rlsClient, userId, target, null);
+  // Indipendenti tra loro: in parallelo (prima 2 stadi seriali per richiesta).
+  const [, allowed] = await Promise.all([
+    assertPlatformEntitlementCached(userId, rlsClient),
+    canAccessAthleteDataCached(rlsClient, userId, target),
+  ]);
   if (!allowed) {
     throw new TrainingRouteAuthError(403, "forbidden");
   }
@@ -111,8 +150,11 @@ export async function requireTrainingAthleteReadContext(
   }
 
   const { userId, rlsClient } = await requireAuthenticatedTrainingUser(req);
-  await assertPlatformEntitlementForApi(userId, rlsClient);
-  const allowed = await canAccessAthleteData(rlsClient, userId, target, null);
+  // Indipendenti tra loro: in parallelo (prima 2 stadi seriali per richiesta).
+  const [, allowed] = await Promise.all([
+    assertPlatformEntitlementCached(userId, rlsClient),
+    canAccessAthleteDataCached(rlsClient, userId, target),
+  ]);
   if (!allowed) {
     throw new TrainingRouteAuthError(403, "forbidden");
   }

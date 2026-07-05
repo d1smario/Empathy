@@ -55,14 +55,13 @@ export async function fetchUsdaFoodsForCatalogIds(catalogIds: string[]): Promise
       error?: string;
     };
     const foods = j.foods ?? [];
-    const usdaConfigured = res.status !== 503;
-    const error =
-      res.ok ? (j.error ?? null) : j.error ?? (usdaConfigured ? "USDA error." : "USDA_API_KEY not configured (server).");
+    // La route legge SOLO dal dataset FDC locale: niente più 503 da API key mancante.
+    const error = res.ok ? (j.error ?? null) : j.error ?? "Errore ranking FDC locale.";
 
     const result: PathwayUsdaFetchResult = {
       foods: mergeAndRankFoods(foods, 12),
       error,
-      usdaConfigured,
+      usdaConfigured: true,
     };
     // Solo i risultati buoni entrano in cache: gli errori restano ritentabili.
     if (!error) {

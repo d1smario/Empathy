@@ -375,6 +375,15 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const nutritionModuleExpandInFlightRef = useRef(false);
   /** Ultima data per cui `functionalMealSelector` è stato allineato al server (evita fetch doppi). */
   const serverSelectorPathwayDateRef = useRef<string | null>(null);
+  /** Firma input solver dell'ultimo applyModuleData: dati identici → niente reset di piano/selector (evita doppia rigenerazione su revisit). */
+  const lastSolverInputsSigRef = useRef<string | null>(null);
+  /**
+   * La finestra modulo vive in un ref: questo stato la rende OSSERVABILE dagli
+   * effetti (allineamento pathway del giorno, espansione on-demand). Senza,
+   * tolta l'espansione eager, la prima data scelta fuori ±7 non riallineava mai
+   * selettore/energia del giorno (verifica avversariale 2026-07).
+   */
+  const [moduleWindowVersion, setModuleWindowVersion] = useState(0);
   /** Incrementato al ritorno sul tab: ricarica profilo/fisiologia se aggiornati altrove (altra scheda / profilo). */
   const [nutritionContextVersion, setNutritionContextVersion] = useState(0);
 
@@ -574,7 +583,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     return () => {
       cancelled = true;
     };
-  }, [selectedPlanDate, athleteId, loading]);
+    // moduleWindowVersion: ri-tenta quando l'espansione on-demand allarga la finestra.
+  }, [selectedPlanDate, athleteId, loading, moduleWindowVersion]);
 
   /** Se l'utente sceglie una data fuori dalla finestra caricata, espandi a ±30 (on-demand). */
   useEffect(() => {
@@ -604,6 +614,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           mergeNutritionTrainingRowsById(prev, (expanded.executed as ExecutedRow[]) ?? []),
         );
         nutritionModuleWindowRef.current = { from: full.from, to: full.to };
+        // Sveglia gli effetti che dipendono dalla finestra (allineamento giorno).
+        setModuleWindowVersion((v) => v + 1);
       } finally {
         nutritionModuleExpandInFlightRef.current = false;
       }
@@ -611,7 +623,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     return () => {
       cancelled = true;
     };
-  }, [selectedPlanDate, athleteId, loading]);
+    // moduleWindowVersion: applyModuleData può restringere la finestra a ±7 → riespandi se serve.
+  }, [selectedPlanDate, athleteId, loading, moduleWindowVersion]);
 
   /** Sezioni pesanti (research traces, metabolic model) — dopo first paint. */
   useNutritionHeavyModuleEnrichment({
@@ -708,22 +721,57 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         setNutritionPerformanceIntegration(data.nutritionPerformanceIntegration ?? null);
         setExecuted(ex);
         setPlanned(pl);
-        /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
-        setIntelligentMealPlan(null);
-        setIntelligentMealError(null);
-        setCoachMealRemovalKeys(new Set());
-        setCoachSessionFoodExclusions([]);
+
+        /**
+         * Firma degli input del solver: su revisit a cache calda applyModuleData
+         * gira DUE volte (cache + refetch in background) e azzerava piano/selector
+         * anche a dati identici → seconda POST intelligent-meal-plan e seconda
+         * ondata pathway per niente (audit 2026-07). Con input invariati, lo
+         * stato derivato resta in piedi.
+         */
+        /* Le conferme (pasto/fueling) vivono in nutrition_config ma NON sono
+           input del solver: escluse dalla firma, così spuntare un pasto non
+           rigenera il piano. */
+        const {
+          meal_confirmations: _mealConfirmations,
+          fueling_execution_confirmations: _fuelingConfirmations,
+          ...nutritionConfigForSig
+        } = record(p?.nutrition_config);
+        const solverInputsSig = JSON.stringify({
+          nc: nutritionConfigForSig,
+          rc: p?.routine_config ?? null,
+          w: p?.weight_kg ?? null,
+          dt: p?.diet_type ?? null,
+          ex: p?.food_exclusions ?? null,
+          fp: p?.food_preferences ?? null,
+          al: p?.allergies ?? null,
+          io: p?.intolerances ?? null,
+          ftp: ph?.ftp_watts ?? null,
+          pl: pl.map((r) => [r.id, r.date, r.duration_minutes, r.tss_target, r.kcal_target]),
+        });
+        const solverInputsChanged = solverInputsSig !== lastSolverInputsSigRef.current;
+        lastSolverInputsSigRef.current = solverInputsSig;
+
+        if (solverInputsChanged) {
+          /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
+          setIntelligentMealPlan(null);
+          setIntelligentMealError(null);
+          setCoachMealRemovalKeys(new Set());
+          setCoachSessionFoodExclusions([]);
+          setFunctionalMealSelector(null);
+          setPathwayModulation(null);
+          setApplicationPlaybook(null);
+          setServerDailyEnergyModel(null);
+          serverDailyEnergyDateRef.current = null;
+          serverSelectorPathwayDateRef.current = null;
+        }
         const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
         const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
         const persisted = readPersistedNutritionPlanDate(athleteId);
         const finalPlanDate = clampIsoDay(persisted ?? nextDate);
-        setFunctionalMealSelector(null);
-        setPathwayModulation(null);
-        setApplicationPlaybook(null);
-        setServerDailyEnergyModel(null);
-        serverDailyEnergyDateRef.current = null;
-        serverSelectorPathwayDateRef.current = null;
         nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
+        // La finestra è tornata ±7: sveglia l'espansione on-demand se la data è fuori.
+        setModuleWindowVersion((v) => v + 1);
         setSelectedPlanDate(finalPlanDate);
       };
 
@@ -771,34 +819,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       nutritionModuleCache = moduleData;
       nutritionModuleCacheId = athleteId;
       setLoading(false);
-
-      const expandToFullWindow = async () => {
-        if (nutritionModuleExpandInFlightRef.current) return;
-        const w = nutritionModuleWindowRef.current;
-        const full = nutritionModuleFullWindowRef.current;
-        if (!w || !full || (w.from === full.from && w.to === full.to)) return;
-        nutritionModuleExpandInFlightRef.current = true;
-        try {
-          const expanded = await fetchNutritionModuleContext({
-            athleteId,
-            from: full.from,
-            to: full.to,
-            mode: "light",
-          });
-          if (expanded.error) return;
-          setPlanned((prev) =>
-            mergeNutritionTrainingRowsById(prev, (expanded.planned as PlannedRow[]) ?? []),
-          );
-          setExecuted((prev) =>
-            mergeNutritionTrainingRowsById(prev, (expanded.executed as ExecutedRow[]) ?? []),
-          );
-          nutritionModuleWindowRef.current = { from: full.from, to: full.to };
-        } finally {
-          nutritionModuleExpandInFlightRef.current = false;
-        }
-      };
-
-      void expandToFullWindow();
+      /* Niente espansione ±30 eager: era una terza esecuzione completa del
+         God-endpoint a ogni load, e il client ne usava solo planned/executed.
+         L'effetto on-demand su selectedPlanDate fuori finestra copre già le
+         date lontane (audit 2026-07). */
     }
     loadData();
   }, [athleteId, pathname, nutritionContextVersion]);

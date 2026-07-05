@@ -1,7 +1,5 @@
 import "server-only";
 
-import { buildNutritionFdcFoodUpsertPayloadFromUsdaRaw } from "@/lib/nutrition/fdc-import-row";
-import { isFdcCacheOnly } from "@/lib/nutrition/fdc-runtime-config";
 import { partitionFdcNutrientsFromCompact, type FdcMicroPer100g } from "@/lib/nutrition/fdc-micronutrient-extract";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { scaleMacrosFromPer100g, type FdcPer100gMacros } from "@/lib/nutrition/usda-fdc-food-detail";
@@ -104,16 +102,6 @@ export function cachedFoodFromDbRow(row: Record<string, unknown>): FdcCachedFood
   };
 }
 
-async function fetchFdcFoodRaw(apiKey: string, fdcId: number): Promise<Record<string, unknown>> {
-  const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`USDA FDC ${res.status}: ${text.slice(0, 160)}`);
-  }
-  return (await res.json()) as Record<string, unknown>;
-}
-
 export function scaleFdcMicros(food: FdcCachedFood, quantityG: number): ScaledMicronutrientSnapshot {
   const factor = quantityG / 100;
   const scale = (rows: FdcMicroPer100g[]): FdcMicroPer100g[] =>
@@ -195,36 +183,23 @@ export async function getFdcFoodFromCacheOnly(fdcId: number): Promise<FdcCachedF
   return map.get(Math.round(fdcId)) ?? null;
 }
 
+/**
+ * Solo lettura dal dataset FDC locale. L'import live per-fdcId da USDA è stato
+ * rimosso (2026-07): il dataset completo è in `nutrition_fdc_foods` e la
+ * piattaforma non chiama più api.nal.usda.gov (gli script offline di warming
+ * restano l'unico canale di aggiornamento). Il nome resta per compatibilità
+ * con i 5 caller esistenti.
+ */
 export async function getOrImportFdcFood(fdcId: number): Promise<FdcCachedFood | { error: string }> {
   const id = Math.round(Number(fdcId));
   if (!Number.isFinite(id) || id < 1) return { error: "fdcId non valido" };
 
+  // Config mancante ≠ alimento assente: errore distinto, non un falso cache-miss.
+  if (!createSupabaseAdminClient()) {
+    return { error: "service_role_unconfigured: SUPABASE_SERVICE_ROLE_KEY richiesta per il dataset FDC locale." };
+  }
+
   const cached = await getFdcFoodFromCacheOnly(id);
   if (cached) return cached;
-
-  if (isFdcCacheOnly()) {
-    return { error: "fdc_not_in_local_cache" };
-  }
-
-  const admin = createSupabaseAdminClient();
-  if (!admin) return { error: "service_role_unconfigured: SUPABASE_SERVICE_ROLE_KEY richiesta per cache USDA FDC." };
-
-  const apiKey = process.env.USDA_API_KEY?.trim();
-  if (!apiKey) return { error: "USDA_API_KEY non configurata: impossibile importare alimento FDC." };
-
-  try {
-    const raw = await fetchFdcFoodRaw(apiKey, id);
-    const built = buildNutritionFdcFoodUpsertPayloadFromUsdaRaw(raw, { sourceTag: "get_or_import_fdc_food" });
-    if ("error" in built) return built;
-
-    const { data, error } = await admin
-      .from("nutrition_fdc_foods")
-      .upsert(built, { onConflict: "fdc_id" })
-      .select("*")
-      .single();
-    if (error) return { error: error.message };
-    return cachedFoodFromDbRow(data as Record<string, unknown>);
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Import USDA FDC fallito." };
-  }
+  return { error: "fdc_not_in_local_cache" };
 }

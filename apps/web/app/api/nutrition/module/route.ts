@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { PlannedWorkoutDbRow } from "@empathy/domain-training";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
-import type { PlannedWorkoutDbRow as AdapterPlannedWorkoutDbRow } from "@/lib/empathy/adapters/training";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
-import { toCanonicalPlannedWorkout } from "@/lib/empathy/adapters/training";
 import { resolveOperationalSignalsBundle } from "@/lib/dashboard/resolve-operational-signals-bundle";
 import { isMissingKnowledgeFoundationError } from "@/lib/knowledge/knowledge-foundation";
 import { listKnowledgeExpansionTraceSummaries } from "@/lib/knowledge/knowledge-research-trace-store";
@@ -515,16 +513,13 @@ export async function GET(req: NextRequest) {
       executed: execRes.data ?? [],
       planned: plannedRaw.map((row) => {
         const builderSession = parsePro2BuilderSessionFromNotes(row.notes ?? null);
-        const adapterRow = row as unknown as AdapterPlannedWorkoutDbRow;
-        const canonicalPlannedWorkout = toCanonicalPlannedWorkout({
-          ...adapterRow,
-          athlete_id: row.athlete_id,
-          adaptive_goal: builderSession?.adaptationTarget ?? null,
-        });
+        /* Niente canonicalPlannedWorkout: campo senza alcun lettore nell'app
+           che duplicava l'intera riga (incluse le notes BUILDER_SESSION_JSON,
+           già presenti sia raw sia parsate) per ogni seduta — MB di payload
+           per niente (audit 2026-07). */
         return {
           ...row,
           builderSession,
-          canonicalPlannedWorkout,
           plannedSessionName: builderSession?.sessionName ?? null,
           plannedDiscipline: builderSession?.discipline ?? row.type ?? null,
           plannedFamily: builderSession?.family ?? null,

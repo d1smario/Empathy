@@ -48,6 +48,26 @@ function pickNutrient(
   return null;
 }
 
+/**
+ * Energia in KCAL, mai kJ: nei dump SR Legacy le righe "Energy" esistono in
+ * doppia unità (nutriente 1008 = kcal, 1062 = kJ) e il vecchio match per nome
+ * prendeva la prima → 4702 righe importate coi kJ nel campo kcal (bug dati
+ * corretto con backfill 2026-07). Qui: prima il nutriente 1008 o unità kcal.
+ */
+function pickEnergyKcal(nutrients: Array<Record<string, unknown>>): number | null {
+  for (const row of nutrients) {
+    const nested = row.nutrient as Record<string, unknown> | undefined;
+    const id = Number(nested?.id ?? row.nutrientId);
+    const unit = String(nested?.unitName ?? row.unitName ?? "").trim().toLowerCase();
+    const isEnergyName = nutrientRowName(row).startsWith("energy");
+    if (id === 1008 || (isEnergyName && unit === "kcal")) {
+      const v = toNumber(nutrientRowAmount(row));
+      if (v != null) return v;
+    }
+  }
+  return null;
+}
+
 /** Estrae macro per 100 g da `foodNutrients` (dettaglio FDC o risultati search). */
 export function summarizePer100gFromFdcNutrientRows(nutrients: Array<Record<string, unknown>>): {
   kcalPer100g: number | null;
@@ -57,8 +77,8 @@ export function summarizePer100gFromFdcNutrientRows(nutrients: Array<Record<stri
   sodiumMgPer100g: number | null;
 } {
   const kcal =
-    pickNutrient(nutrients, ["energy", "energy (Atwater General Factors)"]) ??
-    pickNutrient(nutrients, ["Energy"]);
+    pickEnergyKcal(nutrients) ??
+    pickNutrient(nutrients, ["energy (Atwater General Factors)"]);
   const carbs = pickNutrient(nutrients, ["carbohydrate, by difference", "carbohydrate"]);
   const protein = pickNutrient(nutrients, ["protein"]);
   const fat = pickNutrient(nutrients, ["total lipid (fat)", "lipid"]);

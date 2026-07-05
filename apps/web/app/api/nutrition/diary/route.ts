@@ -165,6 +165,14 @@ export async function POST(req: NextRequest) {
       }
       const detail = await getOrImportFdcFood(Math.round(fdcId));
       if ("error" in detail) {
+        // Alimento non nel dataset FDC locale = not-found dati (non gateway error):
+        // messaggio leggibile, il client lo mostra così com'è.
+        if (detail.error === "fdc_not_in_local_cache") {
+          return NextResponse.json(
+            { error: "Alimento non più disponibile nel database: ripeti la ricerca e riseleziona." },
+            { status: 404 },
+          );
+        }
         return NextResponse.json({ error: detail.error }, { status: 502 });
       }
       const scaled = scaleMacrosFromCachedFdcFood(detail, quantityG);

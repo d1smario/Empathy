@@ -1,10 +1,10 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { getSessionProfile } from "@/lib/auth/session-profile";
 import type { UserAccessEntitlement } from "@/lib/billing/access-entitlement";
 import { loadBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
 import { ACCESS_PLAN_PATH, isPaywallEnforced } from "@/lib/billing/paywall-config";
-import { createSupabaseCookieClient } from "@/lib/supabase/server";
 
 export { isPaywallEnforced };
 
@@ -20,15 +20,12 @@ export async function gateAuthenticatedShellAccessOrRedirect(): Promise<UserAcce
    */
   if (!isPaywallEnforced()) return null;
 
-  const cookieClient = createSupabaseCookieClient();
-  if (!cookieClient) return null;
+  /** Identità dalla cache per-request (getSessionProfile): il layout la risolve
+      già — qui il gate faceva un SECONDO getUser HTTP in serie (audit 2026-07). */
+  const session = await getSessionProfile();
+  if (!session.userId) return null;
 
-  const {
-    data: { user },
-  } = await cookieClient.auth.getUser();
-  if (!user) return null;
-
-  const entitlement = await loadBillingEntitlementForAuthUser(user.id);
+  const entitlement = await loadBillingEntitlementForAuthUser(session.userId);
 
   if (entitlement.hasAthleteAccess || entitlement.hasOperatorAccess) {
     return entitlement;

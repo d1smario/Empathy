@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
     const canonical = await runCanonicalNutritionLookup({
       db,
       q,
-      usdaApiKey: process.env.USDA_API_KEY,
       maxResults: 80,
     });
 

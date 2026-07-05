@@ -382,7 +382,7 @@ export function buildFunctionalFoodRecommendationsViewModel(
     layer: "deterministic_food_bridge",
     targets: Array.from(byNutrient.values()),
     notes: [
-      "Esempi alimentari curati nel catalogo EMPATHY; ricerca prodotti (OFF/branded) e, con USDA_API_KEY, elenco Foundation/SR ordinato per densità del nutriente FDC.",
+      "Esempi alimentari curati nel catalogo EMPATHY; elenco Foundation/SR ordinato per densità del nutriente dal dataset FDC locale.",
       "Rispetta allergie/esclusioni del profilo prima di scegliere alimenti dalla lista.",
     ],
   };
