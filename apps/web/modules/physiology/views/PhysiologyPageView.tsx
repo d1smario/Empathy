@@ -1252,6 +1252,9 @@ export default function MetabolicLabPage() {
             engineRevision={METABOLIC_CP_ENGINE_REVISION}
           />
 
+          {/* Tabella dettagliata = stessi dati del grafico sopra in forma
+              motore (kJ, formula): solo staff (audit 2026-07). */}
+          {showTech ? (
           <details className="collapsible-card" style={{ marginBottom: "14px" }}>
             <summary>{t("powerComponentsSummary")}</summary>
             <p className="session-sub-copy" style={{ marginBottom: 10, maxWidth: "58rem" }}>
@@ -1295,9 +1298,10 @@ export default function MetabolicLabPage() {
               </table>
             </div>
           </details>
+          ) : null}
 
           <details className="collapsible-card">
-            <summary>Zones & substrates</summary>
+            <summary>{t("zonesSubstratesSummary")}</summary>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[34rem] text-xs">
                 <thead>
@@ -1518,41 +1522,9 @@ export default function MetabolicLabPage() {
             </Pro2Button>
           </Pro2SectionCard>
 
-          <Pro2SectionCard
-            accent="emerald"
-            title={t("sportSpecificTitle")}
-            subtitle={t("sportSpecificSubtitle")}
-            icon={Layers}
-          >
-            <div className="grid gap-3 md:grid-cols-3">
-              {sportSpecificPanels.map((panel) => (
-                <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-                  <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
-                  <p className="mt-1 font-mono text-sm text-gray-300">
-                    {t("sessionsLabel")} <span className="text-white">{panel.sessionCount}</span>
-                    {panel.lastDate ? t("lastDateSuffix", { date: panel.lastDate }) : ""}
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-                    <span>{t("avgDuration")} {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
-                    <span>{t("avgTss")} {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
-                    <span>{t("avgP")} {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
-                    <span>{t("speed")} {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
-                    <span>{t("avgRer")} {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
-                    <span>{t("avgVo2")} {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
-                  </div>
-                  <p className="mt-2 text-xs text-amber-100/90">
-                    {t("sportSpecificEstimatedVo2")}{" "}
-                    <strong>{panel.vo2EstimateMlKgMin != null ? `${panel.vo2EstimateMlKgMin.toFixed(1)} ml/kg/min` : "—"}</strong>
-                  </p>
-                </article>
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] text-gray-500">
-              {t("noRecentSessionsNote")}
-            </p>
-          </Pro2SectionCard>
-
-          {cpCurveHasData ? (
+          {/* Cross-check VO₂/gas: audit di coerenza staff-only, agganciato sotto
+              la card VO₂max lab. Riusa i gas importati sopra (audit 2026-07). */}
+          {showTech && cpCurveHasData ? (
             <details className="collapsible-card">
               <summary className="cursor-pointer text-sm font-semibold text-gray-300">
                 {t("crossCheckSummary")}
@@ -1594,6 +1566,39 @@ export default function MetabolicLabPage() {
             </details>
           ) : null}
 
+          <Pro2SectionCard
+            accent="emerald"
+            title={t("sportSpecificTitle")}
+            subtitle={t("sportSpecificSubtitle")}
+            icon={Layers}
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              {sportSpecificPanels.map((panel) => (
+                <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
+                  <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
+                  <p className="mt-1 font-mono text-sm text-gray-300">
+                    {t("sessionsLabel")} <span className="text-white">{panel.sessionCount}</span>
+                    {panel.lastDate ? t("lastDateSuffix", { date: panel.lastDate }) : ""}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                    <span>{t("avgDuration")} {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
+                    <span>{t("avgTss")} {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
+                    <span>{t("avgP")} {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
+                    <span>{t("speed")} {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
+                    <span>{t("avgRer")} {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
+                    <span>{t("avgVo2")} {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-amber-100/90">
+                    {t("sportSpecificEstimatedVo2")}{" "}
+                    <strong>{panel.vo2EstimateMlKgMin != null ? `${panel.vo2EstimateMlKgMin.toFixed(1)} ml/kg/min` : "—"}</strong>
+                  </p>
+                </article>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-gray-500">
+              {t("noRecentSessionsNote")}
+            </p>
+          </Pro2SectionCard>
 
           <div
             id="physiology-lab-save-bar"
@@ -1643,19 +1648,10 @@ export default function MetabolicLabPage() {
                 </div>
               </div>
 
-              {/* Riga 2: VO₂max profilo/lab · auto-decode · nota */}
+              {/* Riga 2: ultimo ricalcolo + nota. Il VO₂max lab NON si ripete qui
+                  (vive solo nella sua card sopra): due VO₂max a distanza sembravano
+                  in conflitto (audit 2026-07). Qui resta solo la stima CP di riga 1. */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 pt-3 text-xs">
-                {profileVo2maxMlMinKg != null && profileVo2maxMlMinKg > 0 ? (
-                  <span className="text-gray-400">
-                    {t("profileLabVo2maxLabel")}{" "}
-                    <span className="font-mono tabular-nums text-white">{profileVo2maxMlMinKg.toFixed(1)} ml/kg/min</span>
-                    {profileVo2maxLMin != null ? (
-                      <span className="text-gray-500"> ≈ {profileVo2maxLMin.toFixed(2)} L/min</span>
-                    ) : null}
-                  </span>
-                ) : (
-                  <span className="text-gray-500">{t("noLabVo2maxOnProfile")}</span>
-                )}
                 {profileLastRecalcAt ? (
                   <span className="text-gray-500">
                     {t("lastRecalculation", { time: new Date(profileLastRecalcAt).toLocaleTimeString(t("localeCode")) })}

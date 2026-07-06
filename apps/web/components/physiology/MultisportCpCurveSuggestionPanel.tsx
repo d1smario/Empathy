@@ -59,10 +59,6 @@ export type MultisportCpCurveSuggestionPanelProps = {
   /** Dopo aver riempito i campi CP in anteprima (non salva Supabase). */
   onApplyToCpInputs: (wByLabel: Partial<Record<string, number>>) => void;
   onAfterApply?: () => void;
-  /** Persistenza Supabase dopo anteprima (stesso snapshot Metabolic profile). */
-  onSaveMetabolicProfile?: () => void;
-  metabolicProfileSaveDisabled?: boolean;
-  metabolicProfileSaveLabel?: string;
 };
 
 export function MultisportCpCurveSuggestionPanel({
@@ -70,9 +66,6 @@ export function MultisportCpCurveSuggestionPanel({
   bodyMassKg,
   onApplyToCpInputs,
   onAfterApply,
-  onSaveMetabolicProfile,
-  metabolicProfileSaveDisabled = false,
-  metabolicProfileSaveLabel = "Save metabolic profile",
 }: MultisportCpCurveSuggestionPanelProps) {
   const t = useTranslations("MultisportCpCurveSuggestionPanel");
   const [sport, setSport] = useState<MultisportEngineSport>("running");
@@ -368,16 +361,8 @@ export function MultisportCpCurveSuggestionPanel({
         <Pro2Button type="button" variant="primary" disabled={!result || loading} onClick={applyPreview}>
           {t("applyToCpCurvePreview")}
         </Pro2Button>
-        {onSaveMetabolicProfile ? (
-          <Pro2Button
-            type="button"
-            variant="primary"
-            disabled={metabolicProfileSaveDisabled}
-            onClick={onSaveMetabolicProfile}
-          >
-            {metabolicProfileSaveLabel}
-          </Pro2Button>
-        ) : null}
+        {/* Nessun «Salva» qui: il salvataggio del profilo metabolico è unico,
+            nella barra azione in fondo (feedback audit 2026-07). */}
       </div>
 
       {err ? (
