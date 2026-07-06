@@ -6741,3 +6741,27 @@ body {
   font-variant-numeric: tabular-nums;
   color: #fff;
 }
+
+/* Box elenco allenamenti: scrollbar SEMPRE visibile (macOS la nasconde di default)
+   così è chiaro che il box scorre internamente. */
+.training-day-scrollbox {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+.training-day-scrollbox::-webkit-scrollbar {
+  width: 10px;
+}
+.training-day-scrollbox::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+.training-day-scrollbox::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.training-day-scrollbox::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+  background-clip: content-box;
+}

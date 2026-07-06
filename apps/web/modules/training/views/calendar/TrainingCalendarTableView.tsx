@@ -182,9 +182,10 @@ export default function TrainingCalendarTableView() {
     const box = scrollBoxRef.current;
     const el = box?.querySelector<HTMLElement>("[data-today]");
     if (box && el) {
-      const boxRect = box.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      box.scrollTop += elRect.top - boxRect.top - (box.clientHeight - el.clientHeight) / 2;
+      // Assoluto + offsetTop (box è `relative`, quindi offsetTop è rispetto al box)
+      // + clamp: idempotente e stabile, centra oggi dentro al box (non la pagina).
+      const target = el.offsetTop - (box.clientHeight - el.offsetHeight) / 2;
+      box.scrollTop = Math.max(0, Math.min(target, box.scrollHeight - box.clientHeight));
     }
     wantScrollToTodayRef.current = false;
   }, [loading, days, isCurrentMonth]);
@@ -259,7 +260,7 @@ export default function TrainingCalendarTableView() {
         <div
           ref={scrollBoxRef}
           style={{ height: "34rem" }}
-          className="space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3"
+          className="training-day-scrollbox relative space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3"
         >
           {days.map((day) => (
             <div key={day.dayKey} data-today={day.isToday ? "1" : undefined}>
