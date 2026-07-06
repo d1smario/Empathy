@@ -18,6 +18,9 @@ import {
   FUELING_CATEGORY_IT,
   FUELING_FORMAT_IT,
   FOCUS_IT,
+  hasProductDatasheetUrl,
+  TIMING_IT,
+  type StackTimingBucket,
 } from "@/lib/nutrition/integration-product-ui";
 import {
   buildGlycogenPlotGeometry,
@@ -28,6 +31,77 @@ import type {
   FuelingTrainingContextRow,
   RecoverySummaryRow,
 } from "@/lib/nutrition/nutrition-view-types";
+import { cn } from "@/lib/cn";
+import type { IntegrationProductCardProduct } from "@/modules/nutrition/views/sections/IntegrationSection";
+
+/** Bordo colonna per bucket (stesse tinte delle intestazioni colonna). */
+const STACK_ACCENT_BORDER: Record<StackTimingBucket, string> = {
+  pre: "rgba(167,139,250,0.38)",
+  intra: "rgba(232,121,249,0.36)",
+  post: "rgba(251,146,60,0.4)",
+  daily: "rgba(34,211,238,0.36)",
+};
+
+/**
+ * Card prodotto COMPATTA per le colonne dello stack (feedback 2026-07: la card
+ * grande a due pannelli era ammassata nelle colonne strette). Solo l'essenziale:
+ * brand, nome, badge «consigliato oggi», una riga di dose, 2 chip e il link.
+ */
+function StackCompactProductCard({
+  product,
+  qtyHint,
+  accent,
+  recommendedLabel,
+  manufacturerLabel,
+}: {
+  product: IntegrationProductCardProduct;
+  qtyHint: string;
+  accent: StackTimingBucket;
+  recommendedLabel: string;
+  manufacturerLabel: string;
+}) {
+  const chips = [
+    FUELING_FORMAT_IT[product.format],
+    product.functionalFocus?.[0] ? FOCUS_IT[product.functionalFocus[0]] ?? product.functionalFocus[0] : null,
+  ]
+    .filter((chip): chip is string => Boolean(chip))
+    .filter((chip, idx, arr) => arr.indexOf(chip) === idx);
+  return (
+    <article
+      className="rounded-xl border bg-black/30 px-3 py-2.5"
+      style={{ borderColor: STACK_ACCENT_BORDER[accent] }}
+    >
+      {product.recommendedTodayLabels?.length ? (
+        <span className="mb-1 inline-block rounded-full border border-emerald-500/50 bg-emerald-900/45 px-2 py-0.5 text-[0.6rem] font-semibold text-emerald-300">
+          {recommendedLabel} · {product.recommendedTodayLabels.join(", ")}
+        </span>
+      ) : null}
+      <div className="font-mono text-[0.58rem] uppercase tracking-[0.14em] text-gray-500">{product.brand}</div>
+      <strong className="block text-sm leading-snug text-gray-50">{product.product}</strong>
+      <p className="m-0 mt-1 text-[0.7rem] leading-relaxed text-gray-400">{qtyHint}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {chips.map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[0.6rem] text-gray-400"
+          >
+            {chip}
+          </span>
+        ))}
+        {hasProductDatasheetUrl(product.productUrl) ? (
+          <a
+            href={product.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-[0.64rem] text-gray-500 underline underline-offset-2 transition-colors hover:text-white"
+          >
+            {manufacturerLabel}
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
 
 /**
  * Sezione "Fueling" di NutritionPageView (decomposizione del God-component).
@@ -82,6 +156,20 @@ export type FuelingSectionProps = {
    * - "full" (default): tutto, comportamento storico (pagina fueling legacy).
    */
   mode?: "full" | "protocol";
+  /**
+   * Stack integratori per timing FUSO nel rifornimento (2026-07): stessa
+   * sorgente catalogo del protocollo, colonna «Giornaliero» separata, Intra
+   * solo nei giorni con seduta, dosi calcolate sul CHO/h della seduta reale.
+   */
+  stackProductsByTiming?: Record<StackTimingBucket, IntegrationProductCardProduct[]> | null;
+  /** Chiavi prodotto già presenti nella timeline del protocollo (badge, niente card doppia). */
+  protocolProductKeys?: string[];
+  /** Leve per gli hint quantità (bias proteico, scala CHO, adeguatezza diario). */
+  stackHintContext?: {
+    energyAdequacyRatio: number | null | undefined;
+    proteinBiasPctPoints: number;
+    fuelingChoScale: number;
+  } | null;
 };
 
 export function FuelingSection({
@@ -98,8 +186,25 @@ export function FuelingSection({
   nutritionPerformanceIntegration,
   fuelingPhysiology,
   mode = "full",
+  stackProductsByTiming = null,
+  protocolProductKeys = [],
+  stackHintContext = null,
 }: FuelingSectionProps) {
   const t = useTranslations("FuelingSection");
+
+  /** Dose onesta: CHO/h della seduta reale se c'è, 0 a riposo (l'hint porzioni/h sparisce). */
+  const stackChoGHour = fuelingReadiness.ready && fuelingSessionPackages.length
+    ? fuelingSessionPackages[0]!.choPerHourSession
+    : 0;
+  const protocolKeySet = new Set(protocolProductKeys);
+  const stackColumns: { key: StackTimingBucket; title: string; subtitle: string }[] = [
+    { key: "daily", title: TIMING_IT.daily, subtitle: t("stackColDailySub") },
+    { key: "pre", title: `${TIMING_IT.pre} workout`, subtitle: t("stackColPreSub") },
+    ...(fuelingReadiness.ready
+      ? [{ key: "intra" as const, title: `${TIMING_IT.intra} workout`, subtitle: t("stackColIntraSub") }]
+      : []),
+    { key: "post", title: `${TIMING_IT.post} workout`, subtitle: t("stackColPostSub") },
+  ];
 
   return (
     <section id="nutrition-fueling" className="scroll-mt-28 mb-10 space-y-4">
@@ -337,6 +442,10 @@ export function FuelingSection({
                       <article key={`step-${pkg.id}-${step.phase}-${step.time}-${idx}`} className="fueling-vstep">
                         {(() => {
                           const phaseColor = fuelingPhaseColor(step.phase);
+                          // Link solo se pagina prodotto reale, mai homepage (feedback 2026-07).
+                          const datasheetUrl = hasProductDatasheetUrl(step.product?.productUrl)
+                            ? step.product!.productUrl
+                            : null;
                           const mediaInner = (
                             <>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -441,15 +550,41 @@ export function FuelingSection({
                                       fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? 1,
                                     })}
                                   </p>
+                                  {datasheetUrl ? (
+                                    <div className="fueling-step-actions">
+                                      <a
+                                        href={datasheetUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="fueling-step-link"
+                                      >
+                                        {t("manufacturerPage")}
+                                      </a>
+                                    </div>
+                                  ) : null}
                                 </div>
-                                <div
-                                  className="fueling-step-media-link flex items-center justify-center"
-                                  aria-label={step.product?.product ?? t("fuelingProductAria")}
-                                  title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
-                                  style={mediaStyle}
-                                >
-                                  {mediaInner}
-                                </div>
+                                {datasheetUrl ? (
+                                  <a
+                                    href={datasheetUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="fueling-step-media-link flex items-center justify-center"
+                                    aria-label={step.product?.product ?? t("fuelingProductAria")}
+                                    title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
+                                    style={mediaStyle}
+                                  >
+                                    {mediaInner}
+                                  </a>
+                                ) : (
+                                  <div
+                                    className="fueling-step-media-link flex items-center justify-center"
+                                    aria-label={step.product?.product ?? t("fuelingProductAria")}
+                                    title={step.isLogoFallback ? t("brandLogoFallbackTitle") : t("catalogArchiveTitle")}
+                                    style={mediaStyle}
+                                  >
+                                    {mediaInner}
+                                  </div>
+                                )}
                               </div>
                             </>
                           );
@@ -580,6 +715,90 @@ export function FuelingSection({
           </>
         )}
       </section>
+
+      {/* «Il tuo stack per timing» — integrazione FUSA nel rifornimento (2026-07):
+          stesso catalogo del protocollo, ma colonna Giornaliero separata, Intra
+          solo nei giorni con seduta, dosi dal CHO/h della seduta reale (0 a
+          riposo → niente suggerimenti «porzioni/h» fuori contesto) e badge sui
+          prodotti già dentro la timeline del protocollo. */}
+      {stackProductsByTiming ? (
+        <section className="viz-card builder-panel" style={{ marginBottom: "12px" }}>
+          <div className="nutrition-section-head">
+            <h3 className="viz-title">{t("stackTitle")}</h3>
+          </div>
+          <p className="nutrition-muted mb-3 text-[0.78rem] leading-snug">
+            {fuelingReadiness.ready ? t("stackIntroTraining") : t("stackIntroRest")}
+          </p>
+          <div className={cn("grid gap-3", fuelingReadiness.ready ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+            {stackColumns.map((col) => {
+              const products = stackProductsByTiming[col.key] ?? [];
+              return (
+                <div
+                  key={col.key}
+                  className={cn(
+                    "flex min-h-[120px] flex-col gap-3 rounded-2xl border bg-black/30 p-3",
+                    col.key === "pre" && "border-violet-500/40",
+                    col.key === "intra" && "border-fuchsia-500/40",
+                    col.key === "post" && "border-orange-500/45",
+                    col.key === "daily" && "border-cyan-500/40",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "rounded-xl border border-white/10 bg-gradient-to-r to-transparent px-3 py-2",
+                      col.key === "pre" && "from-violet-600/28",
+                      col.key === "intra" && "from-fuchsia-600/28",
+                      col.key === "post" && "from-orange-600/28",
+                      col.key === "daily" && "from-cyan-600/25",
+                    )}
+                  >
+                    <div className="text-[0.68rem] font-bold uppercase tracking-wider text-white">{col.title}</div>
+                    <div className="nutrition-muted mt-0.5 text-[0.66rem] leading-snug">{col.subtitle}</div>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {products.length ? (
+                      products.map((product) => {
+                        const key = `${product.brand}::${product.product}`;
+                        if (protocolKeySet.has(key)) {
+                          return (
+                            <div
+                              key={`${col.key}-${key}`}
+                              className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-[0.74rem]"
+                            >
+                              <span className="font-semibold text-white">{product.brand} · {product.product}</span>
+                              <span className="mt-0.5 block text-[0.66rem] text-emerald-300">{t("stackInProtocol")}</span>
+                            </div>
+                          );
+                        }
+                        const qtyHint = buildIntegrationQuantityHint(product, {
+                          choGHour: stackChoGHour,
+                          energyAdequacyRatio: stackHintContext?.energyAdequacyRatio,
+                          proteinBiasPctPoints: stackHintContext?.proteinBiasPctPoints ?? 0,
+                          fuelingChoScale: stackHintContext?.fuelingChoScale ?? 1,
+                        });
+                        return (
+                          <StackCompactProductCard
+                            key={`${col.key}-${key}`}
+                            product={product}
+                            qtyHint={qtyHint}
+                            accent={col.key}
+                            recommendedLabel={t("recommendedToday")}
+                            manufacturerLabel={t("manufacturerPage")}
+                          />
+                        );
+                      })
+                    ) : (
+                      <p className="nutrition-muted m-0 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-2 py-3 text-center text-[0.72rem]">
+                        {t("stackEmptyColumn")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
