@@ -14,7 +14,11 @@ export function MobileDashboardHeader({ onOpenDrawer }: { onOpenDrawer: () => vo
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-4">
-        <img src="/brand/empathy-wordmark-white.svg" alt="Empathy" className="h-5 w-auto" />
+        {/* PNG rasterizzato come tutto il resto: l'SVG wordmark ha i glifi a
+            posizione x assoluta legata al font Quicksand → senza font si legge
+            «Empat hy». Il PNG è sempre corretto (fix 2026-07). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/empathy-wordmark-white.png" alt="Empathy" className="h-5 w-auto" />
         <button
           type="button"
           onClick={onOpenDrawer}
