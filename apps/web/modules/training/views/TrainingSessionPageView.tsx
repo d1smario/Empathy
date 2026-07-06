@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  formatExecutedWorkoutSummary,
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import { CalendarDays, ClipboardList } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { CalendarDaySessionDetail } from "@/components/training/CalendarDaySessionDetail";
 import { CalendarPlannedBuilderDetail } from "@/components/training/CalendarPlannedBuilderDetail";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { OperationalDayNavigator } from "@/components/navigation/OperationalDayNavigator";
@@ -231,55 +231,53 @@ export default function TrainingSessionPageView() {
       ) : null}
 
       {dateValid ? (
-        <>
-          <Pro2SectionCard
-            accent="cyan"
-            title={t("plannedTitle")}
-            subtitle={ctxLoading || loading ? t("loading") : err ? undefined : t("plannedCount", { count: planned.length })}
-            icon={CalendarDays}
-          >
-            {err ? (
-              <p className="text-sm text-amber-300/90" role="alert">
-                {err}
-              </p>
-            ) : null}
-            {!ctxLoading && !loading && !err && planned.length === 0 ? (
-              <p className="text-sm text-gray-500">{t("noWorkoutPlanned")}</p>
-            ) : null}
-            {!ctxLoading && !loading && !err && planned.length > 0 ? (
-              <ul className="space-y-4">
-                {planned.map((w) => (
-                  <li key={w.id}>
-                    <CalendarPlannedBuilderDetail workout={w} />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+        ctxLoading || loading ? (
+          <Pro2SectionCard accent="cyan" title={t("plannedTitle")} subtitle={t("loading")} icon={CalendarDays}>
+            <p className="text-sm text-gray-500">{t("loading")}</p>
           </Pro2SectionCard>
+        ) : err ? (
+          <Pro2SectionCard accent="slate" title={t("plannedTitle")} icon={CalendarDays}>
+            <p className="text-sm text-amber-300/90" role="alert">
+              {err}
+            </p>
+          </Pro2SectionCard>
+        ) : (
+          <>
+            {/* Analisi allenamento: la seduta eseguita — KPI, grafico multi-canale,
+                mappa percorso, min/avg/max. Tutto adattivo: mostra solo i canali con
+                dati reali (niente grafici finti). */}
+            {executed.length > 0 ? (
+              <CalendarDaySessionDetail selectedDate={date} dayExecuted={executed} athleteId={athleteId} />
+            ) : null}
 
-          <Pro2SectionCard
-            accent="emerald"
-            title={t("executedTitle")}
-            subtitle={!loading && !err ? t("executedCount", { count: executed.length }) : undefined}
-            icon={ClipboardList}
-          >
-            {!ctxLoading && !loading && !err && executed.length === 0 ? (
-              <p className="text-sm text-gray-500">{t("noExecution")}</p>
+            {/* Pianificato: cosa prevede la seduta (scheda palestra / struttura blocchi).
+                Editing coach (Adatta/Elimina/Copia/Sposta/Export) e gergo motore restano
+                allo staff via coachControls={showTech}; l'atleta vede solo la scheda. */}
+            {planned.length > 0 ? (
+              <Pro2SectionCard
+                accent="cyan"
+                title={t("plannedTitle")}
+                subtitle={t("plannedCount", { count: planned.length })}
+                icon={CalendarDays}
+              >
+                <ul className="space-y-4">
+                  {planned.map((w) => (
+                    <li key={w.id}>
+                      <CalendarPlannedBuilderDetail workout={w} athleteId={athleteId} coachControls={showTech} />
+                    </li>
+                  ))}
+                </ul>
+              </Pro2SectionCard>
             ) : null}
-            {!ctxLoading && !loading && !err && executed.length > 0 ? (
-              <ul className="space-y-2">
-                {executed.map((w) => (
-                  <li
-                    key={w.id}
-                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-gray-200"
-                  >
-                    {formatExecutedWorkoutSummary(w)}
-                  </li>
-                ))}
-              </ul>
+
+            {/* Giornata senza nulla pianificato né eseguito. */}
+            {executed.length === 0 && planned.length === 0 ? (
+              <Pro2SectionCard accent="slate" title={t("plannedTitle")} icon={CalendarDays}>
+                <p className="text-sm text-gray-500">{t("noWorkoutPlanned")}</p>
+              </Pro2SectionCard>
             ) : null}
-          </Pro2SectionCard>
-        </>
+          </>
+        )
       ) : null}
     </Pro2ModulePageShell>
   );

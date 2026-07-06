@@ -80,12 +80,20 @@ export function CalendarPlannedBuilderDetail({
   athleteFtpWatts,
   onDeleted,
   onCalendarMutated,
+  coachControls = true,
 }: {
   workout: PlannedWorkout;
   athleteId?: string | null;
   athleteFtpWatts?: number | null;
   onDeleted?: (removedPlannedId: string) => void;
   onCalendarMutated?: () => void;
+  /**
+   * Mostra i controlli/gergo da coach: barra editing (Adatta/Elimina/Copia/Sposta),
+   * export device, striscia analisi multilivello (domande coach + facilitazioni).
+   * Default true (calendario coach invariato). Nella pagina seduta dell'atleta si
+   * passa `showTech` così l'atleta vede la scheda ma non gli strumenti di editing.
+   */
+  coachControls?: boolean;
 }) {
   const t = useTranslations("CalendarPlannedBuilderDetail");
   const contract = useMemo(() => parsePro2BuilderSessionFromNotes(workout.notes ?? null), [workout.notes]);
@@ -192,6 +200,7 @@ export function CalendarPlannedBuilderDetail({
             </p>
           ) : null}
         </div>
+        {coachControls ? (
         <div className="relative z-20 flex flex-wrap gap-2 pointer-events-auto">
           <Pro2Link href={sessionHref} variant="ghost" className="border border-orange-500/35 bg-orange-500/10 text-xs">
             {t("day")}
@@ -318,9 +327,10 @@ export function CalendarPlannedBuilderDetail({
             <span className="text-xs text-amber-200/90">{t("deleteNoAthleteContext")}</span>
           )}
         </div>
+        ) : null}
       </div>
 
-      {actionFeedback ? (
+      {coachControls && actionFeedback ? (
         <p
           className={`mt-2 text-xs ${actionFeedback.tone === "ok" ? "text-emerald-300/95" : "text-rose-300/95"}`}
           role="status"
@@ -329,7 +339,7 @@ export function CalendarPlannedBuilderDetail({
         </p>
       ) : null}
 
-      {resolvedAthleteId ? (
+      {coachControls && resolvedAthleteId ? (
         <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-white/10 pt-3">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-500">
             {t("targetDate")}
@@ -430,7 +440,7 @@ export function CalendarPlannedBuilderDetail({
         </div>
       ) : null}
 
-      {exportAid && contract ? (
+      {coachControls && exportAid && contract ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
           <span className="flex items-center gap-1 font-mono text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">
             <Download className="h-3 w-3 shrink-0" aria-hidden />
@@ -474,12 +484,14 @@ export function CalendarPlannedBuilderDetail({
       ) : null}
 
       {!contract ? (
-        <p className="mt-3 text-sm text-gray-500">
-          {t.rich("noBuilderContract", {
-            code: (chunks) => <code className="text-gray-600">{chunks}</code>,
-            edit: (chunks) => <span className="text-gray-400">{chunks}</span>,
-          })}
-        </p>
+        coachControls ? (
+          <p className="mt-3 text-sm text-gray-500">
+            {t.rich("noBuilderContract", {
+              code: (chunks) => <code className="text-gray-600">{chunks}</code>,
+              edit: (chunks) => <span className="text-gray-400">{chunks}</span>,
+            })}
+          </p>
+        ) : null
       ) : (
         <>
           {family === "strength" ? (
@@ -491,7 +503,7 @@ export function CalendarPlannedBuilderDetail({
               <div className="mt-4">
                 <Pro2GymSchedaBlockList contract={contract} />
               </div>
-              {!gymScheda ? (
+              {!gymScheda && coachControls ? (
                 <p className="mt-3 text-xs text-amber-200/90">
                   {t.rich("gymNoCatalogExercises", {
                     code: (chunks) => <code className="text-amber-100/80">{chunks}</code>,
@@ -522,14 +534,16 @@ export function CalendarPlannedBuilderDetail({
                   title={t("sessionDetails")}
                 />
               ) : null}
-              <SessionMultilevelAnalysisStrip
-                contract={contract}
-                fallbackTss={titleTss}
-                fallbackDurationMin={titleDurationMin}
-                compact
-              />
+              {coachControls ? (
+                <SessionMultilevelAnalysisStrip
+                  contract={contract}
+                  fallbackTss={titleTss}
+                  fallbackDurationMin={titleDurationMin}
+                  compact
+                />
+              ) : null}
             </div>
-          ) : contract && (contract.blocks ?? []).length === 0 ? (
+          ) : contract && (contract.blocks ?? []).length === 0 && coachControls ? (
             <p className="mt-4 text-sm text-amber-200/90">
               {t.rich("builderContractNoBlocks", {
                 adapt: (chunks) => <span className="text-white">{chunks}</span>,
@@ -568,7 +582,7 @@ export function CalendarPlannedBuilderDetail({
                 <BuilderPlannedSessionViz contract={contract} title={t("zoneProfileBuilderV1")} compact />
               ) : null}
 
-              {!hasBlockChart ? (
+              {!hasBlockChart && coachControls ? (
                 <SessionMultilevelAnalysisStrip
                   contract={contract}
                   fallbackTss={titleTss}
