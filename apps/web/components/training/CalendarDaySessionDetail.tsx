@@ -8,12 +8,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 
-// Mappa GPS "professionale" (Leaflet + tile CartoDB reali) caricata solo lato client.
-const StravaStyleMap = dynamic(
-  () => import("@/components/training/StravaStyleMap").then((m) => m.StravaStyleMap),
+// Mappa GPS 3D reale (MapLibre GL + terreno estruso, tile CartoDB) — solo lato client.
+const SessionRoute3DMap = dynamic(
+  () => import("@/components/training/SessionRoute3DMap").then((m) => m.SessionRoute3DMap),
   {
     ssr: false,
-    loading: () => <div className="h-[300px] w-full animate-pulse rounded-2xl bg-white/5" />,
+    loading: () => <div className="h-[340px] w-full animate-pulse rounded-2xl bg-white/5" />,
   },
 );
 import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
@@ -383,9 +383,9 @@ function SessionDetailCard({
                 : ""}
             </span>
           </div>
-          <StravaStyleMap
+          <SessionRoute3DMap
             route={routeBundle.points.map((p) => [p.lat, p.lon] as [number, number])}
-            height={320}
+            height={360}
           />
         </div>
       ) : null}
