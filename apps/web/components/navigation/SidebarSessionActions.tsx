@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Pro2Button } from "@/components/ui/empathy";
@@ -14,7 +14,6 @@ import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
  */
 export function SidebarSessionActions() {
   const pathname = usePathname() ?? "/dashboard";
-  const router = useRouter();
   const t = useTranslations("Session");
   const { loading, signedIn } = useActiveAthlete();
   const [busy, setBusy] = useState(false);
@@ -24,12 +23,23 @@ export function SidebarSessionActions() {
   const signOut = useCallback(async () => {
     setBusy(true);
     const sb = createEmpathyBrowserSupabase();
-    if (sb) await sb.auth.signOut();
+    // `scope: "local"` chiude la sessione senza il round-trip di revoca lato server
+    // (la parte lenta del logout); il cookie auth viene comunque azzerato dal client SSR.
+    if (sb) {
+      try {
+        await sb.auth.signOut({ scope: "local" });
+      } catch {
+        /* logout best-effort: si procede comunque alla home anonima */
+      }
+    }
     clearPro2ClientSessionKeys();
-    router.push("/access");
-    router.refresh();
-    setBusy(false);
-  }, [router]);
+    // Hard redirect invece di router.push + router.refresh: smonta subito l'albero
+    // React della pagina corrente, quindi NON si vede il flash della shell in stato
+    // sloggato ("Profilo atleta non disponibile") e non gira router.refresh() che
+    // rirenderizzerebbe il layout shell pesante che stai lasciando. Il cookie è già
+    // azzerato → /access non rimbalza dentro alla shell.
+    window.location.assign("/access");
+  }, []);
 
   if (configured === false) {
     return (

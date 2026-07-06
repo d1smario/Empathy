@@ -213,11 +213,16 @@ function useActiveAthleteState(): ActiveAthleteContextValue {
 
     async function readStableUser() {
       if (!supabase) return null;
+      // Gate locale (decodifica cookie, 0 rete): se non c'è sessione siamo sloggati
+      // e usciamo SUBITO — niente retry/sleep artificiale (~220ms) sull'atterraggio
+      // post-logout su /access. Il retry serve solo alla race post-login redirect.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) return null;
       const attempts = 2;
       for (let index = 0; index < attempts; index += 1) {
         const { data } = await supabase.auth.getUser();
         if (data.user) return data.user;
-        await new Promise((resolve) => setTimeout(resolve, 80 + index * 60));
+        if (index < attempts - 1) await new Promise((resolve) => setTimeout(resolve, 80 + index * 60));
       }
       return null;
     }

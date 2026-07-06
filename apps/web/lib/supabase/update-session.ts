@@ -27,11 +27,25 @@ export function forwardMiddlewareCookies(from: NextResponse, to: NextResponse): 
 /**
  * Edge-safe: nessun `server-only`. Aggiorna i cookie di sessione Supabase su ogni richiesta.
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
+ *
+ * `verifyUser=false` (default per i path che non consultano l'utente — marketing,
+ * `/access`, `/api/*`, ecc.): si salta la chiamata di validazione `getUser()`
+ * (un round-trip di rete a `/auth/v1/user` su OGNI richiesta) e si lascia solo
+ * passare i cookie. Il middleware consulta `user` solo su path protetti / sorgenti
+ * di redirect mobile, dove passiamo `verifyUser=true` e la sicurezza resta intatta.
  */
-export async function updateSupabaseSession(request: NextRequest): Promise<SupabaseSessionMiddlewareResult> {
+export async function updateSupabaseSession(
+  request: NextRequest,
+  opts?: { verifyUser?: boolean },
+): Promise<SupabaseSessionMiddlewareResult> {
   const env = readSupabasePublicEnv();
   if (!env) {
     return { response: NextResponse.next({ request }), user: null, supabaseConfigured: false };
+  }
+
+  if (opts?.verifyUser === false) {
+    // Nessun redirect dipende da `user` su questi path: niente getUser (0 round-trip).
+    return { response: NextResponse.next({ request }), user: null, supabaseConfigured: true };
   }
 
   let supabaseResponse = NextResponse.next({ request });

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies, headers } from "next/headers";
+import { getSessionProfile } from "@/lib/auth/session-profile";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 import {
   DEFAULT_LOCALE,
@@ -76,15 +77,15 @@ export function readLocaleCookie(): SupportedLocale | null {
 async function readProfileLocale(): Promise<SupportedLocale | null> {
   const supabase = createSupabaseCookieClient();
   if (!supabase) return null;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.id) return null;
+  // Riusa l'identità già risolta e memoizzata per-request (getSessionProfile):
+  // niente SECONDO getUser HTTP sullo stesso render SSR (audit auth-latency).
+  const { userId } = await getSessionProfile();
+  if (!userId) return null;
 
   const { data } = await supabase
     .from("app_user_profiles")
     .select("preferred_locale")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle();
   const raw = (data as { preferred_locale?: unknown } | null)?.preferred_locale;
   if (typeof raw !== "string") return null;

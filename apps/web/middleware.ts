@@ -53,10 +53,15 @@ function redirectForMobileAppQuery(
  * Header `X-Robots-Tag` se l’indicizzazione è spenta (`NEXT_PUBLIC_SITE_INDEX=0`).
  */
 export async function middleware(request: NextRequest) {
-  const { response, user, supabaseConfigured } = await updateSupabaseSession(request);
+  const pathname = request.nextUrl.pathname;
+  // `user` viene consultato solo dal gate shell protetto e dal redirect mobile:
+  // su tutti gli altri path (marketing, /access, /api/*, auth callback…) saltiamo
+  // la validazione getUser() e risparmiamo un round-trip Auth per richiesta.
+  const verifyUser =
+    isProtectedProductShellPath(pathname) || isMobileRedirectSourcePath(pathname);
+  const { response, user, supabaseConfigured } = await updateSupabaseSession(request, { verifyUser });
   let out = response;
 
-  const pathname = request.nextUrl.pathname;
   const mobileAppRedirect = redirectForMobileAppQuery(request, response, pathname);
   if (mobileAppRedirect) {
     out = mobileAppRedirect;
