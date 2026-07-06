@@ -109,9 +109,11 @@ export function SessionMultiAxisChart({
     });
   }, [series, labels]);
 
-  // Asse sinistro etichettato = primo tra potenza/velocità/cadenza; destro = FC.
-  const leftChannel = overlayChannels.find((c) => c !== "hr") ?? null;
-  const rightChannel = present.has("hr") ? ("hr" as const) : null;
+  // Assi etichettati calcolati sui canali VISIBILI: spegnendo una traccia il suo
+  // asse sparisce (sinistro = primo tra potenza/velocità/cadenza; destro = FC).
+  const visibleChannels = overlayChannels.filter((c) => !hidden.has(c));
+  const leftChannel = visibleChannels.find((c) => c !== "hr") ?? null;
+  const rightChannel = visibleChannels.includes("hr") ? ("hr" as const) : null;
 
   if (overlayChannels.length === 0 && !hasAltitude) return null;
 
