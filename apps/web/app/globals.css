@@ -933,8 +933,15 @@ body {
 }
 
 @media (max-width: 520px) {
+  .empathy-meal-expo-food-list {
+    gap: 12px;
+  }
   .empathy-meal-expo-food-card {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+  .empathy-meal-expo-food-body {
     gap: 10px;
   }
 }
@@ -1049,9 +1056,22 @@ body {
   gap: 6px;
 }
 
+/* Mobile: tre pod CHO/PRO/FAT in colonna uniforme (niente 2+1 sbilanciato) con
+   etichetta sopra e valore grande sotto — più leggibile, meno compatto. */
 @media (max-width: 520px) {
   .empathy-meal-expo-food-macros {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .empathy-meal-expo-pod {
+    flex-wrap: wrap;
+    gap: 3px 5px;
+    padding: 7px 9px;
+  }
+  .empathy-meal-expo-pod-val {
+    margin-left: 0;
+    flex-basis: 100%;
+    font-size: 13px;
   }
 }
 
@@ -2088,6 +2108,14 @@ body {
   border-color: rgba(96, 165, 250, 0.35);
   color: #93c5fd;
   background: linear-gradient(135deg, rgba(30, 64, 175, 0.35), rgba(15, 23, 42, 0.85));
+}
+
+/* Stacca il blocco «Glicogeno durante la seduta» dall'ultimo step della timeline
+   (feedback 2026-07: titolo troppo appiccicato sopra). */
+.fueling-visual-report {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .fueling-visual-report h4,
