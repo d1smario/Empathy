@@ -2,11 +2,20 @@
 
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import { Activity, Gauge, Map as MapIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { SessionRouteMap } from "@/components/training/SessionRouteMap";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
+
+// Mappa GPS "professionale" (Leaflet + tile CartoDB reali) caricata solo lato client.
+const StravaStyleMap = dynamic(
+  () => import("@/components/training/StravaStyleMap").then((m) => m.StravaStyleMap),
+  {
+    ssr: false,
+    loading: () => <div className="h-[300px] w-full animate-pulse rounded-2xl bg-white/5" />,
+  },
+);
 import {
   SessionMultiAxisChart,
   type MultiAxisChannel,
@@ -412,7 +421,10 @@ function SessionDetailCard({
                 : ""}
             </span>
           </div>
-          <SessionRouteMap points={routeBundle.points} />
+          <StravaStyleMap
+            route={routeBundle.points.map((p) => [p.lat, p.lon] as [number, number])}
+            height={320}
+          />
         </div>
       ) : null}
 
