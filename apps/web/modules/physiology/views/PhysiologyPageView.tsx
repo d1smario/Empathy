@@ -1352,6 +1352,43 @@ export default function MetabolicLabPage() {
 
           <Pro2SectionCard
             accent="emerald"
+            title={t("sportSpecificTitle")}
+            subtitle={t("sportSpecificSubtitle")}
+            icon={Layers}
+          >
+            <div className="grid gap-3 md:grid-cols-3">
+              {sportSpecificPanels.map((panel) => (
+                <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
+                  <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
+                  <p className="mt-1 font-mono text-sm text-gray-300">
+                    {t("sessionsLabel")} <span className="text-white">{panel.sessionCount}</span>
+                    {panel.lastDate ? t("lastDateSuffix", { date: panel.lastDate }) : ""}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                    <span>{t("avgDuration")} {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
+                    <span>{t("avgTss")} {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
+                    <span>{t("avgP")} {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
+                    <span>{t("speed")} {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
+                    <span>{t("avgRer")} {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
+                    <span>{t("avgVo2")} {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-amber-100/90">
+                    {t("sportSpecificEstimatedVo2")}{" "}
+                    <strong>{panel.vo2EstimateMlKgMin != null ? `${panel.vo2EstimateMlKgMin.toFixed(1)} ml/kg/min` : "—"}</strong>
+                  </p>
+                </article>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-gray-500">
+              {t("noRecentSessionsNote")}
+            </p>
+          </Pro2SectionCard>
+
+          {/* Coppia finale: VO₂max misurato in lab + VO₂max stimato da CP,
+              affiancati (feedback 2026-07). */}
+          <div className="physiology-vo2max-pair">
+          <Pro2SectionCard
+            accent="emerald"
             title={t("labVo2maxTitle")}
             subtitle={t("labVo2maxSubtitle")}
             icon={Activity}
@@ -1527,84 +1564,6 @@ export default function MetabolicLabPage() {
             </Pro2Button>
           </Pro2SectionCard>
 
-          {/* Cross-check VO₂/gas: audit di coerenza staff-only, agganciato sotto
-              la card VO₂max lab. Riusa i gas importati sopra (audit 2026-07). */}
-          {showTech && cpCurveHasData ? (
-            <details className="collapsible-card">
-              <summary className="cursor-pointer text-sm font-semibold text-gray-300">
-                {t("crossCheckSummary")}
-              </summary>
-              <div className="mt-3 space-y-3 text-sm text-gray-400">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <tbody className="divide-y divide-white/5">
-                      <tr className="transition-colors hover:bg-white/[0.03]">
-                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
-                          τ VO₂ default (onset)
-                        </th>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
-                          {vo2OnsetPreview.tau} s ({cpModel.phenotype})
-                        </td>
-                      </tr>
-                      <tr className="transition-colors hover:bg-white/[0.03]">
-                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
-                          {t("vo2At60sHeader")}
-                        </th>
-                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
-                          {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}{t("pctOfEstimatedVo2max")} (
-                          {cpModel.vo2maxLMin.toFixed(2)} L/min)
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                {gasExchangeSubstrateProfile ? (
-                  <p>
-                    RER {gasExchangeSubstrateProfile.rer.toFixed(3)} · CHO {gasExchangeSubstrateProfile.choGPerMin.toFixed(3)} g/min · FAT{" "}
-                    {gasExchangeSubstrateProfile.fatGPerMin.toFixed(3)} g/min
-                    {!gasExchangeSubstrateProfile.plausible ? t("outsideRecommendedBand") : ""}
-                  </p>
-                ) : (
-                  <p>{t("substratesFromGasHint")}</p>
-                )}
-              </div>
-            </details>
-          ) : null}
-
-          <Pro2SectionCard
-            accent="emerald"
-            title={t("sportSpecificTitle")}
-            subtitle={t("sportSpecificSubtitle")}
-            icon={Layers}
-          >
-            <div className="grid gap-3 md:grid-cols-3">
-              {sportSpecificPanels.map((panel) => (
-                <article key={panel.key} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-                  <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{panel.title}</p>
-                  <p className="mt-1 font-mono text-sm text-gray-300">
-                    {t("sessionsLabel")} <span className="text-white">{panel.sessionCount}</span>
-                    {panel.lastDate ? t("lastDateSuffix", { date: panel.lastDate }) : ""}
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-                    <span>{t("avgDuration")} {panel.avgDurationMin != null ? `${Math.round(panel.avgDurationMin)} min` : "—"}</span>
-                    <span>{t("avgTss")} {panel.avgTss != null ? Math.round(panel.avgTss) : "—"}</span>
-                    <span>{t("avgP")} {panel.avgPowerW != null ? `${Math.round(panel.avgPowerW)} W` : "—"}</span>
-                    <span>{t("speed")} {panel.avgVelocityMMin != null ? `${panel.avgVelocityMMin.toFixed(1)} m/min` : "—"}</span>
-                    <span>{t("avgRer")} {panel.avgRer != null ? panel.avgRer.toFixed(2) : "—"}</span>
-                    <span>{t("avgVo2")} {panel.avgVo2LMin != null ? `${panel.avgVo2LMin.toFixed(2)} L/min` : "—"}</span>
-                  </div>
-                  <p className="mt-2 text-xs text-amber-100/90">
-                    {t("sportSpecificEstimatedVo2")}{" "}
-                    <strong>{panel.vo2EstimateMlKgMin != null ? `${panel.vo2EstimateMlKgMin.toFixed(1)} ml/kg/min` : "—"}</strong>
-                  </p>
-                </article>
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] text-gray-500">
-              {t("noRecentSessionsNote")}
-            </p>
-          </Pro2SectionCard>
-
           <div
             id="physiology-lab-save-bar"
             className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/[0.18] to-black/60 p-4 shadow-inner"
@@ -1668,6 +1627,51 @@ export default function MetabolicLabPage() {
               </div>
             </div>
           </div>
+          </div>
+
+          {/* Cross-check VO₂/gas: audit di coerenza staff-only, sotto la coppia
+              VO₂max lab/stimato. Riusa i gas importati sopra (audit 2026-07). */}
+          {showTech && cpCurveHasData ? (
+            <details className="collapsible-card">
+              <summary className="cursor-pointer text-sm font-semibold text-gray-300">
+                {t("crossCheckSummary")}
+              </summary>
+              <div className="mt-3 space-y-3 text-sm text-gray-400">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y divide-white/5">
+                      <tr className="transition-colors hover:bg-white/[0.03]">
+                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
+                          τ VO₂ default (onset)
+                        </th>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
+                          {vo2OnsetPreview.tau} s ({cpModel.phenotype})
+                        </td>
+                      </tr>
+                      <tr className="transition-colors hover:bg-white/[0.03]">
+                        <th scope="row" className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
+                          {t("vo2At60sHeader")}
+                        </th>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
+                          {vo2OnsetPreview.vo2At60sLMin.toFixed(2)} L/min ≈ {(vo2OnsetPreview.fracAt60s * 100).toFixed(0)}{t("pctOfEstimatedVo2max")} (
+                          {cpModel.vo2maxLMin.toFixed(2)} L/min)
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {gasExchangeSubstrateProfile ? (
+                  <p>
+                    RER {gasExchangeSubstrateProfile.rer.toFixed(3)} · CHO {gasExchangeSubstrateProfile.choGPerMin.toFixed(3)} g/min · FAT{" "}
+                    {gasExchangeSubstrateProfile.fatGPerMin.toFixed(3)} g/min
+                    {!gasExchangeSubstrateProfile.plausible ? t("outsideRecommendedBand") : ""}
+                  </p>
+                ) : (
+                  <p>{t("substratesFromGasHint")}</p>
+                )}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
 
