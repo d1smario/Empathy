@@ -8,6 +8,8 @@ import type { MultiscaleBottleneckApiOk } from "@/lib/knowledge/multiscale-bottl
 
 type Props = {
   athleteId: string | null;
+  /** Gergo motore (ontology version, tag interpretativi, nodi/proxy) solo coach/admin. */
+  showTech?: boolean;
 };
 
 function formatPct01(x: number): string {
@@ -21,7 +23,7 @@ function formatPct01(x: number): string {
 let multiscaleBottleneckCacheId: string | null = null;
 let multiscaleBottleneckCache: MultiscaleBottleneckApiOk | null = null;
 
-export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
+export function MultiscaleBottleneckPanelPro2({ athleteId, showTech = false }: Props) {
   const t = useTranslations("MultiscaleBottleneckPanelPro2");
   const [data, setData] = useState<MultiscaleBottleneckApiOk | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +81,8 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
         >
           {loading ? t("updating") : t("updateFromTwinLab")}
         </Pro2Button>
-        {data ? (
+        {/* Versione ontologia = stringa motore: solo staff (audit 2026-07). */}
+        {data && showTech ? (
           <span className="font-mono text-[0.65rem] text-slate-500">
             {t("ontology", { version: data.bottleneck.ontologyVersion })}
           </span>
@@ -124,49 +127,55 @@ export function MultiscaleBottleneckPanelPro2({ athleteId }: Props) {
             </ul>
           </div>
 
-          {data.bottleneck.suggestedInterpretationTags.length > 0 ? (
+          {/* Tag interpretativi (gergo mono) e «Activated Nodes» (ID grafo,
+              subgraph, input-proxy motore: redox/glycogen/readiness/gut…):
+              solo coach/admin. All'atleta resta dominante + peso + rationale +
+              barre L1-Ln (audit 2026-07). */}
+          {showTech && data.bottleneck.suggestedInterpretationTags.length > 0 ? (
             <div>
               <div className="physiology-pro2-mini-banner mb-2">{t("interpretiveTags")}</div>
               <div className="flex flex-wrap gap-2">
-                {data.bottleneck.suggestedInterpretationTags.map((t) => (
+                {data.bottleneck.suggestedInterpretationTags.map((tag) => (
                   <span
-                    key={t}
+                    key={tag}
                     className="rounded-full border border-white/15 bg-black/30 px-2.5 py-0.5 font-mono text-[0.65rem] text-slate-300"
                   >
-                    {t}
+                    {tag}
                   </span>
                 ))}
               </div>
             </div>
           ) : null}
 
-          <details className="rounded-lg border border-white/10 bg-black/25 p-3 text-sm text-slate-400">
-            <summary className="cursor-pointer text-slate-300">{t("activatedNodes")}</summary>
-            <div className="mt-2 space-y-2 font-mono text-[0.65rem] leading-relaxed">
-              <div>
-                <span className="text-slate-500">IDs:</span> {data.bottleneck.activatedNodeIds.join(", ")}
-              </div>
-              {data.subgraph ? (
+          {showTech ? (
+            <details className="rounded-lg border border-white/10 bg-black/25 p-3 text-sm text-slate-400">
+              <summary className="cursor-pointer text-slate-300">{t("activatedNodes")}</summary>
+              <div className="mt-2 space-y-2 font-mono text-[0.65rem] leading-relaxed">
                 <div>
-                  {t("subgraph", {
-                    nodes: data.subgraph.nodes.length,
-                    edges: data.subgraph.edges.length,
+                  <span className="text-slate-500">IDs:</span> {data.bottleneck.activatedNodeIds.join(", ")}
+                </div>
+                {data.subgraph ? (
+                  <div>
+                    {t("subgraph", {
+                      nodes: data.subgraph.nodes.length,
+                      edges: data.subgraph.edges.length,
+                    })}
+                  </div>
+                ) : null}
+                <div className="text-slate-500">
+                  {t("inputProxies", {
+                    redox: data.snapshot.redoxStressIndex ?? "—",
+                    inflammation: data.snapshot.twinInflammationRisk ?? "—",
+                    glycogen: data.snapshot.glycogenStatus ?? "—",
+                    readiness: data.snapshot.readiness ?? "—",
+                    gut: data.snapshot.gutStressScorePct ?? "—",
+                    choDelivery: data.snapshot.choDeliveryPctOfIngested ?? "—",
+                    oxidative: data.snapshot.oxidativeBottleneckIndex ?? "—",
                   })}
                 </div>
-              ) : null}
-              <div className="text-slate-500">
-                {t("inputProxies", {
-                  redox: data.snapshot.redoxStressIndex ?? "—",
-                  inflammation: data.snapshot.twinInflammationRisk ?? "—",
-                  glycogen: data.snapshot.glycogenStatus ?? "—",
-                  readiness: data.snapshot.readiness ?? "—",
-                  gut: data.snapshot.gutStressScorePct ?? "—",
-                  choDelivery: data.snapshot.choDeliveryPctOfIngested ?? "—",
-                  oxidative: data.snapshot.oxidativeBottleneckIndex ?? "—",
-                })}
               </div>
-            </div>
-          </details>
+            </details>
+          ) : null}
         </>
       ) : null}
     </div>

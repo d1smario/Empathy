@@ -81,7 +81,7 @@ export function MetabolicLabDetailsSection({
         <p className="mb-3 text-xs leading-relaxed text-gray-500">
           {t.rich("multiscaleNote", { b: (chunks) => <strong>{chunks}</strong> })}
         </p>
-        <MultiscaleBottleneckPanelPro2 athleteId={athleteId} />
+        <MultiscaleBottleneckPanelPro2 athleteId={athleteId} showTech={showTech} />
       </Pro2SectionCard>
 
       <Pro2Accordion
