@@ -12,6 +12,7 @@ import {
   type MultiAxisChannel,
   type MultiAxisSeries,
 } from "@/components/training/SessionMultiAxisChart";
+import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -29,6 +30,7 @@ import {
   isGeoPoint,
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
+import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -83,6 +85,19 @@ const CHANNEL_DIGITS: Record<ChartChannel, number> = {
   distance: 0,
   pace_min_per_km: 1,
   vertical_speed_mps: 1,
+};
+
+/** Colore canonico per canale (coerente col grafico multi-asse) per le sparkline. */
+const SIGNAL_COLOR: Record<ChartChannel, string> = {
+  power: CHART_SIGNAL.power,
+  hr: CHART_SIGNAL.hr,
+  speed: CHART_SIGNAL.speed,
+  cadence: CHART_SIGNAL.cadence,
+  altitude: CHART_SIGNAL.altitude,
+  temperature: "#fbbf24",
+  distance: "#60a5fa",
+  pace_min_per_km: CHART_SIGNAL.speed,
+  vertical_speed_mps: CHART_SIGNAL.altitude,
 };
 
 /** min/avg/max di una serie HD → riga tabella secondaria (stessa forma del VM). */
@@ -402,30 +417,30 @@ function SessionDetailCard({
       ) : null}
 
       {secondaryRows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-          <table className="w-full divide-y divide-white/5 text-sm">
-            <thead>
-              <tr className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
-                <th className="px-3 py-2 text-left">{t("channel")}</th>
-                <th className="px-3 py-2 text-right">min</th>
-                <th className="px-3 py-2 text-right">avg</th>
-                <th className="px-3 py-2 text-right">max</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 font-mono tabular-nums text-white">
-              {secondaryRows.map((row) => (
-                <tr key={row.channel}>
-                  <td className="px-3 py-2 font-sans text-gray-300">
+        <div className="space-y-2">
+          {secondaryRows.map((row) => {
+            const digits = row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1;
+            const values = allSeries.find((s) => s.channel === row.channel)?.values ?? [];
+            const color = SIGNAL_COLOR[row.channel as ChartChannel] ?? "#a1a1aa";
+            return (
+              <div key={row.channel} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold text-gray-200">
                     {row.label}
-                    <span className="ml-1 text-[0.65rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right">{fmt(row.min, row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(row.avg, row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(row.max, row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className="ml-1 text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
+                  </p>
+                  <p className="font-mono text-xs tabular-nums text-gray-300">
+                    <span className="text-gray-500">min</span> {fmt(row.min, digits)}
+                    <span className="mx-1 text-gray-600">·</span>
+                    <span className="text-gray-500">avg</span> {fmt(row.avg, digits)}
+                    <span className="mx-1 text-gray-600">·</span>
+                    <span className="text-gray-500">max</span> {fmt(row.max, digits)}
+                  </p>
+                </div>
+                {values.length >= 2 ? <SessionSignalSparkline values={values} color={color} /> : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
