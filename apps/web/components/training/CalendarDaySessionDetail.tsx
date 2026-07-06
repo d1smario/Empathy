@@ -16,15 +16,9 @@ const StravaStyleMap = dynamic(
     loading: () => <div className="h-[300px] w-full animate-pulse rounded-2xl bg-white/5" />,
   },
 );
-import {
-  SessionMultiAxisChart,
-  type MultiAxisChannel,
-  type MultiAxisSeries,
-} from "@/components/training/SessionMultiAxisChart";
 import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  formatElapsedLabel,
   geoPointsFromWorkoutTrace,
   pickPrimaryExecutedWorkout,
 } from "@/lib/training/calendar-analyzer-helpers";
@@ -57,16 +51,6 @@ const CHART_CHANNELS: ReadonlySet<ChartChannel> = new Set([
   "distance",
   "pace_min_per_km",
   "vertical_speed_mps",
-]);
-
-/** Canali resi nell'overlay multi-asse; gli altri (distanza/passo/vel. verticale) restano nella tabella min/avg/max. */
-const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
-  "power",
-  "hr",
-  "speed",
-  "cadence",
-  "altitude",
-  "temperature",
 ]);
 
 /** Canali chart richiesti al DB (colonna `channel` di `executed_workout_series`). */
@@ -187,13 +171,11 @@ function sessionBiomarkerTiles(workout: ExecutedWorkout): SessionKpiTile[] {
 function SessionDetailCard({
   vm,
   workout,
-  dayExecutedDuration,
   athleteId,
   athleteFtpWatts,
 }: {
   vm: SessionDetailViewModel;
   workout: ExecutedWorkout;
-  dayExecutedDuration: number | null;
   athleteId: string | null | undefined;
   athleteFtpWatts: number | null | undefined;
 }) {
@@ -285,26 +267,6 @@ function SessionDetailCard({
     return Array.from(byChannel.values());
   }, [vm.series, dbSeries]);
 
-  // Serie dell'overlay multi-asse (potenza/FC/velocità/cadenza/quota/temp) + etichette
-  // temporali comuni. Gli altri canali restano nella tabella min/avg/max sopra.
-  const overlaySeries = useMemo<MultiAxisSeries[]>(
-    () =>
-      allSeries
-        .filter((s) => MULTI_AXIS_CHANNELS.has(s.channel))
-        .map((s) => ({ channel: s.channel as MultiAxisChannel, unit: s.unit, values: s.values })),
-    [allSeries],
-  );
-  const overlayMaxLen = useMemo(
-    () => overlaySeries.reduce((m, s) => Math.max(m, s.values.length), 0),
-    [overlaySeries],
-  );
-  const overlayLabels = useMemo(
-    () =>
-      Array.from({ length: overlayMaxLen }, (_, i) =>
-        formatElapsedLabel(i, overlayMaxLen, dayExecutedDuration),
-      ),
-    [overlayMaxLen, dayExecutedDuration],
-  );
 
   // Tabella min/avg/max dalle serie HD (tutti i canali, coerente col grafico);
   // fallback alle statistiche del trace_summary (vm.secondary) se non ci sono serie.
@@ -454,12 +416,6 @@ function SessionDetailCard({
             );
           })}
         </div>
-      ) : null}
-
-      {overlaySeries.length > 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
-        </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
           {t("noHighResSeries")}
@@ -516,7 +472,6 @@ export function CalendarDaySessionDetail({
     <div id="day-session-detail" className="scroll-mt-24 space-y-6">
       {vms.map((vm, idx) => {
         const w = sortedExecuted[idx]!;
-        const duration = Number.isFinite(w.durationMinutes) ? w.durationMinutes : null;
         return (
           <Pro2SectionCard
             key={vm.workoutId}
@@ -528,7 +483,6 @@ export function CalendarDaySessionDetail({
             <SessionDetailCard
               vm={vm}
               workout={w}
-              dayExecutedDuration={duration}
               athleteId={athleteId}
               athleteFtpWatts={athleteFtpWatts}
             />
