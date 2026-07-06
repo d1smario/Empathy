@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -37,6 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { inferCanonicalFoodKeyPreferName } from "@/lib/nutrition/canonical-food-composition";
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import {
   approxMacrosForPlanItem,
@@ -100,6 +102,47 @@ function foodItemIcon(name: string): LucideIcon {
     if (re.test(name)) return icon;
   }
   return Apple;
+}
+
+/**
+ * Mappa `canonicalKey → imageUrl` (foto reale del cibo) da
+ * `/api/nutrition/food-image-map`: specifica per alimento → immagine categoria →
+ * assente. Cache di modulo: la mappa è uguale per tutti e cambia di rado, quindi
+ * una sola fetch cross-mount. Se manca (bucket vuoto / no service key) resta {}
+ * e il thumb cade sull'icona lucide — nessuna regressione.
+ */
+let foodImageMapCache: Record<string, string> | null = null;
+let foodImageMapPromise: Promise<Record<string, string>> | null = null;
+
+function loadFoodImageMap(): Promise<Record<string, string>> {
+  if (foodImageMapCache) return Promise.resolve(foodImageMapCache);
+  if (!foodImageMapPromise) {
+    foodImageMapPromise = fetch("/api/nutrition/food-image-map")
+      .then((r) => (r.ok ? r.json() : { byKey: {} }))
+      .then((j) => {
+        foodImageMapCache = (j?.byKey ?? {}) as Record<string, string>;
+        return foodImageMapCache;
+      })
+      .catch(() => {
+        foodImageMapCache = {};
+        return foodImageMapCache;
+      });
+  }
+  return foodImageMapPromise;
+}
+
+function useFoodImageMap(): Record<string, string> {
+  const [map, setMap] = useState<Record<string, string>>(() => foodImageMapCache ?? {});
+  useEffect(() => {
+    let alive = true;
+    void loadFoodImageMap().then((m) => {
+      if (alive) setMap(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return map;
 }
 
 /** Tinta del thumb: macro dominante in kcal (CHO/PRO 4 kcal/g, FAT 9). */
@@ -234,6 +277,7 @@ export function EmpathyMealPlanExpositionCard({
 }: EmpathyMealPlanExpositionCardProps) {
   const t = useTranslations("EmpathyMealPlanExpositionCard");
   const { adminScoped, platformAdminView } = useActiveAthlete();
+  const foodImageMap = useFoodImageMap();
   const Icon = slotHeaderIcon(slot);
   const kcalDenom = Math.max(1, totalKcal);
   const choPct = Math.round(((carbsG * 4) / kcalDenom) * 100);
@@ -387,10 +431,12 @@ export function EmpathyMealPlanExpositionCard({
             const b = bandFromGi(food.ig);
             const busy = profileFoodExcludeBusyLabel === food.name.trim();
             const FoodIcon = foodItemIcon(food.name);
+            // Foto reale se il cibo (per chiave canonica) ne ha una; altrimenti icona.
+            const foodImageUrl = foodImageMap[inferCanonicalFoodKeyPreferName(food.name, food.portionHint ?? "")];
             return (
               <li key={`${food.name}-${food.sourceIndex}`} className="empathy-meal-expo-food-card">
-                {/* Thumb grande a tutta altezza: icona deterministica dal nome +
-                    tinta macro dominante (foto reale quando il dataset ne avrà). */}
+                {/* Thumb grande a tutta altezza: foto reale del cibo se presente,
+                    altrimenti icona deterministica dal nome + tinta macro dominante. */}
                 <div
                   className={cn(
                     "empathy-meal-expo-food-thumb",
@@ -398,7 +444,17 @@ export function EmpathyMealPlanExpositionCard({
                   )}
                   aria-hidden
                 >
-                  <FoodIcon className="empathy-meal-expo-food-thumb-icon" strokeWidth={1.4} />
+                  {foodImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={foodImageUrl}
+                      alt=""
+                      loading="lazy"
+                      className="empathy-meal-expo-food-thumb-img"
+                    />
+                  ) : (
+                    <FoodIcon className="empathy-meal-expo-food-thumb-icon" strokeWidth={1.4} />
+                  )}
                 </div>
                 <div className="empathy-meal-expo-food-body">
                   <div className="empathy-meal-expo-food-name-row">
