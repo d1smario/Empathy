@@ -1567,6 +1567,7 @@
     "readFailed": "Read failed.",
     "networkError": "Network error.",
     "eyebrow": "Training · Day",
+    "analysisEyebrow": "Training analysis",
     "invalidDateTitle": "Invalid date",
     "dayDescription": "Day <code>{date}</code> — same data as the calendar.",
     "invalidAddress": "Invalid address: the date must be in YYYY-MM-DD format (e.g. 2025-04-02).",

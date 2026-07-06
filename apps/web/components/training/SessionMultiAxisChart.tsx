@@ -3,6 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import {
   Area,
+  Brush,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -252,6 +253,15 @@ export function SessionMultiAxisChart({
                 />
               );
             })}
+            {/* Scrubber per zoomare una finestra temporale (come il mockup). */}
+            <Brush
+              dataKey="t"
+              height={16}
+              travellerWidth={8}
+              stroke="#52525b"
+              fill="rgba(255,255,255,0.02)"
+              tickFormatter={() => ""}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

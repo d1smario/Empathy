@@ -1567,6 +1567,7 @@
     "readFailed": "Lettura non riuscita.",
     "networkError": "Errore di rete.",
     "eyebrow": "Training · Giornata",
+    "analysisEyebrow": "Analisi allenamento",
     "invalidDateTitle": "Data non valida",
     "dayDescription": "Giornata <code>{date}</code> — stessi dati del calendario.",
     "invalidAddress": "Indirizzo non valido: la data deve avere il formato YYYY-MM-DD (es. 2025-04-02).",

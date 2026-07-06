@@ -183,21 +183,40 @@ export default function TrainingSessionPageView() {
     }
   }, [date, dateValid]);
 
+  // Sottotitolo identità seduta (sport · durata) dalla seduta eseguita — come il mockup.
+  const sessionSubtitle = useMemo<string | null>(() => {
+    if (!dateValid || executed.length === 0) return null;
+    const w = executed[0]!;
+    const trace = (w.traceSummary ?? null) as Record<string, unknown> | null;
+    const rawSport =
+      trace && typeof trace === "object" ? trace.sport ?? trace.activity_type ?? trace.activityType : null;
+    const parts: string[] = [];
+    if (typeof rawSport === "string" && rawSport.trim()) {
+      const s = rawSport.trim();
+      parts.push(s.charAt(0).toUpperCase() + s.slice(1));
+    }
+    const min = Number.isFinite(w.durationMinutes) ? Math.round(Number(w.durationMinutes)) : null;
+    if (min && min > 0) parts.push(min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}′`);
+    return parts.length ? parts.join(" · ") : null;
+  }, [dateValid, executed]);
+
   return (
     <Pro2ModulePageShell
-      eyebrow={t("eyebrow")}
+      eyebrow={dateValid && executed.length > 0 ? t("analysisEyebrow") : t("eyebrow")}
       eyebrowClassName="text-orange-400"
       title={dateValid ? titleDate : t("invalidDateTitle")}
       description={
-        dateValid ? (
+        !dateValid ? (
+          t("invalidAddress")
+        ) : sessionSubtitle ? (
+          <span className="text-gray-200">{sessionSubtitle}</span>
+        ) : (
           <span>
             {t.rich("dayDescription", {
               date,
               code: (chunks) => <code className="text-orange-200/80">{chunks}</code>,
             })}
           </span>
-        ) : (
-          t("invalidAddress")
         )
       }
     >
