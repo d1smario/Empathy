@@ -176,7 +176,9 @@ export default function TrainingCalendarTableView() {
             <p className="text-xs text-gray-600">Usa i tasti mese per spostarti, oppure «Oggi».</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Desktop: tabella. Mobile: stessa roba come lista di card (sotto). */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[42rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-left">
@@ -265,6 +267,52 @@ export default function TrainingCalendarTableView() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile: stessa tabella come lista di card verticali (stessi concetti). */}
+          <ul className="divide-y divide-white/[0.06] md:hidden">
+            {rows.map((r, idx) => {
+              const href = productHrefForPathname(`/training/session/${r.dayKey}`, pathname);
+              return (
+                <li key={`m-${r.dayKey}-${idx}`} className={r.isToday ? "bg-sky-500/[0.06]" : ""}>
+                  <Link href={href} className="flex items-center gap-3 px-3 py-3">
+                    <span
+                      className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border text-center ${
+                        r.isToday ? "border-sky-400/50 bg-sky-500/15 text-sky-100" : "border-white/10 bg-black/30 text-gray-300"
+                      }`}
+                    >
+                      <span className="text-sm font-bold leading-none">{r.dayNumber}</span>
+                      <span className="text-[0.5rem] uppercase leading-none text-gray-500">{r.monthShort}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[0.65rem] font-semibold text-gray-300">{r.weekdayLabel}</span>
+                        {r.isToday ? (
+                          <span className="text-[0.55rem] font-bold uppercase tracking-wide text-sky-300">Oggi</span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-2">
+                        {r.glyph ? (
+                          <SportDisciplineGlyph glyph={r.glyph} className="h-5 w-5 shrink-0 text-gray-200" />
+                        ) : (
+                          <Dumbbell className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                        )}
+                        <span className="truncate font-semibold text-gray-100">{r.title}</span>
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.68rem] text-gray-500">
+                        {r.minutes > 0 ? <span className="font-mono tabular-nums">{r.minutes}′</span> : null}
+                        {r.load > 0 ? <span className="font-mono tabular-nums">TSS {r.load}</span> : null}
+                        <span className={r.done ? "text-emerald-300" : "text-gray-400"}>
+                          {r.done ? "Svolto" : "Da fare"}
+                        </span>
+                      </span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-gray-600" aria-hidden />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          </>
         )}
       </div>
 
