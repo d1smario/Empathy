@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function MobileNutritionMealPlanPage() {
   return (
     <Suspense fallback={<div className="min-h-[40vh] animate-pulse rounded-2xl bg-white/5" />}>
-      <div className="mx-auto max-w-lg px-1 pb-4 pt-1">
+      <div className="mx-auto max-w-lg px-3 pb-6 pt-3">
         <NutritionPageView subRoute="meal-plan" />
       </div>
     </Suspense>
