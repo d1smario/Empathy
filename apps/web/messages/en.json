@@ -1578,13 +1578,7 @@
     "noWorkoutPlanned": "No workout planned for this date.",
     "executedTitle": "Executed",
     "executedCount": "{count} recordings",
-    "noExecution": "No execution on this day.",
-    "twinTitle": "Twin and recovery",
-    "twinSubtitle": "Same data used by Builder and Nutrition",
-    "twinBody": "Readiness, internal load and recovery live in the athlete's <b>digital twin</b>. Open Profile for the snapshot; Physiology for the signal detail.",
-    "nextStepsTitle": "Next steps",
-    "comingSoon": "Coming soon",
-    "nextStepsBody": "<b>Complete session</b> recording, coach load editing and structured builder notes will arrive in upcoming releases."
+    "noExecution": "No execution on this day."
   },
   "TrainingViryaPageView": {
     "errNoActiveAthlete": "No active athlete.",

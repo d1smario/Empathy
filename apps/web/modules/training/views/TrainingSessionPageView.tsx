@@ -5,7 +5,7 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import { CalendarDays, ClipboardList, Heart, Wrench } from "lucide-react";
+import { CalendarDays, ClipboardList } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +15,6 @@ import { OperationalDayNavigator } from "@/components/navigation/OperationalDayN
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
-import { Pro2Link } from "@/components/ui/empathy";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
@@ -50,7 +49,10 @@ export default function TrainingSessionPageView() {
   const date = typeof params?.date === "string" ? params.date : "";
   const dateValid = ISO_DATE.test(date);
 
-  const { athleteId, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  // Diagnostica motore (read-spine, twin, provenance) solo per staff: l'atleta non
+  // deve mai vedere gergo interno. Vedi regole di visibilità atleta.
+  const showTech = role === "coach" || adminScoped;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [planned, setPlanned] = useState<PlannedWorkout[]>([]);
@@ -207,7 +209,7 @@ export default function TrainingSessionPageView() {
         </div>
       ) : null}
 
-      {dateValid && readSpineCoverage && athleteId ? (
+      {dateValid && showTech && readSpineCoverage && athleteId ? (
         <TrainingPlannedWindowContextStrip
           className="mb-4"
           label={t("dayLabel")}
@@ -276,43 +278,6 @@ export default function TrainingSessionPageView() {
                 ))}
               </ul>
             ) : null}
-          </Pro2SectionCard>
-
-          <Pro2SectionCard
-            accent="violet"
-            title={t("twinTitle")}
-            subtitle={t("twinSubtitle")}
-            icon={Heart}
-          >
-            <p className="text-sm text-gray-400">
-              {t.rich("twinBody", {
-                b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
-              })}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Pro2Link
-                href="/profile"
-                variant="secondary"
-                className="justify-center border border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-              >
-                Profile · twin
-              </Pro2Link>
-              <Pro2Link
-                href="/physiology"
-                variant="secondary"
-                className="justify-center border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15"
-              >
-                Physiology
-              </Pro2Link>
-            </div>
-          </Pro2SectionCard>
-
-          <Pro2SectionCard accent="amber" title={t("nextStepsTitle")} subtitle={t("comingSoon")} icon={Wrench}>
-            <p className="text-sm text-gray-400">
-              {t.rich("nextStepsBody", {
-                b: (chunks) => <strong className="text-gray-200">{chunks}</strong>,
-              })}
-            </p>
           </Pro2SectionCard>
         </>
       ) : null}
