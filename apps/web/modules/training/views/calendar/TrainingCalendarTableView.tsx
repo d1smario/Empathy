@@ -173,14 +173,19 @@ export default function TrainingCalendarTableView() {
 
   const loadingFirst = (ctxLoading || loading) && days.length === 0;
 
-  // Centra la pagina su OGGI quando si guarda il mese corrente (primo carico e
-  // click «Oggi»). Cambiando mese con le frecce NON si ricentra (stai sfogliando).
-  const listRef = useRef<HTMLDivElement | null>(null);
+  // Centra OGGI DENTRO al box (non la pagina) quando si guarda il mese corrente
+  // (primo carico e click «Oggi»). Cambiando mese con le frecce NON si ricentra.
+  const scrollBoxRef = useRef<HTMLDivElement | null>(null);
   const wantScrollToTodayRef = useRef(true);
   useEffect(() => {
     if (loading || days.length === 0 || !isCurrentMonth || !wantScrollToTodayRef.current) return;
-    const el = listRef.current?.querySelector<HTMLElement>("[data-today]");
-    if (el) el.scrollIntoView({ block: "center" });
+    const box = scrollBoxRef.current;
+    const el = box?.querySelector<HTMLElement>("[data-today]");
+    if (box && el) {
+      const boxRect = box.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      box.scrollTop += elRect.top - boxRect.top - (box.clientHeight - el.clientHeight) / 2;
+    }
     wantScrollToTodayRef.current = false;
   }, [loading, days, isCurrentMonth]);
 
@@ -251,9 +256,13 @@ export default function TrainingCalendarTableView() {
           Nessuna attività.
         </div>
       ) : (
-        <div ref={listRef} className="space-y-5">
+        <div
+          ref={scrollBoxRef}
+          style={{ height: "34rem" }}
+          className="space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3"
+        >
           {days.map((day) => (
-            <div key={day.dayKey} data-today={day.isToday ? "1" : undefined} className="scroll-mt-24">
+            <div key={day.dayKey} data-today={day.isToday ? "1" : undefined}>
               <div className="mb-1.5 flex items-baseline gap-2">
                 <span className={`text-sm font-bold capitalize ${day.isToday ? "text-sky-300" : "text-gray-300"}`}>
                   {day.dayLabel}
