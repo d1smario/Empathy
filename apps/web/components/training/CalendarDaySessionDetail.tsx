@@ -22,6 +22,7 @@ import {
   buildSessionDetailVM,
   type SessionDetailViewModel,
   type SessionKpiTile,
+  type SessionSecondaryRow,
 } from "@/lib/training/session-detail-summary";
 import {
   type GeoPoint,
@@ -59,6 +60,55 @@ const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
 
 /** Canali chart richiesti al DB (colonna `channel` di `executed_workout_series`). */
 const SESSION_SERIES_CHART_CHANNELS: readonly string[] = Array.from(CHART_CHANNELS);
+
+/** Etichette IT + cifre per la tabella min/avg/max calcolata dalle serie HD. */
+const CHANNEL_LABEL_IT: Record<ChartChannel, string> = {
+  power: "Potenza",
+  hr: "FC",
+  speed: "Velocità",
+  cadence: "Cadenza",
+  altitude: "Quota",
+  temperature: "Temperatura",
+  distance: "Distanza",
+  pace_min_per_km: "Passo",
+  vertical_speed_mps: "Vel. verticale",
+};
+const CHANNEL_DIGITS: Record<ChartChannel, number> = {
+  power: 0,
+  hr: 0,
+  speed: 1,
+  cadence: 0,
+  altitude: 0,
+  temperature: 1,
+  distance: 0,
+  pace_min_per_km: 1,
+  vertical_speed_mps: 1,
+};
+
+/** min/avg/max di una serie HD → riga tabella secondaria (stessa forma del VM). */
+function seriesStatsRow(channel: ChartChannel, unit: string, values: number[]): SessionSecondaryRow | null {
+  const f = values.filter((v) => Number.isFinite(v));
+  if (f.length === 0) return null;
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  for (const v of f) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+    sum += v;
+  }
+  const digits = CHANNEL_DIGITS[channel] ?? 1;
+  const factor = 10 ** digits;
+  const round = (x: number) => Math.round(x * factor) / factor;
+  return {
+    channel,
+    label: CHANNEL_LABEL_IT[channel] ?? channel,
+    unit,
+    min: round(min),
+    avg: round(sum / f.length),
+    max: round(max),
+  };
+}
 
 type ExtendedSeriesBundle = {
   channel: ChartChannel;
@@ -230,6 +280,15 @@ function SessionDetailCard({
     [overlayMaxLen, dayExecutedDuration],
   );
 
+  // Tabella min/avg/max dalle serie HD (tutti i canali, coerente col grafico);
+  // fallback alle statistiche del trace_summary (vm.secondary) se non ci sono serie.
+  const secondaryRows = useMemo<SessionSecondaryRow[]>(() => {
+    const rows = allSeries
+      .map((s) => seriesStatsRow(s.channel, s.unit, s.values))
+      .filter((r): r is SessionSecondaryRow => r != null);
+    return rows.length > 0 ? rows : vm.secondary;
+  }, [allSeries, vm.secondary]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -305,7 +364,7 @@ function SessionDetailCard({
         </div>
       ) : null}
 
-      {vm.secondary.length > 0 ? (
+      {secondaryRows.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
           <table className="w-full divide-y divide-white/5 text-sm">
             <thead>
@@ -317,7 +376,7 @@ function SessionDetailCard({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-mono tabular-nums text-white">
-              {vm.secondary.map((row) => (
+              {secondaryRows.map((row) => (
                 <tr key={row.channel}>
                   <td className="px-3 py-2 font-sans text-gray-300">
                     {row.label}
