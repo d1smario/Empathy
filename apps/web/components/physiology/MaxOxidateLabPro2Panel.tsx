@@ -15,6 +15,8 @@ export type MaxOxidateLabPro2PanelProps = {
   /** VO₂ (L/min) effettivamente usato come capacità nel motore Max Oxidate. */
   maxOxVo2UsedLMin: number;
   vo2CapacitySource: "metabolic_engine_vo2max" | "power_estimate" | "test_manual";
+  /** Meter Delivery/Stress della viz visibili solo a coach/admin. */
+  showTech?: boolean;
 };
 
 /**
@@ -26,6 +28,7 @@ export function MaxOxidateLabPro2Panel({
   vo2maxLMin,
   maxOxVo2UsedLMin,
   vo2CapacitySource,
+  showTech = false,
 }: MaxOxidateLabPro2PanelProps) {
   const t = useTranslations("MaxOxidateLabPro2Panel");
   const vo2Used = `${maxOxVo2UsedLMin.toFixed(2)} L/min`;
@@ -50,7 +53,7 @@ export function MaxOxidateLabPro2Panel({
             <div className="physiology-pro2-maxox-ico" aria-hidden>
               <Flame size={20} strokeWidth={1.75} />
             </div>
-            <h3 className="physiology-pro2-maxox-title">Max Oxidate Lab</h3>
+            <h3 className="physiology-pro2-maxox-title">{t("title")}</h3>
           </div>
           <p className="physiology-pro2-maxox-caption">
             {vo2Block}{" "}
@@ -69,15 +72,11 @@ export function MaxOxidateLabPro2Panel({
       </div>
 
       <div className="physiology-pro2-maxox-viz-wrap">
-        <MaxOxidateEnginePro2Viz model={model} />
+        <MaxOxidateEnginePro2Viz model={model} showTech={showTech} />
       </div>
 
-      <p className="physiology-pro2-maxox-footnote">
-        {t.rich("footnote", {
-          b: (chunks) => <strong>{chunks}</strong>,
-          version: model.version.replaceAll("-", " "),
-        })}
-      </p>
+      {/* Footnote con `model.version` RIMOSSA (audit 2026-07): stringa di
+          revisione motore, nessun valore per l'atleta. */}
     </div>
   );
 }

@@ -1816,6 +1816,7 @@ export default function MetabolicLabPage() {
             vo2maxMlMinKgForCaption={cpCurveHasData && cpModel.vo2maxLMin >= 0.35 ? cpModel.vo2maxMlMinKg : null}
             vo2maxLMinForCaption={cpCurveHasData && cpModel.vo2maxLMin >= 0.35 ? cpModel.vo2maxLMin : null}
             maxOxVo2Mode={maxOxVo2Mode}
+            showTech={showTech}
           >
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--lac-pick">
             <LactateWorkoutPickerPro2
@@ -1836,6 +1837,7 @@ export default function MetabolicLabPage() {
             lastSegmentVo2LMin={maxOxSegmentLastVo2LMin}
             lastSegmentO2TotalL={maxOxSegmentLastO2TotalL}
             lastSegmentDurationMin={maxOxSegmentLastDurationMin}
+            showTech={showTech}
           />
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--lac-ctx">
             <MaxOxMetabolicContextTiles
@@ -1852,6 +1854,10 @@ export default function MetabolicLabPage() {
               segmentDurationMin={maxOxSegmentLastDurationMin}
             />
           </div>
+          {/* VO2 Capacity Source Summary (provenienza VO₂: ripete vo2Used, testo
+              sorgente motore) e i 16 parametri motore: solo coach/admin, come i
+              blocchi tecnici del lattato (audit 2026-07). */}
+          {showTech ? (
           <div className="physiology-pro2-lab-page-panel">
             <div className="mb-3 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-emerald-400">{t("vo2CapacitySourceSummary")}</div>
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs leading-relaxed text-gray-300">
@@ -1884,6 +1890,8 @@ export default function MetabolicLabPage() {
               </div>
             </div>
           </div>
+          ) : null}
+          {showTech ? (
           <div className="physiology-pro2-lab-page-panel">
             <MaxOxPro2NumericEngineParams
               input={maxOxInput}
@@ -1891,6 +1899,7 @@ export default function MetabolicLabPage() {
               vo2Mode={maxOxVo2Mode}
             />
           </div>
+          ) : null}
 
           <div className="physiology-pro2-lab-footer-actions">
             <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveMaxOxSnapshot}>

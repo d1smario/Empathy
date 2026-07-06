@@ -60,7 +60,7 @@ function MeterRow({ label, value01, tone }: { label: string; value01: number; to
 }
 
 /** Vista grafica Pro2 per l’output Max Oxidate (capacità, substrati, delivery, stress). */
-export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) {
+export function MaxOxidateEnginePro2Viz({ model, showTech = false }: { model: MaxOxidateOutput; showTech?: boolean }) {
   const t = useTranslations("MaxOxidateEnginePro2Viz");
   const cap = Math.max(1e-6, model.oxidativeCapacityKcalMin);
   const reqOx = Math.max(0, model.oxidativeDemandKcalMin);
@@ -101,38 +101,45 @@ export function MaxOxidateEnginePro2Viz({ model }: { model: MaxOxidateOutput }) 
         <SegmentedBar segments={subSegs} unit="g/min" />
       </div>
 
-      <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">{t("deliveryTitle")}</h4>
-        <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label={t("centralDeliveryIndexLabel")} value01={cDel} tone="cyan" />
-          <MeterRow label={t("peripheralUtilizationIndexLabel")} value01={pUti} tone="rose" />
-          <MeterRow label={t("smo2ExtractionLabel")} value01={model.extractionPct / 85} tone="violet" />
-        </div>
-        <p className="maxox-engine-viz-hint">
-          {t.rich("deliveryHint", {
-            vo2rel: model.vo2RelMlKgMin.toFixed(1),
-            power: model.oxidativePowerKw.toFixed(3),
-            b: (chunks) => <strong>{chunks}</strong>,
-            state: () => <span className="maxox-engine-viz-state">{model.state}</span>,
-          })}
-        </p>
-      </div>
+      {/* Meter Delivery/Stress = indici motore (central delivery, redox, NADH,
+          bottleneckType, state): solo coach/admin (audit 2026-07). L'atleta ha
+          già Capacità-vs-Domanda e Substrati sopra. */}
+      {showTech ? (
+        <>
+          <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
+            <h4 className="maxox-engine-viz-title">{t("deliveryTitle")}</h4>
+            <div className="maxox-engine-viz-meter-grid">
+              <MeterRow label={t("centralDeliveryIndexLabel")} value01={cDel} tone="cyan" />
+              <MeterRow label={t("peripheralUtilizationIndexLabel")} value01={pUti} tone="rose" />
+              <MeterRow label={t("smo2ExtractionLabel")} value01={model.extractionPct / 85} tone="violet" />
+            </div>
+            <p className="maxox-engine-viz-hint">
+              {t.rich("deliveryHint", {
+                vo2rel: model.vo2RelMlKgMin.toFixed(1),
+                power: model.oxidativePowerKw.toFixed(3),
+                b: (chunks) => <strong>{chunks}</strong>,
+                state: () => <span className="maxox-engine-viz-state">{model.state}</span>,
+              })}
+            </p>
+          </div>
 
-      <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
-        <h4 className="maxox-engine-viz-title">{t("stressTitle")}</h4>
-        <div className="maxox-engine-viz-meter-grid">
-          <MeterRow label={t("bottleneckLabel")} value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
-          <MeterRow label={t("redoxStressLabel")} value01={model.redoxStressIndex / 100} tone="amber" />
-          <MeterRow label={t("nadhPressureLabel")} value01={model.nadhPressureIndex} tone="violet" />
-        </div>
-        <p className="maxox-engine-viz-hint">
-          {t.rich("stressHint", {
-            reox: (model.reoxidationCapacityIndex * 100).toFixed(0),
-            b: (chunks) => <strong>{chunks}</strong>,
-            type: () => <strong>{model.bottleneckType.replaceAll("_", " ")}</strong>,
-          })}
-        </p>
-      </div>
+          <div className="maxox-engine-viz-card maxox-engine-viz-card--wide">
+            <h4 className="maxox-engine-viz-title">{t("stressTitle")}</h4>
+            <div className="maxox-engine-viz-meter-grid">
+              <MeterRow label={t("bottleneckLabel")} value01={model.oxidativeBottleneckIndex / 100} tone="rose" />
+              <MeterRow label={t("redoxStressLabel")} value01={model.redoxStressIndex / 100} tone="amber" />
+              <MeterRow label={t("nadhPressureLabel")} value01={model.nadhPressureIndex} tone="violet" />
+            </div>
+            <p className="maxox-engine-viz-hint">
+              {t.rich("stressHint", {
+                reox: (model.reoxidationCapacityIndex * 100).toFixed(0),
+                b: (chunks) => <strong>{chunks}</strong>,
+                type: () => <strong>{model.bottleneckType.replaceAll("_", " ")}</strong>,
+              })}
+            </p>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -2019,14 +2019,14 @@
     "stressHint": "Reoxidation (index) {reox}% · dominant limiting type in the engine: <type></type>"
   },
   "MaxOxidateLabPro2Panel": {
+    "title": "Oxidative capacity",
     "vo2CapacityManual": "VO₂ capacity: <b>{vo2}</b> (manual test).",
     "vo2maxFromMetabolicWithValue": "VO₂max from <b>Metabolic Profile</b> (CP model): <b>{value}</b>.",
     "vo2maxFromMetabolicNoValue": "VO₂max from <b>Metabolic Profile</b> (CP model): <b>{vo2}</b>.",
     "vo2CapacityPowerWarning": "Warning: VO₂ capacity only from <b>power estimate</b> ({vo2}) — for a credible ceiling fill in the <b>CP curve</b> in Metabolic profile (engine VO₂max).",
     "caption": "Comparison between <b>net oxidative capacity</b> (VO₂ × delivery) and <b>oxidative demand min(P, CP)</b> — not the entire mechanical power. Delivery and redox indices are deterministic proxies.",
     "oxidativeSaturation": "Oxidative saturation",
-    "bottleneckLabel": " · bottleneck ",
-    "footnote": "Engine <b>{version}</b>. For clinical calibration use gas exchange and blood markers; here the focus is coherence with CP/VO₂max and session signals."
+    "bottleneckLabel": " · bottleneck "
   },
   "MetabolicPowerComponentsStackChart": {
     "cardAriaLabel": "Model power breakdown: oxidative, PCr and glycolytic by duration",

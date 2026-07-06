@@ -24,6 +24,8 @@ export type PhysiologyPro2MaxOxLabProps = {
   vo2maxMlMinKgForCaption?: number | null;
   vo2maxLMinForCaption?: number | null;
   maxOxVo2Mode: "device" | "test";
+  /** Report motore + meter tecnici visibili solo a coach/admin. */
+  showTech?: boolean;
   children: ReactNode;
 };
 
@@ -42,6 +44,7 @@ export function PhysiologyPro2MaxOxLab({
   vo2maxMlMinKgForCaption,
   vo2maxLMinForCaption,
   maxOxVo2Mode,
+  showTech = false,
   children,
 }: PhysiologyPro2MaxOxLabProps) {
   const t = useTranslations("PhysiologyPro2MaxOxLab");
@@ -53,22 +56,28 @@ export function PhysiologyPro2MaxOxLab({
         vo2maxLMin={vo2maxLMinForCaption ?? null}
         maxOxVo2UsedLMin={vo2Used}
         vo2CapacitySource={vo2CapacitySource}
+        showTech={showTech}
       />
 
-      <MaxOxPro2EngineReport
-        model={model}
-        reliabilityPct={reliabilityPct}
-        uncertaintyPct={uncertaintyPct}
-        bottleneckLabel={bottleneckLabel}
-        ratioSummary={ratioSummary}
-        redoxSummary={redoxSummary}
-        vo2Used={vo2Used}
-        vo2AtPowerL={vo2AtPowerL}
-        vo2MlKgCapacity={vo2MlKgCapacity}
-        vo2MlKgAtPower={vo2MlKgAtPower}
-        vo2CapacitySource={vo2CapacitySource}
-        maxOxVo2Mode={maxOxVo2Mode}
-      />
+      {/* Report motore Max Oxidate (VO₂ trio, gauge, KPI gross/net, delivery,
+          NADH, reliability/uncertainty, state): solo coach/admin, come il report
+          lattato. L'atleta ha la sintesi nel pannello sopra (audit 2026-07). */}
+      {showTech ? (
+        <MaxOxPro2EngineReport
+          model={model}
+          reliabilityPct={reliabilityPct}
+          uncertaintyPct={uncertaintyPct}
+          bottleneckLabel={bottleneckLabel}
+          ratioSummary={ratioSummary}
+          redoxSummary={redoxSummary}
+          vo2Used={vo2Used}
+          vo2AtPowerL={vo2AtPowerL}
+          vo2MlKgCapacity={vo2MlKgCapacity}
+          vo2MlKgAtPower={vo2MlKgAtPower}
+          vo2CapacitySource={vo2CapacitySource}
+          maxOxVo2Mode={maxOxVo2Mode}
+        />
+      ) : null}
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--maxox-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />

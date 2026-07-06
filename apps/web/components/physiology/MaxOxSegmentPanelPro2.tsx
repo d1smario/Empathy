@@ -41,6 +41,7 @@ export function MaxOxSegmentPanelPro2({
   lastSegmentVo2LMin,
   lastSegmentO2TotalL,
   lastSegmentDurationMin,
+  showTech = false,
 }: {
   onSyncProfile: () => void;
   onSyncLactate: () => void;
@@ -48,6 +49,8 @@ export function MaxOxSegmentPanelPro2({
   lastSegmentVo2LMin: number | null;
   lastSegmentO2TotalL: number | null;
   lastSegmentDurationMin: number | null;
+  /** Campi grezzi del test manuale (SmO2, lattato, core temp) solo coach/admin. */
+  showTech?: boolean;
 }) {
   const t = useTranslations("MaxOxSegmentPanelPro2");
   const [form, setForm] = useState<MaxOxSegmentForm>(EMPTY);
@@ -86,6 +89,10 @@ export function MaxOxSegmentPanelPro2({
           {t("takeFromLactate")}
         </Pro2Button>
       </div>
+      {/* Campi grezzi del test (SmO2, lattato, core temp) + Applica: costruzione
+          manuale, da coach (audit 2026-07). L'atleta usa i due sync qui sopra. */}
+      {showTech ? (
+      <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
           {t("durationLabel")}
@@ -152,6 +159,8 @@ export function MaxOxSegmentPanelPro2({
           </span>
         ) : null}
       </div>
+      </>
+      ) : null}
     </div>
   );
 }
