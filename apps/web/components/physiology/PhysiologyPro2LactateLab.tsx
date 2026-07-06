@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Activity, CheckCircle2, Droplets, Gauge, HeartPulse } from "lucide-react";
 import type { LactateEngineOutput } from "@/lib/engines/lactate-engine";
-import { LactateEnginePro2Viz } from "@/components/physiology/LactateEnginePro2Viz";
 import { LactatePro2EngineReport } from "@/components/physiology/LactatePro2EngineReport";
 import { LactateThresholdPro2Panel } from "@/components/physiology/LactateThresholdPro2Panel";
 
@@ -26,6 +25,8 @@ export type PhysiologyPro2LactateLabProps = {
   /** VO₂max da Metabolic Profile (CP) — preferito come riferimento massimo in UI curva lattato. */
   profileVo2maxMlMinKg?: number | null;
   intensityPctFtp: number;
+  /** Report motore (energia/microbiota/Cori) visibile solo a coach/admin. */
+  showTech?: boolean;
   children: ReactNode;
 };
 
@@ -46,21 +47,16 @@ export function PhysiologyPro2LactateLab({
   vlamax,
   profileVo2maxMlMinKg,
   intensityPctFtp,
+  showTech = false,
   children,
 }: PhysiologyPro2LactateLabProps) {
   const t = useTranslations("PhysiologyPro2LactateLab");
   const vo2maxRefMlMinKg = Math.max(0, profileVo2maxMlMinKg ?? 0, vo2MlKg ?? 0);
   return (
     <div className="physiology-pro2-lab physiology-pro2-lab--lactate">
-      <LactatePro2EngineReport model={model} vo2Used={vo2Used} rerUsed={rerUsed} />
-
-      <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
-        <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-        <span>{t("overviewBanner", { version: model.version })}</span>
-        <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
-      </div>
-      <LactateEnginePro2Viz model={model} choGapG={choGap} />
-
+      {/* Ordine atleta-first (audit 2026-07): prima i KPI onesti di sessione, gli
+          hint e la curva. Il report motore (energia/microbiota/Cori) e il viz
+          duplicato non li vede l'atleta — il report vive dietro showTech. */}
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
         <Gauge className="physiology-pro2-lab-banner-ico" aria-hidden />
         <span>{t("qualityBanner")}</span>
@@ -107,6 +103,20 @@ export function PhysiologyPro2LactateLab({
           currentIntensityPctFtp={intensityPctFtp}
         />
       </div>
+
+      {/* Report motore lattato: energia di sessione, destino lattato, pipeline
+          CHO/gut, microbiota. Solo coach/admin (audit 2026-07). Il viz duplicato
+          (LactateEnginePro2Viz) è stato eliminato: ripeteva questo report. */}
+      {showTech ? (
+        <>
+          <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-overview">
+            <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
+            <span>{t("overviewBanner", { version: model.version })}</span>
+            <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />
+          </div>
+          <LactatePro2EngineReport model={model} vo2Used={vo2Used} rerUsed={rerUsed} />
+        </>
+      ) : null}
 
       <div className="physiology-pro2-lab-banner physiology-pro2-lab-banner--lactate-inputs">
         <Activity className="physiology-pro2-lab-banner-ico" aria-hidden />

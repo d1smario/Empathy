@@ -1694,6 +1694,7 @@ export default function MetabolicLabPage() {
             vlamax={cpModel.vlamax}
             profileVo2maxMlMinKg={cpModel.vo2maxMlMinKg}
             intensityPctFtp={lactateIntensityPctFtp}
+            showTech={showTech}
           >
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--lac-pick">
             <LactateWorkoutPickerPro2
@@ -1724,6 +1725,7 @@ export default function MetabolicLabPage() {
               lactateVo2Used={lactateVo2Used}
               lactateVo2EstL={lactateVo2Estimate.vo2LMin}
               lactateVo2MlKg={lactateVo2Estimate.vo2MlKgMin}
+              showTech={showTech}
             />
           </div>
           <div className="physiology-pro2-lab-page-panel physiology-pro2-lab-page-panel--lac-sources">
@@ -1735,6 +1737,10 @@ export default function MetabolicLabPage() {
               healthBioCoreTempC={healthBioCoreTempCBaseline}
             />
           </div>
+          {/* Parametri motore (23 coefficienti: cori_pct, sequestration…) e note
+              pipeline CHO/gut: gergo motore, solo coach/admin (audit 2026-07). */}
+          {showTech ? (
+            <>
           <div className="physiology-pro2-lab-page-panel">
             <LactatePro2NumericEngineParams
               input={lactateParamsDisplayInput}
@@ -1765,6 +1771,8 @@ export default function MetabolicLabPage() {
             </div>
           </details>
           </div>
+            </>
+          ) : null}
           <div className="physiology-pro2-lab-footer-actions">
             <Pro2Button type="button" variant="primary" disabled={saving} onClick={saveLactateAnalysisSnapshot}>
               {saving ? t("saving") : t("saveLactateAnalysis")}

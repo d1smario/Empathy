@@ -342,17 +342,10 @@ export function LactateThresholdPro2Panel({
         </svg>
       </div>
 
+      {/* LT1/LT2 come card numeriche RIMOSSE (audit 2026-07): duplicano i KPI del
+          Profilo metabolico. Restano come marcatori sulla curva qui sopra.
+          Tenuta solo «BLa @ FTP (MLSS)», dato proprio della curva lattato. */}
       <div className="physiology-pro2-lactate-kpis">
-        <div className="physiology-pro2-lactate-kpi physiology-pro2-lactate-kpi--lt1">
-          <div className="physiology-pro2-lactate-kpi-label">LT1 (Aerobic)</div>
-          <div className="physiology-pro2-lactate-kpi-value">{Math.round(lt1W)}W</div>
-          <div className="physiology-pro2-lactate-kpi-sub">@ 2.0 mmol/L</div>
-        </div>
-        <div className="physiology-pro2-lactate-kpi physiology-pro2-lactate-kpi--lt2">
-          <div className="physiology-pro2-lactate-kpi-label">LT2 (Anaerobic)</div>
-          <div className="physiology-pro2-lactate-kpi-value">{Math.round(lt2W)}W</div>
-          <div className="physiology-pro2-lactate-kpi-sub">@ 4.0 mmol/L</div>
-        </div>
         <div className="physiology-pro2-lactate-kpi physiology-pro2-lactate-kpi--max">
           <div className="physiology-pro2-lactate-kpi-label">BLa @ FTP (MLSS)</div>
           <div className="physiology-pro2-lactate-kpi-value">{blaAtFtp.toFixed(1)}</div>

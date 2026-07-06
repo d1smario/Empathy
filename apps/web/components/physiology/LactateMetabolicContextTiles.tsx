@@ -45,6 +45,7 @@ export function LactateMetabolicContextTiles({
   lactateVo2Used,
   lactateVo2EstL,
   lactateVo2MlKg,
+  showTech = false,
 }: {
   lactateSport: SupportedSport;
   setLactateSport: (v: SupportedSport) => void;
@@ -62,6 +63,8 @@ export function LactateMetabolicContextTiles({
   lactateVo2Used: number;
   lactateVo2EstL: number;
   lactateVo2MlKg: number;
+  /** Selettori-motore (RER/microbiota/dysbiosi/fat-ox) visibili solo a coach/admin. */
+  showTech?: boolean;
 }) {
   const t = useTranslations("LactateMetabolicContextTiles");
   const [open, setOpen] = useState<OpenKey>(null);
@@ -141,67 +144,74 @@ export function LactateMetabolicContextTiles({
           <span className="physiology-pro2-ctx-tile-v">{vo2Label}</span>
         </button>
 
-        <button
-          type="button"
-          className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--violet${open === "rer" ? " physiology-pro2-ctx-tile--open" : ""}`}
-          onClick={() => toggle("rer")}
-        >
-          <div className="physiology-pro2-ctx-tile-head">
-            <span className="physiology-pro2-ctx-tile-ico-wrap">
-              <Flame className="physiology-pro2-ctx-tile-ico" aria-hidden />
-            </span>
-            <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
-          </div>
-          <span className="physiology-pro2-ctx-tile-k">{t("tileRerSource")}</span>
-          <span className="physiology-pro2-ctx-tile-v">{rerLabel}</span>
-        </button>
+        {/* Selettori-motore: solo staff (audit 2026-07). L'atleta sceglie
+            sport e sorgente VO₂; RER/microbiota/dysbiosi/fat-ox sono assunzioni
+            del motore, non decisioni sue. */}
+        {showTech ? (
+          <>
+            <button
+              type="button"
+              className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--violet${open === "rer" ? " physiology-pro2-ctx-tile--open" : ""}`}
+              onClick={() => toggle("rer")}
+            >
+              <div className="physiology-pro2-ctx-tile-head">
+                <span className="physiology-pro2-ctx-tile-ico-wrap">
+                  <Flame className="physiology-pro2-ctx-tile-ico" aria-hidden />
+                </span>
+                <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
+              </div>
+              <span className="physiology-pro2-ctx-tile-k">{t("tileRerSource")}</span>
+              <span className="physiology-pro2-ctx-tile-v">{rerLabel}</span>
+            </button>
 
-        <button
-          type="button"
-          className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--amber${open === "micro" ? " physiology-pro2-ctx-tile--open" : ""}`}
-          onClick={() => toggle("micro")}
-        >
-          <div className="physiology-pro2-ctx-tile-head">
-            <span className="physiology-pro2-ctx-tile-ico-wrap">
-              <Bug className="physiology-pro2-ctx-tile-ico" aria-hidden />
-            </span>
-            <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
-          </div>
-          <span className="physiology-pro2-ctx-tile-k">{t("tileMicrobiota")}</span>
-          <span className="physiology-pro2-ctx-tile-v">{microLabels[microbiotaSourceMode]}</span>
-        </button>
+            <button
+              type="button"
+              className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--amber${open === "micro" ? " physiology-pro2-ctx-tile--open" : ""}`}
+              onClick={() => toggle("micro")}
+            >
+              <div className="physiology-pro2-ctx-tile-head">
+                <span className="physiology-pro2-ctx-tile-ico-wrap">
+                  <Bug className="physiology-pro2-ctx-tile-ico" aria-hidden />
+                </span>
+                <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
+              </div>
+              <span className="physiology-pro2-ctx-tile-k">{t("tileMicrobiota")}</span>
+              <span className="physiology-pro2-ctx-tile-v">{microLabels[microbiotaSourceMode]}</span>
+            </button>
 
-        <button
-          type="button"
-          className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--rose${open === "dys" ? " physiology-pro2-ctx-tile--open" : ""}${microbiotaSourceMode !== "preset" ? " physiology-pro2-ctx-tile--dim" : ""}`}
-          onClick={() => microbiotaSourceMode === "preset" && toggle("dys")}
-          disabled={microbiotaSourceMode !== "preset"}
-        >
-          <div className="physiology-pro2-ctx-tile-head">
-            <span className="physiology-pro2-ctx-tile-ico-wrap">
-              <Dna className="physiology-pro2-ctx-tile-ico" aria-hidden />
-            </span>
-            <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
-          </div>
-          <span className="physiology-pro2-ctx-tile-k">{t("tileDysbiosis")}</span>
-          <span className="physiology-pro2-ctx-tile-v">{dysLabels[dysbiosisPreset]}</span>
-        </button>
+            <button
+              type="button"
+              className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--rose${open === "dys" ? " physiology-pro2-ctx-tile--open" : ""}${microbiotaSourceMode !== "preset" ? " physiology-pro2-ctx-tile--dim" : ""}`}
+              onClick={() => microbiotaSourceMode === "preset" && toggle("dys")}
+              disabled={microbiotaSourceMode !== "preset"}
+            >
+              <div className="physiology-pro2-ctx-tile-head">
+                <span className="physiology-pro2-ctx-tile-ico-wrap">
+                  <Dna className="physiology-pro2-ctx-tile-ico" aria-hidden />
+                </span>
+                <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
+              </div>
+              <span className="physiology-pro2-ctx-tile-k">{t("tileDysbiosis")}</span>
+              <span className="physiology-pro2-ctx-tile-v">{dysLabels[dysbiosisPreset]}</span>
+            </button>
 
-        <button
-          type="button"
-          className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--emerald${open === "fatox" ? " physiology-pro2-ctx-tile--open" : ""}${lactateRerMode !== "auto" ? " physiology-pro2-ctx-tile--dim" : ""}`}
-          onClick={() => lactateRerMode === "auto" && toggle("fatox")}
-          disabled={lactateRerMode !== "auto"}
-        >
-          <div className="physiology-pro2-ctx-tile-head">
-            <span className="physiology-pro2-ctx-tile-ico-wrap">
-              <SlidersHorizontal className="physiology-pro2-ctx-tile-ico" aria-hidden />
-            </span>
-            <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
-          </div>
-          <span className="physiology-pro2-ctx-tile-k">{t("tileFatOxAdapt")}</span>
-          <span className="physiology-pro2-ctx-tile-v">{fatOxAdaptation.toFixed(2)}</span>
-        </button>
+            <button
+              type="button"
+              className={`physiology-pro2-ctx-tile physiology-pro2-ctx-tile--emerald${open === "fatox" ? " physiology-pro2-ctx-tile--open" : ""}${lactateRerMode !== "auto" ? " physiology-pro2-ctx-tile--dim" : ""}`}
+              onClick={() => lactateRerMode === "auto" && toggle("fatox")}
+              disabled={lactateRerMode !== "auto"}
+            >
+              <div className="physiology-pro2-ctx-tile-head">
+                <span className="physiology-pro2-ctx-tile-ico-wrap">
+                  <SlidersHorizontal className="physiology-pro2-ctx-tile-ico" aria-hidden />
+                </span>
+                <ChevronDown className="physiology-pro2-ctx-tile-chev" aria-hidden />
+              </div>
+              <span className="physiology-pro2-ctx-tile-k">{t("tileFatOxAdapt")}</span>
+              <span className="physiology-pro2-ctx-tile-v">{fatOxAdaptation.toFixed(2)}</span>
+            </button>
+          </>
+        ) : null}
       </div>
 
       {open === "sport" ? (
