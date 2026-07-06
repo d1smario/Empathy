@@ -7,7 +7,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SessionRouteMap } from "@/components/training/SessionRouteMap";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
-import { TrainingSingleTraceChart } from "@/components/training/TrainingSingleTraceChart";
+import {
+  SessionMultiAxisChart,
+  type MultiAxisChannel,
+  type MultiAxisSeries,
+} from "@/components/training/SessionMultiAxisChart";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -24,8 +28,6 @@ import {
   isGeoPoint,
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
-import { cn } from "@/lib/cn";
-import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -45,33 +47,18 @@ const CHART_CHANNELS: ReadonlySet<ChartChannel> = new Set([
   "vertical_speed_mps",
 ]);
 
-/** Colori segnale canonici da chart-theme (un hex per segnale in tutta l'app). */
-const SERIES_COLOR: Record<ChartChannel, string> = {
-  power: CHART_SIGNAL.power,
-  hr: CHART_SIGNAL.hr,
-  speed: CHART_SIGNAL.speed,
-  cadence: CHART_SIGNAL.cadence,
-  altitude: CHART_SIGNAL.altitude,
-  temperature: "#fbbf24", // amber-400 — nessun segnale canonico dedicato
-  distance: "#60a5fa", // blue-400 (ciclo CHART_SERIES)
-  pace_min_per_km: CHART_SIGNAL.speed,
-  vertical_speed_mps: CHART_SIGNAL.altitude,
-};
+/** Canali resi nell'overlay multi-asse; gli altri (distanza/passo/vel. verticale) restano nella tabella min/avg/max. */
+const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
+  "power",
+  "hr",
+  "speed",
+  "cadence",
+  "altitude",
+  "temperature",
+]);
 
 /** Canali chart richiesti al DB (colonna `channel` di `executed_workout_series`). */
 const SESSION_SERIES_CHART_CHANNELS: readonly string[] = Array.from(CHART_CHANNELS);
-
-const SERIES_LABEL: Record<ChartChannel, string> = {
-  power: "Power",
-  hr: "HR",
-  speed: "Speed",
-  cadence: "Cadence",
-  altitude: "Altitude",
-  temperature: "Temperature",
-  distance: "Distance",
-  pace_min_per_km: "Pace",
-  vertical_speed_mps: "Vertical speed",
-};
 
 type ExtendedSeriesBundle = {
   channel: ChartChannel;
@@ -197,24 +184,26 @@ function SessionDetailCard({
     return Array.from(byChannel.values());
   }, [vm.series, dbSeries]);
 
-  const seriesChannels = allSeries.map((s) => s.channel);
-  const [activeChannel, setActiveChannel] = useState<ChartChannel | null>(seriesChannels[0] ?? null);
-
-  useEffect(() => {
-    if (activeChannel && seriesChannels.includes(activeChannel)) return;
-    setActiveChannel(seriesChannels[0] ?? null);
-  }, [activeChannel, seriesChannels]);
-
-  const activeSeries = useMemo(
-    () => (activeChannel ? allSeries.find((s) => s.channel === activeChannel) ?? null : null),
-    [activeChannel, allSeries],
+  // Serie dell'overlay multi-asse (potenza/FC/velocità/cadenza/quota/temp) + etichette
+  // temporali comuni. Gli altri canali restano nella tabella min/avg/max sopra.
+  const overlaySeries = useMemo<MultiAxisSeries[]>(
+    () =>
+      allSeries
+        .filter((s) => MULTI_AXIS_CHANNELS.has(s.channel))
+        .map((s) => ({ channel: s.channel as MultiAxisChannel, unit: s.unit, values: s.values })),
+    [allSeries],
   );
-
-  const seriesLabels = useMemo(() => {
-    if (!activeSeries) return [] as string[];
-    const total = activeSeries.values.length;
-    return activeSeries.values.map((_, i) => formatElapsedLabel(i, total, dayExecutedDuration));
-  }, [activeSeries, dayExecutedDuration]);
+  const overlayMaxLen = useMemo(
+    () => overlaySeries.reduce((m, s) => Math.max(m, s.values.length), 0),
+    [overlaySeries],
+  );
+  const overlayLabels = useMemo(
+    () =>
+      Array.from({ length: overlayMaxLen }, (_, i) =>
+        formatElapsedLabel(i, overlayMaxLen, dayExecutedDuration),
+      ),
+    [overlayMaxLen, dayExecutedDuration],
+  );
 
   return (
     <div className="space-y-5">
@@ -302,40 +291,9 @@ function SessionDetailCard({
         </div>
       ) : null}
 
-      {allSeries.length > 0 && activeChannel ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {allSeries.map((s) => {
-              const isActive = activeChannel === s.channel;
-              return (
-                <button
-                  key={s.channel}
-                  type="button"
-                  onClick={() => setActiveChannel(s.channel)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition",
-                    isActive
-                      ? "border-white/40 bg-white/10 text-white"
-                      : "border-white/10 bg-black/40 text-gray-400 hover:border-white/25 hover:text-gray-200",
-                  )}
-                  style={isActive ? { borderColor: SERIES_COLOR[s.channel], color: SERIES_COLOR[s.channel] } : undefined}
-                >
-                  {SERIES_LABEL[s.channel]}
-                </button>
-              );
-            })}
-          </div>
-          {activeSeries ? (
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-              <TrainingSingleTraceChart
-                label={SERIES_LABEL[activeSeries.channel]}
-                color={SERIES_COLOR[activeSeries.channel]}
-                values={activeSeries.values}
-                labels={seriesLabels}
-                unit={activeSeries.unit}
-              />
-            </div>
-          ) : null}
+      {overlaySeries.length > 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
