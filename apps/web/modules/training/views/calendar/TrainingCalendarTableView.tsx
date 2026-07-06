@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, Dumbbell } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
 import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
@@ -30,9 +30,8 @@ const MONTH_IT = [
   "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
   "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
 ];
-
-const WINDOW_BACK_DAYS = 180;
-const WINDOW_FWD_DAYS = 60;
+/** Buffer di giorni oltre il mese: scorrendo si vede un po' prima/dopo. */
+const MONTH_EDGE_DAYS = 7;
 
 type WindowData = { planned: PlannedWorkout[]; executed: ExecutedWorkout[] };
 let windowCacheKey: string | null = null;
@@ -84,7 +83,17 @@ export default function TrainingCalendarTableView() {
   const t = useTranslations("TrainingCalendarPageView");
   const todayKey = localDayKey(new Date());
 
-  const [data, setData] = useState<WindowData>(() => windowCache ?? { planned: [], executed: [] });
+  // Mese visualizzato (default: il mese di oggi). «Mese precedente/successivo»
+  // lo spostano; scorrendo dentro il mese si vede prima/dopo la data di oggi.
+  const [monthCursor, setMonthCursor] = useState<Date>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const isCurrentMonth =
+    monthCursor.getFullYear() === new Date().getFullYear() && monthCursor.getMonth() === new Date().getMonth();
+  const monthTitle = `${MONTH_IT[monthCursor.getMonth()]} ${monthCursor.getFullYear()}`;
+
+  const [data, setData] = useState<WindowData>({ planned: [], executed: [] });
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -96,8 +105,10 @@ export default function TrainingCalendarTableView() {
       return;
     }
     let alive = true;
-    const from = addDaysKey(todayKey, -WINDOW_BACK_DAYS);
-    const to = addDaysKey(todayKey, WINDOW_FWD_DAYS);
+    const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
+    const monthEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0);
+    const from = addDaysKey(localDayKey(monthStart), -MONTH_EDGE_DAYS);
+    const to = addDaysKey(localDayKey(monthEnd), MONTH_EDGE_DAYS);
     setLoading(true);
     loadTrainingWindow(athleteId, from, to)
       .then((d) => {
@@ -114,7 +125,7 @@ export default function TrainingCalendarTableView() {
     return () => {
       alive = false;
     };
-  }, [athleteId, ctxLoading, todayKey]);
+  }, [athleteId, ctxLoading, monthCursor]);
 
   const days = useMemo<DayGroup[]>(() => {
     const plannedByDate = new Map<string, PlannedWorkout[]>();
@@ -162,6 +173,31 @@ export default function TrainingCalendarTableView() {
 
   const loadingFirst = (ctxLoading || loading) && days.length === 0;
 
+  // Centra la pagina su OGGI quando si guarda il mese corrente (primo carico e
+  // click «Oggi»). Cambiando mese con le frecce NON si ricentra (stai sfogliando).
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const wantScrollToTodayRef = useRef(true);
+  useEffect(() => {
+    if (loading || days.length === 0 || !isCurrentMonth || !wantScrollToTodayRef.current) return;
+    const el = listRef.current?.querySelector<HTMLElement>("[data-today]");
+    if (el) el.scrollIntoView({ block: "center" });
+    wantScrollToTodayRef.current = false;
+  }, [loading, days, isCurrentMonth]);
+
+  const goPrevMonth = () => {
+    wantScrollToTodayRef.current = false;
+    setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1));
+  };
+  const goNextMonth = () => {
+    wantScrollToTodayRef.current = false;
+    setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1));
+  };
+  const goToday = () => {
+    wantScrollToTodayRef.current = true;
+    const d = new Date();
+    setMonthCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+  };
+
   return (
     <Pro2ModulePageShell
       eyebrow={t("eyebrow")}
@@ -176,6 +212,38 @@ export default function TrainingCalendarTableView() {
         {isMobileApp ? null : <TrainingSubnav />}
       </div>
 
+      {/* Mese visualizzato + navigazione manuale mese precedente/successivo. */}
+      <div className="mb-4 flex items-center gap-2">
+        <span className="text-sm font-bold capitalize text-white">{monthTitle}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Mese precedente"
+            onClick={goPrevMonth}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </button>
+          {!isCurrentMonth ? (
+            <button
+              type="button"
+              onClick={goToday}
+              className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/20"
+            >
+              Oggi
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Mese successivo"
+            onClick={goNextMonth}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      </div>
+
       {loadingFirst ? (
         <div className="min-h-[30vh] animate-pulse rounded-2xl bg-white/[0.03]" aria-hidden />
       ) : days.length === 0 ? (
@@ -183,9 +251,9 @@ export default function TrainingCalendarTableView() {
           Nessuna attività.
         </div>
       ) : (
-        <div className="space-y-5">
+        <div ref={listRef} className="space-y-5">
           {days.map((day) => (
-            <div key={day.dayKey}>
+            <div key={day.dayKey} data-today={day.isToday ? "1" : undefined} className="scroll-mt-24">
               <div className="mb-1.5 flex items-baseline gap-2">
                 <span className={`text-sm font-bold capitalize ${day.isToday ? "text-sky-300" : "text-gray-300"}`}>
                   {day.dayLabel}
