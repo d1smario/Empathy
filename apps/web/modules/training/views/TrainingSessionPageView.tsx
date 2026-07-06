@@ -19,6 +19,7 @@ import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewMode
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -50,6 +51,7 @@ export default function TrainingSessionPageView() {
   const dateValid = ISO_DATE.test(date);
 
   const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  const athleteFtpWatts = useAthleteFtpWatts(athleteId);
   // Diagnostica motore (read-spine, twin, provenance) solo per staff: l'atleta non
   // deve mai vedere gergo interno. Vedi regole di visibilità atleta.
   const showTech = role === "coach" || adminScoped;
@@ -247,7 +249,12 @@ export default function TrainingSessionPageView() {
                 mappa percorso, min/avg/max. Tutto adattivo: mostra solo i canali con
                 dati reali (niente grafici finti). */}
             {executed.length > 0 ? (
-              <CalendarDaySessionDetail selectedDate={date} dayExecuted={executed} athleteId={athleteId} />
+              <CalendarDaySessionDetail
+                selectedDate={date}
+                dayExecuted={executed}
+                athleteId={athleteId}
+                athleteFtpWatts={athleteFtpWatts}
+              />
             ) : null}
 
             {/* Pianificato: cosa prevede la seduta (scheda palestra / struttura blocchi).
@@ -263,7 +270,12 @@ export default function TrainingSessionPageView() {
                 <ul className="space-y-4">
                   {planned.map((w) => (
                     <li key={w.id}>
-                      <CalendarPlannedBuilderDetail workout={w} athleteId={athleteId} coachControls={showTech} />
+                      <CalendarPlannedBuilderDetail
+                        workout={w}
+                        athleteId={athleteId}
+                        athleteFtpWatts={athleteFtpWatts}
+                        coachControls={showTech}
+                      />
                     </li>
                   ))}
                 </ul>

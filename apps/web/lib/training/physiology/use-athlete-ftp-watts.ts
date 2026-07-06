@@ -18,10 +18,25 @@ export function useAthleteFtpWatts(athleteId: string | null | undefined): number
       try {
         const vm = await fetchProfileViewModel(athleteId);
         if (cancelled) return;
-        const phys =
-          vm.physiologyState?.physiologicalProfile ?? vm.athleteMemory?.physiology?.physiologicalProfile ?? null;
-        const next = phys?.ftpWatts ?? null;
-        setFtpW(isUsableAthleteFtpWatts(next) ? Math.round(next) : null);
+        // FTP da tutte le fonti reali (come ProfilePageView): il payload lo espone in
+        // physiology.ftp_watts e physiologyState.metabolicProfile.ftpWatts, non sempre
+        // in physiologicalProfile → leggerne una sola faceva sparire l'FTP (e con esso IF/kcal).
+        const ps = vm.physiologyState;
+        const candidates: unknown[] = [
+          ps?.metabolicProfile?.ftpWatts,
+          ps?.physiologicalProfile?.ftpWatts,
+          vm.athleteMemory?.physiology?.physiologicalProfile?.ftpWatts,
+          (vm.physiology as Record<string, unknown> | null)?.ftp_watts,
+        ];
+        let next: number | null = null;
+        for (const candidate of candidates) {
+          const n = Number(candidate);
+          if (isUsableAthleteFtpWatts(n)) {
+            next = Math.round(n);
+            break;
+          }
+        }
+        setFtpW(next);
       } catch {
         if (!cancelled) setFtpW(null);
       }

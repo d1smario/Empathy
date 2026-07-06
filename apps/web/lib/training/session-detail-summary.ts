@@ -174,6 +174,7 @@ function buildKpiTiles(
   trace: Record<string, unknown> | null,
   powerStats: { avg: number | null },
   hrStats: { avg: number | null },
+  ftpW: number | null,
 ): SessionKpiTile[] {
   const distanceKm = pickMetric(trace, ["distance_km", "distanceKm", "km"]);
   const tiles: SessionKpiTile[] = [];
@@ -228,6 +229,15 @@ function buildKpiTiles(
     value: trainingLoad > 0 ? fmtInt(trainingLoad) : "—",
     accent: "violet",
   });
+
+  // IF (Intensity Factor) = potenza normalizzata / FTP, quando potenza + FTP ci sono.
+  const npForIf = pickMetric(trace, ["normalized_power_w", "np_w", "weighted_avg_power"]) ?? powerStats.avg;
+  if (ftpW != null && Number.isFinite(ftpW) && ftpW > 0 && npForIf != null && npForIf > 0) {
+    const intensityFactor = npForIf / ftpW;
+    if (Number.isFinite(intensityFactor) && intensityFactor > 0 && intensityFactor < 3) {
+      tiles.push({ label: "IF", value: intensityFactor.toFixed(2), accent: "sky" });
+    }
+  }
 
   if (w.kj != null) {
     tiles.push({
@@ -396,7 +406,10 @@ function buildSecondaryTable(trace: Record<string, unknown> | null): {
   return { rows, series };
 }
 
-export function buildSessionDetailVM(workout: ExecutedWorkout): SessionDetailViewModel {
+export function buildSessionDetailVM(
+  workout: ExecutedWorkout,
+  opts?: { ftpW?: number | null },
+): SessionDetailViewModel {
   const trace = traceRecord(workout);
   const sport =
     pickText(trace, ["sport", "activity_type", "activityType"]) ?? null;
@@ -414,7 +427,7 @@ export function buildSessionDetailVM(workout: ExecutedWorkout): SessionDetailVie
     max: ["hr_max_bpm", "max_hr", "max_heart_rate", "max_heartrate"],
   });
 
-  const kpi = buildKpiTiles(workout, trace, powerStats, hrStats);
+  const kpi = buildKpiTiles(workout, trace, powerStats, hrStats, opts?.ftpW ?? null);
   const { rows, series } = buildSecondaryTable(trace);
 
   const fileName = pickText(trace, ["imported_file_name"]);

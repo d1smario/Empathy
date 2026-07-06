@@ -248,6 +248,7 @@ export default function TrainingCalendarPageView() {
                 selectedDate={cal.selectedDate}
                 dayExecuted={cal.dayExecuted}
                 athleteId={cal.athleteId}
+                athleteFtpWatts={cal.athleteFtpWatts}
               />
             </Pro2Accordion>
             <Pro2Accordion

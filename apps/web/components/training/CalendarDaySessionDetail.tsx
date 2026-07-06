@@ -165,11 +165,13 @@ function SessionDetailCard({
   workout,
   dayExecutedDuration,
   athleteId,
+  athleteFtpWatts,
 }: {
   vm: SessionDetailViewModel;
   workout: ExecutedWorkout;
   dayExecutedDuration: number | null;
   athleteId: string | null | undefined;
+  athleteFtpWatts: number | null | undefined;
 }) {
   const t = useTranslations("CalendarDaySessionDetail");
   const traceRoutePoints = useMemo(() => geoPointsFromWorkoutTrace(workout), [workout]);
@@ -289,6 +291,41 @@ function SessionDetailCard({
     return rows.length > 0 ? rows : vm.secondary;
   }, [allSeries, vm.secondary]);
 
+  // Potenza media + IF dalla serie HD reale (ground truth): alcuni trace_summary hanno
+  // l'avg potenza sottostimato → correggiamo con l'avg dei campioni per coerenza col grafico.
+  const seriesPowerAvg = useMemo(() => {
+    const row = secondaryRows.find((r) => r.channel === "power");
+    return row && row.avg != null && Number.isFinite(row.avg) ? row.avg : null;
+  }, [secondaryRows]);
+  const kpiTiles = useMemo<SessionKpiTile[]>(() => {
+    if (seriesPowerAvg == null) return vm.kpi;
+    const ftp = athleteFtpWatts ?? null;
+    const ifValue = ftp != null && ftp > 0 ? seriesPowerAvg / ftp : null;
+    const ifTile: SessionKpiTile | null =
+      ifValue != null && ifValue > 0 && ifValue < 3
+        ? { label: "IF", value: ifValue.toFixed(2), accent: "sky" }
+        : null;
+    const out: SessionKpiTile[] = [];
+    let ifDone = false;
+    for (const tile of vm.kpi) {
+      if (tile.label === "IF") {
+        // Sostituisci l'IF del VM (da trace, spesso assente) con quello dalle serie.
+        if (ifTile && !ifDone) {
+          out.push(ifTile);
+          ifDone = true;
+        }
+        continue;
+      }
+      out.push(tile.label === "Potenza media" ? { ...tile, value: Math.round(seriesPowerAvg).toString() } : tile);
+      // Inserisci l'IF subito dopo il Carico se il VM non l'aveva.
+      if (ifTile && !ifDone && tile.label === "Carico") {
+        out.push(ifTile);
+        ifDone = true;
+      }
+    }
+    return out;
+  }, [vm.kpi, seriesPowerAvg, athleteFtpWatts]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -311,10 +348,10 @@ function SessionDetailCard({
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {vm.kpi.map((tile) => (
+        {kpiTiles.map((tile) => (
           <KpiTile key={tile.label} tile={tile} />
         ))}
-        {distanceMeters != null && !vm.kpi.some((t) => t.label === "Distanza") ? (
+        {distanceMeters != null && !kpiTiles.some((t) => t.label === "Distanza") ? (
           <KpiTile
             tile={{
               label: "Distanza",
@@ -409,16 +446,26 @@ export type CalendarDaySessionDetailProps = {
   selectedDate: string;
   dayExecuted: ExecutedWorkout[];
   athleteId?: string | null;
+  /** FTP atleta (W) per calcolare l'IF nell'header KPI. Opzionale: senza, l'IF non compare. */
+  athleteFtpWatts?: number | null;
 };
 
-export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId }: CalendarDaySessionDetailProps) {
+export function CalendarDaySessionDetail({
+  selectedDate,
+  dayExecuted,
+  athleteId,
+  athleteFtpWatts,
+}: CalendarDaySessionDetailProps) {
   const t = useTranslations("CalendarDaySessionDetail");
   const sortedExecuted = useMemo(() => {
     const primary = pickPrimaryExecutedWorkout(dayExecuted);
     if (!primary) return dayExecuted;
     return [primary, ...dayExecuted.filter((w) => w.id !== primary.id)];
   }, [dayExecuted]);
-  const vms = useMemo(() => sortedExecuted.map((w) => buildSessionDetailVM(w)), [sortedExecuted]);
+  const vms = useMemo(
+    () => sortedExecuted.map((w) => buildSessionDetailVM(w, { ftpW: athleteFtpWatts ?? null })),
+    [sortedExecuted, athleteFtpWatts],
+  );
   const subtitle = t("subtitle", { count: dayExecuted.length, date: selectedDate });
 
   if (dayExecuted.length === 0) {
@@ -456,6 +503,7 @@ export function CalendarDaySessionDetail({ selectedDate, dayExecuted, athleteId 
               workout={w}
               dayExecutedDuration={duration}
               athleteId={athleteId}
+              athleteFtpWatts={athleteFtpWatts}
             />
           </Pro2SectionCard>
         );

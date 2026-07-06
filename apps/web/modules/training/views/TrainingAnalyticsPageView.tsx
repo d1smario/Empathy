@@ -14,6 +14,7 @@ import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverag
 import type { RecoverySummary } from "@/lib/reality/recovery-summary";
 import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
 import { fetchTrainingAnalyticsRows } from "@/modules/training/services/training-analytics-api";
 import {
   OVERLAY_METRIC_DEFS,
@@ -150,6 +151,7 @@ let trainingAnalyticsCache: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows
 export default function TrainingAnalyticsPageView() {
   const t = useTranslations("TrainingAnalyticsPageView");
   const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
+  const athleteFtpWatts = useAthleteFtpWatts(athleteId);
   /** Contenuti tecnici (coperture, diagnostica) visibili solo a coach/admin. */
   const showTech = role === "coach" || adminScoped;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
@@ -684,6 +686,7 @@ export default function TrainingAnalyticsPageView() {
                     selectedDate={focusDay}
                     dayExecuted={focusDayExecuted}
                     athleteId={athleteId}
+                    athleteFtpWatts={athleteFtpWatts}
                   />
                 ) : null}
                 <TrainingCalendarAnalyzer
