@@ -2276,7 +2276,6 @@
     "subsecEnergySubstrates": "Energy substrates",
     "subsecMetabolismGlycolytic": "Metabolism · glycolytic index",
     "glycolyticIndexProxy": "Glycolytic index (proxy)",
-    "glycolyticProxyDescription": "Dimensionless proxy from the CP engine (typical band ~0.3–0.8), not laboratory V̇La max. Schematic peak blood lactate (short maximal effort): ~{peakLac} mmol/L.",
     "subsecEnergyCapacities": "Energy capacities",
     "subsecFitQualityPhenotype": "Fit quality & phenotype",
     "tableColZone": "Zone",

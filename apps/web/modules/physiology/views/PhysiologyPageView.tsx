@@ -1247,13 +1247,63 @@ export default function MetabolicLabPage() {
 
           {cpCurveHasData ? (
             <>
-          <MetabolicPowerComponentsStackChart
-            rows={cpModel.powerComponents}
-            engineRevision={METABOLIC_CP_ENGINE_REVISION}
-          />
+          {/* Le due letture derivate dalla stessa curva CP, affiancate per
+              risparmiare verticale (feedback 2026-07): potenza per durata a
+              sinistra, substrati per zona a destra. */}
+          <div className="physiology-cp-derived-split">
+            <MetabolicPowerComponentsStackChart
+              rows={cpModel.powerComponents}
+              engineRevision={METABOLIC_CP_ENGINE_REVISION}
+            />
 
-          {/* Tabella dettagliata = stessi dati del grafico sopra in forma
-              motore (kJ, formula): solo staff (audit 2026-07). */}
+            <section className="metabolic-comp-stack-card" aria-label={t("zonesSubstratesSummary")}>
+              <div className="metabolic-comp-stack-head">
+                <h4 className="metabolic-comp-stack-title">{t("zonesSubstratesSummary")}</h4>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[22rem] text-xs">
+                  <thead>
+                    <tr>
+                      <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colZone")}</th>
+                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Range W</th>
+                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colEstimatedRer")}</th>
+                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kcal/h</th>
+                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">CHO g/h</th>
+                      <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">FAT g/h</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {cpModel.substrateTable.map((z) => {
+                      const zoneColor = zoneColorFromName(z.name);
+                      return (
+                      <tr key={z.name} style={{ background: `${zoneColor}10` }}>
+                        <td className="px-3 py-2">
+                          <span
+                            className="builder-zone-chip"
+                            style={{
+                              borderColor: zoneColor,
+                              color: zoneColor,
+                              backgroundColor: `${zoneColor}22`,
+                            }}
+                          >
+                            {z.name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.low.toFixed(0)}-{z.high.toFixed(0)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.rer.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.kcalH.toFixed(0)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.choG.toFixed(1)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.fatG.toFixed(1)}</td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          {/* Tabella dettagliata = stessi dati del grafico in forma motore
+              (kJ, formula): solo staff (audit 2026-07). */}
           {showTech ? (
           <details className="collapsible-card" style={{ marginBottom: "14px" }}>
             <summary>{t("powerComponentsSummary")}</summary>
@@ -1300,48 +1350,6 @@ export default function MetabolicLabPage() {
           </details>
           ) : null}
 
-          <details className="collapsible-card">
-            <summary>{t("zonesSubstratesSummary")}</summary>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem] text-xs">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 text-left font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colZone")}</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Range W</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{t("colEstimatedRer")}</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">kcal/h</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">CHO g/h</th>
-                    <th className="px-3 py-2 text-right font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">FAT g/h</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {cpModel.substrateTable.map((z) => {
-                    const zoneColor = zoneColorFromName(z.name);
-                    return (
-                    <tr key={z.name} style={{ background: `${zoneColor}10` }}>
-                      <td className="px-3 py-2">
-                        <span
-                          className="builder-zone-chip"
-                          style={{
-                            borderColor: zoneColor,
-                            color: zoneColor,
-                            backgroundColor: `${zoneColor}22`,
-                          }}
-                        >
-                          {z.name}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.low.toFixed(0)}-{z.high.toFixed(0)}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.rer.toFixed(2)}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.kcalH.toFixed(0)}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.choG.toFixed(1)}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{z.fatG.toFixed(1)}</td>
-                    </tr>
-                  )})}
-                </tbody>
-              </table>
-            </div>
-          </details>
             </>
           ) : null}
 

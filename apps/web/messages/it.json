@@ -2276,7 +2276,6 @@
     "subsecEnergySubstrates": "Substrati energetici",
     "subsecMetabolismGlycolytic": "Metabolismo · indice glicolitico",
     "glycolyticIndexProxy": "Indice glicolitico (proxy)",
-    "glycolyticProxyDescription": "Proxy adimensionale dal motore CP (banda tipica ~0.3–0.8), non V̇La max di laboratorio. Picco lattato ematico schematico (sforzo massimo breve): ~{peakLac} mmol/L.",
     "subsecEnergyCapacities": "Capacità energetiche",
     "subsecFitQualityPhenotype": "Qualità fit & fenotipo",
     "tableColZone": "Zona",

@@ -4022,6 +4022,22 @@ body {
   }
 }
 
+/* Grafico «tre componenti» + tabella «zone e substrati» affiancati: le due
+   letture derivate dalla stessa curva CP. Sotto i 900px vanno in colonna. */
+.physiology-cp-derived-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .physiology-cp-derived-split {
+    grid-template-columns: 1fr;
+  }
+}
+
 .physiology-pro2-lab-metric-row--3 {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }

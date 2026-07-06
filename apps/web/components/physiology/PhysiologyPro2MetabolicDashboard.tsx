@@ -32,7 +32,6 @@ import {
 } from "recharts";
 import type { MetabolicProfileOutput, ZoneRow } from "@/lib/engines/critical-power-engine";
 import { labelMetabolicFitModel } from "@/lib/engines/critical-power-engine";
-import { estimatePeakBloodLactateMmol } from "@/lib/physiology/lactate-steady-state-curve";
 import {
   CHART_AXIS,
   CHART_FONT,
@@ -162,7 +161,6 @@ export function PhysiologyPro2MetabolicDashboard({
     [cpPointDefs, cpInputs],
   );
   const p5W = parseW(cpInputs["5s"] ?? "");
-  const peakLacHint = estimatePeakBloodLactateMmol(model.vlamax);
   const curveData = cpPointDefs.map((p) => ({
     label: p.label,
     sec: p.sec,
@@ -283,9 +281,6 @@ export function PhysiologyPro2MetabolicDashboard({
             <Zap className="physiology-pro2-lab-metric-ico" aria-hidden />
             <div className="physiology-pro2-lab-metric-label">{t("glycolyticIndexProxy")}</div>
             <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--vla">{model.vlamax.toFixed(2)}</div>
-            <p className="mt-1 max-w-xl text-[0.7rem] leading-snug text-gray-500">
-              {t("glycolyticProxyDescription", { peakLac: peakLacHint.toFixed(1) })}
-            </p>
           </div>
         </div>
       </div>
