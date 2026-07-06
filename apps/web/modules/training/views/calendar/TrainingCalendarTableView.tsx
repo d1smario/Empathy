@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -206,6 +206,26 @@ export default function TrainingCalendarTableView() {
 
   const loadingFirst = (ctxLoading || loading) && rows.length === 0;
 
+  // All'apertura la lista si punta su OGGI (prima riga visibile); se oggi non ha
+  // attività, scende in fondo (le più recenti). Scroll una volta sola per carico.
+  const scrollBoxRef = useRef<HTMLDivElement | null>(null);
+  const didScrollRef = useRef(false);
+  useEffect(() => {
+    if (didScrollRef.current || loading || rows.length === 0) return;
+    const box = scrollBoxRef.current;
+    if (!box) return;
+    const els = box.querySelectorAll<HTMLElement>('[data-today="1"]');
+    const visible = Array.from(els).find((e) => e.offsetParent !== null);
+    if (visible) {
+      const boxRect = box.getBoundingClientRect();
+      const elRect = visible.getBoundingClientRect();
+      box.scrollTop += elRect.top - boxRect.top - 6;
+    } else {
+      box.scrollTop = box.scrollHeight;
+    }
+    didScrollRef.current = true;
+  }, [loading, rows.length]);
+
   return (
     <Pro2ModulePageShell
       eyebrow={t("eyebrow")}
@@ -232,7 +252,10 @@ export default function TrainingCalendarTableView() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+      <div
+        ref={scrollBoxRef}
+        className="max-h-[34rem] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02]"
+      >
         {loadingFirst ? (
           <div className="min-h-[30vh] animate-pulse bg-white/[0.03]" aria-hidden />
         ) : rows.length === 0 ? (
@@ -245,7 +268,7 @@ export default function TrainingCalendarTableView() {
             {/* Desktop: tabella. Mobile: stessa roba come lista di card (sotto). */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[42rem] border-collapse text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-[#0c0c12]">
                   <tr className="border-b border-white/10 text-left">
                     <th className="px-4 py-2.5 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Giorno</th>
                     <th className="px-4 py-2.5 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">Attività</th>
@@ -268,6 +291,7 @@ export default function TrainingCalendarTableView() {
                           </tr>
                         ) : null}
                         <tr
+                          data-today={r.isToday ? "1" : undefined}
                           className={`group border-b border-white/[0.06] transition-colors hover:bg-white/[0.04] ${
                             r.isToday ? "bg-sky-500/[0.06]" : ""
                           }`}
@@ -344,7 +368,11 @@ export default function TrainingCalendarTableView() {
               {rows.map((r, idx) => {
                 const href = productHrefForPathname(`/training/session/${r.dayKey}`, pathname);
                 return (
-                  <li key={`m-${r.dayKey}-${idx}`} className={r.isToday ? "bg-sky-500/[0.06]" : ""}>
+                  <li
+                    key={`m-${r.dayKey}-${idx}`}
+                    data-today={r.isToday ? "1" : undefined}
+                    className={r.isToday ? "bg-sky-500/[0.06]" : ""}
+                  >
                     {r.monthHeader ? (
                       <div className="bg-white/[0.03] px-3 py-1 font-mono text-[0.58rem] font-bold uppercase tracking-[0.2em] text-sky-300/80">
                         {r.monthHeader}
