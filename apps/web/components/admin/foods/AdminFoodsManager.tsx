@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil, RefreshCw, Search, Tags } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Pencil, RefreshCw, Search, Tags } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { AdminFoodEditDialog } from "@/components/admin/foods/AdminFoodEditDialog";
 import { fmtNum, MACRO_TINT, type FoodImageItem, type FoodRow } from "@/components/admin/foods/food-types";
@@ -70,6 +70,8 @@ export function AdminFoodsManager() {
 
   const [images, setImages] = useState<FoodImageItem[]>([]);
   const [imagesError, setImagesError] = useState<string | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const bulkInputRef = useRef<HTMLInputElement | null>(null);
 
   const [editing, setEditing] = useState<FoodRow | null>(null);
   const [tagsStale, setTagsStale] = useState(false);
@@ -119,24 +121,64 @@ export function AdminFoodsManager() {
     void loadFoods({ q: debouncedQ, category, offset });
   }, [loadFoods, debouncedQ, category, offset]);
 
-  // Lista immagini bucket: una volta sola, riusata dal dialog di modifica.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/foods/images", { cache: "no-store" });
-        const j = (await res.json()) as { ok?: boolean; images?: FoodImageItem[]; error?: string };
-        if (cancelled) return;
-        if (res.ok && j.ok) setImages(j.images ?? []);
-        else setImagesError(j.error ?? "Bucket immagini non disponibile.");
-      } catch {
-        if (!cancelled) setImagesError("Bucket immagini non raggiungibile.");
+  // Lista immagini bucket: riusata dal dialog di modifica e ricaricata dopo un bulk-upload.
+  const loadImages = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/foods/images", { cache: "no-store" });
+      const j = (await res.json()) as { ok?: boolean; images?: FoodImageItem[]; error?: string };
+      if (res.ok && j.ok) {
+        setImages(j.images ?? []);
+        setImagesError(null);
+      } else {
+        setImagesError(j.error ?? "Bucket immagini non disponibile.");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch {
+      setImagesError("Bucket immagini non raggiungibile.");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadImages();
+  }, [loadImages]);
+
+  // Bulk-upload libreria: carica più file in una volta nel bucket (cartella
+  // `library/`), poi ricarica l'elenco così compaiono subito in «Seleziona dal
+  // bucket» di ogni scheda. Non tocca gli alimenti.
+  const onBulkFiles = useCallback(
+    async (fileList: FileList | null) => {
+      const files = fileList ? Array.from(fileList) : [];
+      if (!files.length) return;
+      setBulkUploading(true);
+      setErr(null);
+      setInfo(null);
+      try {
+        const form = new FormData();
+        for (const f of files) form.append("files", f);
+        const res = await fetch("/api/admin/foods/bulk-upload", { method: "POST", body: form });
+        const j = (await res.json()) as {
+          ok?: boolean;
+          uploaded?: unknown[];
+          failed?: { name: string; error: string }[];
+          error?: string;
+        };
+        if (!res.ok || !j.ok) {
+          setErr(`Caricamento libreria fallito: ${j.error ?? "richiesta non riuscita."}`);
+          return;
+        }
+        const okN = j.uploaded?.length ?? 0;
+        const koN = j.failed?.length ?? 0;
+        setInfo(
+          `Libreria: ${okN} immagini caricate${koN ? `, ${koN} scartate (${j.failed!.map((f) => f.name).slice(0, 3).join(", ")}${koN > 3 ? "…" : ""})` : ""}. Ora sono in «Seleziona dal bucket».`,
+        );
+        await loadImages();
+      } catch {
+        setErr("Caricamento libreria fallito: richiesta non riuscita.");
+      } finally {
+        setBulkUploading(false);
+      }
+    },
+    [loadImages],
+  );
 
   const changeCategory = useCallback((next: string) => {
     setCategory(next);
@@ -224,6 +266,27 @@ export function AdminFoodsManager() {
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-400 transition hover:border-white/25 hover:text-white disabled:opacity-50"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden />
+            </button>
+            <input
+              ref={bulkInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void onBulkFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => bulkInputRef.current?.click()}
+              disabled={bulkUploading}
+              title="Carica più immagini nel bucket per popolare «Seleziona dal bucket»"
+              className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-200 transition hover:border-white/30 hover:bg-white/10 disabled:opacity-50"
+            >
+              <ImagePlus className={cn("h-3.5 w-3.5", bulkUploading && "animate-pulse")} aria-hidden />
+              {bulkUploading ? "Caricamento libreria…" : "Carica libreria"}
             </button>
             <button
               type="button"

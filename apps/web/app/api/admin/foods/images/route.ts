@@ -28,9 +28,10 @@ export async function GET() {
   }
 
   const listOptions = { limit: 1000, sortBy: { column: "name", order: "asc" as const } };
-  const [rootRes, fdcRes] = await Promise.all([
+  const [rootRes, fdcRes, libRes] = await Promise.all([
     admin.storage.from(BUCKET).list("", listOptions),
     admin.storage.from(BUCKET).list("fdc", listOptions),
+    admin.storage.from(BUCKET).list("library", listOptions),
   ]);
   if (rootRes.error) {
     return NextResponse.json({ ok: false as const, error: rootRes.error.message }, { status: 500 });
@@ -46,6 +47,7 @@ export async function GET() {
 
   const images = [
     ...(rootRes.data ?? []).filter(isFile).map(toImage("")),
+    ...(libRes.error ? [] : (libRes.data ?? []).filter(isFile).map(toImage("library"))),
     ...(fdcRes.error ? [] : (fdcRes.data ?? []).filter(isFile).map(toImage("fdc"))),
   ];
 
