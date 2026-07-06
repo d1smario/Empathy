@@ -1226,6 +1226,7 @@ export default function MetabolicLabPage() {
             cpInputs={cpInputs}
             onCpInputChange={(label, value) => setCpInputs((s) => ({ ...s, [label]: value }))}
             model={cpModel}
+            showTech={showTech}
           />
 
           {athleteId ? (

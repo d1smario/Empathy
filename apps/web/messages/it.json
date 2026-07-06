@@ -2281,7 +2281,9 @@
     "reportsBanner": "REPORT FISIOLOGICI · Profilo metabolico",
     "metabolicChartTitle": "Profilo metabolico · Substrati vs intensità",
     "metabolicChartHint": "% substrato in funzione della zona (modello CP + RER)",
-    "substrateAxisLabel": "% Substrato"
+    "substrateAxisLabel": "% Substrato",
+    "subsecPhenotype": "Fenotipo",
+    "phenotypeLabel": "Fenotipo"
   },
   "PhysiologyProfileStripCard": {
     "noActiveAthlete": "Nessun atleta attivo.",

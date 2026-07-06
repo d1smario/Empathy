@@ -147,6 +147,8 @@ export type PhysiologyPro2MetabolicDashboardProps = {
   cpInputs: Record<string, string>;
   onCpInputChange: (label: string, value: string) => void;
   model: MetabolicProfileOutput;
+  /** Diagnostica di fit (R²/confidence/model) visibile solo a coach/admin. */
+  showTech?: boolean;
 };
 
 export function PhysiologyPro2MetabolicDashboard({
@@ -154,6 +156,7 @@ export function PhysiologyPro2MetabolicDashboard({
   cpInputs,
   onCpInputChange,
   model,
+  showTech = false,
 }: PhysiologyPro2MetabolicDashboardProps) {
   const t = useTranslations("PhysiologyPro2MetabolicDashboard");
   const cpCurveHasData = useMemo(
@@ -318,36 +321,42 @@ export function PhysiologyPro2MetabolicDashboard({
         </div>
       </div>
 
+      {/* Fenotipo sempre (dato utile all'atleta: tipo metabolico). La diagnostica
+          di fit (R²/confidence/model) è motore → solo coach/admin (audit 2026-07). */}
       <p className="physiology-pro2-lab-subsec physiology-pro2-lab-subsec--with-ico">
         <Award className="physiology-pro2-lab-subsec-ico" aria-hidden />
-        {t("subsecFitQualityPhenotype")}
+        {showTech ? t("subsecFitQualityPhenotype") : t("subsecPhenotype")}
       </p>
       <div className="physiology-pro2-lab-metric-row physiology-pro2-lab-metric-row--4">
-        <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
-          <CheckCircle2 className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Fit quality (R²)</div>
-          <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">{model.fitR2.toFixed(3)}</div>
-        </div>
-        <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
-          <Award className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Fit confidence</div>
-          <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">
-            {model.fitConfidence.toFixed(0)}/100
-          </div>
-        </div>
-        <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
-          <BarChart3 className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Fit model</div>
-          <div
-            className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--blue"
-            title={model.fitModel}
-          >
-            {labelMetabolicFitModel(model.fitModel)}
-          </div>
-        </div>
+        {showTech ? (
+          <>
+            <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
+              <CheckCircle2 className="physiology-pro2-lab-metric-ico" aria-hidden />
+              <div className="physiology-pro2-lab-metric-label">Fit quality (R²)</div>
+              <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">{model.fitR2.toFixed(3)}</div>
+            </div>
+            <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
+              <Award className="physiology-pro2-lab-metric-ico" aria-hidden />
+              <div className="physiology-pro2-lab-metric-label">Fit confidence</div>
+              <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--green">
+                {model.fitConfidence.toFixed(0)}/100
+              </div>
+            </div>
+            <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
+              <BarChart3 className="physiology-pro2-lab-metric-ico" aria-hidden />
+              <div className="physiology-pro2-lab-metric-label">Fit model</div>
+              <div
+                className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--blue"
+                title={model.fitModel}
+              >
+                {labelMetabolicFitModel(model.fitModel)}
+              </div>
+            </div>
+          </>
+        ) : null}
         <div className="physiology-pro2-lab-metric physiology-pro2-lab-metric--compact">
           <Gauge className="physiology-pro2-lab-metric-ico" aria-hidden />
-          <div className="physiology-pro2-lab-metric-label">Phenotype</div>
+          <div className="physiology-pro2-lab-metric-label">{t("phenotypeLabel")}</div>
           <div className="physiology-pro2-lab-metric-value physiology-pro2-lab-metric-value--violet" style={{ textTransform: "capitalize" }}>
             {model.phenotype}
           </div>

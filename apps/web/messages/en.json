@@ -2281,7 +2281,9 @@
     "reportsBanner": "PHYSIOLOGY REPORTS · Metabolic profile",
     "metabolicChartTitle": "Metabolic profile · Substrates vs intensity",
     "metabolicChartHint": "% substrate as a function of zone (CP model + RER)",
-    "substrateAxisLabel": "% Substrate"
+    "substrateAxisLabel": "% Substrate",
+    "subsecPhenotype": "Phenotype",
+    "phenotypeLabel": "Phenotype"
   },
   "PhysiologyProfileStripCard": {
     "noActiveAthlete": "No active athlete.",
