@@ -867,7 +867,8 @@
     "subtitle": "{count, plural, one {# executed session} other {# executed sessions}} · {date}",
     "sessionOfTheDay": "Session of the day",
     "emptyState": "No executed session recorded for this day. Import a file (FIT/TCX/GPX) or wait for the sync from Garmin/Strava/Wahoo.",
-    "sessionNumbered": "Session · {n}"
+    "sessionNumbered": "Session · {n}",
+    "biomarkers": "Biomarkers"
   },
   "CalendarDayWellnessDetail": {
     "loadingError": "Loading error.",

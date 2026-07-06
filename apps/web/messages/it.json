@@ -867,7 +867,8 @@
     "subtitle": "{count, plural, one {# eseguito} other {# eseguiti}} · {date}",
     "sessionOfTheDay": "Sessione del giorno",
     "emptyState": "Nessuna sessione eseguita registrata per questo giorno. Importa un file (FIT/TCX/GPX) o attendi il sync da Garmin/Strava/Wahoo.",
-    "sessionNumbered": "Sessione · {n}"
+    "sessionNumbered": "Sessione · {n}",
+    "biomarkers": "Biomarcatori"
   },
   "CalendarDayWellnessDetail": {
     "loadingError": "Errore caricamento.",

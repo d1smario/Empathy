@@ -85,6 +85,31 @@ function KpiTile({ tile }: { tile: SessionKpiTile }) {
   );
 }
 
+/** Tile biomarcatore (lattato/glicemia/SmO₂): accento fucsia per distinguerlo dai KPI performance. */
+function BiomarkerTile({ tile }: { tile: SessionKpiTile }) {
+  return (
+    <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/[0.04] px-4 py-3">
+      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-fuchsia-300/70">{tile.label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+        {tile.value}
+        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{tile.unit}</span> : null}
+      </p>
+    </div>
+  );
+}
+
+/** Biomarcatori seduta da colonne `executed_workouts` (lattato/glicemia/SmO₂). Adattivo: solo valori presenti. */
+function sessionBiomarkerTiles(workout: ExecutedWorkout): SessionKpiTile[] {
+  const tiles: SessionKpiTile[] = [];
+  const lac = Number(workout.lactateMmoll);
+  const glu = Number(workout.glucoseMmol);
+  const smo = Number(workout.smo2);
+  if (Number.isFinite(lac) && lac > 0) tiles.push({ label: "Lattato", value: lac.toFixed(1), unit: "mmol/L" });
+  if (Number.isFinite(glu) && glu > 0) tiles.push({ label: "Glicemia", value: glu.toFixed(1), unit: "mmol/L" });
+  if (Number.isFinite(smo) && smo > 0) tiles.push({ label: "SmO₂", value: smo.toFixed(0), unit: "%" });
+  return tiles;
+}
+
 function SessionDetailCard({
   vm,
   workout,
@@ -240,6 +265,23 @@ function SessionDetailCard({
           />
         ) : null}
       </div>
+
+      {(() => {
+        const bio = sessionBiomarkerTiles(workout);
+        if (bio.length === 0) return null;
+        return (
+          <div className="space-y-2">
+            <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300/80">
+              {t("biomarkers")}
+            </p>
+            <div className="grid grid-cols-3 gap-3 md:max-w-lg">
+              {bio.map((tile) => (
+                <BiomarkerTile key={tile.label} tile={tile} />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {routeBundle && routeBundle.points.length > 0 ? (
         <div className="space-y-2">
