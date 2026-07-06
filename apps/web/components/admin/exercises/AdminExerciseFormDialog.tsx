@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
@@ -317,6 +317,8 @@ export function AdminExerciseFormDialog({
   const [draft, setDraft] = useState<ExerciseDraft>(() => draftFromExercise(exercise));
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isCreate = exercise === null;
 
   useEffect(() => {
@@ -329,6 +331,38 @@ export function AdminExerciseFormDialog({
 
   const set = <K extends keyof ExerciseDraft>(key: K, value: ExerciseDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
+
+  /** Upload foto → bucket `exercise-images`, aggiorna image_url e precompila il campo. */
+  const uploadImage = async (file: File) => {
+    if (!exercise?.id) return;
+    setErrors([]);
+    if (!file.type.startsWith("image/")) {
+      setErrors(["Il file deve essere un'immagine."]);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(["Immagine troppo grande: massimo 5 MB."]);
+      return;
+    }
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      form.set("exerciseId", exercise.id);
+      const res = await fetch("/api/admin/exercises/upload-image", { method: "POST", body: form });
+      const j = (await res.json()) as { ok?: boolean; publicUrl?: string; error?: string };
+      if (!res.ok || !j.ok || !j.publicUrl) {
+        setErrors([j.error ? `Upload non riuscito: ${j.error}` : "Upload non riuscito."]);
+        return;
+      }
+      set("image_url", j.publicUrl);
+    } catch {
+      setErrors(["Upload non riuscito: richiesta non riuscita."]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const save = async () => {
     const found: string[] = [];
@@ -504,6 +538,33 @@ export function AdminExerciseFormDialog({
                   placeholder="https://…"
                   className={INPUT}
                 />
+                {isCreate ? (
+                  <p className="mt-1 text-[0.65rem] text-gray-500">
+                    Salva l&apos;esercizio per abilitare il caricamento della foto dal file.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void uploadImage(f);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-100 hover:bg-orange-500/20 disabled:opacity-40"
+                    >
+                      {uploading ? "Caricamento…" : "Carica foto dal file"}
+                    </button>
+                    <span className="text-[0.6rem] text-gray-500">JPG/PNG/WebP · max 5 MB</span>
+                  </div>
+                )}
               </Field>
             </div>
           </section>
