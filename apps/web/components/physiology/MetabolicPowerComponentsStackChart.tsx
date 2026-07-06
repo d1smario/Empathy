@@ -6,14 +6,12 @@ import type { PowerComponentRow } from "@/lib/engines/critical-power-engine";
 
 export type MetabolicPowerComponentsStackChartProps = {
   rows: PowerComponentRow[];
-  /** Motore CP attivo (da `METABOLIC_CP_ENGINE_REVISION`); se assente non mostriamo la riga build. */
-  engineRevision?: string;
 };
 
 /**
  * Barre impilate: P(t) = CP + W′/t ripartito in ossidativo residuo, PCr (cinetica e⁻ᵗ/ᵗ) e glicolisi (quota iperbolica + parallela a soglia).
  */
-export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: MetabolicPowerComponentsStackChartProps) {
+export function MetabolicPowerComponentsStackChart({ rows }: MetabolicPowerComponentsStackChartProps) {
   const t = useTranslations("MetabolicPowerComponentsStackChart");
   if (!rows.length) return null;
 
@@ -74,24 +72,6 @@ export function MetabolicPowerComponentsStackChart({ rows, engineRevision }: Met
           <span className="metabolic-comp-stack-dot metabolic-comp-stack-dot--gly" /> {t("legendGlycolysis")}
         </li>
       </ul>
-      {engineRevision ? (
-        <p
-          style={{
-            margin: "10px 0 0",
-            fontSize: "0.68rem",
-            lineHeight: 1.4,
-            color: "var(--empathy-text-muted)",
-            fontFamily: "ui-monospace, monospace",
-            wordBreak: "break-word",
-          }}
-        >
-          {t.rich("engineNote", {
-            revision: engineRevision,
-            strong: (chunks) => <strong style={{ color: "var(--empathy-text-secondary)" }}>{chunks}</strong>,
-            em: (chunks) => <em>{chunks}</em>,
-          })}
-        </p>
-      ) : null}
     </div>
   );
 }

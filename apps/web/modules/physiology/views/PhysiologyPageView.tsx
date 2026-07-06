@@ -1251,10 +1251,7 @@ export default function MetabolicLabPage() {
               risparmiare verticale (feedback 2026-07): potenza per durata a
               sinistra, substrati per zona a destra. */}
           <div className="physiology-cp-derived-split">
-            <MetabolicPowerComponentsStackChart
-              rows={cpModel.powerComponents}
-              engineRevision={METABOLIC_CP_ENGINE_REVISION}
-            />
+            <MetabolicPowerComponentsStackChart rows={cpModel.powerComponents} />
 
             <section className="metabolic-comp-stack-card" aria-label={t("zonesSubstratesSummary")}>
               <div className="metabolic-comp-stack-head">

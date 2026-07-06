@@ -2038,8 +2038,7 @@
     "glycolysisTitle": "Glycolysis {w} W",
     "legendOxidative": "Oxidative",
     "legendPcr": "PCr",
-    "legendGlycolysis": "Glycolysis",
-    "engineNote": "Active engine: <strong>{revision}</strong> — if in production you still see <em>identical</em> PCr/glyc kJ across all durations, the deploy does not include this revision."
+    "legendGlycolysis": "Glycolysis"
   },
   "MultisportCpCurveSuggestionPanel": {
     "title": "Multisport · CP curve suggestion",

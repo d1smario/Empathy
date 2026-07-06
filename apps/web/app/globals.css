@@ -2256,6 +2256,10 @@ body {
 }
 
 .builder-zone-chip {
+  /* pillola: mai a capo (in colonna stretta «Z2 Endurance» si spezzava su due
+     righe sovrapposte); inline-block così border/padding restano su una riga. */
+  display: inline-block;
+  white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 999px;
   padding: 2px 8px;
