@@ -1,24 +1,18 @@
 "use client";
 
-import { BarChart3, CalendarDays, CalendarRange, LayoutDashboard, LayoutGrid, Sparkles } from "lucide-react";
+import { BarChart3, CalendarDays, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
-import {
-  MODULE_PILL_AMBER,
-  MODULE_PILL_CYAN,
-  MODULE_PILL_EMERALD,
-  MODULE_PILL_FUCHSIA,
-  MODULE_PILL_ROSE,
-  MODULE_PILL_SKY,
-} from "@/components/navigation/module-pill-styles";
+import { MODULE_PILL_FUCHSIA, MODULE_PILL_ROSE, MODULE_PILL_SKY } from "@/components/navigation/module-pill-styles";
 import { ModulePillSubnav, type ModulePillLinkItem, routeActive } from "@/components/navigation/ModulePillSubnav";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const ITEMS: ModulePillLinkItem[] = [
   {
-    key: "hub",
-    href: "/training",
-    label: "Hub",
-    icon: LayoutGrid,
-    style: MODULE_PILL_CYAN,
+    key: "calendar",
+    href: "/training/calendar",
+    label: "Calendario",
+    icon: CalendarDays,
+    style: MODULE_PILL_SKY,
   },
   {
     key: "builder",
@@ -28,45 +22,29 @@ const ITEMS: ModulePillLinkItem[] = [
     style: MODULE_PILL_FUCHSIA,
   },
   {
-    key: "calendar",
-    href: "/training/calendar",
-    label: "Calendar",
-    icon: CalendarDays,
-    style: MODULE_PILL_SKY,
-  },
-  {
-    key: "virya",
-    href: "/training/vyria",
-    label: "Virya",
-    icon: CalendarRange,
-    style: MODULE_PILL_AMBER,
-  },
-  {
     key: "analyzer",
     href: "/training/analytics",
     label: "Analyzer",
     icon: BarChart3,
     style: MODULE_PILL_ROSE,
   },
-  {
-    key: "dashboard",
-    href: "/dashboard",
-    label: "Oggi & Domani",
-    icon: LayoutDashboard,
-    style: MODULE_PILL_EMERALD,
-  },
 ];
 
 /**
- * Nav secondaria training: Hub, Builder, Calendar, Virya, Analyzer, Dashboard.
+ * Nav secondaria training (2026-07): Calendario + Analyzer per tutti; Builder
+ * solo per coach/admin (l'atleta non costruisce le sedute). Hub, Virya e
+ * «Oggi & Domani» rimossi.
  */
 export function TrainingSubnav() {
   const pathname = usePathname();
+  const { role, adminScoped } = useActiveAthlete();
+  const isCoachOrAdmin = role === "coach" || adminScoped;
+  const items = ITEMS.filter((i) => (i.key === "builder" ? isCoachOrAdmin : true));
 
   return (
     <ModulePillSubnav
       variant="link"
-      items={ITEMS}
+      items={items}
       isActive={(item) => routeActive(pathname, item.href)}
       ariaLabel="Sotto-moduli training"
     />

@@ -24,8 +24,8 @@ const NewDashboardView = dynamic(
   () => import("@/components/dashboard/NewDashboardView").then((m) => m.NewDashboardView),
   { ssr: false, loading: () => LOADING },
 );
-const TrainingHubPageView = dynamic(() => import("@/modules/training/views/TrainingHubPageView"), { ssr: false, loading: () => LOADING });
-const TrainingCalendarPageView = dynamic(() => import("@/modules/training/views/TrainingCalendarPageView"), { ssr: false, loading: () => LOADING });
+// Hub Allenamento rimosso (2026-07): la scheda training scoped mostra la tabella calendario.
+const TrainingCalendarTableView = dynamic(() => import("@/modules/training/views/calendar/TrainingCalendarTableView"), { ssr: false, loading: () => LOADING });
 const HealthPageView = dynamic(() => import("@/modules/health/views/HealthPageView"), { ssr: false, loading: () => LOADING });
 const BiomechanicsPageView = dynamic(() => import("@/modules/biomechanics/views/BiomechanicsPageView"), { ssr: false, loading: () => LOADING });
 const AerodynamicsPageView = dynamic(() => import("@/modules/aerodynamics/views/AerodynamicsPageView"), { ssr: false, loading: () => LOADING });
@@ -36,7 +36,7 @@ const PhysiologyPageView = dynamic(() => import("@/modules/physiology/views/Phys
 // (strisce/pannelli in NewDashboardView), quindi coach e admin le vedono lì pure.
 const VIEWS: Record<string, ComponentType> = {
   dashboard: NewDashboardView,
-  training: TrainingHubPageView,
+  // training gestito dal branch esplicito sotto (tabella calendario).
   health: HealthPageView,
   biomechanics: BiomechanicsPageView,
   aerodynamics: AerodynamicsPageView,
@@ -59,7 +59,7 @@ export function ScopedAthleteModuleView({
   if (module === "nutrition") {
     content = <NutritionPageView subRoute="meal-plan" />;
   } else if (module === "training") {
-    content = <TrainingCalendarPageView />;
+    content = <TrainingCalendarTableView />;
   } else {
     const View = VIEWS[module];
     if (!View) return null;

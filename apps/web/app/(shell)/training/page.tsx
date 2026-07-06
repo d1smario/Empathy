@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { redirectCoachToRoster } from "@/lib/auth/redirect-coach-to-roster";
-import TrainingHubPageView from "@/modules/training/views/TrainingHubPageView";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Training · Hub",
-  description: "Training hub — Builder, Calendar, Analyzer, Virya.",
-};
-
-export default async function TrainingHubPage() {
+/**
+ * Hub Allenamento rimosso (2026-07): l'indice va diretto al Calendario (vista
+ * tabella). Il coach viene comunque spedito al roster da redirectCoachToRoster.
+ */
+export default async function TrainingIndexPage() {
   await redirectCoachToRoster();
-  return <TrainingHubPageView />;
+  redirect("/training/calendar");
 }

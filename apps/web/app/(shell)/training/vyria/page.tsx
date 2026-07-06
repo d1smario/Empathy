@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
-import TrainingViryaPageView from "@/modules/training/views/TrainingViryaPageView";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Training · Virya",
-  description: "Annual plan — orchestration toward builder materialization. Alias /training/virya.",
-};
-
+/**
+ * Virya rimosso da Allenamento (2026-07): la route reindirizza al Calendario.
+ * La view/motore Virya restano nel repo (non più raggiungibili da qui) in attesa
+ * di un'eventuale rimozione mirata delle dipendenze.
+ */
 export default function TrainingVyriaPage() {
-  return <TrainingViryaPageView />;
+  redirect("/training/calendar");
 }
