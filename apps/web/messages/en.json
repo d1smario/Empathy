@@ -869,7 +869,17 @@
     "emptyState": "No executed session recorded for this day. Import a file (FIT/TCX/GPX) or wait for the sync from Garmin/Strava/Wahoo.",
     "sessionNumbered": "Session · {n}",
     "biomarkers": "Biomarkers",
-    "multifactorAnalysis": "Multifactor analysis"
+    "multifactorAnalysis": "Multifactor analysis",
+    "summaryStrengthTitle": "Strength session",
+    "summaryStrengthDesc": "Bodyweight or loaded work: the detail lives in the exercise plan.",
+    "summaryRecoveryTitle": "Recovery & mobility",
+    "summaryRecoveryDesc": "A light regeneration session: duration and feel matter, not curves.",
+    "summaryEnduranceTitle": "Endurance session",
+    "summaryEnduranceDesc": "Recorded from the device summary. Import the FIT/TCX/GPX file for high-resolution curves.",
+    "summaryGenericTitle": "Session summary",
+    "summaryGenericDesc": "Summary from the available data. Import the FIT/TCX/GPX file for high-resolution curves.",
+    "summaryRpe": "Feel / notes",
+    "summarySchedaHint": "The plan with sets, reps and loads is in the session's workout."
   },
   "CalendarDayWellnessDetail": {
     "loadingError": "Loading error.",

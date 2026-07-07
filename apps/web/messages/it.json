@@ -869,7 +869,17 @@
     "emptyState": "Nessuna sessione eseguita registrata per questo giorno. Importa un file (FIT/TCX/GPX) o attendi il sync da Garmin/Strava/Wahoo.",
     "sessionNumbered": "Sessione · {n}",
     "biomarkers": "Biomarcatori",
-    "multifactorAnalysis": "Analisi multifattoriale"
+    "multifactorAnalysis": "Analisi multifattoriale",
+    "summaryStrengthTitle": "Sessione di forza",
+    "summaryStrengthDesc": "Lavoro a corpo libero o sovraccarico: il dettaglio è nella scheda esercizi.",
+    "summaryRecoveryTitle": "Recupero e mobilità",
+    "summaryRecoveryDesc": "Seduta leggera di rigenerazione: conta la durata e la sensazione, non le curve.",
+    "summaryEnduranceTitle": "Seduta di endurance",
+    "summaryEnduranceDesc": "Registrata dal riepilogo del dispositivo. Importa il file FIT/TCX/GPX per le curve ad alta risoluzione.",
+    "summaryGenericTitle": "Riepilogo seduta",
+    "summaryGenericDesc": "Sintesi dai dati disponibili. Importa il file FIT/TCX/GPX per le curve ad alta risoluzione.",
+    "summaryRpe": "Sensazione / note",
+    "summarySchedaHint": "La scheda con serie, ripetizioni e carichi è nel piano della seduta."
   },
   "CalendarDayWellnessDetail": {
     "loadingError": "Errore caricamento.",

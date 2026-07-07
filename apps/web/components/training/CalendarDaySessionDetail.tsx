@@ -23,6 +23,7 @@ import {
   type MultiAxisSeries,
 } from "@/components/training/SessionMultiAxisChart";
 import { BiomarkerTile, KpiTile, sessionBiomarkerTiles } from "@/components/training/SessionKpiTiles";
+import { SessionSummaryModule } from "@/components/training/SessionSummaryModule";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -390,9 +391,7 @@ function SessionDetailCard({
           </div>
         </div>
       ) : (
-        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
-          {t("noHighResSeries")}
-        </p>
+        <SessionSummaryModule workout={workout} vm={vm} />
       )}
 
       {/* Totali (lavoro/energia) + biomarcatori: valori scalari NON presenti
