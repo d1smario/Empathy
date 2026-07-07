@@ -7,7 +7,7 @@ import {
   type MultiAxisChannel,
   type MultiAxisSeries,
 } from "@/components/training/SessionMultiAxisChart";
-import { BiomarkerTile, KpiTile, sessionBiomarkerTiles } from "@/components/training/SessionKpiTiles";
+import { sessionBiomarkerTiles } from "@/components/training/SessionKpiTiles";
 import {
   fetchExecutedSeriesBundles,
   type ExecutedSeriesBundle,
@@ -24,8 +24,33 @@ const OVERLAY_CHANNELS = new Set<MultiAxisChannel>([
   "altitude",
   "temperature",
 ]);
-/** Ordine dei box KPI dell'anteprima, uguale al dettaglio seduta. */
+/** Ordine dei KPI dell'anteprima, uguale al dettaglio seduta. */
 const PRIMARY_ORDER = ["Distanza", "Durata", "Dislivello", "Carico", "IF"] as const;
+
+/** Colore etichetta per accento (chip compatti in linea). */
+const ACCENT_TEXT: Record<string, string> = {
+  fuchsia: "text-fuchsia-300",
+  violet: "text-violet-300",
+  orange: "text-orange-300",
+  cyan: "text-cyan-300",
+  emerald: "text-emerald-300",
+  sky: "text-sky-300",
+};
+
+/** Un valore dell'anteprima come chip in linea (etichetta colorata + numero). */
+function MetricChip({ label, value, unit, accent }: { label: string; value: string; unit?: string | null; accent?: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+      <span className={`font-mono text-[0.55rem] font-bold uppercase tracking-[0.12em] ${ACCENT_TEXT[accent ?? "orange"] ?? "text-orange-300"}`}>
+        {label}
+      </span>
+      <span className="font-mono text-sm font-bold tabular-nums text-white">
+        {value}
+        {unit ? <span className="ml-0.5 text-[0.6rem] font-normal text-gray-500">{unit}</span> : null}
+      </span>
+    </span>
+  );
+}
 
 function haversineKm(a: GeoPoint, b: GeoPoint): number {
   const R = 6371;
@@ -150,31 +175,29 @@ export function SessionRowPreview({
   const bioTiles = useMemo(() => sessionBiomarkerTiles(workout), [workout]);
   const hasChart = overlaySeries.length > 0;
 
-  if (primaryKpi.length === 0 && !hasChart && bioTiles.length === 0) {
+  const chips = useMemo(
+    () => [
+      ...primaryKpi.map((t) => ({ label: t.label, value: t.value, unit: t.unit, accent: t.accent })),
+      ...bioTiles.map((t) => ({ label: t.label, value: t.value, unit: t.unit, accent: "fuchsia" })),
+    ],
+    [primaryKpi, bioTiles],
+  );
+
+  if (chips.length === 0 && !hasChart) {
     return <div ref={ref} />;
   }
 
+  // Anteprima compatta: chip numerici in linea + miniatura del grafico a destra.
   return (
-    <div ref={ref} className="mt-3 space-y-2">
-      {primaryKpi.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {primaryKpi.map((tile) => (
-            <KpiTile key={tile.label} tile={tile} size="sm" />
-          ))}
-        </div>
-      ) : null}
-
+    <div ref={ref} className="mt-2 flex items-center gap-3 border-t border-white/[0.06] pt-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+        {chips.map((c) => (
+          <MetricChip key={c.label} label={c.label} value={c.value} unit={c.unit} accent={c.accent} />
+        ))}
+      </div>
       {hasChart ? (
-        <div className="rounded-xl border border-white/10 bg-black/30 p-2">
-          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} compact height={104} />
-        </div>
-      ) : null}
-
-      {bioTiles.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2">
-          {bioTiles.map((tile) => (
-            <BiomarkerTile key={tile.label} tile={tile} size="sm" />
-          ))}
+        <div className="h-9 w-28 shrink-0 sm:w-40" aria-hidden>
+          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} compact height={36} />
         </div>
       ) : null}
     </div>
