@@ -151,23 +151,28 @@ export default function TrainingCalendarTableView() {
       const planned = plannedByDate.get(dayKey) ?? [];
       const executed = executedByDate.get(dayKey) ?? [];
 
-      const activities: Activity[] = planned.length
-        ? planned.map((w) => {
-            const vm = plannedCalendarChipViewModel(w, { athleteFtpWatts });
-            // Aggancia l'eseguito a questa riga (per planned_workout_id; se 1 sola pianificata, il primo).
-            const ex =
-              executed.find((e) => e.plannedWorkoutId === w.id) ??
-              (planned.length === 1 ? executed[0] ?? null : null);
-            return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done: ex != null, executed: ex };
-          })
-        : executed.map((w) => ({
-            title: "Seduta svolta",
-            sportLabel: "",
-            minutes: Math.round(w.durationMinutes ?? 0),
-            glyph: null,
-            done: true,
-            executed: w,
-          }));
+      // Righe pianificate: ognuna con la sua eseguita AGGANCIATA per planned_workout_id.
+      const linkedExecIds = new Set<string>();
+      const plannedRows: Activity[] = planned.map((w) => {
+        const vm = plannedCalendarChipViewModel(w, { athleteFtpWatts });
+        const ex = executed.find((e) => e.plannedWorkoutId === w.id) ?? null;
+        if (ex) linkedExecIds.add(ex.id);
+        return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done: ex != null, executed: ex };
+      });
+      // Sedute ESEGUITE non collegate a nessun piano del giorno (es. avviate dall'orologio,
+      // non previste da Empathy): ognuna ha SEMPRE la sua riga «Seduta svolta», anche nei
+      // giorni con una pianificata — così non spariscono né vengono agganciate al piano sbagliato.
+      const unplannedRows: Activity[] = executed
+        .filter((w) => !linkedExecIds.has(w.id))
+        .map((w) => ({
+          title: "Seduta svolta",
+          sportLabel: "",
+          minutes: Math.round(w.durationMinutes ?? 0),
+          glyph: null,
+          done: true,
+          executed: w,
+        }));
+      const activities: Activity[] = [...plannedRows, ...unplannedRows];
 
       return {
         dayKey,
