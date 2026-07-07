@@ -14,6 +14,7 @@ export function Pro2ModulePageShell({
   headerActions,
   children,
   className,
+  contentMaxWidthClassName = "max-w-6xl",
 }: {
   eyebrow: string;
   eyebrowClassName?: string;
@@ -24,6 +25,8 @@ export function Pro2ModulePageShell({
   children: ReactNode;
   /** Extra classes on outer wrapper (es. `pb-16`). */
   className?: string;
+  /** Larghezza massima del contenuto (default `max-w-6xl`; es. `max-w-none` per full-width). */
+  contentMaxWidthClassName?: string;
 }) {
   return (
     <div
@@ -32,7 +35,7 @@ export function Pro2ModulePageShell({
         className,
       )}
     >
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className={cn("mx-auto space-y-6", contentMaxWidthClassName)}>
         <header className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className={cn("font-mono text-[0.65rem] font-bold uppercase tracking-[0.25em]", eyebrowClassName)}>

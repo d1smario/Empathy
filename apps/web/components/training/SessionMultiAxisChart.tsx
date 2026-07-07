@@ -228,7 +228,7 @@ export function SessionMultiAxisChart({
                   <Area
                     key={`s-${c}`}
                     yAxisId={c}
-                    type="monotone"
+                    type="natural"
                     dataKey={c}
                     stroke={meta.color}
                     strokeWidth={CHART_STROKE.base}
@@ -243,7 +243,7 @@ export function SessionMultiAxisChart({
                 <Line
                   key={`s-${c}`}
                   yAxisId={c}
-                  type="monotone"
+                  type="natural"
                   dataKey={c}
                   stroke={meta.color}
                   strokeWidth={CHART_STROKE.base}
@@ -290,7 +290,7 @@ export function SessionMultiAxisChart({
                 formatter={(value: number) => [`${Number.isFinite(value) ? value.toFixed(0) : "—"} m`, "Quota"]}
               />
               <Area
-                type="monotone"
+                type="natural"
                 dataKey="altitude"
                 stroke={CHART_SIGNAL.altitude}
                 strokeWidth={CHART_STROKE.thin}

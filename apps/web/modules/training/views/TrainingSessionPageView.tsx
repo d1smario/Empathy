@@ -204,6 +204,16 @@ export default function TrainingSessionPageView() {
       eyebrow={dateValid && executed.length > 0 ? t("analysisEyebrow") : t("eyebrow")}
       eyebrowClassName="text-orange-400"
       title={dateValid ? titleDate : t("invalidDateTitle")}
+      contentMaxWidthClassName="max-w-none"
+      headerActions={
+        <Link
+          href="/training/calendar"
+          className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          {t("backToActivities")}
+        </Link>
+      }
       description={
         !dateValid ? (
           t("invalidAddress")
@@ -219,16 +229,6 @@ export default function TrainingSessionPageView() {
         )
       }
     >
-      <div className="mb-5 scroll-mt-28">
-        <Link
-          href="/training/calendar"
-          className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          {t("backToActivities")}
-        </Link>
-      </div>
-
       {dateValid && showTech && readSpineCoverage && athleteId ? (
         <TrainingPlannedWindowContextStrip
           className="mb-4"

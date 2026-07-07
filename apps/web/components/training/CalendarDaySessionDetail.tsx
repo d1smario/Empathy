@@ -397,6 +397,16 @@ function SessionDetailCard({
         );
       })()}
 
+      {overlaySeries.length > 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
+        </div>
+      ) : (
+        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
+          {t("noHighResSeries")}
+        </p>
+      )}
+
       {routeBundle && routeBundle.points.length > 0 ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -417,20 +427,10 @@ function SessionDetailCard({
           </div>
           <StravaStyleMap
             route={routeBundle.points.map((p) => [p.lat, p.lon] as [number, number])}
-            height={320}
+            height={340}
           />
         </div>
       ) : null}
-
-      {overlaySeries.length > 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
-        </div>
-      ) : (
-        <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
-          {t("noHighResSeries")}
-        </p>
-      )}
     </div>
   );
 }
