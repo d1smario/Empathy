@@ -17,6 +17,7 @@ import {
   readGarminPostConnectBackfillStreams,
 } from "@/lib/integrations/garmin-post-connect-backfill-config";
 import {
+  garminSummaryBackfillWindows,
   readGarminBackfillInterRequestDelayMs,
   requestGarminSummaryBackfill,
 } from "@/lib/integrations/garmin-wellness-backfill";
@@ -25,6 +26,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Backfill storico post-connect (chunked, es. 6 mesi) gira in `waitUntil`: alza il limite
+// così tutte le finestre partono senza essere troncate dal timeout della function.
+export const maxDuration = 60;
 
 function clearPkceCookie(res: NextResponse) {
   res.cookies.set(GARMIN_PKCE_COOKIE, "", { maxAge: 0, path: "/" });
@@ -227,35 +231,43 @@ export async function GET(req: NextRequest) {
       const postStreams = readGarminPostConnectBackfillStreams();
       void (async () => {
         const snippets: string[] = [];
-        for (let i = 0; i < postStreams.length; i += 1) {
-          const stream = postStreams[i]!;
-          try {
-            const br = await requestGarminSummaryBackfill({
-              accessToken: tokens.access_token,
-              stream,
-              summaryStartTimeInSeconds: backfillStart,
-              summaryEndTimeInSeconds: backfillEnd,
-            });
-            if (br.ok) {
-              snippets.push(`${stream}:${br.httpStatus}`);
-            } else {
-              snippets.push(`${stream}:FAIL:${br.httpStatus}`);
+        const delayMs = readGarminBackfillInterRequestDelayMs();
+        let first = true;
+        for (const stream of postStreams) {
+          // Storico lungo (es. 6 mesi) → più finestre entro il limite Garmin per stream
+          // (90g Health / 30g Activity), altrimenti la singola richiesta verrebbe troncata.
+          const windows = garminSummaryBackfillWindows(stream, backfillStart, backfillEnd);
+          for (let w = 0; w < windows.length; w += 1) {
+            const win = windows[w]!;
+            if (!first) {
+              await new Promise((r) => setTimeout(r, delayMs));
+            }
+            first = false;
+            try {
+              const br = await requestGarminSummaryBackfill({
+                accessToken: tokens.access_token,
+                stream,
+                summaryStartTimeInSeconds: win.start,
+                summaryEndTimeInSeconds: win.end,
+              });
+              if (br.ok) {
+                snippets.push(`${stream}#${w}:${br.httpStatus}`);
+              } else {
+                snippets.push(`${stream}#${w}:FAIL:${br.httpStatus}`);
+                logGarminCallbackEvent({
+                  step: "post_connect_backfill_fail",
+                  athleteIdPrefix: garminLogIdPrefix(athleteId),
+                  detailSnippet: `${stream}#${w}:${br.httpStatus}:${(br.errorMessage ?? "").slice(0, 120)}`,
+                });
+              }
+            } catch (be) {
+              snippets.push(`${stream}#${w}:EX`);
               logGarminCallbackEvent({
-                step: "post_connect_backfill_fail",
+                step: "post_connect_backfill_exception",
                 athleteIdPrefix: garminLogIdPrefix(athleteId),
-                detailSnippet: `${stream}:${br.httpStatus}:${(br.errorMessage ?? "").slice(0, 120)}`,
+                detailSnippet: `${stream}#${w}:${be instanceof Error ? be.message.slice(0, 160) : "unknown"}`,
               });
             }
-          } catch (be) {
-            snippets.push(`${stream}:EX`);
-            logGarminCallbackEvent({
-              step: "post_connect_backfill_exception",
-              athleteIdPrefix: garminLogIdPrefix(athleteId),
-              detailSnippet: `${stream}:${be instanceof Error ? be.message.slice(0, 160) : "unknown"}`,
-            });
-          }
-          if (i < postStreams.length - 1) {
-            await new Promise((r) => setTimeout(r, readGarminBackfillInterRequestDelayMs()));
           }
         }
         logGarminCallbackEvent({

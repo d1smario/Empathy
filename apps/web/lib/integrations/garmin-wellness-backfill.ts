@@ -48,6 +48,31 @@ export function isGarminSummaryBackfillStream(s: string): s is GarminSummaryBack
   return STREAM_SET.has(s);
 }
 
+/**
+ * Divide [start,end] in finestre ≤ limite per stream (dalla più recente alla più vecchia),
+ * così uno storico lungo (es. 6 mesi) diventa più richieste entro il limite Garmin
+ * (90g Health / 30g Activity) invece di essere troncato da `clampGarminSummaryBackfillTimeRange`.
+ * Guard anti-loop: max 30 finestre (~2.5 anni Activity a 30g).
+ */
+export function garminSummaryBackfillWindows(
+  stream: GarminSummaryBackfillStream,
+  summaryStartTimeInSeconds: number,
+  summaryEndTimeInSeconds: number,
+): Array<{ start: number; end: number }> {
+  const end = Math.trunc(summaryEndTimeInSeconds);
+  const start = Math.trunc(summaryStartTimeInSeconds);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) return [];
+  const max = maxRangeSecondsForGarminSummaryBackfillStream(stream);
+  const windows: Array<{ start: number; end: number }> = [];
+  let wEnd = end;
+  while (wEnd > start && windows.length < 30) {
+    const wStart = Math.max(start, wEnd - max);
+    windows.push({ start: wStart, end: wEnd });
+    wEnd = wStart;
+  }
+  return windows;
+}
+
 export function buildGarminSummaryBackfillRequestUrl(
   stream: GarminSummaryBackfillStream,
   summaryStartTimeInSeconds: number,
