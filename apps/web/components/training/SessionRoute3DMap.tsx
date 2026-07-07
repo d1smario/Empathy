@@ -217,12 +217,22 @@ export function SessionRoute3DMap({ route, height = 340 }: SessionRoute3DMapProp
     // Perciò inizializziamo — e armiamo il timeout di fallback — SOLO a scheda visibile:
     // così l'utente vede sempre il 3D quando guarda la pagina e non si ripiega sul 2D solo
     // perché la scheda era nascosta (altra tab in primo piano, automazione, prerender…).
+    // Ripiega sul 2D SOLO se, a scheda VISIBILE, "load" non arriva entro 12s (WebGL assente).
+    // A scheda nascosta il render-loop è in pausa: non è un errore ⇒ non conteggiare, riprova.
+    function armFallbackTimer() {
+      timeout = setTimeout(function check() {
+        if (loaded || cancelled) return;
+        if (typeof document !== "undefined" && document.hidden) {
+          timeout = setTimeout(check, 4000);
+          return;
+        }
+        setFallback2d(true);
+      }, 12000);
+    }
+
     function startWhenVisible() {
       if (cancelled) return;
-      // 12s a scheda VISIBILE senza "load" ⇒ ambiente senza WebGL reale: ripiega sul 2D.
-      timeout = setTimeout(() => {
-        if (!loaded && !cancelled) setFallback2d(true);
-      }, 12000);
+      armFallbackTimer();
       init().catch(() => {
         if (!cancelled) setFallback2d(true);
       });
