@@ -13,7 +13,7 @@ import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 type Discipline = "strength" | "recovery" | "endurance" | "generic";
 
-/** Classifica la disciplina della seduta per scegliere il modulo di riepilogo giusto. */
+/** Classifica la disciplina dalla stringa sport dell'ESEGUITO (da trace_summary). */
 function classifyDiscipline(sport: string | null, glyph: SportGlyphId | null): Discipline {
   const s = (sport ?? "").toLowerCase();
   if (
@@ -34,6 +34,24 @@ function classifyDiscipline(sport: string | null, glyph: SportGlyphId | null): D
     return "endurance";
   }
   return "generic";
+}
+
+/** Fallback: classifica dal `type` della seduta PIANIFICATA collegata (quando l'eseguito non ha sport). */
+function classifyFromPlannedType(type: string | null): Discipline | null {
+  const s = (type ?? "").toLowerCase();
+  if (!s) return null;
+  if (/(strength|gym|forza|lift|crossfit|hyrox|wod)/.test(s)) return "strength";
+  if (/(recovery|recupero|mobilit|yoga|pilates|stretch|breath|rest|riposo)/.test(s)) return "recovery";
+  if (/(endurance|tempo|threshold|soglia|vo2|interval|fartlek|run|ride|bike|swim|row|ski)/.test(s)) return "endurance";
+  return null;
+}
+
+/** Fallback ulteriore: la `family` del contratto Pro2 della pianificata. */
+function familyToDiscipline(family: string | undefined): Discipline | null {
+  if (family === "strength") return "strength";
+  if (family === "aerobic") return "endurance";
+  if (family === "lifestyle") return "recovery";
+  return null;
 }
 
 const META: Record<
@@ -77,7 +95,8 @@ const META: Record<
 /**
  * Modulo «riepilogo seduta» per il dettaglio quando NON ci sono serie HD da grafico:
  * al posto del box grigio «nessuna serie», una card elegante scelta per disciplina.
- * Per le sedute di FORZA carica la scheda esercizi dalla pianificata collegata
+ * Disciplina dallo sport dell'eseguito; se assente, dal `type`/`family` della
+ * pianificata collegata. Per la FORZA carica la scheda esercizi dalla pianificata
  * (`plannedWorkoutId` → contratto Pro2 `gymRx`) e la renderizza con Pro2GymSchedaBlockList.
  * I KPI scalari + biomarcatori restano renderizzati sotto dal chiamante.
  */
@@ -91,38 +110,48 @@ export function SessionSummaryModule({
   athleteId?: string | null;
 }) {
   const t = useTranslations("CalendarDaySessionDetail");
-  const discipline = classifyDiscipline(vm.sport, vm.sportGlyph);
-  const m = META[discipline];
-  const Icon = m.icon;
-  const notes = (workout.subjectiveNotes ?? "").trim();
+  const baseDiscipline = classifyDiscipline(vm.sport, vm.sportGlyph);
+  // Serve la pianificata quando: è forza (per la scheda) o è generica (per riclassificare dal tipo).
+  const needsPlanned = baseDiscipline === "strength" || baseDiscipline === "generic";
 
-  // Scheda forza: la seduta eseguita non porta gli esercizi, ma la pianificata collegata
-  // sì (contratto Pro2 `gymRx` nelle notes). La carichiamo DB-first solo per la forza.
-  const [contract, setContract] = useState<ReturnType<typeof parsePro2BuilderSessionFromNotes>>(null);
+  const [planned, setPlanned] = useState<{
+    type: string | null;
+    contract: ReturnType<typeof parsePro2BuilderSessionFromNotes>;
+  } | null>(null);
+
   useEffect(() => {
     const pid = workout.plannedWorkoutId;
-    if (discipline !== "strength" || !pid || !athleteId) return;
+    if (!needsPlanned || !pid || !athleteId) return;
     let cancelled = false;
     (async () => {
       const supabase = createEmpathyBrowserSupabase();
       if (!supabase) return;
       const { data, error } = await supabase
         .from("planned_workouts")
-        .select("notes")
+        .select("type, notes")
         .eq("id", pid)
         .eq("athlete_id", athleteId)
         .maybeSingle();
       if (cancelled || error || !data) return;
-      const parsed = parsePro2BuilderSessionFromNotes((data as { notes?: string | null }).notes ?? null);
-      if (parsed) setContract(parsed);
+      const row = data as { type?: string | null; notes?: string | null };
+      setPlanned({ type: row.type ?? null, contract: parsePro2BuilderSessionFromNotes(row.notes ?? null) });
     })();
     return () => {
       cancelled = true;
     };
-  }, [workout.plannedWorkoutId, athleteId, discipline]);
+  }, [workout.plannedWorkoutId, athleteId, needsPlanned]);
 
-  // Scheda renderizzabile = ci sono blocchi con esercizi (stesso filtro di Pro2GymSchedaBlockList:
-  // non richiede il catalogExerciseId, basta il gymRx o il tipo blocco forza).
+  const contract = planned?.contract ?? null;
+  // Disciplina effettiva: sport eseguito → tipo pianificato → family contratto → generica.
+  const discipline: Discipline =
+    baseDiscipline !== "generic"
+      ? baseDiscipline
+      : classifyFromPlannedType(planned?.type ?? null) ?? familyToDiscipline(contract?.family) ?? "generic";
+
+  const m = META[discipline];
+  const Icon = m.icon;
+  const notes = (workout.subjectiveNotes ?? "").trim();
+
   const hasScheda =
     discipline === "strength" &&
     !!contract &&
