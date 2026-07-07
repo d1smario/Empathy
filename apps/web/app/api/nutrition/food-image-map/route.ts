@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createSupabaseCookieClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   allKnownFdcIds,
@@ -26,8 +26,13 @@ export async function GET() {
 
   // Solo utenti autenticati: l'endpoint legge fdc_food (RLS solo-admin) col
   // service role, quindi non deve essere anonimo. La mappa non è per-utente.
-  const session = createServerSupabaseClient();
-  const { data: userData } = await session.auth.getUser();
+  // NB: serve il client COOKIE-aware (legge la sessione dalla richiesta); il
+  // vecchio createServerSupabaseClient (service/anon senza cookie) faceva
+  // sempre getUser()=null → byKey vuoto → nessuna foto nel Piano.
+  const session = createSupabaseCookieClient();
+  const { data: userData } = session
+    ? await session.auth.getUser()
+    : { data: { user: null } };
   if (!userData?.user) return empty;
 
   const admin = createSupabaseAdminClient();

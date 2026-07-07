@@ -117,7 +117,10 @@ let foodImageMapPromise: Promise<Record<string, string>> | null = null;
 function loadFoodImageMap(): Promise<Record<string, string>> {
   if (foodImageMapCache) return Promise.resolve(foodImageMapCache);
   if (!foodImageMapPromise) {
-    foodImageMapPromise = fetch("/api/nutrition/food-image-map")
+    // `no-store`: la cache di modulo deduplica già a 1 fetch per sessione tab;
+    // bypassare la cache HTTP (max-age=300) fa sì che aggiornamenti alle foto
+    // (nuove image_url) compaiano al reload successivo invece che dopo 5 min.
+    foodImageMapPromise = fetch("/api/nutrition/food-image-map", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { byKey: {} }))
       .then((j) => {
         foodImageMapCache = (j?.byKey ?? {}) as Record<string, string>;
