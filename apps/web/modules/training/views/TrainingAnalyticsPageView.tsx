@@ -790,7 +790,9 @@ export default function TrainingAnalyticsPageView() {
             </details>
           ) : null}
 
-          {bioenergeticModulation ? (
+          {/* Blocco motore (nomi feature grezzi, readiness/copertura, input consigliati):
+              solo staff (showTech). L'atleta non deve vedere diagnostica interna del modello. */}
+          {showTech && bioenergeticModulation ? (
             <details
               className={`mb-6 rounded-2xl border p-4 text-sm ${
                 bioenergeticModulation.loadScalePct < 100
@@ -815,7 +817,9 @@ export default function TrainingAnalyticsPageView() {
             </details>
           ) : null}
 
-          {crossModuleDynamicsLines.length ? (
+          {/* «Dinamica incrociata»: ponte deterministico con tag/enum/moltiplicatori grezzi
+              del motore ([Adattamento], regenerate_microcycle, ×0.96…) → solo staff (showTech). */}
+          {showTech && crossModuleDynamicsLines.length ? (
             <details className="mb-6 rounded-2xl border border-orange-500/25 bg-orange-950/20 p-4 text-sm text-gray-300">
               <summary className="cursor-pointer text-sm font-bold text-orange-100">
                 {t("crossModuleDynamicsSummary", { count: crossModuleDynamicsLines.length })}
