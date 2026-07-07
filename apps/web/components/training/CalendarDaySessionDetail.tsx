@@ -8,14 +8,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 
-// Mappa GPS reale (Leaflet + tile CartoDB) — affidabile su ogni browser, solo lato
-// client. Alternativa 3D in SessionRoute3DMap (MapLibre): non montata perché non
-// verificabile stabilmente in questo ambiente (canvas WebGL nero sotto automazione).
-const StravaStyleMap = dynamic(
-  () => import("@/components/training/StravaStyleMap").then((m) => m.StravaStyleMap),
+// Mappa GPS 3D reale (MapLibre GL: base CartoDB + terreno estruso + pitch), solo lato
+// client. Ripiega automaticamente sulla 2D Leaflet se il browser non ha WebGL.
+const SessionRoute3DMap = dynamic(
+  () => import("@/components/training/SessionRoute3DMap").then((m) => m.SessionRoute3DMap),
   {
     ssr: false,
-    loading: () => <div className="h-[320px] w-full animate-pulse rounded-2xl bg-white/5" />,
+    loading: () => <div className="h-[340px] w-full animate-pulse rounded-2xl bg-white/5" />,
   },
 );
 import {
@@ -23,7 +22,6 @@ import {
   type MultiAxisChannel,
   type MultiAxisSeries,
 } from "@/components/training/SessionMultiAxisChart";
-import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -41,7 +39,6 @@ import {
   isGeoPoint,
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
-import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -101,19 +98,6 @@ const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
 /** Label KPI del top-5 canonico (come mockup): il resto va nei box-segnale sotto. */
 const PRIMARY_KPI_ORDER = ["Distanza", "Durata", "Dislivello", "Carico", "IF"] as const;
 
-/** Colore canonico per canale, per le mini-curve dei box-segnale. */
-const SIGNAL_COLOR: Record<ChartChannel, string> = {
-  power: CHART_SIGNAL.power,
-  hr: CHART_SIGNAL.hr,
-  speed: CHART_SIGNAL.speed,
-  cadence: CHART_SIGNAL.cadence,
-  altitude: CHART_SIGNAL.altitude,
-  temperature: "#fbbf24",
-  distance: "#60a5fa",
-  pace_min_per_km: CHART_SIGNAL.speed,
-  vertical_speed_mps: CHART_SIGNAL.altitude,
-};
-
 /** min/avg/max di una serie HD → riga tabella secondaria (stessa forma del VM). */
 function seriesStatsRow(channel: ChartChannel, unit: string, values: number[]): SessionSecondaryRow | null {
   const f = values.filter((v) => Number.isFinite(v));
@@ -146,11 +130,6 @@ type ExtendedSeriesBundle = {
 };
 
 type RouteBundle = { points: GeoPoint[] };
-
-function fmt(value: number | null, digits: number): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return value.toFixed(digits);
-}
 
 /** Distanza haversine (km) tra due punti GPS, per derivare la distanza dal percorso. */
 function haversineKm(a: GeoPoint, b: GeoPoint): number {
@@ -419,11 +398,6 @@ function SessionDetailCard({
     [allKpi],
   );
   const bioTiles = useMemo(() => sessionBiomarkerTiles(workout), [workout]);
-  // Box-segnale: solo canali con serie reale (potenza/FC/velocità/cadenza/quota/temp).
-  const signalRows = useMemo(
-    () => secondaryRows.filter((r) => (allSeries.find((s) => s.channel === r.channel)?.values.length ?? 0) >= 2),
-    [secondaryRows, allSeries],
-  );
 
   return (
     <div className="space-y-5">
@@ -468,43 +442,16 @@ function SessionDetailCard({
         </p>
       )}
 
-      {/* Box-segnale: ogni traccia con la sua mini-curva; poi totali + biomarcatori. */}
-      {signalRows.length > 0 || scalarKpi.length > 0 || bioTiles.length > 0 ? (
-        <div className="space-y-3">
-          {signalRows.map((row) => {
-            const digits = row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1;
-            const values = allSeries.find((s) => s.channel === row.channel)?.values ?? [];
-            const color = SIGNAL_COLOR[row.channel as ChartChannel] ?? "#a1a1aa";
-            return (
-              <div key={row.channel} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-semibold text-gray-200">
-                    {row.label}
-                    <span className="ml-1 text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
-                  </p>
-                  <p className="font-mono text-xs tabular-nums text-gray-300">
-                    <span className="text-gray-500">min</span> {fmt(row.min, digits)}
-                    <span className="mx-1 text-gray-600">·</span>
-                    <span className="text-gray-500">avg</span> {fmt(row.avg, digits)}
-                    <span className="mx-1 text-gray-600">·</span>
-                    <span className="text-gray-500">max</span> {fmt(row.max, digits)}
-                  </p>
-                </div>
-                <SessionSignalSparkline values={values} color={color} />
-              </div>
-            );
-          })}
-
-          {scalarKpi.length > 0 || bioTiles.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {scalarKpi.map((tile) => (
-                <KpiTile key={tile.label} tile={tile} />
-              ))}
-              {bioTiles.map((tile) => (
-                <BiomarkerTile key={tile.label} tile={tile} />
-              ))}
-            </div>
-          ) : null}
+      {/* Totali (lavoro/energia) + biomarcatori: valori scalari NON presenti
+          nell'overlay multifattoriale, quindi non sono un doppione delle sue curve. */}
+      {scalarKpi.length > 0 || bioTiles.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {scalarKpi.map((tile) => (
+            <KpiTile key={tile.label} tile={tile} />
+          ))}
+          {bioTiles.map((tile) => (
+            <BiomarkerTile key={tile.label} tile={tile} />
+          ))}
         </div>
       ) : null}
 
@@ -526,7 +473,7 @@ function SessionDetailCard({
                 : ""}
             </span>
           </div>
-          <StravaStyleMap
+          <SessionRoute3DMap
             route={routeBundle.points.map((p) => [p.lat, p.lon] as [number, number])}
             height={340}
           />
