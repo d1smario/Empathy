@@ -4,15 +4,14 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import { CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDaySessionDetail } from "@/components/training/CalendarDaySessionDetail";
 import { CalendarPlannedBuilderDetail } from "@/components/training/CalendarPlannedBuilderDetail";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
-import { OperationalDayNavigator } from "@/components/navigation/OperationalDayNavigator";
-import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
@@ -220,15 +219,15 @@ export default function TrainingSessionPageView() {
         )
       }
     >
-      <div className="scroll-mt-28">
-        <TrainingSubnav />
+      <div className="mb-5 scroll-mt-28">
+        <Link
+          href="/training/calendar"
+          className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          {t("backToActivities")}
+        </Link>
       </div>
-
-      {dateValid ? (
-        <div className="mb-5">
-          <OperationalDayNavigator dateIso={date} hrefPrefix="/training/session" />
-        </div>
-      ) : null}
 
       {dateValid && showTech && readSpineCoverage && athleteId ? (
         <TrainingPlannedWindowContextStrip

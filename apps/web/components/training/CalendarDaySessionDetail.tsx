@@ -18,9 +18,14 @@ const StravaStyleMap = dynamic(
     loading: () => <div className="h-[320px] w-full animate-pulse rounded-2xl bg-white/5" />,
   },
 );
-import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
+import {
+  SessionMultiAxisChart,
+  type MultiAxisChannel,
+  type MultiAxisSeries,
+} from "@/components/training/SessionMultiAxisChart";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
+  formatElapsedLabel,
   geoPointsFromWorkoutTrace,
   pickPrimaryExecutedWorkout,
 } from "@/lib/training/calendar-analyzer-helpers";
@@ -35,7 +40,6 @@ import {
   isGeoPoint,
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
-import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -82,18 +86,15 @@ const CHANNEL_DIGITS: Record<ChartChannel, number> = {
   vertical_speed_mps: 1,
 };
 
-/** Colore canonico per canale (coerente col grafico multi-asse) per le sparkline. */
-const SIGNAL_COLOR: Record<ChartChannel, string> = {
-  power: CHART_SIGNAL.power,
-  hr: CHART_SIGNAL.hr,
-  speed: CHART_SIGNAL.speed,
-  cadence: CHART_SIGNAL.cadence,
-  altitude: CHART_SIGNAL.altitude,
-  temperature: "#fbbf24",
-  distance: "#60a5fa",
-  pace_min_per_km: CHART_SIGNAL.speed,
-  vertical_speed_mps: CHART_SIGNAL.altitude,
-};
+/** Canali resi nell'overlay multi-asse; gli altri restano solo nel calcolo min/avg/max. */
+const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
+  "power",
+  "hr",
+  "speed",
+  "cadence",
+  "altitude",
+  "temperature",
+]);
 
 /** min/avg/max di una serie HD → riga tabella secondaria (stessa forma del VM). */
 function seriesStatsRow(channel: ChartChannel, unit: string, values: number[]): SessionSecondaryRow | null {
@@ -133,26 +134,37 @@ function fmt(value: number | null, digits: number): string {
   return value.toFixed(digits);
 }
 
+/** Classi per accento KPI: bordo vivace + sfumatura colorata + glow → sezione energica. */
+const ACCENT_TILE: Record<NonNullable<SessionKpiTile["accent"]>, { ring: string; grad: string; label: string; glow: string }> = {
+  fuchsia: { ring: "border-fuchsia-400/50", grad: "from-fuchsia-500/25", label: "text-fuchsia-200", glow: "shadow-fuchsia-500/20" },
+  violet: { ring: "border-violet-400/50", grad: "from-violet-500/25", label: "text-violet-200", glow: "shadow-violet-500/20" },
+  orange: { ring: "border-orange-400/50", grad: "from-orange-500/25", label: "text-orange-200", glow: "shadow-orange-500/20" },
+  cyan: { ring: "border-cyan-400/50", grad: "from-cyan-500/25", label: "text-cyan-200", glow: "shadow-cyan-500/20" },
+  emerald: { ring: "border-emerald-400/50", grad: "from-emerald-500/25", label: "text-emerald-200", glow: "shadow-emerald-500/20" },
+  sky: { ring: "border-sky-400/50", grad: "from-sky-500/25", label: "text-sky-200", glow: "shadow-sky-500/20" },
+};
+
 function KpiTile({ tile }: { tile: SessionKpiTile }) {
+  const a = ACCENT_TILE[tile.accent ?? "orange"];
   return (
-    <div className="rounded-2xl border border-orange-500/25 bg-black/40 px-4 py-3">
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{tile.label}</p>
+    <div className={`rounded-2xl border ${a.ring} bg-gradient-to-br ${a.grad} via-black/30 to-black/50 px-4 py-3 shadow-lg ${a.glow}`}>
+      <p className={`font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] ${a.label}`}>{tile.label}</p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
         {tile.value}
-        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{tile.unit}</span> : null}
+        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-400">{tile.unit}</span> : null}
       </p>
     </div>
   );
 }
 
-/** Tile biomarcatore (lattato/glicemia/SmO₂): accento fucsia per distinguerlo dai KPI performance. */
+/** Tile biomarcatore (lattato/glicemia/SmO₂): fucsia acceso, distinto dai KPI performance. */
 function BiomarkerTile({ tile }: { tile: SessionKpiTile }) {
   return (
-    <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/[0.04] px-4 py-3">
-      <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-fuchsia-300/70">{tile.label}</p>
+    <div className="rounded-2xl border border-fuchsia-400/50 bg-gradient-to-br from-fuchsia-500/25 via-black/30 to-black/50 px-4 py-3 shadow-lg shadow-fuchsia-500/20">
+      <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-fuchsia-200">{tile.label}</p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
         {tile.value}
-        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-500">{tile.unit}</span> : null}
+        {tile.unit ? <span className="ml-1 text-xs font-medium text-gray-400">{tile.unit}</span> : null}
       </p>
     </div>
   );
@@ -279,6 +291,24 @@ function SessionDetailCard({
     return rows.length > 0 ? rows : vm.secondary;
   }, [allSeries, vm.secondary]);
 
+  // Serie dell'overlay multi-asse (potenza/FC/velocità/cadenza/quota/temp) + etichette
+  // temporali comuni: tutte le tracce su un unico grafico, per vederne gli incroci.
+  const overlaySeries = useMemo<MultiAxisSeries[]>(
+    () =>
+      allSeries
+        .filter((s) => MULTI_AXIS_CHANNELS.has(s.channel))
+        .map((s) => ({ channel: s.channel as MultiAxisChannel, unit: s.unit, values: s.values })),
+    [allSeries],
+  );
+  const overlayMaxLen = useMemo(
+    () => overlaySeries.reduce((m, s) => Math.max(m, s.values.length), 0),
+    [overlaySeries],
+  );
+  const overlayLabels = useMemo(() => {
+    const dur = Number.isFinite(workout.durationMinutes) ? Number(workout.durationMinutes) : null;
+    return Array.from({ length: overlayMaxLen }, (_, i) => formatElapsedLabel(i, overlayMaxLen, dur));
+  }, [overlayMaxLen, workout.durationMinutes]);
+
   // Potenza media + IF dalla serie HD reale (ground truth): alcuni trace_summary hanno
   // l'avg potenza sottostimato → correggiamo con l'avg dei campioni per coerenza col grafico.
   const seriesPowerAvg = useMemo(() => {
@@ -392,31 +422,9 @@ function SessionDetailCard({
         </div>
       ) : null}
 
-      {secondaryRows.length > 0 ? (
-        <div className="space-y-2">
-          {secondaryRows.map((row) => {
-            const digits = row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1;
-            const values = allSeries.find((s) => s.channel === row.channel)?.values ?? [];
-            const color = SIGNAL_COLOR[row.channel as ChartChannel] ?? "#a1a1aa";
-            return (
-              <div key={row.channel} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-semibold text-gray-200">
-                    {row.label}
-                    <span className="ml-1 text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
-                  </p>
-                  <p className="font-mono text-xs tabular-nums text-gray-300">
-                    <span className="text-gray-500">min</span> {fmt(row.min, digits)}
-                    <span className="mx-1 text-gray-600">·</span>
-                    <span className="text-gray-500">avg</span> {fmt(row.avg, digits)}
-                    <span className="mx-1 text-gray-600">·</span>
-                    <span className="text-gray-500">max</span> {fmt(row.max, digits)}
-                  </p>
-                </div>
-                {values.length >= 2 ? <SessionSignalSparkline values={values} color={color} /> : null}
-              </div>
-            );
-          })}
+      {overlaySeries.length > 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
