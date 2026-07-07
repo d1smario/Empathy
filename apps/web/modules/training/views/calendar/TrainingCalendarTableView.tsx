@@ -196,13 +196,24 @@ export default function TrainingCalendarTableView() {
     if (loading || days.length === 0) return;
     const box = scrollBoxRef.current;
     if (!box) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (isCurrentMonth && wantScrollToTodayRef.current) {
-      const el = box.querySelector<HTMLElement>("[data-today]");
+      // Punta su OGGI in cima al box. Se oggi non ha sedute, punta al primo giorno
+      // successivo (prossimo in arrivo), altrimenti all'ultimo giorno del mese.
+      let el = box.querySelector<HTMLElement>("[data-today]");
+      if (!el) {
+        const groups = Array.from(box.querySelectorAll<HTMLElement>("[data-daykey]"));
+        el = groups.find((g) => (g.dataset.daykey ?? "") >= todayKey) ?? groups[groups.length - 1] ?? null;
+      }
       if (el) {
-        // Assoluto + offsetTop (box è `relative`, quindi offsetTop è rispetto al box)
-        // + clamp: idempotente e stabile, centra oggi dentro al box (non la pagina).
-        const target = el.offsetTop - (box.clientHeight - el.offsetHeight) / 2;
-        box.scrollTop = Math.max(0, Math.min(target, box.scrollHeight - box.clientHeight));
+        const target = el;
+        // offsetTop è relativo al box (`relative`); -8px di respiro sopra.
+        const align = () => {
+          box.scrollTop = Math.max(0, target.offsetTop - 8);
+        };
+        align();
+        // Ri-allinea dopo che le anteprime lazy si assestano (i grafici cambiano l'altezza).
+        timer = setTimeout(align, 400);
       }
       wantScrollToTodayRef.current = false;
       wantScrollTopRef.current = false;
@@ -210,7 +221,10 @@ export default function TrainingCalendarTableView() {
       box.scrollTop = 0;
       wantScrollTopRef.current = false;
     }
-  }, [loading, days, isCurrentMonth]);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading, days, isCurrentMonth, todayKey]);
 
   const goPrevMonth = () => {
     wantScrollToTodayRef.current = false;
@@ -287,7 +301,7 @@ export default function TrainingCalendarTableView() {
           className="training-day-scrollbox relative space-y-3 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-3"
         >
           {days.map((day) => (
-            <div key={day.dayKey} data-today={day.isToday ? "1" : undefined}>
+            <div key={day.dayKey} data-daykey={day.dayKey} data-today={day.isToday ? "1" : undefined}>
               <div className="mb-1.5 flex items-baseline gap-2">
                 <span className={`text-sm font-bold capitalize ${day.isToday ? "text-sky-300" : "text-gray-300"}`}>
                   {day.dayLabel}
