@@ -9,8 +9,8 @@ import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 
 // Mappa GPS reale (Leaflet + tile CartoDB) — affidabile su ogni browser, solo lato
-// client. Alternativa 3D disponibile in SessionRoute3DMap (MapLibre + terreno), ma
-// richiede accelerazione hardware/WebGL attiva → non montata di default.
+// client. Alternativa 3D in SessionRoute3DMap (MapLibre): non montata perché non
+// verificabile stabilmente in questo ambiente (canvas WebGL nero sotto automazione).
 const StravaStyleMap = dynamic(
   () => import("@/components/training/StravaStyleMap").then((m) => m.StravaStyleMap),
   {

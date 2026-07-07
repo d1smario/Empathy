@@ -108,8 +108,16 @@ const MAP_STYLE = {
       source: "terrainDem",
       paint: { "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "#000000" },
     },
-    { id: "sky", type: "sky", paint: { "sky-type": "atmosphere", "sky-atmosphere-sun-intensity": 5 } },
   ],
+  // Orizzonte/atmosfera 3D: proprietà di stile MapLibre (NON un layer "sky", che è di Mapbox).
+  sky: {
+    "sky-color": "#0a0a12",
+    "sky-horizon-blend": 0.5,
+    "horizon-color": "#1a1a2e",
+    "horizon-fog-blend": 0.5,
+    "fog-color": "#05050a",
+    "fog-ground-blend": 0.5,
+  },
 } as const;
 
 export function SessionRoute3DMap({ route, height = 340 }: SessionRoute3DMapProps) {
