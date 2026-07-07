@@ -600,9 +600,13 @@ export default function TrainingAnalyticsPageView() {
       ) : loading ? (
         <p className="text-sm text-gray-500">{t("loading")}</p>
       ) : !series.length && !plannedRows.length ? (
-        <p className="text-sm text-gray-500">
-          {t("noData", { from: bounds.from, to: bounds.to })}
-        </p>
+        // Con un errore/timeout basta il box d'errore sopra: non mostrare anche «Nessun dato»
+        // (sarebbe fuorviante — i dati esistono, la richiesta è solo fallita).
+        error ? null : (
+          <p className="text-sm text-gray-500">
+            {t("noData", { from: bounds.from, to: bounds.to })}
+          </p>
+        )
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
