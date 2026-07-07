@@ -1,7 +1,7 @@
 "use client";
 
 import type { ExecutedWorkout } from "@empathy/domain-training";
-import { Activity, Gauge, Map as MapIcon } from "lucide-react";
+import { Activity, Map as MapIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -23,6 +23,7 @@ import {
   type MultiAxisChannel,
   type MultiAxisSeries,
 } from "@/components/training/SessionMultiAxisChart";
+import { SessionSignalSparkline } from "@/components/training/SessionSignalSparkline";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -40,6 +41,7 @@ import {
   isGeoPoint,
   type SeriesChannelId,
 } from "@/lib/training/series-channel-registry";
+import { CHART_SIGNAL } from "@/lib/ui/chart-theme";
 
 /**
  * Canali scalari renderizzati come trace chart. `route` è gestito a parte come
@@ -96,6 +98,22 @@ const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
   "temperature",
 ]);
 
+/** Label KPI del top-5 canonico (come mockup): il resto va nei box-segnale sotto. */
+const PRIMARY_KPI_ORDER = ["Distanza", "Durata", "Dislivello", "Carico", "IF"] as const;
+
+/** Colore canonico per canale, per le mini-curve dei box-segnale. */
+const SIGNAL_COLOR: Record<ChartChannel, string> = {
+  power: CHART_SIGNAL.power,
+  hr: CHART_SIGNAL.hr,
+  speed: CHART_SIGNAL.speed,
+  cadence: CHART_SIGNAL.cadence,
+  altitude: CHART_SIGNAL.altitude,
+  temperature: "#fbbf24",
+  distance: "#60a5fa",
+  pace_min_per_km: CHART_SIGNAL.speed,
+  vertical_speed_mps: CHART_SIGNAL.altitude,
+};
+
 /** min/avg/max di una serie HD → riga tabella secondaria (stessa forma del VM). */
 function seriesStatsRow(channel: ChartChannel, unit: string, values: number[]): SessionSecondaryRow | null {
   const f = values.filter((v) => Number.isFinite(v));
@@ -132,6 +150,17 @@ type RouteBundle = { points: GeoPoint[] };
 function fmt(value: number | null, digits: number): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return value.toFixed(digits);
+}
+
+/** Distanza haversine (km) tra due punti GPS, per derivare la distanza dal percorso. */
+function haversineKm(a: GeoPoint, b: GeoPoint): number {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
+  const la1 = (a.lat * Math.PI) / 180;
+  const la2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 /** Classi per accento KPI: bordo vivace + sfumatura colorata + glow → sezione energica. */
@@ -344,6 +373,58 @@ function SessionDetailCard({
     return out;
   }, [vm.kpi, seriesPowerAvg, athleteFtpWatts]);
 
+  // Distanza dal percorso GPS (haversine) e dislivello dalla serie quota — quando il
+  // trace_summary non li espone, così il top-5 resta completo su dati REALI derivati.
+  const routeDistanceKm = useMemo(() => {
+    const pts = routeBundle?.points ?? [];
+    if (pts.length < 2) return null;
+    let km = 0;
+    for (let i = 1; i < pts.length; i += 1) km += haversineKm(pts[i - 1]!, pts[i]!);
+    return km > 0 ? km : null;
+  }, [routeBundle]);
+  const elevGainM = useMemo(() => {
+    const alt = allSeries.find((s) => s.channel === "altitude")?.values ?? [];
+    if (alt.length < 2) return null;
+    let gain = 0;
+    for (let i = 1; i < alt.length; i += 1) {
+      const d = alt[i]! - alt[i - 1]!;
+      if (d > 0) gain += d;
+    }
+    return gain > 3 ? gain : null;
+  }, [allSeries]);
+
+  // Tutti i KPI + Distanza/Dislivello derivati se mancanti. Split: top-5 canonici in
+  // alto, i totali (Lavoro/Energia) scendono nella sezione box-segnale sotto.
+  const allKpi = useMemo<SessionKpiTile[]>(() => {
+    const tiles = [...kpiTiles];
+    const has = (label: string) => tiles.some((t) => t.label === label);
+    if (!has("Distanza")) {
+      const km = routeDistanceKm ?? (distanceMeters != null ? distanceMeters / 1000 : null);
+      if (km != null) tiles.push({ label: "Distanza", value: km.toFixed(1), unit: "km", accent: "fuchsia" });
+    }
+    if (!has("Dislivello") && elevGainM != null) {
+      tiles.push({ label: "Dislivello", value: Math.round(elevGainM).toString(), unit: "m", accent: "emerald" });
+    }
+    return tiles;
+  }, [kpiTiles, distanceMeters, routeDistanceKm, elevGainM]);
+  const primaryKpi = useMemo(
+    () =>
+      PRIMARY_KPI_ORDER.map((label) => allKpi.find((tile) => tile.label === label)).filter(
+        (tile): tile is SessionKpiTile => tile != null,
+      ),
+    [allKpi],
+  );
+  const scalarKpi = useMemo(
+    () => allKpi.filter((tile) => tile.label === "Lavoro" || tile.label === "Energia"),
+    [allKpi],
+  );
+  const bioTiles = useMemo(() => sessionBiomarkerTiles(workout), [workout]);
+  // Box-segnale: solo canali con serie reale (potenza/FC/velocità/cadenza/quota/temp).
+  const signalRows = useMemo(
+    () => secondaryRows.filter((r) => (allSeries.find((s) => s.channel === r.channel)?.values.length ?? 0) >= 2),
+    [secondaryRows, allSeries],
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -365,47 +446,67 @@ function SessionDetailCard({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {kpiTiles.map((tile) => (
+      {/* Top-5 KPI canonici: Distanza · Durata · Dislivello · Carico(TSS) · IF. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {primaryKpi.map((tile) => (
           <KpiTile key={tile.label} tile={tile} />
         ))}
-        {distanceMeters != null && !kpiTiles.some((t) => t.label === "Distanza") ? (
-          <KpiTile
-            tile={{
-              label: "Distanza",
-              value: (distanceMeters / 1000).toFixed(2),
-              unit: "km",
-            }}
-          />
-        ) : null}
       </div>
 
-      {(() => {
-        const bio = sessionBiomarkerTiles(workout);
-        if (bio.length === 0) return null;
-        return (
-          <div className="space-y-2">
-            <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-fuchsia-300/80">
-              {t("biomarkers")}
-            </p>
-            <div className="grid grid-cols-3 gap-3 md:max-w-lg">
-              {bio.map((tile) => (
-                <BiomarkerTile key={tile.label} tile={tile} />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
       {overlaySeries.length > 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-          <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
+        <div className="space-y-2">
+          <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-300/80">
+            {t("multifactorAnalysis")}
+          </p>
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+            <SessionMultiAxisChart series={overlaySeries} labels={overlayLabels} />
+          </div>
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-gray-500">
           {t("noHighResSeries")}
         </p>
       )}
+
+      {/* Box-segnale: ogni traccia con la sua mini-curva; poi totali + biomarcatori. */}
+      {signalRows.length > 0 || scalarKpi.length > 0 || bioTiles.length > 0 ? (
+        <div className="space-y-3">
+          {signalRows.map((row) => {
+            const digits = row.unit === "rpm" || row.unit === "m" || row.unit === "W" || row.unit === "bpm" ? 0 : 1;
+            const values = allSeries.find((s) => s.channel === row.channel)?.values ?? [];
+            const color = SIGNAL_COLOR[row.channel as ChartChannel] ?? "#a1a1aa";
+            return (
+              <div key={row.channel} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold text-gray-200">
+                    {row.label}
+                    <span className="ml-1 text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">{row.unit}</span>
+                  </p>
+                  <p className="font-mono text-xs tabular-nums text-gray-300">
+                    <span className="text-gray-500">min</span> {fmt(row.min, digits)}
+                    <span className="mx-1 text-gray-600">·</span>
+                    <span className="text-gray-500">avg</span> {fmt(row.avg, digits)}
+                    <span className="mx-1 text-gray-600">·</span>
+                    <span className="text-gray-500">max</span> {fmt(row.max, digits)}
+                  </p>
+                </div>
+                <SessionSignalSparkline values={values} color={color} />
+              </div>
+            );
+          })}
+
+          {scalarKpi.length > 0 || bioTiles.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {scalarKpi.map((tile) => (
+                <KpiTile key={tile.label} tile={tile} />
+              ))}
+              {bioTiles.map((tile) => (
+                <BiomarkerTile key={tile.label} tile={tile} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {routeBundle && routeBundle.points.length > 0 ? (
         <div className="space-y-2">
@@ -480,23 +581,16 @@ export function CalendarDaySessionDetail({
 
   return (
     <div id="day-session-detail" className="scroll-mt-24 space-y-6">
+      {/* Card senza header: «Sessione del giorno · N eseguito» era ridondante con l'header pagina. */}
       {vms.map((vm, idx) => {
         const w = sortedExecuted[idx]!;
         return (
-          <Pro2SectionCard
+          <section
             key={vm.workoutId}
-            accent="orange"
-            title={idx === 0 ? t("sessionOfTheDay") : t("sessionNumbered", { n: idx + 1 })}
-            subtitle={idx === 0 ? subtitle : `${vm.sport ?? t("sessionFallback")} · ${vm.sourceLabel}`}
-            icon={idx === 0 ? Activity : Gauge}
+            className="rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner sm:p-6"
           >
-            <SessionDetailCard
-              vm={vm}
-              workout={w}
-              athleteId={athleteId}
-              athleteFtpWatts={athleteFtpWatts}
-            />
-          </Pro2SectionCard>
+            <SessionDetailCard vm={vm} workout={w} athleteId={athleteId} athleteFtpWatts={athleteFtpWatts} />
+          </section>
         );
       })}
     </div>

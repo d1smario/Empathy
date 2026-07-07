@@ -57,6 +57,14 @@ const OVERLAY_ORDER: MultiAxisChannel[] = ["power", "speed", "cadence", "tempera
 
 const PLOT_POINTS = 480;
 
+/** Pavimento asse: ~8% sotto il minimo, arrotondato a 10 (respiro anche sotto). */
+const axisMin = (dataMin: number) =>
+  Number.isFinite(dataMin) ? Math.max(0, Math.floor((dataMin * 0.92) / 10) * 10) : dataMin;
+/** Tetto asse ~15% SOPRA il massimo dell'atleta, arrotondato a 10: il grafico respira e
+ *  mostra che quel picco è il massimo RAGGIUNTO, non un limite assoluto della scala. */
+const axisMax = (dataMax: number) =>
+  Number.isFinite(dataMax) && dataMax > 0 ? Math.ceil((dataMax * 1.15) / 10) * 10 : dataMax;
+
 /** Ricampiona (stretch o downsample) un array numerico a `n` punti per allineare canali di lunghezza diversa. */
 function resample(values: number[], n: number): (number | null)[] {
   if (values.length === 0) return Array.from({ length: n }, () => null);
@@ -194,7 +202,7 @@ export function SessionMultiAxisChart({
                   hide={!visibleAxis}
                   width={visibleAxis ? 44 : 0}
                   tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
-                  domain={["auto", "auto"]}
+                  domain={[axisMin, axisMax]}
                   label={
                     visibleAxis
                       ? {
