@@ -391,7 +391,7 @@ function SessionDetailCard({
           </div>
         </div>
       ) : (
-        <SessionSummaryModule workout={workout} vm={vm} />
+        <SessionSummaryModule workout={workout} vm={vm} athleteId={athleteId} />
       )}
 
       {/* Totali (lavoro/energia) + biomarcatori: valori scalari NON presenti

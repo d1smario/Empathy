@@ -1,9 +1,15 @@
+"use client";
+
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import { Activity, Dumbbell, Leaf } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
+import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import type { SessionDetailViewModel } from "@/lib/training/session-detail-summary";
 import type { SportGlyphId } from "@/lib/training/builder/sport-glyph-id";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 type Discipline = "strength" | "recovery" | "endurance" | "generic";
 
@@ -70,23 +76,57 @@ const META: Record<
 
 /**
  * Modulo «riepilogo seduta» per il dettaglio quando NON ci sono serie HD da grafico:
- * al posto del box grigio «nessuna serie», una card elegante scelta per disciplina
- * (forza / recupero-mobilità / endurance / generica) con glifo, descrittore e
- * eventuale sensazione/RPE dalle note soggettive. I KPI scalari + biomarcatori
- * restano renderizzati sotto dal chiamante.
+ * al posto del box grigio «nessuna serie», una card elegante scelta per disciplina.
+ * Per le sedute di FORZA carica la scheda esercizi dalla pianificata collegata
+ * (`plannedWorkoutId` → contratto Pro2 `gymRx`) e la renderizza con Pro2GymSchedaBlockList.
+ * I KPI scalari + biomarcatori restano renderizzati sotto dal chiamante.
  */
 export function SessionSummaryModule({
   workout,
   vm,
+  athleteId,
 }: {
   workout: ExecutedWorkout;
   vm: SessionDetailViewModel;
+  athleteId?: string | null;
 }) {
   const t = useTranslations("CalendarDaySessionDetail");
   const discipline = classifyDiscipline(vm.sport, vm.sportGlyph);
   const m = META[discipline];
   const Icon = m.icon;
   const notes = (workout.subjectiveNotes ?? "").trim();
+
+  // Scheda forza: la seduta eseguita non porta gli esercizi, ma la pianificata collegata
+  // sì (contratto Pro2 `gymRx` nelle notes). La carichiamo DB-first solo per la forza.
+  const [contract, setContract] = useState<ReturnType<typeof parsePro2BuilderSessionFromNotes>>(null);
+  useEffect(() => {
+    const pid = workout.plannedWorkoutId;
+    if (discipline !== "strength" || !pid || !athleteId) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createEmpathyBrowserSupabase();
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from("planned_workouts")
+        .select("notes")
+        .eq("id", pid)
+        .eq("athlete_id", athleteId)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      const parsed = parsePro2BuilderSessionFromNotes((data as { notes?: string | null }).notes ?? null);
+      if (parsed) setContract(parsed);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workout.plannedWorkoutId, athleteId, discipline]);
+
+  // Scheda renderizzabile = ci sono blocchi con esercizi (stesso filtro di Pro2GymSchedaBlockList:
+  // non richiede il catalogExerciseId, basta il gymRx o il tipo blocco forza).
+  const hasScheda =
+    discipline === "strength" &&
+    !!contract &&
+    (contract.blocks ?? []).some((b) => b.gymRx || b.kind === "gym_exercise" || b.kind === "strength_sets");
 
   return (
     <div className={`rounded-2xl border ${m.border} bg-gradient-to-br ${m.grad} via-black/50 to-black/75 p-5`}>
@@ -114,7 +154,13 @@ export function SessionSummaryModule({
       ) : null}
 
       {discipline === "strength" ? (
-        <p className="mt-3 text-xs text-gray-500">{t("summarySchedaHint")}</p>
+        hasScheda ? (
+          <div className="mt-4">
+            <Pro2GymSchedaBlockList contract={contract!} compact />
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-gray-500">{t("summarySchedaHint")}</p>
+        )
       ) : null}
     </div>
   );
