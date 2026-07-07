@@ -20,19 +20,11 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 function localDayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function addDaysKey(baseKey: string, delta: number): string {
-  const d = new Date(`${baseKey}T12:00:00`);
-  d.setDate(d.getDate() + delta);
-  return localDayKey(d);
-}
-
 const WEEKDAY_IT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 const MONTH_IT = [
   "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
   "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre",
 ];
-/** Buffer di giorni oltre il mese: scorrendo si vede un po' prima/dopo. */
-const MONTH_EDGE_DAYS = 7;
 
 type WindowData = { planned: PlannedWorkout[]; executed: ExecutedWorkout[] };
 let windowCacheKey: string | null = null;
@@ -108,10 +100,11 @@ export default function TrainingCalendarTableView() {
       return;
     }
     let alive = true;
+    // Solo il mese selezionato: nessun buffer di giorni oltre i bordi (viste non più mischate).
     const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
     const monthEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0);
-    const from = addDaysKey(localDayKey(monthStart), -MONTH_EDGE_DAYS);
-    const to = addDaysKey(localDayKey(monthEnd), MONTH_EDGE_DAYS);
+    const from = localDayKey(monthStart);
+    const to = localDayKey(monthEnd);
     setLoading(true);
     loadTrainingWindow(athleteId, from, to)
       .then((d) => {
@@ -144,7 +137,15 @@ export default function TrainingCalendarTableView() {
       (executedByDate.get(key) ?? executedByDate.set(key, []).get(key)!).push(w);
     }
 
-    const dayKeys = [...new Set<string>([...plannedByDate.keys(), ...executedByDate.keys()])].sort();
+    // Mostra SOLO i giorni del mese selezionato (year+month === monthCursor).
+    const y0 = monthCursor.getFullYear();
+    const m0 = monthCursor.getMonth() + 1;
+    const dayKeys = [...new Set<string>([...plannedByDate.keys(), ...executedByDate.keys()])]
+      .filter((k) => {
+        const [y, m] = k.split("-").map(Number);
+        return y === y0 && m === m0;
+      })
+      .sort();
     return dayKeys.map((dayKey) => {
       const [y, m, d] = dayKey.split("-").map(Number);
       const dateObj = new Date(y!, (m ?? 1) - 1, d ?? 1);
@@ -181,7 +182,7 @@ export default function TrainingCalendarTableView() {
         activities,
       };
     });
-  }, [data, athleteFtpWatts, todayKey]);
+  }, [data, athleteFtpWatts, todayKey, monthCursor]);
 
   const loadingFirst = (ctxLoading || loading) && days.length === 0;
 
@@ -189,25 +190,36 @@ export default function TrainingCalendarTableView() {
   // (primo carico e click «Oggi»). Cambiando mese con le frecce NON si ricentra.
   const scrollBoxRef = useRef<HTMLDivElement | null>(null);
   const wantScrollToTodayRef = useRef(true);
+  // Cambiando mese con le frecce la lista riparte DALL'ALTO (mese pulito, dall'inizio).
+  const wantScrollTopRef = useRef(false);
   useEffect(() => {
-    if (loading || days.length === 0 || !isCurrentMonth || !wantScrollToTodayRef.current) return;
+    if (loading || days.length === 0) return;
     const box = scrollBoxRef.current;
-    const el = box?.querySelector<HTMLElement>("[data-today]");
-    if (box && el) {
-      // Assoluto + offsetTop (box è `relative`, quindi offsetTop è rispetto al box)
-      // + clamp: idempotente e stabile, centra oggi dentro al box (non la pagina).
-      const target = el.offsetTop - (box.clientHeight - el.offsetHeight) / 2;
-      box.scrollTop = Math.max(0, Math.min(target, box.scrollHeight - box.clientHeight));
+    if (!box) return;
+    if (isCurrentMonth && wantScrollToTodayRef.current) {
+      const el = box.querySelector<HTMLElement>("[data-today]");
+      if (el) {
+        // Assoluto + offsetTop (box è `relative`, quindi offsetTop è rispetto al box)
+        // + clamp: idempotente e stabile, centra oggi dentro al box (non la pagina).
+        const target = el.offsetTop - (box.clientHeight - el.offsetHeight) / 2;
+        box.scrollTop = Math.max(0, Math.min(target, box.scrollHeight - box.clientHeight));
+      }
+      wantScrollToTodayRef.current = false;
+      wantScrollTopRef.current = false;
+    } else if (wantScrollTopRef.current) {
+      box.scrollTop = 0;
+      wantScrollTopRef.current = false;
     }
-    wantScrollToTodayRef.current = false;
   }, [loading, days, isCurrentMonth]);
 
   const goPrevMonth = () => {
     wantScrollToTodayRef.current = false;
+    wantScrollTopRef.current = true;
     setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1));
   };
   const goNextMonth = () => {
     wantScrollToTodayRef.current = false;
+    wantScrollTopRef.current = true;
     setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1));
   };
   const goToday = () => {
