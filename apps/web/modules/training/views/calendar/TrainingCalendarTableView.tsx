@@ -8,6 +8,7 @@ import { Check, ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
 import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
+import { SessionRowPreview } from "@/components/training/SessionRowPreview";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
 import { normalizeDateKey, workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";
@@ -67,6 +68,8 @@ type Activity = {
   minutes: number;
   glyph: ReturnType<typeof plannedCalendarChipViewModel>["glyph"] | null;
   done: boolean;
+  /** Seduta eseguita agganciata alla riga → anteprima KPI + mini grafico (se presente). */
+  executed: ExecutedWorkout | null;
 };
 type DayGroup = { dayKey: string; dayLabel: string; isToday: boolean; activities: Activity[] };
 
@@ -145,14 +148,17 @@ export default function TrainingCalendarTableView() {
     return dayKeys.map((dayKey) => {
       const [y, m, d] = dayKey.split("-").map(Number);
       const dateObj = new Date(y!, (m ?? 1) - 1, d ?? 1);
-      const done = (executedByDate.get(dayKey) ?? []).length > 0;
       const planned = plannedByDate.get(dayKey) ?? [];
       const executed = executedByDate.get(dayKey) ?? [];
 
       const activities: Activity[] = planned.length
         ? planned.map((w) => {
             const vm = plannedCalendarChipViewModel(w, { athleteFtpWatts });
-            return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done };
+            // Aggancia l'eseguito a questa riga (per planned_workout_id; se 1 sola pianificata, il primo).
+            const ex =
+              executed.find((e) => e.plannedWorkoutId === w.id) ??
+              (planned.length === 1 ? executed[0] ?? null : null);
+            return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done: ex != null, executed: ex };
           })
         : executed.map((w) => ({
             title: "Seduta svolta",
@@ -160,6 +166,7 @@ export default function TrainingCalendarTableView() {
             minutes: Math.round(w.durationMinutes ?? 0),
             glyph: null,
             done: true,
+            executed: w,
           }));
 
       return {
@@ -279,26 +286,31 @@ export default function TrainingCalendarTableView() {
                     <Link
                       key={`${day.dayKey}-${i}`}
                       href={href}
-                      className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3 transition-colors last:border-0 hover:bg-white/[0.04]"
+                      className="block border-b border-white/[0.06] px-4 py-3 transition-colors last:border-0 hover:bg-white/[0.04]"
                     >
-                      {a.glyph ? (
-                        <SportDisciplineGlyph glyph={a.glyph} className="h-7 w-7 shrink-0 text-gray-200" />
-                      ) : (
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-gray-500">
-                          <Dumbbell className="h-3.5 w-3.5" aria-hidden />
+                      <div className="flex items-center gap-3">
+                        {a.glyph ? (
+                          <SportDisciplineGlyph glyph={a.glyph} className="h-7 w-7 shrink-0 text-gray-200" />
+                        ) : (
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-gray-500">
+                            <Dumbbell className="h-3.5 w-3.5" aria-hidden />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold text-gray-100">{a.title}</span>
+                          <span className="block truncate text-[0.72rem] text-gray-500">
+                            {[a.sportLabel, a.minutes > 0 ? `${a.minutes}′` : null].filter(Boolean).join(" · ")}
+                          </span>
                         </span>
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-gray-100">{a.title}</span>
-                        <span className="block truncate text-[0.72rem] text-gray-500">
-                          {[a.sportLabel, a.minutes > 0 ? `${a.minutes}′` : null].filter(Boolean).join(" · ")}
-                        </span>
-                      </span>
-                      {a.done ? (
-                        <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-label="Svolto" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-600" aria-hidden />
-                      )}
+                        {a.done ? (
+                          <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-label="Svolto" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-gray-600" aria-hidden />
+                        )}
+                      </div>
+                      {a.executed ? (
+                        <SessionRowPreview workout={a.executed} athleteId={athleteId} ftpW={athleteFtpWatts} />
+                      ) : null}
                     </Link>
                   );
                 })}

@@ -86,9 +86,15 @@ function resampleLabels(labels: string[], n: number): string[] {
 export function SessionMultiAxisChart({
   series,
   labels,
+  compact = false,
+  height,
 }: {
   series: MultiAxisSeries[];
   labels: string[];
+  /** Variante mini per anteprime (righe calendario): niente legenda/brush/assi/strip quota. */
+  compact?: boolean;
+  /** Altezza fissa in px (usata soprattutto in compact). */
+  height?: number;
 }) {
   const gid = useId().replace(/:/g, "");
 
@@ -140,8 +146,9 @@ export function SessionMultiAxisChart({
   const legendChannels: MultiAxisChannel[] = [...overlayChannels, ...(hasAltitude ? (["altitude"] as const) : [])];
 
   return (
-    <div className="space-y-3">
-      {/* Legenda a toggle: clic per accendere/spegnere una traccia. */}
+    <div className={compact ? "" : "space-y-3"}>
+      {/* Legenda a toggle: clic per accendere/spegnere una traccia (nascosta in compact). */}
+      {compact ? null : (
       <div className="flex flex-wrap gap-2">
         {legendChannels.map((c) => {
           const meta = META[c];
@@ -172,20 +179,27 @@ export function SessionMultiAxisChart({
           );
         })}
       </div>
+      )}
 
       {/* Grafico principale multi-asse: potenza (area) + FC/velocità/cadenza (linee). */}
-      <div className="h-[min(320px,46vw)] min-h-[220px] w-full min-w-0">
+      <div
+        className={compact ? "w-full min-w-0" : "h-[min(320px,46vw)] min-h-[220px] w-full min-w-0"}
+        style={compact ? { height: height ?? 96 } : undefined}
+      >
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+          <ComposedChart data={rows} margin={compact ? { top: 4, right: 2, left: 2, bottom: 0 } : { top: 8, right: 8, left: 4, bottom: 4 }}>
             <defs>
               <linearGradient id={powFill} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={CHART_SIGNAL.power} stopOpacity={0.75} />
                 <stop offset="95%" stopColor={CHART_SIGNAL.power} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+            {compact ? null : (
+              <CartesianGrid strokeDasharray={CHART_GRID.strokeDasharray} stroke={CHART_GRID.stroke} vertical={false} />
+            )}
             <XAxis
               dataKey="t"
+              hide={compact}
               tick={{ fill: CHART_AXIS.tick, fontSize: CHART_FONT.tick }}
               interval="preserveStartEnd"
               minTickGap={40}
@@ -193,7 +207,7 @@ export function SessionMultiAxisChart({
             {overlayChannels.map((c) => {
               const isLeft = c === leftChannel;
               const isRight = c === rightChannel;
-              const visibleAxis = isLeft || isRight;
+              const visibleAxis = !compact && (isLeft || isRight);
               return (
                 <YAxis
                   key={`axis-${c}`}
@@ -217,6 +231,7 @@ export function SessionMultiAxisChart({
                 />
               );
             })}
+            {compact ? null : (
             <Tooltip
               contentStyle={chartTooltipStyle("training")}
               labelStyle={{ color: "#e5e7eb" }}
@@ -228,6 +243,7 @@ export function SessionMultiAxisChart({
                 return [`${v} ${unit}`.trim(), meta.label];
               }}
             />
+            )}
             {overlayChannels.map((c) => {
               if (hidden.has(c)) return null;
               const meta = META[c];
@@ -239,7 +255,7 @@ export function SessionMultiAxisChart({
                     type="natural"
                     dataKey={c}
                     stroke={meta.color}
-                    strokeWidth={CHART_STROKE.base}
+                    strokeWidth={compact ? CHART_STROKE.thin : CHART_STROKE.base}
                     fill={`url(#${powFill})`}
                     dot={false}
                     isAnimationActive={false}
@@ -254,14 +270,15 @@ export function SessionMultiAxisChart({
                   type="natural"
                   dataKey={c}
                   stroke={meta.color}
-                  strokeWidth={CHART_STROKE.base}
+                  strokeWidth={compact ? CHART_STROKE.thin : CHART_STROKE.base}
                   dot={false}
                   isAnimationActive={false}
                   connectNulls
                 />
               );
             })}
-            {/* Scrubber per zoomare una finestra temporale (come il mockup). */}
+            {/* Scrubber per zoomare una finestra temporale (nascosto in compact). */}
+            {compact ? null : (
             <Brush
               dataKey="t"
               height={16}
@@ -270,12 +287,13 @@ export function SessionMultiAxisChart({
               fill="rgba(255,255,255,0.02)"
               tickFormatter={() => ""}
             />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Strip quota sotto (come il profilo altimetrico del mockup). */}
-      {hasAltitude && !hidden.has("altitude") ? (
+      {/* Strip quota sotto (come il profilo altimetrico del mockup; nascosta in compact). */}
+      {!compact && hasAltitude && !hidden.has("altitude") ? (
         <div className="h-[min(120px,20vw)] min-h-[90px] w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={rows} margin={{ top: 4, right: 8, left: 4, bottom: 2 }}>
