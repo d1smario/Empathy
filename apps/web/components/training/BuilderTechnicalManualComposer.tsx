@@ -485,15 +485,17 @@ export function BuilderTechnicalManualComposer({
               onChange={(e) => setManualSessionName(e.target.value)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            {t("date")}
-            <input
-              type="date"
-              className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
-              value={manualPlannedDate}
-              onChange={(e) => setManualPlannedDate(e.target.value)}
-            />
-          </label>
+          {!hideSaveBar && (
+            <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
+              {t("date")}
+              <input
+                type="date"
+                className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm text-white"
+                value={manualPlannedDate}
+                onChange={(e) => setManualPlannedDate(e.target.value)}
+              />
+            </label>
+          )}
         </div>
       </div>
 
