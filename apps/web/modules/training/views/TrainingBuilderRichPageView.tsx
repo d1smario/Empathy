@@ -67,17 +67,15 @@ import { sessionSupportsWahooStructuredPlan } from "@/lib/integrations/wahoo-pla
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
-import { fetchNutritionViewModel } from "@/modules/nutrition/services/nutrition-api";
 import { fetchProfileViewModel } from "@/modules/profile/services/profile-api";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { initialManualPlanBlocks, localCalendarDateString, normalizeCalendarTargetDay, builderPlannedWindowRange, WindowErr, sumPlannedTss, sumExecutedTss, sumMinutesPlanned, sumMinutesExecuted, ADAPTATION_BY_MACRO, defaultAdaptationForMacro, defaultSessionMinutesForMacro, EngineGenerateOverrides, BuilderWindowCacheEntry } from "@/lib/training/training-builder-rich-kit";
+import { initialManualPlanBlocks, localCalendarDateString, normalizeCalendarTargetDay, builderPlannedWindowRange, WindowErr, ADAPTATION_BY_MACRO, defaultAdaptationForMacro, defaultSessionMinutesForMacro, EngineGenerateOverrides, BuilderWindowCacheEntry } from "@/lib/training/training-builder-rich-kit";
 import { BuilderViryaEntryBanner } from "@/modules/training/views/sections/BuilderViryaEntryBanner";
 import { BuilderDayAdaptationPanel } from "@/modules/training/views/sections/BuilderDayAdaptationPanel";
 import { BuilderSportMacroSectorPicker } from "@/modules/training/views/sections/BuilderSportMacroSectorPicker";
 import { BuilderUpcomingPlannedSection } from "@/modules/training/views/sections/BuilderUpcomingPlannedSection";
 import { BuilderEngineGenerateSection } from "@/modules/training/views/sections/BuilderEngineGenerateSection";
 import { BuilderManualComposerSwitch } from "@/modules/training/views/sections/BuilderManualComposerSwitch";
-import { BuilderDetailsEngineAccordion } from "@/modules/training/views/sections/BuilderDetailsEngineAccordion";
 
 
 let builderWindowCacheKey: string | null = null;
@@ -99,7 +97,6 @@ export default function TrainingBuilderRichPageView() {
   const [err, setErr] = useState<string | null>(null);
   const [planned, setPlanned] = useState<PlannedWorkout[]>([]);
   const [executed, setExecuted] = useState<ExecutedWorkout[]>([]);
-  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [calendarRefresh, setCalendarRefresh] = useState(0);
   const [readSpineCoverage, setReadSpineCoverage] = useState<ReadSpineCoverageSummary | null>(null);
   const [twinContextStrip, setTwinContextStrip] = useState<TrainingTwinContextStripViewModel | null>(null);
@@ -158,7 +155,6 @@ export default function TrainingBuilderRichPageView() {
     if (!athleteId) {
       setPlanned([]);
       setExecuted([]);
-      setRange(null);
       setReadSpineCoverage(null);
       setTwinContextStrip(null);
       setPlannedProvenanceSummary(null);
@@ -175,7 +171,6 @@ export default function TrainingBuilderRichPageView() {
         // Cache cross-mount: mostra subito i dati (niente spinner); refresh in background sotto.
         setPlanned(cached.planned);
         setExecuted(cached.executed);
-        setRange(cached.range);
         setReadSpineCoverage(cached.readSpineCoverage);
         setTwinContextStrip(cached.twinContextStrip);
         setPlannedProvenanceSummary(cached.plannedProvenanceSummary);
@@ -206,7 +201,6 @@ export default function TrainingBuilderRichPageView() {
           if (cached) return;
           setPlanned([]);
           setExecuted([]);
-          setRange(null);
           setReadSpineCoverage(null);
           setTwinContextStrip(null);
           setPlannedProvenanceSummary(null);
@@ -216,14 +210,12 @@ export default function TrainingBuilderRichPageView() {
         const entry: BuilderWindowCacheEntry = {
           planned: json.planned,
           executed: json.executed ?? [],
-          range: { from: json.from, to: json.to },
           readSpineCoverage: json.readSpineCoverage ?? null,
           twinContextStrip: json.twinContextStrip ?? null,
           plannedProvenanceSummary: json.plannedProvenanceSummary ?? null,
         };
         setPlanned(entry.planned);
         setExecuted(entry.executed);
-        setRange(entry.range);
         setReadSpineCoverage(entry.readSpineCoverage);
         setTwinContextStrip(entry.twinContextStrip);
         setPlannedProvenanceSummary(entry.plannedProvenanceSummary);
@@ -245,21 +237,6 @@ export default function TrainingBuilderRichPageView() {
       c = true;
     };
   }, [athleteId, ctxLoading, calendarRefresh, plannedDate]);
-
-  const stats = useMemo(() => {
-    const pTss = sumPlannedTss(planned);
-    const eTss = sumExecutedTss(executed);
-    const pMin = sumMinutesPlanned(planned);
-    const eMin = sumMinutesExecuted(executed);
-    return {
-      pTss,
-      eTss,
-      pMin,
-      eMin,
-      sessionsPlanned: planned.length,
-      sessionsExecuted: executed.length,
-    };
-  }, [planned, executed]);
 
   const [adaptation, setAdaptation] = useState<AdaptationTarget>("mitochondrial_density");
   const [phase, setPhase] = useState<"base" | "build" | "peak" | "taper">("base");
@@ -1078,47 +1055,6 @@ export default function TrainingBuilderRichPageView() {
       .slice(0, 8);
   }, [planned]);
 
-  const [nutritionLine, setNutritionLine] = useState<string | null>(null);
-  const [nutritionBusy, setNutritionBusy] = useState(false);
-  const [nutritionErr, setNutritionErr] = useState<string | null>(null);
-
-  const refreshNutritionContext = useCallback(async () => {
-    if (!athleteId) return;
-    setNutritionBusy(true);
-    setNutritionErr(null);
-    try {
-      const vm = await fetchNutritionViewModel({ athleteId, date: plannedDate });
-      if (vm.error) {
-        setNutritionErr(vm.error);
-        setNutritionLine(null);
-        return;
-      }
-      const p = vm.plan;
-      const src =
-        vm.planSource === "calendar_training_solver"
-          ? t("nutritionSrcCalendar")
-          : vm.planSource === "nutrition_plans"
-            ? t("nutritionSrcPlan")
-            : t("nutritionSrcNone");
-      setNutritionLine(
-        `${p.calories} kcal · CHO ${p.carbsG}g · PRO ${p.proteinsG}g · FAT ${p.fatsG}g · H₂O ${p.hydrationMl}ml · ${src}` +
-          (typeof vm.plannedSessionsCount === "number"
-            ? ` · ${t("plannedSessionsSuffix", { count: vm.plannedSessionsCount })}`
-            : ""),
-      );
-    } catch (e) {
-      setNutritionErr(e instanceof Error ? e.message : t("errReadNutrition"));
-      setNutritionLine(null);
-    } finally {
-      setNutritionBusy(false);
-    }
-  }, [athleteId, plannedDate]);
-
-  useEffect(() => {
-    if (!athleteId) return;
-    void refreshNutritionContext();
-  }, [athleteId, plannedDate, calendarRefresh, refreshNutritionContext]);
-
   const showData = !ctxLoading && !loading && !err;
 
   return (
@@ -1355,19 +1291,6 @@ export default function TrainingBuilderRichPageView() {
           showData={showData}
           upcoming={upcoming}
           executed={executed}
-        />
-
-        {/* In fondo: accordion unico «Dettagli e motore» — contesto generativo e KPI finestra. */}
-        <BuilderDetailsEngineAccordion
-          athleteId={athleteId}
-          plannedDate={plannedDate}
-          nutritionBusy={nutritionBusy}
-          nutritionErr={nutritionErr}
-          nutritionLine={nutritionLine}
-          refreshNutritionContext={refreshNutritionContext}
-          showData={showData}
-          stats={stats}
-          range={range}
         />
     </Pro2ModulePageShell>
   );

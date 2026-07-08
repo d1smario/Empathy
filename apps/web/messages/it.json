@@ -505,25 +505,6 @@
     "generateWithAdaptation": "Genera con adattamento",
     "calendar": "Calendario"
   },
-  "BuilderDetailsEngineAccordion": {
-    "accordionTitle": "Come funziona",
-    "accordionSubtitle": "Contesto generativo, asset e KPI della finestra calendario",
-    "generativeContextAria": "Contesto generativo e asset",
-    "builderGenerativeContext": "Builder · contesto generativo",
-    "supportAuditNote": "Knowledge library e asset esterni sono di supporto e audit: il motore sessione resta deterministico; nessun redirect o blocco se i dati mancano (fallback locale in-modulo).",
-    "selectAthletePrompt": "Seleziona un atleta attivo per caricare tracce e contesto nutrizione.",
-    "nutritionEngineSessionDay": "Nutrizione · giorno seduta engine",
-    "reading": "Lettura…",
-    "refreshSummary": "Aggiorna sintesi",
-    "readOnlyNutritionApi": "Solo lettura API nutrizione — utile per allineare fueling mentale al giorno scelto.",
-    "windowKpisAria": "KPI finestra",
-    "plannedTss": "TSS pianificato",
-    "executedTss": "TSS eseguito",
-    "inTheSameWindow": "Nella stessa finestra",
-    "sessionsPlanExec": "Sessioni (pian. / eseg.)",
-    "totalMinutes": "Minuti totali",
-    "plannedExecutedRawSum": "Pianificato + eseguito (somma grezza)"
-  },
   "BuilderEngineGenerateSection": {
     "sectionAriaLabel": "Genera sessione (builder engine)",
     "generateSession": "Genera sessione",

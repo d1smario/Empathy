@@ -250,7 +250,6 @@ export type EngineGenerateOverrides = Partial<{
 export type BuilderWindowCacheEntry = {
   planned: PlannedWorkout[];
   executed: ExecutedWorkout[];
-  range: { from: string; to: string } | null;
   readSpineCoverage: ReadSpineCoverageSummary | null;
   twinContextStrip: TrainingTwinContextStripViewModel | null;
   plannedProvenanceSummary: Partial<Record<string, number>> | null;
