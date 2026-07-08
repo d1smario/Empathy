@@ -440,27 +440,34 @@ export default function TrainingBuilderRichPageView() {
     setManualActiveIndex((i) => Math.min(i, Math.max(0, manualPlanBlocks.length - 1)));
   }, [manualPlanBlocks.length]);
 
-  const loadLibraryContractInBuilder = useCallback((contract: Pro2BuilderSessionContract) => {
-    const state = hydrateBuilderStateFromLibraryContract(contract);
-    setSport(state.sport);
-    setManualSessionName(state.manualSessionName);
-    setManualSessionDurationMinutes(state.manualSessionDurationMinutes);
-    setIntensityUnit(state.intensityUnit);
-    setFtpW(state.ftpW);
-    setHrMax(state.hrMax);
-    setLengthMode(state.lengthMode);
-    setSpeedRefKmh(state.speedRefKmh);
-    setManualPlanBlocks(
-      state.manualPlanBlocks.length > 0 ? state.manualPlanBlocks : [defaultManualPlanBlock("steady", state.manualSessionName)],
-    );
-    setGymManualRows(state.gymManualRows);
-    setTechnicalManualRows(state.technicalManualRows);
-    setLifestyleManualRows(state.lifestyleManualRows);
-    setManualActiveIndex(0);
-    requestAnimationFrame(() => {
-      document.getElementById("builder-manual-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, []);
+  const loadLibraryContractInBuilder = useCallback(
+    (contract: Pro2BuilderSessionContract, opts?: { scroll?: boolean; keepSport?: boolean }) => {
+      const state = hydrateBuilderStateFromLibraryContract(contract);
+      // keepSport: quando la sorgente è la generazione motore lo sport è già quello
+      // selezionato; NON reidratarlo dal label del contratto (potrebbe cambiarlo).
+      if (!opts?.keepSport) setSport(state.sport);
+      setManualSessionName(state.manualSessionName);
+      setManualSessionDurationMinutes(state.manualSessionDurationMinutes);
+      setIntensityUnit(state.intensityUnit);
+      setFtpW(state.ftpW);
+      setHrMax(state.hrMax);
+      setLengthMode(state.lengthMode);
+      setSpeedRefKmh(state.speedRefKmh);
+      setManualPlanBlocks(
+        state.manualPlanBlocks.length > 0 ? state.manualPlanBlocks : [defaultManualPlanBlock("steady", state.manualSessionName)],
+      );
+      setGymManualRows(state.gymManualRows);
+      setTechnicalManualRows(state.technicalManualRows);
+      setLifestyleManualRows(state.lifestyleManualRows);
+      setManualActiveIndex(0);
+      if (opts?.scroll !== false) {
+        requestAnimationFrame(() => {
+          document.getElementById("builder-manual-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!athleteId) {
@@ -586,6 +593,42 @@ export default function TrainingBuilderRichPageView() {
         setManualSessionDurationMinutes(scaledMinutes);
         const goalLabel = String((out.session as { goalLabel?: string }).goalLabel ?? "").trim();
         if (goalLabel) setManualSessionName(goalLabel);
+      } else {
+        // Aerobic/technical/lifestyle: materializza la sessione generata anche
+        // nell'editor «Rifinisci» (stessa pipeline+scaling di saveToCalendar), così
+        // la rifinitura parte dal generato invece che da blocchi vuoti.
+        const loadScale =
+          "operationalScaling" in out &&
+          out.operationalScaling?.applied &&
+          out.operationalScaling.loadScale > 0
+            ? out.operationalScaling.loadScale
+            : 1;
+        const builderFamily =
+          activeMacroId === "aerobic" ? "aerobic" : activeMacroId === "technical" ? "technical" : "lifestyle";
+        const editorContract = buildPro2ContractFromEngineGeneration({
+          session: out.session,
+          blockExercises: "blockExercises" in out ? out.blockExercises : undefined,
+          renderProfile: {
+            intensityUnit,
+            ftpW: Math.max(1, ftpW),
+            hrMax: Math.max(1, hrMax),
+            lengthMode,
+            speedRefKmh: Math.max(1, speedRefKmh),
+          },
+          family: builderFamily,
+          discipline: currentSportLabel || sport.trim() || "Endurance",
+          sessionName: manualSessionName.trim() || out.session.goalLabel || "Sessione Pro 2",
+          adaptationTarget: adaptationUse,
+          phase: phaseUse,
+          plannedSessionDurationMinutes:
+            dayAdaptation?.ok && dayAdaptation.targetPlanned
+              ? dayAdaptation.targetPlanned.adaptedDurationMinutes
+              : sessionMinutesUse,
+          loadScale,
+        });
+        if (editorContract) {
+          loadLibraryContractInBuilder(editorContract, { scroll: false, keepSport: true });
+        }
       }
 
       setGenResult(out);
@@ -606,6 +649,15 @@ export default function TrainingBuilderRichPageView() {
       techGameContext,
       techQualities,
       adaptedTssHint,
+      currentSportLabel,
+      manualSessionName,
+      dayAdaptation,
+      intensityUnit,
+      ftpW,
+      hrMax,
+      lengthMode,
+      speedRefKmh,
+      loadLibraryContractInBuilder,
     ],
   );
 
@@ -1114,6 +1166,17 @@ export default function TrainingBuilderRichPageView() {
           setSport={setSport}
         />
 
+        {/* Template a monte: punto di partenza alternativo. Collassato di default;
+            «Builder» carica la seduta nell'editor, «Applica» la salva in calendario. */}
+        <CoachWorkoutLibraryPanel
+          athleteId={athleteId}
+          targetDate={plannedDate}
+          contractToSave={libraryContractToSave}
+          saveTitle={manualSessionName.trim() || undefined}
+          onApplied={() => setCalendarRefresh((n) => n + 1)}
+          onLoadInBuilder={loadLibraryContractInBuilder}
+        />
+
         <BuilderEngineGenerateSection
           activeMacroId={activeMacroId}
           currentSportLabel={currentSportLabel}
@@ -1226,15 +1289,6 @@ export default function TrainingBuilderRichPageView() {
             })}
           </p>
         </div>
-
-        <CoachWorkoutLibraryPanel
-          athleteId={athleteId}
-          targetDate={plannedDate}
-          contractToSave={libraryContractToSave}
-          saveTitle={manualSessionName.trim() || undefined}
-          onApplied={() => setCalendarRefresh((n) => n + 1)}
-          onLoadInBuilder={loadLibraryContractInBuilder}
-        />
 
         <BuilderUpcomingPlannedSection
           ctxLoading={ctxLoading}
