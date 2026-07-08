@@ -1438,7 +1438,14 @@
     "pageDescription": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario in quattro passi.",
     "pageDescriptionForAthlete": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario di {name}, in quattro passi.",
     "refineLine": "Rifinisci <muted>— adatta blocchi, esercizi, durata e nome della seduta nell'editor qui sotto.</muted>",
-    "saveLine": "Salva <muted>— usa «Salva nel calendario» nella seduta generata o nell'editor: la seduta appare in «Prossime pianificate» e nel Calendario.</muted>"
+    "saveLine": "Salva <muted>— scegli la data e salva: la seduta appare in «Prossime pianificate» e nel Calendario.</muted>",
+    "saveBarDate": "Data nel calendario",
+    "saveBarSave": "Salva nel calendario",
+    "saveBarSaving": "Salvo…",
+    "saveBarWahoo": "Invia a Wahoo",
+    "saveBarWahooBusy": "Invio…",
+    "saveBarWahooIneligible": "Disponibile per sedute strutturate con dispositivo Wahoo collegato.",
+    "saveBarEmpty": "Genera o costruisci una seduta prima di salvare."
   },
   "TrainingCalendarAnalyzer": {
     "metricLoad": "Carico",

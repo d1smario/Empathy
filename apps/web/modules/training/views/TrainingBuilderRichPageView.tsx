@@ -47,6 +47,8 @@ import { serializePro2BuilderSessionContract } from "@/lib/training/builder/pro2
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { hydrateBuilderStateFromLibraryContract } from "@/lib/training/library/hydrate-builder-from-library-contract";
 import { buildPro2ContractFromEngineGeneration } from "@/lib/training/builder/engine-session-contract-for-calendar";
+import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
+import { Pro2Button } from "@/components/ui/empathy";
 import { type AdaptationTarget, type GymContractionEmphasis, type GymEquipmentChannel, type GymGenerationProfile, type TechnicalAthleticQualityId, type TechnicalGameContext, type TechnicalWorkPhase } from "@/lib/training/engine";
 import { sessionBlocksToChartSegments } from "@/lib/training/engine/block-chart-segments";
 import { generateBuilderSession } from "@/modules/training/services/training-engine-api";
@@ -1222,6 +1224,7 @@ export default function TrainingBuilderRichPageView() {
           wahooPushOk={wahooPushOk}
           saveOkId={saveOkId}
           showTech={showTech}
+          hideSaveBar
         />
 
         <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
@@ -1277,18 +1280,73 @@ export default function TrainingBuilderRichPageView() {
           manualSaveOkId={manualSaveOkId}
           manualSession={manualSession}
           manualTssPreview={manualTssPreview}
+          hideSaveBar
         />
 
-        <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
-          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-            4
-          </span>
-          <p className="text-sm font-bold text-white">
-            {t.rich("saveLine", {
-              muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
-            })}
-          </p>
-        </div>
+        {/* [4] Salva UNICO: l'editor «Rifinisci» è la fonte di verità (Genera e i
+            template lo popolano), quindi qui c'è un solo salvataggio per tutte le
+            famiglie — via saveManualToCalendar — più il push Wahoo. */}
+        <section
+          aria-label={t("saveBarSave")}
+          className="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-950/20 to-black/50 p-4 sm:p-5"
+        >
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
+              4
+            </span>
+            <p className="text-sm font-bold text-white">
+              {t.rich("saveLine", {
+                muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
+              })}
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs text-gray-500">
+              {t("saveBarDate")}
+              <input
+                type="date"
+                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+                value={plannedDate}
+                onChange={(e) => setPlannedDate(e.target.value)}
+              />
+            </label>
+            <Pro2Button
+              type="button"
+              variant="primary"
+              disabled={!athleteId || !manualSession || manualSaveBusy}
+              onClick={() => void saveManualToCalendar(plannedDate)}
+            >
+              {manualSaveBusy ? t("saveBarSaving") : t("saveBarSave")}
+            </Pro2Button>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+              disabled={!wahooPushEligible || manualSaveBusy || wahooPushBusy}
+              title={!wahooPushEligible ? t("saveBarWahooIneligible") : undefined}
+              onClick={() => void pushSessionToWahooCloud()}
+            >
+              {wahooPushBusy ? t("saveBarWahooBusy") : t("saveBarWahoo")}
+            </Pro2Button>
+          </div>
+          {!manualSession ? <p className="mt-3 text-xs text-gray-500">{t("saveBarEmpty")}</p> : null}
+          {manualSaveErr ? (
+            <p className="mt-3 text-sm text-amber-300" role="alert">
+              {manualSaveErr}
+            </p>
+          ) : null}
+          {wahooPushErr ? (
+            <p className="mt-3 text-sm text-amber-300" role="alert">
+              Wahoo: {wahooPushErr}
+            </p>
+          ) : null}
+          {wahooPushOk ? <p className="mt-3 text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
+          {manualSaveOkId ? (
+            <div className="mt-3">
+              <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={manualSaveOkId} />
+            </div>
+          ) : null}
+        </section>
 
         <BuilderUpcomingPlannedSection
           ctxLoading={ctxLoading}

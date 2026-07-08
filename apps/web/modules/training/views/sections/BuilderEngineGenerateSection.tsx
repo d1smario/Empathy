@@ -87,6 +87,9 @@ export type BuilderEngineGenerateSectionProps = {
   wahooPushErr: string | null;
   wahooPushOk: string | null;
   saveOkId: string | null;
+  /** Nasconde la barra salva+Wahoo interna: il salvataggio è accentrato nella
+   *  barra «Salva» unica dell'orchestratore. Il preview della sessione resta. */
+  hideSaveBar?: boolean;
   showTech: boolean;
 };
 
@@ -135,6 +138,7 @@ export function BuilderEngineGenerateSection({
   wahooPushOk,
   saveOkId,
   showTech,
+  hideSaveBar,
 }: BuilderEngineGenerateSectionProps) {
   const t = useTranslations("BuilderEngineGenerateSection");
   return (
@@ -744,54 +748,58 @@ export function BuilderEngineGenerateSection({
               />
             </div>
           )}
-          <div className="flex flex-wrap items-end gap-3 border-b border-white/10 pb-4">
-            <label className="flex flex-col gap-1 text-xs text-gray-500">
-              {t("calendarDateLabel")}
-              <input
-                type="date"
-                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-                value={plannedDate}
-                onChange={(e) => setPlannedDate(e.target.value)}
-              />
-            </label>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              disabled={saveBusy || wahooPushBusy}
-              onClick={() => void saveToCalendar(plannedDate)}
-            >
-              {saveBusy ? t("saving") : t("saveToCalendar")}
-            </Pro2Button>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              disabled={!wahooPushEligible || saveBusy || wahooPushBusy}
-              title={
-                !wahooPushEligible
-                  ? t("wahooIneligibleTitle")
-                  : undefined
-              }
-              onClick={() => void pushSessionToWahooCloud()}
-            >
-              {wahooPushBusy ? t("wahooBusy") : t("sendToWahoo")}
-            </Pro2Button>
-          </div>
-          {saveErr ? (
-            <p className="text-sm text-amber-300" role="alert">
-              {saveErr}
-            </p>
-          ) : null}
-          {wahooPushErr ? (
-            <p className="text-sm text-amber-300" role="alert">
-              Wahoo: {wahooPushErr}
-            </p>
-          ) : null}
-          {wahooPushOk ? <p className="text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
-          {saveOkId ? (
-            <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={saveOkId} />
-          ) : null}
+          {!hideSaveBar && (
+            <>
+              <div className="flex flex-wrap items-end gap-3 border-b border-white/10 pb-4">
+                <label className="flex flex-col gap-1 text-xs text-gray-500">
+                  {t("calendarDateLabel")}
+                  <input
+                    type="date"
+                    className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+                    value={plannedDate}
+                    onChange={(e) => setPlannedDate(e.target.value)}
+                  />
+                </label>
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+                  disabled={saveBusy || wahooPushBusy}
+                  onClick={() => void saveToCalendar(plannedDate)}
+                >
+                  {saveBusy ? t("saving") : t("saveToCalendar")}
+                </Pro2Button>
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+                  disabled={!wahooPushEligible || saveBusy || wahooPushBusy}
+                  title={
+                    !wahooPushEligible
+                      ? t("wahooIneligibleTitle")
+                      : undefined
+                  }
+                  onClick={() => void pushSessionToWahooCloud()}
+                >
+                  {wahooPushBusy ? t("wahooBusy") : t("sendToWahoo")}
+                </Pro2Button>
+              </div>
+              {saveErr ? (
+                <p className="text-sm text-amber-300" role="alert">
+                  {saveErr}
+                </p>
+              ) : null}
+              {wahooPushErr ? (
+                <p className="text-sm text-amber-300" role="alert">
+                  Wahoo: {wahooPushErr}
+                </p>
+              ) : null}
+              {wahooPushOk ? <p className="text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
+              {saveOkId ? (
+                <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={saveOkId} />
+              ) : null}
+            </>
+          )}
           {showTech ? <p className="font-mono text-[0.65rem] text-gray-500">{genResult.source}</p> : null}
           <p className="text-gray-300">
             {t("physiologicalProfile")}: {genResult.physiologyPresent ? t("yes") : t("no")} · {t("twin")}: {genResult.twinPresent ? t("yes") : t("no")}

@@ -1438,7 +1438,14 @@
     "pageDescription": "Choose the sport, generate the session, refine it, and save it to the calendar in four steps.",
     "pageDescriptionForAthlete": "Choose the sport, generate the session, refine it, and save it to {name}'s calendar, in four steps.",
     "refineLine": "Refine <muted>— adjust blocks, exercises, duration, and session name in the editor below.</muted>",
-    "saveLine": "Save <muted>— use «Save to calendar» in the generated session or in the editor: the session appears in «Upcoming planned» and in the Calendar.</muted>"
+    "saveLine": "Save <muted>— pick the date and save: the session appears in «Upcoming planned» and in the Calendar.</muted>",
+    "saveBarDate": "Calendar date",
+    "saveBarSave": "Save to calendar",
+    "saveBarSaving": "Saving…",
+    "saveBarWahoo": "Send to Wahoo",
+    "saveBarWahooBusy": "Sending…",
+    "saveBarWahooIneligible": "Available for structured sessions with a linked Wahoo device.",
+    "saveBarEmpty": "Generate or build a session before saving."
   },
   "TrainingCalendarAnalyzer": {
     "metricLoad": "Load",

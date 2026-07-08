@@ -65,6 +65,9 @@ export type BuilderManualComposerSwitchProps = {
   manualSaveOkId: string | null;
   manualSession: GeneratedSession | null;
   manualTssPreview: number;
+  /** Nasconde la barra salva interna del composer: il salvataggio è accentrato
+   *  nella barra «Salva» unica dell'orchestratore. */
+  hideSaveBar?: boolean;
 };
 
 export function BuilderManualComposerSwitch({
@@ -109,6 +112,7 @@ export function BuilderManualComposerSwitch({
   manualSaveOkId,
   manualSession,
   manualTssPreview,
+  hideSaveBar,
 }: BuilderManualComposerSwitchProps) {
   return (
         <div id="builder-manual-editor">
@@ -132,6 +136,7 @@ export function BuilderManualComposerSwitch({
             manualSaveErr={manualSaveErr}
             manualSaveOkId={manualSaveOkId}
             canSave={Boolean(manualSession)}
+            hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
           />
         ) : activeMacroId === "technical" ? (
@@ -159,6 +164,7 @@ export function BuilderManualComposerSwitch({
             manualSaveErr={manualSaveErr}
             manualSaveOkId={manualSaveOkId}
             canSave={Boolean(manualSession)}
+            hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
           />
         ) : activeMacroId === "lifestyle" ? (
@@ -181,6 +187,7 @@ export function BuilderManualComposerSwitch({
             manualSaveErr={manualSaveErr}
             manualSaveOkId={manualSaveOkId}
             canSave={Boolean(manualSession)}
+            hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
           />
         ) : (
@@ -212,6 +219,7 @@ export function BuilderManualComposerSwitch({
             manualSaveErr={manualSaveErr}
             manualSaveOkId={manualSaveOkId}
             canSave={Boolean(manualSession)}
+            hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
             manualSessionDurationMinutes={manualSessionDurationMinutes}
             setManualSessionDurationMinutes={setManualSessionDurationMinutes}

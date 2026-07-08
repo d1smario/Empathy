@@ -86,6 +86,8 @@ export type BuilderLifestyleManualComposerProps = {
   manualSaveOkId: string | null;
   canSave: boolean;
   estimatedTss: number;
+  /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
+  hideSaveBar?: boolean;
 };
 
 export function BuilderLifestyleManualComposer({
@@ -108,6 +110,7 @@ export function BuilderLifestyleManualComposer({
   manualSaveOkId,
   canSave,
   estimatedTss,
+  hideSaveBar,
 }: BuilderLifestyleManualComposerProps) {
   const t = useTranslations("BuilderLifestyleManualComposer");
   const practiceCategoryLabel = (id: LifestylePracticeCategory): string => t(`practiceCategory_${id}`);
@@ -608,33 +611,37 @@ export function BuilderLifestyleManualComposer({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          {t("dateLabel")}
-          <input
-            type="date"
-            className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
-            value={manualPlannedDate}
-            onChange={(e) => setManualPlannedDate(e.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          className={btnPrimary}
-          disabled={!athleteId || !canSave || manualSaveBusy}
-          onClick={() => onSaveManual(manualPlannedDate)}
-        >
-          {manualSaveBusy ? t("saving") : t("saveToCalendar")}
-        </button>
-      </div>
-      {manualSaveErr ? (
-        <p className="mt-3 text-sm text-amber-300" role="alert">
-          {manualSaveErr}
-        </p>
-      ) : null}
-      {manualSaveOkId ? (
-        <BuilderCalendarSaveConfirm date={manualPlannedDate} plannedWorkoutId={manualSaveOkId} />
-      ) : null}
+      {!hideSaveBar && (
+        <>
+          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
+            <label className="flex flex-col gap-1 text-xs text-gray-500">
+              {t("dateLabel")}
+              <input
+                type="date"
+                className="rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-sm text-white"
+                value={manualPlannedDate}
+                onChange={(e) => setManualPlannedDate(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={!athleteId || !canSave || manualSaveBusy}
+              onClick={() => onSaveManual(manualPlannedDate)}
+            >
+              {manualSaveBusy ? t("saving") : t("saveToCalendar")}
+            </button>
+          </div>
+          {manualSaveErr ? (
+            <p className="mt-3 text-sm text-amber-300" role="alert">
+              {manualSaveErr}
+            </p>
+          ) : null}
+          {manualSaveOkId ? (
+            <BuilderCalendarSaveConfirm date={manualPlannedDate} plannedWorkoutId={manualSaveOkId} />
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

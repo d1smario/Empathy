@@ -87,6 +87,8 @@ export type BuilderTechnicalManualComposerProps = {
   manualSaveOkId: string | null;
   canSave: boolean;
   estimatedTss: number;
+  /** Quando true, nasconde la barra di salvataggio interna (bottoni Salva + messaggi). */
+  hideSaveBar?: boolean;
 };
 
 function buildSchemaDataUrlFromPlaybookEntry(entry: TechnicalPlaybookEntry): string {
@@ -144,6 +146,7 @@ export function BuilderTechnicalManualComposer({
   manualSaveOkId,
   canSave,
   estimatedTss,
+  hideSaveBar,
 }: BuilderTechnicalManualComposerProps) {
   const t = useTranslations("BuilderTechnicalManualComposer");
   const playbook = useMemo(() => getTechnicalPlaybookForSport(paletteSport), [paletteSport]);
@@ -295,15 +298,17 @@ export function BuilderTechnicalManualComposer({
           <p className="max-w-sm flex-1 pb-1 text-[0.65rem] leading-relaxed text-gray-500">
             {t("playbookBlocksApprox")} <span className="font-mono font-semibold text-orange-200/90">{structureMinutesFromChart} min</span>
           </p>
-          <button
-            type="button"
-            disabled={!athleteId || manualSaveBusy || !canSave}
-            onClick={() => onSaveManual(manualPlannedDate)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
-          >
-            <FileText className="h-4 w-4" aria-hidden />
-            {manualSaveBusy ? t("savingShort") : t("saveSheet")}
-          </button>
+          {!hideSaveBar && (
+            <button
+              type="button"
+              disabled={!athleteId || manualSaveBusy || !canSave}
+              onClick={() => onSaveManual(manualPlannedDate)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
+            >
+              <FileText className="h-4 w-4" aria-hidden />
+              {manualSaveBusy ? t("savingShort") : t("saveSheet")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -637,29 +642,31 @@ export function BuilderTechnicalManualComposer({
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
-        <button
-          type="button"
-          disabled={!athleteId || manualSaveBusy || !canSave}
-          onClick={() => onSaveManual(manualPlannedDate)}
-          className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
-        >
-          <FileText className="h-4 w-4" aria-hidden />
-          {manualSaveBusy ? t("saving") : t("saveSheetToCalendar")}
-        </button>
-        {manualSaveErr ? (
-          <span className="text-xs text-rose-300" role="alert">
-            {manualSaveErr}
-          </span>
-        ) : null}
-        {manualSaveOkId ? (
-          <BuilderCalendarSaveConfirm
-            date={manualPlannedDate}
-            plannedWorkoutId={manualSaveOkId}
-            className="text-xs text-emerald-300"
-          />
-        ) : null}
-      </div>
+      {!hideSaveBar && (
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+          <button
+            type="button"
+            disabled={!athleteId || manualSaveBusy || !canSave}
+            onClick={() => onSaveManual(manualPlannedDate)}
+            className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-40 bg-gradient-to-r from-orange-600 via-orange-600 to-orange-500 hover:brightness-110 border border-white/10"
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+            {manualSaveBusy ? t("saving") : t("saveSheetToCalendar")}
+          </button>
+          {manualSaveErr ? (
+            <span className="text-xs text-rose-300" role="alert">
+              {manualSaveErr}
+            </span>
+          ) : null}
+          {manualSaveOkId ? (
+            <BuilderCalendarSaveConfirm
+              date={manualPlannedDate}
+              plannedWorkoutId={manualSaveOkId}
+              className="text-xs text-emerald-300"
+            />
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }
