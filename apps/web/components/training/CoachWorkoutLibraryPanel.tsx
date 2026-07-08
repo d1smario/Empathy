@@ -164,7 +164,7 @@ export function CoachWorkoutLibraryPanel({
       setErr(r.error ?? t("errSaveFailed"));
       return;
     }
-    setOkMsg(`Saved to library: ${title}`);
+    setOkMsg(t("okSavedToLibrary", { title }));
     void refresh();
   }
 
@@ -190,7 +190,7 @@ export function CoachWorkoutLibraryPanel({
     }
     const scaleHint =
       applyScaling && r.loadScalePct != null ? t("loadSuffix", { pct: r.loadScalePct }) : "";
-    setOkMsg(`Applied «${item.title}» to ${targetDate}${scaleHint}`);
+    setOkMsg(t("okApplied", { title: item.title, date: targetDate, scaleHint }));
     onApplied?.();
   }
 
@@ -205,7 +205,12 @@ export function CoachWorkoutLibraryPanel({
       return;
     }
     setOkMsg(
-      `Empathy pack: ${r.imported ?? 0} new, ${r.updated ?? 0} updated, ${r.skipped ?? 0} skipped (${r.total ?? STARTER_PACK_TEMPLATE_COUNT} total).`,
+      t("okPackResult", {
+        imported: r.imported ?? 0,
+        updated: r.updated ?? 0,
+        skipped: r.skipped ?? 0,
+        total: r.total ?? STARTER_PACK_TEMPLATE_COUNT,
+      }),
     );
     void refresh();
   }
@@ -228,7 +233,7 @@ export function CoachWorkoutLibraryPanel({
       a.download = `${(r.title ?? item.title).replace(/[^\w\-]+/g, "_").slice(0, 80)}.zwo`;
       a.click();
       URL.revokeObjectURL(url);
-      setOkMsg(`ZWO export: ${item.title}`);
+      setOkMsg(t("okZwoExport", { title: item.title }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("errZwoExportFailed"));
     }
@@ -266,7 +271,7 @@ export function CoachWorkoutLibraryPanel({
       setErr(r.error ?? t("errCopyFailed"));
       return;
     }
-    setOkMsg(`Session copied to ${targetDate}`);
+    setOkMsg(t("okSessionCopied", { date: targetDate }));
     onApplied?.();
   }
 
@@ -279,14 +284,14 @@ export function CoachWorkoutLibraryPanel({
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-orange-200">
           <BookMarked className="h-4 w-4" aria-hidden />
-          Coach session library
+          {t("panelTitle")}
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
       </button>
       {open ? (
         <div className="space-y-3 border-t border-white/10 px-4 pb-4 pt-3">
           <p className="text-xs text-gray-500">
-            Reusable templates (Builder contract). Click a template to edit its intervals, sets and duration; Apply uses your edits (save the template to keep them in the library).
+            {t("description")}
           </p>
           <div className="flex flex-wrap gap-2">
             {contractToSave ? (
@@ -375,7 +380,7 @@ export function CoachWorkoutLibraryPanel({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Pro2Button type="button" variant="secondary" disabled={loading} onClick={() => void refresh()}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply filters"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("applyFilters")}
             </Pro2Button>
             {hasActiveFilters ? (
               <button
@@ -383,11 +388,11 @@ export function CoachWorkoutLibraryPanel({
                 className="text-xs font-semibold text-gray-400 underline decoration-white/20 hover:text-orange-200"
                 onClick={clearFilters}
               >
-                Reset filters
+                {t("resetFilters")}
               </button>
             ) : null}
             <span className="text-[0.65rem] text-gray-500">
-              {loading ? "…" : `${resultTotal} template`}
+              {loading ? "…" : t("templateCount", { count: resultTotal })}
             </span>
             <label className="ml-auto flex items-center gap-2 text-[0.65rem] text-gray-400">
               <input
@@ -395,7 +400,7 @@ export function CoachWorkoutLibraryPanel({
                 checked={applyScaling}
                 onChange={(e) => setApplyScaling(e.target.checked)}
               />
-              Adapt load (twin/recovery)
+              {t("adaptLoad")}
             </label>
           </div>
           {err ? (
@@ -410,9 +415,9 @@ export function CoachWorkoutLibraryPanel({
           ) : null}
           <div className="max-h-[min(32rem,70vh)] overflow-y-auto rounded-xl border border-white/10">
             {loading && items.length === 0 ? (
-              <p className="p-3 text-xs text-gray-500">Loading…</p>
+              <p className="p-3 text-xs text-gray-500">{t("loading")}</p>
             ) : items.length === 0 ? (
-              <p className="p-3 text-xs text-gray-500">No templates in the library.</p>
+              <p className="p-3 text-xs text-gray-500">{t("noTemplates")}</p>
             ) : (
               <ul className="divide-y divide-white/5">
                 {items.map((item) => {
@@ -459,10 +464,10 @@ export function CoachWorkoutLibraryPanel({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onLoadInBuilder(activeContract);
-                                setOkMsg(`«${item.title}» loaded into the Builder — edit sets, intervals and duration.`);
+                                setOkMsg(t("loadedInBuilderEdit", { title: item.title }));
                               }}
                             >
-                              Builder
+                              {t("builderButton")}
                             </Pro2Button>
                           ) : null}
                           <Pro2Button
@@ -484,7 +489,7 @@ export function CoachWorkoutLibraryPanel({
                           {previewLoading ? (
                             <div className="flex items-center justify-center gap-2 py-6 text-xs text-gray-400">
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                              Loading block chart…
+                              {t("loadingChart")}
                             </div>
                           ) : activeContract ? (
                             <CoachLibraryContractEditor
@@ -503,14 +508,14 @@ export function CoachWorkoutLibraryPanel({
                                 onLoadInBuilder
                                   ? () => {
                                       onLoadInBuilder(activeContract);
-                                      setOkMsg(`«${item.title}» loaded into the Builder.`);
+                                      setOkMsg(t("loadedInBuilder", { title: item.title }));
                                     }
                                   : undefined
                               }
                             />
                           ) : (
                             <p className="py-4 text-center text-xs text-amber-200/90">
-                              Structure not available for this template.
+                              {t("structureUnavailable")}
                             </p>
                           )}
                         </div>
