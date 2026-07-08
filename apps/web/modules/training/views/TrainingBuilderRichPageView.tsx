@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachWorkoutLibraryPanel } from "@/components/training/CoachWorkoutLibraryPanel";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
+import { useScopedAthleteName } from "@/lib/training/use-scoped-athlete-name";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import {
   buildPro2BuilderSessionContract,
@@ -90,6 +91,8 @@ export default function TrainingBuilderRichPageView() {
   const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
   /** Contenuti tecnici (diagnostica, sorgenti motore) visibili solo a coach/admin. */
   const showTech = role === "coach" || adminScoped;
+  /** Il Builder è coach-only: titolo «Crea la seduta per {atleta}» col nome in scope. */
+  const scopedAthleteName = useScopedAthleteName();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [planned, setPlanned] = useState<PlannedWorkout[]>([]);
@@ -1068,8 +1071,10 @@ export default function TrainingBuilderRichPageView() {
     <Pro2ModulePageShell
       eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
-      title={t("pageTitle")}
-      description={t("pageDescription")}
+      title={scopedAthleteName ? t("pageTitleForAthlete", { name: scopedAthleteName }) : t("pageTitleGeneric")}
+      description={
+        scopedAthleteName ? t("pageDescriptionForAthlete", { name: scopedAthleteName }) : t("pageDescription")
+      }
     >
         {adminScoped ? null : (
           <div className="scroll-mt-28">

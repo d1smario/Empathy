@@ -9,6 +9,7 @@ import type {
 import { BarChart3, Hexagon, LineChart } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
+import { useScopedAthleteName } from "@/lib/training/use-scoped-athlete-name";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import type { RecoverySummary } from "@/lib/reality/recovery-summary";
@@ -143,6 +144,7 @@ let trainingAnalyticsCache: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows
 export default function TrainingAnalyticsPageView() {
   const t = useTranslations("TrainingAnalyticsPageView");
   const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
+  const forAthlete = useScopedAthleteName();
   /** Contenuti tecnici (coperture, diagnostica) visibili solo a coach/admin. */
   const showTech = role === "coach" || adminScoped;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
@@ -446,7 +448,7 @@ export default function TrainingAnalyticsPageView() {
       eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
       title={t("title")}
-      description={t("description")}
+      description={forAthlete ? t("descriptionForAthlete", { name: forAthlete }) : t("description")}
     >
       {/* In scope coach/admin la navigazione è la barra scope-aware esterna (ScopedTrainingTabs). */}
       {adminScoped ? null : (

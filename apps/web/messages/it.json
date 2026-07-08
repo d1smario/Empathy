@@ -1332,7 +1332,8 @@
   "TrainingAnalyticsPageView": {
     "eyebrow": "Allenamento",
     "title": "Analisi del carico",
-    "description": "Quanto ti stai allenando davvero: carico pianificato ed eseguito, tendenze e analisi del giorno.",
+    "description": "Quanto ti stai allenando davvero: carico pianificato ed eseguito e tendenze.",
+    "descriptionForAthlete": "L'allenamento di {name}: carico pianificato ed eseguito e tendenze.",
     "analysisTimeWindowAria": "Finestra temporale analisi",
     "analysisPeriod": "Periodo analisi",
     "windowEndDate": "Data fine finestra (giorno incluso)",
@@ -1432,7 +1433,10 @@
     "errReadNutrition": "Errore lettura nutrizione",
     "eyebrow": "Allenamento",
     "pageTitle": "Crea la tua seduta",
+    "pageTitleForAthlete": "Crea la seduta per {name}",
+    "pageTitleGeneric": "Crea la seduta",
     "pageDescription": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario in quattro passi.",
+    "pageDescriptionForAthlete": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario di {name}, in quattro passi.",
     "refineLine": "Rifinisci <muted>— adatta blocchi, esercizi, durata e nome della seduta nell'editor qui sotto.</muted>",
     "saveLine": "Salva <muted>— usa «Salva nel calendario» nella seduta generata o nell'editor: la seduta appare in «Prossime pianificate» e nel Calendario.</muted>"
   },
@@ -1482,6 +1486,7 @@
     "eyebrow": "Allenamento",
     "title": "Calendario allenamenti",
     "description": "Le tue sedute pianificate ed eseguite, giorno per giorno.",
+    "descriptionForAthlete": "Le sedute pianificate ed eseguite di {name}, giorno per giorno.",
     "adminScopedTitle": "Disponibile nella scheda dedicata (v2)",
     "updatingCalendar": "Aggiornamento calendario…",
     "hiddenActivitySingular": "attività eseguita nascosta",

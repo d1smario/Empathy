@@ -1332,7 +1332,8 @@
   "TrainingAnalyticsPageView": {
     "eyebrow": "Training",
     "title": "Load analysis",
-    "description": "How much you're really training: planned and executed load, trends, and day analysis.",
+    "description": "How much you're really training: planned and executed load, and trends.",
+    "descriptionForAthlete": "{name}'s training: planned and executed load, and trends.",
     "analysisTimeWindowAria": "Analysis time window",
     "analysisPeriod": "Analysis period",
     "windowEndDate": "Window end date (day included)",
@@ -1432,7 +1433,10 @@
     "errReadNutrition": "Error reading nutrition",
     "eyebrow": "Training",
     "pageTitle": "Create your session",
+    "pageTitleForAthlete": "Build the session for {name}",
+    "pageTitleGeneric": "Build the session",
     "pageDescription": "Choose the sport, generate the session, refine it, and save it to the calendar in four steps.",
+    "pageDescriptionForAthlete": "Choose the sport, generate the session, refine it, and save it to {name}'s calendar, in four steps.",
     "refineLine": "Refine <muted>— adjust blocks, exercises, duration, and session name in the editor below.</muted>",
     "saveLine": "Save <muted>— use «Save to calendar» in the generated session or in the editor: the session appears in «Upcoming planned» and in the Calendar.</muted>"
   },
@@ -1482,6 +1486,7 @@
     "eyebrow": "Training",
     "title": "Training calendar",
     "description": "Your planned and completed sessions, day by day.",
+    "descriptionForAthlete": "{name}'s planned and completed sessions, day by day.",
     "adminScopedTitle": "Available in the dedicated tab (v2)",
     "updatingCalendar": "Updating calendar…",
     "hiddenActivitySingular": "completed activity hidden",

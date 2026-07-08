@@ -14,6 +14,7 @@ import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
 import { normalizeDateKey, workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";
 import { plannedCalendarChipViewModel } from "@/lib/training/planned-workout-display";
 import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
+import { useScopedAthleteName } from "@/lib/training/use-scoped-athlete-name";
 import { productHrefForPathname, useIsMobileApp } from "@/lib/shell/use-product-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -72,6 +73,7 @@ type DayGroup = { dayKey: string; dayLabel: string; isToday: boolean; activities
  */
 export default function TrainingCalendarTableView() {
   const { athleteId, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  const forAthlete = useScopedAthleteName();
   const athleteFtpWatts = useAthleteFtpWatts(athleteId);
   const pathname = usePathname() ?? "/";
   const isMobileApp = useIsMobileApp();
@@ -247,7 +249,7 @@ export default function TrainingCalendarTableView() {
       eyebrow={t("eyebrow")}
       eyebrowClassName="text-orange-400"
       title={t("title")}
-      description={t("description")}
+      description={forAthlete ? t("descriptionForAthlete", { name: forAthlete }) : t("description")}
     >
       {/* In scope coach/admin la navigazione è la barra scope-aware esterna (ScopedTrainingTabs). */}
       {isMobileApp || adminScoped ? null : (
