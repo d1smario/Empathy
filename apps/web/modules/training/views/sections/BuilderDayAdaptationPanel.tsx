@@ -2,8 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Pro2Button, Pro2Link } from "@/components/ui/empathy";
-import type { EngineGenerateOverrides } from "@/lib/training/training-builder-rich-kit";
+import { Pro2Link } from "@/components/ui/empathy";
 import type { BuilderDayAdaptationResponse } from "@/modules/training/services/training-builder-day-adaptation-api";
 
 /**
@@ -16,8 +15,6 @@ export type BuilderDayAdaptationPanelProps = {
   dayAdaptationBusy: boolean;
   dayAdaptationErr: string | null;
   dayAdaptation: BuilderDayAdaptationResponse | null;
-  genBusy: boolean;
-  runGenerate: (overrides?: EngineGenerateOverrides) => Promise<void>;
   replacePlannedIdFromQuery: string | null;
 };
 
@@ -27,8 +24,6 @@ export function BuilderDayAdaptationPanel({
   dayAdaptationBusy,
   dayAdaptationErr,
   dayAdaptation,
-  genBusy,
-  runGenerate,
   replacePlannedIdFromQuery,
 }: BuilderDayAdaptationPanelProps) {
   const t = useTranslations("BuilderDayAdaptationPanel");
@@ -92,17 +87,10 @@ export function BuilderDayAdaptationPanel({
                   <p className="mt-2 text-sm text-gray-500">{t("openWithCalendarDate")}</p>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Pro2Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!athleteId || genBusy || dayAdaptationBusy}
-                  className="border-orange-500/30 bg-orange-500/10 text-orange-100 hover:border-orange-400/50 hover:bg-orange-500/20"
-                  onClick={() => void runGenerate()}
-                >
-                  {genBusy ? t("generating") : t("generateWithAdaptation")}
-                </Pro2Button>
-                {replacePlannedIdFromQuery ? (
+              {/* Pannello SOLO informativo: la generazione applica già l'adattamento del giorno,
+                  quindi un bottone «Genera» qui era un doppione di quello nello step «Genera». */}
+              {replacePlannedIdFromQuery ? (
+                <div className="flex flex-wrap gap-2">
                   <Pro2Link
                     href={`/training/calendar?date=${encodeURIComponent(plannedDate)}`}
                     variant="ghost"
@@ -110,8 +98,8 @@ export function BuilderDayAdaptationPanel({
                   >
                     {t("calendar")}
                   </Pro2Link>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
             {dayAdaptation?.ok ? (
               <p className="mt-3 text-xs leading-relaxed text-gray-500">{dayAdaptation.loadAdaptation.guidance}</p>

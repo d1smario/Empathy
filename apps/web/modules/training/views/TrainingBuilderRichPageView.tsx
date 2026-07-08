@@ -1105,8 +1105,6 @@ export default function TrainingBuilderRichPageView() {
           dayAdaptationBusy={dayAdaptationBusy}
           dayAdaptationErr={dayAdaptationErr}
           dayAdaptation={dayAdaptation}
-          genBusy={genBusy}
-          runGenerate={runGenerate}
           replacePlannedIdFromQuery={replacePlannedIdFromQuery}
         />
 
