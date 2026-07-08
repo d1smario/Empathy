@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { ActiveAthleteScopeProvider } from "@/lib/use-active-athlete";
+import { ScopedTrainingTabs } from "@/components/athlete-scope/ScopedTrainingTabs";
 
 /**
  * Dispatcher condiviso delle schede atleta scoped (admin /admin/utenti/[id]/* e
@@ -24,8 +25,6 @@ const NewDashboardView = dynamic(
   () => import("@/components/dashboard/NewDashboardView").then((m) => m.NewDashboardView),
   { ssr: false, loading: () => LOADING },
 );
-// Hub Allenamento rimosso (2026-07): la scheda training scoped mostra la tabella calendario.
-const TrainingCalendarTableView = dynamic(() => import("@/modules/training/views/calendar/TrainingCalendarTableView"), { ssr: false, loading: () => LOADING });
 const HealthPageView = dynamic(() => import("@/modules/health/views/HealthPageView"), { ssr: false, loading: () => LOADING });
 const BiomechanicsPageView = dynamic(() => import("@/modules/biomechanics/views/BiomechanicsPageView"), { ssr: false, loading: () => LOADING });
 const AerodynamicsPageView = dynamic(() => import("@/modules/aerodynamics/views/AerodynamicsPageView"), { ssr: false, loading: () => LOADING });
@@ -59,7 +58,8 @@ export function ScopedAthleteModuleView({
   if (module === "nutrition") {
     content = <NutritionPageView subRoute="meal-plan" />;
   } else if (module === "training") {
-    content = <TrainingCalendarTableView />;
+    // Coach/admin: navigazione scope-aware Calendario/Builder/Analyzer, tutto in-scope.
+    content = <ScopedTrainingTabs />;
   } else {
     const View = VIEWS[module];
     if (!View) return null;

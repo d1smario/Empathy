@@ -448,9 +448,12 @@ export default function TrainingAnalyticsPageView() {
       title={t("title")}
       description={t("description")}
     >
-      <div className="scroll-mt-28">
-        <TrainingSubnav />
-      </div>
+      {/* In scope coach/admin la navigazione è la barra scope-aware esterna (ScopedTrainingTabs). */}
+      {adminScoped ? null : (
+        <div className="scroll-mt-28">
+          <TrainingSubnav />
+        </div>
+      )}
 
       {athleteId ? (
         <section

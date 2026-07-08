@@ -249,12 +249,12 @@ export default function TrainingCalendarTableView() {
       title={t("title")}
       description={t("description")}
     >
-      <div
-        className={`mb-4${adminScoped ? " pointer-events-none opacity-50" : ""}`}
-        title={adminScoped ? t("adminScopedTitle") : undefined}
-      >
-        {isMobileApp ? null : <TrainingSubnav />}
-      </div>
+      {/* In scope coach/admin la navigazione è la barra scope-aware esterna (ScopedTrainingTabs). */}
+      {isMobileApp || adminScoped ? null : (
+        <div className="mb-4">
+          <TrainingSubnav />
+        </div>
+      )}
 
       {/* Mese visualizzato + navigazione manuale mese precedente/successivo. */}
       <div className="mb-4 flex items-center gap-2">

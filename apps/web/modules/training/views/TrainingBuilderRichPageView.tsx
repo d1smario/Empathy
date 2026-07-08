@@ -628,9 +628,14 @@ export default function TrainingBuilderRichPageView() {
       }
       input.setOkId(input.plannedWorkoutId ?? "ok");
       setCalendarRefresh((n) => n + 1);
-      router.push(`/training/calendar?date=${encodeURIComponent(day)}`);
+      // In scope coach/admin il Builder è montato dentro /athletes/[id]/training: NON
+      // reindirizzare al calendario globale (perderebbe lo scope). Resta col messaggio di
+      // successo; il coach passa al tab «Calendario» per vedere la seduta dell'atleta.
+      if (!adminScoped) {
+        router.push(`/training/calendar?date=${encodeURIComponent(day)}`);
+      }
     },
-    [athleteId, router],
+    [athleteId, router, adminScoped],
   );
 
   const saveToCalendar = useCallback(async (targetDate: string) => {
@@ -1066,9 +1071,11 @@ export default function TrainingBuilderRichPageView() {
       title={t("pageTitle")}
       description={t("pageDescription")}
     >
-        <div className="scroll-mt-28">
-          <TrainingSubnav />
-        </div>
+        {adminScoped ? null : (
+          <div className="scroll-mt-28">
+            <TrainingSubnav />
+          </div>
+        )}
 
         <BuilderViryaEntryBanner
           viryaEntry={viryaEntry}
