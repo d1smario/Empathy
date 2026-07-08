@@ -6,7 +6,7 @@ import { Pro2Link } from "@/components/ui/empathy";
 
 const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: string; className?: string }[]>> = {
   profile: [
-    { href: "/training/builder", label: "Builder", className: "border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15" },
+    { href: "/training/calendar", label: "Calendar", className: "border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15" },
     { href: "/nutrition", label: "Nutrition", className: "border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15" },
     { href: "/physiology", label: "Physiology", className: "border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/15" },
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
@@ -28,7 +28,7 @@ const GENERATIVE_CROSS: Partial<Record<ProductModuleId, { href: string; label: s
   physiology: [
     { href: "/bioenergetics", label: "BioEnergetics", className: "border-lime-500/35 bg-lime-500/10 hover:bg-lime-500/15" },
     { href: "/physiology/bioenergetics", label: "Bioenergetics", className: "border-emerald-500/40 bg-emerald-500/12 hover:bg-emerald-500/18" },
-    { href: "/training/builder", label: "Builder", className: "border-fuchsia-500/35 bg-fuchsia-500/10 hover:bg-fuchsia-500/15" },
+    { href: "/training/calendar", label: "Calendar", className: "border-sky-500/35 bg-sky-500/10 hover:bg-sky-500/15" },
     { href: "/nutrition", label: "Nutrition", className: "border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15" },
     { href: "/health", label: "Health", className: "border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/15" },
     { href: "/profile", label: "Profile", className: "border-fuchsia-500/30 bg-fuchsia-500/10 hover:bg-fuchsia-500/15" },

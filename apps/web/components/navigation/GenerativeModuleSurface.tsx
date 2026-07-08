@@ -112,26 +112,13 @@ export async function GenerativeModuleSurface({ module }: { module: ProductModul
           <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-start">
             <TrainingPlannedWindowCard />
             <div className="flex flex-col gap-2 sm:justify-center">
-              <Pro2Link
-                href="/training/builder"
-                variant="secondary"
-                className="justify-center border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/15"
-              >
-                {t("openBuilderDenseView")}
-              </Pro2Link>
+              {/* Builder/Virya sono strumenti coach (via subnav Training, gated). Qui solo Calendar. */}
               <Pro2Link
                 href="/training/calendar"
                 variant="secondary"
                 className="justify-center border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/15"
               >
                 Calendar
-              </Pro2Link>
-              <Pro2Link
-                href="/training/vyria"
-                variant="ghost"
-                className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
-              >
-                Virya · annual
               </Pro2Link>
             </div>
           </div>
@@ -169,13 +156,6 @@ export async function GenerativeModuleSurface({ module }: { module: ProductModul
                   <LineChart className="h-4 w-4" aria-hidden />
                   Analyzer
                 </span>
-              </Pro2Link>
-              <Pro2Link
-                href="/training/vyria"
-                variant="ghost"
-                className="justify-center border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/15"
-              >
-                Virya
               </Pro2Link>
               <Pro2Link
                 href="/physiology"

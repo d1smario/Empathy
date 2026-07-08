@@ -118,7 +118,9 @@ function ActionLink({
 
 export function DashboardPredictionsPanel() {
   const t = useTranslations("DashboardPredictionsPanel");
-  const { athleteId } = useActiveAthlete();
+  const { athleteId, role, adminScoped } = useActiveAthlete();
+  // Coach costruisce, atleta riceve: i rimandi a Builder/Virya sono solo per coach/admin.
+  const isCoachOrAdmin = role === "coach" || adminScoped;
   const [slice, setSlice] = useState<PredictionsSlice | null>(() =>
     athleteId ? (readSwrCache<PredictionsSlice>(`dash-predictions:${athleteId}`) ?? null) : null,
   );
@@ -243,18 +245,22 @@ export function DashboardPredictionsPanel() {
         {/* Le previsioni operative vivono dove sta l'azione: solo rimandi. */}
         <PredictionCard accent="orange" kicker={t("linksTitle")}>
           <div className="mt-3 space-y-2">
-            <ActionLink
-              href="/training/builder"
-              icon={<Activity className="h-4 w-4" aria-hidden />}
-              label={t("linkBuilder")}
-              sub={t("linkBuilderSub")}
-            />
-            <ActionLink
-              href="/training/vyria"
-              icon={<CalendarRange className="h-4 w-4" aria-hidden />}
-              label={t("linkVirya")}
-              sub={t("linkViryaSub")}
-            />
+            {isCoachOrAdmin ? (
+              <>
+                <ActionLink
+                  href="/training/builder"
+                  icon={<Activity className="h-4 w-4" aria-hidden />}
+                  label={t("linkBuilder")}
+                  sub={t("linkBuilderSub")}
+                />
+                <ActionLink
+                  href="/training/vyria"
+                  icon={<CalendarRange className="h-4 w-4" aria-hidden />}
+                  label={t("linkVirya")}
+                  sub={t("linkViryaSub")}
+                />
+              </>
+            ) : null}
             <ActionLink
               href="/nutrition"
               icon={<UtensilsCrossed className="h-4 w-4" aria-hidden />}
