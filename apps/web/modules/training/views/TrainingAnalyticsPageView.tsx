@@ -14,7 +14,6 @@ import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverag
 import type { RecoverySummary } from "@/lib/reality/recovery-summary";
 import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
 import { fetchTrainingAnalyticsRows } from "@/modules/training/services/training-analytics-api";
 import {
   OVERLAY_METRIC_DEFS,
@@ -40,18 +39,11 @@ const TrainingAnalyzerCrossChannelSection = dynamic(
     loading: () => <div className="h-64 rounded-2xl border border-white/10 bg-black/20" aria-hidden />,
   },
 );
-import { CalendarDaySessionDetail } from "@/components/training/CalendarDaySessionDetail";
-import { TrainingCalendarAnalyzer } from "@/components/training/TrainingCalendarAnalyzer";
-import { workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";
-import { trainingRealityDiagnosticsBannerIt } from "@/lib/training/training-reality-diagnostics";
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import type { TrainingRealityDiagnosticsViewModel } from "@/api/training/contracts";
 import { EMPATHY_LOAD_LABELS_IT } from "@empathy/contracts";
 import {
   executedWorkoutsFromAnalyticsRows,
-  filterPlannedByDate,
-  filterWorkoutsByDate,
-  monthWorkoutsForDate,
   plannedWorkoutsFromAnalyticsRows,
 } from "@/lib/training/analytics/analytics-row-mappers";
 import { CHART_AXIS, CHART_GRID, CHART_SIGNAL, chartHexToRgba, chartSeriesForModule } from "@/lib/ui/chart-theme";
@@ -151,7 +143,6 @@ let trainingAnalyticsCache: Awaited<ReturnType<typeof fetchTrainingAnalyticsRows
 export default function TrainingAnalyticsPageView() {
   const t = useTranslations("TrainingAnalyticsPageView");
   const { athleteId, role, adminScoped, loading: athleteLoading } = useActiveAthlete();
-  const athleteFtpWatts = useAthleteFtpWatts(athleteId);
   /** Contenuti tecnici (coperture, diagnostica) visibili solo a coach/admin. */
   const showTech = role === "coach" || adminScoped;
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
@@ -253,12 +244,6 @@ export default function TrainingAnalyticsPageView() {
   });
   const [hexMetric, setHexMetric] = useState<MetricSeriesKey>("executed");
   /** Giorno per drill-down grafico (MMP, GPS, telemetria). */
-  const [focusDay, setFocusDay] = useState<string>(() => toLocalDateKey(new Date()));
-
-  useEffect(() => {
-    setFocusDay(anchorDate);
-  }, [anchorDate]);
-
   useEffect(() => {
     async function loadExecuted() {
       if (!athleteId) {
@@ -398,32 +383,6 @@ export default function TrainingAnalyticsPageView() {
     () => (athleteId ? plannedWorkoutsFromAnalyticsRows(plannedRows, athleteId) : []),
     [plannedRows, athleteId],
   );
-  const focusDayExecuted = useMemo(
-    () => filterWorkoutsByDate(executedWorkouts, focusDay),
-    [executedWorkouts, focusDay],
-  );
-  const focusDayPlanned = useMemo(
-    () => filterPlannedByDate(plannedWorkouts, focusDay),
-    [plannedWorkouts, focusDay],
-  );
-  const focusMonthExecuted = useMemo(
-    () => monthWorkoutsForDate(executedWorkouts, focusDay),
-    [executedWorkouts, focusDay],
-  );
-  const activeDays = useMemo(() => {
-    const days = new Set<string>();
-    for (const w of executedWorkouts) {
-      const key = workoutDayKey(w);
-      if (key && Number(w.durationMinutes) > 0) days.add(key);
-    }
-    for (const c of compareSeries) {
-      if (c.executed > 0 || c.planned > 0) days.add(c.date);
-    }
-    return Array.from(days).sort().slice(-14);
-  }, [executedWorkouts, compareSeries]);
-  const realityDiagBanner = trainingRealityDiagnostics
-    ? trainingRealityDiagnosticsBannerIt(trainingRealityDiagnostics)
-    : null;
   const weeklyExternalLoad = useMemo(() => {
     const last42 = compareSeries.slice(-42);
     const weeks: number[] = [];
@@ -539,38 +498,6 @@ export default function TrainingAnalyticsPageView() {
             {t("periodLabel")} <span className="text-gray-400">{bounds.from}</span> → <span className="text-gray-400">{bounds.to}</span>
             {windowDays === 1 ? t("periodSingleDaySuffix") : null}
           </p>
-          <label className="mt-4 flex min-w-[12rem] flex-col gap-1 text-xs text-gray-400">
-            <span className="font-semibold text-gray-300">{t("detailedAnalysisDay")}</span>
-            <input
-              type="date"
-              value={focusDay}
-              min={bounds.from}
-              max={bounds.to}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(v)) setFocusDay(v);
-              }}
-              className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm tabular-nums text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-            />
-          </label>
-          {activeDays.length ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {activeDays.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setFocusDay(d)}
-                  className={`rounded-full border px-2 py-1 font-mono text-[0.65rem] ${
-                    focusDay === d
-                      ? "border-orange-400/50 bg-orange-500/20 text-orange-100"
-                      : "border-white/15 bg-black/40 text-gray-400 hover:text-gray-200"
-                  }`}
-                >
-                  {d.slice(8, 10)}/{d.slice(5, 7)}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </section>
       ) : null}
 
@@ -663,46 +590,6 @@ export default function TrainingAnalyticsPageView() {
               })}
             </svg>
           </div>
-
-          <section className="mb-8 rounded-2xl border border-orange-500/25 bg-gradient-to-b from-orange-950/20 to-black/40 p-4 shadow-inner shadow-orange-950/20">
-            <h2 className="mb-1 text-base font-bold text-white">
-              {t("dayAnalysisLabel")}{" "}
-              {new Date(`${focusDay}T12:00:00`).toLocaleDateString(t("dateLocale"), {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </h2>
-            <p className="mb-4 text-xs text-gray-400">
-              {t("dayAnalysisDescription")}
-            </p>
-            {realityDiagBanner ? (
-              <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
-                {realityDiagBanner}
-              </p>
-            ) : null}
-            {focusDayExecuted.length === 0 && focusDayPlanned.length === 0 ? (
-              <p className="text-sm text-gray-500">{t("noSessionOnDay")}</p>
-            ) : (
-              <div className="space-y-8">
-                {focusDayExecuted.length > 0 ? (
-                  <CalendarDaySessionDetail
-                    selectedDate={focusDay}
-                    dayExecuted={focusDayExecuted}
-                    athleteId={athleteId}
-                    athleteFtpWatts={athleteFtpWatts}
-                  />
-                ) : null}
-                <TrainingCalendarAnalyzer
-                  selectedDate={focusDay}
-                  dayPlanned={focusDayPlanned}
-                  dayExecuted={focusDayExecuted}
-                  monthExecuted={focusMonthExecuted}
-                  athleteId={athleteId}
-                />
-              </div>
-            )}
-          </section>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {kpiCard(t("kpiExternalLoad7d"), external7.toFixed(0))}
