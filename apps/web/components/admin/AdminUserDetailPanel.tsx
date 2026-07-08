@@ -45,6 +45,7 @@ export type AdminUserDetail = {
   grants?: { id: string; kind: string; ends_at: string; revoked_at: string | null }[];
   anagrafica?: AdminUserAnagraficaRow | null;
   assignedCoach?: { userId: string; email: string | null } | null;
+  garmin?: { connected: boolean; garminUserId: string | null; updatedAt: string | null; tokenExpiresAt: string | null } | null;
 };
 
 /**
@@ -63,6 +64,8 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
   const [pwd2, setPwd2] = useState("");
   const [pwdBusy, setPwdBusy] = useState(false);
   const [pwdMsg, setPwdMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [garminBusy, setGarminBusy] = useState(false);
+  const [garminMsg, setGarminMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const loadDetail = useCallback(async (): Promise<void> => {
     const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/detail`, { cache: "no-store" });
@@ -183,6 +186,44 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
       setPwdBusy(false);
     }
   }, [pwd, pwd2, userId]);
+
+  const disconnectGarmin = useCallback(async (): Promise<void> => {
+    if (
+      !window.confirm(
+        "Scollegare Garmin per questo utente? Rimuove il collegamento e prova a deregistrare lato Garmin. I workout storici restano.",
+      )
+    ) {
+      return;
+    }
+    setGarminMsg(null);
+    setGarminBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/garmin`, { method: "DELETE" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        disconnected?: boolean;
+        garminPartnerDeregistered?: boolean;
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        setGarminMsg({ ok: false, text: data.error ?? "Scollegamento non riuscito." });
+        return;
+      }
+      setGarminMsg({
+        ok: true,
+        text: data.disconnected
+          ? data.garminPartnerDeregistered
+            ? "Garmin scollegato (deregistrato anche lato Garmin)."
+            : "Garmin scollegato (link locale rimosso; deregistrazione lato Garmin non confermata — l'utente può revocare l'app in Garmin Connect)."
+          : "Nessun dispositivo Garmin collegato.",
+      });
+      await loadDetail();
+    } catch {
+      setGarminMsg({ ok: false, text: "Scollegamento non riuscito." });
+    } finally {
+      setGarminBusy(false);
+    }
+  }, [userId, loadDetail]);
 
   if (loading) {
     return <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-xs text-gray-500">{COPY.loading}</div>;
@@ -308,6 +349,44 @@ export function AdminUserDetailPanel({ userId }: { userId: string }) {
           </p>
         ) : null}
       </section>
+
+      {/* Dispositivo Garmin (platform admin → scollega + deregister best-effort) */}
+      {detail.profile?.athleteId ? (
+        <section className="rounded-2xl border border-rose-400/20 bg-white/[0.03] p-5">
+          <h3 className="text-[11px] uppercase tracking-wider text-rose-300/80">Dispositivo Garmin</h3>
+          {detail.garmin?.connected ? (
+            <p className="mt-2 text-xs text-gray-300">
+              Collegato
+              {detail.garmin.garminUserId ? (
+                <>
+                  {" · "}
+                  <span className="break-all font-mono text-[11px] text-zinc-400">{detail.garmin.garminUserId}</span>
+                </>
+              ) : null}
+              {detail.garmin.updatedAt ? <span className="text-gray-500"> · dal {fmtDate(detail.garmin.updatedAt)}</span> : null}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-gray-500">Nessun dispositivo Garmin collegato.</p>
+          )}
+          <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+            Rimuove il collegamento e prova a deregistrare lato Garmin. I workout storici restano. Serve per ripulire un
+            collegamento pasticciato e permettere un nuovo connect pulito.
+          </p>
+          <button
+            type="button"
+            onClick={() => void disconnectGarmin()}
+            disabled={garminBusy || !detail.garmin?.connected}
+            className="mt-3 w-full rounded-lg border border-rose-400/30 bg-rose-400/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {garminBusy ? "Scollegamento…" : "Scollega Garmin"}
+          </button>
+          {garminMsg ? (
+            <p className={`mt-2 text-[11px] ${garminMsg.ok ? "text-emerald-400" : "text-red-400"}`} role="alert">
+              {garminMsg.text}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Coach assegnato (ESCLUSIVO) */}
       <section className="rounded-2xl border border-violet-400/20 bg-white/[0.03] p-5">

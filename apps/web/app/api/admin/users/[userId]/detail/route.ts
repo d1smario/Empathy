@@ -104,6 +104,27 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
     }
   }
 
+  // Stato collegamento Garmin dell'atleta (per la card + azione Scollega admin).
+  let garmin:
+    | { connected: boolean; garminUserId: string | null; updatedAt: string | null; tokenExpiresAt: string | null }
+    | null = null;
+  if (athleteId) {
+    const { data: gl } = await admin
+      .from("garmin_athlete_links")
+      .select("garmin_user_id, updated_at, token_expires_at")
+      .eq("athlete_id", athleteId)
+      .maybeSingle();
+    const g = gl as { garmin_user_id?: string | null; updated_at?: string | null; token_expires_at?: string | null } | null;
+    garmin = g
+      ? {
+          connected: true,
+          garminUserId: g.garmin_user_id ?? null,
+          updatedAt: g.updated_at ?? null,
+          tokenExpiresAt: g.token_expires_at ?? null,
+        }
+      : { connected: false, garminUserId: null, updatedAt: null, tokenExpiresAt: null };
+  }
+
   const stripeSubscriptions = ((subs ?? []) as Array<Record<string, unknown>>).map((row) => ({
     status: typeof row.status === "string" ? row.status : "",
     currentPeriodEnd: typeof row.current_period_end === "string" ? row.current_period_end : null,
@@ -150,5 +171,6 @@ export async function GET(_req: Request, { params }: { params: { userId: string 
     activity,
     anagrafica,
     assignedCoach,
+    garmin,
   });
 }
