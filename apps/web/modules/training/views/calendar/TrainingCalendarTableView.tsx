@@ -11,6 +11,7 @@ import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph
 import { SessionRowPreview } from "@/components/training/SessionRowPreview";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
+import { fetchPlannedWindowCached } from "@/lib/training/planned-window-client-cache";
 import { normalizeDateKey, workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";
 import { plannedCalendarChipViewModel } from "@/lib/training/planned-workout-display";
 import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
@@ -28,12 +29,16 @@ const MONTH_IT = [
 ];
 
 type WindowData = { planned: PlannedWorkout[]; executed: ExecutedWorkout[] };
-let windowCacheKey: string | null = null;
-let windowCache: WindowData | null = null;
 
+/**
+ * Fetch della finestra calendario via cache CONDIVISA (planned-window-client-cache):
+ * TTL breve + invalidazione per-atleta. Fondamentale: quando il Builder salva una seduta
+ * chiama invalidatePlannedWindowCacheForAthlete → al rientro nella tab Calendario (che
+ * rimonta) la seduta appena creata compare subito. La vecchia cache di modulo — senza TTL
+ * né invalidazione — restituiva dati stale, così una seduta creata era visibile in
+ * Nutrition (lettura fresca) ma NON nel Calendario finché non si ricaricava la pagina.
+ */
 async function loadTrainingWindow(athleteId: string, from: string, to: string): Promise<WindowData> {
-  const key = `${athleteId}|${from}|${to}`;
-  if (windowCacheKey === key && windowCache) return windowCache;
   const q = new URLSearchParams({ athleteId, from, to });
   q.set("includePlanned", "1");
   q.set("includeExecuted", "1");
@@ -41,18 +46,14 @@ async function loadTrainingWindow(athleteId: string, from: string, to: string): 
   q.set("includeTraceSummary", "0");
   q.set("includePlannedNotes", "0");
   const headers = await buildSupabaseAuthHeaders();
-  const res = await fetch(`/api/training/planned-window?${q}`, { cache: "no-store", credentials: "same-origin", headers });
-  const json = (await res.json().catch(() => ({}))) as {
+  const { ok, json } = await fetchPlannedWindowCached<{
     ok?: boolean;
     planned?: PlannedWorkout[];
     executed?: ExecutedWorkout[];
     error?: string;
-  };
-  if (!res.ok || !json.ok) throw new Error(json.error || "Impossibile leggere le attività.");
-  const data: WindowData = { planned: json.planned ?? [], executed: json.executed ?? [] };
-  windowCacheKey = key;
-  windowCache = data;
-  return data;
+  }>(`/api/training/planned-window?${q}`, { cache: "no-store", credentials: "same-origin", headers });
+  if (!ok || !json.ok) throw new Error(json.error || "Impossibile leggere le attività.");
+  return { planned: json.planned ?? [], executed: json.executed ?? [] };
 }
 
 type Activity = {
