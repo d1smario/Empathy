@@ -27,6 +27,8 @@ const HealthPageView = dynamic(() => import("@/modules/health/views/HealthPageVi
 const PhysiologyPageView = dynamic(() => import("@/modules/physiology/views/PhysiologyPageView"), { ssr: false, loading: () => LOADING });
 const BiomechanicsPageView = dynamic(() => import("@/modules/biomechanics/views/BiomechanicsPageView"), { ssr: false, loading: () => LOADING });
 const AerodynamicsPageView = dynamic(() => import("@/modules/aerodynamics/views/AerodynamicsPageView"), { ssr: false, loading: () => LOADING });
+// Profilo atleta editabile dal coach in scope (riusa la vista desktop; device + email bloccati).
+const ProfilePageView = dynamic(() => import("@/modules/profile/views/ProfilePageView"), { ssr: false, loading: () => LOADING });
 
 // Bioenergetica/Longevity sono dentro la Dashboard (come desktop): niente scheda dedicata.
 const VIEWS: Record<string, ComponentType> = {
@@ -36,6 +38,7 @@ const VIEWS: Record<string, ComponentType> = {
   physiology: PhysiologyPageView,
   biomechanics: BiomechanicsPageView,
   aerodynamics: AerodynamicsPageView,
+  profile: ProfilePageView,
 };
 
 export function MobileScopedAthleteModuleView({ module, athleteId }: { module: string; athleteId: string }) {

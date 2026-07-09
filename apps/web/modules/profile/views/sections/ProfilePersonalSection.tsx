@@ -14,9 +14,11 @@ import type { ProfileFormState } from "@/modules/profile/views/sections/profile-
 export type ProfilePersonalSectionProps = {
   form: ProfileFormState;
   setForm: Dispatch<SetStateAction<ProfileFormState>>;
+  /** In scope coach/admin l'email è read-only: è la chiave di match/dedup dell'atleta. */
+  lockIdentity?: boolean;
 };
 
-export function ProfilePersonalSection({ form, setForm }: ProfilePersonalSectionProps) {
+export function ProfilePersonalSection({ form, setForm, lockIdentity = false }: ProfilePersonalSectionProps) {
   const t = useTranslations("ProfilePersonalSection");
   return (
     <div>
@@ -24,7 +26,7 @@ export function ProfilePersonalSection({ form, setForm }: ProfilePersonalSection
       <div className="profile-editor-grid">
       <div className="form-group"><label className="form-label">{t("firstNameLabel")}</label><input type="text" className="form-input" value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} /></div>
       <div className="form-group"><label className="form-label">{t("lastNameLabel")}</label><input type="text" className="form-input" value={form.last_name} onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))} /></div>
-      <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} /></div>
+      <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} disabled={lockIdentity} title={lockIdentity ? t("emailLockedForCoach") : undefined} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} /></div>
       <div className="form-group"><label className="form-label">{t("birthDateLabel")}</label><input type="date" className="form-input" value={form.birth_date} onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))} /></div>
       <div className="form-group"><label className="form-label">{t("genderLabel")}</label><select className="form-select" value={form.sex} onChange={(e) => setForm((f) => ({ ...f, sex: e.target.value }))}><option value="">—</option><option value="male">{t("genderMale")}</option><option value="female">{t("genderFemale")}</option><option value="other">{t("genderOther")}</option></select></div>
       <div className="form-group"><label className="form-label">{t("activityLevelLabel")}</label><select className="form-select" value={form.activity_level} onChange={(e) => setForm((f) => ({ ...f, activity_level: e.target.value }))}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option><option value="elite">Elite</option></select></div>

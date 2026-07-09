@@ -80,6 +80,10 @@ export default function ProfilePage({
   // Output del motore (segnali fisiologici, copertura dataset, digital twin) e note
   // tecniche: roba da coach/admin, non dall'atleta. Stesso pattern showTech del resto.
   const showTech = role === "coach" || adminScoped;
+  // Device e identità (email) sono gestibili SOLO dall'atleta sul proprio profilo:
+  // in scope coach/admin i device restano nascosti e l'email è read-only (evita
+  // identity drift sul match/dedup coach). Il resto del profilo il coach lo modifica.
+  const canManageDevices = !adminScoped;
   const [profiles, setProfiles] = useState<AthleteProfileRow[]>([]);
   const [physioMap, setPhysioMap] = useState<Record<string, PhysiologyRow>>({});
   const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
@@ -531,6 +535,8 @@ export default function ProfilePage({
   // home" senza alcuna spiegazione (l'editor è un modale, di default chiuso e su "personal").
   const oauthReturnHandledRef = useRef(false);
   useEffect(() => {
+    // In scope coach/admin i device sono nascosti: nessun ritorno OAuth da gestire.
+    if (adminScoped) return;
     if (oauthReturnHandledRef.current || typeof window === "undefined" || !currentProfile) return;
     const q = new URLSearchParams(window.location.search);
     const hasDeviceReturn = ["garmin", "whoop", "strava", "polar", "wahoo", "suunto", "karoo"].some((k) => q.get(k));
@@ -1019,17 +1025,21 @@ export default function ProfilePage({
           <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>{t("tabPhysical")}</button>
           <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
           <button type="button" className={editorTabClass(activeSection === "nutrition", "rose")} onClick={() => goToEditorSection("nutrition")}>{t("tabNutrition")}</button>
-          <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
+          {canManageDevices ? (
+            <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
+          ) : null}
         </div>
         <form onSubmit={handleSubmit} className={`profile-monitor profile-editor-shell tone-${profileToneForEditorSection(activeSection)} p-4 sm:p-5`}>
           <div className="pt-4 sm:pt-5">
-          {activeSection === "personal" && <ProfilePersonalSection form={form} setForm={setForm} />}
+          {activeSection === "personal" && <ProfilePersonalSection form={form} setForm={setForm} lockIdentity={adminScoped} />}
 
-          <ProfileDevicesSection
-            activeAthleteId={activeAthleteId}
-            hasActivePlan={hasActivePlan}
-            active={activeSection === "devices"}
-          />
+          {canManageDevices ? (
+            <ProfileDevicesSection
+              activeAthleteId={activeAthleteId}
+              hasActivePlan={hasActivePlan}
+              active={activeSection === "devices"}
+            />
+          ) : null}
 
           {activeSection === "physical" && <ProfilePhysicalSection form={form} setForm={setForm} />}
 

@@ -30,6 +30,8 @@ const BiomechanicsPageView = dynamic(() => import("@/modules/biomechanics/views/
 const AerodynamicsPageView = dynamic(() => import("@/modules/aerodynamics/views/AerodynamicsPageView"), { ssr: false, loading: () => LOADING });
 const NutritionPageView = dynamic(() => import("@/modules/nutrition/views/NutritionPageView"), { ssr: false, loading: () => LOADING });
 const PhysiologyPageView = dynamic(() => import("@/modules/physiology/views/PhysiologyPageView"), { ssr: false, loading: () => LOADING });
+// Profilo atleta editabile dal coach/admin in scope (device + email bloccati lato view).
+const ProfilePageView = dynamic(() => import("@/modules/profile/views/ProfilePageView"), { ssr: false, loading: () => LOADING });
 
 // Bioenergetica e Longevity NON sono schede a sé: l'atleta le vede dentro la Dashboard
 // (strisce/pannelli in NewDashboardView), quindi coach e admin le vedono lì pure.
@@ -40,6 +42,7 @@ const VIEWS: Record<string, ComponentType> = {
   biomechanics: BiomechanicsPageView,
   aerodynamics: AerodynamicsPageView,
   physiology: PhysiologyPageView,
+  profile: ProfilePageView,
 };
 
 export function ScopedAthleteModuleView({

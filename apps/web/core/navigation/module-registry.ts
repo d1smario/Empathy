@@ -45,10 +45,9 @@ export type ProductModuleNavItem = {
  */
 export const PRODUCT_MODULE_NAV: ProductModuleNavItem[] = [
   // — Account-fixed (riferite all'operatore loggato) —
-  // Rinominata (2026-07): la pagina è il cockpit oggi→24h→previsioni, non una
-  // "dashboard" generica. Il coach mantiene "Dashboard" (home operativa diversa,
-  // eccezione in ProductSidebar).
-  { module: "dashboard", href: "/dashboard", label: "Oggi & Domani", icon: "chart", area: "main", scope: "account" },
+  { module: "analysis", href: "/analysis", label: "Analisi", icon: "chart", area: "main", scope: "account", roles: ["private"] },
+  { module: "today", href: "/today", label: "Oggi", icon: "chart", area: "main", scope: "account", roles: ["private"] },
+  { module: "dashboard", href: "/dashboard", label: "Dashboard", icon: "chart", area: "main", scope: "account", roles: ["coach"] },
   { module: "calendario", href: "/calendario", label: "Calendario", icon: "calendar", area: "main", scope: "account", roles: ["coach"] },
   { module: "athletes", href: "/athletes", label: "Atleti", icon: "users", area: "main", scope: "account", roles: ["coach"] },
   { module: "commissioni", href: "/commissioni", label: "Commissioni", icon: "wallet", area: "main", scope: "account", roles: ["coach"] },
@@ -97,12 +96,16 @@ export function pathSegmentFromHref(href: string): string {
 export type ScopedAthleteTab = { module: ProductModuleId; label: string; icon: ProductNavIconKey };
 
 export const SCOPED_ATHLETE_TABS: ScopedAthleteTab[] = [
-  { module: "dashboard", label: "Oggi & Domani", icon: "chart" },
+  { module: "dashboard", label: "Dashboard", icon: "chart" },
   ...PRODUCT_MODULE_NAV.filter((item) => item.scope === "athlete").map((item) => ({
     module: item.module,
     label: item.label,
     icon: item.icon,
   })),
+  // Profilo dell'atleta modificabile dal coach/admin in scope. È scope:"account" nel
+  // nav globale (profilo dell'operatore), ma qui va esposto esplicitamente come scheda
+  // atleta: device e collegamenti coach restano gestibili solo dall'atleta (gate nella view).
+  { module: "profile", label: "Profilo", icon: "user" },
 ];
 
 export const SCOPED_ATHLETE_TAB_MODULES: ProductModuleId[] = SCOPED_ATHLETE_TABS.map((tab) => tab.module);
