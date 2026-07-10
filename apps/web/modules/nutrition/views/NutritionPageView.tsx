@@ -332,6 +332,13 @@ function resolveFuelingProductImage(
 
 
 
+/** Data odierna in fuso LOCALE (Y-M-D), coerente con la vista Oggi. Evita l'off-by-one
+ * di `new Date().toISOString()` che restituisce la data UTC (di notte in CET è ieri). */
+function localTodayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
   const t = useTranslations("NutritionPageView");
   const router = useRouter();
@@ -383,7 +390,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [saving, setSaving] = useState(false);
   const [adherenceOptIn, setAdherenceOptIn] = useState(false);
   const [adherenceConfigLoading, setAdherenceConfigLoading] = useState(false);
-  const [selectedPlanDate, setSelectedPlanDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedPlanDate, setSelectedPlanDate] = useState<string>(localTodayIso());
   const lastNutritionHydrationKey = useRef<string>("");
   /** Finestra `from`…`to` dell’ultimo `fetchNutritionModuleContext` completo (per pathwayDate incrementale). */
   const nutritionModuleWindowRef = useRef<{ from: string; to: string } | null>(null);
@@ -684,7 +691,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       d.setDate(d.getDate() + days);
       return d.toISOString().slice(0, 10);
     };
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = localTodayIso();
     const from = selectedPlanDate < addDays(todayIso, -45) ? selectedPlanDate : addDays(todayIso, -45);
     const to = selectedPlanDate > addDays(todayIso, 7) ? selectedPlanDate : addDays(todayIso, 7);
     const key = `${athleteId}|${from}|${to}|${nutritionContextVersion}|${diaryRefreshToken}`;
@@ -782,7 +789,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       const { from: fullStartKey, to: fullEndKey } = fullWindow;
       const { from: initialStartKey, to: initialEndKey } = initialWindow;
       nutritionModuleFullWindowRef.current = fullWindow;
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const todayKey = localTodayIso();
       const clampIsoDay = (d: string) => {
         if (d < fullStartKey) return fullStartKey;
         if (d > fullEndKey) return fullEndKey;
@@ -868,8 +875,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         }
         const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
         const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
+        // La data ricordata (sessionStorage, sync con Bioenergetica) vale solo se è
+        // oggi o futura: all'apertura non vogliamo ripartire da un giorno passato.
         const persisted = readPersistedNutritionPlanDate(athleteId);
-        const finalPlanDate = clampIsoDay(persisted ?? nextDate);
+        const finalPlanDate = clampIsoDay(persisted && persisted >= todayKey ? persisted : nextDate);
         nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
         // La finestra è tornata ±7: sveglia l'espansione on-demand se la data è fuori.
         setModuleWindowVersion((v) => v + 1);
@@ -2136,7 +2145,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     const targetProtein = mealRows.reduce((s, m) => s + m.protein, 0);
     const targetFat = mealRows.reduce((s, m) => s + m.fat, 0);
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localTodayIso();
     const todayEntries = diaryMacroRows.filter((d) => d.date === today);
     const weekEntries = diaryMacroRows.filter((d) => {
       const stamp = new Date(`${d.date}T00:00:00`).getTime();
