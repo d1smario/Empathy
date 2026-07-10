@@ -112,11 +112,6 @@ export function TwinFigureArt({ className }: { className?: string }) {
             <stop offset="78%" stopColor="#22d3ee" stopOpacity="0.1" />
             <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
           </radialGradient>
-          <linearGradient id="twinFigScan" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
-            <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.14" />
-            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-          </linearGradient>
           <mask id="twinFigBodyMask">
             <image
               href="/brand/empathy-twin-body.png"
@@ -141,13 +136,13 @@ export function TwinFigureArt({ className }: { className?: string }) {
         <style>{`
           @keyframes twinFigBreathe{0%,100%{opacity:.86}50%{opacity:1}}
           @keyframes twinFigTwinkle{0%,100%{opacity:.45}50%{opacity:.9}}
-          @keyframes twinFigScanMove{0%{transform:translateY(-34px)}100%{transform:translateY(${VB_H + 8}px)}}
+          @keyframes twinFigScanline{0%{top:-9%}100%{top:107%}}
           @keyframes twinFigPing{0%{transform:scale(1);opacity:.85}70%{transform:scale(3.4);opacity:0}100%{transform:scale(3.4);opacity:0}}
           .twin-fig-breathe{animation:twinFigBreathe 5.5s ease-in-out infinite}
           .twin-fig-twinkle{animation:twinFigTwinkle 4.5s ease-in-out infinite}
-          .twin-fig-scan{animation:twinFigScanMove 11s linear infinite}
+          .twin-fig-scanline{animation:twinFigScanline 11s linear infinite}
           .twin-fig-ping{transform-box:fill-box;transform-origin:center;animation:twinFigPing 4.2s ease-out infinite}
-          @media(prefers-reduced-motion:reduce){.twin-fig-breathe,.twin-fig-twinkle,.twin-fig-scan,.twin-fig-ping{animation:none}}
+          @media(prefers-reduced-motion:reduce){.twin-fig-breathe,.twin-fig-twinkle,.twin-fig-scanline,.twin-fig-ping{animation:none}}
         `}</style>
 
         {/* Luce dal basso (l'unica "atmosfera": lo sfondo resta neutro). */}
@@ -172,11 +167,6 @@ export function TwinFigureArt({ className }: { className?: string }) {
           filter="url(#twinFigGlow)"
         />
 
-        {/* Scanline tech che percorre la figura, molto tenue. */}
-        <g className="twin-fig-scan">
-          <rect x={CX - 120} y={0} width={240} height={28} fill="url(#twinFigScan)" />
-        </g>
-
         {/* Sensori: nodo fisso + anello che pinga in sequenza. */}
         {SENSORS.map((s, i) => (
           <g key={`s-${i}`}>
@@ -197,6 +187,14 @@ export function TwinFigureArt({ className }: { className?: string }) {
         <ellipse cx={CX} cy={FEET_Y + 2} rx="45" ry="11" fill="url(#twinFigPlatform)" opacity="0.9" />
         <circle cx={CX} cy={FEET_Y} r="3" fill="#ffffff" filter="url(#twinFigGlow)" />
       </svg>
+
+      {/* Scanline a TUTTA larghezza del pannello (overlay HTML: dentro l'svg,
+          con aspect-ratio, sarebbe più stretta del box per il letterboxing). */}
+      <div
+        className="twin-fig-scanline pointer-events-none absolute inset-x-0 z-0 h-8"
+        style={{ background: "linear-gradient(to bottom, transparent, rgba(34,211,238,0.13), transparent)" }}
+        aria-hidden
+      />
     </div>
   );
 }
