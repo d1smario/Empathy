@@ -6,44 +6,45 @@
  * e piattaforma luminosa — SENZA anelli HUD, tacche, connettori e badge-contatori
  * (quelli restano in DashboardTwinRadial, vista «Analisi»).
  *
- * Sfondo NEUTRO (nero soft, come le altre card) con micro-dettagli "tech" animati
- * perché non risulti statico: sensori che pingano sul corpo (anello che si espande
- * e sfuma, delay sfalsati), una scanline sottile che scorre lenta e stelline soft.
- * Tutto deterministico, niente Math.random; reduced-motion → animazioni spente.
+ * Sfondo NEUTRO (nero soft) con micro-dettagli "tech" animati: sensori che pingano
+ * sul corpo (delay sfalsati), scanline tenue e stelline soft; texture di micro-punti
+ * su tutto il pannello (copre il letterbox dell'svg). L'header è in OVERLAY e il
+ * viewBox è stretto attorno alla figura: il corpo usa quasi tutta l'altezza del
+ * pannello. Tutto deterministico; reduced-motion → animazioni spente.
  *
  * ID SVG prefissati `twinFig` per non collidere con DashboardTwinRadial.
  */
 
-// Portrait stretto da colonna: stesso aspect del corpo (234×416 ≈ 0.5625).
-const VB_W = 340;
-const VB_H = 560;
-const BODY = { x: 45, y: 42, w: 250, h: 444 };
-const CX = 170;
-const FEET_Y = 486;
-const AURA_Y = 250;
+// ViewBox STRETTO attorno al corpo (aspect corpo 0.5625): pochi margini morti.
+const VB_W = 300;
+const VB_H = 520;
+const BODY = { x: 18, y: 16, w: 264, h: 469 };
+const CX = 150;
+const FEET_Y = 485;
+const AURA_Y = 240;
 
 // Stelline deterministiche (no Math.random): spirale a passo aureo attorno al corpo.
 const DOT_PALETTE = ["#a78bfa", "#ec4899", "#fb923c", "#22d3ee", "#5eead4", "#60a5fa", "#f472b6", "#facc15"];
 const DOTS = Array.from({ length: 30 }, (_, i) => {
   const a = i * 137.5 * (Math.PI / 180);
-  const r = 84 + ((i * 53) % 112);
+  const r = 70 + ((i * 53) % 100);
   return {
     x: CX + r * Math.cos(a),
-    y: AURA_Y + r * 1.55 * Math.sin(a),
+    y: AURA_Y + r * 1.5 * Math.sin(a),
     s: 0.7 + (i % 3) * 0.5,
     c: DOT_PALETTE[i % DOT_PALETTE.length],
     o: 0.24 + (i % 5) * 0.1,
   };
-}).filter((d) => d.x > 8 && d.x < VB_W - 8 && d.y > 10 && d.y < VB_H - 16);
+}).filter((d) => d.x > 6 && d.x < VB_W - 6 && d.y > 8 && d.y < VB_H - 12);
 
 // "Sensori" sul corpo: nodi che pingano in sequenza (delay sfalsati, colori brand).
 const SENSORS = [
-  { x: 170, y: 88, c: "#22d3ee", delay: 0 }, // fronte
-  { x: 152, y: 185, c: "#ec4899", delay: 0.7 }, // cuore
-  { x: 170, y: 252, c: "#f59e0b", delay: 1.4 }, // core
-  { x: 243, y: 288, c: "#a78bfa", delay: 2.1 }, // polso dx
-  { x: 148, y: 378, c: "#5eead4", delay: 2.8 }, // ginocchio sx
-  { x: 190, y: 460, c: "#60a5fa", delay: 3.5 }, // caviglia dx
+  { x: 150, y: 65, c: "#22d3ee", delay: 0 }, // fronte
+  { x: 131, y: 167, c: "#ec4899", delay: 0.7 }, // cuore
+  { x: 150, y: 238, c: "#f59e0b", delay: 1.4 }, // core
+  { x: 227, y: 276, c: "#a78bfa", delay: 2.1 }, // polso dx
+  { x: 127, y: 371, c: "#5eead4", delay: 2.8 }, // ginocchio sx
+  { x: 171, y: 457, c: "#60a5fa", delay: 3.5 }, // caviglia dx
 ];
 
 // Texture di micro-punti glow per l'INTERO pannello (copre anche il letterbox
@@ -67,11 +68,11 @@ const PANEL_TEXTURE = [
 export function TwinFigureArt({ className }: { className?: string }) {
   return (
     <div
-      className={`relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/40 ${className ?? ""}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 ${className ?? ""}`}
       style={{ backgroundImage: PANEL_TEXTURE }}
     >
-      {/* Header tech: LED vivo + label — riempie la fascia alta del pannello. */}
-      <div className="flex items-center gap-2 px-4 pt-3">
+      {/* Header tech in OVERLAY (non ruba altezza alla figura). */}
+      <div className="absolute left-4 top-3 z-10 flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -83,9 +84,9 @@ export function TwinFigureArt({ className }: { className?: string }) {
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
-        // min-h-0: la figura si ADATTA all'altezza del pannello (che il chiamante
+        // min-h-0: la figura si ADATTA all'altezza del pannello (il chiamante la
         // vincola: absolute nella cella su desktop, min-h fisso su mobile).
-        className="mx-auto min-h-0 w-full max-w-[300px] flex-1 lg:max-w-[330px]"
+        className="mx-auto h-full min-h-0 w-full max-w-[320px] lg:max-w-[380px]"
         aria-hidden
       >
         <defs>
@@ -138,7 +139,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
         <style>{`
           @keyframes twinFigBreathe{0%,100%{opacity:.86}50%{opacity:1}}
           @keyframes twinFigTwinkle{0%,100%{opacity:.45}50%{opacity:.9}}
-          @keyframes twinFigScanMove{0%{transform:translateY(-36px)}100%{transform:translateY(${VB_H + 8}px)}}
+          @keyframes twinFigScanMove{0%{transform:translateY(-34px)}100%{transform:translateY(${VB_H + 8}px)}}
           @keyframes twinFigPing{0%{transform:scale(1);opacity:.85}70%{transform:scale(3.4);opacity:0}100%{transform:scale(3.4);opacity:0}}
           .twin-fig-breathe{animation:twinFigBreathe 5.5s ease-in-out infinite}
           .twin-fig-twinkle{animation:twinFigTwinkle 4.5s ease-in-out infinite}
@@ -148,7 +149,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
         `}</style>
 
         {/* Luce dal basso (l'unica "atmosfera": lo sfondo resta neutro). */}
-        <ellipse cx={CX} cy={FEET_Y} rx="150" ry="58" fill="url(#twinFigUplight)" filter="url(#twinFigSoftBlur)" />
+        <ellipse cx={CX} cy={FEET_Y} rx="132" ry="52" fill="url(#twinFigUplight)" filter="url(#twinFigSoftBlur)" />
 
         <g className="twin-fig-twinkle">
           {DOTS.map((d, i) => (
@@ -156,7 +157,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
           ))}
         </g>
 
-        <ellipse cx={CX} cy={FEET_Y + 2} rx="118" ry="20" fill="url(#twinFigPlatform)" filter="url(#twinFigSoftBlur)" />
+        <ellipse cx={CX} cy={FEET_Y + 2} rx="104" ry="18" fill="url(#twinFigPlatform)" filter="url(#twinFigSoftBlur)" />
 
         <rect
           className="twin-fig-breathe"
@@ -171,7 +172,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
 
         {/* Scanline tech che percorre la figura, molto tenue. */}
         <g className="twin-fig-scan">
-          <rect x={CX - 132} y={0} width={264} height={30} fill="url(#twinFigScan)" />
+          <rect x={CX - 120} y={0} width={240} height={28} fill="url(#twinFigScan)" />
         </g>
 
         {/* Sensori: nodo fisso + anello che pinga in sequenza. */}
@@ -191,8 +192,8 @@ export function TwinFigureArt({ className }: { className?: string }) {
           </g>
         ))}
 
-        <ellipse cx={CX} cy={FEET_Y + 2} rx="40" ry="10" fill="url(#twinFigPlatform)" opacity="0.9" />
-        <circle cx={CX} cy={FEET_Y} r="3.2" fill="#ffffff" filter="url(#twinFigGlow)" />
+        <ellipse cx={CX} cy={FEET_Y + 2} rx="36" ry="9" fill="url(#twinFigPlatform)" opacity="0.9" />
+        <circle cx={CX} cy={FEET_Y} r="3" fill="#ffffff" filter="url(#twinFigGlow)" />
       </svg>
     </div>
   );
