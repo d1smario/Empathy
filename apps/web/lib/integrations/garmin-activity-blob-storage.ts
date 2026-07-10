@@ -99,6 +99,16 @@ export function guessGarminArchivedExtension(params: {
   return ".bin";
 }
 
+/**
+ * Nome bucket canonico creato dalla migrazione 046. Fallback quando l'env
+ * `GARMIN_ACTIVITY_BLOBS_BUCKET` non è impostata: il bucket esiste sempre lato
+ * Supabase, quindi l'archiviazione degli Activity Details (FIT → traccia GPS +
+ * serie HD) NON deve dipendere da una env che può perdersi sul deploy — è già
+ * successo (da giugno 2026 la env sparita da Vercel → 35+ pull falliti «non
+ * impostato» → percorso GPS a «2 pt»). L'env resta un override per bucket custom.
+ */
+export const DEFAULT_GARMIN_ACTIVITY_BLOBS_BUCKET = "garmin-activity-blobs";
+
 export type GarminBlobPersistResult =
   | {
       stored: true;
@@ -126,13 +136,9 @@ export async function persistGarminPullBinaryToStorage(params: {
   contentType: string | null;
   contentDispositionHeader: string | null;
 }): Promise<GarminBlobPersistResult> {
-  const bucket = readOptionalGarminActivityBlobsBucket();
-  if (!bucket) {
-    return {
-      stored: false,
-      reason: "GARMIN_ACTIVITY_BLOBS_BUCKET non impostato: creare il bucket da migrazione 046 e la variabile d'ambiente.",
-    };
-  }
+  // Env come override; se assente si usa il bucket canonico della migrazione 046
+  // (sempre presente), così un env perso sul deploy non spezza gli Activity Details.
+  const bucket = readOptionalGarminActivityBlobsBucket() ?? DEFAULT_GARMIN_ACTIVITY_BLOBS_BUCKET;
 
   const ct = params.contentType?.trim() || "application/octet-stream";
   const ext = guessGarminArchivedExtension({
