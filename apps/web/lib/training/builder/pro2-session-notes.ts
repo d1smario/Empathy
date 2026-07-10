@@ -6,6 +6,7 @@ import {
   type Pro2BuilderSessionContract,
 } from "@/lib/training/builder/pro2-session-contract";
 import type { Pro2SessionMultilevelSource } from "@/lib/training/session-multilevel-analysis-strip";
+import type { PlannedWorkoutDbRow } from "@empathy/domain-training";
 import { pro2BuilderContractToExpandedChartSegments } from "@/lib/training/builder/pro2-contract-chart-segments";
 import { estimateTssFromSegments } from "@/lib/training/builder/tss-estimate";
 import { resolvePlannedSessionMetrics } from "@/lib/training/physiology/planned-session-metrics";
@@ -147,4 +148,88 @@ export function effectivePlannedWorkoutNutritionMetrics(input: {
     athleteFtpWatts: input.athleteFtpWatts,
   });
   return { durationMinutes: m.durationMinutes, tss: m.tss, kcal: m.kcal };
+}
+
+/** Converte una data ISO locale (YYYY-MM-DD) nella chiave giorno usata in routine_config.week_plan. */
+function isoDateToWeekDayKey(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "Mon";
+  const d = new Date(`${isoDate}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "Mon";
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return labels[d.getDay()] ?? "Mon";
+}
+
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
+function normalizeHhMm(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  const m = /^\d{1,2}:\d{2}/.exec(t);
+  return m ? m[0] : null;
+}
+
+/**
+ * Orario canonico di una seduta pianificata.
+ * 1. Dal contratto builder in `notes.scheduledTime`.
+ * 2. Dalla routine dell'atleta (week_plan[day].training1_start_time o training_1.start_time).
+ * 3. null se non disponibile.
+ */
+export function getScheduledTimeFromPlannedRow(
+  row: PlannedWorkoutDbRow,
+  routineConfig?: Record<string, unknown> | null,
+): string | null {
+  const contract = parsePro2BuilderSessionFromNotes(row.notes ?? null);
+  if (contract?.scheduledTime) {
+    const t = normalizeHhMm(contract.scheduledTime);
+    if (t) return t;
+  }
+
+  if (routineConfig) {
+    const rc = asRecord(routineConfig);
+    const weekPlan = asRecord(rc.week_plan);
+    const dayKey = isoDateToWeekDayKey(row.date);
+    const day = asRecord(weekPlan[dayKey]);
+    const fromWeek = normalizeHhMm(day.training1_start_time);
+    if (fromWeek) return fromWeek;
+
+    const training1 = asRecord(rc.training_1);
+    const fromRoot = normalizeHhMm(training1.start_time);
+    if (fromRoot) return fromRoot;
+  }
+
+  return null;
+}
+
+/**
+ * Scrive `scheduledTime` nel contratto builder dentro `notes` (riscrivendo SOLO il
+ * segmento BUILDER_SESSION_JSON, il resto della nota resta intatto). Ritorna le
+ * nuove notes, o null se la nota non contiene un contratto (in quel caso non c'è
+ * dove ancorare l'orario: il chiamante disabiliti l'azione).
+ */
+export function setScheduledTimeInPlannedNotes(notes: string | null | undefined, hhmm: string): string | null {
+  if (!notes?.trim()) return null;
+  const norm = normalizeHhMm(hhmm);
+  if (!norm) return null;
+  const lines = notes.split(/\r?\n/);
+  for (let li = 0; li < lines.length; li++) {
+    const segs = lines[li]!.split(/\s*\|\s*/);
+    for (let si = 0; si < segs.length; si++) {
+      const t = segs[si]!.trim();
+      if (!t.startsWith(BUILDER_SESSION_JSON_TAG)) continue;
+      try {
+        const payload = t.slice(BUILDER_SESSION_JSON_TAG.length);
+        const json = JSON.parse(decodeURIComponent(payload)) as Pro2BuilderSessionContract;
+        if (!(json && typeof json === "object" && json.version === 1)) continue;
+        json.scheduledTime = norm;
+        segs[si] = `${BUILDER_SESSION_JSON_TAG}${encodeURIComponent(JSON.stringify(json))}`;
+        lines[li] = segs.join(" | ");
+        return lines.join("\n");
+      } catch {
+        continue;
+      }
+    }
+  }
+  return null;
 }

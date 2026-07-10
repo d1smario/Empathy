@@ -2,9 +2,8 @@
 
 import {
   Activity,
+  ArrowUpRight,
   Check,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Coffee,
   Droplets,
@@ -13,9 +12,18 @@ import {
   Sun,
   Utensils,
 } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { TodayEvent } from "@/app/api/today/contracts";
+import { BuilderPlannedSessionViz } from "@/components/training/BuilderPlannedSessionViz";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
+import { productHrefForPathname } from "@/lib/shell/use-product-href";
+import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
+import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
+import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 const ICONS: Record<TodayEvent["type"], typeof Sun> = {
   wake: Sun,
@@ -45,6 +53,9 @@ function EventTitle({ event, t }: { event: TodayEvent; t: ReturnType<typeof useT
     if (event.titleKey === "workoutCompleted") {
       return <>{t(event.titleKey, { duration: Number(event.data?.duration) || 0 })}</>;
     }
+    if (event.titleKey === "hydrationCheckpoint") {
+      return <>{t(event.titleKey, { liters: ((Number(event.data?.cumTargetMl) || 0) / 1000).toFixed(1) })}</>;
+    }
     return <>{t(event.titleKey)}</>;
   }
   return <>{event.title}</>;
@@ -60,21 +71,30 @@ function EventSubtitle({ event, t }: { event: TodayEvent; t: ReturnType<typeof u
   return null;
 }
 
+/** Slot rapidi per «Fissa orario» (mattina / pranzo / sera). */
+const SCHEDULE_SLOTS = ["07:00", "12:30", "18:00"] as const;
+
 export function TodayTimelineItem({
   event,
   onConfirmMeal,
   onAddHydration,
+  onScheduleWorkout,
   confirmBusySlot,
   hydrationBusy,
+  scheduleBusyId,
 }: {
   event: TodayEvent;
   onConfirmMeal?: (slotKey: string, confirmed: boolean) => void;
   onAddHydration?: (deltaMl: number) => void;
+  onScheduleWorkout?: (plannedId: string, hhmm: string) => void;
   confirmBusySlot?: string | null;
   hydrationBusy?: boolean;
+  scheduleBusyId?: string | null;
 }) {
   const t = useTranslations("TodayPage");
-  const [expanded, setExpanded] = useState(false);
+  const pathname = usePathname() ?? "/";
+  const { athleteId, adminScoped, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
+  const sessionHrefFor = useScopedSessionHref();
   const Icon = ICONS[event.type];
   const accent = event.accent ?? "slate";
   const styles = ACCENTS[accent] ?? {
@@ -87,6 +107,20 @@ export function TodayTimelineItem({
   const isMeal = event.type === "meal" || event.type === "snack";
   const isWorkout = event.type === "workout";
   const isHydration = event.type === "hydration";
+  const isHydrationCheckpoint = isHydration && Boolean(event.data?.checkpoint);
+
+  // Anteprima seduta dal contratto builder nelle notes (sempre visibile, compatta).
+  const workoutContract = useMemo(() => {
+    if (!isWorkout) return null;
+    const notes = typeof event.data?.notes === "string" ? event.data.notes : null;
+    return parsePro2BuilderSessionFromNotes(notes) as unknown as Pro2BuilderSessionContract | null;
+  }, [isWorkout, event.data?.notes]);
+
+  // Link «Dettaglio seduta» (eseguito) e «Apri piano pasti»: scope-aware.
+  const detailDate = typeof event.data?.detailDate === "string" ? event.data.detailDate : null;
+  const mealPlanHref = adminScoped
+    ? (scopedShellHref("/nutrition", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId }) ?? "/nutrition")
+    : productHrefForPathname("/nutrition", pathname);
 
   return (
     <div className="relative flex gap-3">
@@ -119,6 +153,11 @@ export function TodayTimelineItem({
                   {t("statusCurrent")}
                 </span>
               ) : null}
+              {isWorkout && event.data?.toSchedule ? (
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] font-semibold text-gray-300">
+                  {t("workoutToSchedule")}
+                </span>
+              ) : null}
             </div>
             <h3 className={`mt-1 text-sm font-bold ${styles.text}`}>
               <EventTitle event={event} t={t} />
@@ -130,16 +169,6 @@ export function TodayTimelineItem({
             ) : null}
           </div>
 
-          {isWorkout ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="shrink-0 rounded-lg border border-white/10 bg-white/5 p-1.5 text-gray-400 transition hover:text-white"
-              aria-label={t(expanded ? "collapse" : "expand")}
-            >
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          ) : null}
         </div>
 
         {/* Azioni */}
@@ -155,7 +184,7 @@ export function TodayTimelineItem({
             </button>
           ) : null}
 
-          {isHydration && event.status !== "done" ? (
+          {isHydration && !isHydrationCheckpoint && event.status !== "done" ? (
             <button
               type="button"
               disabled={hydrationBusy}
@@ -166,27 +195,85 @@ export function TodayTimelineItem({
             </button>
           ) : null}
 
-          {event.actions?.map((action) => (
-            <button
-              key={action.key}
-              type="button"
-              onClick={() => {
-                if (action.key === "done") {
-                  // TODO: segna allenamento completato
-                } else if (action.key === "start") {
-                  // TODO: avvia allenamento
-                }
-              }}
-              className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
-                action.variant === "primary"
-                  ? "border border-orange-500/40 bg-orange-500/15 text-orange-100 hover:bg-orange-500/25"
-                  : "border border-white/15 bg-white/5 text-gray-300 hover:bg-white/10"
-              }`}
+          {/* Workout da fissare: chips slot rapidi (scrivono scheduledTime nel contratto). */}
+          {isWorkout && event.data?.toSchedule && event.data?.schedulable && onScheduleWorkout && event.data?.plannedId ? (
+            <>
+              <span className="self-center text-[0.65rem] uppercase tracking-wider text-gray-500">
+                {t("scheduleWorkoutLabel")}
+              </span>
+              {SCHEDULE_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={scheduleBusyId === event.data?.plannedId}
+                  onClick={() => onScheduleWorkout(String(event.data!.plannedId), slot)}
+                  className="inline-flex items-center rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-orange-100 transition hover:bg-orange-500/25 disabled:opacity-50"
+                >
+                  {slot}
+                </button>
+              ))}
+            </>
+          ) : null}
+
+          {/* Seduta eseguita: link al dettaglio (mappa GPS, curve, KPI) nello scope giusto. */}
+          {isWorkout && event.status === "done" && detailDate ? (
+            <Link
+              href={sessionHrefFor(detailDate)}
+              className="inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-100 transition hover:bg-orange-500/25"
             >
-              {action.i18nKey ? t(action.i18nKey) : action.label}
-            </button>
-          ))}
+              {t("sessionDetailLink")} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          ) : null}
         </div>
+
+        {/* Checkpoint idratazione: progresso reale vs obiettivo cumulativo + azioni rapide. */}
+        {isHydrationCheckpoint ? (
+          <div className="mt-3">
+            {(() => {
+              const cum = Number(event.data?.cumTargetMl) || 0;
+              const cur = Number(event.data?.currentMl) || 0;
+              const pct = cum > 0 ? Math.min(100, Math.round((cur / cum) * 100)) : 0;
+              return (
+                <>
+                  <div className="flex items-center justify-between text-[0.7rem] text-gray-400">
+                    <span>
+                      {(cur / 1000).toFixed(1)} / {(cum / 1000).toFixed(1)} L
+                    </span>
+                    <span className="font-mono tabular-nums">{pct}%</span>
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/5">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-300"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  {event.status === "current" ? (
+                    <div className="mt-2 flex gap-2">
+                      {[250, 500].map((ml) => (
+                        <button
+                          key={ml}
+                          type="button"
+                          disabled={hydrationBusy}
+                          onClick={() => onAddHydration?.(ml)}
+                          className="inline-flex items-center rounded-full border border-cyan-500/40 bg-cyan-500/15 px-3 py-1.5 text-xs font-bold text-cyan-100 transition hover:bg-cyan-500/25 disabled:opacity-50"
+                        >
+                          +{ml} ml
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
+
+        {/* Anteprima seduta pianificata: blocchi/intensità dal contratto builder. */}
+        {isWorkout && event.status !== "done" && workoutContract ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+            <BuilderPlannedSessionViz contract={workoutContract} compact />
+          </div>
+        ) : null}
 
         {event.type === "supplement" ? (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -220,19 +307,16 @@ export function TodayTimelineItem({
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 text-gray-500">{t("mealNoItems")}</p>
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-gray-500">{t("mealNoItems")}</p>
+                <Link
+                  href={mealPlanHref}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-bold text-amber-100 transition hover:bg-amber-500/25"
+                >
+                  {t("openMealPlan")} <ArrowUpRight className="h-3 w-3" aria-hidden />
+                </Link>
+              </div>
             )}
-          </div>
-        ) : null}
-
-        {expanded && isWorkout ? (
-          <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-gray-300">
-            <p className="font-semibold text-white">{t("fuelingTitle")}</p>
-            <ul className="mt-1 list-disc space-y-1 pl-4 text-gray-400">
-              <li>{t("fuelingPre")}</li>
-              <li>{t("fuelingIntra")}</li>
-              <li>{t("fuelingPost")}</li>
-            </ul>
           </div>
         ) : null}
       </div>

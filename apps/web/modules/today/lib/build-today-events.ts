@@ -1,7 +1,7 @@
 import type { PlannedWorkoutDbRow } from "@empathy/domain-training";
 import type { BioPlannedMealRow } from "@/lib/bioenergetics/nutrition-plan-day-empty";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
-import { getScheduledTimeFromPlannedRow } from "@/lib/training/builder/pro2-session-notes";
+import { getScheduledTimeFromPlannedRow, parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import type { TodayEvent, TodayFoodItem, TodayHydration, TodayReadiness } from "@/app/api/today/contracts";
 
 function asRecord(v: unknown): Record<string, unknown> {
@@ -204,7 +204,10 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     });
   }
 
-  // Allenamenti
+  // Allenamenti: SEMPRE dentro la timeline. Con orario (contract/routine) → posizionati;
+  // senza orario → blocco "da fissare" (sortHint pomeriggio) con chips «Fissa orario»
+  // se le notes hanno un contratto builder dove ancorare lo scheduledTime. `notes`
+  // viaggia nell'evento per l'anteprima blocchi (BuilderPlannedSessionViz) lato client.
   for (const planned of plannedWorkouts) {
     const executed = executedWorkouts.find((e) => e.planned_workout_id === planned.id);
     const scheduledTime = getScheduledTimeFromPlannedRow(planned, routineConfig);
@@ -213,6 +216,8 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     const subtitleParts: string[] = [];
     if (planned.tss_target) subtitleParts.push(`TSS ${Math.round(Number(planned.tss_target))}`);
     if (planned.kcal_target) subtitleParts.push(`${Math.round(Number(planned.kcal_target))} kcal`);
+    const notes = typeof planned.notes === "string" ? planned.notes : null;
+    const schedulable = parsePro2BuilderSessionFromNotes(notes) != null;
 
     if (executed?.started_at) {
       const startTime = timeFromIso(executed.started_at);
@@ -225,7 +230,7 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
         subtitle: subtitleParts.join(" · "),
         status: "done",
         accent: "orange",
-        data: { plannedId: planned.id, executedId: executed.id, duration },
+        data: { plannedId: planned.id, executedId: executed.id, duration, notes, detailDate: date },
       });
     } else if (scheduledTime) {
       events.push({
@@ -236,14 +241,53 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
         subtitle: subtitleParts.join(" · "),
         status: eventStatusForTimeRange(scheduledTime, duration),
         accent: "orange",
-        data: { plannedId: planned.id },
-        actions: [
-          { key: "start", label: "Avvia", i18nKey: "actionStart", variant: "primary" },
-          { key: "done", label: "Completato", i18nKey: "actionDone", variant: "secondary" },
-        ],
+        data: { plannedId: planned.id, duration, notes, detailDate: date },
       });
     } else {
-      // Evento floating senza orario: verrà mostrato sopra la timeline dalla pagina.
+      events.push({
+        id: `workout-${planned.id}`,
+        type: "workout",
+        time: null,
+        title,
+        subtitle: subtitleParts.join(" · "),
+        status: "todo",
+        accent: "orange",
+        data: {
+          plannedId: planned.id,
+          duration,
+          notes,
+          detailDate: date,
+          toSchedule: true,
+          schedulable,
+          /** Sort: senza orario il blocco vive nel pomeriggio (17:00), non dopo il sonno. */
+          sortHintMinutes: 17 * 60,
+        },
+      });
+    }
+  }
+
+  // Idratazione a tappe: obiettivo CUMULATIVO lungo la giornata (35% → 70% → 100%).
+  // Le tappe sono un PIANO (prescrittivo); il progresso confrontato è il bevuto REALE.
+  if (hydration.targetMl > 0) {
+    const checkpoints: Array<{ time: string; share: number }> = [
+      { time: "10:30", share: 0.35 },
+      { time: "15:00", share: 0.7 },
+      { time: "20:00", share: 1 },
+    ];
+    for (const cp of checkpoints) {
+      const cumTargetMl = Math.round((hydration.targetMl * cp.share) / 50) * 50;
+      const reached = hydration.currentMl >= cumTargetMl;
+      const late = !reached && nowMinutes() > (minutesOf(cp.time) ?? 0);
+      events.push({
+        id: `hydration-cp-${cp.time}`,
+        type: "hydration",
+        time: cp.time,
+        title: `Idratazione · ${(cumTargetMl / 1000).toFixed(1)} L`,
+        titleKey: "hydrationCheckpoint",
+        status: reached ? "done" : late ? "current" : "todo",
+        accent: "cyan",
+        data: { checkpoint: true, cumTargetMl, currentMl: hydration.currentMl },
+      });
     }
   }
 
@@ -262,15 +306,15 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     });
   }
 
-  // Ordina per orario; gli eventi senza orario vanno in fondo (qui non ce ne sono).
-  events.sort((a, b) => {
-    const ma = minutesOf(a.time);
-    const mb = minutesOf(b.time);
-    if (ma == null && mb == null) return 0;
-    if (ma == null) return 1;
-    if (mb == null) return -1;
-    return ma - mb;
-  });
+  // Ordina per orario; gli eventi senza orario usano il sortHint (es. workout da
+  // fissare → pomeriggio), altrimenti vanno in fondo.
+  const sortKey = (e: TodayEvent): number => {
+    const m = minutesOf(e.time);
+    if (m != null) return m;
+    const hint = Number(e.data?.sortHintMinutes);
+    return Number.isFinite(hint) ? hint : Number.MAX_SAFE_INTEGER;
+  };
+  events.sort((a, b) => sortKey(a) - sortKey(b));
 
   return events;
 }

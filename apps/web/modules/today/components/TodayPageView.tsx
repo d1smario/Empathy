@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Activity } from "lucide-react";
 import { DailyCheckinCard } from "@/components/dashboard/DailyCheckinCard";
 import { TwinFigureArt } from "@/components/dashboard/TwinFigureArt";
 import { CalendarDayWellnessDetail } from "@/components/training/CalendarDayWellnessDetail";
@@ -11,6 +10,8 @@ import { TodayHeader } from "./TodayHeader";
 import { TodayHydrationTracker } from "./TodayHydrationTracker";
 import { TodayTimeline } from "./TodayTimeline";
 import { useNutritionQuickActions } from "@/modules/nutrition/hooks/use-nutrition-quick-actions";
+import { setScheduledTimeInPlannedNotes } from "@/lib/training/builder/pro2-session-notes";
+import { patchPlannedWorkout } from "@/modules/training/services/training-planned-api";
 import type { TodayApiResponse } from "@/app/api/today/contracts";
 
 export type TodayPageViewProps = {
@@ -65,6 +66,31 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
     onConfigChange: () => void load(),
   });
 
+  // «Fissa orario» sul blocco seduta senza orario: scrive scheduledTime nel contratto
+  // builder dentro le notes (PATCH planned) e ricarica la giornata.
+  const [scheduleBusyId, setScheduleBusyId] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const scheduleWorkout = async (plannedId: string, hhmm: string) => {
+    if (!data?.ok) return;
+    const ev = data.events.find((e) => String(e.data?.plannedId ?? "") === plannedId);
+    const notes = typeof ev?.data?.notes === "string" ? ev.data.notes : null;
+    const nextNotes = setScheduledTimeInPlannedNotes(notes, hhmm);
+    if (!nextNotes) {
+      setScheduleError(t("scheduleFailed"));
+      return;
+    }
+    setScheduleBusyId(plannedId);
+    setScheduleError(null);
+    try {
+      await patchPlannedWorkout({ id: plannedId, athleteId, patch: { notes: nextNotes } });
+      await load();
+    } catch (e) {
+      setScheduleError(e instanceof Error ? e.message : t("scheduleFailed"));
+    } finally {
+      setScheduleBusyId(null);
+    }
+  };
+
   if (loading && !data) {
     return (
       <div className="px-4 py-6">
@@ -111,34 +137,22 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
           busy={hydrationBusy}
         />
 
-        {actionError ? (
+        {actionError || scheduleError ? (
           <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100" role="alert">
-            {actionError}
+            {actionError || scheduleError}
           </p>
         ) : null}
 
-        {data.floatingWorkout ? (
-          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-orange-300" />
-              <h2 className="text-sm font-bold text-white">{t("workoutFloating")}</h2>
-            </div>
-            <p className="mt-1 text-sm text-orange-100">{data.floatingWorkout.title}</p>
-            {data.floatingWorkout.subtitle ? (
-              <p className="text-xs text-orange-200/70">{data.floatingWorkout.subtitle}</p>
-            ) : null}
-            <p className="mt-2 text-xs text-gray-400">
-              {data.floatingWorkout.durationMinutes} min · {t("workoutNoTime")}
-            </p>
-          </div>
-        ) : null}
-
+        {/* La seduta senza orario ora vive DENTRO la timeline (blocco «da fissare»
+            con anteprima + chips orario): niente più card flottante separata. */}
         <TodayTimeline
           events={data.events}
           onConfirmMeal={confirmMeal}
           onAddHydration={addHydration}
+          onScheduleWorkout={(plannedId, hhmm) => void scheduleWorkout(plannedId, hhmm)}
           confirmBusySlot={busySlot}
           hydrationBusy={hydrationBusy}
+          scheduleBusyId={scheduleBusyId}
         />
 
         {/* Check-in di oggi: ultima sezione della pagina (atleta e coach; in scope
