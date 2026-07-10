@@ -158,7 +158,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
           </p>
         ) : (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
               <KpiCell label={t("kpiRestingHr")} value={fmtInt(restingHr)} unit="bpm" />
@@ -184,11 +184,6 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
                 unit="rpm"
               />
               <KpiCell label={t("kpiSpo2")} value={fmtInt(panel.activity.spo2Pct)} unit="%" />
-              <KpiCell
-                label={t("kpiSkinTemp")}
-                value={fmtNumber(panel.activity.skinTempC, 1)}
-                unit="°C"
-              />
             </div>
 
             <div>
