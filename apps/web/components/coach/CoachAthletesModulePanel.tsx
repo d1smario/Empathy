@@ -4,10 +4,8 @@ import type { ReactNode } from "react";
 import { CoachCodeCard } from "@/components/coach/CoachCodeCard";
 import { CoachInviteLinksCard } from "@/components/coach/CoachInviteLinksCard";
 import { CoachRosterCard } from "@/components/coach/CoachRosterCard";
-import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 function Pill({ children, className }: { children: ReactNode; className: string }) {
@@ -25,8 +23,10 @@ export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?
 
   const showStatus = !loading && signedIn;
 
+  // Contenitore senza header: «Atleti · Stato, roster e inviti» duplicava l'header di
+  // pagina in alto (StandardModuleSurface). Teniamo solo il box, non il titolo/icona.
   return (
-    <Pro2SectionCard accent="violet" title={t("title")} subtitle={t("subtitle")} icon={Users}>
+    <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-lg backdrop-blur-xl sm:p-6">
       <div className="flex flex-col gap-8">
         {/* Niente badge «Coach · attivo» per il coach già approvato: è rumore (se sei
             nella console sei attivo). La riga stato resta solo per gli stati che
@@ -69,6 +69,6 @@ export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?
           </Pro2Link>
         </div>
       </div>
-    </Pro2SectionCard>
+    </section>
   );
 }
