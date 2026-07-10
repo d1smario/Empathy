@@ -2,7 +2,7 @@
 
 import { Heart, Moon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { SleepHypnogramChart } from "@/components/physiology/SleepHypnogramChart";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
@@ -46,9 +46,15 @@ function KpiCell({ label, value, unit }: { label: string; value: string; unit?: 
 export type CalendarDayWellnessDetailProps = {
   athleteId: string | null | undefined;
   selectedDate: string;
+  /**
+   * Colonna "arte" opzionale (es. TwinFigureArt in «Oggi»): desktop = 1/3 a destra
+   * dei contatori+fasi sonno; mobile = PRIMA dei contatori. Le altre superfici
+   * (calendario Training, Physiology daily) non la passano → layout invariato.
+   */
+  aside?: ReactNode;
 };
 
-export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarDayWellnessDetailProps) {
+export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: CalendarDayWellnessDetailProps) {
   const t = useTranslations("CalendarDayWellnessDetail");
   const [state, setState] = useState<LoadState>({ kind: "idle" });
 
@@ -158,6 +164,12 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
           </p>
         ) : (
           <div className="space-y-5">
+            {/* Con `aside` (vista Oggi): desktop = contatori+fasi 2/3 a sinistra, arte 1/3
+                a destra; mobile = prima l'omino, sotto tutti i contatori. Senza aside il
+                blocco resta full-width (calendario Training, Physiology daily). */}
+            <div className={aside ? "grid gap-4 lg:grid-cols-3" : "space-y-5"}>
+              {aside ? <div className="lg:order-last">{aside}</div> : null}
+              <div className={aside ? "space-y-5 lg:col-span-2" : "space-y-5"}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
@@ -210,6 +222,8 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
                     </div>
                   );
                 })}
+              </div>
+            </div>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Activity } from "lucide-react";
 import { DailyCheckinCard } from "@/components/dashboard/DailyCheckinCard";
+import { TwinFigureArt } from "@/components/dashboard/TwinFigureArt";
 import { CalendarDayWellnessDetail } from "@/components/training/CalendarDayWellnessDetail";
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
 import { TodayHeader } from "./TodayHeader";
@@ -93,8 +94,14 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
 
         {/* Dati device del giorno (sonno+fasi, passi/obiettivo, km, HRV, FC riposo,
             kcal attive, respirazione, SpO2): stesso pannello del calendario Training,
-            alimentato da /api/health/daily-wellness (device_sync_exports). */}
-        <CalendarDayWellnessDetail athleteId={athleteId} selectedDate={date} />
+            alimentato da /api/health/daily-wellness (device_sync_exports). Con l'omino
+            twin (solo figura, come «Analisi» ma senza HUD) nel terzo di destra;
+            su mobile l'omino viene prima dei contatori. */}
+        <CalendarDayWellnessDetail
+          athleteId={athleteId}
+          selectedDate={date}
+          aside={<TwinFigureArt className="h-full" />}
+        />
 
         <TodayHydrationTracker
           targetMl={data.hydration.targetMl}
