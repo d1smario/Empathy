@@ -89,10 +89,6 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
       <div className="mx-auto max-w-3xl space-y-6">
         <TodayHeader firstName={firstName} date={date} readiness={readiness} />
 
-        {/* Check-in mattutino: prima azione della giornata (spostato qui da «Analisi»);
-            in scope coach/admin è read-only (gate dentro la card). */}
-        <DailyCheckinCard athleteId={athleteId} />
-
         {/* Dati device del giorno (sonno+fasi, passi/obiettivo, km, HRV, FC riposo,
             kcal attive, respirazione, SpO2): stesso pannello del calendario Training,
             alimentato da /api/health/daily-wellness (device_sync_exports). */}
@@ -134,6 +130,10 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
           confirmBusySlot={busySlot}
           hydrationBusy={hydrationBusy}
         />
+
+        {/* Check-in di oggi: ultima sezione della pagina (atleta e coach; in scope
+            coach/admin è read-only, gate dentro la card). */}
+        <DailyCheckinCard athleteId={athleteId} />
       </div>
     </div>
   );
