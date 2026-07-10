@@ -47,14 +47,16 @@ export type CalendarDayWellnessDetailProps = {
   athleteId: string | null | undefined;
   selectedDate: string;
   /**
-   * Colonna "arte" opzionale (es. TwinFigureArt in «Oggi»): desktop = 1/3 a destra
-   * dei contatori+fasi sonno; mobile = PRIMA dei contatori. Le altre superfici
+   * Colonna "arte" opzionale (es. TwinFigureArt in «Oggi»): desktop = 40% a destra
+   * dei contatori+fasi sonno (60%); mobile = PRIMA dei contatori. Le altre superfici
    * (calendario Training, Physiology daily) non la passano → layout invariato.
    */
   aside?: ReactNode;
+  /** Vista Oggi: niente header «Giornata · wellness» (ridondante, la pagina ha già il suo). */
+  hideHeader?: boolean;
 };
 
-export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: CalendarDayWellnessDetailProps) {
+export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside, hideHeader = false }: CalendarDayWellnessDetailProps) {
   const t = useTranslations("CalendarDayWellnessDetail");
   const [state, setState] = useState<LoadState>({ kind: "idle" });
 
@@ -98,6 +100,22 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
 
   const subtitle = t("subtitle", { date: selectedDate });
 
+  // Contenitore: card con header (default) oppure box neutro senza header (vista
+  // Oggi, che ha già il proprio header di pagina). L'aria-label resta per l'a11y.
+  const Card = ({ children }: { children: ReactNode }) =>
+    hideHeader ? (
+      <section
+        aria-label={t("cardTitle")}
+        className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-lg backdrop-blur-xl sm:p-6"
+      >
+        {children}
+      </section>
+    ) : (
+      <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+        {children}
+      </Pro2SectionCard>
+    );
+
   if (!athleteId) {
     return null;
   }
@@ -105,9 +123,9 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
   if (state.kind === "loading") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+        <Card>
           <p className="text-sm text-gray-500">{t("loadingPanel")}</p>
-        </Pro2SectionCard>
+        </Card>
       </div>
     );
   }
@@ -115,9 +133,9 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
   if (state.kind === "error") {
     return (
       <div id="day-wellness-detail" className="scroll-mt-24">
-        <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+        <Card>
           <p className="text-sm text-amber-300/90">{t("readFailed", { message: state.message })}</p>
-        </Pro2SectionCard>
+        </Card>
       </div>
     );
   }
@@ -172,7 +190,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
 
   return (
     <div id="day-wellness-detail" className="scroll-mt-24">
-      <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
+      <Card>
         {!hasAnyKpi ? (
           <p className="text-sm text-gray-500">
             {t.rich("noData", {
@@ -187,16 +205,17 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
             {/* Con `aside` (vista Oggi): desktop = contatori+fasi 2/3 a sinistra, arte 1/3
                 a destra; mobile = prima l'omino, sotto tutti i contatori. Senza aside il
                 blocco resta full-width (calendario Training, Physiology daily). */}
-            <div className={aside ? "grid gap-4 lg:grid-cols-3" : "space-y-5"}>
+            <div className={aside ? "grid gap-4 lg:grid-cols-5" : "space-y-5"}>
               {aside ? (
-                // Desktop: l'arte è ASSOLUTA dentro la cella → non contribuisce
-                // all'altezza della riga (che resta dettata dai contatori a sinistra)
-                // e riempie esattamente la colonna. Mobile: altezza minima fissa.
-                <div className="relative min-h-[440px] lg:order-last lg:min-h-0">
+                // Split 60/40: contatori 3/5, arte 2/5. Desktop: l'arte è ASSOLUTA
+                // dentro la cella → non detta l'altezza della riga; il min-h della
+                // cella dà però ancora un filo di respiro verticale alla figura.
+                // Mobile: altezza minima fissa, arte PRIMA dei contatori.
+                <div className="relative min-h-[460px] lg:order-last lg:col-span-2 lg:min-h-[540px]">
                   <div className="h-full lg:absolute lg:inset-0">{aside}</div>
                 </div>
               ) : null}
-              <div className={aside ? "space-y-5 lg:col-span-2" : "space-y-5"}>
+              <div className={aside ? "space-y-5 lg:col-span-3" : "space-y-5"}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
@@ -266,7 +285,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
             ) : null}
           </div>
         )}
-      </Pro2SectionCard>
+      </Card>
     </div>
   );
 }

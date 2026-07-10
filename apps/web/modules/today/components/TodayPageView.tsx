@@ -101,6 +101,7 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
           athleteId={athleteId}
           selectedDate={date}
           aside={<TwinFigureArt className="h-full" />}
+          hideHeader
         />
 
         <TodayHydrationTracker

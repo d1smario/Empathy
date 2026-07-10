@@ -88,7 +88,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
         preserveAspectRatio="xMidYMid meet"
         // min-h-0: la figura si ADATTA all'altezza del pannello (il chiamante la
         // vincola: absolute nella cella su desktop, min-h fisso su mobile).
-        className="mx-auto h-full min-h-0 w-full max-w-[320px] lg:max-w-[380px]"
+        className="mx-auto h-full min-h-0 w-full max-w-[320px] lg:max-w-[440px]"
         aria-hidden
       >
         <defs>
