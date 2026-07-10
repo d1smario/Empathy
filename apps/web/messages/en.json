@@ -877,6 +877,8 @@
     "kpiRecovery": "Recovery",
     "kpiSteps": "Steps",
     "kpiDayDistance": "Day distance",
+    "metricsTodayTitle": "Today's metrics",
+    "dayHrTitle": "Heart rate through the day",
     "kpiActiveCalories": "Active calories",
     "kpiResp": "Resp.",
     "kpiSpo2": "SpO₂",

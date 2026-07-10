@@ -45,6 +45,13 @@ export type PhysiologyDailyPanelOk = {
     spo2Pct: number | null;
     ecgCaptured: boolean | null;
   };
+  /**
+   * Curva FC della giornata (Garmin dailies `timeOffsetHeartRateSamples`):
+   * t = secondi dall'inizio giornata device, bpm reali. Sottocampionata (≤288 punti).
+   * Vuota se il provider non la manda. NB: distanza/passi intraday NON arrivano
+   * (vivrebbero negli epochs, esclusi dall'ingest) — solo totali giornalieri.
+   */
+  intradayHeartRate: Array<{ t: number; bpm: number }>;
   sleepStages: {
     deepHours: number | null;
     lightHours: number | null;
@@ -279,6 +286,37 @@ function mergeActivityFromRows(rows: Array<Record<string, unknown>>): Physiology
     if (merged.ecgCaptured == null && part.ecgCaptured != null) merged.ecgCaptured = part.ecgCaptured;
   }
   return merged;
+}
+
+/**
+ * Curva FC intraday dai `timeOffsetHeartRateSamples` Garmin: mappa {offsetSec→bpm}.
+ * Più export dello stesso giorno = snapshot progressivi → unione per offset (l'ultimo
+ * vince). Sottocampionamento uniforme a ≤288 punti (uno ogni ~5 min su 24h).
+ */
+const INTRADAY_HR_MAX_POINTS = 288;
+function extractIntradayHeartRate(rows: Array<Record<string, unknown>>): Array<{ t: number; bpm: number }> {
+  const byOffset = new Map<number, number>();
+  for (const row of rows) {
+    const payload = mergedPayloadFromExportRow(row);
+    if (!payload) continue;
+    for (const rec of expandDevicePayloadMetricRecords(payload)) {
+      const samples = asRecord(rec.timeOffsetHeartRateSamples ?? rec.TimeOffsetHeartRateSamples);
+      if (!samples) continue;
+      for (const [k, v] of Object.entries(samples)) {
+        const t = Number(k);
+        const bpm = asNumber(v);
+        if (Number.isFinite(t) && t >= 0 && t < 86_400 && bpm != null && bpm >= 25 && bpm <= 240) {
+          byOffset.set(t, bpm);
+        }
+      }
+    }
+  }
+  const sorted = Array.from(byOffset.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([t, bpm]) => ({ t, bpm }));
+  if (sorted.length <= INTRADAY_HR_MAX_POINTS) return sorted;
+  const step = sorted.length / INTRADAY_HR_MAX_POINTS;
+  return Array.from({ length: INTRADAY_HR_MAX_POINTS }, (_, i) => sorted[Math.floor(i * step)]!);
 }
 
 /** Somma deep+light+REM (tempo dormito, senza awake) — confrontabile con “ore sonno” KPI. */
@@ -575,6 +613,7 @@ export async function buildPhysiologyDailyPanel(input: {
     profileWeightKg,
     recovery: recoveryAligned,
     activity,
+    intradayHeartRate: extractIntradayHeartRate(rows),
     sleepStages,
     sleepHypnogram,
     sleepHypnogramApproximated,

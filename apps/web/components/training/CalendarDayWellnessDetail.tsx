@@ -4,6 +4,7 @@ import { Heart, Moon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
+import { DayHeartRateCurve } from "@/components/training/DayHeartRateCurve";
 import { SleepHypnogramChart } from "@/components/physiology/SleepHypnogramChart";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { PhysiologyDailyPanelOk } from "@/lib/physiology/daily-wellness-panel";
@@ -216,6 +217,11 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside, hide
                 </div>
               ) : null}
               <div className={aside ? "space-y-5 lg:col-span-3" : "space-y-5"}>
+            {hideHeader ? (
+              <p className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.25em] text-orange-400">
+                {t("metricsTodayTitle")}
+              </p>
+            ) : null}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
               <KpiCell label="HRV" value={fmtInt(hrvMs)} unit="ms" />
@@ -244,32 +250,46 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside, hide
               <KpiCell label={t("kpiSpo2")} value={fmtInt(panel.activity.spo2Pct)} unit="%" />
             </div>
 
+            {/* Fasi sonno: UNA barra impilata (segmenti proporzionali alla durata),
+                con tempo e percentuale di ogni fase nella legenda sopra. */}
             <div>
               <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
                 {t("sleepStagesHeading")}
               </p>
-              <div className="space-y-2">
-                {stagesBars.map((row) => {
-                  const value = row.value ?? 0;
-                  const total = stagesBars.reduce((acc, r) => acc + (r.value ?? 0), 0);
-                  const pct = total > 0 ? (value / total) * 100 : 0;
-                  return (
-                    <div key={row.key} className="flex items-center gap-3">
-                      <span className="w-20 shrink-0 text-xs text-gray-400">{row.label}</span>
-                      <div className="flex h-3 flex-1 overflow-hidden rounded-full bg-white/5">
-                        <div
-                          className="h-full"
-                          style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: row.color }}
-                        />
-                      </div>
-                      <span className="w-16 text-right font-mono text-xs tabular-nums text-gray-200">
-                        {fmtHoursLabel(row.value)}
-                      </span>
+              {(() => {
+                const total = stagesBars.reduce((acc, r) => acc + (r.value ?? 0), 0);
+                if (total <= 0) return null;
+                const withPct = stagesBars
+                  .filter((r) => (r.value ?? 0) > 0)
+                  .map((r) => ({ ...r, pct: ((r.value ?? 0) / total) * 100 }));
+                return (
+                  <>
+                    <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
+                      {withPct.map((r) => (
+                        <span key={r.key} className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <span className="inline-block h-2 w-2 rounded-sm" style={{ background: r.color }} />
+                          {r.label}
+                          <span className="font-mono tabular-nums text-gray-200">
+                            {fmtHoursLabel(r.value)} · {Math.round(r.pct)}%
+                          </span>
+                        </span>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-white/5">
+                      {withPct.map((r) => (
+                        <div key={r.key} className="h-full" style={{ width: `${r.pct}%`, background: r.color }} />
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
+
+              {/* Curva FC della giornata (campioni reali Garmin): riempie la colonna.
+                  Distanza/passi intraday NON arrivano dai dailies (solo totali). */}
+              {panel.intradayHeartRate.length > 1 ? (
+                <DayHeartRateCurve points={panel.intradayHeartRate} title={t("dayHrTitle")} />
+              ) : null}
               {aside ? hypnogramBlock : null}
               </div>
             </div>
