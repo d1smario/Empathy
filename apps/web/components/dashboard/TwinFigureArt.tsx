@@ -4,11 +4,14 @@
  * Omino "digital twin" SOLO figura: corpo X-ray (public/brand/empathy-twin-body.png)
  * ricolorato col gradiente brand via maschera di luminanza, respiro, luce dal basso
  * e piattaforma luminosa — SENZA anelli HUD, tacche, connettori e badge-contatori
- * (quelli restano in DashboardTwinRadial, vista «Analisi»). Attorno solo un campo
- * di stelline soft. Pensato come colonna d'impatto nella vista «Oggi».
+ * (quelli restano in DashboardTwinRadial, vista «Analisi»).
  *
- * ID SVG prefissati `twinFig` per non collidere con DashboardTwinRadial se mai
- * montati nella stessa pagina.
+ * Sfondo NEUTRO (nero soft, come le altre card) con micro-dettagli "tech" animati
+ * perché non risulti statico: sensori che pingano sul corpo (anello che si espande
+ * e sfuma, delay sfalsati), una scanline sottile che scorre lenta e stelline soft.
+ * Tutto deterministico, niente Math.random; reduced-motion → animazioni spente.
+ *
+ * ID SVG prefissati `twinFig` per non collidere con DashboardTwinRadial.
  */
 
 // Portrait stretto da colonna: stesso aspect del corpo (234×416 ≈ 0.5625).
@@ -33,10 +36,20 @@ const DOTS = Array.from({ length: 30 }, (_, i) => {
   };
 }).filter((d) => d.x > 8 && d.x < VB_W - 8 && d.y > 10 && d.y < VB_H - 16);
 
+// "Sensori" sul corpo: nodi che pingano in sequenza (delay sfalsati, colori brand).
+const SENSORS = [
+  { x: 170, y: 88, c: "#22d3ee", delay: 0 }, // fronte
+  { x: 152, y: 185, c: "#ec4899", delay: 0.7 }, // cuore
+  { x: 170, y: 252, c: "#f59e0b", delay: 1.4 }, // core
+  { x: 243, y: 288, c: "#a78bfa", delay: 2.1 }, // polso dx
+  { x: 148, y: 378, c: "#5eead4", delay: 2.8 }, // ginocchio sx
+  { x: 190, y: 460, c: "#60a5fa", delay: 3.5 }, // caviglia dx
+];
+
 export function TwinFigureArt({ className }: { className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-violet-950/25 via-black/40 to-black/70 ${className ?? ""}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 ${className ?? ""}`}
     >
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -51,11 +64,6 @@ export function TwinFigureArt({ className }: { className?: string }) {
             <stop offset="60%" stopColor="#fb7a3c" />
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
-          <radialGradient id="twinFigAura" cx="50%" cy="42%" r="60%">
-            <stop offset="0%" stopColor="#ec4899" stopOpacity="0.15" />
-            <stop offset="45%" stopColor="#8b5cf6" stopOpacity="0.08" />
-            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-          </radialGradient>
           <radialGradient id="twinFigUplight" cx="50%" cy="50%" r="72%">
             <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.5" />
             <stop offset="22%" stopColor="#a78bfa" stopOpacity="0.34" />
@@ -70,6 +78,11 @@ export function TwinFigureArt({ className }: { className?: string }) {
             <stop offset="78%" stopColor="#22d3ee" stopOpacity="0.1" />
             <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="twinFigScan" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
+            <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.14" />
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          </linearGradient>
           <mask id="twinFigBodyMask">
             <image
               href="/brand/empathy-twin-body.png"
@@ -94,12 +107,16 @@ export function TwinFigureArt({ className }: { className?: string }) {
         <style>{`
           @keyframes twinFigBreathe{0%,100%{opacity:.86}50%{opacity:1}}
           @keyframes twinFigTwinkle{0%,100%{opacity:.45}50%{opacity:.9}}
+          @keyframes twinFigScanMove{0%{transform:translateY(-36px)}100%{transform:translateY(${VB_H + 8}px)}}
+          @keyframes twinFigPing{0%{transform:scale(1);opacity:.85}70%{transform:scale(3.4);opacity:0}100%{transform:scale(3.4);opacity:0}}
           .twin-fig-breathe{animation:twinFigBreathe 5.5s ease-in-out infinite}
           .twin-fig-twinkle{animation:twinFigTwinkle 4.5s ease-in-out infinite}
-          @media(prefers-reduced-motion:reduce){.twin-fig-breathe,.twin-fig-twinkle{animation:none}}
+          .twin-fig-scan{animation:twinFigScanMove 11s linear infinite}
+          .twin-fig-ping{transform-box:fill-box;transform-origin:center;animation:twinFigPing 4.2s ease-out infinite}
+          @media(prefers-reduced-motion:reduce){.twin-fig-breathe,.twin-fig-twinkle,.twin-fig-scan,.twin-fig-ping{animation:none}}
         `}</style>
 
-        <ellipse cx={CX} cy={AURA_Y} rx="150" ry="220" fill="url(#twinFigAura)" filter="url(#twinFigSoftBlur)" />
+        {/* Luce dal basso (l'unica "atmosfera": lo sfondo resta neutro). */}
         <ellipse cx={CX} cy={FEET_Y} rx="150" ry="58" fill="url(#twinFigUplight)" filter="url(#twinFigSoftBlur)" />
 
         <g className="twin-fig-twinkle">
@@ -120,6 +137,29 @@ export function TwinFigureArt({ className }: { className?: string }) {
           mask="url(#twinFigBodyMask)"
           filter="url(#twinFigGlow)"
         />
+
+        {/* Scanline tech che percorre la figura, molto tenue. */}
+        <g className="twin-fig-scan">
+          <rect x={CX - 132} y={0} width={264} height={30} fill="url(#twinFigScan)" />
+        </g>
+
+        {/* Sensori: nodo fisso + anello che pinga in sequenza. */}
+        {SENSORS.map((s, i) => (
+          <g key={`s-${i}`}>
+            <circle cx={s.x} cy={s.y} r="2.1" fill={s.c} opacity="0.95" filter="url(#twinFigGlow)" />
+            <circle
+              className="twin-fig-ping"
+              cx={s.x}
+              cy={s.y}
+              r="2.1"
+              fill="none"
+              stroke={s.c}
+              strokeWidth="0.9"
+              style={{ animationDelay: `${s.delay}s` }}
+            />
+          </g>
+        ))}
+
         <ellipse cx={CX} cy={FEET_Y + 2} rx="40" ry="10" fill="url(#twinFigPlatform)" opacity="0.9" />
         <circle cx={CX} cy={FEET_Y} r="3.2" fill="#ffffff" filter="url(#twinFigGlow)" />
       </svg>

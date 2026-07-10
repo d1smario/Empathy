@@ -150,6 +150,23 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
     panel.activity.steps != null ||
     panel.activity.activeCaloriesKcal != null;
 
+  // Ipnogramma: con `aside` va DENTRO la colonna sinistra (riempie l'altezza
+  // dell'arte a destra); senza aside resta full-width sotto, come sempre.
+  const hypnogramBlock =
+    panel.sleepHypnogram.length > 0 ? (
+      <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+        <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
+          <Heart className="h-3.5 w-3.5" aria-hidden /> {t("stagesNightLine")}
+        </p>
+        <SleepHypnogramChart
+          segments={panel.sleepHypnogram}
+          approximated={panel.sleepHypnogramApproximated}
+          sleepStartUtc={panel.sleepHypnogramWindowUtc?.sleepStartUtc}
+          sleepEndUtc={panel.sleepHypnogramWindowUtc?.sleepEndUtc}
+        />
+      </div>
+    ) : null;
+
   return (
     <div id="day-wellness-detail" className="scroll-mt-24">
       <Pro2SectionCard accent="orange" title={t("cardTitle")} subtitle={subtitle} icon={Moon}>
@@ -224,22 +241,11 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
                 })}
               </div>
             </div>
+              {aside ? hypnogramBlock : null}
               </div>
             </div>
 
-            {panel.sleepHypnogram.length > 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
-                <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  <Heart className="h-3.5 w-3.5" aria-hidden /> {t("stagesNightLine")}
-                </p>
-                <SleepHypnogramChart
-                  segments={panel.sleepHypnogram}
-                  approximated={panel.sleepHypnogramApproximated}
-                  sleepStartUtc={panel.sleepHypnogramWindowUtc?.sleepStartUtc}
-                  sleepEndUtc={panel.sleepHypnogramWindowUtc?.sleepEndUtc}
-                />
-              </div>
-            ) : null}
+            {!aside ? hypnogramBlock : null}
 
             {panel.notes.length > 0 ? (
               <ul className="space-y-1 text-xs text-gray-500">
