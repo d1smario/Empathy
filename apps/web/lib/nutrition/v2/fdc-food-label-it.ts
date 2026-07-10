@@ -50,8 +50,8 @@ const LABEL_RULES: ReadonlyArray<{ re: RegExp; label: string }> = [
   { re: /\b(cereal|corn flakes|muesli|granola)\b/i, label: "Cereali da colazione" },
   { re: /\b(bread,?\s*(white|whole|wheat)?|pane)\b/i, label: "Pane integrale" },
   { re: /\b(crackers?|biscott)\b/i, label: "Fette biscottate" },
-  { re: /\b(almond|mandorl)\b/i, label: "Mandorle" },
-  { re: /\b(walnut|noci)\b/i, label: "Noci" },
+  { re: /\b(almonds?|mandorl)\b/i, label: "Mandorle" },
+  { re: /\b(walnuts?|noci)\b/i, label: "Noci" },
   { re: /\b(olive oil|olio)\b/i, label: "Olio EVO" },
   { re: /\b(avocado)\b/i, label: "Avocado" },
 ];

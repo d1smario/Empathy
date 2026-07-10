@@ -14,6 +14,7 @@ import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { attachSolverBasisToAssembled } from "@/lib/nutrition/meal-plan-solver-basis";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
 import { mapV2PlanToV1Response } from "@/lib/nutrition/v2/map-v2-plan-to-v1-response";
+import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import {
   diffMealPlanEngines,
   logMealPlanEngineShadowDiff,
@@ -247,6 +248,7 @@ export async function POST(req: NextRequest) {
 
     let responseCore;
     let dbPlanReused = false;
+    const regenerate = body.regenerate === true || (isRecord(body.plan) && body.plan.regenerate === true);
 
     if (engine === "db") {
       const admin = createSupabaseAdminClient();
@@ -257,7 +259,6 @@ export async function POST(req: NextRequest) {
         );
       }
       const planDate = request.planDate;
-      const regenerate = body.regenerate === true || (isRecord(body.plan) && body.plan.regenerate === true);
 
       let planId: string | null = null;
       if (!regenerate) {
@@ -317,6 +318,31 @@ export async function POST(req: NextRequest) {
         db,
       );
       responseCore = await mapV2PlanToV1Response(v2Production, request);
+
+      // Unica fonte di verità: persiste il piano V2 (deterministico per data) nelle
+      // tabelle canoniche, così la vista Oggi legge ESATTAMENTE quello che mostra
+      // Nutrizione. Scrive alla generazione (piano assente) o su «Rigenera».
+      // Best-effort: un errore di persistenza non deve rompere la risposta.
+      const admin = createSupabaseAdminClient();
+      if (admin) {
+        try {
+          const { data: existingPlan } = await admin
+            .from("nutrition_plan")
+            .select("id")
+            .eq("athlete_id", athleteId)
+            .eq("plan_date", request.planDate)
+            .limit(1)
+            .maybeSingle();
+          if (!existingPlan?.id || regenerate) {
+            const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2Production, {
+              hydrationMlTarget: weightKg != null ? Math.round(weightKg * 35) : null,
+            });
+            if (!persisted.ok) console.error("[nutrition v2 persist]", persisted.error);
+          }
+        } catch (persistErr) {
+          console.error("[nutrition v2 persist]", persistErr);
+        }
+      }
     } else if (engine === "shadow") {
       const [v1Core, v2Production] = await Promise.all([
         buildDeterministicMealPlanFromRequest(request),

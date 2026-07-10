@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
-import { disambiguatedShortFoodLabel } from "@/lib/nutrition/usda-food-label";
+import { fdcDescriptionToLabelIt } from "@/lib/nutrition/v2/fdc-food-label-it";
 
 /**
  * Ruolo macro sintetico per la UI (colore/icona fallback quando manca l'immagine).
@@ -140,8 +140,9 @@ export async function loadTodayPersistedMeals(
       .in("fdc_id", fdcIds);
     for (const row of (foodRows ?? []) as Array<{ fdc_id: number; description: string | null; image_url: string | null }>) {
       if (row.description) {
+        // Etichetta italiana come la pagina Nutrizione (stessa fonte, un solo sistema).
         foodByFdc.set(Number(row.fdc_id), {
-          label: disambiguatedShortFoodLabel(row.description),
+          label: fdcDescriptionToLabelIt(row.description),
           imageUrl: typeof row.image_url === "string" && row.image_url.trim() !== "" ? row.image_url : null,
         });
       }

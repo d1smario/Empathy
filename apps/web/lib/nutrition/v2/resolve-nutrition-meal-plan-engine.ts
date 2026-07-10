@@ -28,9 +28,10 @@ export function resolveNutritionMealPlanEngine(
   if (process.env.NODE_ENV === "development" && (process.env.NUTRITION_MEAL_PLAN_ENGINE_DEV ?? "").trim() === "shadow") {
     return "shadow";
   }
-  // Vercel: v2 in produzione (QA). Rollback: NUTRITION_MEAL_PLAN_ENGINE=v1|shadow.
-  if (process.env.VERCEL === "1") return "v2";
-  return "v1";
+  // Default canonico: V2 (USDA FDC taggato) ovunque — locale come produzione — così
+  // c'è UN solo motore e il piano V2 persistito è l'unica fonte letta da Nutrizione e
+  // Oggi. Rollback per-atleta o globale: NUTRITION_MEAL_PLAN_ENGINE=v1|shadow|db.
+  return "v2";
 }
 
 export function isNutritionMealPlanEngineV2Active(engine: NutritionMealPlanEngine): boolean {
