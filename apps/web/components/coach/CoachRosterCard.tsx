@@ -184,10 +184,9 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
       aria-label={t("athletes")}
     >
       <div className="relative">
-        <h2 className="text-lg font-bold text-white">{t("athletes")}</h2>
-        <p className="mt-1 text-sm text-gray-500">{t("subtitle")}</p>
-
-        {loading ? <div className="mt-6 h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
+        {/* Titolo/sottotitolo rimossi: duplicavano l'intestazione «Atleti» della card
+            a monte. L'aria-label sulla section resta per l'accessibilità. */}
+        {loading ? <div className="h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
 
         {!loading && coachActivation === "suspended" ? (
           <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/20 px-3 py-2 text-sm text-rose-100" role="status">
