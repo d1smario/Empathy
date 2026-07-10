@@ -28,7 +28,10 @@ export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?
   return (
     <Pro2SectionCard accent="violet" title={t("title")} subtitle={t("subtitle")} icon={Users}>
       <div className="flex flex-col gap-8">
-        {showStatus ? (
+        {/* Niente badge «Coach · attivo» per il coach già approvato: è rumore (se sei
+            nella console sei attivo). La riga stato resta solo per gli stati che
+            richiedono un'azione: atleta (diventa coach), pending, sospeso. */}
+        {showStatus && !(role === "coach" && coachOperationalApproved) ? (
           <div className="flex flex-wrap items-center gap-3 border-b border-white/10 pb-6">
             {role === "private" ? (
               <>
@@ -41,9 +44,6 @@ export function CoachAthletesModulePanel({ basePath = "/athletes" }: { basePath?
                   {t("becomeCoach")}
                 </Pro2Link>
               </>
-            ) : null}
-            {role === "coach" && coachOperationalApproved ? (
-              <Pill className="bg-emerald-500/20 text-emerald-100">{t("coachActive")}</Pill>
             ) : null}
             {role === "coach" && !coachOperationalApproved && (platformCoachStatus === "pending" || platformCoachStatus === null) ? (
               <>
