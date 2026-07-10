@@ -31,19 +31,15 @@ function NowMarker({ label }: { label: string }) {
 
 export function TodayTimeline({
   events,
-  onConfirmMeal,
   onAddHydration,
   onScheduleWorkout,
-  confirmBusySlot,
   hydrationBusy,
   scheduleBusyId,
 }: {
   events: TodayEvent[];
-  onConfirmMeal?: (slotKey: string, confirmed: boolean) => void;
   onAddHydration?: (deltaMl: number) => void;
   /** Fissa l'orario di una seduta pianificata senza orario (chips nel blocco workout). */
   onScheduleWorkout?: (plannedId: string, hhmm: string) => void;
-  confirmBusySlot?: string | null;
   hydrationBusy?: boolean;
   scheduleBusyId?: string | null;
 }) {
@@ -92,10 +88,8 @@ export function TodayTimeline({
     <TodayTimelineItem
       key={event.id}
       event={event}
-      onConfirmMeal={onConfirmMeal}
       onAddHydration={onAddHydration}
       onScheduleWorkout={onScheduleWorkout}
-      confirmBusySlot={confirmBusySlot}
       hydrationBusy={hydrationBusy}
       scheduleBusyId={scheduleBusyId}
     />

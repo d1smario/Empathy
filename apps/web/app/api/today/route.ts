@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAthleteReadContext, AthleteReadContextError } from "@/lib/auth/athlete-read-context";
 import { buildOperationalDayHub } from "@/lib/operational/build-operational-day-hub";
 import { loadNutritionPlanDayContext } from "@/lib/bioenergetics/load-nutrition-plan-for-day";
+import { loadTodayPersistedMeals } from "@/lib/nutrition/load-today-planned-meals";
 import type { PlannedWorkout } from "@empathy/domain-training";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
 import { buildTodayEvents, buildFloatingWorkout } from "@/modules/today/lib/build-today-events";
@@ -49,8 +51,14 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       return NextResponse.json({ ok: false, error: hub.error }, { status: 500 });
     }
 
-    // Pasti pianificati del giorno
+    // Pasti pianificati del giorno (macro solver — usati come scheletro slot/orario)
     const nutritionCtx = await loadNutritionPlanDayContext(db, athleteId, date, hub.planned as unknown as PlannedWorkout[]);
+
+    // Piano pasti PERSISTITO dal motore DB (cibi reali con grammi + immagini). Richiede
+    // service-role (RLS senza policy utente su nutrition_plan/meal/meal_item). Se non
+    // esiste un piano per il giorno, la timeline usa solo lo scheletro macro sopra.
+    const admin = createSupabaseAdminClient();
+    const persistedMeals = admin ? await loadTodayPersistedMeals(admin, athleteId, date) : [];
 
     // Cibi già registrati nel diario per il giorno (usati come dettaglio del piano)
     const { data: diaryRows } = await db
@@ -104,6 +112,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       plannedWorkouts: hub.planned,
       executedWorkouts: executedRows,
       plannedMeals: nutritionCtx.plannedMeals,
+      persistedMeals,
       diaryItems,
       hydration: { targetMl, currentMl },
       readiness: { score: null, label: null }, // caricato client-side

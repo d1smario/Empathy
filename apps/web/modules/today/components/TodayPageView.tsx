@@ -59,7 +59,7 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
       }
     : null;
 
-  const { addHydration, confirmMeal, busySlot, hydrationBusy, error: actionError } = useNutritionQuickActions({
+  const { addHydration, hydrationBusy, error: actionError } = useNutritionQuickActions({
     athleteId,
     date,
     profile: profileLike,
@@ -147,10 +147,8 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
             con anteprima + chips orario): niente più card flottante separata. */}
         <TodayTimeline
           events={data.events}
-          onConfirmMeal={confirmMeal}
           onAddHydration={addHydration}
           onScheduleWorkout={(plannedId, hhmm) => void scheduleWorkout(plannedId, hhmm)}
-          confirmBusySlot={busySlot}
           hydrationBusy={hydrationBusy}
           scheduleBusyId={scheduleBusyId}
         />

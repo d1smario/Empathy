@@ -13,13 +13,10 @@ import {
   Utensils,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import type { TodayEvent } from "@/app/api/today/contracts";
+import type { TodayEvent, TodayFoodItem } from "@/app/api/today/contracts";
 import { BuilderPlannedSessionViz } from "@/components/training/BuilderPlannedSessionViz";
-import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
-import { productHrefForPathname } from "@/lib/shell/use-product-href";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
@@ -44,6 +41,41 @@ const ACCENTS: Record<NonNullable<TodayEvent["accent"]>, { border: string; bg: s
   amber: { border: "border-amber-500/30", bg: "bg-amber-500/10", icon: "text-amber-300", text: "text-amber-100" },
   fuchsia: { border: "border-fuchsia-500/30", bg: "bg-fuchsia-500/10", icon: "text-fuchsia-300", text: "text-fuchsia-100" },
 };
+
+/** Tinta di fallback per l'icona alimento quando manca l'immagine (per ruolo macro). */
+const FOOD_ROLE_TINT: Record<NonNullable<TodayFoodItem["macroRole"]>, string> = {
+  cho_heavy: "bg-amber-500/15 text-amber-200",
+  protein: "bg-rose-500/15 text-rose-200",
+  fat: "bg-yellow-500/15 text-yellow-200",
+  veg: "bg-emerald-500/15 text-emerald-200",
+  mixed: "bg-white/5 text-gray-300",
+};
+
+/** Riga alimento del pasto: miniatura (immagine libreria o icona per ruolo) + nome + grammi/kcal. */
+function MealFoodRow({ item }: { item: TodayFoodItem }) {
+  const tint = FOOD_ROLE_TINT[item.macroRole ?? "mixed"] ?? FOOD_ROLE_TINT.mixed;
+  return (
+    <li className="flex items-center gap-2.5">
+      {item.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt=""
+          loading="lazy"
+          className="h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
+        />
+      ) : (
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10 ${tint}`}>
+          <Utensils className="h-3.5 w-3.5" aria-hidden />
+        </span>
+      )}
+      <span className="min-w-0 flex-1 truncate text-gray-200">{item.foodLabel}</span>
+      <span className="shrink-0 tabular-nums text-gray-500">
+        {item.quantityG}g{item.kcal > 0 ? ` · ${Math.round(item.kcal)} kcal` : ""}
+      </span>
+    </li>
+  );
+}
 
 function EventTitle({ event, t }: { event: TodayEvent; t: ReturnType<typeof useTranslations> }) {
   if (event.titleKey) {
@@ -76,24 +108,21 @@ const SCHEDULE_SLOTS = ["07:00", "12:30", "18:00"] as const;
 
 export function TodayTimelineItem({
   event,
-  onConfirmMeal,
   onAddHydration,
   onScheduleWorkout,
-  confirmBusySlot,
   hydrationBusy,
   scheduleBusyId,
 }: {
   event: TodayEvent;
-  onConfirmMeal?: (slotKey: string, confirmed: boolean) => void;
   onAddHydration?: (deltaMl: number) => void;
   onScheduleWorkout?: (plannedId: string, hhmm: string) => void;
-  confirmBusySlot?: string | null;
   hydrationBusy?: boolean;
   scheduleBusyId?: string | null;
 }) {
   const t = useTranslations("TodayPage");
-  const pathname = usePathname() ?? "/";
-  const { athleteId, adminScoped, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
+  // Vista coach/admin (adminScoped) = monitoraggio in sola lettura: niente pulsanti di
+  // interazione (idratazione). L'atleta nella propria vista li vede.
+  const { adminScoped } = useActiveAthlete();
   const sessionHrefFor = useScopedSessionHref();
   const Icon = ICONS[event.type];
   const accent = event.accent ?? "slate";
@@ -116,11 +145,8 @@ export function TodayTimelineItem({
     return parsePro2BuilderSessionFromNotes(notes) as unknown as Pro2BuilderSessionContract | null;
   }, [isWorkout, event.data?.notes]);
 
-  // Link «Dettaglio seduta» (eseguito) e «Apri piano pasti»: scope-aware.
+  // Link «Dettaglio seduta» (eseguito): scope-aware.
   const detailDate = typeof event.data?.detailDate === "string" ? event.data.detailDate : null;
-  const mealPlanHref = adminScoped
-    ? (scopedShellHref("/nutrition", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId }) ?? "/nutrition")
-    : productHrefForPathname("/nutrition", pathname);
 
   return (
     <div className="relative flex gap-3">
@@ -171,20 +197,10 @@ export function TodayTimelineItem({
 
         </div>
 
-        {/* Azioni */}
+        {/* Azioni. Il pasto non ha più «segna fatto»: lo stato consumato viene dal diario
+            (timbrato con l'orario). L'idratazione è interattiva solo per l'atleta. */}
         <div className="mt-2 flex flex-wrap gap-2">
-          {isMeal && event.status !== "done" && event.data?.slot ? (
-            <button
-              type="button"
-              disabled={confirmBusySlot === event.data.slot}
-              onClick={() => onConfirmMeal?.(String(event.data!.slot), true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-100 transition hover:bg-emerald-500/25 disabled:opacity-50"
-            >
-              {confirmBusySlot === event.data.slot ? t("mealSaving") : t("mealDone")}
-            </button>
-          ) : null}
-
-          {isHydration && !isHydrationCheckpoint && event.status !== "done" ? (
+          {!adminScoped && isHydration && !isHydrationCheckpoint && event.status !== "done" ? (
             <button
               type="button"
               disabled={hydrationBusy}
@@ -247,7 +263,7 @@ export function TodayTimelineItem({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  {event.status === "current" ? (
+                  {!adminScoped && event.status === "current" ? (
                     <div className="mt-2 flex gap-2">
                       {[250, 500].map((ml) => (
                         <button
@@ -296,26 +312,13 @@ export function TodayTimelineItem({
           <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
             <p className="font-semibold text-white">{t("mealDetailsTitle")}</p>
             {event.items && event.items.length > 0 ? (
-              <ul className="mt-1.5 space-y-1.5">
+              <ul className="mt-2 space-y-2">
                 {event.items.map((item, idx) => (
-                  <li key={idx} className="flex items-start justify-between gap-2 text-gray-300">
-                    <span className="flex-1">{item.foodLabel}</span>
-                    <span className="shrink-0 tabular-nums text-gray-500">
-                      {item.quantityG}g · {Math.round(item.kcal)} kcal
-                    </span>
-                  </li>
+                  <MealFoodRow key={idx} item={item} />
                 ))}
               </ul>
             ) : (
-              <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-gray-500">{t("mealNoItems")}</p>
-                <Link
-                  href={mealPlanHref}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-bold text-amber-100 transition hover:bg-amber-500/25"
-                >
-                  {t("openMealPlan")} <ArrowUpRight className="h-3 w-3" aria-hidden />
-                </Link>
-              </div>
+              <p className="mt-1 text-gray-500">{t("mealNoItems")}</p>
             )}
           </div>
         ) : null}

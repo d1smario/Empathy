@@ -2,6 +2,7 @@
 
 import { Droplets } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 function liters(ml: number): string {
   return (ml / 1000).toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -19,6 +20,8 @@ export function TodayHydrationTracker({
   busy?: boolean;
 }) {
   const t = useTranslations("TodayPage");
+  // Vista coach/admin = sola lettura: niente pulsanti di interazione idratazione.
+  const { adminScoped } = useActiveAthlete();
   const pct = targetMl > 0 ? Math.min(100, Math.round((currentMl / targetMl) * 100)) : 0;
   const done = targetMl > 0 && currentMl >= targetMl;
 
@@ -40,7 +43,7 @@ export function TodayHydrationTracker({
           style={{ width: `${pct}%`, backgroundColor: done ? "rgba(52, 211, 153, 0.85)" : "rgba(34, 211, 238, 0.8)" }}
         />
       </div>
-      {onAddIntake ? (
+      {onAddIntake && !adminScoped ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"

@@ -51,6 +51,10 @@ export type TodayFoodItem = {
   carbsG: number;
   proteinG: number;
   fatG: number;
+  /** Ruolo macro sintetico (icona/colore di fallback quando manca l'immagine). */
+  macroRole?: "cho_heavy" | "protein" | "fat" | "veg" | "mixed";
+  /** Immagine alimento (libreria/fdc_food) se disponibile. */
+  imageUrl?: string | null;
 };
 
 export type TodayFloatingWorkout = {

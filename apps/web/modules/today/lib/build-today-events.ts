@@ -1,6 +1,7 @@
 import type { PlannedWorkoutDbRow } from "@empathy/domain-training";
 import type { BioPlannedMealRow } from "@/lib/bioenergetics/nutrition-plan-day-empty";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
+import type { TodayPlannedMealSlot } from "@/lib/nutrition/load-today-planned-meals";
 import { getScheduledTimeFromPlannedRow, parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import type { TodayEvent, TodayFoodItem, TodayHydration, TodayReadiness } from "@/app/api/today/contracts";
 
@@ -73,6 +74,8 @@ export type BuildTodayEventsInput = {
     kcal?: number | null;
   }>;
   plannedMeals: BioPlannedMealRow[];
+  /** Piano pasti persistito dal motore DB (cibi reali). Prevale sui macro-solver quando presente. */
+  persistedMeals?: TodayPlannedMealSlot[];
   diaryItems: TodayFoodItem[];
   hydration: TodayHydration;
   readiness: TodayReadiness;
@@ -118,7 +121,7 @@ function dailySupplements(
 }
 
 export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
-  const { date, profile, plannedWorkouts, executedWorkouts, plannedMeals, diaryItems, hydration, readiness } = input;
+  const { date, profile, plannedWorkouts, executedWorkouts, plannedMeals, persistedMeals, diaryItems, hydration, readiness } = input;
   const routineConfig = asRecord(profile?.routine_config);
   const nutritionConfig = asRecord(profile?.nutrition_config);
   const supplementConfig = asRecord(profile?.supplement_config);
@@ -181,25 +184,50 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     });
   }
 
-  // Pasti
-  const mealConfirmationsAll = asRecord(nutritionConfig.meal_confirmations);
-  const mealConfirmationsDay = asRecord(mealConfirmationsAll[date]);
+  // Pasti. Il diario (timbrato con l'orario) è la fonte di verità del consumato: un pasto
+  // è "done" se ci sono voci a diario per quello slot — niente più «segna fatto» manuale.
+  // I CIBI mostrati vengono dal piano PERSISTITO dal motore DB (cibi reali + grammi +
+  // immagini); se il giorno non ha un piano persistito si ripiega sui macro del solver.
+  const persistedBySlot = new Map<string, TodayPlannedMealSlot>();
+  for (const pm of persistedMeals ?? []) persistedBySlot.set(pm.slot, pm);
 
   for (const meal of plannedMeals) {
     const time = timeFromIso(meal.entry_time);
     if (!time) continue;
-    const confirmed = !!mealConfirmationsDay[meal.slot];
-    const items = diaryItems.filter((i) => i.mealSlot === meal.slot);
+    const persisted = persistedBySlot.get(meal.slot);
+    const diaryForSlot = diaryItems.filter((i) => i.mealSlot === meal.slot);
+    const consumed = diaryForSlot.length > 0;
+
+    // «Cosa mangiare» = cibi del piano persistito (se c'è), altrimenti le voci a diario.
+    const items: TodayFoodItem[] = persisted
+      ? persisted.foods.map((f) => ({
+          mealSlot: meal.slot,
+          foodLabel: f.label,
+          quantityG: f.grams,
+          kcal: f.kcal,
+          carbsG: 0,
+          proteinG: 0,
+          fatG: 0,
+          macroRole: f.macroRole,
+          imageUrl: f.imageUrl,
+        }))
+      : diaryForSlot;
+
+    const kcal = persisted ? persisted.kcal : Math.round(meal.kcal);
+    const proteinG = persisted ? persisted.proteinG : Math.round(meal.protein_g ?? 0);
+    const carbsG = persisted ? persisted.carbsG : Math.round(meal.carbs_g ?? 0);
+    const fatG = persisted ? persisted.fatG : Math.round(meal.fat_g ?? 0);
+
     events.push({
       id: `meal-${meal.slot}`,
       type: mealTypeForSlot(meal.slot),
       time,
       title: mealKeyForSlot(meal.slot),
       titleKey: mealKeyForSlot(meal.slot),
-      subtitle: `${Math.round(meal.kcal)} kcal · P${Math.round(meal.protein_g ?? 0)} · C${Math.round(meal.carbs_g ?? 0)} · G${Math.round(meal.fat_g ?? 0)}`,
-      status: confirmed ? "done" : "todo",
+      subtitle: `${kcal} kcal · P${proteinG} · C${carbsG} · G${fatG}`,
+      status: consumed ? "done" : "todo",
       accent: "amber",
-      data: { slot: meal.slot, kcal: meal.kcal, protein: meal.protein_g, carbs: meal.carbs_g, fat: meal.fat_g },
+      data: { slot: meal.slot, kcal, protein: proteinG, carbs: carbsG, fat: fatG, consumed, fromPlan: !!persisted },
       items,
     });
   }
