@@ -16,8 +16,10 @@
  */
 
 // ViewBox STRETTO attorno al corpo (aspect corpo 0.5625): pochi margini morti.
+// L'altezza dà respiro alla luce sotto i piedi (feet 485 + alone ry 65 → il
+// gradiente arriva a opacità ~0 entro 545: niente taglio col bordo inferiore).
 const VB_W = 300;
-const VB_H = 520;
+const VB_H = 545;
 const BODY = { x: 18, y: 16, w: 264, h: 469 };
 const CX = 150;
 const FEET_Y = 485;
