@@ -149,7 +149,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
         `}</style>
 
         {/* Luce dal basso (l'unica "atmosfera": lo sfondo resta neutro). */}
-        <ellipse cx={CX} cy={FEET_Y} rx="132" ry="52" fill="url(#twinFigUplight)" filter="url(#twinFigSoftBlur)" />
+        <ellipse cx={CX} cy={FEET_Y} rx="165" ry="65" fill="url(#twinFigUplight)" filter="url(#twinFigSoftBlur)" />
 
         <g className="twin-fig-twinkle">
           {DOTS.map((d, i) => (
@@ -157,7 +157,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
           ))}
         </g>
 
-        <ellipse cx={CX} cy={FEET_Y + 2} rx="104" ry="18" fill="url(#twinFigPlatform)" filter="url(#twinFigSoftBlur)" />
+        <ellipse cx={CX} cy={FEET_Y + 2} rx="130" ry="23" fill="url(#twinFigPlatform)" filter="url(#twinFigSoftBlur)" />
 
         <rect
           className="twin-fig-breathe"
@@ -192,7 +192,7 @@ export function TwinFigureArt({ className }: { className?: string }) {
           </g>
         ))}
 
-        <ellipse cx={CX} cy={FEET_Y + 2} rx="36" ry="9" fill="url(#twinFigPlatform)" opacity="0.9" />
+        <ellipse cx={CX} cy={FEET_Y + 2} rx="45" ry="11" fill="url(#twinFigPlatform)" opacity="0.9" />
         <circle cx={CX} cy={FEET_Y} r="3" fill="#ffffff" filter="url(#twinFigGlow)" />
       </svg>
     </div>
