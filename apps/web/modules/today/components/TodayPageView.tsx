@@ -86,7 +86,9 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
 
   return (
     <div className="relative min-h-screen bg-black px-4 pb-28 pt-4 sm:px-6">
-      <div className="mx-auto max-w-3xl space-y-6">
+      {/* max-w-6xl come le altre viste modulo (Pro2ModulePageShell): su desktop la
+          pagina sfrutta l'intera larghezza; su mobile resta invariata (schermo < 6xl). */}
+      <div className="mx-auto max-w-6xl space-y-6">
         <TodayHeader firstName={firstName} date={date} readiness={readiness} />
 
         {/* Dati device del giorno (sonno+fasi, passi/obiettivo, km, HRV, FC riposo,
