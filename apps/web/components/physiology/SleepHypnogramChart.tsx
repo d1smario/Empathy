@@ -43,7 +43,9 @@ export function SleepHypnogramChart({
 }) {
   const t = useTranslations("SleepHypnogramChart");
   const w = 400;
-  const bandTop = 8;
+  // bandTop dà spazio alle etichette «Inizio notte/Sveglia» (testo a y=bandTop-2):
+  // con 8 la parte alta dei caratteri usciva sopra il viewBox e veniva tagliata.
+  const bandTop = 18;
   const bandH = 56;
   const h = bandTop + bandH + 36;
 
@@ -82,7 +84,7 @@ export function SleepHypnogramChart({
 
       <svg
         viewBox={`0 0 ${w} ${h}`}
-        className="mt-3 h-40 w-full"
+        className="mt-5 h-40 w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={t("chartLabel")}
