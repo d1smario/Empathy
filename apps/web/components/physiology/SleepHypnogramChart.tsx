@@ -84,7 +84,7 @@ export function SleepHypnogramChart({
 
       <svg
         viewBox={`0 0 ${w} ${h}`}
-        className="mt-5 h-40 w-full"
+        className="mt-5 h-32 w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={t("chartLabel")}

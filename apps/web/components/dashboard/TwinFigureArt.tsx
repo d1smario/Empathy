@@ -46,15 +46,46 @@ const SENSORS = [
   { x: 190, y: 460, c: "#60a5fa", delay: 3.5 }, // caviglia dx
 ];
 
+// Texture di micro-punti glow per l'INTERO pannello (copre anche il letterbox
+// dell'svg, che con aspect fisso lascia zone vuote sopra/sotto): deterministica.
+const PANEL_TEXTURE = [
+  ["12%", "8%", "rgba(167,139,250,0.35)"],
+  ["78%", "6%", "rgba(34,211,238,0.30)"],
+  ["30%", "14%", "rgba(244,114,182,0.22)"],
+  ["62%", "11%", "rgba(94,234,212,0.25)"],
+  ["88%", "18%", "rgba(96,165,250,0.22)"],
+  ["8%", "30%", "rgba(34,211,238,0.18)"],
+  ["92%", "42%", "rgba(167,139,250,0.20)"],
+  ["6%", "62%", "rgba(244,114,182,0.16)"],
+  ["94%", "72%", "rgba(94,234,212,0.18)"],
+  ["10%", "88%", "rgba(96,165,250,0.16)"],
+  ["86%", "92%", "rgba(167,139,250,0.18)"],
+]
+  .map(([x, y, c]) => `radial-gradient(circle at ${x} ${y}, ${c} 1px, transparent 1.8px)`)
+  .join(", ");
+
 export function TwinFigureArt({ className }: { className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 ${className ?? ""}`}
+      className={`relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/40 ${className ?? ""}`}
+      style={{ backgroundImage: PANEL_TEXTURE }}
     >
+      {/* Header tech: LED vivo + label — riempie la fascia alta del pannello. */}
+      <div className="flex items-center gap-2 px-4 pt-3">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+        </span>
+        <span className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.3em] text-gray-500">
+          Digital Twin
+        </span>
+      </div>
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
-        className="mx-auto h-full w-full max-w-[300px] lg:max-w-none"
+        // min-h-0: la figura si ADATTA all'altezza del pannello (che il chiamante
+        // vincola: absolute nella cella su desktop, min-h fisso su mobile).
+        className="mx-auto min-h-0 w-full max-w-[300px] flex-1 lg:max-w-[330px]"
         aria-hidden
       >
         <defs>

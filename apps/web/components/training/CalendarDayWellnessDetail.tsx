@@ -150,10 +150,13 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
     panel.activity.steps != null ||
     panel.activity.activeCaloriesKcal != null;
 
-  // Ipnogramma: con `aside` va DENTRO la colonna sinistra (riempie l'altezza
-  // dell'arte a destra); senza aside resta full-width sotto, come sempre.
+  // Ipnogramma: SOLO quando la sequenza è quella REALE del device (Garmin
+  // sleepLevelsMap). Se è ricostruita dai totali (WHOOP non espone la sequenza)
+  // NON la mostriamo: i totali veri sono già nelle barre «Fasi sonno», e una
+  // timeline sintetica sembrerebbe un dato che non abbiamo (regola no-fake-data).
+  // Con `aside` va DENTRO la colonna sinistra; senza, full-width come sempre.
   const hypnogramBlock =
-    panel.sleepHypnogram.length > 0 ? (
+    panel.sleepHypnogram.length > 0 && !panel.sleepHypnogramApproximated ? (
       <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
         <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
           <Heart className="h-3.5 w-3.5" aria-hidden /> {t("stagesNightLine")}
@@ -185,7 +188,14 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate, aside }: Ca
                 a destra; mobile = prima l'omino, sotto tutti i contatori. Senza aside il
                 blocco resta full-width (calendario Training, Physiology daily). */}
             <div className={aside ? "grid gap-4 lg:grid-cols-3" : "space-y-5"}>
-              {aside ? <div className="lg:order-last">{aside}</div> : null}
+              {aside ? (
+                // Desktop: l'arte è ASSOLUTA dentro la cella → non contribuisce
+                // all'altezza della riga (che resta dettata dai contatori a sinistra)
+                // e riempie esattamente la colonna. Mobile: altezza minima fissa.
+                <div className="relative min-h-[440px] lg:order-last lg:min-h-0">
+                  <div className="h-full lg:absolute lg:inset-0">{aside}</div>
+                </div>
+              ) : null}
               <div className={aside ? "space-y-5 lg:col-span-2" : "space-y-5"}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <KpiCell label={t("kpiTotalSleep")} value={fmtHoursLabel(sleepDurH)} />
