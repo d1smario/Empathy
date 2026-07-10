@@ -2925,6 +2925,7 @@
     "pillarProtocolAdherence": "Protocol adherence",
     "pillarSubjectiveWellness": "Subjective wellness",
     "checkinTitle": "Today's check-in",
+    "checkinSavedOk": "Check-in saved ✓",
     "checkinSubtitleScoped": "How the athlete feels · read only",
     "checkinSubtitleSelf": "How you feel · flag any symptoms",
     "symptomsLabel": "Symptoms (optional)",
