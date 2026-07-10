@@ -7,7 +7,7 @@ import {
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDaySessionDetail } from "@/components/training/CalendarDaySessionDetail";
 import { CalendarPlannedBuilderDetail } from "@/components/training/CalendarPlannedBuilderDetail";
@@ -15,6 +15,7 @@ import { TrainingPlannedWindowContextStrip } from "@/components/training/Trainin
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
@@ -49,8 +50,17 @@ export default function TrainingSessionPageView() {
   const date = typeof params?.date === "string" ? params.date : "";
   const dateValid = ISO_DATE.test(date);
 
-  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, platformAdminView, scopeOwnerUserId, loading: ctxLoading } = useActiveAthlete();
   const athleteFtpWatts = useAthleteFtpWatts(athleteId);
+  const pathname = usePathname() ?? "/";
+  // Back-link scope-aware: in scope coach/admin torna alla scheda Training dell'atleta
+  // (la rotta globale /training/calendar fuori scope perderebbe l'atleta).
+  const backHref = useMemo(() => {
+    if (!adminScoped) return "/training/calendar";
+    const scoped = scopedShellHref("/training", { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
+    if (!scoped) return "/training/calendar";
+    return pathname.startsWith("/m/") ? `/m${scoped}` : scoped;
+  }, [adminScoped, athleteId, platformAdminView, scopeOwnerUserId, pathname]);
   // Diagnostica motore (read-spine, twin, provenance) solo per staff: l'atleta non
   // deve mai vedere gergo interno. Vedi regole di visibilità atleta.
   const showTech = role === "coach" || adminScoped;
@@ -207,7 +217,7 @@ export default function TrainingSessionPageView() {
       contentMaxWidthClassName="max-w-none"
       headerActions={
         <Link
-          href="/training/calendar"
+          href={backHref}
           className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />

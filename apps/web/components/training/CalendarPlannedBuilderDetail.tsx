@@ -23,7 +23,7 @@ import { contractHasGymScheda } from "@/lib/training/planned-workout-display";
 import { ChevronDown, Copy, ExternalLink, Trash2, Download, ArrowRightLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useProductHref } from "@/lib/shell/use-product-href";
+import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
 import { useTranslations } from "next-intl";
 
 const LIFESTYLE_CATS: readonly LifestylePracticeCategory[] = [
@@ -157,7 +157,9 @@ export function CalendarPlannedBuilderDetail({
   const titleKcal = sessionMetrics.kcal > 0 ? sessionMetrics.kcal : null;
   const chartFtpW = athleteFtpWatts ?? contract?.renderProfile?.ftpW;
 
-  const sessionHref = useProductHref(`/training/session/${workout.date}`);
+  // Scope-aware: in scope coach/admin il dettaglio giorno resta nello scope (rotta annidata).
+  const sessionHrefFor = useScopedSessionHref();
+  const sessionHref = sessionHrefFor(workout.date);
   const builderHref = `/training/builder?date=${encodeURIComponent(workout.date)}&replace_planned_id=${encodeURIComponent(workout.id)}`;
 
   const exportAid = resolvedAthleteId;

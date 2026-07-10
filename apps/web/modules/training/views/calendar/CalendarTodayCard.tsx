@@ -6,7 +6,7 @@ import { Activity, Heart, LayoutGrid, LineChart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Link } from "@/components/ui/empathy";
-import { useProductHref } from "@/lib/shell/use-product-href";
+import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
 
 export interface CalendarTodayCardProps {
   selectedDate: string;
@@ -27,7 +27,9 @@ export function CalendarTodayCard({
   builderReplacePlanned,
 }: CalendarTodayCardProps) {
   const t = useTranslations("CalendarTodayCard");
-  const selectedSessionHref = useProductHref(`/training/session/${selectedDate}`);
+  // Scope-aware: in scope coach/admin il dettaglio giorno resta nello scope (rotta annidata).
+  const sessionHrefFor = useScopedSessionHref();
+  const selectedSessionHref = sessionHrefFor(selectedDate);
   const dayLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",

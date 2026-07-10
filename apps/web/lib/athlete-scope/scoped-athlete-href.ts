@@ -23,6 +23,16 @@ export function adminUserStagingHref(userId: string, module: string, runId: stri
   return `/admin/utenti/${userId}/${module}/staging/${runId}`;
 }
 
+/** Dettaglio seduta del giorno nello scope coach (rotta annidata sotto training). */
+export function coachAthleteSessionHref(athleteId: string, date: string): string {
+  return `/athletes/${athleteId}/training/session/${date}`;
+}
+
+/** Dettaglio seduta del giorno nello scope admin (chiavato su userId). */
+export function adminUserSessionHref(userId: string, date: string): string {
+  return `/admin/utenti/${userId}/training/session/${date}`;
+}
+
 type ScopeHrefOpts = {
   athleteId: string | null;
   adminScoped: boolean;
@@ -79,6 +89,7 @@ export function scopedShellHref(href: string, opts: ScopeHrefOpts): string | nul
   if (!opts.adminScoped) return href;
 
   const staging = href.match(/^\/([^/?#]+)\/staging\/([^/?#]+)/);
+  const session = href.match(/^\/training\/session\/([^/?#]+)/);
   const root = href.match(/^\/([^/?#]+)\/?$/);
   const stagingSlug = staging && ATHLETE_MODULE_SLUGS.has(staging[1]!) ? staging[1]! : null;
   const rootSlug = root && ATHLETE_MODULE_SLUGS.has(root[1]!) ? root[1]! : null;
@@ -86,12 +97,14 @@ export function scopedShellHref(href: string, opts: ScopeHrefOpts): string | nul
   if (opts.platformAdminView) {
     if (!opts.scopeOwnerUserId) return null;
     if (staging && stagingSlug) return adminUserStagingHref(opts.scopeOwnerUserId, stagingSlug, staging[2]!);
+    if (session) return adminUserSessionHref(opts.scopeOwnerUserId, session[1]!);
     if (root && rootSlug) return adminUserModuleHref(opts.scopeOwnerUserId, normalizeScopedModule(rootSlug));
     return null;
   }
 
   if (!opts.athleteId) return null;
   if (staging && stagingSlug) return coachAthleteStagingHref(opts.athleteId, stagingSlug, staging[2]!);
+  if (session) return coachAthleteSessionHref(opts.athleteId, session[1]!);
   if (root && rootSlug) return coachAthleteModuleHref(opts.athleteId, normalizeScopedModule(rootSlug));
   return null;
 }

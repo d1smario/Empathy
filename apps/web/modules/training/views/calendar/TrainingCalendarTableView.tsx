@@ -12,6 +12,7 @@ import { SessionRowPreview } from "@/components/training/SessionRowPreview";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
 import { fetchPlannedWindowCached } from "@/lib/training/planned-window-client-cache";
+import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
 import { normalizeDateKey, workoutDayKey } from "@/lib/training/calendar-analyzer-helpers";
 import { plannedCalendarChipViewModel } from "@/lib/training/planned-workout-display";
 import { useAthleteFtpWatts } from "@/lib/training/physiology/use-athlete-ftp-watts";
@@ -74,6 +75,7 @@ type DayGroup = { dayKey: string; dayLabel: string; isToday: boolean; activities
  */
 export default function TrainingCalendarTableView() {
   const { athleteId, adminScoped, loading: ctxLoading } = useActiveAthlete();
+  const sessionHrefFor = useScopedSessionHref();
   const forAthlete = useScopedAthleteName();
   const athleteFtpWatts = useAthleteFtpWatts(athleteId);
   const pathname = usePathname() ?? "/";
@@ -315,7 +317,9 @@ export default function TrainingCalendarTableView() {
               </div>
               <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
                 {day.activities.map((a, i) => {
-                  const href = productHrefForPathname(`/training/session/${day.dayKey}`, pathname);
+                  // Scope-aware: in scope coach/admin resta nello scope (rotta annidata);
+                  // la rotta globale /training/session per un coach perde l'atleta.
+                  const href = sessionHrefFor(day.dayKey);
                   return (
                     <Link
                       key={`${day.dayKey}-${i}`}

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { Pro2Link } from "@/components/ui/empathy";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import type { BuilderDayAdaptationResponse } from "@/modules/training/services/training-builder-day-adaptation-api";
 
 /**
@@ -27,6 +28,9 @@ export function BuilderDayAdaptationPanel({
   replacePlannedIdFromQuery,
 }: BuilderDayAdaptationPanelProps) {
   const t = useTranslations("BuilderDayAdaptationPanel");
+  // In scope coach/admin il link «Calendario» uscirebbe dallo scope (rotta globale):
+  // lì il coach ha già il tab Calendario in-scope, quindi lo nascondiamo.
+  const { adminScoped } = useActiveAthlete();
   return (
     <>
         {athleteId ? (
@@ -89,7 +93,7 @@ export function BuilderDayAdaptationPanel({
               </div>
               {/* Pannello SOLO informativo: la generazione applica già l'adattamento del giorno,
                   quindi un bottone «Genera» qui era un doppione di quello nello step «Genera». */}
-              {replacePlannedIdFromQuery ? (
+              {replacePlannedIdFromQuery && !adminScoped ? (
                 <div className="flex flex-wrap gap-2">
                   <Pro2Link
                     href={`/training/calendar?date=${encodeURIComponent(plannedDate)}`}
