@@ -22,7 +22,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false as const, error: "Non autorizzato." }, { status: 401 });
   }
 
-  let limit = 5;
+  // Default alzato a 15 (era 5): con l'arretrato di pull activityFiles serve throughput;
+  // resta sotto il cap 25 per non rischiare il timeout della funzione. Per smaltire un
+  // grosso backlog conviene invocare POST …/pull/run più volte con ?limit=25.
+  let limit = 15;
   const raw = req.nextUrl.searchParams.get("limit");
   if (raw != null) {
     const n = Number(raw);

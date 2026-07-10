@@ -99,49 +99,65 @@ export async function runGarminPullJobs(limit: number): Promise<{
 
     try {
       const userTok = job.user_access_token?.trim() ?? "";
-      let fetchHeaders: Record<string, string>;
       const hadOAuth1UserToken = Boolean(userTok);
-      if (userTok) {
-        fetchHeaders = {
-          ...buildGarminSignedGetHeaders({ url: job.callback_url, userAccessToken: userTok }),
-          Accept: "*/*",
-        };
+
+      // OAuth2 Bearer PREFERITO: il user_access_token OAuth1 del push è spesso stale dopo
+      // la migrazione OAuth2-first → 403 "Unknown UserAccessToken" (causa principale dei
+      // fallimenti). Se l'atleta ha un link OAuth2 valido usiamo il Bearer fresco; se non
+      // è disponibile (env OAuth2 assente / atleta non collegato) fallback sul token OAuth1
+      // firmato del push. Strettamente non-regressivo: senza OAuth2 il comportamento è quello
+      // di prima. Fallback incrociato sotto per coprire l'endpoint che non onora un metodo.
+      const oauth2 = job.athlete_id
+        ? await ensureFreshGarminAccessTokenForAthlete(supabase, job.athlete_id)
+        : ({ error: "no_athlete_id" } as const);
+      const oauth2Token = "error" in oauth2 ? null : oauth2.accessToken;
+
+      const oauth1Headers = (): Record<string, string> => ({
+        ...buildGarminSignedGetHeaders({ url: job.callback_url, userAccessToken: userTok }),
+        Accept: "*/*",
+      });
+
+      let usedBearer = false;
+      let fetchHeaders: Record<string, string>;
+      if (oauth2Token) {
+        fetchHeaders = { Authorization: `Bearer ${oauth2Token}`, Accept: "*/*" };
+        usedBearer = true;
+      } else if (userTok) {
+        fetchHeaders = oauth1Headers();
       } else if (job.athlete_id) {
-        const tok = await ensureFreshGarminAccessTokenForAthlete(supabase, job.athlete_id);
-        if ("error" in tok) {
-          throw new Error(`oauth2_pull: ${tok.error}`);
-        }
-        fetchHeaders = { Authorization: `Bearer ${tok.accessToken}`, Accept: "*/*" };
+        throw new Error(`oauth2_pull: ${"error" in oauth2 ? oauth2.error : "no_token"}`);
       } else {
         throw new Error("pull_job_senza_user_access_token né athlete_id");
       }
 
-      let res = await fetch(job.callback_url, {
-        method: "GET",
-        headers: fetchHeaders,
-        cache: "no-store",
-        signal: AbortSignal.timeout(90_000),
-      });
-      let buf = Buffer.from(await res.arrayBuffer());
+      const doFetch = async (headers: Record<string, string>) => {
+        const r = await fetch(job.callback_url, {
+          method: "GET",
+          headers,
+          cache: "no-store",
+          signal: AbortSignal.timeout(90_000),
+        });
+        return { r, b: Buffer.from(await r.arrayBuffer()) };
+      };
 
-      if (
-        !res.ok &&
-        shouldRetryGarminPullWithOAuth2Bearer(
-          res.status,
-          buf.toString("utf8"),
-          hadOAuth1UserToken,
-          job.athlete_id,
-        )
-      ) {
-        const tok = await ensureFreshGarminAccessTokenForAthlete(supabase, job.athlete_id!);
-        if (!("error" in tok)) {
-          res = await fetch(job.callback_url, {
-            method: "GET",
-            headers: { Authorization: `Bearer ${tok.accessToken}`, Accept: "*/*" },
-            cache: "no-store",
-            signal: AbortSignal.timeout(90_000),
-          });
-          buf = Buffer.from(await res.arrayBuffer());
+      let { r: res, b: buf } = await doFetch(fetchHeaders);
+
+      // Fallback incrociato sui fallimenti di auth (401/403):
+      // - Bearer fallito ma c'è un token OAuth1 → ritenta OAuth1 (preserva le pull che
+      //   storicamente funzionavano in OAuth1);
+      // - OAuth1 fallito con "Unknown UserAccessToken" e OAuth2 disponibile → ritenta Bearer.
+      if (!res.ok && (res.status === 401 || res.status === 403)) {
+        if (usedBearer && userTok) {
+          ({ r: res, b: buf } = await doFetch(oauth1Headers()));
+        } else if (
+          !usedBearer &&
+          oauth2Token == null &&
+          shouldRetryGarminPullWithOAuth2Bearer(res.status, buf.toString("utf8"), hadOAuth1UserToken, job.athlete_id)
+        ) {
+          const tok = await ensureFreshGarminAccessTokenForAthlete(supabase, job.athlete_id!);
+          if (!("error" in tok)) {
+            ({ r: res, b: buf } = await doFetch({ Authorization: `Bearer ${tok.accessToken}`, Accept: "*/*" }));
+          }
         }
       }
 
