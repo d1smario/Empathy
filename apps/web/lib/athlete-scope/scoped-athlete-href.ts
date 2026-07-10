@@ -59,6 +59,8 @@ export function scopedReviewUrl(reviewUrl: string, opts: ScopeHrefOpts): string 
 
 const ATHLETE_MODULE_SLUGS = new Set([
   "dashboard",
+  "analysis",
+  "today",
   "health",
   "physiology",
   "training",
@@ -69,12 +71,13 @@ const ATHLETE_MODULE_SLUGS = new Set([
   "longevity",
 ]);
 
-// Bioenergetica e Longevity sono assorbite nella Dashboard: un link scoped a quei
-// moduli atterra sulla Dashboard dell'atleta (dove vivono), non su una rotta rimossa.
-const ABSORBED_INTO_DASHBOARD = new Set(["bioenergetics", "longevity"]);
+// La Dashboard è diventata «Analisi» (e Bioenergetica/Longevity vivono lì dentro):
+// un link scoped a quei moduli atterra su /analysis dell'atleta, non su una scheda
+// rimossa — «dashboard» non è più in SCOPED_ATHLETE_TABS e darebbe 404.
+const ABSORBED_INTO_ANALYSIS = new Set(["dashboard", "bioenergetics", "longevity"]);
 
 function normalizeScopedModule(slug: string): string {
-  return ABSORBED_INTO_DASHBOARD.has(slug) ? "dashboard" : slug;
+  return ABSORBED_INTO_ANALYSIS.has(slug) ? "analysis" : slug;
 }
 
 /**

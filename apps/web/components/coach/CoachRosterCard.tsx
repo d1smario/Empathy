@@ -116,7 +116,9 @@ let rosterCache: { role: "private" | "coach"; athletes: CanonicalAthleteRow[]; c
 
 /**
  * Roster coach: la selezione vive nell'URL (stesso pattern dell'admin) —
- * "Apri schede" porta a `${basePath}/[id]/dashboard` con la barra contestuale sopra.
+ * "Apri schede" porta alla ROOT `${basePath}/[id]`: è la index page dell'atleta a
+ * decidere la scheda di atterraggio (oggi Analisi). Non hardcodare il modulo qui:
+ * quando «dashboard» è diventata «analysis» il link hardcoded è finito in 404.
  * `basePath` = `/athletes` su desktop, `/m/athletes` nella shell mobile coach.
  */
 export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string }) {
@@ -234,7 +236,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
                   {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}
                 </div>
                 <Link
-                  href={`${basePath}/${a.id}/dashboard`}
+                  href={`${basePath}/${a.id}`}
                   className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden />
