@@ -105,37 +105,45 @@ function foodItemIcon(name: string): LucideIcon {
 }
 
 /**
- * Mappa `canonicalKey → imageUrl` (foto reale del cibo) da
- * `/api/nutrition/food-image-map`: specifica per alimento → immagine categoria →
- * assente. Cache di modulo: la mappa è uguale per tutti e cambia di rado, quindi
- * una sola fetch cross-mount. Se manca (bucket vuoto / no service key) resta {}
- * e il thumb cade sull'icona lucide — nessuna regressione.
+ * Mappe foto-cibo da `/api/nutrition/food-image-map`:
+ *   - `byFdcId`: `fdc_id → url` per OGNI alimento con foto in libreria —
+ *     risoluzione primaria quando l'item porta il suo fdc_id (piano V2).
+ *   - `byKey`: `canonicalKey → url` (specifica → categoria) — fallback via
+ *     nome→chiave canonica per gli item senza fdc_id.
+ * Cache di modulo: le mappe sono uguali per tutti e cambiano di rado, quindi
+ * una sola fetch cross-mount. Se mancano (bucket vuoto / no service key) restano
+ * {} e il thumb cade sull'icona lucide — nessuna regressione.
  */
-let foodImageMapCache: Record<string, string> | null = null;
-let foodImageMapPromise: Promise<Record<string, string>> | null = null;
+type FoodImageMaps = { byKey: Record<string, string>; byFdcId: Record<string, string> };
+const EMPTY_FOOD_IMAGE_MAPS: FoodImageMaps = { byKey: {}, byFdcId: {} };
+let foodImageMapCache: FoodImageMaps | null = null;
+let foodImageMapPromise: Promise<FoodImageMaps> | null = null;
 
-function loadFoodImageMap(): Promise<Record<string, string>> {
+function loadFoodImageMap(): Promise<FoodImageMaps> {
   if (foodImageMapCache) return Promise.resolve(foodImageMapCache);
   if (!foodImageMapPromise) {
     // `no-store`: la cache di modulo deduplica già a 1 fetch per sessione tab;
     // bypassare la cache HTTP (max-age=300) fa sì che aggiornamenti alle foto
     // (nuove image_url) compaiano al reload successivo invece che dopo 5 min.
     foodImageMapPromise = fetch("/api/nutrition/food-image-map", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { byKey: {} }))
+      .then((r): Promise<Partial<FoodImageMaps>> => (r.ok ? r.json() : Promise.resolve({})))
       .then((j) => {
-        foodImageMapCache = (j?.byKey ?? {}) as Record<string, string>;
+        foodImageMapCache = {
+          byKey: (j?.byKey ?? {}) as Record<string, string>,
+          byFdcId: (j?.byFdcId ?? {}) as Record<string, string>,
+        };
         return foodImageMapCache;
       })
       .catch(() => {
-        foodImageMapCache = {};
+        foodImageMapCache = EMPTY_FOOD_IMAGE_MAPS;
         return foodImageMapCache;
       });
   }
   return foodImageMapPromise;
 }
 
-function useFoodImageMap(): Record<string, string> {
-  const [map, setMap] = useState<Record<string, string>>(() => foodImageMapCache ?? {});
+function useFoodImageMap(): FoodImageMaps {
+  const [map, setMap] = useState<FoodImageMaps>(() => foodImageMapCache ?? EMPTY_FOOD_IMAGE_MAPS);
   useEffect(() => {
     let alive = true;
     void loadFoodImageMap().then((m) => {
@@ -146,6 +154,13 @@ function useFoodImageMap(): Record<string, string> {
     };
   }, []);
   return map;
+}
+
+/** `compositionKey = "fdc:NNN"` (piano V2) → fdc_id numerico dell'item, se presente. */
+function fdcIdFromCompositionKey(compositionKey: string | undefined): number | undefined {
+  if (!compositionKey?.startsWith("fdc:")) return undefined;
+  const n = Number(compositionKey.slice(4));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 /** Tinta del thumb: macro dominante in kcal (CHO/PRO 4 kcal/g, FAT 9). */
@@ -203,6 +218,8 @@ export type EmpathyExpositionItem = {
   fatG: number;
   ig: number;
   weightG?: number;
+  /** fdc_id dell'alimento (da `compositionKey = "fdc:NNN"`, piano V2): abilita la foto specifica dal DB. */
+  fdcId?: number;
 };
 
 export function buildExpositionItemsFromPlan(
@@ -232,6 +249,7 @@ export function buildExpositionItemsFromPlan(
         fatG: m.fatG,
         ig,
         weightG,
+        fdcId: fdcIdFromCompositionKey(it.compositionKey),
       };
     });
 }
@@ -434,8 +452,11 @@ export function EmpathyMealPlanExpositionCard({
             const b = bandFromGi(food.ig);
             const busy = profileFoodExcludeBusyLabel === food.name.trim();
             const FoodIcon = foodItemIcon(food.name);
-            // Foto reale se il cibo (per chiave canonica) ne ha una; altrimenti icona.
-            const foodImageUrl = foodImageMap[inferCanonicalFoodKeyPreferName(food.name, food.portionHint ?? "")];
+            // Foto reale: primaria per fdc_id dell'item (libreria completa),
+            // fallback nome→chiave canonica; altrimenti icona.
+            const foodImageUrl =
+              (food.fdcId != null ? foodImageMap.byFdcId[String(food.fdcId)] : undefined) ??
+              foodImageMap.byKey[inferCanonicalFoodKeyPreferName(food.name, food.portionHint ?? "")];
             return (
               <li key={`${food.name}-${food.sourceIndex}`} className="empathy-meal-expo-food-card">
                 {/* Thumb grande a tutta altezza: foto reale del cibo se presente,

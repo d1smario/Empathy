@@ -10,18 +10,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Mappa `canonicalKey → imageUrl` per il thumb del Piano alimentare.
+ * Mappe immagini-cibo per il thumb del Piano alimentare.
  *
- * Risoluzione (per ogni chiave canonica con un fdc_id noto):
+ * - `byFdcId`: `fdc_id → imageUrl` per OGNI riga `fdc_food` con foto specifica
+ *   caricata (l'intera libreria, non solo i canonici). Risoluzione PRIMARIA:
+ *   un item che porta il suo fdc_id (`compositionKey = "fdc:NNN"`, piano V2)
+ *   mostra la SUA foto, qualunque alimento sia.
+ * - `byKey`: `canonicalKey → imageUrl` — per gli item senza fdc_id risolti via
+ *   nome→chiave canonica:
  *   1. `fdc_food.image_url` specifica (impostata in Admin → Alimenti) →
  *   2. immagine della `food_category` (`fdc_food_category_image`) →
  *   3. assente → il client cade sull'icona lucide deterministica.
  *
- * `fdc_food` è RLS solo-admin: si legge col service role. La mappa è identica
- * per tutti gli utenti e contiene solo URL pubblici, quindi è cache-abile a lungo.
+ * `fdc_food` è RLS solo-admin: si legge col service role. Le mappe sono identiche
+ * per tutti gli utenti e contengono solo URL pubblici, quindi cache-abili a lungo.
  */
 export async function GET() {
-  const empty = NextResponse.json({ byKey: {} as Record<string, string> });
+  const empty = NextResponse.json({
+    byKey: {} as Record<string, string>,
+    byFdcId: {} as Record<string, string>,
+  });
   empty.headers.set("Cache-Control", "private, max-age=300");
 
   // Solo utenti autenticati: l'endpoint legge fdc_food (RLS solo-admin) col
@@ -41,9 +49,11 @@ export async function GET() {
   const fdcIds = allKnownFdcIds();
   if (!fdcIds.length) return empty;
 
-  const [foodsRes, catsRes] = await Promise.all([
+  const [foodsRes, catsRes, allWithImageRes] = await Promise.all([
     admin.from("fdc_food").select("fdc_id, image_url, food_category").in("fdc_id", fdcIds),
     admin.from("fdc_food_category_image").select("food_category, image_url"),
+    // Libreria completa: ogni alimento con foto specifica, a prescindere dai canonici.
+    admin.from("fdc_food").select("fdc_id, image_url").not("image_url", "is", null),
   ]);
 
   if (foodsRes.error) return empty;
@@ -71,7 +81,14 @@ export async function GET() {
     if (url) byKey[canonicalKey] = url;
   }
 
-  const res = NextResponse.json({ byKey });
+  const byFdcId: Record<string, string> = {};
+  for (const row of allWithImageRes.data ?? []) {
+    const fdcId = Number(row.fdc_id);
+    const url = typeof row.image_url === "string" ? row.image_url.trim() : "";
+    if (Number.isFinite(fdcId) && url) byFdcId[String(fdcId)] = url;
+  }
+
+  const res = NextResponse.json({ byKey, byFdcId });
   res.headers.set("Cache-Control", "private, max-age=300");
   return res;
 }
