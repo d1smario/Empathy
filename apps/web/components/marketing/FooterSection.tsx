@@ -25,8 +25,17 @@ const FOOTER = {
   },
 } as const;
 
+const VETRINA_LINKS = [
+  { key: "comeFunziona", href: "/come-funziona" },
+  { key: "faq", href: "/faq" },
+  { key: "prezzi", href: "/pricing" },
+  { key: "contatti", href: "/contatti" },
+  { key: "collabora", href: "/contatti?tab=collabora" },
+] as const;
+
 export function FooterSection() {
   const t = useTranslations("FooterSection");
+  const tv = useTranslations("Vetrina.footer");
   const year = new Date().getFullYear();
 
   return (
@@ -52,6 +61,15 @@ export function FooterSection() {
             aria-label="Footer"
             className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-400 md:justify-end"
           >
+            {VETRINA_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="underline-offset-4 transition-colors hover:text-pink-300 hover:underline"
+              >
+                {tv(link.key)}
+              </Link>
+            ))}
             {FOOTER.links.map((link) => (
               <Link
                 key={link.href}

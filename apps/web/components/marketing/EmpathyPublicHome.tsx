@@ -6,12 +6,15 @@ import { checkoutPayReady, hostedCheckoutAvailability } from "@/lib/billing/stri
 import { readCheckoutTrialDays } from "@/lib/billing/stripe-checkout-trial";
 import { HomeStripePricing } from "./HomeStripePricing";
 import { Navbar } from "./Navbar";
-import { HeroSection } from "./hero/HeroSection";
 import { WatchLabSection } from "./WatchLabSection";
-import { PercorsoSection } from "./PercorsoSection";
-import { CtaSection } from "./CtaSection";
 import { FooterSection } from "./FooterSection";
-// landing: hero + watch/animazione + percorso + cta + footer
+import { VetrinaHero } from "./vetrina/VetrinaHero";
+import { VetrinaAudience } from "./vetrina/VetrinaAudience";
+import { VetrinaProblems } from "./vetrina/VetrinaProblems";
+import { VetrinaAdaptiveCircle } from "./vetrina/VetrinaAdaptiveCircle";
+import { VetrinaDomains } from "./vetrina/VetrinaDomains";
+import { VetrinaFinalCta } from "./vetrina/VetrinaFinalCta";
+// landing: hero → per chi è → problemi → watch-lab → cerchio adattivo → domini → cta → footer
 
 type EmpathyPublicHomeProps = {
   billingFlash?: "success" | "cancel";
@@ -36,10 +39,13 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           tabIndex={-1}
           className="relative scroll-mt-0 px-4 outline-none sm:px-6 pt-20 pb-12"
         >
-          <HeroSection />
+          <VetrinaHero />
+          <VetrinaAudience />
+          <VetrinaProblems />
           <WatchLabSection />
-          <PercorsoSection />
-          <CtaSection />
+          <VetrinaAdaptiveCircle />
+          <VetrinaDomains />
+          <VetrinaFinalCta />
           <FooterSection />
         </main>
       </BrutalistAppBackdrop>

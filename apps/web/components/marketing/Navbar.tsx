@@ -16,8 +16,15 @@ const COPY = {
   brand: "EMPATHY",
 } as const;
 
+const NAV_LINKS = [
+  { key: "comeFunziona", href: "/come-funziona" },
+  { key: "faq", href: "/faq" },
+  { key: "prezzi", href: "/pricing" },
+] as const;
+
 export async function Navbar() {
   const t = await getTranslations("Navbar");
+  const tv = await getTranslations("Vetrina.nav");
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
@@ -25,6 +32,18 @@ export async function Navbar() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/empathy-wordmark-white.png" alt={COPY.brand} className="h-8 w-auto" />
         </Link>
+
+        <div className="hidden items-center gap-7 md:flex">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm text-gray-300 transition-colors hover:text-white"
+            >
+              {tv(link.key)}
+            </Link>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <Link
