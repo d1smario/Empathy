@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { ActiveAthleteScopeProvider } from "@/lib/use-active-athlete";
 import { ScopedTrainingTabs } from "@/components/athlete-scope/ScopedTrainingTabs";
+import { TodayPageView } from "@/modules/today/components/TodayPageView";
 
 /**
  * Dispatcher condiviso delle schede atleta scoped (admin /admin/utenti/[id]/* e
@@ -36,14 +37,18 @@ const ProfilePageView = dynamic(() => import("@/modules/profile/views/ProfilePag
 // Bioenergetica e Longevity NON sono schede a sé: l'atleta le vede dentro la Dashboard
 // (strisce/pannelli in NewDashboardView), quindi coach e admin le vedono lì pure.
 const VIEWS: Record<string, ComponentType> = {
-  dashboard: NewDashboardView,
-  // training gestito dal branch esplicito sotto (tabella calendario).
+  analysis: NewDashboardView,
   health: HealthPageView,
   biomechanics: BiomechanicsPageView,
   aerodynamics: AerodynamicsPageView,
   physiology: PhysiologyPageView,
   profile: ProfilePageView,
 };
+
+function localCalendarDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export function ScopedAthleteModuleView({
   module,
@@ -63,6 +68,15 @@ export function ScopedAthleteModuleView({
   } else if (module === "training") {
     // Coach/admin: navigazione scope-aware Calendario/Builder/Analyzer, tutto in-scope.
     content = <ScopedTrainingTabs />;
+  } else if (module === "today") {
+    content = <TodayPageView athleteId={athleteId} date={localCalendarDateString()} firstName={null} />;
+  } else if (module === "analysis") {
+    // NewDashboardView si aspetta una shell con padding: la aggiungiamo in scope.
+    content = (
+      <div className="px-6 py-6">
+        <NewDashboardView />
+      </div>
+    );
   } else {
     const View = VIEWS[module];
     if (!View) return null;

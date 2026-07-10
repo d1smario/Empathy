@@ -96,7 +96,8 @@ export function pathSegmentFromHref(href: string): string {
 export type ScopedAthleteTab = { module: ProductModuleId; label: string; icon: ProductNavIconKey };
 
 export const SCOPED_ATHLETE_TABS: ScopedAthleteTab[] = [
-  { module: "dashboard", label: "Dashboard", icon: "chart" },
+  { module: "analysis", label: "Analisi", icon: "chart" },
+  { module: "today", label: "Oggi", icon: "chart" },
   ...PRODUCT_MODULE_NAV.filter((item) => item.scope === "athlete").map((item) => ({
     module: item.module,
     label: item.label,

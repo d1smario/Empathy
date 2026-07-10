@@ -19,6 +19,10 @@ import { getProductNavItemByModule } from "@/core/navigation/module-registry";
 
 function domainAccent(module: ProductModuleId): Pro2SectionAccent {
   switch (module) {
+    case "today":
+      return "cyan";
+    case "analysis":
+      return "fuchsia";
     case "profile":
       return "fuchsia";
     case "training":

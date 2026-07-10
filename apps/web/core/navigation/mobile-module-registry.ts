@@ -31,6 +31,8 @@ export type MobileMenuSection = {
  * `/m/`. Calendario/Builder/staging ecc. non hanno (ancora) una home mobile.
  */
 const MOBILE_HREF: Partial<Record<ProductModuleId, `${typeof MOBILE_APP_PREFIX}/${string}`>> = {
+  today: "/m/today",
+  analysis: "/m/analysis",
   dashboard: "/m/dashboard",
   profile: "/m/profile",
   health: "/m/health",
@@ -125,6 +127,8 @@ export function toMobilePath(pathname: string): string | null {
   if (isMobileAppPath(n)) return n;
 
   const directMap: Array<[string, string]> = [
+    ["/today", `${MOBILE_APP_PREFIX}/today`],
+    ["/analysis", `${MOBILE_APP_PREFIX}/analysis`],
     ["/dashboard", `${MOBILE_APP_PREFIX}/dashboard`],
     ["/profile", `${MOBILE_APP_PREFIX}/profile`],
     ["/settings", `${MOBILE_APP_PREFIX}/settings`],
@@ -172,6 +176,8 @@ export function toDesktopPath(mobilePathname: string): string {
   if (!isMobileAppPath(n)) return n;
 
   const moduleMap: Record<string, string> = {
+    [`${MOBILE_APP_PREFIX}/today`]: "/today",
+    [`${MOBILE_APP_PREFIX}/analysis`]: "/analysis",
     [`${MOBILE_APP_PREFIX}/dashboard`]: "/dashboard",
     [`${MOBILE_APP_PREFIX}/profile`]: "/profile",
     [`${MOBILE_APP_PREFIX}/settings`]: "/settings",

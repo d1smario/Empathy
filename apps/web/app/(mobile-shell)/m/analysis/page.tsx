@@ -1,21 +1,19 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { MobileDashboardView } from "@/modules/mobile/views/MobileDashboardView";
-import { redirectCoachToMobileRoster } from "@/lib/auth/redirect-coach-to-mobile-roster";
 import { getSessionProfile } from "@/lib/auth/session-profile";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Oggi & Domani",
-  description: "Human Performance Operating System",
+  title: "Analisi",
+  description: "Twin, KPI, trend e predizioni",
 };
 
-export default async function MobileDashboardPage() {
+export default async function MobileAnalysisPage() {
   const session = await getSessionProfile();
-  if (session.role === "private") {
-    redirect("/m/analysis");
+  if (session.role !== "private") {
+    redirect("/m/dashboard");
   }
-  await redirectCoachToMobileRoster();
   return <MobileDashboardView />;
 }

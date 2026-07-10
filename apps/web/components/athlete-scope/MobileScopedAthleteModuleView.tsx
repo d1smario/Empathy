@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { ActiveAthleteScopeProvider } from "@/lib/use-active-athlete";
+import { TodayPageView } from "@/modules/today/components/TodayPageView";
 
 /**
  * Dispatcher delle schede atleta scoped per la shell MOBILE coach
@@ -32,7 +33,7 @@ const ProfilePageView = dynamic(() => import("@/modules/profile/views/ProfilePag
 
 // Bioenergetica/Longevity sono dentro la Dashboard (come desktop): niente scheda dedicata.
 const VIEWS: Record<string, ComponentType> = {
-  dashboard: MobileDashboardView,
+  analysis: MobileDashboardView,
   training: TrainingCalendarPageView,
   health: HealthPageView,
   physiology: PhysiologyPageView,
@@ -41,12 +42,19 @@ const VIEWS: Record<string, ComponentType> = {
   profile: ProfilePageView,
 };
 
+function localCalendarDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function MobileScopedAthleteModuleView({ module, athleteId }: { module: string; athleteId: string }) {
   let content: React.ReactNode = null;
   if (module === "nutrition") {
     // In scope coach montiamo il meal-plan (come desktop): l'hub di link mobile sarebbe
     // pagina morta dentro lo scope.
     content = <NutritionPageView subRoute="meal-plan" />;
+  } else if (module === "today") {
+    content = <TodayPageView athleteId={athleteId} date={localCalendarDateString()} firstName={null} />;
   } else {
     const View = VIEWS[module];
     if (!View) return null;

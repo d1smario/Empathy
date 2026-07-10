@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Clock } from "lucide-react";
 import { CoachDashboardView } from "@/components/coach/CoachDashboardView";
-import { ModulePlaceholder } from "@/components/navigation/ModulePlaceholder";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { getSessionProfile } from "@/lib/auth/session-profile";
@@ -22,6 +22,9 @@ export const metadata: Metadata = { title: "Oggi & Domani" };
 export default async function DashboardPage() {
   const session = await getSessionProfile();
   const t = await getTranslations("DashboardPage");
+  if (session.role === "private") {
+    redirect("/analysis");
+  }
   if (session.role === "coach") {
     if (!coachOperationalApproved("coach", session.platformCoachStatus)) {
       return (
@@ -45,5 +48,5 @@ export default async function DashboardPage() {
     }
     return <CoachDashboardView />;
   }
-  return <ModulePlaceholder module="dashboard" />;
+  redirect("/analysis");
 }

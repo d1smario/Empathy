@@ -3,6 +3,10 @@ import type { ProductModuleId } from "@empathy/contracts";
 /** Colore eyebrow `font-mono` allineato al canone `docs/PRO2_UI_PAGE_CANON.md`. */
 export function moduleEyebrowClass(module: ProductModuleId): string {
   switch (module) {
+    case "today":
+      return "text-cyan-400";
+    case "analysis":
+      return "text-fuchsia-400";
     case "dashboard":
       return "text-cyan-400";
     case "calendario":

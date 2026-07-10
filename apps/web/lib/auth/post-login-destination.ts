@@ -8,6 +8,10 @@ import { ACCESS_PLAN_PATH } from "@/lib/billing/paywall-config";
  * (calendario, physiology lab, builder con query) prima che contesto atleta e cookie siano stabili.
  */
 const POST_LOGIN_SAFE_PATHS = new Set([
+  "/today",
+  "/m/today",
+  "/analysis",
+  "/m/analysis",
   "/dashboard",
   "/m/dashboard",
   "/profile",
@@ -57,7 +61,7 @@ export function resolvePostLoginDestination(input: PostLoginDestinationInput): s
 
   if (input.appRole === "coach" || input.hasOperatorAccess) {
     // Coach: si entra dalla Dashboard (gli atleti restano a un click in sidebar).
-    return "/dashboard";
+    return preferMobileAppPath("/dashboard", preferMobile);
   }
 
   if (!input.hasAthleteAccess) {
@@ -66,11 +70,11 @@ export function resolvePostLoginDestination(input: PostLoginDestinationInput): s
 
   const base = (next.split("?")[0] ?? "/").replace(/\/$/, "") || "/";
   if (base === ACCESS_PLAN_PATH) {
-    return preferMobileAppPath("/dashboard", preferMobile);
+    return preferMobileAppPath("/analysis", preferMobile);
   }
   if (POST_LOGIN_SAFE_PATHS.has(base)) {
     return preferMobileAppPath(next, preferMobile);
   }
 
-  return preferMobileAppPath("/dashboard", preferMobile);
+  return preferMobileAppPath("/analysis", preferMobile);
 }

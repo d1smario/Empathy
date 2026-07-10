@@ -13,6 +13,8 @@ export type AccountId = string & { readonly __brand: "AccountId" };
 
 export type ProductModuleId =
   | "dashboard"
+  | "today"
+  | "analysis"
   | "profile"
   | "physiology"
   | "training"
@@ -30,6 +32,8 @@ export type ProductModuleId =
 /** Chiavi esaustive: se manca un id del union, TypeScript segnala errore. */
 export const PRODUCT_MODULE_ROUTE_MAP = {
   dashboard: true,
+  today: true,
+  analysis: true,
   profile: true,
   physiology: true,
   training: true,

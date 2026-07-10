@@ -63,6 +63,8 @@ export const CHART_TOOLTIP = {
  * Record esaustivo su ProductModuleId: se nasce un modulo nuovo, TypeScript segnala qui.
  */
 export const CHART_MODULE_ACCENT: Record<ProductModuleId, string> = {
+  today: "#22d3ee", // cyan-400
+  analysis: "#e879f9", // fuchsia-400
   dashboard: "#22d3ee", // cyan-400
   calendario: "#38bdf8", // sky-400
   athletes: "#a78bfa", // violet-400
