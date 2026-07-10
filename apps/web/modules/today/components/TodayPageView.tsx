@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Activity } from "lucide-react";
 import { DailyCheckinCard } from "@/components/dashboard/DailyCheckinCard";
+import { CalendarDayWellnessDetail } from "@/components/training/CalendarDayWellnessDetail";
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
 import { TodayHeader } from "./TodayHeader";
 import { TodayHydrationTracker } from "./TodayHydrationTracker";
@@ -91,6 +92,11 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
         {/* Check-in mattutino: prima azione della giornata (spostato qui da «Analisi»);
             in scope coach/admin è read-only (gate dentro la card). */}
         <DailyCheckinCard athleteId={athleteId} />
+
+        {/* Dati device del giorno (sonno+fasi, passi/obiettivo, km, HRV, FC riposo,
+            kcal attive, respirazione, SpO2): stesso pannello del calendario Training,
+            alimentato da /api/health/daily-wellness (device_sync_exports). */}
+        <CalendarDayWellnessDetail athleteId={athleteId} selectedDate={date} />
 
         <TodayHydrationTracker
           targetMl={data.hydration.targetMl}

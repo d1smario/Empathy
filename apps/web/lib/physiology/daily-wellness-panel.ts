@@ -33,6 +33,10 @@ export type PhysiologyDailyPanelOk = {
   recovery: RecoverySummary | null;
   activity: {
     steps: number | null;
+    /** Obiettivo passi del device (Garmin dailies stepsGoal). */
+    stepsGoal: number | null;
+    /** Distanza totale del giorno in km (Garmin dailies distanceInMeters). */
+    distanceKm: number | null;
     activeCaloriesKcal: number | null;
     totalCaloriesKcal: number | null;
     respiratoryRateRpm: number | null;
@@ -105,6 +109,8 @@ function addDaysIso(dateIso: string, delta: number): string {
 
 function extractActivityWellness(payload: Record<string, unknown> | null): {
   steps: number | null;
+  stepsGoal: number | null;
+  distanceKm: number | null;
   activeCaloriesKcal: number | null;
   totalCaloriesKcal: number | null;
   respiratoryRateRpm: number | null;
@@ -115,6 +121,8 @@ function extractActivityWellness(payload: Record<string, unknown> | null): {
 } {
   const out = {
     steps: null as number | null,
+    stepsGoal: null as number | null,
+    distanceKm: null as number | null,
     activeCaloriesKcal: null as number | null,
     totalCaloriesKcal: null as number | null,
     respiratoryRateRpm: null as number | null,
@@ -126,6 +134,11 @@ function extractActivityWellness(payload: Record<string, unknown> | null): {
   if (!payload) return out;
   for (const rec of expandDevicePayloadMetricRecords(payload)) {
     out.steps ??= pickNumber(rec, ["steps", "step_count", "total_steps", "steps_count", "Steps"]);
+    out.stepsGoal ??= pickNumber(rec, ["stepsGoal", "steps_goal", "StepsGoal", "step_goal"]);
+    if (out.distanceKm == null) {
+      const meters = pickNumber(rec, ["distanceInMeters", "distance_in_meters", "distance_meters", "DistanceInMeters"]);
+      if (meters != null && meters > 0) out.distanceKm = Number((meters / 1000).toFixed(2));
+    }
     out.activeCaloriesKcal ??= pickNumber(rec, [
       "active_energy_kcal",
       "active_calories",
@@ -195,6 +208,8 @@ function extractActivityWellness(payload: Record<string, unknown> | null): {
 function mergeActivityFromRows(rows: Array<Record<string, unknown>>): PhysiologyDailyPanelOk["activity"] {
   const merged: PhysiologyDailyPanelOk["activity"] = {
     steps: null,
+    stepsGoal: null,
+    distanceKm: null,
     activeCaloriesKcal: null,
     totalCaloriesKcal: null,
     respiratoryRateRpm: null,
@@ -206,10 +221,14 @@ function mergeActivityFromRows(rows: Array<Record<string, unknown>>): Physiology
   for (const row of rows) {
     const p = mergedPayloadFromExportRow(row);
     const part = extractActivityWellness(p);
-    /** Più export `dailies` per lo stesso giorno: prendiamo il massimo passi/kcal (evita “10 passi” da riga parziale). */
+    /** Più export `dailies` per lo stesso giorno: prendiamo il massimo passi/kcal/km (evita “10 passi” da riga parziale). */
     if (part.steps != null) {
       merged.steps = merged.steps == null ? part.steps : Math.max(merged.steps, part.steps);
     }
+    if (part.distanceKm != null) {
+      merged.distanceKm = merged.distanceKm == null ? part.distanceKm : Math.max(merged.distanceKm, part.distanceKm);
+    }
+    if (merged.stepsGoal == null && part.stepsGoal != null) merged.stepsGoal = part.stepsGoal;
     if (part.activeCaloriesKcal != null) {
       merged.activeCaloriesKcal =
         merged.activeCaloriesKcal == null

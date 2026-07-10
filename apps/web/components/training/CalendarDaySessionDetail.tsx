@@ -95,6 +95,9 @@ const MULTI_AXIS_CHANNELS = new Set<ChartChannel>([
   "cadence",
   "altitude",
   "temperature",
+  // Passo e velocità verticale: utili per corsa/trail dove la potenza spesso manca.
+  "pace_min_per_km",
+  "vertical_speed_mps",
 ]);
 
 /** Label KPI del top-5 canonico (come mockup): il resto va nei box-segnale sotto. */

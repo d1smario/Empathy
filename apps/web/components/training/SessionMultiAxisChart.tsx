@@ -28,7 +28,15 @@ import { cn } from "@/lib/cn";
  * a toggle. Sostituisce il selettore un-canale-alla-volta: si vede tutto insieme,
  * si spegne ciò che non serve. Adattivo: disegna solo i canali con dati reali.
  */
-export type MultiAxisChannel = "power" | "hr" | "speed" | "cadence" | "altitude" | "temperature";
+export type MultiAxisChannel =
+  | "power"
+  | "hr"
+  | "speed"
+  | "cadence"
+  | "altitude"
+  | "temperature"
+  | "pace_min_per_km"
+  | "vertical_speed_mps";
 
 export type MultiAxisSeries = {
   channel: MultiAxisChannel;
@@ -50,10 +58,21 @@ const META: Record<MultiAxisChannel, ChannelMeta> = {
   cadence: { label: "Cadenza", color: CHART_SIGNAL.cadence, kind: "line", digits: 0 },
   temperature: { label: "Temperatura", color: "#fbbf24", kind: "line", digits: 1 },
   altitude: { label: "Quota", color: CHART_SIGNAL.altitude, kind: "area", digits: 0 },
+  // Passo e velocità verticale: chiave per corsa/trail dove la potenza spesso manca.
+  pace_min_per_km: { label: "Passo", color: "#f472b6", kind: "line", digits: 1 },
+  vertical_speed_mps: { label: "Vel. verticale", color: "#94a3b8", kind: "line", digits: 1 },
 };
 
 /** Canali del grafico principale (la quota va nella strip sotto). Ordine di disegno. */
-const OVERLAY_ORDER: MultiAxisChannel[] = ["power", "speed", "cadence", "temperature", "hr"];
+const OVERLAY_ORDER: MultiAxisChannel[] = [
+  "power",
+  "speed",
+  "pace_min_per_km",
+  "cadence",
+  "vertical_speed_mps",
+  "temperature",
+  "hr",
+];
 
 const PLOT_POINTS = 480;
 

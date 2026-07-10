@@ -167,7 +167,12 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
                 value={recoveryScore != null ? fmtInt(recoveryScore) : "—"}
                 unit={recoveryScore != null ? "%" : undefined}
               />
-              <KpiCell label={t("kpiSteps")} value={fmtInt(panel.activity.steps)} />
+              <KpiCell
+                label={t("kpiSteps")}
+                value={fmtInt(panel.activity.steps)}
+                unit={panel.activity.stepsGoal != null ? `/ ${fmtInt(panel.activity.stepsGoal)}` : undefined}
+              />
+              <KpiCell label={t("kpiDayDistance")} value={fmtNumber(panel.activity.distanceKm, 1)} unit="km" />
               <KpiCell
                 label={t("kpiActiveCalories")}
                 value={fmtInt(panel.activity.activeCaloriesKcal)}
