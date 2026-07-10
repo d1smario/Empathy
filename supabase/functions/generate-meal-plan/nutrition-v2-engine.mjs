@@ -631,6 +631,25 @@ var init_pro2_session_notes = __esm({
 var MEAL_SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack_am", "snack_pm"];
 var MEAL_SLOT_KEYS = [...MEAL_SLOT_ORDER, "snack_evening"];
 var SLOT_KEYS = [...MEAL_SLOT_KEYS];
+function rescaleSlotKcalToTarget(slot, targetKcal) {
+  const sum = slot.items.reduce((a, i) => a + i.approxKcal, 0);
+  if (sum <= 0 || targetKcal <= 0) return slot;
+  const f = targetKcal / sum;
+  const items = slot.items.map((i) => ({
+    ...i,
+    approxKcal: Math.max(15, Math.round(i.approxKcal * f))
+  }));
+  let newSum = items.reduce((a, i) => a + i.approxKcal, 0);
+  const drift = Math.round(targetKcal - newSum);
+  if (items.length && drift !== 0) {
+    const last = items.length - 1;
+    items[last] = {
+      ...items[last],
+      approxKcal: Math.max(15, items[last].approxKcal + drift)
+    };
+  }
+  return { ...slot, items };
+}
 
 // apps/web/lib/nutrition/routine-week-plan-meal-times.ts
 function asRecord(v) {
@@ -3099,10 +3118,46 @@ function buildNutritionDayModelV2(input) {
 
 // apps/web/lib/nutrition/meal-composition-rules.ts
 var MAIN_MEAL_SLOTS = /* @__PURE__ */ new Set(["lunch", "dinner"]);
+var FRUIT_CANONICAL_KEYS = /* @__PURE__ */ new Set([
+  "banana",
+  "mixed_fruit",
+  "orange_raw",
+  "kiwi_raw",
+  "strawberries_raw",
+  "jam_fruit"
+]);
+var VEG_CANONICAL_KEYS = /* @__PURE__ */ new Set([
+  "mixed_veg",
+  "spinach_raw",
+  "broccoli_raw",
+  "zucchini_raw",
+  "bell_pepper_red",
+  "carrot_raw",
+  "tomato_raw",
+  "asparagus_raw",
+  "arugula_raw",
+  "lettuce_romaine"
+]);
+var MAIN_ROLE_CAPS = {
+  cho_complex: 2,
+  cho_simple: 0,
+  protein_primary: 1,
+  protein_secondary: 1,
+  fat: 2,
+  veg_condiment: 3,
+  composite_dish: 1,
+  beverage: 0
+};
 var ROTATION_TARGET_WEEK_USES = 2;
 var ROTATION_MAX_WEEK_USES = 3;
 function isMainMealSlot(slot) {
   return MAIN_MEAL_SLOTS.has(slot);
+}
+function isFruitCanonicalKey(key) {
+  return typeof key === "string" && FRUIT_CANONICAL_KEYS.has(key);
+}
+function isVegCanonicalKey(key) {
+  return typeof key === "string" && VEG_CANONICAL_KEYS.has(key);
 }
 
 // apps/web/lib/nutrition/canonical-food-composition.ts
@@ -4616,10 +4671,567 @@ function inferCanonicalFoodKeyPreferName(name, portionHint = "") {
   if (fromName !== "generic_mixed") return fromName;
   return inferCanonicalFoodKey(`${name} ${portionHint}`);
 }
+function scaleCanonicalNutrientsToKcal(row2, targetKcal) {
+  const k = Math.max(15, Math.round(targetKcal));
+  const dens = row2.kcalPer100g / 100;
+  const factor = dens > 0 ? k / dens : 0;
+  const f = factor / 100;
+  const num3 = (v) => Math.round(v * f * 1e3) / 1e3;
+  const numMicro = (v) => Math.round(v * f * 10) / 10;
+  return {
+    kcal: k,
+    proteinG: num3(row2.proteinG),
+    carbsG: num3(row2.carbsG),
+    fatG: num3(row2.fatG),
+    fiberG: num3(row2.fiberG),
+    saturatedFatG: num3(row2.saturatedFatG),
+    monoFatG: num3(row2.monoFatG),
+    polyFatG: num3(row2.polyFatG),
+    omega3G: num3(row2.omega3G),
+    vitA_mcg_RAE: numMicro(row2.vitA_mcg_RAE),
+    vitC_mg: numMicro(row2.vitC_mg),
+    vitD_mcg: numMicro(row2.vitD_mcg),
+    vitE_mg: numMicro(row2.vitE_mg),
+    vitK_mcg: numMicro(row2.vitK_mcg),
+    thiamineB1_mg: numMicro(row2.thiamineB1_mg),
+    riboflavinB2_mg: numMicro(row2.riboflavinB2_mg),
+    niacinB3_mg: numMicro(row2.niacinB3_mg),
+    vitB6_mg: numMicro(row2.vitB6_mg),
+    folate_mcg: numMicro(row2.folate_mcg),
+    vitB12_mcg: numMicro(row2.vitB12_mcg),
+    ca_mg: numMicro(row2.ca_mg),
+    fe_mg: numMicro(row2.fe_mg),
+    mg_mg: numMicro(row2.mg_mg),
+    p_mg: numMicro(row2.p_mg),
+    k_mg: numMicro(row2.k_mg),
+    na_mg: numMicro(row2.na_mg),
+    zn_mg: numMicro(row2.zn_mg),
+    se_mcg: numMicro(row2.se_mcg),
+    eaa_leu: num3(row2.eaa_leu),
+    eaa_lys: num3(row2.eaa_lys),
+    eaa_met: num3(row2.eaa_met),
+    eaa_phe: num3(row2.eaa_phe),
+    eaa_thr: num3(row2.eaa_thr),
+    eaa_trp: num3(row2.eaa_trp),
+    eaa_ile: num3(row2.eaa_ile),
+    eaa_val: num3(row2.eaa_val),
+    eaa_his: num3(row2.eaa_his),
+    glycemicIndex: 0,
+    insulinIndex: 0,
+    glycemicLoad: 0
+  };
+}
+var OLIVE_OIL_G_PER_ML = 0.92;
+function parseExplicitGramsFromPortionHint(hint) {
+  const m = hint.match(/(\d+(?:[.,]\d+)?)\s*g(?:rammi?)?\b/i);
+  if (!m) return void 0;
+  const v = parseFloat(m[1].replace(",", "."));
+  if (!Number.isFinite(v) || v <= 0) return void 0;
+  return v;
+}
+function parseMlFromPortionHint(hint) {
+  const m = hint.match(/(\d+(?:[.,]\d+)?)\s*ml\b/i);
+  if (!m) return void 0;
+  const v = parseFloat(m[1].replace(",", "."));
+  if (!Number.isFinite(v) || v <= 0) return void 0;
+  return v;
+}
+function looksLikeMultiIngredientPortionHint(portionHint) {
+  const hint = portionHint.trim();
+  if (!hint) return false;
+  if (hint.includes(" + ")) return true;
+  const quantityMatches = hint.match(/\b\d+(?:[.,]\d+)?\s*(g(?:rammi?)?|ml)\b/gi) ?? [];
+  return quantityMatches.length >= 2;
+}
+var LIQUID_DAIRY_G_PER_ML = 1.03;
+var LIQUIDS_AS_GRAMS_KEYS = /* @__PURE__ */ new Set([
+  "milk_2pct",
+  "milk_goat",
+  "yogurt_plain",
+  "plant_drink_almond",
+  "plant_drink_rice",
+  "plant_drink_oat",
+  "plant_drink_generic"
+]);
+function resolveServingGramsFromPortionHint(portionHint, compositionKey) {
+  const hint = portionHint.trim();
+  if (!hint) return void 0;
+  if (looksLikeMultiIngredientPortionHint(hint)) return void 0;
+  const g = parseExplicitGramsFromPortionHint(hint);
+  if (g != null) return g;
+  const ml = parseMlFromPortionHint(hint);
+  if (ml == null) return void 0;
+  if (compositionKey === "olive_oil") return ml * OLIVE_OIL_G_PER_ML;
+  if (LIQUIDS_AS_GRAMS_KEYS.has(compositionKey)) return ml * LIQUID_DAIRY_G_PER_ML;
+  return void 0;
+}
+function scaleCanonicalNutrientsToGrams(row2, gramsEdible) {
+  const g = Math.max(0.1, gramsEdible);
+  const f = g / 100;
+  const num3 = (v) => Math.round(v * f * 1e3) / 1e3;
+  const numMicro = (v) => Math.round(v * f * 10) / 10;
+  const kcal = Math.max(1, Math.round(row2.kcalPer100g * f));
+  return {
+    kcal,
+    proteinG: num3(row2.proteinG),
+    carbsG: num3(row2.carbsG),
+    fatG: num3(row2.fatG),
+    fiberG: num3(row2.fiberG),
+    saturatedFatG: num3(row2.saturatedFatG),
+    monoFatG: num3(row2.monoFatG),
+    polyFatG: num3(row2.polyFatG),
+    omega3G: num3(row2.omega3G),
+    vitA_mcg_RAE: numMicro(row2.vitA_mcg_RAE),
+    vitC_mg: numMicro(row2.vitC_mg),
+    vitD_mcg: numMicro(row2.vitD_mcg),
+    vitE_mg: numMicro(row2.vitE_mg),
+    vitK_mcg: numMicro(row2.vitK_mcg),
+    thiamineB1_mg: numMicro(row2.thiamineB1_mg),
+    riboflavinB2_mg: numMicro(row2.riboflavinB2_mg),
+    niacinB3_mg: numMicro(row2.niacinB3_mg),
+    vitB6_mg: numMicro(row2.vitB6_mg),
+    folate_mcg: numMicro(row2.folate_mcg),
+    vitB12_mcg: numMicro(row2.vitB12_mcg),
+    ca_mg: numMicro(row2.ca_mg),
+    fe_mg: numMicro(row2.fe_mg),
+    mg_mg: numMicro(row2.mg_mg),
+    p_mg: numMicro(row2.p_mg),
+    k_mg: numMicro(row2.k_mg),
+    na_mg: numMicro(row2.na_mg),
+    zn_mg: numMicro(row2.zn_mg),
+    se_mcg: numMicro(row2.se_mcg),
+    eaa_leu: num3(row2.eaa_leu),
+    eaa_lys: num3(row2.eaa_lys),
+    eaa_met: num3(row2.eaa_met),
+    eaa_phe: num3(row2.eaa_phe),
+    eaa_thr: num3(row2.eaa_thr),
+    eaa_trp: num3(row2.eaa_trp),
+    eaa_ile: num3(row2.eaa_ile),
+    eaa_val: num3(row2.eaa_val),
+    eaa_his: num3(row2.eaa_his),
+    glycemicIndex: 0,
+    insulinIndex: 0,
+    glycemicLoad: 0
+  };
+}
+function nutrientsForMealPlanItem(item2) {
+  const compositionKey = inferCanonicalFoodKeyPreferName(item2.name, item2.portionHint);
+  const row2 = CANONICAL_FOOD_TABLE[compositionKey];
+  if (!row2 || compositionKey === "generic_mixed") {
+    return { compositionKey: "unresolved", compositionStatus: "unresolved", nutrients: { ...ZERO_SCALED } };
+  }
+  const hintForServing = `${item2.portionHint} ${item2.name}`.trim();
+  const gramsFromHint = resolveServingGramsFromPortionHint(hintForServing, compositionKey);
+  const nutrients = gramsFromHint != null ? scaleCanonicalNutrientsToGrams(row2, gramsFromHint) : scaleCanonicalNutrientsToKcal(row2, item2.approxKcal);
+  return { compositionKey, compositionStatus: "canonical_estimate", nutrients };
+}
+var NON_ADDITIVE_KEYS = /* @__PURE__ */ new Set(["glycemicIndex", "insulinIndex"]);
+var ZERO_SCALED = {
+  kcal: 0,
+  proteinG: 0,
+  carbsG: 0,
+  fatG: 0,
+  fiberG: 0,
+  saturatedFatG: 0,
+  monoFatG: 0,
+  polyFatG: 0,
+  omega3G: 0,
+  vitA_mcg_RAE: 0,
+  vitC_mg: 0,
+  vitD_mcg: 0,
+  vitE_mg: 0,
+  vitK_mcg: 0,
+  thiamineB1_mg: 0,
+  riboflavinB2_mg: 0,
+  niacinB3_mg: 0,
+  vitB6_mg: 0,
+  folate_mcg: 0,
+  vitB12_mcg: 0,
+  ca_mg: 0,
+  fe_mg: 0,
+  mg_mg: 0,
+  p_mg: 0,
+  k_mg: 0,
+  na_mg: 0,
+  zn_mg: 0,
+  se_mcg: 0,
+  eaa_leu: 0,
+  eaa_lys: 0,
+  eaa_met: 0,
+  eaa_phe: 0,
+  eaa_thr: 0,
+  eaa_trp: 0,
+  eaa_ile: 0,
+  eaa_val: 0,
+  eaa_his: 0,
+  glycemicIndex: 0,
+  insulinIndex: 0,
+  glycemicLoad: 0
+};
+function sumScaledNutrients(rows) {
+  const out = { ...ZERO_SCALED };
+  if (rows.length === 0) return out;
+  const keys = Object.keys(out);
+  let weightedGi = 0;
+  let weightedIi = 0;
+  let totKcalForIndices = 0;
+  for (const r of rows) {
+    for (const k of keys) {
+      if (NON_ADDITIVE_KEYS.has(k)) continue;
+      out[k] = Math.round((out[k] + r[k]) * 1e3) / 1e3;
+    }
+    if (r.kcal > 0 && r.glycemicIndex > 0) {
+      weightedGi += r.glycemicIndex * r.kcal;
+      totKcalForIndices += r.kcal;
+    }
+    if (r.kcal > 0 && r.insulinIndex > 0) {
+      weightedIi += r.insulinIndex * r.kcal;
+    }
+  }
+  out.glycemicIndex = totKcalForIndices > 0 ? Math.round(weightedGi / totKcalForIndices) : 0;
+  out.insulinIndex = totKcalForIndices > 0 ? Math.round(weightedIi / totKcalForIndices) : 0;
+  return out;
+}
 
 // apps/web/lib/nutrition/meal-rotation-guard.ts
+function weekCountFor(stapleKey, week) {
+  return week?.[stapleKey] ?? 0;
+}
 function isCanonicalKeyUsedToday(ctx, canonicalKey) {
   return ctx.dayUsedCanonicalKeys?.has(canonicalKey) ?? false;
+}
+function canUseCanonicalKeyWeek(ctx, canonicalKey, options) {
+  const count = weekCountFor(canonicalKey, ctx.weekStapleCounts);
+  if (count >= ROTATION_TARGET_WEEK_USES) {
+    if (options?.allowExceptionCap && count < ROTATION_MAX_WEEK_USES) return true;
+    return false;
+  }
+  return true;
+}
+function canUseCanonicalKey(ctx, canonicalKey, options) {
+  if (!canonicalKey) return false;
+  if (isCanonicalKeyUsedToday(ctx, canonicalKey)) return false;
+  return canUseCanonicalKeyWeek(ctx, canonicalKey, { allowExceptionCap: options?.allowWeekException });
+}
+function registerMealCanonicalKeys(ctx, meal) {
+  if (!ctx.dayUsedCanonicalKeys) ctx.dayUsedCanonicalKeys = /* @__PURE__ */ new Set();
+  for (const it of meal.items) {
+    const key = inferCanonicalFoodKeyPreferName(it.name, it.portionHint);
+    if (key) ctx.dayUsedCanonicalKeys.add(key);
+  }
+}
+
+// apps/web/lib/nutrition/nutrient-pathway-slot-registry.ts
+var MAIN_SLOTS = /* @__PURE__ */ new Set(["lunch", "dinner"]);
+function slotCategory(slot) {
+  return MAIN_SLOTS.has(slot) ? "main" : "light";
+}
+var NUTRIENT_PATHWAY_SLOT_POOL = {
+  folate_mcg: {
+    main: [
+      { nutrientId: "folate_mcg", canonicalKey: "spinach_raw", name: "Spinaci (folato)", noun: "spinaci freschi", bridge: "Folato denso da verdure a foglia (pathway cofactor).", defaultGrams: 150, macroRole: "veg", mode: "add", fromKeys: [] },
+      { nutrientId: "folate_mcg", canonicalKey: "legumes_cooked", name: "Legumi cotti (folato)", noun: "legumi cotti (lenticchie/ceci)", bridge: "Folato complementare da legumi.", defaultGrams: 120, macroRole: "protein", mode: "add", fromKeys: [] },
+      { nutrientId: "folate_mcg", canonicalKey: "chickpeas_cooked", name: "Ceci cotti (folato)", noun: "ceci cotti", bridge: "Folato + proteine vegetali (pathway).", defaultGrams: 120, macroRole: "protein", mode: "add", fromKeys: [] },
+      { nutrientId: "folate_mcg", canonicalKey: "asparagus_raw", name: "Asparagi (folato)", noun: "asparagi", bridge: "Folato complementare (pathway).", defaultGrams: 140, macroRole: "veg", mode: "add", fromKeys: [] },
+      { nutrientId: "folate_mcg", canonicalKey: "kale_raw", name: "Cavolo nero (folato)", noun: "cavolo nero / kale", bridge: "Folato da verdure a foglia.", defaultGrams: 120, macroRole: "veg", mode: "add", fromKeys: [] }
+    ],
+    light: []
+  },
+  vitC_mg: {
+    main: [
+      { nutrientId: "vitC_mg", canonicalKey: "bell_pepper_red", name: "Peperone rosso (vit C)", noun: "peperone rosso crudo", bridge: "Vitamina C densa (pathway redox).", defaultGrams: 120, macroRole: "veg", mode: "add", fromKeys: [] }
+    ],
+    light: [
+      { nutrientId: "vitC_mg", canonicalKey: "kiwi_raw", name: "Kiwi (vit C)", noun: "kiwi", bridge: "Vitamina C complementare (non sostituisce cereali).", defaultGrams: 100, macroRole: "cho_heavy", mode: "add", fromKeys: [] },
+      { nutrientId: "vitC_mg", canonicalKey: "orange_raw", name: "Arancia (vit C)", noun: "arancia", bridge: "Vitamina C complementare colazione/spuntino.", defaultGrams: 130, macroRole: "cho_heavy", mode: "add", fromKeys: [] },
+      { nutrientId: "vitC_mg", canonicalKey: "strawberries_raw", name: "Fragole (vit C)", noun: "fragole", bridge: "Vitamina C complementare spuntino.", defaultGrams: 90, macroRole: "cho_heavy", mode: "add", fromKeys: [] }
+    ]
+  },
+  fe_mg: {
+    main: [
+      { nutrientId: "fe_mg", canonicalKey: "spinach_raw", name: "Spinaci (ferro)", noun: "spinaci freschi", bridge: "Ferro non eme (pathway eritropoiesi).", defaultGrams: 150, macroRole: "veg", mode: "add", fromKeys: [] },
+      { nutrientId: "fe_mg", canonicalKey: "chickpeas_cooked", name: "Ceci cotti (ferro)", noun: "ceci cotti", bridge: "Ferro vegetale complementare.", defaultGrams: 130, macroRole: "protein", mode: "add", fromKeys: [] },
+      { nutrientId: "fe_mg", canonicalKey: "legumes_cooked", name: "Legumi cotti (ferro)", noun: "legumi cotti", bridge: "Ferro vegetale (pathway).", defaultGrams: 130, macroRole: "protein", mode: "add", fromKeys: [] }
+    ],
+    light: []
+  },
+  mg_mg: {
+    main: [
+      { nutrientId: "mg_mg", canonicalKey: "pumpkin_seeds_raw", name: "Semi di zucca (magnesio)", noun: "semi di zucca", bridge: "Magnesio denso (cofactor chinasi).", defaultGrams: 25, macroRole: "fat", mode: "add", fromKeys: [] },
+      { nutrientId: "mg_mg", canonicalKey: "spinach_raw", name: "Spinaci (magnesio)", noun: "spinaci freschi", bridge: "Magnesio da verdure.", defaultGrams: 150, macroRole: "veg", mode: "add", fromKeys: [] },
+      { nutrientId: "mg_mg", canonicalKey: "legumes_cooked", name: "Legumi cotti (magnesio)", noun: "legumi cotti", bridge: "Magnesio complementare da legumi.", defaultGrams: 120, macroRole: "protein", mode: "add", fromKeys: [] }
+    ],
+    light: [
+      { nutrientId: "mg_mg", canonicalKey: "almonds_raw", name: "Mandorle (magnesio)", noun: "mandorle", bridge: "Magnesio in colazione/spuntino.", defaultGrams: 25, macroRole: "fat", mode: "add", fromKeys: [] }
+    ]
+  },
+  zn_mg: {
+    main: [
+      { nutrientId: "zn_mg", canonicalKey: "pumpkin_seeds_raw", name: "Semi di zucca (zinco)", noun: "semi di zucca", bridge: "Zinco denso.", defaultGrams: 25, macroRole: "fat", mode: "add", fromKeys: [] },
+      { nutrientId: "zn_mg", canonicalKey: "chickpeas_cooked", name: "Ceci cotti (zinco)", noun: "ceci cotti", bridge: "Zinco complementare.", defaultGrams: 120, macroRole: "protein", mode: "add", fromKeys: [] },
+      { nutrientId: "zn_mg", canonicalKey: "legumes_cooked", name: "Legumi cotti (zinco)", noun: "legumi cotti", bridge: "Zinco complementare da legumi.", defaultGrams: 120, macroRole: "protein", mode: "add", fromKeys: [] }
+    ],
+    light: []
+  },
+  vitB12_mcg: {
+    main: [
+      {
+        nutrientId: "vitB12_mcg",
+        canonicalKey: "egg_whole",
+        name: "Uova (B12)",
+        noun: "uova",
+        bridge: "Vitamina B12 (pathway eritropoiesi).",
+        defaultGrams: 100,
+        macroRole: "protein",
+        mode: "replace",
+        fromKeys: ["yogurt_plain", "plant_drink_generic"]
+      }
+    ],
+    light: [
+      {
+        nutrientId: "vitB12_mcg",
+        canonicalKey: "egg_whole",
+        name: "Uova (B12)",
+        noun: "uova",
+        bridge: "Vitamina B12 colazione/spuntino.",
+        defaultGrams: 100,
+        macroRole: "protein",
+        mode: "replace",
+        fromKeys: ["yogurt_plain", "plant_drink_generic", "whey_powder"]
+      }
+    ]
+  },
+  omega3G: {
+    main: [
+      {
+        nutrientId: "omega3G",
+        canonicalKey: "fish_white",
+        name: "Pesce (omega-3)",
+        noun: "pesce bianco o azzurro",
+        bridge: "Omega-3 EPA/DHA da pesce (pathway lipidico).",
+        defaultGrams: 120,
+        macroRole: "protein",
+        mode: "replace",
+        fromKeys: ["chicken_breast", "beef_lean", "egg_whole"]
+      }
+    ],
+    light: [
+      {
+        nutrientId: "omega3G",
+        canonicalKey: "fish_white",
+        name: "Pesce affumicato (omega-3)",
+        noun: "salmone affumicato o azzurro",
+        bridge: "Omega-3 EPA/DHA colazione/spuntino salato.",
+        defaultGrams: 70,
+        macroRole: "protein",
+        mode: "replace",
+        fromKeys: ["yogurt_plain", "deli_lean", "whey_powder"]
+      }
+    ]
+  }
+};
+var VEGAN_BLOCKED_KEYS = /* @__PURE__ */ new Set(["egg_whole", "fish_white", "yogurt_plain", "deli_lean", "cheese_hard"]);
+var VEGETARIAN_BLOCKED_KEYS = /* @__PURE__ */ new Set(["fish_white"]);
+function isCanonicalKeyBlocked(canonicalKey, dietType) {
+  if (dietType === "vegan" && VEGAN_BLOCKED_KEYS.has(canonicalKey)) return true;
+  if (dietType === "vegetarian" && VEGETARIAN_BLOCKED_KEYS.has(canonicalKey)) return true;
+  return false;
+}
+function listNutrientPathwaySwapsForSlot(nutrientId, slot, dietType) {
+  const cat = slotCategory(slot);
+  const pool = NUTRIENT_PATHWAY_SLOT_POOL[nutrientId]?.[cat];
+  if (!pool?.length) return [];
+  return pool.filter((spec) => {
+    if (!CANONICAL_FOOD_TABLE[spec.canonicalKey]) return false;
+    if (isCanonicalKeyBlocked(spec.canonicalKey, dietType)) return false;
+    if (!isFoodLabelAllowedInMealSlot(spec.name, slot)) return false;
+    return true;
+  });
+}
+function nutrientDisplayLabelIt(id) {
+  const labels = {
+    folate_mcg: "Folati (B9)",
+    vitC_mg: "Vitamina C",
+    fe_mg: "Ferro",
+    mg_mg: "Magnesio",
+    zn_mg: "Zinco",
+    vitB12_mcg: "Vitamina B12",
+    thiamineB1_mg: "Tiamina (B1)",
+    riboflavinB2_mg: "Riboflavina (B2)",
+    niacinB3_mg: "Niacina (B3)",
+    vitB6_mg: "Vitamina B6",
+    vitD_mcg: "Vitamina D",
+    vitE_mg: "Vitamina E",
+    se_mcg: "Selenio",
+    omega3G: "Omega-3 EPA/DHA",
+    fiberG: "Fibre"
+  };
+  return labels[id] ?? id;
+}
+var INTEGRATION_ACTION_BY_TARGET = {
+  folate_mcg: "Acido folico (B9) o multivitaminico con folati \u2014 oppure pi\xF9 verdure a foglia/legumi a pranzo/cena.",
+  vitB12_mcg: "Vitamina B12 (cobalamina): integrazione orale o IM solo se concordata; alimenti: uova, pesce, latticini tollerati.",
+  fe_mg: "Ferro (es. bisglicinato) se ferritina bassa; abbinare vitamina C lontano da pasti ricchi di calcio.",
+  zn_mg: "Zinco (pidolato/bisglicinato) se deficit; fonti alimentari: semi, legumi, pesce.",
+  mg_mg: "Magnesio (citrato/glicinato) la sera se necessario; fonti: verdure, semi, mandorle.",
+  vitC_mg: "Vitamina C idrosolubile o agrumi/kiwi a colazione/spuntino.",
+  thiamineB1_mg: "Tiamina (B1): cereali integrali a colazione o B-complex se indicato.",
+  riboflavinB2_mg: "Riboflavina (B2): latticini/uova/pesce o integrazione B-complex.",
+  niacinB3_mg: "Niacina (B3): fonti dense a pranzo/cena o B-complex se concordato.",
+  vitB6_mg: "Vitamina B6: pesce, legumi o integrazione mirata se deficit.",
+  vitD_mcg: "Vitamina D3 (colecalciferolo) se livelli bassi \u2014 dosaggio da medico.",
+  se_mcg: "Selenio: integrazione mirata o pesce/noci se tollerati.",
+  omega3G: "Omega-3 EPA/DHA: pesce a pranzo/cena o capsula se concordata.",
+  fiberG: "Fibre: aumentare verdure/legumi/cereali integrali nei pasti principali."
+};
+function integrationActionForTarget(nutrientId, displayNameIt) {
+  const action = INTEGRATION_ACTION_BY_TARGET[nutrientId] ?? `Valuta integrazione mirata per ${displayNameIt} con medico/nutrizionista.`;
+  return action;
+}
+
+// apps/web/lib/nutrition/pathway-cofactors-to-nutrient-targets.ts
+var PATTERNS = [
+  /** Vitamine B */
+  { regex: /\b(b1|tiamin|thiamin)\b/i, nutrientId: "thiamineB1_mg", labelIt: "Tiamina (B1)" },
+  { regex: /\b(b2|riboflav)\b/i, nutrientId: "riboflavinB2_mg", labelIt: "Riboflavina (B2)" },
+  { regex: /\b(b3|niacin|niaci|nicotin)\b/i, nutrientId: "niacinB3_mg", labelIt: "Niacina (B3)" },
+  { regex: /\b(b6|piridoss|pyridox)\b/i, nutrientId: "vitB6_mg", labelIt: "Vitamina B6" },
+  { regex: /\b(b9|folat|folic|folati)\b/i, nutrientId: "folate_mcg", labelIt: "Folati (B9)" },
+  { regex: /\b(b12|cobalam|cyanocobal|methylcobal)\b/i, nutrientId: "vitB12_mcg", labelIt: "Vitamina B12" },
+  /** Vitamine liposolubili */
+  { regex: /\b(vit(amina)?\s*a|retinol)\b/i, nutrientId: "vitA_mcg_RAE", labelIt: "Vitamina A" },
+  { regex: /\b(vit(amina)?\s*c|ascorb)\b/i, nutrientId: "vitC_mg", labelIt: "Vitamina C" },
+  { regex: /\b(vit(amina)?\s*d|colecalcif|cholecalcif)\b/i, nutrientId: "vitD_mcg", labelIt: "Vitamina D" },
+  { regex: /\b(vit(amina)?\s*e|tocoferol|tocopher)\b/i, nutrientId: "vitE_mg", labelIt: "Vitamina E" },
+  { regex: /\b(vit(amina)?\s*k|fillochin|phyllochin)\b/i, nutrientId: "vitK_mcg", labelIt: "Vitamina K" },
+  /** Minerali principali (l'ordine conta: Mg/Fe prima dei generici per evitare match secondari) */
+  { regex: /\b(magnes|\bmg\b)/i, nutrientId: "mg_mg", labelIt: "Magnesio" },
+  { regex: /\b(ferr|iron|\bfe\b)/i, nutrientId: "fe_mg", labelIt: "Ferro" },
+  { regex: /\b(zinc|zinco|\bzn\b)/i, nutrientId: "zn_mg", labelIt: "Zinco" },
+  /** "selenio" ≠ `\bseleni\b` (suffix -o): prima regex non matchava mai il cofactor italiano. */
+  { regex: /\b(seleni[o]?|selenium)\b/i, nutrientId: "se_mcg", labelIt: "Selenio" },
+  { regex: /\b(calci|calcium)\b/i, nutrientId: "ca_mg", labelIt: "Calcio" },
+  /**
+   * Vietato `\bk\b` / `\bna\b`: in substrati tipo "Na/K" matchano lettere chimiche e saturano i boost
+   * con falsi Potassio/Sodio prima dei cofactor redox (Vit C, Se, Zn).
+   */
+  { regex: /\b(potassio|potassium|kalium)\b/i, nutrientId: "k_mg", labelIt: "Potassio" },
+  { regex: /\b(sodio|sodium|natrium)\b/i, nutrientId: "na_mg", labelIt: "Sodio" },
+  { regex: /\b(fosfor|phosph|\bp\b)/i, nutrientId: "p_mg", labelIt: "Fosforo" },
+  /** Macro funzionali rilevanti per pathway (omega-3, fibre) */
+  { regex: /\b(omega.?3|epa|dha)\b/i, nutrientId: "omega3G", labelIt: "Omega-3 (EPA/DHA)" },
+  { regex: /\b(fibre?|fiber)\b/i, nutrientId: "fiberG", labelIt: "Fibre alimentari" }
+];
+function labelForNutrientTargetId(id) {
+  const hit = PATTERNS.find((p) => p.nutrientId === id);
+  return hit?.labelIt ?? id;
+}
+var CATALOG_TO_NUTRIENT_TARGET = {
+  folate_b9: "folate_mcg",
+  vitamin_c_redox: "vitC_mg",
+  magnesium_kinase: "mg_mg",
+  iron_heme: "fe_mg",
+  iron_nonheme: "fe_mg",
+  zinc_immunity: "zn_mg",
+  selenium_redox: "se_mcg",
+  omega3_epa_dha: "omega3G",
+  fiber_gut: "fiberG",
+  potassium_electrolyte: "k_mg",
+  calcium_bone: "ca_mg",
+  vitamin_d_hormone: "vitD_mcg",
+  vitamin_b12_nerve: "vitB12_mcg",
+  thiamine_b1: "thiamineB1_mg",
+  riboflavin_b2: "riboflavinB2_mg",
+  niacin_b3: "niacinB3_mg",
+  vitamin_b6: "vitB6_mg"
+};
+function catalogIdToNutrientTargetId(catalogId) {
+  return CATALOG_TO_NUTRIENT_TARGET[catalogId] ?? null;
+}
+
+// apps/web/lib/nutrition/meal-pathway-advisor.ts
+function mealHasCanonicalKey(meal, canonicalKey) {
+  return meal.items.some((it) => inferCanonicalFoodKeyPreferName(it.name, it.portionHint) === canonicalKey);
+}
+function countVegInMeal(meal) {
+  return meal.items.filter((it) => isVegCanonicalKey(inferCanonicalFoodKeyPreferName(it.name, it.portionHint))).length;
+}
+function countFruitInMeal(meal) {
+  return meal.items.filter((it) => isFruitCanonicalKey(inferCanonicalFoodKeyPreferName(it.name, it.portionHint))).length;
+}
+function applyAddSpec(meal, spec) {
+  if (mealHasCanonicalKey(meal, spec.canonicalKey)) return null;
+  const toRow = CANONICAL_FOOD_TABLE[spec.canonicalKey];
+  if (!toRow) return null;
+  const grams = spec.defaultGrams;
+  const approxKcal = Math.max(15, Math.round(toRow.kcalPer100g * grams / 100));
+  const portion = `${grams} g ${spec.noun}`.slice(0, 160);
+  const newItem = {
+    name: spec.name,
+    portionHint: portion,
+    approxKcal,
+    macroRole: spec.macroRole,
+    functionalBridge: spec.bridge.slice(0, 500)
+  };
+  const items = [...meal.items, newItem];
+  return {
+    ...meal,
+    items,
+    lines: [...meal.lines, portion],
+    totalApproxKcal: items.reduce((a, i) => a + i.approxKcal, 0)
+  };
+}
+function pickRotatedSpec(specs, ctx) {
+  for (const spec of specs) {
+    if (!ctx || !canUseCanonicalKey(ctx, spec.canonicalKey, { allowWeekException: true })) continue;
+    return spec;
+  }
+  return null;
+}
+function applyPathwayAdvice(meal, slot, targetIds, ctx) {
+  const adviceNotes = [];
+  if (!targetIds.length || ctx?.suppressedSlots?.includes(slot)) {
+    return { meal, adviceNotes };
+  }
+  if (isMainMealSlot(slot)) {
+    const vegCount = countVegInMeal(meal);
+    for (const id of targetIds) {
+      const specs = listNutrientPathwaySwapsForSlot(id, slot, ctx?.dietType);
+      if (!specs.length) continue;
+      const head = specs[0];
+      if (isFruitCanonicalKey(head.canonicalKey)) {
+        adviceNotes.push("Micronutriente: preferisci frutta a colazione o spuntino, non a pranzo/cena.");
+        continue;
+      }
+      if (vegCount >= MAIN_ROLE_CAPS.veg_condiment) {
+        adviceNotes.push(
+          `Pasto gi\xE0 con ${vegCount} verdure: valuta sostituzione contorno con ${head.noun} o integrazione mirata.`
+        );
+        continue;
+      }
+      adviceNotes.push(`Suggerimento pathway: ${head.noun} come alternativa contorno (non aggiunto automaticamente).`);
+    }
+    return { meal, adviceNotes };
+  }
+  let current = meal;
+  let addsApplied = 0;
+  for (const id of targetIds) {
+    if (addsApplied >= 1) break;
+    const specs = listNutrientPathwaySwapsForSlot(id, slot, ctx?.dietType).filter((s) => s.mode === "add");
+    const spec = pickRotatedSpec(specs, ctx);
+    if (!spec) {
+      adviceNotes.push(
+        `${labelForNutrientTargetId(id)}: il pasto \xE8 gi\xE0 completo \u2014 coprilo con l'integrazione o nei prossimi giorni.`
+      );
+      continue;
+    }
+    if (isFruitCanonicalKey(spec.canonicalKey) && countFruitInMeal(current) >= 1) continue;
+    const next = applyAddSpec(current, spec);
+    if (!next) continue;
+    current = next;
+    addsApplied += 1;
+  }
+  return { meal: current, adviceNotes };
 }
 
 // apps/web/lib/nutrition/mediterranean-meal-composer.ts
@@ -5098,12 +5710,29 @@ function pickStapleForPool(ctx) {
   if (!best || !("hit" in best) || !best.hit) return null;
   return { entry: best.e, hit: best.hit };
 }
+function rotationKeyForCanonical(canonicalKey) {
+  for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
+    const found = list.find((e) => e.canonicalKey === canonicalKey);
+    if (found?.rotationKey) return found.rotationKey;
+  }
+  return void 0;
+}
 function weekStapleCountForEntry(entry2, week) {
   if (!week) return 0;
   return Math.max(
     week[entry2.canonicalKey] ?? 0,
     entry2.rotationKey ? week[entry2.rotationKey] ?? 0 : 0
   );
+}
+function mealRotationStaplesFromComposedItems(items) {
+  const keys = /* @__PURE__ */ new Set();
+  for (const item2 of items) {
+    const ck = item2.canonicalKey?.trim();
+    if (!ck) continue;
+    const rk = rotationKeyForCanonical(ck);
+    keys.add(rk ?? ck);
+  }
+  return [...keys].slice(0, 24);
 }
 function servingBasisForCanonical(canonicalKey) {
   for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
@@ -5264,6 +5893,34 @@ function pickFromPoolFallback(pool, ctx, denyFragments, usedFdcIds, staplePenalt
     }
   }
   return null;
+}
+function portionHintIt(label, grams, spec, servingBasis) {
+  const g = Math.round(grams);
+  const basis = servingBasis ?? "dry_grams";
+  if (spec.foodRole === "cho_complex" && (/pasta|semola/i.test(label) || basis === "dry_grams" && /pasta/i.test(label))) {
+    return `${g} g pasta di semola (peso a crudo)`;
+  }
+  if (spec.foodRole === "cho_complex" && (/riso/i.test(label) || /rice/i.test(label))) {
+    return basis === "dry_grams" ? `${g} g riso (peso a crudo)` : `${g} g riso cotto`;
+  }
+  if (spec.foodRole === "cho_complex" && /patat/i.test(label)) {
+    return `${g} g patate lesse o al forno`;
+  }
+  if (spec.foodRole === "protein_primary" && /uov/i.test(label)) {
+    return `${Math.max(1, Math.round(g / 50))} uova medie (\u2248${g} g)`;
+  }
+  if (/grana|parmesan|pecorino|padano/i.test(label)) {
+    return `${g} g grana grattugiato`;
+  }
+  if (spec.foodRole === "fat" && /olio/i.test(label)) {
+    return `${g} ml olio EVO`;
+  }
+  if (/latte/i.test(label)) {
+    return `${g} ml latte`;
+  }
+  if (basis === "ml") return `${g} ml ${label}`;
+  if (basis === "cooked_grams") return `${g} g ${label} (cotto)`;
+  return `${g} g ${label}`;
 }
 function pickLineForRole(spec, slotKey, pools, ctx) {
   const roleCtx = { slot: slotKey, poolKey: spec.poolKey, spec };
@@ -6244,6 +6901,1438 @@ async function buildMealPlanV2Production(input, admin) {
   };
 }
 
+// apps/web/lib/nutrition/pathway-absorption-hints.ts
+var IRON_HINT = {
+  nutrientId: "fe_mg",
+  slotPreference: ["lunch", "dinner"],
+  avoidWith: ["t\xE8", "caff\xE8", "calcio contemporaneo"],
+  pairWith: ["vitamina C", "pasto misto"],
+  rationaleIt: "Ferro alimentare: preferire pranzo/cena lontano da tannini/calcio; associare vit C (modello qualitativo)."
+};
+var B12_HINT = {
+  nutrientId: "vitB12_mcg",
+  slotPreference: ["breakfast", "lunch"],
+  avoidWith: ["alcol mattutino"],
+  pairWith: ["proteine", "pasto completo"],
+  rationaleIt: "B12: assorbimento migliore con pasto proteico regolare (classe emivita oraria)."
+};
+var B1_HINT = {
+  nutrientId: "thiamineB1_mg",
+  slotPreference: ["breakfast", "lunch"],
+  avoidWith: ["alcol nelle ore pre-carico intenso"],
+  pairWith: ["CHO complessi", "pasto misto"],
+  rationaleIt: "Tiamina (PDH/glicolisi): distribuzione su colazione/pranzo regolari (enzyme-linked v3)."
+};
+var FOLATE_HINT = {
+  nutrientId: "folate_mcg",
+  slotPreference: ["lunch", "dinner"],
+  avoidWith: [],
+  pairWith: ["verdure a foglia", "legumi"],
+  rationaleIt: "Folati: preferenza pranzo/cena; integrazione orale una sola volta al giorno se non coperto dal menu."
+};
+var ZN_HINT = {
+  nutrientId: "zn_mg",
+  slotPreference: ["lunch", "dinner"],
+  avoidWith: ["ferro contemporaneo", "fibre molto alte nello stesso momento"],
+  pairWith: ["proteine", "pasto misto"],
+  rationaleIt: "Zinco: assorbimento migliore lontano da ferro e fibre concentrate."
+};
+var VIT_C_HINT = {
+  nutrientId: "vitC_mg",
+  slotPreference: ["breakfast", "snack_am"],
+  avoidWith: [],
+  pairWith: ["frutta", "pasto leggero"],
+  rationaleIt: "Vitamina C idrosolubile: colazione/spuntino; non ripetere integrazione su pi\xF9 pasti."
+};
+var MG_HINT = {
+  nutrientId: "mg_mg",
+  slotPreference: ["lunch", "snack_pm"],
+  avoidWith: [],
+  pairWith: ["pasto misto", "idratazione"],
+  rationaleIt: "Magnesio (PFK/PDH): preferenza pranzo/spuntino pomeridiano peri-stimolo."
+};
+var VIT_D_HINT = {
+  nutrientId: "vitD_mcg",
+  slotPreference: ["lunch", "dinner"],
+  avoidWith: ["pasto iperlipidico estremo pre-intenso"],
+  pairWith: ["grassi insaturi moderati"],
+  rationaleIt: "Vitamina D liposolubile: con pasto contenente grassi moderati."
+};
+var FAT_SOLUBLE_HINT = {
+  nutrientId: "vitA_mcg_RAE",
+  slotPreference: ["lunch", "dinner"],
+  avoidWith: [],
+  pairWith: ["olio EVO", "grassi insaturi"],
+  rationaleIt: "Micronutrienti liposolubili: preferire pasti principali con grassi alimentari."
+};
+var STATIC_HINTS = [
+  IRON_HINT,
+  B12_HINT,
+  B1_HINT,
+  FOLATE_HINT,
+  ZN_HINT,
+  VIT_C_HINT,
+  MG_HINT,
+  VIT_D_HINT,
+  FAT_SOLUBLE_HINT
+];
+function pathwayText(vm) {
+  if (!vm?.pathways?.length) return "";
+  return vm.pathways.flatMap((p) => [
+    ...p.cofactors ?? [],
+    ...p.inhibitorsToAvoid ?? [],
+    p.pathwayLabel,
+    ...p.stimulatedBy ?? []
+  ]).join(" ").toLowerCase();
+}
+function hasStimulatedNode(vm, nodeId) {
+  return Boolean(vm?.pathways.some((p) => p.stimulatedBy?.includes(nodeId)));
+}
+function mergeHintsByNutrient(hints) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const h of hints) {
+    if (!byId.has(h.nutrientId)) byId.set(h.nutrientId, h);
+  }
+  return [...byId.values()];
+}
+function buildPathwayAbsorptionHints(vm) {
+  const haystack2 = pathwayText(vm);
+  const out = [];
+  if (/ferr|iron|ferro|eritropo/i.test(haystack2)) out.push(IRON_HINT);
+  if (/b12|cobalam/i.test(haystack2)) out.push(B12_HINT);
+  if (/tiamin|thiamin|\bb1\b|pdh|piruvato/i.test(haystack2)) out.push(B1_HINT);
+  if (/folat|folic|b9|b-9/i.test(haystack2)) out.push(FOLATE_HINT);
+  if (/zinc|\bzn\b/i.test(haystack2)) out.push(ZN_HINT);
+  if (/vit\s*c|vitamina c|ascorb/i.test(haystack2)) out.push(VIT_C_HINT);
+  if (/magnes|\bmg\b|pfk|chinasi/i.test(haystack2)) out.push(MG_HINT);
+  if (/vit\s*d|vitamina d|colecalcif/i.test(haystack2)) out.push(VIT_D_HINT);
+  if (/vit\s*a|vit\s*e|vit\s*k|liposolub/i.test(haystack2)) out.push(FAT_SOLUBLE_HINT);
+  if (hasStimulatedNode(vm, "enzyme.pdh")) {
+    if (!out.some((h) => h.nutrientId === "thiamineB1_mg")) out.push(B1_HINT);
+    if (!out.some((h) => h.nutrientId === "mg_mg")) out.push(MG_HINT);
+  }
+  if (hasStimulatedNode(vm, "enzyme.pfk") && !out.some((h) => h.nutrientId === "mg_mg")) {
+    out.push(MG_HINT);
+  }
+  return mergeHintsByNutrient(out);
+}
+function resolveNutrientTargetIdForHintLookup(nutrientOrCatalogId) {
+  const fromCatalog = catalogIdToNutrientTargetId(nutrientOrCatalogId);
+  if (fromCatalog) return fromCatalog;
+  if (STATIC_HINTS.some((h) => h.nutrientId === nutrientOrCatalogId)) {
+    return nutrientOrCatalogId;
+  }
+  return null;
+}
+function preferredSlotsForNutrientBoost(nutrientId, vm) {
+  const resolved = resolveNutrientTargetIdForHintLookup(nutrientId) ?? nutrientId;
+  const hint = buildPathwayAbsorptionHints(vm).find((h) => h.nutrientId === resolved);
+  return hint?.slotPreference ?? null;
+}
+function slotPriorityForNutrientTarget(nutrientOrCatalogId, vm, focusFallback) {
+  const prefs = preferredSlotsForNutrientBoost(nutrientOrCatalogId, vm);
+  if (!prefs?.length) return focusFallback;
+  const rest = focusFallback.filter((s) => !prefs.includes(s));
+  return [...prefs, ...rest];
+}
+function nutrientBoostAppliesToSlot(nutrientId, slot, vm) {
+  const prefs = preferredSlotsForNutrientBoost(nutrientId, vm);
+  if (!prefs?.length) return true;
+  return prefs.includes(slot);
+}
+
+// apps/web/lib/nutrition/meal-plan-daily-supplement-scheduler.ts
+var TIMING_LABEL_IT = {
+  before: "Prima del pasto",
+  with: "Durante il pasto",
+  after: "Dopo il pasto",
+  away: "Lontano dal pasto"
+};
+var DEFAULT_SLOT_ORDER = [
+  "breakfast",
+  "lunch",
+  "snack_pm",
+  "dinner",
+  "snack_am",
+  "snack_evening"
+];
+var INTAKE_TIMING_BY_NUTRIENT = {
+  fe_mg: {
+    timing: "away",
+    noteIt: "1\u20132 h lontano da t\xE8, caff\xE8 e latticini; abbinare vitamina C se indicato."
+  },
+  vitB12_mcg: {
+    timing: "with",
+    noteIt: "Con un pasto che contenga proteine (assorbimento cobalamina)."
+  },
+  thiamineB1_mg: {
+    timing: "with",
+    noteIt: "Con carboidrati complessi a colazione o pranzo (cofattore PDH)."
+  },
+  folate_mcg: {
+    timing: "with",
+    noteIt: "Con pranzo o cena; se integrazione, non ripetere negli altri pasti."
+  },
+  riboflavinB2_mg: { timing: "with", noteIt: "Con pasto misto (latticini/uova/pesce se tollerati)." },
+  niacinB3_mg: { timing: "with", noteIt: "Con pasto principale; evitare dosi alte a stomaco vuoto." },
+  vitB6_mg: { timing: "with", noteIt: "Con pasto leggero o principale." },
+  mg_mg: {
+    timing: "after",
+    noteIt: "Preferenza serale/post-cena; distanziare da allenamento molto intenso."
+  },
+  zn_mg: {
+    timing: "away",
+    noteIt: "Lontano da ferro, calcio e pasti molto ricchi di fibre."
+  },
+  vitD_mcg: { timing: "with", noteIt: "Con pasto che includa grassi moderati (liposolubile)." },
+  vitC_mg: { timing: "with", noteIt: "Con colazione o spuntino leggero." },
+  se_mcg: { timing: "with", noteIt: "Con pasto principale; non superare soglie senza controllo." },
+  omega3G: { timing: "with", noteIt: "Con pranzo/cena (grassi alimentari) o come da protocollo." },
+  vitE_mg: { timing: "with", noteIt: "Con pasto contenente grassi insaturi." },
+  fiberG: { timing: "with", noteIt: "Distribuire fibre negli alimenti dei pasti, non capsule ripetute." }
+};
+function nutrientHasFoodPathwayAnywhere(nutrientId, dietType) {
+  for (const slot of DEFAULT_SLOT_ORDER) {
+    if (listNutrientPathwaySwapsForSlot(nutrientId, slot, dietType).length > 0) return true;
+  }
+  return false;
+}
+function resolveIntakeTiming(nutrientId, vm) {
+  const pk = buildPathwayAbsorptionHints(vm).find((h) => h.nutrientId === nutrientId);
+  const base = INTAKE_TIMING_BY_NUTRIENT[nutrientId] ?? {
+    timing: "with",
+    noteIt: "Una sola assunzione giornaliera nel pasto indicato."
+  };
+  if (pk?.avoidWith.length) {
+    const avoid = pk.avoidWith.join(", ");
+    if (base.timing === "with") {
+      return {
+        timing: "away",
+        noteIt: `${base.noteIt} Evita contestualmente: ${avoid}.`
+      };
+    }
+    return { ...base, noteIt: `${base.noteIt} Evita: ${avoid}.` };
+  }
+  if (pk?.pairWith.length) {
+    return { ...base, noteIt: `${base.noteIt} Preferisci: ${pk.pairWith.join(", ")}.` };
+  }
+  return base;
+}
+function pickSlotForNutrient(nutrientId, slots, suppressed, vm) {
+  const available = slots.filter((s) => !suppressed.includes(s.slot));
+  if (!available.length) return null;
+  const priority = slotPriorityForNutrientTarget(
+    nutrientId,
+    vm,
+    available.map((s) => s.slot)
+  );
+  for (const slotKey of priority) {
+    const row2 = available.find((s) => s.slot === slotKey);
+    if (row2) return row2;
+  }
+  return available[0] ?? null;
+}
+function buildScheduledIntegrationItem(nutrientId, slot, vm) {
+  const label = nutrientDisplayLabelIt(nutrientId);
+  const action = integrationActionForTarget(nutrientId, label);
+  const { timing, noteIt } = resolveIntakeTiming(nutrientId, vm);
+  const timingLabel = TIMING_LABEL_IT[timing];
+  const mealLabel = slot.labelIt?.trim() || slot.slot;
+  const time = slot.scheduledTimeLocal?.trim() || "\u2014";
+  const portionHint = `${timingLabel} \xB7 ${mealLabel} ${time}. ${action}`.slice(0, 160);
+  const functionalBridge = `Integrazione giornaliera (1\xD7/giorno): ${timingLabel.toLowerCase()} \u2014 ${mealLabel} alle ${time}. ${noteIt} ${action}`.slice(
+    0,
+    500
+  );
+  return {
+    name: `Integrazione giornaliera: ${label}`,
+    portionHint,
+    approxKcal: 12,
+    macroRole: "mixed",
+    functionalBridge
+  };
+}
+function buildDailySupplementIntegrationPlan(input) {
+  const suppressed = input.suppressedSlots ?? [];
+  const plan = {};
+  const assignedNutrients = /* @__PURE__ */ new Set();
+  for (const target of input.boostTargets) {
+    const id = target.nutrientId;
+    if (assignedNutrients.has(id)) continue;
+    if (nutrientHasFoodPathwayAnywhere(id, input.dietType)) continue;
+    const slot = pickSlotForNutrient(id, input.slots, suppressed, input.pathwayModulation);
+    if (!slot) continue;
+    const item2 = buildScheduledIntegrationItem(id, slot, input.pathwayModulation);
+    const list = plan[slot.slot] ?? [];
+    list.push(item2);
+    plan[slot.slot] = list;
+    assignedNutrients.add(id);
+  }
+  return plan;
+}
+
+// apps/web/lib/nutrition/enrich-meal-slots-after-compose.ts
+var VALID_NUTRIENT_TARGET_IDS = /* @__PURE__ */ new Set([
+  "vitA_mcg_RAE",
+  "vitC_mg",
+  "vitD_mcg",
+  "vitE_mg",
+  "vitK_mcg",
+  "thiamineB1_mg",
+  "riboflavinB2_mg",
+  "niacinB3_mg",
+  "vitB6_mg",
+  "folate_mcg",
+  "vitB12_mcg",
+  "ca_mg",
+  "fe_mg",
+  "mg_mg",
+  "p_mg",
+  "k_mg",
+  "na_mg",
+  "zn_mg",
+  "se_mcg",
+  "fiberG",
+  "omega3G"
+]);
+function normalizeDietType2(raw) {
+  const d = (raw ?? "").trim().toLowerCase();
+  if (d === "vegan" || d.includes("vegan")) return "vegan";
+  if (d === "vegetarian" || d.includes("veget")) return "vegetarian";
+  if (d === "pescatarian" || d.includes("pesc")) return "pescatarian";
+  return "omnivore";
+}
+function selectValidBoostTargets(targets) {
+  return targets.filter((t) => VALID_NUTRIENT_TARGET_IDS.has(t.nutrientId)).map((t) => ({ nutrientId: t.nutrientId, labelIt: t.labelIt }));
+}
+function syncItemsApproxKcalFromCanonical(items) {
+  return items.map((it) => {
+    const { nutrients } = nutrientsForMealPlanItem({
+      name: it.name,
+      portionHint: it.portionHint,
+      approxKcal: it.approxKcal
+    });
+    return { ...it, approxKcal: Math.max(8, Math.round(nutrients.kcal)) };
+  });
+}
+function buildMediterraneanDayContextFromRequest(req) {
+  return createMediterraneanDayContext(
+    req.planDate,
+    req.weeklyStapleCounts,
+    req.postWorkoutMealBySlot,
+    normalizeDietType2(req.dietType),
+    buildMealPlanFoodDenyFragments(req),
+    req.suppressedSlots,
+    req.racePreLunch ?? void 0,
+    req.racePostRecovery ?? void 0
+  );
+}
+function enrichMealSlotsAfterCompose(input) {
+  const { request } = input;
+  const dayCtx = input.dayCtx ?? buildMediterraneanDayContextFromRequest(request);
+  const suppressed = request.suppressedSlots ?? [];
+  const validBoostTargets = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
+  const dailyIntegrationPlan = buildDailySupplementIntegrationPlan({
+    boostTargets: validBoostTargets,
+    slots: request.slots,
+    suppressedSlots: suppressed,
+    pathwayModulation: request.pathwayModulation,
+    dietType: normalizeDietType2(request.dietType)
+  });
+  const slotMeta = new Map(input.slots.map((s) => [s.slot, s]));
+  return request.slots.map((slotReq) => {
+    const existing = slotMeta.get(slotReq.slot);
+    const isSuppressed = suppressed.includes(slotReq.slot);
+    const isRacePreLunch = isRacePreRaceMealSlot(slotReq.slot, request.racePreLunch ?? null);
+    if (isSuppressed) {
+      return existing ?? {
+        slot: slotReq.slot,
+        targetKcalEcho: slotReq.targetKcal,
+        items: [],
+        slotCoherence: "",
+        slotTimingRationale: ""
+      };
+    }
+    const baseMeal = input.getBaseMealForSlot(slotReq);
+    const slotBoostIds = validBoostTargets.filter((t) => nutrientBoostAppliesToSlot(t.nutrientId, slotReq.slot, request.pathwayModulation)).map((t) => t.nutrientId);
+    const pathway = isRacePreLunch ? { meal: baseMeal, adviceNotes: [] } : applyPathwayAdvice(baseMeal, slotReq.slot, slotBoostIds, dayCtx);
+    registerMealCanonicalKeys(dayCtx, pathway.meal);
+    const integrationItems = isRacePreLunch ? [] : dailyIntegrationPlan[slotReq.slot] ?? [];
+    const groupTitles = slotReq.functionalFoodGroups.map((g) => g.displayNameIt).join(" \xB7 ");
+    const bridgePrefix = groupTitles ? `Target funzionali (solver): ${groupTitles.slice(0, 180)}${groupTitles.length > 180 ? "\u2026" : ""}. ` : "";
+    let items = syncItemsApproxKcalFromCanonical(
+      [...pathway.meal.items, ...integrationItems].map((it) => ({
+        ...it,
+        functionalBridge: `${bridgePrefix}Composizione mediterranea: ${it.functionalBridge}`.slice(0, 500)
+      }))
+    );
+    if (slotReq.targetKcal > 0) {
+      items = rescaleSlotKcalToTarget(
+        {
+          slot: slotReq.slot,
+          targetKcalEcho: slotReq.targetKcal,
+          items,
+          slotCoherence: "",
+          slotTimingRationale: ""
+        },
+        slotReq.targetKcal
+      ).items;
+    }
+    const timing = slotReq.functionalFoodGroups.find((g) => g.timingHalfLifeHint.trim())?.timingHalfLifeHint ?? request.pathwayTimingLines[0] ?? `Orario pasto ${slotReq.scheduledTimeLocal || "\u2014"}; allinea al carico del giorno.`;
+    const baseCoherence = isRacePreLunch ? racePreLunchContextLine(request.racePreLunch) : groupTitles ? `Combinazione solver + funzionale: target ${slotReq.targetKcal} kcal con priorit\xE0 a ${groupTitles.slice(0, 260)}` : `Pasto strutturato su target Diet: ${slotReq.targetKcal} kcal; porzioni da staple sportivi.`;
+    const slotBoostNote = pathway.adviceNotes.length > 0 ? `Suggerimenti pathway: ${pathway.adviceNotes.slice(0, 3).join(" | ")}` : void 0;
+    return {
+      slot: slotReq.slot,
+      targetKcalEcho: slotReq.targetKcal,
+      items,
+      slotCoherence: `${baseCoherence}${slotBoostNote ? ` \xB7 ${slotBoostNote}` : ""}`.slice(0, 480),
+      slotTimingRationale: timing.slice(0, 400),
+      boostNote: slotBoostNote
+    };
+  });
+}
+function pathwayBoostStatusFromRequest(request) {
+  const valid = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
+  return valid.length > 0 ? "applied" : void 0;
+}
+function dayInteractionSummaryExtras(request, engineNote) {
+  const validBoostTargets = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
+  const bits = [
+    engineNote,
+    `\u03A3 pasti solver: ${request.mealPlanSolverMeta.dailyMealsKcalTotal} kcal/giorno`,
+    validBoostTargets.length > 0 ? `Cofactors attivi: ${validBoostTargets.map((t) => t.labelIt).join(", ")}` : null,
+    request.routineDigest
+  ].filter((s) => Boolean(s?.trim()));
+  return bits.join(" \xB7 ").slice(0, 820);
+}
+
+// apps/web/lib/nutrition/fdc-canonical-map.ts
+var FDC_NUTRIENT_TO_CANONICAL = {
+  1008: "kcalPer100g",
+  1003: "proteinG",
+  1005: "carbsG",
+  1004: "fatG",
+  1079: "fiberG",
+  1258: "saturatedFatG",
+  1292: "monoFatG",
+  1293: "polyFatG",
+  1106: "vitA_mcg_RAE",
+  1162: "vitC_mg",
+  1114: "vitD_mcg",
+  1109: "vitE_mg",
+  1185: "vitK_mcg",
+  1165: "thiamineB1_mg",
+  1166: "riboflavinB2_mg",
+  1167: "niacinB3_mg",
+  1175: "vitB6_mg",
+  1177: "folate_mcg",
+  1178: "vitB12_mcg",
+  1087: "ca_mg",
+  1089: "fe_mg",
+  1090: "mg_mg",
+  1091: "p_mg",
+  1092: "k_mg",
+  1093: "na_mg",
+  1095: "zn_mg",
+  1103: "se_mcg",
+  1210: "eaa_trp",
+  1211: "eaa_thr",
+  1212: "eaa_ile",
+  1213: "eaa_leu",
+  1214: "eaa_lys",
+  1215: "eaa_met",
+  1217: "eaa_phe",
+  1219: "eaa_val",
+  1221: "eaa_his"
+};
+var FDC_OMEGA3_IDS = [1404, 1278, 1279, 1280, 1405, 1406];
+var ZERO_CANONICAL = {
+  kcalPer100g: 0,
+  proteinG: 0,
+  carbsG: 0,
+  fatG: 0,
+  fiberG: 0,
+  saturatedFatG: 0,
+  monoFatG: 0,
+  polyFatG: 0,
+  omega3G: 0,
+  vitA_mcg_RAE: 0,
+  vitC_mg: 0,
+  vitD_mcg: 0,
+  vitE_mg: 0,
+  vitK_mcg: 0,
+  thiamineB1_mg: 0,
+  riboflavinB2_mg: 0,
+  niacinB3_mg: 0,
+  vitB6_mg: 0,
+  folate_mcg: 0,
+  vitB12_mcg: 0,
+  ca_mg: 0,
+  fe_mg: 0,
+  mg_mg: 0,
+  p_mg: 0,
+  k_mg: 0,
+  na_mg: 0,
+  zn_mg: 0,
+  se_mcg: 0,
+  eaa_leu: 0,
+  eaa_lys: 0,
+  eaa_met: 0,
+  eaa_phe: 0,
+  eaa_thr: 0,
+  eaa_trp: 0,
+  eaa_ile: 0,
+  eaa_val: 0,
+  eaa_his: 0
+};
+function fdcCachedFoodToCanonical(food) {
+  const out = { ...ZERO_CANONICAL };
+  out.kcalPer100g = Math.max(0, Number(food.kcalPer100g ?? 0));
+  out.proteinG = Math.max(0, Number(food.proteinPer100g ?? 0));
+  out.carbsG = Math.max(0, Number(food.carbsPer100g ?? 0));
+  out.fatG = Math.max(0, Number(food.fatPer100g ?? 0));
+  out.fiberG = Math.max(0, Number(food.fiberPer100g ?? 0));
+  out.na_mg = Math.max(0, Number(food.sodiumMgPer100g ?? 0));
+  let omega3 = 0;
+  const apply = (rows) => {
+    for (const r of rows) {
+      const target = FDC_NUTRIENT_TO_CANONICAL[r.nutrientId];
+      if (target) {
+        const v = Math.max(0, Number(r.amountPer100g ?? 0));
+        out[target] = v;
+      }
+      if (FDC_OMEGA3_IDS.includes(r.nutrientId)) {
+        omega3 += Math.max(0, Number(r.amountPer100g ?? 0));
+      }
+    }
+  };
+  apply(food.vitamins);
+  apply(food.minerals);
+  apply(food.aminoAcids);
+  apply(food.fattyAcids);
+  apply(food.otherNutrients);
+  out.omega3G = Number(omega3.toFixed(3));
+  return out;
+}
+function metabolicIndicesPer100gFromFdc(food) {
+  return {
+    gi: Number(food.glycemicIndexEstimate ?? 0) || 0,
+    ii: Number(food.insulinIndexEstimate ?? 0) || 0,
+    glPer100g: Number(food.glycemicLoadPer100g ?? 0) || 0
+  };
+}
+function snapshotEntryFromCachedFood(food, fdcId) {
+  const canonical = fdcCachedFoodToCanonical(food);
+  if (!canonical.kcalPer100g) return null;
+  const indices = metabolicIndicesPer100gFromFdc(food);
+  return { canonical, ...indices, fdcId, description: food.description };
+}
+function buildFdcCanonicalSnapshotFromFoods(canonicalKeys, foodsByFdcId) {
+  const out = {};
+  for (const key of new Set(canonicalKeys)) {
+    const fdcId = fdcIdForCanonicalKey(key);
+    if (!fdcId) continue;
+    const food = foodsByFdcId.get(fdcId);
+    if (!food) continue;
+    const entry2 = snapshotEntryFromCachedFood(food, fdcId);
+    if (entry2) out[key] = entry2;
+  }
+  return out;
+}
+function buildFdcCanonicalSnapshotFromFdcIds(fdcIds, foodsByFdcId) {
+  const out = {};
+  for (const id of new Set(fdcIds)) {
+    if (!Number.isFinite(id) || id < 1) continue;
+    const food = foodsByFdcId.get(id);
+    if (!food) continue;
+    const entry2 = snapshotEntryFromCachedFood(food, id);
+    if (entry2) out[`fdc:${id}`] = entry2;
+  }
+  return out;
+}
+
+// apps/web/lib/nutrition/fdc-micronutrient-extract.ts
+var SKIP_NAME_FRAGMENTS = [
+  "energy",
+  "protein",
+  "total lipid",
+  "carbohydrate, by difference",
+  "carbohydrate",
+  "fiber, total dietary",
+  "sugars, total including",
+  "sugars, total",
+  "starch",
+  "water",
+  "ash",
+  "alcohol",
+  "caffeine",
+  "theobromine"
+];
+function shouldSkipName(lower) {
+  return SKIP_NAME_FRAGMENTS.some((f) => lower.includes(f));
+}
+function shouldSkipFdcNutrientNameForMicroProfile(name) {
+  return shouldSkipName(name.toLowerCase());
+}
+function bucketForFdcNutrientName(name) {
+  const L = name.toLowerCase();
+  if (shouldSkipName(L)) return null;
+  if (L.includes("sodium") && (L.includes("na") || L === "sodium, na")) return null;
+  if (/fatty acid|cholesterol|phytosterol|trans fat|trans-monoenoic|trans-polyenoic|omega|linole|linolen|arachidonic|epa|dha\b|elaidic|erucic| nervonic|^\d+:\d+/.test(
+    L
+  ) || L.includes("cis-") || L.includes("octadecenoic") || L.includes("eicosapentaenoic") || L.includes("docosahexaenoic") || L.includes("docosapentaenoic")) {
+    return "fattyAcids";
+  }
+  const aminoHints = [
+    "tryptophan",
+    "threonine",
+    "isoleucine",
+    "leucine",
+    "lysine",
+    "methionine",
+    "cystine",
+    "cysteine",
+    "phenylalanine",
+    "tyrosine",
+    "valine",
+    "arginine",
+    "histidine",
+    "alanine",
+    "aspartic acid",
+    "glutamic acid",
+    "glycine",
+    "proline",
+    "serine",
+    "hydroxyproline",
+    "taurine",
+    "asparagine",
+    "glutamine"
+  ];
+  if (aminoHints.some((a) => L.includes(a))) return "aminoAcids";
+  if (/vitamin|thiamin|riboflavin|niacin|folate|folic acid|choline|pantothenic|biotin|carotene|retinol|cryptoxanthin|lutein|zeaxanthin|lycopene/.test(
+    L
+  )) {
+    return "vitamins";
+  }
+  const mineralHints = [
+    "calcium",
+    "iron",
+    "magnesium",
+    "phosphorus",
+    "phosphorous",
+    "potassium",
+    "zinc",
+    "copper",
+    "selenium",
+    "manganese",
+    "iodine",
+    "chromium",
+    "molybdenum",
+    "fluoride",
+    "chloride"
+  ];
+  if (mineralHints.some((m) => L.includes(m))) return "minerals";
+  return null;
+}
+function partitionFdcNutrientsFromCompact(compact) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const row2 of compact) {
+    if (!Number.isFinite(row2.nutrientId) || row2.nutrientId <= 0) continue;
+    if (!row2.name?.trim()) continue;
+    if (shouldSkipFdcNutrientNameForMicroProfile(row2.name)) continue;
+    if (!byId.has(row2.nutrientId)) byId.set(row2.nutrientId, row2);
+  }
+  const vitamins = [];
+  const minerals = [];
+  const aminoAcids = [];
+  const fattyAcids = [];
+  const bucketedIds = /* @__PURE__ */ new Set();
+  for (const row2 of byId.values()) {
+    const b = bucketForFdcNutrientName(row2.name);
+    if (b === "vitamins") {
+      vitamins.push(row2);
+      bucketedIds.add(row2.nutrientId);
+    } else if (b === "minerals") {
+      minerals.push(row2);
+      bucketedIds.add(row2.nutrientId);
+    } else if (b === "aminoAcids") {
+      aminoAcids.push(row2);
+      bucketedIds.add(row2.nutrientId);
+    } else if (b === "fattyAcids") {
+      fattyAcids.push(row2);
+      bucketedIds.add(row2.nutrientId);
+    }
+  }
+  const other = [];
+  for (const row2 of byId.values()) {
+    if (!bucketedIds.has(row2.nutrientId)) other.push(row2);
+  }
+  return { vitamins, minerals, aminoAcids, fattyAcids, other };
+}
+
+// apps/web/lib/supabase/admin.ts
+import { createClient } from "@supabase/supabase-js";
+function createSupabaseAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// apps/web/lib/nutrition/fdc-food-cache.ts
+function toNumber(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+var FDC_BATCH_SELECT_CHUNK = 80;
+function asMicroArray(v) {
+  if (!Array.isArray(v)) return [];
+  return v.map((row2) => {
+    if (!row2 || typeof row2 !== "object") return null;
+    const r = row2;
+    const nutrientIdRaw = toNumber(r.nutrientId);
+    const amountRaw = toNumber(r.amountPer100g);
+    const name = typeof r.name === "string" ? r.name : "";
+    const unit = typeof r.unit === "string" ? r.unit : "\u2014";
+    if (!nutrientIdRaw || !name || amountRaw == null) return null;
+    return { nutrientId: Math.round(nutrientIdRaw), name, amountPer100g: amountRaw, unit };
+  }).filter((row2) => Boolean(row2));
+}
+function cachedFoodFromDbRow(row2) {
+  const base = {
+    fdcId: Number(row2.fdc_id),
+    description: String(row2.description ?? "Alimento FDC"),
+    dataType: row2.data_type != null ? String(row2.data_type) : null,
+    publicationDate: row2.publication_date != null ? String(row2.publication_date) : null,
+    foodCategory: row2.food_category != null ? String(row2.food_category) : null,
+    kcalPer100g: Number(row2.kcal_100g ?? 0),
+    carbsPer100g: Number(row2.carbs_100g ?? 0),
+    proteinPer100g: Number(row2.protein_100g ?? 0),
+    fatPer100g: Number(row2.fat_100g ?? 0),
+    fiberPer100g: row2.fiber_100g != null ? Number(row2.fiber_100g) : null,
+    sugarsPer100g: row2.sugars_100g != null ? Number(row2.sugars_100g) : null,
+    sodiumMgPer100g: row2.sodium_mg_100g != null ? Number(row2.sodium_mg_100g) : null,
+    glycemicIndexEstimate: row2.glycemic_index_estimate != null ? Number(row2.glycemic_index_estimate) : null,
+    insulinIndexEstimate: row2.insulin_index_estimate != null ? Number(row2.insulin_index_estimate) : null,
+    glycemicLoadPer100g: row2.glycemic_load_100g != null ? Number(row2.glycemic_load_100g) : null,
+    insulinLoadPer100g: row2.insulin_load_100g != null ? Number(row2.insulin_load_100g) : null,
+    metabolicIndices: row2.metabolic_indices && typeof row2.metabolic_indices === "object" ? row2.metabolic_indices : {}
+  };
+  const rawLines = asMicroArray(row2.nutrients_raw);
+  if (rawLines.length > 0) {
+    const p = partitionFdcNutrientsFromCompact(rawLines);
+    return {
+      ...base,
+      vitamins: p.vitamins,
+      minerals: p.minerals,
+      aminoAcids: p.aminoAcids,
+      fattyAcids: p.fattyAcids,
+      otherNutrients: p.other
+    };
+  }
+  return {
+    ...base,
+    vitamins: asMicroArray(row2.vitamins),
+    minerals: asMicroArray(row2.minerals),
+    aminoAcids: asMicroArray(row2.amino_acids),
+    fattyAcids: asMicroArray(row2.fatty_acids),
+    otherNutrients: asMicroArray(row2.other_nutrients)
+  };
+}
+function chunkNumericIds(ids, size) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+  return out;
+}
+async function loadFdcFoodsByIds(fdcIds) {
+  const ids = [
+    ...new Set(
+      fdcIds.map((v) => Math.round(Number(v))).filter((id) => Number.isFinite(id) && id >= 1)
+    )
+  ];
+  const out = /* @__PURE__ */ new Map();
+  if (ids.length === 0) return out;
+  const admin = createSupabaseAdminClient();
+  if (!admin) return out;
+  for (const chunk of chunkNumericIds(ids, FDC_BATCH_SELECT_CHUNK)) {
+    const { data, error } = await admin.from("nutrition_fdc_foods").select("*").in("fdc_id", chunk);
+    if (error && error.code !== "42P01") break;
+    if (!Array.isArray(data)) continue;
+    for (const row2 of data) {
+      const r = row2;
+      const id = Math.round(Number(r.fdc_id));
+      if (Number.isFinite(id) && id >= 1) out.set(id, cachedFoodFromDbRow(r));
+    }
+  }
+  return out;
+}
+
+// apps/web/lib/nutrition/fdc-to-canonical-scaler.ts
+async function buildFdcCanonicalSnapshot(canonicalKeys) {
+  const uniqueKeys = Array.from(new Set(canonicalKeys));
+  const fdcIds = uniqueKeys.map((k) => fdcIdForCanonicalKey(k)).filter((id) => typeof id === "number");
+  if (fdcIds.length === 0) return {};
+  const foodsByFdcId = await loadFdcFoodsByIds(fdcIds);
+  return buildFdcCanonicalSnapshotFromFoods(uniqueKeys, foodsByFdcId);
+}
+var OLIVE_OIL_G_PER_ML2 = 0.92;
+var LIQUID_DAIRY_G_PER_ML2 = 1.03;
+var LIQUIDS_AS_GRAMS_KEYS2 = /* @__PURE__ */ new Set([
+  "milk_2pct",
+  "milk_goat",
+  "yogurt_plain",
+  "plant_drink_almond",
+  "plant_drink_rice",
+  "plant_drink_oat",
+  "plant_drink_generic"
+]);
+function parseGramsFromHint(hint, compositionKey) {
+  const text = hint.trim();
+  if (!text) return void 0;
+  if (looksLikeMultiIngredientPortionHint(text)) return void 0;
+  const grams = text.match(/(\d+(?:[.,]\d+)?)\s*g(?:rammi?)?\b/i);
+  if (grams) {
+    const v = parseFloat(grams[1].replace(",", "."));
+    if (Number.isFinite(v) && v > 0) return v;
+  }
+  const ml = text.match(/(\d+(?:[.,]\d+)?)\s*ml\b/i);
+  if (ml) {
+    const v = parseFloat(ml[1].replace(",", "."));
+    if (Number.isFinite(v) && v > 0) {
+      if (compositionKey === "olive_oil") return v * OLIVE_OIL_G_PER_ML2;
+      if (LIQUIDS_AS_GRAMS_KEYS2.has(compositionKey)) return v * LIQUID_DAIRY_G_PER_ML2;
+    }
+  }
+  return void 0;
+}
+function reconcileScaledNutrients(scaled, approxKcal, canonical) {
+  if (approxKcal <= 0 || scaled.kcal <= 0) return scaled;
+  const deviation = Math.abs(scaled.kcal - approxKcal) / Math.max(approxKcal, 1);
+  if (deviation <= 0.2) return scaled;
+  return scaleCanonicalNutrientsToKcal(canonical, approxKcal);
+}
+function scaleFromCanonical(canonical, item2, compositionKey, giMeta) {
+  if (!isPlausiblePer100gMacros({
+    kcal_100: canonical.kcalPer100g,
+    carbs_100: canonical.carbsG,
+    protein_100: canonical.proteinG,
+    fat_100: canonical.fatG
+  })) {
+    const tsFallback = CANONICAL_FOOD_TABLE[compositionKey.replace(/^fdc:\d+$/, "")];
+    if (tsFallback?.kcalPer100g) {
+      return scaleCanonicalNutrientsToKcal(tsFallback, item2.approxKcal);
+    }
+    return scaleCanonicalNutrientsToKcal(canonical, item2.approxKcal);
+  }
+  const hintForServing = `${item2.portionHint} ${item2.name}`.trim();
+  const grams = parseGramsFromHint(hintForServing, compositionKey);
+  let scaled = grams != null ? scaleCanonicalNutrientsToGrams(canonical, grams) : scaleCanonicalNutrientsToKcal(canonical, item2.approxKcal);
+  scaled = reconcileScaledNutrients(scaled, item2.approxKcal, canonical);
+  if (giMeta) {
+    const massG = grams ?? (canonical.kcalPer100g > 0 ? item2.approxKcal * 100 / canonical.kcalPer100g : 0);
+    scaled.glycemicIndex = giMeta.gi;
+    scaled.insulinIndex = giMeta.ii;
+    scaled.glycemicLoad = Number((giMeta.glPer100g * massG / 100).toFixed(2));
+  }
+  return scaled;
+}
+function nutrientsForMealPlanItemFromCache(item2, snapshot) {
+  const fdcKey = item2.compositionKey?.startsWith("fdc:") ? item2.compositionKey : null;
+  if (fdcKey && snapshot[fdcKey]) {
+    const fdc2 = snapshot[fdcKey];
+    const scaled2 = scaleFromCanonical(fdc2.canonical, item2, fdcKey, {
+      gi: fdc2.gi,
+      ii: fdc2.ii,
+      glPer100g: fdc2.glPer100g
+    });
+    return { compositionKey: fdcKey, compositionStatus: "fdc_cache", nutrients: scaled2 };
+  }
+  const compositionKey = inferCanonicalFoodKeyPreferName(item2.name, item2.portionHint);
+  if (compositionKey === "generic_mixed") {
+    return {
+      compositionKey: "unresolved",
+      compositionStatus: "unresolved",
+      nutrients: zeroScaled()
+    };
+  }
+  const fdc = snapshot[compositionKey];
+  const tsRow = CANONICAL_FOOD_TABLE[compositionKey];
+  const canonical = fdc?.canonical ?? tsRow;
+  if (!canonical || !canonical.kcalPer100g) {
+    return {
+      compositionKey: "unresolved",
+      compositionStatus: "unresolved",
+      nutrients: zeroScaled()
+    };
+  }
+  const scaled = scaleFromCanonical(
+    canonical,
+    item2,
+    compositionKey,
+    fdc ? { gi: fdc.gi, ii: fdc.ii, glPer100g: fdc.glPer100g } : void 0
+  );
+  if (fdc) {
+    return { compositionKey, compositionStatus: "fdc_cache", nutrients: scaled };
+  }
+  return { compositionKey, compositionStatus: "canonical_estimate", nutrients: scaled };
+}
+function zeroScaled() {
+  return {
+    kcal: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+    fiberG: 0,
+    saturatedFatG: 0,
+    monoFatG: 0,
+    polyFatG: 0,
+    omega3G: 0,
+    vitA_mcg_RAE: 0,
+    vitC_mg: 0,
+    vitD_mcg: 0,
+    vitE_mg: 0,
+    vitK_mcg: 0,
+    thiamineB1_mg: 0,
+    riboflavinB2_mg: 0,
+    niacinB3_mg: 0,
+    vitB6_mg: 0,
+    folate_mcg: 0,
+    vitB12_mcg: 0,
+    ca_mg: 0,
+    fe_mg: 0,
+    mg_mg: 0,
+    p_mg: 0,
+    k_mg: 0,
+    na_mg: 0,
+    zn_mg: 0,
+    se_mcg: 0,
+    eaa_leu: 0,
+    eaa_lys: 0,
+    eaa_met: 0,
+    eaa_phe: 0,
+    eaa_thr: 0,
+    eaa_trp: 0,
+    eaa_ile: 0,
+    eaa_val: 0,
+    eaa_his: 0,
+    glycemicIndex: 0,
+    insulinIndex: 0,
+    glycemicLoad: 0
+  };
+}
+
+// apps/web/lib/nutrition/meal-plan-hydration-routine.ts
+function parseMinutes(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm).trim());
+  if (!m) return null;
+  const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+  const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+  return h * 60 + min;
+}
+function formatMinutes(total) {
+  const day = 24 * 60;
+  const t = (total % day + day) % day;
+  const h = Math.floor(t / 60);
+  const m = t % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function buildHydrationRoutineFromMealPlanRequest(req) {
+  const totalKcal = Math.max(800, req.mealPlanSolverMeta.dailyMealsKcalTotal);
+  const baselineDailyMl = Math.max(2200, Math.round(Math.min(4200, totalKcal * 0.62 + 1350)));
+  const hasTraining = req.trainingDayLines.some((l) => String(l).trim().length > 0);
+  let trainingExtraMl = hasTraining ? 720 : 320;
+  const joined = req.trainingDayLines.join(" ");
+  const durMatch = joined.match(/(\d+)\s*min/);
+  if (durMatch) {
+    const dm = parseInt(durMatch[1], 10);
+    if (Number.isFinite(dm) && dm > 0) trainingExtraMl = Math.max(480, Math.round(dm * 11));
+  }
+  const totalTargetMl = baselineDailyMl + trainingExtraMl;
+  const ordered = [...req.slots].map((s) => ({
+    slot: s.slot,
+    labelIt: s.labelIt,
+    scheduledTimeLocal: s.scheduledTimeLocal,
+    m: parseMinutes(s.scheduledTimeLocal) ?? 12 * 60
+  })).sort((a, b) => a.m - b.m);
+  const windows = [];
+  const first = ordered[0];
+  if (first) {
+    const wakeM = Math.max(6 * 60, first.m - 50);
+    windows.push({
+      labelIt: "Mattino \u2014 idratazione iniziale / pre-primo pasto",
+      scheduledTimeLocal: formatMinutes(wakeM),
+      volumeMl: 420,
+      notesIt: "Acqua a piccoli sorsi; utile prima della colazione o al risveglio.",
+      sodiumMg: 0,
+      potassiumMg: 0,
+      magnesiumMg: 0
+    });
+  }
+  for (const s of ordered) {
+    if (s.slot === "breakfast" || s.slot === "lunch" || s.slot === "dinner") {
+      const ml = s.slot === "lunch" ? 450 : s.slot === "dinner" ? 380 : 360;
+      windows.push({
+        labelIt: `Pasto \u2014 ${s.labelIt}`,
+        scheduledTimeLocal: s.scheduledTimeLocal?.trim() ? s.scheduledTimeLocal : formatMinutes(s.m),
+        volumeMl: ml,
+        notesIt: "Durante il pasto o nei 20' precedenti; distribuisci in pi\xF9 bicchieri.",
+        sodiumMg: Math.round(ml * 0.035),
+        potassiumMg: Math.round(ml * 0.018),
+        magnesiumMg: Math.round(ml * 0.012)
+      });
+    }
+    if (s.slot === "snack_am" || s.slot === "snack_pm") {
+      windows.push({
+        labelIt: `Spuntino \u2014 ${s.labelIt}`,
+        scheduledTimeLocal: s.scheduledTimeLocal?.trim() ? s.scheduledTimeLocal : formatMinutes(s.m),
+        volumeMl: 300,
+        notesIt: "Associa acqua alla merenda; se allenamento intenso entro 2h, +150 ml.",
+        sodiumMg: 8,
+        potassiumMg: 5,
+        magnesiumMg: 3
+      });
+    }
+  }
+  if (hasTraining) {
+    windows.push({
+      labelIt: "Allenamento \u2014 peri / post (fluidi + elettroliti se seduta lunga o caldo)",
+      scheduledTimeLocal: "\u2014",
+      volumeMl: trainingExtraMl,
+      notesIt: "Se sudorazione elevata: integra Na/K/Mg (bevanda o protocollo concordato).",
+      sodiumMg: Math.min(900, Math.round(trainingExtraMl * 0.5)),
+      potassiumMg: Math.round(trainingExtraMl * 0.11),
+      magnesiumMg: Math.round(trainingExtraMl * 0.035)
+    });
+  }
+  windows.push({
+    labelIt: "Sera \u2014 chiusura idratazione",
+    scheduledTimeLocal: "21:15",
+    volumeMl: 260,
+    notesIt: "Volume moderato se sensibilit\xE0 a risvegli notturni per diuresi.",
+    sodiumMg: 0,
+    potassiumMg: 0,
+    magnesiumMg: 0
+  });
+  const sumVol = windows.reduce((a, w) => a + w.volumeMl, 0);
+  const scale = sumVol > 0 ? totalTargetMl / sumVol : 1;
+  const scaled = windows.map((w) => ({
+    ...w,
+    volumeMl: Math.max(100, Math.round(w.volumeMl * scale))
+  }));
+  return {
+    baselineDailyMl,
+    trainingExtraMl,
+    totalTargetMl,
+    windows: scaled
+  };
+}
+
+// apps/web/lib/nutrition/meal-plan-nutrient-integration-hints.ts
+function buildMealPlanNutrientIntegrationHints(day) {
+  const lines = [];
+  if (day.fiberG < 22) {
+    lines.push(
+      "Fibre sotto target: pi\xF9 verdura/legumi/integrali; in alternativa integrazione fibre solo se concordata."
+    );
+  }
+  if (day.omega3G < 1.2) {
+    lines.push("Omega-3 bassi: pesce azzurro o integrazione EPA/DHA se prescritta.");
+  }
+  if (day.vitD_mcg < 8) {
+    lines.push("Vitamina D: sole sicuro, alimenti fortificati o integrazione solo su parere clinico.");
+  }
+  if (day.ca_mg < 700) {
+    lines.push("Calcio sotto soglia: latticini/bevande fortificate o integrazione se concordata.");
+  }
+  if (day.fe_mg < 9 && day.proteinG < 90) {
+    lines.push("Ferro: privilegia fonti eme e vitamina C a pasto; integrazione solo se indicata.");
+  }
+  return lines.slice(0, 5);
+}
+
+// apps/web/lib/nutrition/meal-plan-protein-dedupe.ts
+var FAMILY_ORDER = ["poultry", "fish", "legume", "red_meat", "egg"];
+function haystack(it) {
+  return `${it.name} ${it.portionHint}`.toLowerCase();
+}
+function isSecondaryDairyOrPowder(it) {
+  if (it.macroRole !== "protein") return false;
+  const t = haystack(it);
+  if (/\buov|\beggs?\b|frittata|strapazzat|omelett/i.test(t)) return false;
+  return /yogurt|kefir|latte |bevanda (di )?(mandorla|riso|avena)|proteine in polvere|whey|shake proteic/i.test(t) || /(grana|parmigiano|formaggio).{0,24}(gratt|fette)/i.test(t);
+}
+function proteinFamilyFromItem(it) {
+  if (it.macroRole !== "protein") return null;
+  if (isSecondaryDairyOrPowder(it)) return null;
+  const t = haystack(it);
+  if (/\buov|\beggs?\b|frittata|strapazzat|omelett|albumi/i.test(t)) return "egg";
+  if (/merluzz|salmon|salmone|tonn|sgombr|spigol|pesce|acciug|gamber|filetto|orata|branzin|trota|sarde/i.test(t)) {
+    return "fish";
+  }
+  if (/pollo|tacchino|petto|pollo|turkey|chicken/i.test(t)) return "poultry";
+  if (/legum|lenticch|ceci|fagiol|pisell|cece|hummus|soia edamame/i.test(t)) return "legume";
+  if (/manzo|maiale|agnell|carne magra|bresaola|vitello|hamburger|spezzatin|ragù|prosciutto cotto|prosciutto crudo|affettat/i.test(t)) {
+    return "red_meat";
+  }
+  return null;
+}
+function collectLunchFamilies(lunch) {
+  const s = /* @__PURE__ */ new Set();
+  for (const it of lunch.items) {
+    const f = proteinFamilyFromItem(it);
+    if (f) s.add(f);
+  }
+  return s;
+}
+function templateFor(family, approxKcal) {
+  const note = "Variazione automatica EMPATHY: evitata la stessa famiglia proteica principale gi\xE0 usata a pranzo (stesso giorno).";
+  switch (family) {
+    case "poultry":
+      return {
+        name: "Proteina: pollo/tacchino",
+        portionHint: `${approxKcal >= 280 ? 200 : 170} g petto di pollo o tacchino`,
+        functionalBridge: note
+      };
+    case "fish":
+      return {
+        name: "Proteina: merluzzo",
+        portionHint: `${approxKcal >= 280 ? 220 : 190} g merluzzo o altro pesce magro (cottura semplice)`,
+        functionalBridge: note
+      };
+    case "legume":
+      return {
+        name: "Proteina: legumi",
+        portionHint: `${approxKcal >= 280 ? 220 : 190} g legumi cotti (ceci, lenticchie o fagioli)`,
+        functionalBridge: note
+      };
+    case "red_meat":
+      return {
+        name: "Proteina: carne magra",
+        portionHint: `${approxKcal >= 280 ? 180 : 150} g carne magra (manzo/maiale magro)`,
+        functionalBridge: note
+      };
+    case "egg":
+      return {
+        name: "Proteina: uova",
+        portionHint: `${approxKcal >= 320 ? 3 : 2} uova (frittata o strapazzate)`,
+        functionalBridge: note
+      };
+    default:
+      return templateFor("poultry", approxKcal);
+  }
+}
+function pickReplacementFamily(lunchFamilies, duplicate) {
+  for (const f of FAMILY_ORDER) {
+    if (f === duplicate) continue;
+    if (!lunchFamilies.has(f)) return f;
+  }
+  for (const f of FAMILY_ORDER) {
+    if (f !== duplicate) return f;
+  }
+  return "poultry";
+}
+function dedupeLunchDinnerMainProteins(slots) {
+  const bySlot = new Map(slots.map((s) => [s.slot, s]));
+  const lunch = bySlot.get("lunch");
+  const dinner = bySlot.get("dinner");
+  if (!lunch || !dinner) return slots;
+  const lunchFamilies = collectLunchFamilies(lunch);
+  if (lunchFamilies.size === 0) return slots;
+  let changed = false;
+  const newItems = dinner.items.map((it) => {
+    if (it.macroRole !== "protein") return it;
+    const fam = proteinFamilyFromItem(it);
+    if (!fam || !lunchFamilies.has(fam)) return it;
+    changed = true;
+    const alt = pickReplacementFamily(lunchFamilies, fam);
+    const t = templateFor(alt, Math.max(40, it.approxKcal));
+    return {
+      ...it,
+      name: t.name,
+      portionHint: t.portionHint.slice(0, 160),
+      functionalBridge: `${it.functionalBridge} ${t.functionalBridge}`.slice(0, 500)
+    };
+  });
+  if (!changed) return slots;
+  return slots.map((s) => s.slot === "dinner" ? { ...s, items: newItems } : s);
+}
+
+// apps/web/lib/nutrition/pathway-target-rollup-compare.ts
+var EDUCATIONAL_DAY_FLOORS = {
+  folate_mcg: 300,
+  vitC_mg: 70,
+  vitB12_mcg: 2,
+  fe_mg: 9,
+  mg_mg: 280,
+  zn_mg: 8,
+  ca_mg: 700,
+  vitD_mcg: 8,
+  omega3G: 1.2,
+  fiberG: 22,
+  thiamineB1_mg: 1,
+  riboflavinB2_mg: 1,
+  niacinB3_mg: 12,
+  vitB6_mg: 1,
+  se_mcg: 45
+};
+var UNITS = {
+  folate_mcg: "mcg",
+  vitC_mg: "mg",
+  vitB12_mcg: "mcg",
+  fe_mg: "mg",
+  mg_mg: "mg",
+  zn_mg: "mg",
+  ca_mg: "mg",
+  vitD_mcg: "mcg",
+  omega3G: "g",
+  fiberG: "g",
+  thiamineB1_mg: "mg",
+  riboflavinB2_mg: "mg",
+  niacinB3_mg: "mg",
+  vitB6_mg: "mg",
+  se_mcg: "mcg",
+  vitA_mcg_RAE: "mcg",
+  vitE_mg: "mg",
+  vitK_mcg: "mcg",
+  p_mg: "mg",
+  k_mg: "mg",
+  na_mg: "mg"
+};
+function dayValueForNutrient(day, id) {
+  const v = day[id];
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+function buildPathwayTargetRollupComparison(targets, dayTotals) {
+  const seen = /* @__PURE__ */ new Set();
+  const lines = [];
+  for (const t of targets) {
+    if (seen.has(t.nutrientId)) continue;
+    seen.add(t.nutrientId);
+    const floor = EDUCATIONAL_DAY_FLOORS[t.nutrientId];
+    if (floor == null) continue;
+    const dayValue = dayValueForNutrient(dayTotals, t.nutrientId);
+    const unit = UNITS[t.nutrientId] ?? "";
+    lines.push({
+      nutrientId: t.nutrientId,
+      labelIt: t.labelIt,
+      dayValue: Math.round(dayValue * 100) / 100,
+      unit,
+      floor,
+      status: dayValue >= floor ? "met" : "low"
+    });
+  }
+  return lines.slice(0, 12);
+}
+
+// apps/web/lib/nutrition/meal-plan-response-finalize.ts
+function enrichSlot(slot, snapshot) {
+  const items = slot.items.map((it) => {
+    const { compositionKey, compositionStatus, nutrients } = nutrientsForMealPlanItemFromCache(
+      {
+        name: it.name,
+        portionHint: it.portionHint,
+        approxKcal: it.approxKcal,
+        compositionKey: it.compositionKey
+      },
+      snapshot
+    );
+    return {
+      ...it,
+      compositionKey: it.compositionKey ?? compositionKey,
+      compositionStatus,
+      nutrients
+    };
+  });
+  return { ...slot, items };
+}
+async function finalizeIntelligentMealPlanCore(core, req, snapshot) {
+  const slotsDeduped = dedupeLunchDinnerMainProteins(core.slots);
+  const fdcSnapshot = snapshot ?? await buildFdcCanonicalSnapshot(
+    slotsDeduped.flatMap((s) => s.items.map((it) => inferCanonicalFoodKeyPreferName(it.name, it.portionHint)))
+  );
+  const slots = slotsDeduped.map((s) => enrichSlot(s, fdcSnapshot));
+  const byReq = new Map(req.slots.map((s) => [s.slot, s]));
+  const perSlot = slots.map((s) => {
+    const meta = byReq.get(s.slot);
+    const totals = sumScaledNutrients(s.items.map((i) => i.nutrients));
+    return {
+      slot: s.slot,
+      labelIt: meta?.labelIt ?? s.slot,
+      scheduledTimeLocal: meta?.scheduledTimeLocal ?? "",
+      totals
+    };
+  });
+  const dayTotals = sumScaledNutrients(perSlot.map((p) => p.totals));
+  const integrationHints = buildMealPlanNutrientIntegrationHints(dayTotals);
+  let dayInteractionSummary = core.dayInteractionSummary;
+  if (integrationHints.length) {
+    dayInteractionSummary = `${dayInteractionSummary} \xB7 ${integrationHints.join(" \xB7 ")}`.slice(0, 900);
+  }
+  const boostTargets = req.nutrientBoostTargets?.filter(
+    (t) => typeof t.nutrientId === "string" && typeof t.labelIt === "string" && t.labelIt.trim() !== ""
+  ) ?? [];
+  const pathwayTargetRollup = boostTargets.length > 0 ? buildPathwayTargetRollupComparison(boostTargets, dayTotals) : void 0;
+  return {
+    ...core,
+    slots,
+    dayInteractionSummary,
+    pathwayTargetRollup,
+    nutrientRollup: {
+      disclaimerIt: "Composizione da cache USDA FDC (nutrition_fdc_foods) quando disponibile; fallback alla banca canonica interna per voci non ancora mappate. GI/II derivati da macro USDA (Wolever-style estimate, salvati in DB).",
+      dayTotals,
+      perSlot
+    },
+    hydrationRoutine: buildHydrationRoutineFromMealPlanRequest(req)
+  };
+}
+
+// apps/web/lib/nutrition/v2/map-v2-plan-to-v1-response.ts
+function macroRoleFromItem(choG, proG, fatG) {
+  const choK = choG * 4;
+  const proK = proG * 4;
+  const fatK = fatG * 9;
+  const total = choK + proK + fatK;
+  if (total <= 0) return "mixed";
+  if (choK / total >= 0.55) return "cho_heavy";
+  if (proK / total >= 0.35) return "protein";
+  if (fatK / total >= 0.45) return "fat";
+  return "mixed";
+}
+function mapItem(item2, slotKey, itemIndex) {
+  const label = item2.description;
+  const roles = MEAL_SLOT_ASSEMBLY[slotKey] ?? [];
+  const spec = roles[itemIndex] ?? roles[roles.length - 1] ?? {
+    foodRole: "cho_simple",
+    lever: "cho",
+    poolKey: "snack_cho",
+    minG: 25,
+    maxG: 180,
+    stepG: 5
+  };
+  const canonicalKey = item2.canonicalKey;
+  const compositionKey = item2.fdcId > 0 && item2.servingBasis ? `fdc:${item2.fdcId}` : canonicalKey && fdcIdForCanonicalKey(canonicalKey) ? `fdc:${fdcIdForCanonicalKey(canonicalKey)}` : canonicalKey ?? `fdc:${item2.fdcId}`;
+  return {
+    name: label,
+    portionHint: portionHintIt(label, item2.grams, spec, item2.servingBasis),
+    functionalBridge: "Alimentazione sportiva \xB7 staple canonico",
+    approxKcal: Math.round(item2.kcal),
+    macroRole: macroRoleFromItem(item2.choG, item2.proG, item2.fatG),
+    compositionKey,
+    compositionStatus: compositionKey.startsWith("fdc:") ? "fdc_cache" : "canonical_estimate"
+  };
+}
+function slotCoherenceFor(slot, suppressed) {
+  if (suppressed) {
+    return "Pasto soppresso: energia in finestra allenamento \u2192 modulo Fueling (substrati V2).";
+  }
+  return "Composizione mediterranea sportiva: primo + secondo + contorno (V2 staple).";
+}
+function composedMealForSlot(production, slotReq) {
+  const composed = production.composedMealPlan.find((s) => s.slot === slotReq.slot);
+  if (!composed || composed.items.length === 0) {
+    return { items: [], lines: [], totalApproxKcal: 0 };
+  }
+  const items = composed.items.map((it, idx) => mapItem(it, slotReq.slot, idx));
+  return {
+    items: items.map((it) => ({
+      name: it.name,
+      portionHint: it.portionHint,
+      functionalBridge: it.functionalBridge ?? "",
+      approxKcal: it.approxKcal,
+      macroRole: it.macroRole
+    })),
+    lines: items.map((i) => i.portionHint),
+    totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0)
+  };
+}
+function mapV2PlanToV1AssembledCore(production, request) {
+  const suppressed = new Set(request.suppressedSlots ?? []);
+  const slotMeta = new Map(request.slots.map((s) => [s.slot, s]));
+  const preEnrichSlots = production.composedMealPlan.map((composed) => {
+    const slotKey = composed.slot;
+    const meta = slotMeta.get(slotKey);
+    const isSuppressed = suppressed.has(slotKey);
+    if (isSuppressed) {
+      return {
+        slot: slotKey,
+        targetKcalEcho: composed.targetKcal,
+        items: [
+          {
+            name: "Fueling in seduta",
+            portionHint: "Vedi timeline Fueling",
+            functionalBridge: "CHO intra da substrati fisiologici",
+            approxKcal: 0,
+            macroRole: "cho_heavy"
+          }
+        ],
+        slotCoherence: slotCoherenceFor(slotKey, true),
+        slotTimingRationale: meta?.scheduledTimeLocal ? `Orario ${meta.scheduledTimeLocal}: slot dentro finestra training.` : "Slot in finestra training."
+      };
+    }
+    return {
+      slot: slotKey,
+      targetKcalEcho: composed.targetKcal,
+      items: composed.items.map((it, idx) => mapItem(it, slotKey, idx)),
+      slotCoherence: slotCoherenceFor(slotKey, false),
+      slotTimingRationale: meta?.scheduledTimeLocal ? `Pasto ${meta.labelIt} alle ${meta.scheduledTimeLocal} \xB7 target Diet ${composed.targetKcal} kcal.` : `Target Diet ${composed.targetKcal} kcal.`
+    };
+  });
+  const enrichedSlots = enrichMealSlotsAfterCompose({
+    request,
+    slots: preEnrichSlots,
+    getBaseMealForSlot: (slotReq) => composedMealForSlot(production, slotReq)
+  });
+  const fuelNote = production.requirements.substrateFueling ? `Fueling V2: ${production.requirements.energy.fuelingKcal} kcal oral (CHO substrati).` : "";
+  return {
+    layer: "deterministic_meal_assembly_v1",
+    disclaimer: `Piano generato con motore Nutrition V2 (staple sportivi + fueling substrati). ${fuelNote} Ripartizione pasti da Profile Diet.`,
+    slots: enrichedSlots,
+    dayInteractionSummary: dayInteractionSummaryExtras(
+      request,
+      [`Strategia ${production.requirements.strategyKind}`, fuelNote].filter(Boolean).join(" \xB7 ")
+    ),
+    mealRotationStaples: composedStaples(production),
+    pathwayBoostStatus: pathwayBoostStatusFromRequest(request)
+  };
+}
+function composedStaples(production) {
+  const items = production.composedMealPlan.flatMap((slot) => slot.items);
+  return mealRotationStaplesFromComposedItems(items);
+}
+async function mapV2PlanToV1Response(production, request) {
+  const core = mapV2PlanToV1AssembledCore(production, request);
+  const fdcIds = /* @__PURE__ */ new Set();
+  const canonicalKeys = [];
+  for (const slot of core.slots) {
+    for (const it of slot.items) {
+      const key = it.compositionKey ?? "";
+      if (key.startsWith("fdc:")) {
+        const id = Number(key.slice(4));
+        if (Number.isFinite(id) && id > 0) fdcIds.add(id);
+      } else if (key && !key.startsWith("fdc:")) {
+        canonicalKeys.push(key);
+      }
+    }
+  }
+  for (const slot of production.composedMealPlan) {
+    for (const it of slot.items) {
+      if (it.fdcId > 0) fdcIds.add(it.fdcId);
+      if (it.canonicalKey) canonicalKeys.push(it.canonicalKey);
+    }
+  }
+  const foodsByFdcId = fdcIds.size > 0 ? await loadFdcFoodsByIds([...fdcIds]) : /* @__PURE__ */ new Map();
+  const snapFdc = buildFdcCanonicalSnapshotFromFdcIds([...fdcIds], foodsByFdcId);
+  const snapCanon = buildFdcCanonicalSnapshotFromFoods([...new Set(canonicalKeys)], foodsByFdcId);
+  const snapshot = { ...snapCanon, ...snapFdc };
+  return finalizeIntelligentMealPlanCore(core, request, snapshot);
+}
+
 // apps/web/lib/nutrition/v2/persist-v2-plan-to-db.ts
 function num2(v) {
   const n = Number(v);
@@ -6318,8 +8407,89 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
   }
   return { ok: true, planId };
 }
+
+// apps/web/lib/nutrition/meal-plan-solver-basis.ts
+function profileConstraintLines(req) {
+  const lines = [];
+  if (req.dietType?.trim()) lines.push(`Dieta dichiarata: ${req.dietType.trim()}`);
+  if (req.allergies?.length) lines.push(`Allergie: ${req.allergies.join(", ")}`);
+  if (req.intolerances?.length) lines.push(`Intolleranze: ${req.intolerances.join(", ")}`);
+  if (req.foodExclusions?.length) lines.push(`Esclusioni alimentari: ${req.foodExclusions.join(", ")}`);
+  if (req.foodPreferences?.length) lines.push(`Preferenze: ${req.foodPreferences.join(", ")}`);
+  if (req.supplements?.length) lines.push(`Integratori (nota): ${req.supplements.join(", ")}`);
+  return lines;
+}
+function buildSolverBasisFromRequest(req) {
+  const postWorkoutMealBySlot = req.postWorkoutMealBySlot && Object.keys(req.postWorkoutMealBySlot).length ? req.postWorkoutMealBySlot : void 0;
+  const suppressedSlots = req.suppressedSlots && req.suppressedSlots.length > 0 ? [...req.suppressedSlots] : void 0;
+  const nutrientBoostTargets = req.nutrientBoostTargets && req.nutrientBoostTargets.length > 0 ? req.nutrientBoostTargets.map((t) => ({ nutrientId: t.nutrientId, labelIt: t.labelIt })) : void 0;
+  const pathwayModulationActiveLabels = req.pathwayModulationActiveLabels && req.pathwayModulationActiveLabels.trim() ? req.pathwayModulationActiveLabels.trim().slice(0, 360) : void 0;
+  return {
+    source: "nutrition_meal_plan_solver",
+    planDate: req.planDate,
+    dailyMealsKcalTotal: req.mealPlanSolverMeta.dailyMealsKcalTotal,
+    dietType: req.dietType,
+    profileConstraintLines: profileConstraintLines(req),
+    trainingDayLines: [...req.trainingDayLines],
+    routineDigest: req.routineDigest,
+    integrationLeverLines: [...req.mealPlanSolverMeta.integrationLeverLines],
+    pathwayTimingLines: [...req.pathwayTimingLines],
+    aggregateInhibitors: req.aggregateInhibitors ? [...req.aggregateInhibitors] : null,
+    postWorkoutMealBySlot,
+    suppressedSlots,
+    nutrientBoostTargets,
+    pathwayModulationActiveLabels,
+    slots: req.slots.map((s) => ({
+      slot: s.slot,
+      labelIt: s.labelIt,
+      scheduledTimeLocal: s.scheduledTimeLocal,
+      targetKcal: s.targetKcal,
+      targetCarbsG: s.targetCarbsG,
+      targetProteinG: s.targetProteinG,
+      targetFatG: s.targetFatG
+    }))
+  };
+}
+function attachSolverBasisToAssembled(core, req) {
+  return {
+    ...core,
+    solverBasis: buildSolverBasisFromRequest(req)
+  };
+}
+
+// apps/web/lib/coach-org-id.ts
+var EMPATHY_DEFAULT_ORG_ID = "00000000-0000-4000-8000-000000000001";
+function coachOrgIdForDb() {
+  const fromEnv = process.env.EMPATHY_COACH_ATHLETES_ORG_ID?.trim();
+  return fromEnv && fromEnv.length > 0 ? fromEnv : EMPATHY_DEFAULT_ORG_ID;
+}
+
+// apps/web/lib/platform-coach-status.ts
+function coachOperationalApproved(role, status) {
+  if (role !== "coach") return true;
+  return status === "approved";
+}
+
+// apps/web/lib/athlete/can-access-athlete-data.ts
+async function canAccessAthleteData(client, userId, athleteId, orgId) {
+  const { data: prof, error } = await client.from("app_user_profiles").select("role, athlete_id, is_platform_admin, platform_coach_status").eq("user_id", userId).maybeSingle();
+  if (error || !prof) return false;
+  const p = prof;
+  if (p.is_platform_admin === true) return true;
+  const linkedAthleteId = typeof p.athlete_id === "string" ? p.athlete_id : null;
+  if (linkedAthleteId === athleteId) return true;
+  if (p.role !== "coach") return false;
+  if (!coachOperationalApproved("coach", p.platform_coach_status ?? null)) return false;
+  const resolvedOrg = orgId ?? coachOrgIdForDb();
+  const { data: links, error: linkErr } = await client.from("coach_athletes").select("athlete_id").eq("coach_user_id", userId).eq("athlete_id", athleteId).eq("org_id", resolvedOrg).limit(1);
+  if (linkErr) return false;
+  return Boolean(links?.length);
+}
 export {
+  attachSolverBasisToAssembled,
   buildMealPlanV2Production,
+  canAccessAthleteData,
+  mapV2PlanToV1Response,
   persistV2PlanToDb,
   prepareIntelligentMealPlanContext
 };
