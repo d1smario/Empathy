@@ -97,6 +97,23 @@ function pickNumber(record: Record<string, unknown> | null, keys: string[]): num
   return null;
 }
 
+/**
+ * SpO₂ media da una mappa/array di campioni: Garmin manda l'SpO₂ come
+ * `timeOffsetSleepSpo2` (notturna, dentro il sonno) o `timeOffsetSpo2Values`
+ * (Pulse Ox all-day) nella forma {offset→%} oppure [%]. Filtra i valori non
+ * fisiologici (0/valori spuri = nessuna lettura); null se nessun campione valido.
+ */
+function avgSpo2FromSampleMap(value: unknown): number | null {
+  const samples: unknown[] = Array.isArray(value)
+    ? value
+    : asRecord(value)
+      ? Object.values(value as Record<string, unknown>)
+      : [];
+  const vals = samples.map(asNumber).filter((v): v is number => v != null && v >= 50 && v <= 100);
+  if (vals.length === 0) return null;
+  return Math.round(vals.reduce((sum, v) => sum + v, 0) / vals.length);
+}
+
 function addDaysIso(dateIso: string, delta: number): string {
   const base = new Date(`${dateIso.slice(0, 10)}T12:00:00`);
   if (Number.isNaN(base.getTime())) return dateIso.slice(0, 10);
@@ -192,7 +209,24 @@ function extractActivityWellness(payload: Record<string, unknown> | null): {
       "temperature_c",
       "avg_skin_temp_c",
     ]);
-    out.spo2Pct ??= pickNumber(rec, ["spo2", "spo2_percentage", "average_spo2", "blood_oxygen", "avg_spo2"]);
+    out.spo2Pct ??= pickNumber(rec, [
+      "spo2",
+      "spo2_percentage",
+      "average_spo2",
+      "blood_oxygen",
+      "avg_spo2",
+      "averageSpo2",
+      "avgSpo2",
+      "spo2Average",
+      "lastNightAvgSpo2",
+    ]);
+    // Formato a mappa (Garmin): media dei campioni SpO₂ notturni / all-day.
+    if (out.spo2Pct == null) {
+      out.spo2Pct =
+        avgSpo2FromSampleMap(rec.timeOffsetSleepSpo2) ??
+        avgSpo2FromSampleMap(rec.timeOffsetSpo2Values) ??
+        avgSpo2FromSampleMap(rec.spo2Values);
+    }
     if (out.ecgCaptured == null) {
       const ecg = rec.has_ecg ?? rec.ecg_status ?? rec.ecg_capture;
       if (typeof ecg === "boolean") out.ecgCaptured = ecg;

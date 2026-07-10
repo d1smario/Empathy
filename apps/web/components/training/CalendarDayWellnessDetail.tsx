@@ -183,6 +183,7 @@ export function CalendarDayWellnessDetail({ athleteId, selectedDate }: CalendarD
                 value={fmtNumber(panel.activity.respiratoryRateRpm, 1)}
                 unit="rpm"
               />
+              <KpiCell label={t("kpiSpo2")} value={fmtInt(panel.activity.spo2Pct)} unit="%" />
               <KpiCell
                 label={t("kpiSkinTemp")}
                 value={fmtNumber(panel.activity.skinTempC, 1)}
