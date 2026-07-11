@@ -169,6 +169,7 @@ export function buildPro2LifestyleSchedaSessionContract(input: {
   adaptationTarget?: string;
   phase?: string;
   plannedSessionDurationMinutes?: number;
+  scheduledTime?: string;
 }): Pro2BuilderSessionContract {
   const summary = summarizeLifestyleRows(input.rows);
   const blocks = input.rows.map((row) => {
@@ -210,6 +211,7 @@ export function buildPro2LifestyleSchedaSessionContract(input: {
       input.plannedSessionDurationMinutes != null && input.plannedSessionDurationMinutes > 0
         ? Math.round(input.plannedSessionDurationMinutes)
         : undefined,
+    scheduledTime: input.scheduledTime,
     summary,
     renderProfile: input.renderProfile,
     blocks,

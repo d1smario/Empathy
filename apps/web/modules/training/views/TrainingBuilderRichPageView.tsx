@@ -103,6 +103,8 @@ export default function TrainingBuilderRichPageView() {
   const [plannedProvenanceSummary, setPlannedProvenanceSummary] = useState<Partial<Record<string, number>> | null>(null);
   /** Unica data calendario (manuale + generato): evita salvataggi su giorni diversi tra sezioni del builder. */
   const [plannedDate, setPlannedDate] = useState(() => localCalendarDateString());
+  /** Orario canonico della seduta (HH:MM). Obbligatorio in UI, serializzato nel contratto builder in notes. */
+  const [scheduledTime, setScheduledTime] = useState("12:00");
   const [dismissViryaEntryBanner, setDismissViryaEntryBanner] = useState(false);
 
   /** Calendario → builder: `?date=YYYY-MM-DD` + opz. `replace_planned_id` per sostituire la riga pianificata. */
@@ -427,6 +429,7 @@ export default function TrainingBuilderRichPageView() {
       if (!opts?.keepSport) setSport(state.sport);
       setManualSessionName(state.manualSessionName);
       setManualSessionDurationMinutes(state.manualSessionDurationMinutes);
+      setScheduledTime(state.scheduledTime ?? "12:00");
       setIntensityUnit(state.intensityUnit);
       setFtpW(state.ftpW);
       setHrMax(state.hrMax);
@@ -713,6 +716,7 @@ export default function TrainingBuilderRichPageView() {
         sessionName: manualSessionName.trim() || "Scheda Pro 2",
         adaptationTarget: adaptation,
         phase,
+        scheduledTime,
       });
       extraNotesLines = [serializePro2BuilderSessionContract(contract)];
     } else {
@@ -738,6 +742,7 @@ export default function TrainingBuilderRichPageView() {
             ? dayAdaptation.targetPlanned.adaptedDurationMinutes
             : sessionMinutes,
         loadScale,
+        scheduledTime,
       });
       if (contract) {
         extraNotesLines = [serializePro2BuilderSessionContract(contract)];
@@ -793,6 +798,7 @@ export default function TrainingBuilderRichPageView() {
     hrMax,
     lengthMode,
     speedRefKmh,
+    scheduledTime,
     finalizeCalendarSave,
   ]);
 
@@ -857,6 +863,7 @@ export default function TrainingBuilderRichPageView() {
             sessionName: manualSessionName.trim() || "Scheda Pro 2",
             adaptationTarget: adaptation,
             phase,
+            scheduledTime,
           })
         : activeMacroId === "lifestyle"
           ? buildPro2LifestyleSchedaSessionContract({
@@ -866,6 +873,7 @@ export default function TrainingBuilderRichPageView() {
               sessionName: manualSessionName.trim() || "Scheda lifestyle Pro 2",
               adaptationTarget: adaptation,
               phase,
+              scheduledTime,
             })
           : activeMacroId === "technical"
             ? buildPro2TechnicalSchedaSessionContract({
@@ -875,6 +883,7 @@ export default function TrainingBuilderRichPageView() {
                 sessionName: manualSessionName.trim() || "Scheda tecnica Pro 2",
                 adaptationTarget: adaptation,
                 phase,
+                scheduledTime,
                 technicalModuleFocus: {
                   workPhase: techWorkPhase,
                   gameContext: techGameContext,
@@ -889,6 +898,7 @@ export default function TrainingBuilderRichPageView() {
                 adaptationTarget: adaptation,
                 phase,
                 family: activeMacroId,
+                scheduledTime,
               });
     const jsonLine = serializePro2BuilderSessionContract(contract);
     const res = await insertPlannedWorkoutFromEngineSession({
@@ -929,6 +939,7 @@ export default function TrainingBuilderRichPageView() {
     adaptation,
     phase,
     activeMacroId,
+    scheduledTime,
     finalizeCalendarSave,
   ]);
 
@@ -949,6 +960,7 @@ export default function TrainingBuilderRichPageView() {
           sessionName: manualSessionName.trim() || "Scheda Pro 2",
           adaptationTarget: adaptation,
           phase,
+          scheduledTime,
         });
       }
       const loadScale =
@@ -974,6 +986,7 @@ export default function TrainingBuilderRichPageView() {
               ? dayAdaptation.targetPlanned.adaptedDurationMinutes
               : sessionMinutes,
           loadScale,
+          scheduledTime,
         }) ?? null
       );
     }
@@ -986,6 +999,7 @@ export default function TrainingBuilderRichPageView() {
         sessionName: manualSessionName.trim() || "Scheda Pro 2",
         adaptationTarget: adaptation,
         phase,
+        scheduledTime,
       });
     }
     if (activeMacroId === "lifestyle") {
@@ -996,6 +1010,7 @@ export default function TrainingBuilderRichPageView() {
         sessionName: manualSessionName.trim() || "Scheda lifestyle Pro 2",
         adaptationTarget: adaptation,
         phase,
+        scheduledTime,
       });
     }
     if (activeMacroId === "technical") {
@@ -1006,6 +1021,7 @@ export default function TrainingBuilderRichPageView() {
         sessionName: manualSessionName.trim() || "Scheda tecnica Pro 2",
         adaptationTarget: adaptation,
         phase,
+        scheduledTime,
         technicalModuleFocus: {
           workPhase: techWorkPhase,
           gameContext: techGameContext,
@@ -1021,6 +1037,7 @@ export default function TrainingBuilderRichPageView() {
       adaptationTarget: adaptation,
       phase,
       family: activeMacroId,
+      scheduledTime,
     });
   }, [
     genResult,
@@ -1045,6 +1062,7 @@ export default function TrainingBuilderRichPageView() {
     phase,
     dayAdaptation,
     sessionMinutes,
+    scheduledTime,
   ]);
 
   const upcoming = useMemo(() => {
@@ -1246,10 +1264,19 @@ export default function TrainingBuilderRichPageView() {
                 onChange={(e) => setPlannedDate(e.target.value)}
               />
             </label>
+            <label className="flex flex-col gap-1 text-xs text-gray-500">
+              {t("saveBarTime")}
+              <input
+                type="time"
+                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+              />
+            </label>
             <Pro2Button
               type="button"
               variant="primary"
-              disabled={!athleteId || !manualSession || manualSaveBusy}
+              disabled={!athleteId || !manualSession || manualSaveBusy || !scheduledTime}
               onClick={() => void saveManualToCalendar(plannedDate)}
             >
               {manualSaveBusy ? t("saveBarSaving") : t("saveBarSave")}

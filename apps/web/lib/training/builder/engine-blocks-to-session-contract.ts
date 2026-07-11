@@ -446,6 +446,7 @@ export function buildPro2BlockSessionContract(input: {
   phase?: string;
   summary: Pro2SessionSummary;
   plannedSessionDurationMinutes?: number;
+  scheduledTime?: string;
   blocks: TrainingBlock[];
   unit: IntensityDisplayUnit;
   ftpW: number;
@@ -518,6 +519,7 @@ export function buildPro2BlockSessionContract(input: {
     adaptationTarget: input.adaptationTarget,
     phase: input.phase,
     plannedSessionDurationMinutes: input.plannedSessionDurationMinutes,
+    scheduledTime: input.scheduledTime,
     summary: input.summary,
     renderProfile: {
       intensityUnit: input.unit,

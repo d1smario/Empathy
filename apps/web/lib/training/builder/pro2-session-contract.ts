@@ -115,6 +115,8 @@ export type Pro2BuilderSessionContract = {
   phase?: string;
   /** Durata seduta scelta dal coach (calendario); indipendente dalla somma dei segmenti grafico. */
   plannedSessionDurationMinutes?: number;
+  /** Orario canonico della seduta pianificata (HH:MM). Salvato in notes per evitare migration DB. */
+  scheduledTime?: string;
   summary: Pro2SessionSummary;
   renderProfile?: Pro2RenderProfile;
   blocks?: Pro2BuilderBlockContract[];

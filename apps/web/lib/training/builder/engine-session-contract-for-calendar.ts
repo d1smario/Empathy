@@ -24,6 +24,7 @@ export function buildPro2ContractFromEngineGeneration(input: {
   phase?: string;
   plannedSessionDurationMinutes?: number;
   loadScale?: number;
+  scheduledTime?: string;
 }): Pro2BuilderSessionContract | null {
   const { intensityUnit: unit, ftpW, hrMax, lengthMode, speedRefKmh } = input.renderProfile;
   const trainingBlocks = mapEngineSessionToTrainingBlocks({
@@ -51,6 +52,7 @@ export function buildPro2ContractFromEngineGeneration(input: {
     phase: input.phase,
     summary,
     plannedSessionDurationMinutes: effectiveDuration,
+    scheduledTime: input.scheduledTime,
     blocks: scaledBlocks,
     unit,
     ftpW,

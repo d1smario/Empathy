@@ -179,6 +179,7 @@ export function buildPro2TechnicalSchedaSessionContract(input: {
   adaptationTarget?: string;
   phase?: string;
   plannedSessionDurationMinutes?: number;
+  scheduledTime?: string;
   technicalModuleFocus?: TechnicalModuleFocus;
 }): Pro2BuilderSessionContract {
   const summary = summarizeTechnicalRows(input.rows);
@@ -217,6 +218,7 @@ export function buildPro2TechnicalSchedaSessionContract(input: {
       input.plannedSessionDurationMinutes != null && input.plannedSessionDurationMinutes > 0
         ? Math.round(input.plannedSessionDurationMinutes)
         : undefined,
+    scheduledTime: input.scheduledTime,
     summary,
     renderProfile: input.renderProfile,
     blocks,

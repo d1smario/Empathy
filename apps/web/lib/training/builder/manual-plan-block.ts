@@ -453,6 +453,7 @@ export function buildPro2BuilderSessionContract(input: {
   phase?: string;
   family?: SportMacroId;
   plannedSessionDurationMinutes?: number;
+  scheduledTime?: string;
 }): Pro2BuilderSessionContract {
   const fam = input.family ?? "aerobic";
   const opts: PlanExpandOpts = {
@@ -503,6 +504,7 @@ export function buildPro2BuilderSessionContract(input: {
       input.plannedSessionDurationMinutes != null && input.plannedSessionDurationMinutes > 0
         ? Math.round(input.plannedSessionDurationMinutes)
         : undefined,
+    scheduledTime: input.scheduledTime,
     summary,
     renderProfile: input.renderProfile,
     blocks: contractBlocks,

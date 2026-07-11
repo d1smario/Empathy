@@ -25,6 +25,7 @@ export type BuilderStateFromLibraryContract = {
   sport: string;
   manualSessionName: string;
   manualSessionDurationMinutes: number;
+  scheduledTime: string | null;
   intensityUnit: "watt" | "hr";
   ftpW: number;
   hrMax: number;
@@ -188,6 +189,7 @@ export function hydrateBuilderStateFromLibraryContract(
     manualSessionDurationMinutes: normalizeSessionDurationMinutes(
       contract.plannedSessionDurationMinutes ?? durationFallback,
     ),
+    scheduledTime: contract.scheduledTime?.trim() || null,
     intensityUnit: rp?.intensityUnit === "hr" ? "hr" : "watt",
     ftpW: Math.max(50, Math.round(rp?.ftpW ?? 250)),
     hrMax: Math.max(120, Math.round(rp?.hrMax ?? 185)),
