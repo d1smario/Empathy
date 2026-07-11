@@ -1,16 +1,16 @@
 type Labels = { twinTitle: string; readiness: string; load: string; recovery: string };
 
 /** Twin digitale: gauge radiali (readiness/carico/recupero) + score + sweep rotante. */
-export function MiniTwin({ labels }: { labels: Labels }) {
+export function MiniTwin({ labels, className = "" }: { labels: Labels; className?: string }) {
   const rings = [
     { label: labels.readiness, value: 78, r: 40, color: "#fbbf24" },
     { label: labels.load, value: 62, r: 31, color: "#f472b6" },
     { label: labels.recovery, value: 71, r: 22, color: "#22d3ee" },
   ];
   return (
-    <div className="relative mx-auto w-full max-w-md">
+    <div className={`relative mx-auto w-full max-w-md ${className}`}>
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-br from-amber-600/15 to-violet-600/15 blur-2xl" aria-hidden />
-      <div className="rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
+      <div className="flex h-full flex-col justify-center rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
         <div className="mb-3 flex items-center gap-1.5">
           <span className="twin-live h-1.5 w-1.5 rounded-full bg-amber-400" />
           <span className="text-xs font-semibold text-white">{labels.twinTitle}</span>

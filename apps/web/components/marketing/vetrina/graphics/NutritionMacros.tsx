@@ -1,7 +1,7 @@
 type Labels = { nutritionTitle: string; carbs: string; protein: string; fat: string; calories: string };
 
 /** Macro del giorno: donut carbo/proteine/grassi + kcal + barre. SVG illustrativo. */
-export function NutritionMacros({ labels }: { labels: Labels }) {
+export function NutritionMacros({ labels, className = "" }: { labels: Labels; className?: string }) {
   const macros = [
     { label: labels.carbs, grams: 320, pct: 52, color: "#22d3ee" },
     { label: labels.protein, grams: 145, pct: 26, color: "#f472b6" },
@@ -10,7 +10,7 @@ export function NutritionMacros({ labels }: { labels: Labels }) {
   const C = 2 * Math.PI * 34;
   let offset = 0;
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
+    <div className={`rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl ${className}`}>
       <span className="text-xs font-semibold text-white">{labels.nutritionTitle}</span>
       <div className="mt-3 flex items-center gap-5">
         <svg viewBox="0 0 90 90" className="h-24 w-24 shrink-0" role="img" aria-label={labels.nutritionTitle}>

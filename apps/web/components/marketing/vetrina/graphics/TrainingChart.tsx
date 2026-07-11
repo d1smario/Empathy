@@ -4,7 +4,7 @@ type Labels = { trainingTitle: string; power: string; hr: string };
  * Traccia HD potenza & FC di una seduta a intervalli (SVG deterministico, denso e
  * rumoroso come un dato reale). Stile "dettaglio seduta".
  */
-export function TrainingChart({ labels }: { labels: Labels }) {
+export function TrainingChart({ labels, className = "" }: { labels: Labels; className?: string }) {
   const N = 76;
   const W = 280;
   const top = 8;
@@ -33,7 +33,7 @@ export function TrainingChart({ labels }: { labels: Labels }) {
   const ptsH = hr.map((v, i) => `${x(i).toFixed(1)},${yH(v).toFixed(1)}`).join(" ");
 
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
+    <div className={`rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl ${className}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-semibold text-white">{labels.trainingTitle}</span>
         <div className="flex gap-3 text-[10px]">

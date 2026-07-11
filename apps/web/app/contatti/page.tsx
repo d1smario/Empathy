@@ -26,8 +26,8 @@ export default async function ContattiPage({ searchParams }: { searchParams?: { 
           <section className="mt-10">
             <VetrinaContactForm initialKind={initialKind} />
           </section>
-          <FooterSection />
         </div>
+        <FooterSection />
       </main>
     </BrutalistAppBackdrop>
   );

@@ -5,15 +5,15 @@ type Labels = { physioTitle: string; lactate: string; threshold: string; power: 
  * Look "lab" tech: griglia fine, glow al neon, pulsazione che corre sulla curva
  * (come l'ECG) e marker soglia che pulsa. SVG + CSS, reduced-motion safe.
  */
-export function PhysiologyChart({ labels }: { labels: Labels }) {
+export function PhysiologyChart({ labels, className = "" }: { labels: Labels; className?: string }) {
   const lactate = "20,132 60,128 100,122 140,112 180,96 210,72 236,40 258,16";
   const hr = "20,120 60,112 100,102 140,90 180,76 210,62 236,48 258,36";
   const thresholdX = 200;
   const tp = { x: 200, y: 80 }; // punto soglia sulla curva lattato
   return (
-    <div className="relative mx-auto w-full max-w-md">
+    <div className={`relative mx-auto w-full max-w-md ${className}`}>
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-br from-violet-600/15 to-pink-600/15 blur-2xl" aria-hidden />
-      <div className="rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
+      <div className="h-full rounded-[1.4rem] border border-white/10 bg-[#0b0b0f] p-5 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
             <span className="physio-live h-1.5 w-1.5 rounded-full bg-violet-400" />

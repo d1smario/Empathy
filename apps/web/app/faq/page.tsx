@@ -24,7 +24,7 @@ export default async function FaqPage() {
     <BrutalistAppBackdrop matrix={false}>
       <Navbar />
       <main id="main-content" tabIndex={-1} className="relative scroll-mt-0 px-4 pt-20 pb-12 outline-none sm:px-6">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <section className="pt-10 text-center sm:pt-14">
             <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">{t("title")}</h1>
             <p className="mx-auto mt-4 max-w-xl text-sm text-gray-400 sm:text-base">{t("sub")}</p>
@@ -47,8 +47,8 @@ export default async function FaqPage() {
             </div>
           </section>
 
-          <FooterSection />
         </div>
+        <FooterSection />
       </main>
     </BrutalistAppBackdrop>
   );
