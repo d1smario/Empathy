@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
 import { buildOnboardingEmail } from "@/lib/onboarding/onboarding-email-content";
 import { isPostmarkConfigured, sendTransactionalEmail } from "@/lib/onboarding/postmark-send";
+import { loadEntitledAthleteIds, resolvePlanWindowStartIso } from "@/lib/onboarding/onboarding-window";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -59,11 +60,14 @@ export async function GET(req: NextRequest) {
   const sinceIso = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString();
   const { data: rows, error } = await db
     .from("athlete_profiles")
-    .select("id, email, first_name, timezone, created_at")
-    .gte("created_at", sinceIso);
+    .select("id, email, first_name, timezone, created_at, plan_started_at")
+    .or(`created_at.gte.${sinceIso},plan_started_at.gte.${sinceIso}`);
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
+
+  // Solo atleti con diritto d'uso (prova/abbonamento/grant) ricevono la mail.
+  const entitled = await loadEntitledAthleteIds(db, ((rows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.id ?? "")));
 
   const app = appBaseUrl();
   const summary = {
@@ -71,6 +75,7 @@ export async function GET(req: NextRequest) {
     eligibleHour: 0,
     sent: 0,
     dryRun: 0,
+    skippedNotEntitled: 0,
     skippedHour: 0,
     skippedAlready: 0,
     skippedPlanReady: 0,
@@ -81,10 +86,14 @@ export async function GET(req: NextRequest) {
 
   for (const raw of (rows ?? []) as Array<Record<string, unknown>>) {
     const athleteId = String(raw.id ?? "");
-    const createdAt = typeof raw.created_at === "string" ? raw.created_at : null;
-    if (!athleteId || !createdAt) continue;
+    const windowStart = resolvePlanWindowStartIso(raw);
+    if (!athleteId || !windowStart) continue;
+    if (!entitled.has(athleteId)) {
+      summary.skippedNotEntitled++;
+      continue;
+    }
 
-    const daysSince = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    const daysSince = Math.floor((Date.now() - new Date(windowStart).getTime()) / 86_400_000);
     const dayIndex = daysSince + 1; // giorno 0 → D1
     if (dayIndex < 1 || dayIndex > 3) continue;
 

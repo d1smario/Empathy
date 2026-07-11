@@ -6,6 +6,7 @@ import {
   generateAndPublishTrainingWeek,
 } from "@/lib/training/generate-training-week-headless";
 import { generateAndPersistMealPlanV2 } from "@/lib/nutrition/generate-meal-plan-v2-headless";
+import { loadEntitledAthleteIds, resolvePlanWindowStartIso } from "@/lib/onboarding/onboarding-window";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,22 +54,29 @@ export async function GET(req: NextRequest) {
   const sinceIso = new Date(Date.now() - WINDOW_LOOKBACK_DAYS * 86_400_000).toISOString();
   const { data: rows, error } = await db
     .from("athlete_profiles")
-    .select("id, created_at, training_days_per_week, training_max_session_minutes, goals")
-    .gte("created_at", sinceIso);
+    .select("id, created_at, plan_started_at, training_days_per_week, training_max_session_minutes, goals")
+    .or(`created_at.gte.${sinceIso},plan_started_at.gte.${sinceIso}`);
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const summary = { inWindow: rows?.length ?? 0, eligible: 0, generated: 0, skippedEarly: 0, skippedDone: 0, skippedNotReady: 0, errors: 0 };
+  // Solo atleti con diritto d'uso (prova/abbonamento/grant) generano il piano.
+  const entitled = await loadEntitledAthleteIds(db, ((rows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.id ?? "")));
+
+  const summary = { inWindow: rows?.length ?? 0, eligible: 0, generated: 0, skippedNotEntitled: 0, skippedEarly: 0, skippedDone: 0, skippedNotReady: 0, errors: 0 };
   const preview: Array<{ athleteId: string; planStart: string; weekStart: string }> = [];
   const results: Array<{ athleteId: string; trainingOk: boolean; nutritionOk: boolean; error?: string }> = [];
 
   for (const raw of (rows ?? []) as Array<Record<string, unknown>>) {
     const athleteId = String(raw.id ?? "");
-    const createdAt = typeof raw.created_at === "string" ? raw.created_at : null;
-    if (!athleteId || !createdAt) continue;
+    const windowStart = resolvePlanWindowStartIso(raw);
+    if (!athleteId || !windowStart) continue;
+    if (!entitled.has(athleteId)) {
+      summary.skippedNotEntitled++;
+      continue;
+    }
 
-    const daysSince = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    const daysSince = Math.floor((Date.now() - new Date(windowStart).getTime()) / 86_400_000);
     if (daysSince < D3_MIN_DAYS) {
       summary.skippedEarly++;
       continue;
@@ -91,9 +99,9 @@ export async function GET(req: NextRequest) {
     }
     summary.eligible++;
 
-    const created = new Date(createdAt);
-    const planStart = isoDateUTC(addDaysUTC(created, 3)); // D4
-    const weekStart = isoDateUTC(mondayOfUTC(addDaysUTC(created, 3)));
+    const start = new Date(windowStart);
+    const planStart = isoDateUTC(addDaysUTC(start, 3)); // D4
+    const weekStart = isoDateUTC(mondayOfUTC(addDaysUTC(start, 3)));
 
     if (!run) {
       preview.push({ athleteId, planStart, weekStart });
