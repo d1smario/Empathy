@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runPostWorkoutReintegration } from "@/lib/nutrition/reintegration-run";
+import { runDailyReduction } from "@/lib/nutrition/reduction-run";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,8 +38,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Service role non configurato" }, { status: 500 });
     }
 
-    const result = await runPostWorkoutReintegration(admin, athleteId, date);
-    return NextResponse.json({ date, ...result });
+    // Aggiustamenti adattivi del giorno: reintegro (extra da surplus) + riduzione (skip).
+    const [reintegration, reduction] = await Promise.all([
+      runPostWorkoutReintegration(admin, athleteId, date),
+      runDailyReduction(admin, athleteId, date),
+    ]);
+    return NextResponse.json({ date, ok: reintegration.ok && reduction.ok, reintegration, reduction });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
