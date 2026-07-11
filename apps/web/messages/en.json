@@ -82,8 +82,11 @@
     },
     "how": {
       "showcaseTitle": "What you actually get",
-      "showcaseSub": "Real analysis from your data — from physiology to your plate.",
+      "showcaseSub": "The same data becomes real analysis across every area — training, nutrition, physiology, twin. No silos.",
       "g": {
+        "twinTitle": "Your twin",
+        "load": "Load",
+        "recovery": "Recovery",
         "elevGain": "Elevation gain",
         "movingTime": "Time",
         "avgSpeed": "Avg speed",
@@ -4051,6 +4054,129 @@
   },
   "ModuleLoading": {
     "loadingLabel": "Loading"
+  },
+  "Onboarding": {
+    "eyebrow": "Let's prepare your plan",
+    "greeting": "Hi",
+    "greetingNamed": "Hi {name}",
+    "heading": "Hi, we're almost there.",
+    "headingNamed": "Hi {name}, we're almost there.",
+    "intro": "Complete the essential data: as soon as it's all there, Empathy generates your training and nutrition plan from your real numbers. The «recommended» data makes it more precise.",
+    "essentialData": "Essential data",
+    "detectingTimezone": "Detecting your time zone…",
+    "readyTitle": "All set.",
+    "readyBody": "You've completed the essential data: your plan is about to be generated. In the meantime you can add the recommended data to make it even more precise.",
+    "sectionTodo": "To complete",
+    "sectionImprove": "Improve your plan",
+    "sectionOptional": "Optional",
+    "sectionDone": "Completed · {count}",
+    "complete": "Complete",
+    "email": {
+      "headline": {
+        "planReady": "All set",
+        "day1": "Welcome to Empathy",
+        "day2": "Almost there",
+        "day3": "Last step"
+      },
+      "intro": {
+        "planReady": "You've completed the essential data. Your training and nutrition plan is about to be generated from your real numbers — you'll find it in your area shortly.",
+        "day1": "Over the next few days we'll gather your real numbers: as soon as they're in, we generate your tailored training and nutrition plan — not an average model, yours. Here's what we need.",
+        "day2": "Just a few more data points and your plan is ready to go. Here's what's missing.",
+        "day3": "Today's the day: complete the essential data and your plan starts tomorrow."
+      },
+      "subject": {
+        "planReady": "{greet}, your plan is on its way",
+        "day1": "{greet}, let's prepare your plan",
+        "day2": "{greet}, almost there — {count, plural, one {# data point to go} other {# data points to go}}",
+        "day3": "{greet}, one last step to unlock your plan"
+      },
+      "preheaderReady": "Your plan is about to be generated.",
+      "preheaderProgress": "{done}/{total} essential data points completed.",
+      "progressCaption": "essential data · {pct}%",
+      "whatsMissing": "What's missing",
+      "ctaComplete": "Complete your data",
+      "ctaGoToArea": "Go to your area",
+      "recommendedExtra": "Optional extras ({count}) make your plan more precise — you can find them on the same screen.",
+      "footer": "You're receiving this email because you're setting up your plan on Empathy."
+    },
+    "items": {
+      "sex": {
+        "label": "Sex",
+        "unlocks": "Basal metabolism and reference heart rates"
+      },
+      "birth_date": {
+        "label": "Date of birth",
+        "unlocks": "Age → BMR and theoretical max HR"
+      },
+      "timezone": {
+        "label": "Time zone",
+        "unlocks": "Day boundaries, email timing, plan unlock"
+      },
+      "weight_kg": {
+        "label": "Weight",
+        "unlocks": "BMR, energy and hydration needs, portions"
+      },
+      "height_cm": {
+        "label": "Height",
+        "unlocks": "BMR (Mifflin equation)"
+      },
+      "body_fat_pct": {
+        "label": "Body fat %",
+        "unlocks": "Refines BMR (Katch-McArdle) and body composition"
+      },
+      "muscle_mass_kg": {
+        "label": "Muscle mass",
+        "unlocks": "Body composition and protein distribution"
+      },
+      "resting_hr_bpm": {
+        "label": "Resting HR",
+        "unlocks": "Training zones and HRV baseline"
+      },
+      "max_hr_bpm": {
+        "label": "Max HR",
+        "unlocks": "Training intensity zones"
+      },
+      "threshold_hr_bpm": {
+        "label": "Threshold HR",
+        "unlocks": "More precise zones around threshold"
+      },
+      "device": {
+        "label": "Device connected and active",
+        "unlocks": "Real wellness (sleep, HRV, HR, active kcal) and actual expenditure"
+      },
+      "goals": {
+        "label": "Goal",
+        "unlocks": "Structure and purpose of the training plan"
+      },
+      "training_days_per_week": {
+        "label": "Training days per week",
+        "unlocks": "Weekly plan volume"
+      },
+      "training_max_session_minutes": {
+        "label": "Max session length",
+        "unlocks": "Session length and structure"
+      },
+      "diet_type": {
+        "label": "Diet type",
+        "unlocks": "Food selection for the nutrition engine"
+      },
+      "preferred_meal_count": {
+        "label": "Number of meals",
+        "unlocks": "How the plan is split across meals"
+      },
+      "food_constraints": {
+        "label": "Intolerances / allergies / exclusions",
+        "unlocks": "Exclusions and preferences applied to the plan"
+      },
+      "ftp": {
+        "label": "FTP / metabolic threshold",
+        "unlocks": "Real training quality (today from the Physiology labs)"
+      },
+      "blood_panel": {
+        "label": "Blood test",
+        "unlocks": "Enriches the biological analysis (doesn't change the plan)"
+      }
+    }
   },
   "OperationalDayNavigator": {
     "previousDay": "Previous day",

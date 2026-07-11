@@ -6,17 +6,9 @@ import { LiveWatch } from "./graphics/LiveWatch";
 import { GpsRouteMap } from "./graphics/GpsRouteMap";
 import { PhysiologyChart } from "./graphics/PhysiologyChart";
 import { AdaptiveLoadChart } from "./graphics/AdaptiveLoadChart";
-import { NutritionMacros } from "./graphics/NutritionMacros";
-import { TrainingChart } from "./graphics/TrainingChart";
+import { VetrinaOutcomes } from "./VetrinaOutcomes";
 
-const MODULES = [
-  { t: "moduleTrainingTitle", b: "moduleTrainingBody", accent: "text-pink-300" },
-  { t: "moduleNutritionTitle", b: "moduleNutritionBody", accent: "text-cyan-300" },
-  { t: "modulePhysiologyTitle", b: "modulePhysiologyBody", accent: "text-violet-300" },
-  { t: "moduleTwinTitle", b: "moduleTwinBody", accent: "text-amber-300" },
-];
-
-/** Contenuto pagina "Come funziona": step con grafici reali + showcase + moduli + CTA. */
+/** Contenuto pagina "Come funziona": step con grafici reali + outcomes + CTA. */
 export async function VetrinaHowItWorks() {
   const t = await getTranslations("Vetrina.how");
 
@@ -32,8 +24,6 @@ export async function VetrinaHowItWorks() {
   };
   const physioLabels = { physioTitle: t("g.physioTitle"), lactate: t("g.lactate"), threshold: t("g.threshold"), power: t("g.power") };
   const loadLabels = { loadTitle: t("g.loadTitle"), weeklyLoad: t("g.weeklyLoad"), readiness: t("g.readiness"), planAdapts: t("g.planAdapts"), weeksAgo: t("g.weeksAgo"), today: t("g.today") };
-  const nutritionLabels = { nutritionTitle: t("g.nutritionTitle"), carbs: t("g.carbs"), protein: t("g.protein"), fat: t("g.fat"), calories: t("g.calories") };
-  const trainingLabels = { trainingTitle: t("g.trainingTitle"), power: t("g.power"), hr: t("g.hr") };
 
   const steps = [
     { n: "01", t: "step1Title", b: "step1Body", graphic: <LiveWatch /> },
@@ -78,40 +68,8 @@ export async function VetrinaHowItWorks() {
         ))}
       </section>
 
-      {/* showcase: nutrizione + allenamento */}
-      <section className="mt-28">
-        <Reveal className="text-center">
-          <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t("showcaseTitle")}</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-400 sm:text-base">{t("showcaseSub")}</p>
-        </Reveal>
-        <div className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
-          <Reveal>
-            <NutritionMacros labels={nutritionLabels} />
-          </Reveal>
-          <Reveal delay={100}>
-            <TrainingChart labels={trainingLabels} />
-          </Reveal>
-        </div>
-        <p className="mt-4 text-center text-[11px] text-gray-600">{t("previewNote")}</p>
-      </section>
-
-      {/* moduli */}
-      <section className="mt-28">
-        <Reveal className="text-center">
-          <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t("modulesTitle")}</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-400 sm:text-base">{t("modulesSub")}</p>
-        </Reveal>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {MODULES.map((m, i) => (
-            <Reveal key={m.t} delay={i * 70}>
-              <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                <h3 className={`text-base font-bold ${m.accent}`}>{t(m.t)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-400">{t(m.b)}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {/* cosa ottieni davvero — showcase + moduli fusi */}
+      <VetrinaOutcomes />
 
       {/* cta */}
       <section className="mt-24">
