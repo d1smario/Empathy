@@ -40,9 +40,9 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           className="relative scroll-mt-0 px-4 outline-none sm:px-6 pt-20 pb-12"
         >
           <VetrinaHero />
+          <WatchLabSection />
           <VetrinaAudience />
           <VetrinaProblems />
-          <WatchLabSection />
           <VetrinaAdaptiveCircle />
           <VetrinaDomains />
           <VetrinaFinalCta />

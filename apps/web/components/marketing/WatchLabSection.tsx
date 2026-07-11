@@ -19,7 +19,7 @@ const COPY = {
 /* =========================================================================
  * LIVE METRICS — realistic ranges, updated periodically
  * ========================================================================= */
-type LiveMetrics = {
+export type LiveMetrics = {
   hr: number; // bpm  120-175
   spd: number; // km/h 24.0-46.0
   pwr: number; // W    180-420
@@ -100,7 +100,7 @@ export function WatchLabSection({
 /* =========================================================================
  * SMARTWATCH — CSS/SVG stylized watch, on-brand, live face
  * ========================================================================= */
-function Smartwatch({ metrics }: { metrics: LiveMetrics }) {
+export function Smartwatch({ metrics }: { metrics: LiveMetrics }) {
   return (
     <div className="relative" aria-hidden="true">
       {/* Ambient glow */}

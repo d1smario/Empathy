@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
-import { DeviceCounters } from "./graphics/DeviceCounters";
+import { LiveWatch } from "./graphics/LiveWatch";
 import { GpsRouteMap } from "./graphics/GpsRouteMap";
 import { PhysiologyChart } from "./graphics/PhysiologyChart";
 import { AdaptiveLoadChart } from "./graphics/AdaptiveLoadChart";
@@ -19,15 +19,14 @@ const MODULES = [
 export async function VetrinaHowItWorks() {
   const t = await getTranslations("Vetrina.how");
 
-  const deviceLabels = { live: t("g.live"), heart: t("g.heart"), speed: t("g.speed"), power: t("g.power"), cadence: t("g.cadence") };
   const gpsLabels = { routeTitle: t("g.routeTitle"), elevation: t("g.elevation"), distance: t("g.distance") };
   const physioLabels = { physioTitle: t("g.physioTitle"), lactate: t("g.lactate"), threshold: t("g.threshold"), power: t("g.power") };
-  const loadLabels = { loadTitle: t("g.loadTitle"), weeklyLoad: t("g.weeklyLoad"), readiness: t("g.readiness"), planAdapts: t("g.planAdapts") };
+  const loadLabels = { loadTitle: t("g.loadTitle"), weeklyLoad: t("g.weeklyLoad"), readiness: t("g.readiness"), planAdapts: t("g.planAdapts"), weeksAgo: t("g.weeksAgo"), today: t("g.today") };
   const nutritionLabels = { nutritionTitle: t("g.nutritionTitle"), carbs: t("g.carbs"), protein: t("g.protein"), fat: t("g.fat"), calories: t("g.calories") };
   const trainingLabels = { trainingTitle: t("g.trainingTitle"), power: t("g.power"), hr: t("g.hr") };
 
   const steps = [
-    { n: "01", t: "step1Title", b: "step1Body", graphic: <DeviceCounters labels={deviceLabels} /> },
+    { n: "01", t: "step1Title", b: "step1Body", graphic: <LiveWatch /> },
     { n: "02", t: "step2Title", b: "step2Body", graphic: <GpsRouteMap labels={gpsLabels} /> },
     { n: "03", t: "step3Title", b: "step3Body", graphic: <PhysiologyChart labels={physioLabels} /> },
     { n: "04", t: "step4Title", b: "step4Body", graphic: <AdaptiveLoadChart labels={loadLabels} /> },

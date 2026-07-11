@@ -84,6 +84,8 @@
       "showcaseTitle": "What you actually get",
       "showcaseSub": "Real analysis from your data — from physiology to your plate.",
       "g": {
+        "weeksAgo": "4 wks ago",
+        "today": "today",
         "live": "live",
         "heart": "Heart rate",
         "speed": "Speed",
