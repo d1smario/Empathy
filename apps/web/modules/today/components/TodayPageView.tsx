@@ -12,6 +12,8 @@ import { TodayTimeline } from "./TodayTimeline";
 import { useNutritionQuickActions } from "@/modules/nutrition/hooks/use-nutrition-quick-actions";
 import { setScheduledTimeInPlannedNotes } from "@/lib/training/builder/pro2-session-notes";
 import { patchPlannedWorkout } from "@/modules/training/services/training-planned-api";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { TodayAdjustmentCard } from "./TodayAdjustmentCard";
 import type { TodayApiResponse } from "@/app/api/today/contracts";
 
 export type TodayPageViewProps = {
@@ -22,6 +24,7 @@ export type TodayPageViewProps = {
 
 export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps) {
   const t = useTranslations("TodayPage");
+  const { adminScoped } = useActiveAthlete();
   const [data, setData] = useState<TodayApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +52,28 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
   };
 
   useEffect(() => {
-    void load();
-  }, [athleteId, date]);
+    let cancelled = false;
+    void (async () => {
+      // Trigger adattivo (solo l'atleta sul PROPRIO Oggi, non il coach): calcola reintegro/
+      // riduzione del giorno, poi carica. Il coach vede solo il risultato persistito.
+      if (!adminScoped) {
+        try {
+          await fetch("/api/nutrition/reintegration/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ athleteId, date }),
+            credentials: "same-origin",
+          });
+        } catch {
+          /* non bloccare Oggi se il trigger fallisce */
+        }
+      }
+      if (!cancelled) await load();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, date, adminScoped]);
 
   const profileLike = data?.ok
     ? {
@@ -136,6 +159,11 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
           onAddIntake={addHydration}
           busy={hydrationBusy}
         />
+
+        {/* Compensazione adattiva del giorno (reintegro/riduzione) — extra sopra il piano. */}
+        {data.adjustments && data.adjustments.length > 0 ? (
+          <TodayAdjustmentCard adjustments={data.adjustments} />
+        ) : null}
 
         {actionError || scheduleError ? (
           <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100" role="alert">

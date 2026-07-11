@@ -127,6 +127,21 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
     // Domani preview (leggero)
     const tomorrow = null; // TODO: implementare preview giorno successivo
 
+    // Aggiustamenti adattivi del giorno (reintegro/riduzione) — extra sopra il piano base.
+    const { data: adjRows } = await db
+      .from("nutrition_daily_adjustment")
+      .select("kind, extra_kcal, extra_carbs_g, extra_water_ml, extra_supplements, reason")
+      .eq("athlete_id", athleteId)
+      .eq("date", date);
+    const adjustments = ((adjRows ?? []) as Record<string, unknown>[]).map((r) => ({
+      kind: r.kind === "reduction" ? ("reduction" as const) : ("reintegration" as const),
+      extraKcal: Number(r.extra_kcal) || 0,
+      extraCarbsG: Number(r.extra_carbs_g) || 0,
+      extraWaterMl: Number(r.extra_water_ml) || 0,
+      supplements: Array.isArray(r.extra_supplements) ? (r.extra_supplements as string[]) : [],
+      reason: typeof r.reason === "string" ? r.reason : null,
+    }));
+
     return NextResponse.json({
       ok: true,
       date,
@@ -139,6 +154,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       events,
       floatingWorkout,
       tomorrow,
+      adjustments,
     });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {

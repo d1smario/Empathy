@@ -64,6 +64,16 @@ export type TodayFloatingWorkout = {
   durationMinutes: number;
 };
 
+/** Aggiustamento adattivo del giorno (reintegro/riduzione) — extra sopra il piano base. */
+export type TodayAdjustment = {
+  kind: "reintegration" | "reduction";
+  extraKcal: number;
+  extraCarbsG: number;
+  extraWaterMl: number;
+  supplements: string[];
+  reason: string | null;
+};
+
 export type TomorrowPreview = {
   date: string;
   workoutTitle: string | null;
@@ -84,6 +94,7 @@ export type TodayApiResponse =
       events: TodayEvent[];
       floatingWorkout: TodayFloatingWorkout | null;
       tomorrow: TomorrowPreview | null;
+      adjustments: TodayAdjustment[];
     }
   | {
       ok: false;
