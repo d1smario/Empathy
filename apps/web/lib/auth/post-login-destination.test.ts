@@ -3,7 +3,7 @@ import test from "node:test";
 import { resolvePostLoginDestination } from "./post-login-destination";
 import { ACCESS_PLAN_PATH } from "@/lib/billing/paywall-config";
 
-test("resolvePostLoginDestination: coach sempre /athletes", () => {
+test("resolvePostLoginDestination: coach entra da /dashboard", () => {
   assert.equal(
     resolvePostLoginDestination({
       next: "/dashboard",
@@ -11,7 +11,7 @@ test("resolvePostLoginDestination: coach sempre /athletes", () => {
       hasAthleteAccess: false,
       hasOperatorAccess: true,
     }),
-    "/athletes",
+    "/dashboard",
   );
 });
 
@@ -27,7 +27,7 @@ test("resolvePostLoginDestination: atleta senza accesso → piano", () => {
   );
 });
 
-test("resolvePostLoginDestination: atleta con accesso da /access/plan → dashboard", () => {
+test("resolvePostLoginDestination: atleta con accesso da /access/plan → /analysis", () => {
   assert.equal(
     resolvePostLoginDestination({
       next: ACCESS_PLAN_PATH,
@@ -35,11 +35,11 @@ test("resolvePostLoginDestination: atleta con accesso da /access/plan → dashbo
       hasAthleteAccess: true,
       hasOperatorAccess: false,
     }),
-    "/dashboard",
+    "/analysis",
   );
 });
 
-test("resolvePostLoginDestination: atleta con accesso ignora deep link training instabile", () => {
+test("resolvePostLoginDestination: atleta con accesso ignora deep link training instabile → /analysis", () => {
   assert.equal(
     resolvePostLoginDestination({
       next: "/training/calendar",
@@ -47,7 +47,31 @@ test("resolvePostLoginDestination: atleta con accesso ignora deep link training 
       hasAthleteAccess: true,
       hasOperatorAccess: false,
     }),
-    "/dashboard",
+    "/analysis",
+  );
+});
+
+test("resolvePostLoginDestination: atleta con onboarding incompleto → /onboarding", () => {
+  assert.equal(
+    resolvePostLoginDestination({
+      next: "/analysis",
+      appRole: "private",
+      hasAthleteAccess: true,
+      hasOperatorAccess: false,
+      onboardingPlanReady: false,
+    }),
+    "/onboarding",
+  );
+  // onboarding completo → destinazione normale
+  assert.equal(
+    resolvePostLoginDestination({
+      next: "/analysis",
+      appRole: "private",
+      hasAthleteAccess: true,
+      hasOperatorAccess: false,
+      onboardingPlanReady: true,
+    }),
+    "/analysis",
   );
 });
 
