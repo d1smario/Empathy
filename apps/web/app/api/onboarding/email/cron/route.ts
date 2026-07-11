@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
-import { buildOnboardingEmail } from "@/lib/onboarding/onboarding-email-content";
+import { buildOnboardingEmail, type OnboardingEmailTranslator } from "@/lib/onboarding/onboarding-email-content";
+import { loadOnboardingEmailTranslator } from "@/lib/onboarding/onboarding-email-i18n";
 import { isPostmarkConfigured, sendTransactionalEmail } from "@/lib/onboarding/postmark-send";
 import { loadEntitledAthleteIds, resolvePlanWindowStartIso } from "@/lib/onboarding/onboarding-window";
+import { DEFAULT_LOCALE, coerceLocale } from "@/lib/i18n/supported-locales";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,6 +71,34 @@ export async function GET(req: NextRequest) {
   // Solo atleti con diritto d'uso (prova/abbonamento/grant) ricevono la mail.
   const entitled = await loadEntitledAthleteIds(db, ((rows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.id ?? "")));
 
+  // Locale della mail per atleta (IT/EN): da app_user_profiles.preferred_locale, fallback "it".
+  const localeByAthlete = new Map<string, string>();
+  {
+    const ids = ((rows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.id ?? "")).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: profiles } = await db
+        .from("app_user_profiles")
+        .select("athlete_id, preferred_locale")
+        .in("athlete_id", ids);
+      for (const row of (profiles ?? []) as Array<Record<string, unknown>>) {
+        const aid = String(row.athlete_id ?? "");
+        const loc = typeof row.preferred_locale === "string" ? row.preferred_locale : "";
+        if (aid && loc) localeByAthlete.set(aid, loc);
+      }
+    }
+  }
+
+  // Traduttori Onboarding cacheati per locale: niente re-import dei messaggi per ogni atleta.
+  const translatorCache = new Map<string, OnboardingEmailTranslator>();
+  async function translatorForAthlete(id: string): Promise<OnboardingEmailTranslator> {
+    const locale = coerceLocale(localeByAthlete.get(id), DEFAULT_LOCALE);
+    const cached = translatorCache.get(locale);
+    if (cached) return cached;
+    const built = await loadOnboardingEmailTranslator(locale);
+    translatorCache.set(locale, built);
+    return built;
+  }
+
   const app = appBaseUrl();
   const summary = {
     inWindow: rows?.length ?? 0,
@@ -125,7 +155,8 @@ export async function GET(req: NextRequest) {
 
     const email = typeof raw.email === "string" ? raw.email.trim() : "";
     const firstName = typeof raw.first_name === "string" ? raw.first_name : null;
-    const built = buildOnboardingEmail({ firstName, dayIndex, completeness, appUrl: app });
+    const t = await translatorForAthlete(athleteId);
+    const built = buildOnboardingEmail({ firstName, dayIndex, completeness, appUrl: app, t });
 
     if (!send) {
       summary.dryRun++;
