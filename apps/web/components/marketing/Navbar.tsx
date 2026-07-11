@@ -19,7 +19,6 @@ const COPY = {
 const NAV_LINKS = [
   { key: "comeFunziona", href: "/come-funziona" },
   { key: "faq", href: "/faq" },
-  { key: "prezzi", href: "/pricing" },
 ] as const;
 
 export async function Navbar() {

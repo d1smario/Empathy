@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
-import { AppMockup } from "./AppMockup";
-
-const STEPS = [
-  { n: "01", t: "step1Title", b: "step1Body", mock: "training" as const },
-  { n: "02", t: "step2Title", b: "step2Body", mock: "physiology" as const },
-  { n: "03", t: "step3Title", b: "step3Body", mock: "training" as const },
-  { n: "04", t: "step4Title", b: "step4Body", mock: "nutrition" as const },
-];
+import { DeviceCounters } from "./graphics/DeviceCounters";
+import { GpsRouteMap } from "./graphics/GpsRouteMap";
+import { PhysiologyChart } from "./graphics/PhysiologyChart";
+import { AdaptiveLoadChart } from "./graphics/AdaptiveLoadChart";
+import { NutritionMacros } from "./graphics/NutritionMacros";
+import { TrainingChart } from "./graphics/TrainingChart";
 
 const MODULES = [
   { t: "moduleTrainingTitle", b: "moduleTrainingBody", accent: "text-pink-300" },
@@ -17,9 +15,24 @@ const MODULES = [
   { t: "moduleTwinTitle", b: "moduleTwinBody", accent: "text-amber-300" },
 ];
 
-/** Contenuto pagina "Come funziona": step alternati con mockup + moduli + CTA. */
+/** Contenuto pagina "Come funziona": step con grafici reali + showcase + moduli + CTA. */
 export async function VetrinaHowItWorks() {
   const t = await getTranslations("Vetrina.how");
+
+  const deviceLabels = { live: t("g.live"), heart: t("g.heart"), speed: t("g.speed"), power: t("g.power"), cadence: t("g.cadence") };
+  const gpsLabels = { routeTitle: t("g.routeTitle"), elevation: t("g.elevation"), distance: t("g.distance") };
+  const physioLabels = { physioTitle: t("g.physioTitle"), lactate: t("g.lactate"), threshold: t("g.threshold"), power: t("g.power") };
+  const loadLabels = { loadTitle: t("g.loadTitle"), weeklyLoad: t("g.weeklyLoad"), readiness: t("g.readiness"), planAdapts: t("g.planAdapts") };
+  const nutritionLabels = { nutritionTitle: t("g.nutritionTitle"), carbs: t("g.carbs"), protein: t("g.protein"), fat: t("g.fat"), calories: t("g.calories") };
+  const trainingLabels = { trainingTitle: t("g.trainingTitle"), power: t("g.power"), hr: t("g.hr") };
+
+  const steps = [
+    { n: "01", t: "step1Title", b: "step1Body", graphic: <DeviceCounters labels={deviceLabels} /> },
+    { n: "02", t: "step2Title", b: "step2Body", graphic: <GpsRouteMap labels={gpsLabels} /> },
+    { n: "03", t: "step3Title", b: "step3Body", graphic: <PhysiologyChart labels={physioLabels} /> },
+    { n: "04", t: "step4Title", b: "step4Body", graphic: <AdaptiveLoadChart labels={loadLabels} /> },
+  ];
+
   return (
     <div className="mx-auto max-w-6xl px-1">
       {/* intro */}
@@ -30,7 +43,7 @@ export async function VetrinaHowItWorks() {
           </span>
         </Reveal>
         <Reveal delay={80}>
-          <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl">
+          <h1 className="mx-auto mt-6 max-w-4xl text-balance text-3xl font-black leading-[1.1] tracking-tight text-white sm:text-5xl">
             {t("title")}
           </h1>
         </Reveal>
@@ -39,9 +52,9 @@ export async function VetrinaHowItWorks() {
         </Reveal>
       </section>
 
-      {/* step alternati */}
+      {/* step con grafici reali */}
       <section className="mt-20 space-y-16 sm:mt-28 sm:space-y-24">
-        {STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <div key={s.n} className={`grid items-center gap-8 md:grid-cols-2 ${i % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""}`}>
             <Reveal>
               <div>
@@ -50,11 +63,26 @@ export async function VetrinaHowItWorks() {
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-gray-400 sm:text-base">{t(s.b)}</p>
               </div>
             </Reveal>
-            <Reveal delay={100}>
-              <AppMockup variant={s.mock} />
-            </Reveal>
+            <Reveal delay={100}>{s.graphic}</Reveal>
           </div>
         ))}
+      </section>
+
+      {/* showcase: nutrizione + allenamento */}
+      <section className="mt-28">
+        <Reveal className="text-center">
+          <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t("showcaseTitle")}</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-400 sm:text-base">{t("showcaseSub")}</p>
+        </Reveal>
+        <div className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
+          <Reveal>
+            <NutritionMacros labels={nutritionLabels} />
+          </Reveal>
+          <Reveal delay={100}>
+            <TrainingChart labels={trainingLabels} />
+          </Reveal>
+        </div>
+        <p className="mt-4 text-center text-[11px] text-gray-600">{t("previewNote")}</p>
       </section>
 
       {/* moduli */}
@@ -73,7 +101,6 @@ export async function VetrinaHowItWorks() {
             </Reveal>
           ))}
         </div>
-        <p className="mt-6 text-center text-[11px] text-gray-600">{t("previewNote")}</p>
       </section>
 
       {/* cta */}

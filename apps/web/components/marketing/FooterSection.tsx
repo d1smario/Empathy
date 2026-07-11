@@ -28,7 +28,6 @@ const FOOTER = {
 const VETRINA_LINKS = [
   { key: "comeFunziona", href: "/come-funziona" },
   { key: "faq", href: "/faq" },
-  { key: "prezzi", href: "/pricing" },
   { key: "contatti", href: "/contatti" },
   { key: "collabora", href: "/contatti?tab=collabora" },
 ] as const;
