@@ -43,6 +43,7 @@ export async function generateAndPersistMealPlanV2(
   db: SupabaseClient,
   athleteId: string,
   planDate: string,
+  opts?: { tdeeCorrectionFactor?: number },
 ): Promise<{ ok: true; planId: string; slots: number } | { ok: false; error: string }> {
   const [{ data: profile }, { data: plannedRows }, observedActiveKcal] = await Promise.all([
     db
@@ -95,7 +96,11 @@ export async function generateAndPersistMealPlanV2(
     observedActiveKcal, // Decisione B: se presente, il fabbisogno segue il consumo reale del device
     recoveryStatus: "unknown",
   });
-  const dailyKcal = Math.max(1, Math.round(model.totals.mealsKcal));
+  // Fattore di correzione TDEE «imparato» (ripianificazione settimanale). 1 = neutro.
+  const correction = opts?.tdeeCorrectionFactor != null && Number.isFinite(opts.tdeeCorrectionFactor) && opts.tdeeCorrectionFactor > 0
+    ? opts.tdeeCorrectionFactor
+    : 1;
+  const dailyKcal = Math.max(1, Math.round(model.totals.mealsKcal * correction));
 
   // 2. Budget per slot dal Profilo Diet (con default se non configurato).
   const dietDay = resolveNutritionDietDay(p.nutrition_config ?? null, planDate, { preferredMealCount });

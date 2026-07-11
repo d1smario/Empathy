@@ -18,6 +18,10 @@
     {
       "path": "/api/onboarding/plan/cron?run=true",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/nutrition/weekly-replan/cron?run=true",
+      "schedule": "0 6 * * 2"
     }
   ]
 }
