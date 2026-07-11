@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
+import { HomeLinesBackdrop } from "./graphics/HomeLinesBackdrop";
 
 /** Hero vetrina: emotivo, doppio pubblico, doppia CTA. */
 export async function VetrinaHero() {
   const t = await getTranslations("Vetrina.home");
   return (
     <section className="relative mx-auto max-w-5xl px-1 pt-10 text-center sm:pt-16">
+      <HomeLinesBackdrop />
       <Reveal>
         <span className="inline-flex items-center gap-2 rounded-full border border-pink-400/30 bg-pink-400/10 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-pink-200">
           {t("heroEyebrow")}
