@@ -13,6 +13,7 @@ import {
 import { getSupabasePublicConfig } from "@/lib/integrations/integration-status";
 import { isMobileClientRequest } from "@/lib/shell/mobile-detect";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -115,12 +116,13 @@ export async function GET(request: NextRequest) {
   // Routing per identità dal DB (non dal cookie `pending`, che con Strada A è sempre `private`).
   const { data: prof } = await supabase
     .from("app_user_profiles")
-    .select("role, is_platform_admin")
+    .select("role, is_platform_admin, athlete_id")
     .eq("user_id", user.id)
     .maybeSingle();
-  const profileRow = prof as { role?: string; is_platform_admin?: boolean } | null;
+  const profileRow = prof as { role?: string; is_platform_admin?: boolean; athlete_id?: string | null } | null;
   const appRole = profileRow?.role === "coach" ? "coach" : "private";
   const isPlatformAdmin = profileRow?.is_platform_admin === true;
+  const athleteId = typeof profileRow?.athlete_id === "string" ? profileRow.athlete_id : null;
 
   let entitlement: { hasAthleteAccess: boolean; hasOperatorAccess: boolean } = {
     hasAthleteAccess: false,
@@ -139,6 +141,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Atleta con accesso ma onboarding incompleto → sala d'attesa /onboarding (non blocca il login).
+  let onboardingPlanReady: boolean | undefined = undefined;
+  if (appRole === "private" && !isPlatformAdmin && (entitlement?.hasAthleteAccess ?? false) && athleteId) {
+    try {
+      onboardingPlanReady = (await loadOnboardingCompleteness(db, athleteId)).planReady;
+    } catch {
+      // in caso di errore non blocchiamo il login: nessun redirect onboarding
+    }
+  }
+
   const dest = resolvePostLoginDestination({
     next,
     appRole,
@@ -146,6 +158,7 @@ export async function GET(request: NextRequest) {
     hasOperatorAccess: entitlement?.hasOperatorAccess ?? false,
     isPlatformAdmin,
     preferMobile: isMobileClientRequest(request),
+    onboardingPlanReady,
   });
 
   return NextResponse.redirect(`${origin}${dest}`);

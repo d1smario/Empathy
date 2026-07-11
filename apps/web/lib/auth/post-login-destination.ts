@@ -32,6 +32,9 @@ export type PostLoginDestinationInput = {
   isPlatformAdmin?: boolean;
   /** Su telefono/tablet: hub sicuri → equivalente `/m/*`. */
   preferMobile?: boolean;
+  /** Atleta con accesso ma onboarding non completo → sala d'attesa `/onboarding`.
+   *  `undefined` = non valutato (nessun effetto). Solo `false` reindirizza. */
+  onboardingPlanReady?: boolean;
 };
 
 /**
@@ -66,6 +69,11 @@ export function resolvePostLoginDestination(input: PostLoginDestinationInput): s
 
   if (!input.hasAthleteAccess) {
     return ACCESS_PLAN_PATH;
+  }
+
+  // Atleta con accesso ma dati onboarding incompleti → sala d'attesa (finché !planReady).
+  if (input.onboardingPlanReady === false) {
+    return "/onboarding";
   }
 
   const base = (next.split("?")[0] ?? "/").replace(/\/$/, "") || "/";
