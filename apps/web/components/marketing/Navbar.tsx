@@ -17,6 +17,7 @@ const COPY = {
 } as const;
 
 const NAV_LINKS = [
+  { key: "home", href: "/" },
   { key: "comeFunziona", href: "/come-funziona" },
   { key: "faq", href: "/faq" },
 ] as const;
