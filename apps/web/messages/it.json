@@ -84,6 +84,11 @@
       "showcaseTitle": "Cosa ottieni davvero",
       "showcaseSub": "Analisi vere dai tuoi dati — dalla fisiologia al piatto.",
       "g": {
+        "elevGain": "Dislivello",
+        "movingTime": "Tempo",
+        "avgSpeed": "Vel. media",
+        "avgHr": "FC media",
+        "avgPower": "Pot. media",
         "weeksAgo": "4 sett. fa",
         "today": "oggi",
         "live": "in tempo reale",

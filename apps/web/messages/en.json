@@ -84,6 +84,11 @@
       "showcaseTitle": "What you actually get",
       "showcaseSub": "Real analysis from your data — from physiology to your plate.",
       "g": {
+        "elevGain": "Elevation gain",
+        "movingTime": "Time",
+        "avgSpeed": "Avg speed",
+        "avgHr": "Avg HR",
+        "avgPower": "Avg power",
         "weeksAgo": "4 wks ago",
         "today": "today",
         "live": "live",

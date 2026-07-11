@@ -19,7 +19,16 @@ const MODULES = [
 export async function VetrinaHowItWorks() {
   const t = await getTranslations("Vetrina.how");
 
-  const gpsLabels = { routeTitle: t("g.routeTitle"), elevation: t("g.elevation"), distance: t("g.distance") };
+  const gpsLabels = {
+    routeTitle: t("g.routeTitle"),
+    elevation: t("g.elevation"),
+    distance: t("g.distance"),
+    elevGain: t("g.elevGain"),
+    movingTime: t("g.movingTime"),
+    avgSpeed: t("g.avgSpeed"),
+    avgHr: t("g.avgHr"),
+    avgPower: t("g.avgPower"),
+  };
   const physioLabels = { physioTitle: t("g.physioTitle"), lactate: t("g.lactate"), threshold: t("g.threshold"), power: t("g.power") };
   const loadLabels = { loadTitle: t("g.loadTitle"), weeklyLoad: t("g.weeklyLoad"), readiness: t("g.readiness"), planAdapts: t("g.planAdapts"), weeksAgo: t("g.weeksAgo"), today: t("g.today") };
   const nutritionLabels = { nutritionTitle: t("g.nutritionTitle"), carbs: t("g.carbs"), protein: t("g.protein"), fat: t("g.fat"), calories: t("g.calories") };
