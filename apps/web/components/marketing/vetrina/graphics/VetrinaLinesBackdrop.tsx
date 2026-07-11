@@ -1,5 +1,5 @@
 /**
- * Fondale animato per la hero della home: tre linee di STILE DIVERSO (per variare)
+ * Fondale animato condiviso (home hero + "come funziona"): tre linee di STILE DIVERSO (per variare)
  * — ECG (battito), linea di grafico che sale (trend), linea a gradini (dati) —
  * ciascuna con una "pulsazione" luminosa che corre da sinistra a destra in loop.
  * Solo SVG + CSS, nessun JS, reduced-motion safe.
@@ -57,7 +57,7 @@ const LINES = [
   { points: stepPoints(112, 46, 16), color: "#a78bfa", dur: "4.6s", delay: "-2.8s" }, // gradini dati
 ];
 
-export function HomeLinesBackdrop() {
+export function VetrinaLinesBackdrop() {
   return (
     <div
       className="pointer-events-none absolute inset-0 -z-10 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
