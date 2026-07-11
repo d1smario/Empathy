@@ -38,7 +38,17 @@ export default async function FaqPage() {
             <VetrinaFaqList items={items} />
           </section>
 
-          <section className="mt-14">
+          {/* prossimi eventi */}
+          <section className="mt-16">
+            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{te("title")}</h2>
+            <p className="mt-2 max-w-xl text-sm text-gray-400 sm:text-base">{te("sub")}</p>
+            <div className="mt-8">
+              <VetrinaEventsList items={events} />
+            </div>
+          </section>
+
+          {/* ultimo box: contattaci */}
+          <section className="mt-20">
             <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/15 to-pink-600/15 p-8 text-center">
               <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl">{t("ctaTitle")}</h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-gray-300">{t("ctaBody")}</p>
@@ -48,15 +58,6 @@ export default async function FaqPage() {
               >
                 {t("cta")}
               </Link>
-            </div>
-          </section>
-
-          {/* ultima sezione: prossimi eventi */}
-          <section className="mt-20">
-            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{te("title")}</h2>
-            <p className="mt-2 max-w-xl text-sm text-gray-400 sm:text-base">{te("sub")}</p>
-            <div className="mt-8">
-              <VetrinaEventsList items={events} />
             </div>
           </section>
         </div>
