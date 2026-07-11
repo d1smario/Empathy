@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
+import { HowEcgBackdrop } from "./graphics/HowEcgBackdrop";
 import { LiveWatch } from "./graphics/LiveWatch";
 import { GpsRouteMap } from "./graphics/GpsRouteMap";
 import { PhysiologyChart } from "./graphics/PhysiologyChart";
@@ -44,7 +45,8 @@ export async function VetrinaHowItWorks() {
   return (
     <div className="mx-auto max-w-6xl px-1">
       {/* intro */}
-      <section className="pt-10 text-center sm:pt-16">
+      <section className="relative pt-10 text-center sm:pt-16">
+        <HowEcgBackdrop />
         <Reveal>
           <span className="inline-flex rounded-full border border-pink-400/30 bg-pink-400/10 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-pink-200">
             {t("eyebrow")}
