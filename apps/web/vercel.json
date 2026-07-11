@@ -14,6 +14,10 @@
     {
       "path": "/api/onboarding/email/cron?send=true",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/onboarding/plan/cron?run=true",
+      "schedule": "0 6 * * *"
     }
   ]
 }
