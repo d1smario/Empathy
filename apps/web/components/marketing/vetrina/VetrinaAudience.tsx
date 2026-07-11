@@ -19,7 +19,7 @@ const ACCENT: Record<string, { ring: string; chip: string; dot: string }> = {
 export async function VetrinaAudience() {
   const t = await getTranslations("Vetrina.home");
   return (
-    <section className="mx-auto mt-28 max-w-6xl px-1">
+    <section className="mx-auto -mt-8 max-w-6xl px-1 sm:-mt-12">
       <Reveal className="text-center">
         <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t("audienceTitle")}</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-400 sm:text-base">{t("audienceSub")}</p>
