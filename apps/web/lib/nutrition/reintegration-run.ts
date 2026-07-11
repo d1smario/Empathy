@@ -40,7 +40,7 @@ export async function runPostWorkoutReintegration(
 
   // Senza consumo osservato non possiamo sapere il delta reale → non tocchiamo nulla.
   if (observedActiveKcal == null) {
-    return { ok: true, reintegration: { triggered: false, extraKcal: 0, extraCarbsG: 0, extraWaterMl: 0, reason: null }, observedActiveKcal: null, persisted: "noop" };
+    return { ok: true, reintegration: { triggered: false, extraKcal: 0, extraCarbsG: 0, extraWaterMl: 0, supplements: [], reason: null }, observedActiveKcal: null, persisted: "noop" };
   }
 
   const p = (profile ?? {}) as Record<string, unknown>;
@@ -88,6 +88,7 @@ export async function runPostWorkoutReintegration(
         extra_kcal: reintegration.extraKcal,
         extra_carbs_g: reintegration.extraCarbsG,
         extra_water_ml: reintegration.extraWaterMl,
+        extra_supplements: reintegration.supplements,
         reason: reintegration.reason,
         source: "device_active",
         updated_at: new Date().toISOString(),
