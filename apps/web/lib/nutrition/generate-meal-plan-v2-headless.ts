@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-solver";
+import { loadObservedActiveKcal } from "@/lib/nutrition/load-observed-active-kcal";
 import { buildDietMealSlotBudgets, type CaloricDistribution, type MacroSplitPct } from "@/lib/nutrition/diet-meal-slot-budgets";
 import { buildIntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-request-builder";
 import { prepareIntelligentMealPlanContext } from "@/lib/nutrition/intelligent-meal-plan-route-prep";
@@ -43,7 +44,7 @@ export async function generateAndPersistMealPlanV2(
   athleteId: string,
   planDate: string,
 ): Promise<{ ok: true; planId: string; slots: number } | { ok: false; error: string }> {
-  const [{ data: profile }, { data: plannedRows }] = await Promise.all([
+  const [{ data: profile }, { data: plannedRows }, observedActiveKcal] = await Promise.all([
     db
       .from("athlete_profiles")
       .select(
@@ -58,6 +59,8 @@ export async function generateAndPersistMealPlanV2(
       .select("duration_minutes, tss_target, kcal_target, notes")
       .eq("athlete_id", athleteId)
       .eq("date", planDate),
+    // Decisione B: consumo attivo REALE del device per il giorno (null se dato assente → stima).
+    loadObservedActiveKcal(db, athleteId, planDate),
   ]);
 
   const p = (profile ?? {}) as Record<string, unknown>;
@@ -89,6 +92,7 @@ export async function generateAndPersistMealPlanV2(
     vo2maxMlMinKg: null,
     lifestyleActivityClass: typeof p.lifestyle_activity_class === "string" ? p.lifestyle_activity_class : "moderate",
     plannedTraining,
+    observedActiveKcal, // Decisione B: se presente, il fabbisogno segue il consumo reale del device
     recoveryStatus: "unknown",
   });
   const dailyKcal = Math.max(1, Math.round(model.totals.mealsKcal));

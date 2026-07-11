@@ -25,6 +25,10 @@ type NutritionDailyEnergySolverInput = {
   vo2maxMlMinKg?: number | null;
   lifestyleActivityClass?: LifestyleActivityClass | string | null;
   plannedTraining?: PlannedTrainingEnergyInput[];
+  /** Decisione B: kcal ATTIVE osservate dal device per il giorno (sopra il BMR: training + NEAT).
+   *  Quando presente, il fabbisogno segue il CONSUMO REALE (BMR + attive) invece della stima
+   *  (BMR + lifestyle + training pianificato). Null → si usa la stima (fallback). */
+  observedActiveKcal?: number | null;
   recoveryStatus?: "good" | "moderate" | "poor" | "unknown" | null;
   recoverySleepHours?: number | null;
   recoveryHrvMs?: number | null;
@@ -317,9 +321,25 @@ export function computeNutritionDailyEnergyModel(
       ? clamp(input.dietDayMealsScalePct, 0, 200) / 100
       : 1;
 
-  const totalDailyKcal = round((bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale);
-  const mealsKcal = round((bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale);
+  // Decisione B: se il consumo attivo REALE del device è presente, il fabbisogno segue
+  // l'osservato (BMR + attive, che già include lifestyle+training) invece della stima. Il
+  // fueling intra-seduta resta dal PIANIFICATO (è struttura della seduta, non consumo globale).
+  const observedActiveKcal =
+    input.observedActiveKcal != null && Number.isFinite(input.observedActiveKcal) && input.observedActiveKcal >= 0
+      ? input.observedActiveKcal
+      : null;
+  const usesObserved = observedActiveKcal != null;
+  const observedTotalKcal = usesObserved ? bmr.bmrKcal + observedActiveKcal : null;
+
   const fuelingKcal = round(trainingKcal * (1 - mealTrainingFraction));
+  const totalDailyKcal = round(
+    (usesObserved ? observedTotalKcal! : bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale,
+  );
+  const mealsKcal = round(
+    (usesObserved
+      ? Math.max(0, observedTotalKcal! - fuelingKcal)
+      : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale,
+  );
   const recoveryStatus = input.recoveryStatus ?? "unknown";
   const split =
     recoveryStatus === "poor"
@@ -368,6 +388,11 @@ export function computeNutritionDailyEnergyModel(
     "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
     "Integrazione performance (recovery/bio): agisce su distribuzione pasti↔fueling, CHO/h, proteine, idratazione — NON riduce il fabbisogno energetico totale.",
   );
+  if (usesObserved) {
+    notes.push(
+      `Consumo OSSERVATO (device): BMR ${bmr.bmrKcal} + kcal attive ${Math.round(observedActiveKcal!)} = ${observedTotalKcal} kcal. Il fabbisogno segue il consumo reale; fueling intra-seduta (${fuelingKcal} kcal) resta dal pianificato.`,
+    );
+  }
   if (recoveryStatus === "moderate") {
     notes.push("Recovery-aware solver active: moderate recovery shifts more energy toward pre/post support and slightly tempers intra CHO aggressiveness.");
   }
