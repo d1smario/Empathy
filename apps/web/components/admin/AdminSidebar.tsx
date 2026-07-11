@@ -41,6 +41,7 @@ const ICONS: Record<AdminNavIconKey, LucideIcon> = {
   foods: Utensils,
   exercises: Dumbbell,
   faq: HelpCircle,
+  events: Calendar,
   inbox: Inbox,
   heart: Heart,
   activity: Activity,

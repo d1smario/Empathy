@@ -62,6 +62,8 @@
       "circleNutrition": "Nutrizione",
       "circleNutritionBody": "Il piatto segue quello che chiedi al corpo.",
       "domainsTitle": "Cosa analizziamo",
+      "domainsResult": "Il risultato? Sai esattamente cosa fare oggi per andare più forte domani — con meno infortuni e più costanza. Basta allenarsi a sensazione.",
+      "domainsCta": "Inizia gratis",
       "domainsSub": "La profondità di un laboratorio, nella semplicità di un'app.",
       "domainFisiologia": "Fisiologia",
       "domainFisiologiaBody": "Soglie, VO2, metabolismo e readiness.",
@@ -143,8 +145,15 @@
       "cta": "Inizia gratis",
       "previewNote": "Mockup illustrativo dell'app."
     },
+    "events": {
+      "title": "Prossimi eventi",
+      "sub": "Rimani aggiornato sui nostri appuntamenti.",
+      "empty": "Rimani connesso per scoprire i prossimi eventi…",
+      "cta": "Scopri di più"
+    },
     "faq": {
-      "title": "Domande frequenti",
+      "title": "FAQ ed Eventi",
+      "faqHeading": "Domande frequenti",
       "sub": "Tutto quello che serve sapere su Empathy. Non trovi la risposta? Scrivici.",
       "empty": "Le domande frequenti saranno pubblicate a breve.",
       "ctaTitle": "Hai ancora dubbi?",

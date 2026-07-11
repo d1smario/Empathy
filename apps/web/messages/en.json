@@ -62,6 +62,8 @@
       "circleNutrition": "Nutrition",
       "circleNutritionBody": "Your plate follows what you ask of your body.",
       "domainsTitle": "What we analyze",
+      "domainsResult": "The result? You know exactly what to do today to get stronger tomorrow — fewer injuries, more consistency. Stop training on feel.",
+      "domainsCta": "Start free",
       "domainsSub": "The depth of a lab, in the simplicity of an app.",
       "domainFisiologia": "Physiology",
       "domainFisiologiaBody": "Thresholds, VO2, metabolism and readiness.",
@@ -143,8 +145,15 @@
       "cta": "Start free",
       "previewNote": "Illustrative app mockup."
     },
+    "events": {
+      "title": "Upcoming events",
+      "sub": "Stay up to date with our events.",
+      "empty": "Stay tuned to discover our upcoming events…",
+      "cta": "Learn more"
+    },
     "faq": {
-      "title": "Frequently asked questions",
+      "title": "FAQ & Events",
+      "faqHeading": "Frequently asked questions",
       "sub": "Everything you need to know about Empathy. Can't find your answer? Write to us.",
       "empty": "Frequently asked questions will be published soon.",
       "ctaTitle": "Still have questions?",

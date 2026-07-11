@@ -20,6 +20,7 @@ export type AdminNavIconKey =
   | "foods"
   | "exercises"
   | "faq"
+  | "events"
   | "inbox"
   // user-scoped modules (riuso colonne coach)
   | "heart"
@@ -50,6 +51,7 @@ export const ADMIN_ACCOUNT_NAV: AdminNavItem[] = [
   { key: "alimenti", href: "/admin/alimenti", label: "Alimenti", icon: "foods" },
   { key: "esercizi", href: "/admin/esercizi", label: "Esercizi", icon: "exercises" },
   { key: "faq", href: "/admin/faq", label: "FAQ", icon: "faq" },
+  { key: "eventi", href: "/admin/eventi", label: "Eventi", icon: "events" },
   { key: "contatti", href: "/admin/contatti", label: "Contatti", icon: "inbox" },
   { key: "mail-log", href: "/admin/mail-log", label: "Mail Log", icon: "mail" },
   { key: "profilo", href: "/admin/profilo", label: "Profilo", icon: "user" },
