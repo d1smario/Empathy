@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadEntitledAthleteIds } from "@/lib/onboarding/onboarding-window";
 import { runWeeklyReplan } from "@/lib/nutrition/weekly-replan-run";
+import { ensureTrainingContinuity } from "@/lib/training/ensure-training-continuity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,7 +71,16 @@ export async function GET(req: NextRequest) {
       const r = await runWeeklyReplan(db, athleteId, weekStart, referenceDate);
       if (r.ok) summary.replanned++;
       else summary.errors++;
-      results.push({ athleteId, ok: r.ok, factor: r.correction.factor, daysUsed: r.correction.daysUsed, days: r.days.filter((d) => d.ok).length });
+      // Continuità training: estende il macro se la pista futura è corta (non far seccare il piano).
+      const tc = await ensureTrainingContinuity(db, athleteId, { todayIso: referenceDate });
+      results.push({
+        athleteId,
+        ok: r.ok,
+        factor: r.correction.factor,
+        daysUsed: r.correction.daysUsed,
+        days: r.days.filter((d) => d.ok).length,
+        trainingExtended: tc.ok && "extended" in tc ? tc.extended : false,
+      });
     } catch (e) {
       summary.errors++;
       results.push({ athleteId, ok: false, error: e instanceof Error ? e.message : String(e) });
