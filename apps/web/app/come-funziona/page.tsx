@@ -4,14 +4,11 @@ import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Navbar } from "@/components/marketing/Navbar";
 import { FooterSection } from "@/components/marketing/FooterSection";
 import { VetrinaHowItWorks } from "@/components/marketing/vetrina/VetrinaHowItWorks";
+import { publicPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Vetrina.how");
-  return {
-    title: `${t("title")} — Empathy`,
-    description: t("sub"),
-    robots: { index: true, follow: true },
-  };
+  return publicPageMetadata({ title: `${t("title")} — Empathy`, description: t("sub"), path: "/come-funziona" });
 }
 
 export default function ComeFunzionaPage() {

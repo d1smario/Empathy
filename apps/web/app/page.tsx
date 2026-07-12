@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { EmpathyPublicHome } from "@/components/marketing/EmpathyPublicHome";
+import { StructuredData } from "@/components/marketing/StructuredData";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Empathy — Athlete platform",
   description:
     "Performance and physiology adaptation: timing, stimuli, nutrition. Plans, free trial, and app access.",
-  robots: { index: true, follow: true },
-};
+  path: "/",
+});
 
 type PageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -49,5 +51,10 @@ export default function HomePage({ searchParams }: PageProps) {
   const billingRaw = searchParams?.billing;
   const billing = billingRaw === "success" ? "success" : billingRaw === "cancel" ? "cancel" : undefined;
 
-  return <EmpathyPublicHome billingFlash={billing} variant="landing" />;
+  return (
+    <>
+      <StructuredData />
+      <EmpathyPublicHome billingFlash={billing} variant="landing" />
+    </>
+  );
 }

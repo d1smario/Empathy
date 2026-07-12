@@ -12,7 +12,38 @@ export default function robots(): MetadataRoute.Robots {
   }
 
   return {
-    rules: { userAgent: "*", allow: "/" },
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      // Aree app/admin/api e flussi privati: fuori dall'indice (i crawler verrebbero comunque rediretti).
+      disallow: [
+        "/api/",
+        "/admin",
+        "/m/",
+        "/access",
+        "/auth/",
+        "/invite/",
+        "/coach-invite/",
+        "/preview",
+        "/onboarding",
+        "/dashboard",
+        "/today",
+        "/calendario",
+        "/training",
+        "/nutrition",
+        "/health",
+        "/physiology",
+        "/bioenergetics",
+        "/biomechanics",
+        "/aerodynamics",
+        "/longevity",
+        "/analysis",
+        "/athletes",
+        "/commissioni",
+        "/profile",
+        "/settings",
+      ],
+    },
     sitemap: `${host}/sitemap.xml`,
   };
 }

@@ -4,10 +4,11 @@ import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Navbar } from "@/components/marketing/Navbar";
 import { FooterSection } from "@/components/marketing/FooterSection";
 import { VetrinaContactForm } from "@/components/marketing/vetrina/VetrinaContactForm";
+import { publicPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Vetrina.contact");
-  return { title: `${t("title")} — Empathy`, description: t("sub"), robots: { index: true, follow: true } };
+  return publicPageMetadata({ title: `${t("title")} — Empathy`, description: t("sub"), path: "/contatti" });
 }
 
 export default async function ContattiPage({ searchParams }: { searchParams?: { tab?: string } }) {

@@ -3,7 +3,7 @@ import { Outfit, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ClientRootProviders } from "@/app/client-root-providers";
-import { getMetadataBaseUrl, isSiteIndexingDisabled } from "@/lib/site-url";
+import { getCanonicalSiteOrigin, getMetadataBaseUrl, isSiteIndexingDisabled } from "@/lib/site-url";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -19,6 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const metadataBase = getMetadataBaseUrl();
+const ogImage = `${getCanonicalSiteOrigin()}/hero/cyclist-poster.jpg`;
 
 export const metadata: Metadata = {
   ...(metadataBase ? { metadataBase } : {}),
@@ -37,11 +38,13 @@ export const metadata: Metadata = {
     siteName: "Empathy",
     title: "Empathy",
     description: "Performance & metabolic adaptation platform",
+    images: [{ url: ogImage, width: 2048, height: 952, alt: "Empathy" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Empathy",
     description: "Performance & metabolic adaptation platform",
+    images: [ogImage],
   },
   appleWebApp: {
     capable: true,

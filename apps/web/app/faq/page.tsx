@@ -9,12 +9,13 @@ import { VetrinaEventsList } from "@/components/marketing/vetrina/VetrinaEventsL
 import { loadPublishedFaq } from "@/lib/marketing/faq";
 import { loadPublishedUpcomingEvents } from "@/lib/marketing/events";
 import { resolveRequestLocale } from "@/lib/i18n/resolve-request-locale";
+import { publicPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Vetrina.faq");
-  return { title: `${t("title")} — Empathy`, description: t("sub"), robots: { index: true, follow: true } };
+  return publicPageMetadata({ title: `${t("title")} — Empathy`, description: t("sub"), path: "/faq" });
 }
 
 export default async function FaqPage() {
