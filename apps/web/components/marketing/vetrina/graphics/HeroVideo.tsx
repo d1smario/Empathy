@@ -28,15 +28,19 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
   const bufClip = useRef<[number, number]>([0, clips.length > 1 ? 1 : 0]);
   const fading = useRef(false);
   const [active, setActive] = useState(0);
-  const [reduce, setReduce] = useState(false);
+  // "poster" = immagine statica (default SSR, mobile/tablet, reduced-motion) → nessun download video;
+  // "video" = montaggio completo, solo desktop con motion abilitato.
+  const [mode, setMode] = useState<"poster" | "video">("poster");
   const { setSport } = useHeroSport();
 
   useEffect(() => {
-    setReduce(!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+    const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const desktop = !!window.matchMedia?.("(min-width: 1024px)").matches;
+    setMode(!reduce && desktop ? "video" : "poster");
   }, []);
 
   useEffect(() => {
-    if (reduce) return;
+    if (mode !== "video") return;
     const a = refA.current;
     const b = refB.current;
     if (!a || !b) return;
@@ -45,10 +49,10 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
     b.pause();
     a.play().catch(() => {});
     setSport(bufClip.current[0]);
-  }, [reduce, rate, setSport]);
+  }, [mode, rate, setSport]);
 
   const onTime = (idx: number) => (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    if (idx !== active || fading.current || reduce) return;
+    if (idx !== active || fading.current || mode !== "video") return;
     const v = e.currentTarget;
     if (!v.duration || v.currentTime < v.duration - fadeMs / 1000 - 0.1) return;
 
@@ -85,7 +89,7 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
     }, fadeMs);
   };
 
-  if (reduce) {
+  if (mode !== "video") {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={poster} alt="" aria-hidden className={className} />;
   }
