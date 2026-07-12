@@ -341,6 +341,23 @@
     "errEmailNotConfirmed": "You still need to confirm your email (Supabase link). On a test project you can disable \"Confirm email\" in Authentication → Providers → Email.",
     "errAlreadyRegistered": "This email already has an account (e.g. via magic link). You do not need \"Sign up\": go back to Sign in, or use \"Forgot password?\" to set a password."
   },
+  "AccessPlanSample": {
+    "eyebrow": "Preview",
+    "badge": "Sample",
+    "title": "A day in your plan",
+    "periodizationLabel": "Your season",
+    "phases": { "base": "Base", "build": "Build", "deload": "Deload" },
+    "workout": { "title": "Steady endurance · 75'", "detail": "Z2–Z3 · aerobic base" },
+    "compensation": "After training: automatic top-up",
+    "mealsTitle": "Meals of the day",
+    "slots": { "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner" },
+    "meals": {
+      "breakfast": "Oats, banana, Greek yogurt",
+      "lunch": "Whole-grain pasta, chicken, veggies",
+      "dinner": "Rice, fish, vegetables"
+    },
+    "disclaimer": "Generic example. Your plan is built on your own data — device, physiology, goal — when you start the trial."
+  },
   "AccessPlan": {
     "eyebrow": "Subscription",
     "greeting": "Your account is ready",

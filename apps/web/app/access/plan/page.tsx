@@ -6,6 +6,7 @@ import { BillingProfileLauncher } from "@/components/access/BillingProfileLaunch
 import { PlanLogoutButton } from "@/components/access/PlanLogoutButton";
 import { SignupCheckoutWelcome } from "@/components/access/SignupCheckoutWelcome";
 import { SignupPlanCards } from "@/components/access/SignupPlanCards";
+import { SamplePlanPreview } from "@/components/access/SamplePlanPreview";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { ensureBillingEntitlementForAuthUser } from "@/lib/billing/ensure-billing-entitlement";
 import { getSupabasePublicConfig } from "@/lib/integrations/integration-status";
@@ -128,6 +129,12 @@ export default async function AccessPlanPage({
           <>
             {/* Sezione emozionale: orologio dati live + animazione (riuso home). */}
             <WatchLabSection id="account-lab" compact />
+
+            {/* Anteprima CAMPIONE generica del piano (anti-abuso): mostra il valore senza
+                regalare il piano personalizzato, che si sblocca solo iniziando la prova. */}
+            <div className="mx-auto max-w-3xl">
+              <SamplePlanPreview />
+            </div>
 
             <div className="border-t border-white/10 pt-10">
               <SignupPlanCards billingFlash={billingFlash} />

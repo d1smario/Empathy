@@ -341,6 +341,23 @@
     "errEmailNotConfirmed": "Devi ancora confermare l'email (link da Supabase). In progetto di test puoi disattivare \"Confirm email\" in Authentication → Providers → Email.",
     "errAlreadyRegistered": "Questa email ha già un account (es. da magic link). Non serve \"Registrati\": torna ad Accedi oppure usa \"Password dimenticata?\" per impostare la password."
   },
+  "AccessPlanSample": {
+    "eyebrow": "Anteprima",
+    "badge": "Esempio",
+    "title": "Un giorno del tuo piano",
+    "periodizationLabel": "La tua stagione",
+    "phases": { "base": "Base", "build": "Costruzione", "deload": "Scarico" },
+    "workout": { "title": "Fondo medio · 75'", "detail": "Z2–Z3 · costruzione aerobica" },
+    "compensation": "Dopo l'allenamento: reintegro automatico",
+    "mealsTitle": "Pasti del giorno",
+    "slots": { "breakfast": "Colazione", "lunch": "Pranzo", "dinner": "Cena" },
+    "meals": {
+      "breakfast": "Avena, banana, yogurt greco",
+      "lunch": "Pasta integrale, pollo, verdure",
+      "dinner": "Riso, pesce, verdure"
+    },
+    "disclaimer": "Esempio generico. Il tuo piano si costruisce sui tuoi dati — dispositivo, fisiologia, obiettivo — quando inizi la prova."
+  },
   "AccessPlan": {
     "eyebrow": "Abbonamento",
     "greeting": "Il tuo account è pronto",
