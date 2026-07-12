@@ -7,7 +7,6 @@ import { GpsRouteMap } from "./graphics/GpsRouteMap";
 import { PhysiologyChart } from "./graphics/PhysiologyChart";
 import { AdaptiveLoadChart } from "./graphics/AdaptiveLoadChart";
 import { VetrinaOutcomes } from "./VetrinaOutcomes";
-import { VetrinaAdaptiveIntelligence } from "./VetrinaAdaptiveIntelligence";
 
 /** Contenuto pagina "Come funziona": step con grafici reali + outcomes + CTA. */
 export async function VetrinaHowItWorks() {
@@ -72,9 +71,6 @@ export async function VetrinaHowItWorks() {
           </div>
         ))}
       </section>
-
-      {/* cuore: intelligenza adattiva (beneficio, dopo gli step) */}
-      <VetrinaAdaptiveIntelligence />
 
       {/* cosa ottieni davvero — showcase + moduli fusi */}
       <VetrinaOutcomes />
