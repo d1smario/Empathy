@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
-import {
-  deriveTrainingWeekParams,
-  generateAndPublishTrainingWeek,
-} from "@/lib/training/generate-training-week-headless";
+import { buildMacroPhases } from "@/lib/training/build-macro-phases";
+import { generateAndPublishTrainingMacro } from "@/lib/training/generate-training-macro";
 import { generateAndPersistMealPlanV2 } from "@/lib/nutrition/generate-meal-plan-v2-headless";
 import { loadEntitledAthleteIds, resolvePlanWindowStartIso } from "@/lib/onboarding/onboarding-window";
 
@@ -112,16 +110,19 @@ export async function GET(req: NextRequest) {
     let nutritionOk = false;
     let errMsg: string | undefined;
     try {
-      const tParams = deriveTrainingWeekParams(
-        {
-          training_days_per_week: typeof raw.training_days_per_week === "number" ? raw.training_days_per_week : null,
-          training_max_session_minutes:
-            typeof raw.training_max_session_minutes === "number" ? raw.training_max_session_minutes : null,
-          goals: raw.goals,
-        },
-        weekStart,
-      );
-      const tRes = await generateAndPublishTrainingWeek(db, { athleteId, ...tParams });
+      // Training: MACRO periodizzato (base→build→deload…), non più 1 sola settimana.
+      // Open-ended di default (nessuna gara collegata): arco base/build con scarichi.
+      const goals = Array.isArray(raw.goals)
+        ? (raw.goals as unknown[]).filter((g): g is string => typeof g === "string")
+        : [];
+      const phases = buildMacroPhases({ startDate: weekStart, goalEventDate: null });
+      const tRes = await generateAndPublishTrainingMacro(db, {
+        athleteId,
+        startDate: weekStart,
+        phases,
+        discipline: "cycling",
+        goalText: goals.join(", "),
+      });
       trainingOk = tRes.ok;
       if (!tRes.ok) errMsg = tRes.error;
 
