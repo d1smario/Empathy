@@ -1,5 +1,23 @@
 {
   "Vetrina": {
+    "tryit": {
+      "eyebrow": "Try it",
+      "title": "How did today go?",
+      "sub": "Move the slider and watch tomorrow’s plan adapt to how you feel.",
+      "sliderLabel": "How you feel today",
+      "freshLabel": "Fresh",
+      "tiredLabel": "Wrecked",
+      "readinessLabel": "Readiness",
+      "cardTraining": "Training",
+      "cardTrainingSub": "tomorrow’s volume",
+      "cardNutrition": "Nutrition",
+      "cardNutritionSub": "carbs tonight",
+      "cardRecovery": "Recovery",
+      "cardRecoverySub": "recommended sleep",
+      "verdictFresh": "You’re fresh: push.",
+      "verdictMid": "Steady day: stick to the plan.",
+      "verdictTired": "Recovery first: ease off today."
+    },
     "nav": {
       "home": "Home",
       "comeFunziona": "How it works",

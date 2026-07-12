@@ -12,6 +12,7 @@ import { VetrinaHeroCinematic } from "./vetrina/VetrinaHeroCinematic";
 import { VetrinaAudience } from "./vetrina/VetrinaAudience";
 import { VetrinaProblems } from "./vetrina/VetrinaProblems";
 import { VetrinaAdaptiveIntelligence } from "./vetrina/VetrinaAdaptiveIntelligence";
+import { VetrinaTryIt } from "./vetrina/VetrinaTryIt";
 import { VetrinaDomains } from "./vetrina/VetrinaDomains";
 import { VetrinaClosingCta } from "./vetrina/VetrinaClosingCta";
 // landing: hero → per chi è → problemi → watch-lab → cerchio adattivo → domini → cta → footer
@@ -43,6 +44,7 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           <WatchLabSection />
           <VetrinaDomains />
           <VetrinaAdaptiveIntelligence />
+          <VetrinaTryIt />
           <VetrinaProblems />
           <VetrinaAudience />
           <VetrinaClosingCta />

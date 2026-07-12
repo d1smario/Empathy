@@ -1,5 +1,23 @@
 {
   "Vetrina": {
+    "tryit": {
+      "eyebrow": "Provalo",
+      "title": "Com'è andata oggi?",
+      "sub": "Muovi il cursore e guarda il piano di domani adattarsi a come stai.",
+      "sliderLabel": "Come stai oggi",
+      "freshLabel": "Riposato",
+      "tiredLabel": "Distrutto",
+      "readinessLabel": "Readiness",
+      "cardTraining": "Allenamento",
+      "cardTrainingSub": "volume di domani",
+      "cardNutrition": "Nutrizione",
+      "cardNutritionSub": "carboidrati stasera",
+      "cardRecovery": "Recupero",
+      "cardRecoverySub": "sonno consigliato",
+      "verdictFresh": "Sei carico: spingi.",
+      "verdictMid": "Giornata regolare: come da piano.",
+      "verdictTired": "Priorità recupero: oggi si scala."
+    },
     "nav": {
       "home": "Home",
       "comeFunziona": "Come funziona",
