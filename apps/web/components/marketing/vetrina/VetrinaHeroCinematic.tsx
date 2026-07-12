@@ -16,7 +16,7 @@ export async function VetrinaHeroCinematic() {
       {/* video di sfondo (self-hosted): crossfade-loop a doppio buffer + slow-mo, pronto al multi-clip.
           scale per rifilare eventuali margini/watermark della sorgente. */}
       <HeroVideo
-        clips={["/hero/cyclist.mp4"]}
+        clips={["/hero/cyclist.mp4", "/hero/running.mp4", "/hero/gym.mp4"]}
         poster="/hero/cyclist-poster.jpg"
         className="absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
       />
