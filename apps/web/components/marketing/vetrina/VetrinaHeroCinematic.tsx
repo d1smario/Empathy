@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
 import { EngineHud } from "./graphics/EngineHud";
+import { HeroVideo } from "./graphics/HeroVideo";
 
 /**
  * Hero cinematografico: video di un atleta reale (self-hosted) a tutta larghezza +
@@ -11,25 +12,20 @@ import { EngineHud } from "./graphics/EngineHud";
 export async function VetrinaHeroCinematic() {
   const t = await getTranslations("Vetrina.home");
   return (
-    <section className="relative -mx-4 -mt-20 overflow-hidden sm:-mx-6">
-      {/* video di sfondo (self-hosted). scale per nascondere i margini dell'immagine sorgente. */}
-      <video
-        className="absolute inset-0 h-full w-full scale-[1.12] object-cover object-center"
-        autoPlay
-        muted
-        loop
-        playsInline
+    <section className="relative -mx-4 -mt-20 flex min-h-[100svh] items-center overflow-hidden sm:-mx-6">
+      {/* video di sfondo (self-hosted): crossfade-loop a doppio buffer + slow-mo, pronto al multi-clip.
+          scale per rifilare eventuali margini/watermark della sorgente. */}
+      <HeroVideo
+        clips={["/hero/cyclist.mp4"]}
         poster="/hero/cyclist-poster.jpg"
-        aria-hidden
-      >
-        <source src="/hero/cyclist.mp4" type="video/mp4" />
-      </video>
+        className="absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
+      />
 
       {/* overlay per leggibilità */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" aria-hidden />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a0f] to-transparent" aria-hidden />
 
-      <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-32 sm:px-6 sm:pb-24 sm:pt-40 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[1.1fr_0.9fr]">
         {/* colonna testo */}
         <div className="text-center lg:text-left">
           <Reveal>
