@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getCanonicalSiteOrigin, isSiteIndexingDisabled } from "@/lib/site-url";
 
 /** Immagine Open Graph di default (poster dell'hero, on-brand). URL assoluto → corretto anche fuori da metadataBase. */
-const OG_IMAGE = { url: `${getCanonicalSiteOrigin()}/hero/cyclist-poster.jpg`, width: 2048, height: 952, alt: "Empathy" };
+const OG_IMAGE = { url: `${getCanonicalSiteOrigin()}/og`, width: 1200, height: 630, alt: "Empathy" };
 
 /**
  * Metadata SEO condivisa per le pagine pubbliche (vetrina): title/description +

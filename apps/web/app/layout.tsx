@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 const metadataBase = getMetadataBaseUrl();
-const ogImage = `${getCanonicalSiteOrigin()}/hero/cyclist-poster.jpg`;
+const ogImage = `${getCanonicalSiteOrigin()}/og`;
 
 export const metadata: Metadata = {
   ...(metadataBase ? { metadataBase } : {}),
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "Empathy",
     title: "Empathy",
     description: "Performance & metabolic adaptation platform",
-    images: [{ url: ogImage, width: 2048, height: 952, alt: "Empathy" }],
+    images: [{ url: ogImage, width: 1200, height: 630, alt: "Empathy" }],
   },
   twitter: {
     card: "summary_large_image",
