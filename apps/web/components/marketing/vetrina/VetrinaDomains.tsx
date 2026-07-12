@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
 
@@ -31,21 +30,6 @@ export async function VetrinaDomains() {
           </Reveal>
         ))}
       </div>
-
-      {/* risultato + spinta all'azione */}
-      <Reveal>
-        <div className="mx-auto mt-12 max-w-3xl rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/15 to-pink-600/15 p-8 text-center sm:p-10">
-          <p className="mx-auto max-w-2xl text-base font-medium leading-relaxed text-gray-200 sm:text-lg">
-            {t("domainsResult")}
-          </p>
-          <Link
-            href="/registrati"
-            className="empathy-btn-gradient mt-6 inline-block rounded-full px-8 py-3 text-sm font-bold text-white shadow-lg shadow-purple-500/25"
-          >
-            {t("domainsCta")}
-          </Link>
-        </div>
-      </Reveal>
     </section>
   );
 }

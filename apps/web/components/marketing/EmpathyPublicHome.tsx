@@ -13,6 +13,7 @@ import { VetrinaAudience } from "./vetrina/VetrinaAudience";
 import { VetrinaProblems } from "./vetrina/VetrinaProblems";
 import { VetrinaAdaptiveIntelligence } from "./vetrina/VetrinaAdaptiveIntelligence";
 import { VetrinaDomains } from "./vetrina/VetrinaDomains";
+import { VetrinaClosingCta } from "./vetrina/VetrinaClosingCta";
 // landing: hero → per chi è → problemi → watch-lab → cerchio adattivo → domini → cta → footer
 
 type EmpathyPublicHomeProps = {
@@ -40,10 +41,11 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
         >
           <VetrinaHero />
           <WatchLabSection />
-          <VetrinaAudience />
-          <VetrinaProblems />
-          <VetrinaAdaptiveIntelligence />
           <VetrinaDomains />
+          <VetrinaAdaptiveIntelligence />
+          <VetrinaProblems />
+          <VetrinaAudience />
+          <VetrinaClosingCta />
           <FooterSection />
         </main>
       </BrutalistAppBackdrop>

@@ -53,9 +53,6 @@ export async function VetrinaHowItWorks() {
         </Reveal>
       </section>
 
-      {/* cuore: intelligenza adattiva (beneficio, grande risalto) */}
-      <VetrinaAdaptiveIntelligence />
-
       {/* step con grafici reali */}
       <section className="mt-20 space-y-16 sm:mt-28 sm:space-y-24">
         {steps.map((s, i) => (
@@ -71,6 +68,9 @@ export async function VetrinaHowItWorks() {
           </div>
         ))}
       </section>
+
+      {/* cuore: intelligenza adattiva (beneficio, dopo gli step) */}
+      <VetrinaAdaptiveIntelligence />
 
       {/* cosa ottieni davvero — showcase + moduli fusi */}
       <VetrinaOutcomes />
