@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useHeroSport } from "./HeroSportContext";
 
 type Props = {
   /** Una o più clip. Con più clip diventa un montaggio unico (multi-sport). */
@@ -28,6 +29,7 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
   const fading = useRef(false);
   const [active, setActive] = useState(0);
   const [reduce, setReduce] = useState(false);
+  const { setSport } = useHeroSport();
 
   useEffect(() => {
     setReduce(!!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
@@ -42,7 +44,8 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
     b.playbackRate = rate;
     b.pause();
     a.play().catch(() => {});
-  }, [reduce, rate]);
+    setSport(bufClip.current[0]);
+  }, [reduce, rate, setSport]);
 
   const onTime = (idx: number) => (e: React.SyntheticEvent<HTMLVideoElement>) => {
     if (idx !== active || fading.current || reduce) return;
@@ -61,6 +64,7 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
     nv.playbackRate = rate;
     nv.play().catch(() => {});
     setActive(nxt);
+    setSport(bufClip.current[nxt]);
 
     window.setTimeout(() => {
       const cv = refs[cur].current;

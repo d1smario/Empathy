@@ -3,34 +3,79 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useLiveMetrics } from "./useLiveMetrics";
+import { useHeroSport } from "./HeroSportContext";
+
+type Tile = { label: string; value: string; unit: string; color: string };
 
 /**
- * "Vista del motore" Empathy per l'hero: metriche live dell'atleta + il piano che
- * si AGGIORNA da solo (messaggi a rotazione con flash). Comunica: i dati entrano,
- * il sistema adatta. Client, on-brand, reduced-motion safe.
+ * "Vista del motore" Empathy SINCRONIZZATA con la clip attiva dell'hero:
+ * le metriche cambiano in base allo sport (ciclismo → PWR/SPD, palestra → carico/serie,
+ * corsa → passo/cadenza) e il piano si aggiorna coerente. reduced-motion safe.
  */
 export function EngineHud() {
   const t = useTranslations("Vetrina.hud");
   const m = useLiveMetrics(900);
+  const { sport } = useHeroSport();
   const [idx, setIdx] = useState(0);
   const [flash, setFlash] = useState(false);
 
+  // rotazione dei messaggi del piano
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const t1 = setInterval(() => {
-      setIdx((i) => (i + 1) % 4);
+    const id = setInterval(() => {
+      setIdx((i) => i + 1);
       setFlash(true);
       setTimeout(() => setFlash(false), 900);
     }, 3200);
-    return () => clearInterval(t1);
+    return () => clearInterval(id);
   }, []);
 
-  const msgs = [t("msg1"), t("msg2"), t("msg3"), t("msg4")];
-  const tiles = [
-    { label: "HR", value: Math.round(m.hr).toString(), unit: "bpm", color: "#f472b6" },
-    { label: "PWR", value: Math.round(m.pwr).toString(), unit: "W", color: "#a78bfa" },
-    { label: "SPD", value: m.spd.toFixed(1), unit: "km/h", color: "#22d3ee" },
-  ];
+  // cambio sport → il piano "si aggiorna" con un flash
+  useEffect(() => {
+    setIdx(0);
+    setFlash(true);
+    const id = setTimeout(() => setFlash(false), 900);
+    return () => clearTimeout(id);
+  }, [sport]);
+
+  const pace = (kmh: number) => {
+    const p = 60 / kmh;
+    const mm = Math.floor(p);
+    const ss = Math.round((p - mm) * 60);
+    return `${mm}:${ss.toString().padStart(2, "0")}`;
+  };
+
+  const PINK = "#f472b6";
+  const VIOLET = "#a78bfa";
+  const CYAN = "#22d3ee";
+  const load = 120 + Math.round(((m.pwr - 230) / 115) * 60); // 120–180 kg
+  const runSpd = 15 + ((m.spd - 29) / 12) * 3; // 15–18 km/h
+
+  const TILES: Record<number, Tile[]> = {
+    0: [
+      { label: "HR", value: `${Math.round(m.hr)}`, unit: "bpm", color: PINK },
+      { label: "PWR", value: `${Math.round(m.pwr)}`, unit: "W", color: VIOLET },
+      { label: "SPD", value: m.spd.toFixed(1), unit: "km/h", color: CYAN },
+    ],
+    1: [
+      { label: "HR", value: `${Math.round(m.hr - 22)}`, unit: "bpm", color: PINK },
+      { label: t("tileLoad"), value: `${load}`, unit: "kg", color: VIOLET },
+      { label: t("tileSets"), value: "4", unit: "/ 5", color: CYAN },
+    ],
+    2: [
+      { label: "HR", value: `${Math.round(m.hr + 9)}`, unit: "bpm", color: PINK },
+      { label: t("tilePace"), value: pace(runSpd), unit: "/km", color: VIOLET },
+      { label: t("tileCad"), value: `${Math.round(m.cad + 88)}`, unit: "spm", color: CYAN },
+    ],
+  };
+  const MSGS: Record<number, string[]> = {
+    0: [t("cyc1"), t("cyc2")],
+    1: [t("gym1"), t("gym2")],
+    2: [t("run1"), t("run2")],
+  };
+  const tiles = TILES[sport] ?? TILES[0]!;
+  const msgs = MSGS[sport] ?? MSGS[0]!;
+  const msg = msgs[idx % msgs.length] ?? "";
 
   return (
     <div className="w-full max-w-sm rounded-[1.5rem] border border-white/10 bg-black/50 p-5 shadow-2xl backdrop-blur-xl">
@@ -42,8 +87,8 @@ export function EngineHud() {
         <span className="text-[9px] font-semibold uppercase tracking-wider text-emerald-400">{t("live")}</span>
       </div>
 
-      {/* metriche live */}
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      {/* metriche live, coerenti con lo sport della clip */}
+      <div key={sport} className="hud-msg mt-4 grid grid-cols-3 gap-2">
         {tiles.map((tile) => (
           <div key={tile.label} className="rounded-xl border border-white/5 bg-white/[0.03] px-2.5 py-2">
             <span className="text-[9px] uppercase tracking-wider text-gray-500">{tile.label}</span>
@@ -70,7 +115,7 @@ export function EngineHud() {
         />
       </svg>
 
-      {/* il piano che si aggiorna */}
+      {/* il piano che si aggiorna, coerente con lo sport */}
       <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wider text-gray-500">{t("planLabel")}</span>
@@ -82,8 +127,8 @@ export function EngineHud() {
             ● {t("updated")}
           </span>
         </div>
-        <p key={idx} className="hud-msg mt-1.5 text-sm font-semibold text-white">
-          {msgs[idx]}
+        <p key={`${sport}-${idx}`} className="hud-msg mt-1.5 text-sm font-semibold text-white">
+          {msg}
         </p>
       </div>
 

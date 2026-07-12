@@ -13,10 +13,16 @@
       "live": "live",
       "planLabel": "Today’s plan",
       "updated": "updated",
-      "msg1": "You’re fresh: push today",
-      "msg2": "Recovery +15% → lighter session",
-      "msg3": "Tomorrow: +45 g carbs",
-      "msg4": "Refuel +320 kcal after your ride"
+      "tileLoad": "load",
+      "tileSets": "sets",
+      "tilePace": "pace",
+      "tileCad": "cad",
+      "cyc1": "Refuel +320 kcal after your ride",
+      "cyc2": "Tomorrow: +45 g carbs",
+      "run1": "Recovery +15% → easier tomorrow",
+      "run2": "You’re fresh: push the pace",
+      "gym1": "Good load → +2.5 kg next set",
+      "gym2": "Protein +25 g post-workout"
     },
     "home": {
       "problemLabel": "The problem",

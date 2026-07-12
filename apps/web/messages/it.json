@@ -13,10 +13,16 @@
       "live": "in tempo reale",
       "planLabel": "Piano di oggi",
       "updated": "aggiornato",
-      "msg1": "Sei carico: spingi oggi",
-      "msg2": "Recupero +15% → sessione più leggera",
-      "msg3": "Domani: +45 g di carboidrati",
-      "msg4": "Reintegro +320 kcal post-uscita"
+      "tileLoad": "carico",
+      "tileSets": "serie",
+      "tilePace": "passo",
+      "tileCad": "cad",
+      "cyc1": "Reintegro +320 kcal post-uscita",
+      "cyc2": "Domani: +45 g di carboidrati",
+      "run1": "Recupero +15% → domani più leggero",
+      "run2": "Sei carico: spingi il ritmo",
+      "gym1": "Carico ok → +2,5 kg alla prossima serie",
+      "gym2": "Proteine +25 g post-workout"
     },
     "home": {
       "problemLabel": "Il problema",

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Reveal } from "./Reveal";
 import { EngineHud } from "./graphics/EngineHud";
 import { HeroVideo } from "./graphics/HeroVideo";
+import { HeroSportProvider } from "./graphics/HeroSportContext";
 
 /**
  * Hero cinematografico: video di un atleta reale (self-hosted) a tutta larghezza +
@@ -13,6 +14,7 @@ export async function VetrinaHeroCinematic() {
   const t = await getTranslations("Vetrina.home");
   return (
     <section className="relative -mx-4 -mt-20 flex min-h-[100svh] items-center overflow-hidden sm:-mx-6">
+      <HeroSportProvider>
       {/* video di sfondo (self-hosted): crossfade-loop a doppio buffer + slow-mo, pronto al multi-clip.
           scale per rifilare eventuali margini/watermark della sorgente. */}
       <HeroVideo
@@ -69,6 +71,7 @@ export async function VetrinaHeroCinematic() {
           <EngineHud />
         </Reveal>
       </div>
+      </HeroSportProvider>
     </section>
   );
 }
