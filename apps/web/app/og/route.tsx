@@ -35,7 +35,6 @@ export function GET() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={EMPATHY_WORDMARK_DATA_URI} width={620} height={160} alt="Empathy" />
         <div style={{ marginTop: 40, fontSize: 42, color: "#e5e7eb" }}>Trasforma i dati in performance</div>
-        <div style={{ marginTop: 18, fontSize: 24, color: "#8b8b93" }}>Allenamento · Nutrizione · Recupero</div>
         <div
           style={{
             position: "absolute",
