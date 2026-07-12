@@ -7,6 +7,7 @@ import { GpsRouteMap } from "./graphics/GpsRouteMap";
 import { PhysiologyChart } from "./graphics/PhysiologyChart";
 import { AdaptiveLoadChart } from "./graphics/AdaptiveLoadChart";
 import { VetrinaOutcomes } from "./VetrinaOutcomes";
+import { VetrinaAdaptiveIntelligence } from "./VetrinaAdaptiveIntelligence";
 
 /** Contenuto pagina "Come funziona": step con grafici reali + outcomes + CTA. */
 export async function VetrinaHowItWorks() {
@@ -51,6 +52,9 @@ export async function VetrinaHowItWorks() {
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-gray-400 sm:text-lg">{t("sub")}</p>
         </Reveal>
       </section>
+
+      {/* cuore: intelligenza adattiva (beneficio, grande risalto) */}
+      <VetrinaAdaptiveIntelligence />
 
       {/* step con grafici reali */}
       <section className="mt-20 space-y-16 sm:mt-28 sm:space-y-24">

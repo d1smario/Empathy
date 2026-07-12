@@ -11,9 +11,8 @@ import { FooterSection } from "./FooterSection";
 import { VetrinaHero } from "./vetrina/VetrinaHero";
 import { VetrinaAudience } from "./vetrina/VetrinaAudience";
 import { VetrinaProblems } from "./vetrina/VetrinaProblems";
-import { VetrinaAdaptiveCircle } from "./vetrina/VetrinaAdaptiveCircle";
+import { VetrinaAdaptiveIntelligence } from "./vetrina/VetrinaAdaptiveIntelligence";
 import { VetrinaDomains } from "./vetrina/VetrinaDomains";
-import { VetrinaFinalCta } from "./vetrina/VetrinaFinalCta";
 // landing: hero → per chi è → problemi → watch-lab → cerchio adattivo → domini → cta → footer
 
 type EmpathyPublicHomeProps = {
@@ -43,9 +42,8 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           <WatchLabSection />
           <VetrinaAudience />
           <VetrinaProblems />
-          <VetrinaAdaptiveCircle />
+          <VetrinaAdaptiveIntelligence />
           <VetrinaDomains />
-          <VetrinaFinalCta />
           <FooterSection />
         </main>
       </BrutalistAppBackdrop>
