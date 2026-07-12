@@ -8,7 +8,7 @@ import { HomeStripePricing } from "./HomeStripePricing";
 import { Navbar } from "./Navbar";
 import { WatchLabSection } from "./WatchLabSection";
 import { FooterSection } from "./FooterSection";
-import { VetrinaHero } from "./vetrina/VetrinaHero";
+import { VetrinaHeroCinematic } from "./vetrina/VetrinaHeroCinematic";
 import { VetrinaAudience } from "./vetrina/VetrinaAudience";
 import { VetrinaProblems } from "./vetrina/VetrinaProblems";
 import { VetrinaAdaptiveIntelligence } from "./vetrina/VetrinaAdaptiveIntelligence";
@@ -39,7 +39,7 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           tabIndex={-1}
           className="relative scroll-mt-0 px-4 outline-none sm:px-6 pt-20 pb-12"
         >
-          <VetrinaHero />
+          <VetrinaHeroCinematic />
           <WatchLabSection />
           <VetrinaDomains />
           <VetrinaAdaptiveIntelligence />

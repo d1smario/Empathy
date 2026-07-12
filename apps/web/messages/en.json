@@ -8,6 +8,16 @@
       "collabora": "Collaborate",
       "contatti": "Contact"
     },
+    "hud": {
+      "engineLabel": "Empathy engine",
+      "live": "live",
+      "planLabel": "Today’s plan",
+      "updated": "updated",
+      "msg1": "You’re fresh: push today",
+      "msg2": "Recovery +15% → lighter session",
+      "msg3": "Tomorrow: +45 g carbs",
+      "msg4": "Refuel +320 kcal after your ride"
+    },
     "home": {
       "problemLabel": "The problem",
       "solutionLabel": "With Empathy",
