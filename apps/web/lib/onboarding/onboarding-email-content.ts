@@ -28,12 +28,18 @@ export type OnboardingEmailInput = {
 
 export type OnboardingEmail = { subject: string; htmlBody: string; textBody: string; tag: string };
 
-const ACCENT = "#0d8676";
-const INK = "#14201f";
-const INK_SOFT = "#5a6a67";
-const BG = "#eef2f1";
-const CARD = "#ffffff";
-const LINE = "#e2e8e6";
+// Palette brand Empathy: fondo scuro + gradiente viola→rosa→arancio (stesso di /access/plan).
+// Il gradiente è progressive-enhancement (`background:SOLID;background:GRAD`): i client che non
+// supportano linear-gradient tengono il colore solido di fallback.
+const ACCENT = "#a78bfa"; // viola brand (fallback solido, leggibile su scuro)
+const ACCENT_SOFT = "#c4b5fd"; // viola chiaro per eyebrow/label
+const GRAD = "linear-gradient(90deg,#a78bfa 0%,#f472b6 55%,#f97316 100%)";
+const INK = "#f5f5f7"; // titoli
+const INK_SOFT = "#a3a3b8"; // corpo
+const BG = "#0b0b0f"; // sfondo pagina (app scura)
+const CARD = "#15151d"; // card
+const LINE = "#2a2a37"; // bordi/divisori
+const FOOTER_INK = "#6f6f82"; // footer
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
@@ -69,7 +75,7 @@ function progressBar(pct: number): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${LINE};border-radius:999px;">
     <tr><td style="height:10px;line-height:10px;font-size:0;padding:0;">
       <table role="presentation" width="${filled}%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-        <tr><td style="height:10px;line-height:10px;font-size:0;background:${ACCENT};border-radius:999px;">&nbsp;</td></tr>
+        <tr><td style="height:10px;line-height:10px;font-size:0;background:${ACCENT};background:${GRAD};border-radius:999px;">&nbsp;</td></tr>
       </table>
     </td></tr></table>`;
 }
@@ -104,6 +110,7 @@ export function buildOnboardingEmail(input: OnboardingEmailInput): OnboardingEma
   const subject = t(`email.subject.${dayKey}`, { greet, count: missing.length });
   const ctaLabel = completeness.planReady ? t("email.ctaGoToArea") : t("email.ctaComplete");
   const ctaUrl = `${input.appUrl.replace(/\/+$/, "")}/onboarding`;
+  const logoUrl = `${input.appUrl.replace(/\/+$/, "")}/brand/empathy-wordmark-white.png`;
   const recRemaining = completeness.recommended.total - completeness.recommended.done;
 
   const preheader = completeness.planReady
@@ -116,9 +123,11 @@ export function buildOnboardingEmail(input: OnboardingEmailInput): OnboardingEma
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:${BG};">
 <tr><td align="center" style="padding:28px 16px;">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="border-collapse:collapse;max-width:560px;width:100%;">
-    <tr><td style="padding:0 4px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:3px;font-weight:bold;color:${ACCENT};">EMPATHY</td></tr>
+    <tr><td align="center" style="padding:0 4px 22px;">
+      <img src="${esc(logoUrl)}" width="150" height="39" alt="Empathy" style="display:block;width:150px;height:auto;max-width:55%;border:0;outline:none;text-decoration:none;margin:0 auto;">
+    </td></tr>
     <tr><td style="background:${CARD};border:1px solid ${LINE};border-radius:16px;padding:32px 28px;font-family:Arial,Helvetica,sans-serif;">
-      <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:${ACCENT};font-weight:bold;">${esc(t("eyebrow"))}</div>
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:${ACCENT_SOFT};font-weight:bold;">${esc(t("eyebrow"))}</div>
       <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2;color:${INK};">${esc(headline)}${nameSuffixHtml}.</h1>
       <p style="margin:14px 0 22px;font-size:15px;line-height:1.6;color:${INK_SOFT};">${esc(intro)}</p>
 
@@ -134,8 +143,8 @@ export function buildOnboardingEmail(input: OnboardingEmailInput): OnboardingEma
       }
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:26px 0 6px;">
-        <tr><td style="border-radius:10px;background:${ACCENT};">
-          <a href="${esc(ctaUrl)}" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:10px;">
+        <tr><td style="border-radius:12px;background:${ACCENT};background:${GRAD};">
+          <a href="${esc(ctaUrl)}" style="display:inline-block;padding:13px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#0b0b0f;text-decoration:none;border-radius:12px;">
             ${esc(ctaLabel)}
           </a>
         </td></tr>
@@ -147,7 +156,7 @@ export function buildOnboardingEmail(input: OnboardingEmailInput): OnboardingEma
           : ""
       }
     </td></tr>
-    <tr><td style="padding:18px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#9aa8a5;">
+    <tr><td align="center" style="padding:18px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${FOOTER_INK};">
       ${esc(t("email.footer"))}
     </td></tr>
   </table>

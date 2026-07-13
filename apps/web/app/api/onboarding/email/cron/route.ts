@@ -35,7 +35,7 @@ function localHour(tz: string | null): number {
 }
 
 function appBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || "https://empathy.coach").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL || "https://d1s-empathy.com").replace(/\/+$/, "");
 }
 
 /**
