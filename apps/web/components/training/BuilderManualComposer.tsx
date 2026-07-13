@@ -206,7 +206,9 @@ function GenerativeStepperPod({
   icon: typeof Layers;
   label: string;
   value: number;
-  onChange: (n: number) => void;
+  /** Updater FUNZIONALE (riceve il valore precedente reale): i click rapidi non
+   *  perdono step come farebbe un calcolo dallo snapshot di render. Vedi B2. */
+  onChange: (update: (prev: number) => number) => void;
   min: number;
   max: number;
   step: number;
@@ -215,8 +217,8 @@ function GenerativeStepperPod({
   iconClass: string;
 }) {
   const t = useTranslations("BuilderManualComposer");
-  const dec = () => onChange(Math.max(min, value - step));
-  const inc = () => onChange(Math.min(max, value + step));
+  const dec = () => onChange((prev) => Math.max(min, prev - step));
+  const inc = () => onChange((prev) => Math.min(max, prev + step));
   return (
     <div className={`flex min-w-[9.5rem] flex-1 items-stretch gap-2 rounded-xl border p-2.5 shadow-inner ${borderClass} ${bgClass}`}>
       <div className="flex flex-col justify-center pt-4">
@@ -237,7 +239,7 @@ function GenerativeStepperPod({
             step={step}
             onChange={(e) => {
               const n = Number(e.target.value);
-              if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
+              if (Number.isFinite(n)) onChange(() => Math.min(max, Math.max(min, n)));
             }}
           />
           <button type="button" className={stepperBtn} onClick={inc} aria-label={t("increaseAria", { label })}>
@@ -356,6 +358,25 @@ export function BuilderManualComposer({
   const patch = (partial: Partial<ManualPlanBlock>) => {
     setManualPlanBlocks((p) => p.map((b, i) => (i === safeIndex ? { ...b, ...partial } : b)));
   };
+
+  /**
+   * Patch FUNZIONALE: calcola il nuovo valore dallo stato PRECEDENTE, non dallo
+   * snapshot di render. Serve agli stepper «−/+»: con `patch({ minutes: row.minutes - 1 })`
+   * due click rapidi (prima del re-render) partivano dallo stesso `row.minutes` e il
+   * secondo era un no-op («a volte il − non funziona», B2). Qui ogni click parte dal
+   * valore corrente reale.
+   */
+  const patchFn = (compute: (b: ManualPlanBlock) => Partial<ManualPlanBlock>) => {
+    setManualPlanBlocks((p) => p.map((b, i) => (i === safeIndex ? { ...b, ...compute(b) } : b)));
+  };
+
+  /** «−» durata: sottrae `deltaSec` prendendo in prestito dai minuti (i secondi a 0
+   *  non restano bloccati — B2: il − sul riscaldamento a minuti interi «non faceva niente»). */
+  const stepDurationSeconds = (deltaSec: number) =>
+    patchFn((b) => {
+      const total = Math.max(0, b.minutes * 60 + b.seconds + deltaSec);
+      return { minutes: Math.floor(total / 60), seconds: total % 60 };
+    });
 
   const setKind = (k: PlanBlockKind) => {
     setManualPlanBlocks((p) =>
@@ -743,14 +764,14 @@ export function BuilderManualComposer({
           {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/50 px-2 py-2">
-                <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => patch({ minutes: Math.max(0, row.minutes - 1) })}>
+                <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => stepDurationSeconds(-60)}>
                   −
                 </button>
                 <div className="text-center">
                   <p className="text-[0.6rem] text-gray-500">Min</p>
                   <p className="font-mono text-xl text-white">{row.minutes}</p>
                 </div>
-                <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => patch({ minutes: row.minutes + 1 })}>
+                <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => stepDurationSeconds(60)}>
                   +
                 </button>
               </div>
@@ -758,7 +779,7 @@ export function BuilderManualComposer({
                 <button
                   type="button"
                   className="rounded-lg bg-white/10 px-2 py-1 text-lg"
-                  onClick={() => patch({ seconds: Math.max(0, row.seconds - 5) })}
+                  onClick={() => stepDurationSeconds(-5)}
                 >
                   −
                 </button>
@@ -769,7 +790,7 @@ export function BuilderManualComposer({
                 <button
                   type="button"
                   className="rounded-lg bg-white/10 px-2 py-1 text-lg"
-                  onClick={() => patch({ seconds: Math.min(59, row.seconds + 5) })}
+                  onClick={() => stepDurationSeconds(5)}
                 >
                   +
                 </button>
@@ -963,7 +984,7 @@ export function BuilderManualComposer({
                   icon={Layers}
                   label={t("steps")}
                   value={row.pyramidSteps}
-                  onChange={(n) => patch({ pyramidSteps: n })}
+                  onChange={(upd) => patchFn((b) => ({ pyramidSteps: upd(b.pyramidSteps) }))}
                   min={1}
                   max={30}
                   step={1}
@@ -975,7 +996,7 @@ export function BuilderManualComposer({
                   icon={Timer}
                   label={t("secPerStep")}
                   value={row.pyramidStepSeconds}
-                  onChange={(n) => patch({ pyramidStepSeconds: n })}
+                  onChange={(upd) => patchFn((b) => ({ pyramidStepSeconds: upd(b.pyramidStepSeconds) }))}
                   min={20}
                   max={900}
                   step={10}
@@ -987,7 +1008,7 @@ export function BuilderManualComposer({
                   icon={intensityUnit === "watt" ? Zap : Heart}
                   label={`Start (${intensityUnit === "watt" ? "W" : "bpm"})`}
                   value={row.pyramidStartTarget}
-                  onChange={(n) => patch({ pyramidStartTarget: n })}
+                  onChange={(upd) => patchFn((b) => ({ pyramidStartTarget: upd(b.pyramidStartTarget) }))}
                   min={intensityUnit === "watt" ? 50 : 90}
                   max={intensityUnit === "watt" ? 600 : 220}
                   step={intensityUnit === "watt" ? 5 : 1}
@@ -999,7 +1020,7 @@ export function BuilderManualComposer({
                   icon={TrendingUp}
                   label={`End (${intensityUnit === "watt" ? "W" : "bpm"})`}
                   value={row.pyramidEndTarget}
-                  onChange={(n) => patch({ pyramidEndTarget: n })}
+                  onChange={(upd) => patchFn((b) => ({ pyramidEndTarget: upd(b.pyramidEndTarget) }))}
                   min={intensityUnit === "watt" ? 50 : 90}
                   max={intensityUnit === "watt" ? 600 : 220}
                   step={intensityUnit === "watt" ? 5 : 1}
