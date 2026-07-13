@@ -1109,7 +1109,8 @@
     "elev": "Elev.",
     "hrZonesTitle": "Time in HR zones",
     "zonesFromLthr": "zones from LTHR",
-    "zonesFromHrMax": "zones from HR max"
+    "zonesFromHrMax": "zones from HR max",
+    "hrZonesNoThreshold": "Set LTHR or HR max in the profile to see time in zone."
   },
   "CalendarDaySessionDetail": {
     "sessionFallback": "Session",
@@ -1131,6 +1132,7 @@
     "excludeZero": "Exclude 0",
     "dataGrid": "Data grid",
     "timeCol": "Time",
+    "noBucketData": "No data > 0 (uncheck \"Exclude 0\")",
     "summaryStrengthTitle": "Strength session",
     "summaryStrengthDesc": "Bodyweight or loaded work: the detail lives in the exercise plan.",
     "summaryRecoveryTitle": "Recovery & mobility",

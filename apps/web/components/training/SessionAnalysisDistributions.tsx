@@ -21,6 +21,7 @@ export function SessionDistributionHistogram({
   unit,
   minutesLabel,
   excludeZeroLabel,
+  emptyLabel,
   supportsExcludeZero,
 }: {
   title: string;
@@ -31,6 +32,7 @@ export function SessionDistributionHistogram({
   unit: string;
   minutesLabel: string;
   excludeZeroLabel: string;
+  emptyLabel: string;
   supportsExcludeZero?: boolean;
 }) {
   const [excludeZero, setExcludeZero] = useState<boolean>(Boolean(supportsExcludeZero));
@@ -38,8 +40,12 @@ export function SessionDistributionHistogram({
     () => buildMinutesHistogram(values, durationMinutes, { bucketWidth, excludeZero }),
     [values, durationMinutes, bucketWidth, excludeZero],
   );
-  if (bins.length === 0) return null;
-  const peak = Math.max(...bins.map((b) => b.minutes));
+  const peak = bins.length ? Math.max(...bins.map((b) => b.minutes)) : 0;
+  // Vuoto quando: nessun bin, oppure minuti tutti 0 (durata mancante). Se NON c'è il
+  // toggle non c'è modo di recuperare → sopprimi la card. Se c'è (cadenza), tienila con
+  // il toggle così l'utente può deselezionare «Escludi 0» e rivedere i dati (fix review B2/A2).
+  const empty = bins.length === 0 || peak <= 0;
+  if (empty && !supportsExcludeZero) return null;
 
   return (
     <div className={CARD}>
@@ -59,6 +65,9 @@ export function SessionDistributionHistogram({
           </label>
         ) : null}
       </div>
+      {empty ? (
+        <p className="py-8 text-center text-xs text-gray-500">{emptyLabel}</p>
+      ) : (
       <div className="h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={bins} margin={{ top: 4, right: 6, bottom: 2, left: -20 }}>
@@ -98,6 +107,7 @@ export function SessionDistributionHistogram({
           </BarChart>
         </ResponsiveContainer>
       </div>
+      )}
     </div>
   );
 }

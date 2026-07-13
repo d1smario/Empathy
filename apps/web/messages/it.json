@@ -1109,7 +1109,8 @@
     "elev": "Disl.",
     "hrZonesTitle": "Tempo in zone FC",
     "zonesFromLthr": "zone da LTHR",
-    "zonesFromHrMax": "zone da FC max"
+    "zonesFromHrMax": "zone da FC max",
+    "hrZonesNoThreshold": "Imposta LTHR o FC max nel profilo per vedere il tempo in zona."
   },
   "CalendarDaySessionDetail": {
     "sessionFallback": "Sessione",
@@ -1131,6 +1132,7 @@
     "excludeZero": "Escludi 0",
     "dataGrid": "Griglia dati",
     "timeCol": "Tempo",
+    "noBucketData": "Nessun dato > 0 (deseleziona «Escludi 0»)",
     "summaryStrengthTitle": "Sessione di forza",
     "summaryStrengthDesc": "Lavoro a corpo libero o sovraccarico: il dettaglio è nella scheda esercizi.",
     "summaryRecoveryTitle": "Recupero e mobilità",

@@ -436,6 +436,7 @@ function SessionDetailCard({
                   unit="bpm"
                   minutesLabel={t("minutesLabel")}
                   excludeZeroLabel={t("excludeZero")}
+                  emptyLabel={t("noBucketData")}
                 />
               ) : null}
               {distribution.cadence ? (
@@ -448,6 +449,7 @@ function SessionDetailCard({
                   unit="rpm"
                   minutesLabel={t("minutesLabel")}
                   excludeZeroLabel={t("excludeZero")}
+                  emptyLabel={t("noBucketData")}
                   supportsExcludeZero
                 />
               ) : null}

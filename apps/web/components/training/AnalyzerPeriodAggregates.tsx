@@ -32,6 +32,9 @@ export function AnalyzerPeriodAggregates({
   if (rows.length === 0) return null;
   const anyPower = rows.some((r) => r.hasPower);
   const anyHr = rows.some((r) => r.hasHr);
+  // Senza LTHR né FCmax le zone non sono classificabili: NON mostrare barre (finirebbe
+  // tutto in Z1, falso «tutto recupero»). Mostra invece un invito a impostare le soglie. (fix review A1)
+  const canZone = (lthrBpm ?? 0) > 0 || (hrMaxBpm ?? 0) > 0;
   const zoneSource = lthrBpm && lthrBpm > 0 ? t("zonesFromLthr") : hrMaxBpm && hrMaxBpm > 0 ? t("zonesFromHrMax") : null;
 
   return (
@@ -103,8 +106,11 @@ export function AnalyzerPeriodAggregates({
         </table>
       </div>
 
-      {/* Tempo in zone FC per periodo — barra impilata. */}
-      {anyHr ? (
+      {/* Tempo in zone FC per periodo — barra impilata (solo con soglie disponibili). */}
+      {anyHr && !canZone ? (
+        <p className="text-[0.65rem] text-gray-500">{t("hrZonesNoThreshold")}</p>
+      ) : null}
+      {anyHr && canZone ? (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-rose-300/80">
