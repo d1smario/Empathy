@@ -179,14 +179,19 @@ const withPWA = withPWAInit({
         urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
         handler: "NetworkOnly",
       },
-      /** Pagine di calendario/training: NetworkFirst con timeout breve per garantire
-       *  che dopo un import il nuovo HTML/RSC arrivi sempre prima della cache offline. */
+      /** Pagine app (calendario/training + scope coach `/athletes`, admin `/admin`, mobile `/m/`):
+       *  NetworkFirst con timeout breve → dopo un fix lato server (o un import) il nuovo HTML/RSC
+       *  arriva sempre prima della cache offline. Prima `/athletes` non era coperto e la shell
+       *  coach restava "appiccicosa". */
       {
         urlPattern: ({ url }) =>
           url.pathname.startsWith("/training") ||
           url.pathname.startsWith("/nutrition") ||
           url.pathname.startsWith("/health") ||
-          url.pathname.startsWith("/physiology"),
+          url.pathname.startsWith("/physiology") ||
+          url.pathname.startsWith("/athletes") ||
+          url.pathname.startsWith("/admin") ||
+          url.pathname.startsWith("/m/"),
         handler: "NetworkFirst",
         options: {
           cacheName: "empathy-pages",
