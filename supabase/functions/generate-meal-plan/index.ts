@@ -77,21 +77,15 @@ Deno.serve(async (req: Request) => {
     );
     const responseCore = await mapV2PlanToV1Response(v2, request);
 
-    // 3) Persiste (replace per data) se assente o su «Rigenera» — fonte unica letta da Oggi.
-    const regenerate = body?.regenerate === true || (body?.plan && body.plan.regenerate === true);
-    const { data: existing } = await admin
-      .from("nutrition_plan")
-      .select("id")
-      .eq("athlete_id", athleteId)
-      .eq("plan_date", request.planDate)
-      .limit(1)
-      .maybeSingle();
-    if (!existing?.id || regenerate) {
-      const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2, {
-        hydrationMlTarget: weightKg != null ? Math.round(weightKg * 35) : null,
-      });
-      if (!persisted.ok) return json({ error: persisted.error }, 500);
-    }
+    // 3) Persiste SEMPRE (replace per data) → il DB riflette SEMPRE l'ultima generazione del
+    //    Piano ed è la fonte unica letta da Oggi. Prima persisteva solo alla prima volta (o su
+    //    «Rigenera»): cambi a peso/allenamento/diet aggiornavano il render del Piano ma NON il
+    //    DB → Oggi mostrava un piano stantìo diverso dal Piano. La generazione è deterministica
+    //    per (atleta, data) e il persist fa REPLACE, quindi ripersistere è idempotente.
+    const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2, {
+      hydrationMlTarget: weightKg != null ? Math.round(weightKg * 35) : null,
+    });
+    if (!persisted.ok) return json({ error: persisted.error }, 500);
 
     // 4) Risposta piena renderizzabile — identica alla route Next (attachSolverBasis + lever line V2).
     const engineLeverLines = ["Motore Nutrition V2 (USDA FDC taggato + fueling substrati)."];

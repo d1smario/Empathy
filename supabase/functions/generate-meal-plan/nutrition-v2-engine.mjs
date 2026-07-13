@@ -2457,9 +2457,16 @@ function computeNutritionDailyEnergyModel(input) {
   const trainingKcal = training.kcal;
   const estimatedAvgPowerW = training.avgPowerW != null ? training.avgPowerW : input.ftpWatts != null && training.avgIntensityPctFtp != null ? round(input.ftpWatts * (training.avgIntensityPctFtp / 100)) : null;
   const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? clamp(input.dietDayMealsScalePct, 0, 200) / 100 : 1;
-  const totalDailyKcal = round((bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale);
-  const mealsKcal = round((bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale);
+  const observedActiveKcal = input.observedActiveKcal != null && Number.isFinite(input.observedActiveKcal) && input.observedActiveKcal >= 0 ? input.observedActiveKcal : null;
+  const usesObserved = observedActiveKcal != null;
+  const observedTotalKcal = usesObserved ? bmr.bmrKcal + observedActiveKcal : null;
   const fuelingKcal = round(trainingKcal * (1 - mealTrainingFraction));
+  const totalDailyKcal = round(
+    (usesObserved ? observedTotalKcal : bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale
+  );
+  const mealsKcal = round(
+    (usesObserved ? Math.max(0, observedTotalKcal - fuelingKcal) : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale
+  );
   const recoveryStatus = input.recoveryStatus ?? "unknown";
   const split = recoveryStatus === "poor" ? { pre: 0.08, intra: 0.4, post: 0.12 } : recoveryStatus === "moderate" ? { pre: 0.06, intra: 0.44, post: 0.1 } : { pre: 0.05, intra: 0.45, post: 0.1 };
   const preKcal = round(trainingKcal * split.pre);
@@ -2495,6 +2502,11 @@ function computeNutritionDailyEnergyModel(input) {
     "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
     "Integrazione performance (recovery/bio): agisce su distribuzione pasti\u2194fueling, CHO/h, proteine, idratazione \u2014 NON riduce il fabbisogno energetico totale."
   );
+  if (usesObserved) {
+    notes.push(
+      `Consumo OSSERVATO (device): BMR ${bmr.bmrKcal} + kcal attive ${Math.round(observedActiveKcal)} = ${observedTotalKcal} kcal. Il fabbisogno segue il consumo reale; fueling intra-seduta (${fuelingKcal} kcal) resta dal pianificato.`
+    );
+  }
   if (recoveryStatus === "moderate") {
     notes.push("Recovery-aware solver active: moderate recovery shifts more energy toward pre/post support and slightly tempers intra CHO aggressiveness.");
   }
@@ -8386,12 +8398,13 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     if (!mealId) continue;
     const roles = MEAL_SLOT_ASSEMBLY[s.slot] ?? [];
     s.items.forEach((it, i) => {
-      const fdcId = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
-      if (!fdcId || fdcId <= 0) return;
+      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
       const foodRole = roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple";
       itemPayload.push({
         meal_id: mealId,
-        fdc_id: fdcId,
+        fdc_id: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
+        label: it.description ?? null,
+        canonical_key: it.canonicalKey ?? null,
         food_role: foodRole,
         grams: Math.round(num2(it.grams)),
         kcal: Math.round(num2(it.kcal)),
