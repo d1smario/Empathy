@@ -204,6 +204,7 @@
     "faq": {
       "title": "FAQ & Events",
       "faqHeading": "Frequently asked questions",
+      "allLink": "See all questions",
       "sub": "Everything you need to know about Empathy. Can't find your answer? Write to us.",
       "empty": "Frequently asked questions will be published soon.",
       "ctaTitle": "Still have questions?",

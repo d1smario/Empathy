@@ -15,7 +15,8 @@ import { VetrinaAdaptiveIntelligence } from "./vetrina/VetrinaAdaptiveIntelligen
 import { VetrinaTryIt } from "./vetrina/VetrinaTryIt";
 import { VetrinaDomains } from "./vetrina/VetrinaDomains";
 import { VetrinaClosingCta } from "./vetrina/VetrinaClosingCta";
-// landing: hero → per chi è → problemi → watch-lab → cerchio adattivo → domini → cta → footer
+import { VetrinaFaqHome } from "./vetrina/VetrinaFaqHome";
+// landing: hero → watch-lab → domini → cerchio adattivo → problemi → per chi è → faq → cta → footer
 
 type EmpathyPublicHomeProps = {
   billingFlash?: "success" | "cancel";
@@ -47,6 +48,7 @@ export async function EmpathyPublicHome({ billingFlash, variant = "landing" }: E
           <VetrinaTryIt />
           <VetrinaProblems />
           <VetrinaAudience />
+          <VetrinaFaqHome />
           <VetrinaClosingCta />
           <FooterSection />
         </main>
