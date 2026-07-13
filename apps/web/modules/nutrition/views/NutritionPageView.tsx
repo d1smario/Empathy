@@ -873,12 +873,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           serverDailyEnergyDateRef.current = null;
           serverSelectorPathwayDateRef.current = null;
         }
-        const availableDates = Array.from(new Set(pl.map((row) => row.date))).sort();
-        const nextDate = availableDates.find((d) => d >= todayKey) ?? availableDates[0] ?? todayKey;
-        // La data ricordata (sessionStorage, sync con Bioenergetica) vale solo se è
-        // oggi o futura: all'apertura non vogliamo ripartire da un giorno passato.
+        // Data d'apertura = OGGI (come la vista Oggi). PRIMA saltava al prossimo giorno con un
+        // allenamento pianificato: se oggi non c'era workout, il Piano si apriva su un altro
+        // giorno e sembrava «un piano diverso» da Oggi — in realtà stesso motore, giorni diversi.
+        // La data ricordata (sessionStorage, sync con Bioenergetica) vale solo se è oggi o futura.
         const persisted = readPersistedNutritionPlanDate(athleteId);
-        const finalPlanDate = clampIsoDay(persisted && persisted >= todayKey ? persisted : nextDate);
+        const finalPlanDate = clampIsoDay(persisted && persisted >= todayKey ? persisted : todayKey);
         nutritionModuleWindowRef.current = { from: initialStartKey, to: initialEndKey };
         // La finestra è tornata ±7: sveglia l'espansione on-demand se la data è fuori.
         setModuleWindowVersion((v) => v + 1);
