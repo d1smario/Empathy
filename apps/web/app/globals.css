@@ -933,13 +933,28 @@ body {
 }
 
 @media (max-width: 520px) {
+  /* B4 (mobile): i box annidati (general → detail → lista → card) sommavano
+     ~38px per lato di inset orizzontale, schiacciando i cibi. Stringiamo SOLO
+     gli inset orizzontali (il respiro verticale resta), recuperando ~30px di
+     larghezza utile per riga senza appiattire la gerarchia visiva. */
+  .empathy-meal-expo-general {
+    margin: 10px 6px 0;
+    padding: 10px;
+  }
+  .empathy-meal-expo-detail {
+    margin: 10px 6px;
+  }
+  .empathy-meal-expo-detail-head {
+    padding: 0 8px 8px;
+  }
   .empathy-meal-expo-food-list {
+    padding: 0 6px 12px;
     gap: 12px;
   }
   .empathy-meal-expo-food-card {
     grid-template-columns: 80px minmax(0, 1fr);
     gap: 12px;
-    padding: 14px;
+    padding: 10px;
   }
   .empathy-meal-expo-food-body {
     gap: 10px;
@@ -4038,6 +4053,12 @@ body {
   align-items: stretch;
 }
 
+/* B4: colonne comprimibili così tabelle/grafici larghi scorrono (overflow-x-auto
+   interno) invece di sfondare la pagina su mobile. Vedi nota in cp-derived-split. */
+.physiology-pro2-lab-split2 > * {
+  min-width: 0;
+}
+
 .physiology-pro2-lab-split2-col {
   display: flex;
   flex-direction: column;
@@ -4064,6 +4085,15 @@ body {
   margin-bottom: 14px;
 }
 
+/* B4 (mobile): un item grid `1fr` ha minimo = min-content, non 0. Senza
+   `min-width: 0` la card della tabella «Zone e substrati» non scende sotto la
+   larghezza della tabella (min-w-[22rem] + padding), sfondando la pagina invece
+   di lasciar scorrere il suo `overflow-x-auto` interno. Rendiamo comprimibili
+   entrambe le colonne (grafico + tabella) così lo scroll orizzontale interno funziona. */
+.physiology-cp-derived-split > * {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .physiology-cp-derived-split {
     grid-template-columns: 1fr;
@@ -4077,6 +4107,11 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
+}
+
+/* B4: come sopra — item comprimibili per far scorrere il contenuto largo. */
+.physiology-vo2max-pair > * {
+  min-width: 0;
 }
 
 @media (max-width: 1000px) {
