@@ -24,6 +24,10 @@ import {
 } from "@/components/training/SessionMultiAxisChart";
 import { BiomarkerTile, KpiTile, sessionBiomarkerTiles } from "@/components/training/SessionKpiTiles";
 import { SessionSummaryModule } from "@/components/training/SessionSummaryModule";
+import {
+  SessionDataGridTable,
+  SessionDistributionHistogram,
+} from "@/components/training/SessionAnalysisDistributions";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatElapsedLabel,
@@ -274,6 +278,23 @@ function SessionDetailCard({
     return Array.from({ length: overlayMaxLen }, (_, i) => formatElapsedLabel(i, overlayMaxLen, dur));
   }, [overlayMaxLen, workout.durationMinutes]);
 
+  // A2: distribuzioni FC/cadenza (minuti nel bucket) + griglia dati (Time × canali),
+  // stile TrainingPeaks. Solo canali con dati reali (device import) — niente grafici finti.
+  const distribution = useMemo(() => {
+    const durMin = Number.isFinite(workout.durationMinutes) ? Number(workout.durationMinutes) : 0;
+    const hr = allSeries.find((s) => s.channel === "hr")?.values ?? [];
+    const cadence = allSeries.find((s) => s.channel === "cadence")?.values ?? [];
+    const gridChannels = ["speed", "hr", "cadence", "power", "altitude", "temperature"];
+    return {
+      durMin,
+      hr: hr.some((v) => Number.isFinite(v)) ? hr : null,
+      cadence: cadence.some((v) => Number.isFinite(v)) ? cadence : null,
+      hasGrid: allSeries.some(
+        (s) => gridChannels.includes(s.channel) && s.values.some((v) => Number.isFinite(v)),
+      ),
+    };
+  }, [allSeries, workout.durationMinutes]);
+
   // Potenza media + IF dalla serie HD reale (ground truth): alcuni trace_summary hanno
   // l'avg potenza sottostimato → correggiamo con l'avg dei campioni per coerenza col grafico.
   const seriesPowerAvg = useMemo(() => {
@@ -396,6 +417,52 @@ function SessionDetailCard({
       ) : (
         <SessionSummaryModule workout={workout} vm={vm} athleteId={athleteId} />
       )}
+
+      {/* A2: distribuzioni FC/cadenza + griglia dati (solo con serie reali dal device). */}
+      {distribution.hr || distribution.cadence || distribution.hasGrid ? (
+        <div className="space-y-2">
+          <p className="font-mono text-[0.6rem] font-bold uppercase tracking-[0.2em] text-orange-300/80">
+            {t("distributionsTitle")}
+          </p>
+          {distribution.hr || distribution.cadence ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {distribution.hr ? (
+                <SessionDistributionHistogram
+                  title={t("hrDistribution")}
+                  values={distribution.hr}
+                  durationMinutes={distribution.durMin}
+                  color="#f87171"
+                  bucketWidth={5}
+                  unit="bpm"
+                  minutesLabel={t("minutesLabel")}
+                  excludeZeroLabel={t("excludeZero")}
+                />
+              ) : null}
+              {distribution.cadence ? (
+                <SessionDistributionHistogram
+                  title={t("cadenceDistribution")}
+                  values={distribution.cadence}
+                  durationMinutes={distribution.durMin}
+                  color="#a78bfa"
+                  bucketWidth={5}
+                  unit="rpm"
+                  minutesLabel={t("minutesLabel")}
+                  excludeZeroLabel={t("excludeZero")}
+                  supportsExcludeZero
+                />
+              ) : null}
+            </div>
+          ) : null}
+          {distribution.hasGrid ? (
+            <SessionDataGridTable
+              title={t("dataGrid")}
+              timeLabel={t("timeCol")}
+              series={allSeries}
+              durationMinutes={distribution.durMin}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Totali (lavoro/energia) + biomarcatori: valori scalari NON presenti
           nell'overlay multifattoriale, quindi non sono un doppione delle sue curve. */}
