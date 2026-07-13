@@ -1,6 +1,7 @@
 "use client";
 
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
+import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 
 /** Sotto ~3 MB resta il multipart verso `/api/training/import` (tetto Vercel ~4.5 MB). Sopra: upload diretto a Supabase Storage. */
@@ -156,6 +157,51 @@ export async function importExecutedWorkoutFile(input: {
     throw new Error(json.error ?? "Executed import failed");
   }
   return json as TrainingImportFileResult;
+}
+
+/**
+ * Import di una seduta strutturata (FIT workout / ZWO / ERG / MRC) NELL'EDITOR del Builder,
+ * senza scrivere a calendario: ritorna il contratto editabile che va passato a
+ * `loadLibraryContractInBuilder`. Il coach rivede/modifica e poi salva col flusso normale.
+ * I workout strutturati sono file piccoli → solo multipart (nessun percorso storage-bucket).
+ */
+export async function parseStructuredWorkoutForBuilder(input: {
+  athleteId: string;
+  file: File;
+}): Promise<{
+  contract: Pro2BuilderSessionContract;
+  sessionName: string;
+  discipline: string;
+  format: string;
+  intervalRows: number;
+}> {
+  const form = new FormData();
+  form.set("athleteId", input.athleteId);
+  form.set("file", input.file);
+
+  const response = await fetch("/api/training/builder/import-structured", {
+    method: "POST",
+    headers: await buildSupabaseAuthHeaders(),
+    body: form,
+  });
+  const json = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    contract?: Pro2BuilderSessionContract;
+    sessionName?: string;
+    discipline?: string;
+    format?: string;
+    intervalRows?: number;
+  };
+  if (!response.ok || !json.contract) {
+    throw new Error(json.error ?? "Import strutturato non riuscito");
+  }
+  return {
+    contract: json.contract,
+    sessionName: json.sessionName ?? json.contract.sessionName,
+    discipline: json.discipline ?? json.contract.discipline,
+    format: json.format ?? "fit_workout",
+    intervalRows: json.intervalRows ?? 0,
+  };
 }
 
 export async function importPlannedProgramFile(input: {

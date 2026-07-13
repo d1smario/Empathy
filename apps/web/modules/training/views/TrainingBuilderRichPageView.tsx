@@ -40,6 +40,7 @@ import {
 import { buildPro2GymManualRowsFromEngine } from "@/lib/training/builder/build-pro2-gym-rows-from-engine";
 import { pro2PaletteSportToBlock1SportTag } from "@/lib/training/domain-blocks/block1-strength-functional";
 import { fetchUnifiedBuilderExercises } from "@/modules/training/services/training-builder-catalog-api";
+import { parseStructuredWorkoutForBuilder } from "@/modules/training/services/training-import-api";
 import { macroIdForSport, SPORT_MACRO_SECTORS } from "@/lib/training/builder/sport-macro-palette";
 import { trainingDomainForPaletteSport } from "@/lib/training/sport-domain-map";
 import { estimateTssFromSegments } from "@/lib/training/builder/tss-estimate";
@@ -449,6 +450,38 @@ export default function TrainingBuilderRichPageView() {
       }
     },
     [],
+  );
+
+  // [M1] Import FIT/ZWO/ERG/MRC direttamente nell'editor manuale (anteprima editabile,
+  // niente scrittura DB): parse server-side → contratto → idratazione dello stato Builder.
+  const importStructuredInputRef = useRef<HTMLInputElement | null>(null);
+  const [structuredImportBusy, setStructuredImportBusy] = useState(false);
+  const [structuredImportErr, setStructuredImportErr] = useState<string | null>(null);
+  const [structuredImportOk, setStructuredImportOk] = useState<string | null>(null);
+
+  const handleStructuredWorkoutImport = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file) return;
+      if (!athleteId) {
+        setStructuredImportErr("Seleziona prima un atleta.");
+        setStructuredImportOk(null);
+        return;
+      }
+      setStructuredImportBusy(true);
+      setStructuredImportErr(null);
+      setStructuredImportOk(null);
+      try {
+        const res = await parseStructuredWorkoutForBuilder({ athleteId, file });
+        loadLibraryContractInBuilder(res.contract);
+        const rows = res.intervalRows > 0 ? ` · ${res.intervalRows} intervalli` : "";
+        setStructuredImportOk(`Importato «${res.sessionName}»${rows}. Rivedi i blocchi e salva.`);
+      } catch (e) {
+        setStructuredImportErr(e instanceof Error ? e.message : "Import non riuscito");
+      } finally {
+        setStructuredImportBusy(false);
+      }
+    },
+    [athleteId, loadLibraryContractInBuilder],
   );
 
   useEffect(() => {
@@ -1181,7 +1214,7 @@ export default function TrainingBuilderRichPageView() {
           hideSaveBar
         />
 
-        <div className="flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
             3
           </span>
@@ -1190,7 +1223,42 @@ export default function TrainingBuilderRichPageView() {
               muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
             })}
           </p>
+          <div className="ml-auto flex items-center gap-2">
+            <input
+              ref={importStructuredInputRef}
+              type="file"
+              accept=".fit,.fit.gz,.gz,.zwo,.erg,.mrc"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                void handleStructuredWorkoutImport(f);
+                e.target.value = "";
+              }}
+            />
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+              disabled={!athleteId || structuredImportBusy}
+              title={
+                !athleteId
+                  ? "Seleziona prima un atleta"
+                  : "Importa un workout strutturato (FIT/ZWO/ERG/MRC) nell'editor per rivederlo e salvarlo"
+              }
+              onClick={() => importStructuredInputRef.current?.click()}
+            >
+              {structuredImportBusy ? "Importo…" : "Importa FIT/ZWO/ERG"}
+            </Pro2Button>
+          </div>
         </div>
+        {structuredImportErr ? (
+          <p className="text-sm text-amber-300" role="alert">
+            {structuredImportErr}
+          </p>
+        ) : null}
+        {structuredImportOk ? (
+          <p className="text-sm text-emerald-200/90">{structuredImportOk}</p>
+        ) : null}
 
         <BuilderManualComposerSwitch
           activeMacroId={activeMacroId}
