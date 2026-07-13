@@ -1,0 +1,40 @@
+name: Device pull (scheduled)
+
+# Trigger periodico dei pull device OLTRE il cron giornaliero di Vercel.
+# Vercel piano Hobby accetta 1 cron/giorno: questa Action chiama gli endpoint di pull
+# (Garmin + Whoop) ogni 15 minuti così i dati compaiono quasi in tempo reale.
+# Chiama SOLO i pull device (NON /api/cron/daily, che lancerebbe anche le email onboarding).
+# Richiede il secret repo CRON_SECRET (stesso valore impostato su Vercel).
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # ogni 15 min (GitHub può ritardare di qualche minuto sotto carico)
+  workflow_dispatch: {} # avvio manuale dalla tab Actions
+
+concurrency:
+  group: device-pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger device pulls
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BASE_URL: https://d1s-empathy.com
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret non impostato nel repo (Settings → Secrets → Actions)."
+            exit 1
+          fi
+          for path in \
+            /api/integrations/garmin/pull/cron \
+            /api/integrations/whoop/pull/cron ; do
+            code=$(curl -sS -m 60 -o /tmp/resp.json -w "%{http_code}" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$BASE_URL$path" || echo "000")
+            echo "$path → HTTP $code"
+            head -c 500 /tmp/resp.json 2>/dev/null || true
+            echo
+          done

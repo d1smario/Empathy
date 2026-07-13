@@ -4645,6 +4645,7 @@
     "httpError": "Errore HTTP {status}",
     "networkError": "Errore di rete.",
     "devicesIntro": "Collega i tuoi dispositivi per sincronizzare automaticamente allenamenti e dati di salute.",
+    "autoSyncTip": "Consiglio: attiva la sincronizzazione automatica nell'app del tuo dispositivo (Garmin Connect, Polar Flow…). Così a fine allenamento le attività salgono subito e i tuoi dati compaiono qui in pochi minuti, senza doverli inviare a mano.",
     "garminConnectedCheck": "Garmin collegato ✓",
     "garminServerConfig": "Integrazione Garmin non ancora configurata sul server (credenziali OAuth mancanti).",
     "garminForbidden": "Non hai accesso ai dati di questo atleta.",

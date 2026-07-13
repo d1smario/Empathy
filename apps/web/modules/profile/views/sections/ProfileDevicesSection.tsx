@@ -362,6 +362,9 @@ export function ProfileDevicesSection({
       <div className="profile-subpanel tone-slate" style={{ marginTop: "12px" }}>
         <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />Devices</h4>
         <p className="muted-copy">{t("devicesIntro")}</p>
+        <div className="mt-3 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2">
+          <p className="muted-copy text-xs text-emerald-100/90">{t("autoSyncTip")}</p>
+        </div>
         {garminReturn === "connected" ? (
           <p className="text-sm text-emerald-400/90" style={{ marginTop: 8 }}>{t("garminConnectedCheck")}</p>
         ) : null}

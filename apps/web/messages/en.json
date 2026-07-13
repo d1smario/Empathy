@@ -4645,6 +4645,7 @@
     "httpError": "HTTP error {status}",
     "networkError": "Network error.",
     "devicesIntro": "Connect your devices to automatically sync workouts and health data.",
+    "autoSyncTip": "Tip: turn on auto-sync in your device's app (Garmin Connect, Polar Flow…). Your activities upload right after each session, so your data shows up here within minutes — no manual upload needed.",
     "garminConnectedCheck": "Garmin connected ✓",
     "garminServerConfig": "Garmin integration is not yet configured on the server (missing OAuth credentials).",
     "garminForbidden": "You do not have access to this athlete's data.",
