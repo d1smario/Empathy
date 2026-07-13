@@ -46,9 +46,11 @@ export function TodayTimeline({
   const t = useTranslations("TodayPage");
   const [pastOpen, setPastOpen] = useState(false);
 
-  // Passato compresso: il prefisso iniziale di eventi GIÀ FATTI (done) prima
-  // dell'ora corrente collassa in una riga «✓ n completati» espandibile. Gli
-  // eventi passati NON fatti (es. pasto da confermare) restano visibili.
+  // Passato compresso: TUTTI gli eventi con orario già trascorso (prima di ADESSO)
+  // collassano in una riga espandibile. Prima comprimeva solo il prefisso di eventi
+  // "done": bastava un pasto/integrazione non confermato (todo) a inizio mattina per
+  // lasciare mezza giornata espansa → la compattazione sembrava non funzionare. Ora il
+  // focus resta su ADESSO + futuro; il passato (fatto o mancato) si rivede col tap.
   const { collapsed, rest, nowIndex } = useMemo(() => {
     const now = new Date().getHours() * 60 + new Date().getMinutes();
     const prefix: TodayEvent[] = [];
@@ -56,7 +58,7 @@ export function TodayTimeline({
     while (i < events.length) {
       const e = events[i]!;
       const m = minutesOf(e.time);
-      if (e.status === "done" && m != null && m <= now) {
+      if (m != null && m < now) {
         prefix.push(e);
         i += 1;
       } else {
