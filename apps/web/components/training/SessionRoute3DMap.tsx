@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { StravaStyleMap } from "@/components/training/StravaStyleMap";
 
 /**
@@ -24,6 +24,7 @@ type MlMap = {
   setTerrain: (t: unknown) => void;
   fitBounds: (b: unknown, opts?: unknown) => void;
   easeTo: (opts: unknown) => void;
+  getBearing: () => number;
   addControl: (c: unknown, pos?: string) => void;
   remove: () => void;
 };
@@ -129,6 +130,38 @@ export function SessionRoute3DMap({ route, height = 340 }: SessionRoute3DMapProp
   // true quando il 3D ha davvero renderizzato: finché è false mostriamo un placeholder
   // (utile mentre la scheda è nascosta e il render-loop rAF è in pausa).
   const [ready, setReady] = useState(false);
+  // Vista 3D (pitch inclinato) vs 2D (dall'alto). La bussola di MapLibre appiattiva il pitch a 0
+  // senza modo di tornare al 3D: questo toggle RIMETTE il pitch, e un pulsante ruota la mappa.
+  const [is3d, setIs3d] = useState(true);
+
+  const toggle3d = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = !is3d;
+    map.easeTo({ pitch: next ? 62 : 0, bearing: next ? -18 : 0, duration: 500 });
+    setIs3d(next);
+  };
+  const rotateMap = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ bearing: map.getBearing() - 45, duration: 450 });
+  };
+
+  const mapBtnStyle: CSSProperties = {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(10,10,18,0.78)",
+    color: "#e5e7eb",
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backdropFilter: "blur(4px)",
+  };
 
   const lngLat = useMemo<[number, number][]>(
     () => (route.length >= 2 ? route.map(([lat, lon]) => [lon, lat]) : [[9.19, 45.4642], [9.205, 45.472]]),
@@ -295,6 +328,27 @@ export function SessionRoute3DMap({ route, height = 340 }: SessionRoute3DMapProp
           }}
         >
           Percorso 3D · caricamento…
+        </div>
+      ) : null}
+      {ready ? (
+        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6, zIndex: 2 }}>
+          <button
+            type="button"
+            onClick={toggle3d}
+            style={mapBtnStyle}
+            title={is3d ? "Vista dall'alto (2D)" : "Vista inclinata (3D)"}
+          >
+            {is3d ? "2D" : "3D"}
+          </button>
+          <button
+            type="button"
+            onClick={rotateMap}
+            style={{ ...mapBtnStyle, fontSize: "1rem" }}
+            title="Ruota la mappa 45°"
+            aria-label="Ruota la mappa"
+          >
+            ↻
+          </button>
         </div>
       ) : null}
     </div>
