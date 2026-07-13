@@ -184,23 +184,39 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     });
   }
 
-  // Pasti: solo MARCATORI orari nella timeline. Oggi NON duplica i cibi — alimenti/grammi/kcal
-  // si vedono nel Piano tramite il link «Apri nel Piano». Così niente doppia vista né divergenza
-  // Piano↔Oggi. Gli orari vengono dallo scheletro (routine). Il diario (timbrato) resta la verità
-  // del CONSUMATO: pasto "done" se ha voci a diario per quello slot.
-  for (const meal of plannedMeals) {
-    const time = timeFromIso(meal.entry_time);
+  // Pasti: solo MARCATORI orari (Oggi non duplica i cibi — alimenti/grammi/kcal si vedono nel
+  // Piano via il link «Apri nel Piano», niente doppia vista né divergenza). Gli orari vengono
+  // dalla ROUTINE (routine_config.meal_times), SEMPRE disponibili anche nei giorni di riposo
+  // (senza allenamento pianificato lo scheletro macro sarebbe vuoto). Il diario (timbrato) resta
+  // la verità del CONSUMATO: pasto "done" se ha voci a diario per quello slot.
+  const MEAL_TIME_DEFAULT: Record<string, string> = {
+    breakfast: "07:30",
+    snack_am: "10:30",
+    lunch: "13:00",
+    snack_pm: "16:30",
+    dinner: "20:00",
+  };
+  const mealTimesCfg = asRecord(routineConfig.meal_times);
+  const mealMarkers: Array<{ slot: string; timeRaw: unknown }> = [
+    { slot: "breakfast", timeRaw: mealTimesCfg.breakfast },
+    { slot: "snack_am", timeRaw: mealTimesCfg.snack_am ?? mealTimesCfg.snack },
+    { slot: "lunch", timeRaw: mealTimesCfg.lunch },
+    { slot: "snack_pm", timeRaw: mealTimesCfg.snack_pm ?? mealTimesCfg.afternoon_snack },
+    { slot: "dinner", timeRaw: mealTimesCfg.dinner },
+  ];
+  for (const m of mealMarkers) {
+    const time = normalizeHhMm(m.timeRaw) ?? MEAL_TIME_DEFAULT[m.slot] ?? null;
     if (!time) continue;
-    const consumed = diaryItems.some((i) => i.mealSlot === meal.slot);
+    const consumed = diaryItems.some((i) => i.mealSlot === m.slot);
     events.push({
-      id: `meal-${meal.slot}`,
-      type: mealTypeForSlot(meal.slot),
+      id: `meal-${m.slot}`,
+      type: mealTypeForSlot(m.slot),
       time,
-      title: mealKeyForSlot(meal.slot),
-      titleKey: mealKeyForSlot(meal.slot),
+      title: mealKeyForSlot(m.slot),
+      titleKey: mealKeyForSlot(m.slot),
       status: consumed ? "done" : "todo",
       accent: "amber",
-      data: { slot: meal.slot },
+      data: { slot: m.slot },
     });
   }
 
