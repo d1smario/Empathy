@@ -20,6 +20,8 @@ export async function VetrinaHeroCinematic() {
       <HeroVideo
         clips={["/hero/cyclist.mp4", "/hero/gym.mp4", "/hero/running.mp4"]}
         poster="/hero/cyclist-poster.jpg"
+        mobileClips={["/hero/cyclist-9x16.mp4", "/hero/gym-9x16.mp4", "/hero/running-9x16.mp4"]}
+        mobilePoster="/hero/cyclist-9x16-poster.jpg"
         className="absolute inset-0 h-full w-full scale-[1.08] object-cover object-center"
       />
 

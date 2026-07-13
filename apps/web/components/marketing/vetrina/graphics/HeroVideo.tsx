@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useHeroSport } from "./HeroSportContext";
 
 type Props = {
-  /** Una o più clip. Con più clip diventa un montaggio unico (multi-sport). */
+  /** Una o più clip (orizzontali/desktop). Con più clip diventa un montaggio unico (multi-sport). */
   clips: string[];
   poster: string;
+  /** Varianti verticali 9:16 per mobile: STESSE scene, inquadratura verticale. Fallback a `clips`. */
+  mobileClips?: string[];
+  mobilePoster?: string;
   className?: string;
   /** Slow-mo cinematografico (1 = normale). */
   rate?: number;
@@ -18,9 +21,10 @@ type Props = {
  * Video hero con crossfade-loop a doppio buffer: due <video> sovrapposti che si
  * alternano in dissolvenza, così il loop non "scatta" mai e più clip si concatenano
  * in un montaggio continuo (multi-sport). Slow-mo via playbackRate.
- * reduced-motion → poster statico (nessun autoplay di movimento).
+ * Su mobile usa le varianti verticali 9:16 (stesse scene, cornice verticale → niente zoom).
+ * reduced-motion / Data Saver → poster statico (nessun autoplay di movimento).
  */
-export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs = 800 }: Props) {
+export function HeroVideo({ clips, poster, mobileClips, mobilePoster, className = "", rate = 0.72, fadeMs = 800 }: Props) {
   const refA = useRef<HTMLVideoElement>(null);
   const refB = useRef<HTMLVideoElement>(null);
   const refs = [refA, refB] as const;
@@ -28,16 +32,22 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
   const bufClip = useRef<[number, number]>([0, clips.length > 1 ? 1 : 0]);
   const fading = useRef(false);
   const [active, setActive] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   // "poster" = immagine statica (default SSR, reduced-motion o Data Saver) → nessun download video;
   // "video" = montaggio completo, desktop E mobile, quando il movimento è consentito.
   const [mode, setMode] = useState<"poster" | "video">("poster");
   const { setSport } = useHeroSport();
+
+  const useMobile = isMobile && (mobileClips?.length ?? 0) > 0;
+  const activeClips = useMobile ? mobileClips! : clips;
+  const activePoster = useMobile && mobilePoster ? mobilePoster : poster;
 
   useEffect(() => {
     const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     // Rispetta il Data Saver del device: se attivo resta sul poster (niente download video su rete a consumo).
     const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
     const saveData = nav.connection?.saveData === true;
+    setIsMobile(!!window.matchMedia?.("(max-width: 1023px)").matches);
     setMode(!reduce && !saveData ? "video" : "poster");
   }, []);
 
@@ -78,11 +88,11 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
         cv.pause();
         cv.currentTime = 0;
         // pre-carica la prossima clip nel buffer appena liberato
-        if (clips.length > 1) {
-          const next = (bufClip.current[nxt] + 1) % clips.length;
+        if (activeClips.length > 1) {
+          const next = (bufClip.current[nxt] + 1) % activeClips.length;
           if (bufClip.current[cur] !== next) {
             bufClip.current[cur] = next;
-            cv.src = clips[next]!;
+            cv.src = activeClips[next]!;
             cv.load();
           }
         }
@@ -93,7 +103,7 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
 
   if (mode !== "video") {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={poster} alt="" aria-hidden className={className} />;
+    return <img src={activePoster} alt="" aria-hidden className={className} />;
   }
 
   return (
@@ -107,14 +117,14 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
           muted
           playsInline
           preload="auto"
-          poster={poster}
+          poster={activePoster}
           aria-hidden
           onLoadedData={(e) => {
             e.currentTarget.playbackRate = rate;
           }}
           onTimeUpdate={onTime(i)}
         >
-          <source src={clips[bufClip.current[i]]} type="video/mp4" />
+          <source src={activeClips[bufClip.current[i]]} type="video/mp4" />
         </video>
       ))}
     </>
