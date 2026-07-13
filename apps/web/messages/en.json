@@ -4921,6 +4921,8 @@
     "mealSaving": "Saving…",
     "mealDone": "Mark done",
     "add250ml": "+250 ml",
+    "markReached": "Goal reached",
+    "openInPlan": "Open in Plan",
     "workoutTitle": "Workout",
     "workoutCompleted": "Workout completed · {duration}'",
     "workoutFloating": "Workout today",

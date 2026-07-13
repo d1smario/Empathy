@@ -13,10 +13,13 @@ import {
   Utensils,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { TodayEvent, TodayFoodItem } from "@/app/api/today/contracts";
 import { BuilderPlannedSessionViz } from "@/components/training/BuilderPlannedSessionViz";
+import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
+import { productHrefForPathname } from "@/lib/shell/use-product-href";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
@@ -122,8 +125,17 @@ export function TodayTimelineItem({
   const t = useTranslations("TodayPage");
   // Vista coach/admin (adminScoped) = monitoraggio in sola lettura: niente pulsanti di
   // interazione (idratazione). L'atleta nella propria vista li vede.
-  const { adminScoped } = useActiveAthlete();
+  const { adminScoped, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
   const sessionHrefFor = useScopedSessionHref();
+  const pathname = usePathname() ?? "/";
+  // Link al pasto nel Piano nutrizione, consapevole dello scope (atleta vs coach/admin).
+  const nutritionPlanHref = (() => {
+    const globalHref = "/nutrition/meal-plan";
+    if (!adminScoped) return productHrefForPathname(globalHref, pathname);
+    const scoped = scopedShellHref(globalHref, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
+    if (!scoped) return globalHref;
+    return pathname.startsWith("/m/") ? `/m${scoped}` : scoped;
+  })();
   const Icon = ICONS[event.type];
   const accent = event.accent ?? "slate";
   const styles = ACCENTS[accent] ?? {
@@ -264,7 +276,7 @@ export function TodayTimelineItem({
                     />
                   </div>
                   {!adminScoped && event.status === "current" ? (
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {[250, 500].map((ml) => (
                         <button
                           key={ml}
@@ -276,6 +288,16 @@ export function TodayTimelineItem({
                           +{ml} ml
                         </button>
                       ))}
+                      {cur < cum ? (
+                        <button
+                          type="button"
+                          disabled={hydrationBusy}
+                          onClick={() => onAddHydration?.(Math.max(0, cum - cur))}
+                          className="inline-flex items-center gap-1 rounded-full border border-cyan-400/50 bg-cyan-400/20 px-3 py-1.5 text-xs font-bold text-cyan-50 transition hover:bg-cyan-400/30 disabled:opacity-50"
+                        >
+                          <Check className="h-3.5 w-3.5" aria-hidden /> {t("markReached")}
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </>
@@ -310,7 +332,15 @@ export function TodayTimelineItem({
 
         {isMeal ? (
           <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
-            <p className="font-semibold text-white">{t("mealDetailsTitle")}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-white">{t("mealDetailsTitle")}</p>
+              <Link
+                href={nutritionPlanHref}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-bold text-amber-100 transition hover:bg-amber-500/25"
+              >
+                {t("openInPlan")} <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </Link>
+            </div>
             {event.items && event.items.length > 0 ? (
               <ul className="mt-2 space-y-2">
                 {event.items.map((item, idx) => (

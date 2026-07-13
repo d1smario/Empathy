@@ -4921,6 +4921,8 @@
     "mealSaving": "Salvataggio…",
     "mealDone": "Segna fatto",
     "add250ml": "+250 ml",
+    "markReached": "Obiettivo raggiunto",
+    "openInPlan": "Apri nel Piano",
     "workoutTitle": "Allenamento",
     "workoutCompleted": "Allenamento completato · {duration}'",
     "workoutFloating": "Allenamento oggi",
