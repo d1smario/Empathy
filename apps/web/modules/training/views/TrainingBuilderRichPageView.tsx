@@ -281,6 +281,12 @@ export default function TrainingBuilderRichPageView() {
   const [manualSaveErr, setManualSaveErr] = useState<string | null>(null);
   const [manualSaveOkId, setManualSaveOkId] = useState<string | null>(null);
   const [manualActiveIndex, setManualActiveIndex] = useState(0);
+  // [M1] Import FIT/ZWO/ERG/MRC direttamente nell'editor manuale (anteprima editabile,
+  // niente scrittura DB): parse server-side → contratto → idratazione dello stato Builder.
+  const importStructuredInputRef = useRef<HTMLInputElement | null>(null);
+  const [structuredImportBusy, setStructuredImportBusy] = useState(false);
+  const [structuredImportErr, setStructuredImportErr] = useState<string | null>(null);
+  const [structuredImportOk, setStructuredImportOk] = useState<string | null>(null);
   /** Durata pianificata sul calendario (coach): separata dalla somma dei segmenti del grafico. */
   const [manualSessionDurationMinutes, setManualSessionDurationMinutes] = useState(60);
   /** Scheda palestra (V1 model): solo macro B; mai blocchi watt/FC del composer aerobico. */
@@ -416,6 +422,8 @@ export default function TrainingBuilderRichPageView() {
     setWahooPushOk(null);
     setManualSaveOkId(null);
     setManualSaveErr(null);
+    setStructuredImportOk(null);
+    setStructuredImportErr(null);
   }, [athleteId, plannedDate, replacePlannedIdFromQuery]);
 
   useEffect(() => {
@@ -424,6 +432,10 @@ export default function TrainingBuilderRichPageView() {
 
   const loadLibraryContractInBuilder = useCallback(
     (contract: Pro2BuilderSessionContract, opts?: { scroll?: boolean; keepSport?: boolean }) => {
+      // Editor ripopolato da altra fonte (template libreria / Genera aerobico): il banner
+      // «Importato …» non deve restare appeso. Il flusso import lo re-imposta subito dopo.
+      setStructuredImportOk(null);
+      setStructuredImportErr(null);
       const state = hydrateBuilderStateFromLibraryContract(contract);
       // keepSport: quando la sorgente è la generazione motore lo sport è già quello
       // selezionato; NON reidratarlo dal label del contratto (potrebbe cambiarlo).
@@ -452,13 +464,6 @@ export default function TrainingBuilderRichPageView() {
     [],
   );
 
-  // [M1] Import FIT/ZWO/ERG/MRC direttamente nell'editor manuale (anteprima editabile,
-  // niente scrittura DB): parse server-side → contratto → idratazione dello stato Builder.
-  const importStructuredInputRef = useRef<HTMLInputElement | null>(null);
-  const [structuredImportBusy, setStructuredImportBusy] = useState(false);
-  const [structuredImportErr, setStructuredImportErr] = useState<string | null>(null);
-  const [structuredImportOk, setStructuredImportOk] = useState<string | null>(null);
-
   const handleStructuredWorkoutImport = useCallback(
     async (file: File | null | undefined) => {
       if (!file) return;
@@ -473,6 +478,12 @@ export default function TrainingBuilderRichPageView() {
       try {
         const res = await parseStructuredWorkoutForBuilder({ athleteId, file });
         loadLibraryContractInBuilder(res.contract);
+        // L'editor manuale importato è la fonte di verità: azzera la seduta motore
+        // (altrimenti Push su Wahoo e salvataggio in libreria userebbero ancora quella)
+        // e i banner di salvataggio stantii.
+        setGenResult(null);
+        setSaveOkId(null);
+        setSaveErr(null);
         const rows = res.intervalRows > 0 ? ` · ${res.intervalRows} intervalli` : "";
         setStructuredImportOk(`Importato «${res.sessionName}»${rows}. Rivedi i blocchi e salva.`);
       } catch (e) {
@@ -544,6 +555,8 @@ export default function TrainingBuilderRichPageView() {
       setGenBusy(true);
       setGenErr(null);
       setGenResult(null);
+      setStructuredImportOk(null);
+      setStructuredImportErr(null);
       const paletteDomain = trainingDomainForPaletteSport(sport);
       const out = await generateBuilderSession({
         athleteId,
