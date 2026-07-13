@@ -10,6 +10,7 @@ import {
   type PhysiologicalProfileDbRow,
 } from "@empathy/domain-physiology";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { mapAthleteProfileRow } from "@/lib/profile/map-athlete-profile-row";
 import { formatAthleteProfileStrip } from "@/lib/profile/athlete-profile-strip";
 import { resolveOperationalSignalsBundle } from "@/lib/dashboard/resolve-operational-signals-bundle";
@@ -76,6 +77,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { db } = await requireAthleteReadContext(req, athleteId);
+    // Le tabelle vive del piano (nutrition_plan) non hanno policy RLS per l'utente: il conteggio
+    // «ha un piano nutrizione» va fatto con service-role, altrimenti tornerebbe sempre 0.
+    const admin = createSupabaseAdminClient();
 
     const [
       profRes,
@@ -118,8 +122,8 @@ export async function GET(req: NextRequest) {
         .gte("date", addDays(todayIso, -120))
         .lte("date", todayIso),
       db.from("nutrition_constraints").select("*").eq("athlete_id", athleteId).maybeSingle(),
-      db
-        .from("nutrition_plans")
+      (admin ?? db)
+        .from("nutrition_plan")
         .select("id", { count: "exact", head: true })
         .eq("athlete_id", athleteId),
       db

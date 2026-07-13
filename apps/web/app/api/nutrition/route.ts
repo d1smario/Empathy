@@ -51,21 +51,15 @@ export async function GET(req: NextRequest) {
 
     const { db } = await requireAthleteReadContext(req, athleteId);
 
-    const [{ data: planRow, error: planErr }, { data: plannedRows, error: plannedErr }] = await Promise.all([
-      db
-        .from("nutrition_plans")
-        .select("date, kcal_target, carbs_g_target, proteins_g_target, fats_g_target, hydration_ml_target")
-        .eq("athlete_id", athleteId)
-        .eq("date", targetDate)
-        .maybeSingle(),
-      db
-        .from("planned_workouts")
-        .select("id, type, duration_minutes, tss_target, kcal_target, notes, created_at")
-        .eq("athlete_id", athleteId)
-        .eq("date", targetDate),
-    ]);
+    // NB: la vecchia tabella `nutrition_plans` (plurale) è MORTA. Il piano reale vive in
+    // nutrition_plan/meal/meal_item (Edge Function). Questo endpoint "lightweight" (senza
+    // chiamanti nel repo, superato da /api/nutrition/module) resta il fallback macro dal solver.
+    const { data: plannedRows, error: plannedErr } = await db
+      .from("planned_workouts")
+      .select("id, type, duration_minutes, tss_target, kcal_target, notes, created_at")
+      .eq("athlete_id", athleteId)
+      .eq("date", targetDate);
 
-    if (planErr) return NextResponse.json({ error: planErr.message }, { status: 500, headers: NO_STORE });
     if (plannedErr) return NextResponse.json({ error: plannedErr.message }, { status: 500, headers: NO_STORE });
 
     const sessions = dedupePlannedWorkoutDbRows(
@@ -83,30 +77,6 @@ export async function GET(req: NextRequest) {
         };
       }),
     );
-    const explicit = (planRow as Record<string, unknown> | null) ?? null;
-    const explicitKcal = explicit != null ? Number(explicit.kcal_target ?? 0) : 0;
-
-    if (explicit && explicitKcal > 0) {
-      const plan = {
-        date: String(explicit.date ?? targetDate),
-        calories: explicitKcal,
-        carbsG: Number(explicit.carbs_g_target ?? 0),
-        proteinsG: Number(explicit.proteins_g_target ?? 0),
-        fatsG: Number(explicit.fats_g_target ?? 0),
-        hydrationMl: Number(explicit.hydration_ml_target ?? 0),
-      };
-      return NextResponse.json(
-        {
-          athleteId,
-          plan,
-          adherenceScore: 0,
-          planSource: "nutrition_plans" as const,
-          plannedSessionsCount: sessions.length,
-        },
-        { headers: NO_STORE },
-      );
-    }
-
     if (sessions.length > 0) {
       const memory = await resolveAthleteMemorySlice(athleteId, { slice: "nutrition" }).catch(() => null);
       const profile = memory?.profile;
