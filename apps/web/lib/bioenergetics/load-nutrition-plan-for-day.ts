@@ -102,15 +102,15 @@ export async function loadNutritionPlanDayContext(
   plannedWorkouts: PlannedWorkout[],
 ): Promise<NutritionPlanDayContext> {
   const dateKey = date.slice(0, 10);
-  const [planRes, profileRes] = await Promise.all([
-    db
-      .from("nutrition_plans")
-      .select("date, kcal_target, carbs_g_target, proteins_g_target, fats_g_target")
-      .eq("athlete_id", athleteId)
-      .eq("date", dateKey)
-      .maybeSingle(),
-    db.from("athlete_profiles").select("birth_date, sex, height_cm, weight_kg, body_fat_pct, routine_config, nutrition_config").eq("id", athleteId).maybeSingle(),
-  ]);
+  // NB: la vecchia tabella `nutrition_plans` (plurale) è MORTA (0 righe). Il piano reale vive
+  // in nutrition_plan/meal/meal_item (Edge Function) e viene letto altrove (Oggi via
+  // loadTodayPersistedMeals). Qui questo loader è il solo FALLBACK macro deterministico dal
+  // solver training — niente più lettura della tabella morta.
+  const profileRes = await db
+    .from("athlete_profiles")
+    .select("birth_date, sex, height_cm, weight_kg, body_fat_pct, routine_config, nutrition_config")
+    .eq("id", athleteId)
+    .maybeSingle();
 
   const routineConfig = asRecord(profileRes.data?.routine_config);
   const nutritionConfig = asRecord(profileRes.data?.nutrition_config);
@@ -123,19 +123,6 @@ export async function loadNutritionPlanDayContext(
     snack_pm: String(flatMt.snack_pm ?? flatMt.afternoon_snack ?? DEFAULT_MEAL_TIMES.snack_pm),
   };
   const mealTimes = mealTimesFromRoutineWeekPlanForDate(routineConfig, dateKey, flatFromRoot);
-
-  const explicit = planRes.data as Record<string, unknown> | null;
-  const explicitKcal = explicit != null ? num(explicit.kcal_target) : 0;
-  if (explicit && explicitKcal > 0) {
-    const carbsG = num(explicit.carbs_g_target);
-    const plannedMeals = distributeMeals(dateKey, carbsG, explicitKcal, mealTimes);
-    return {
-      planSource: "nutrition_plans",
-      dailyCarbsG: carbsG,
-      dailyKcal: explicitKcal,
-      plannedMeals,
-    };
-  }
 
   if (plannedWorkouts.length > 0) {
     const profile = profileRes.data as Record<string, unknown> | null;

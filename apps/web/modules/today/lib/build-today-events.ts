@@ -184,52 +184,81 @@ export function buildTodayEvents(input: BuildTodayEventsInput): TodayEvent[] {
     });
   }
 
-  // Pasti. Il diario (timbrato con l'orario) è la fonte di verità del consumato: un pasto
-  // è "done" se ci sono voci a diario per quello slot — niente più «segna fatto» manuale.
-  // I CIBI mostrati vengono dal piano PERSISTITO dal motore DB (cibi reali + grammi +
-  // immagini); se il giorno non ha un piano persistito si ripiega sui macro del solver.
-  const persistedBySlot = new Map<string, TodayPlannedMealSlot>();
-  for (const pm of persistedMeals ?? []) persistedBySlot.set(pm.slot, pm);
-
+  // Pasti. FONTE PRIMARIA = piano PERSISTITO dal motore DB (Edge Function: cibi reali +
+  // grammi + immagini, tabelle vive nutrition_plan/meal/meal_item). Lo scheletro macro del
+  // solver (`plannedMeals`) è solo il FALLBACK quando il giorno non ha ancora un piano
+  // persistito. Il diario (timbrato con l'orario) resta la verità del CONSUMATO: un pasto è
+  // "done" se ci sono voci a diario per quello slot — niente «segna fatto» manuale.
+  const DEFAULT_SLOT_TIME: Record<string, string> = {
+    breakfast: "07:30",
+    snack_am: "10:30",
+    lunch: "13:00",
+    snack_pm: "16:30",
+    dinner: "20:00",
+    snack_evening: "22:00",
+  };
+  // Orario per slot dallo scheletro (derivato dalla routine): usato per posizionare i pasti
+  // persistiti quando il motore non ha salvato `meal.scheduled_time`.
+  const timeBySlot = new Map<string, string>();
   for (const meal of plannedMeals) {
-    const time = timeFromIso(meal.entry_time);
-    if (!time) continue;
-    const persisted = persistedBySlot.get(meal.slot);
-    const diaryForSlot = diaryItems.filter((i) => i.mealSlot === meal.slot);
-    const consumed = diaryForSlot.length > 0;
+    const tm = timeFromIso(meal.entry_time);
+    if (tm) timeBySlot.set(meal.slot, tm);
+  }
 
-    // «Cosa mangiare» = cibi del piano persistito (se c'è), altrimenti le voci a diario.
-    const items: TodayFoodItem[] = persisted
-      ? persisted.foods.map((f) => ({
-          mealSlot: meal.slot,
-          foodLabel: f.label,
-          quantityG: f.grams,
-          kcal: f.kcal,
-          carbsG: 0,
-          proteinG: 0,
-          fatG: 0,
-          macroRole: f.macroRole,
-          imageUrl: f.imageUrl,
-        }))
-      : diaryForSlot;
-
-    const kcal = persisted ? persisted.kcal : Math.round(meal.kcal);
-    const proteinG = persisted ? persisted.proteinG : Math.round(meal.protein_g ?? 0);
-    const carbsG = persisted ? persisted.carbsG : Math.round(meal.carbs_g ?? 0);
-    const fatG = persisted ? persisted.fatG : Math.round(meal.fat_g ?? 0);
-
-    events.push({
-      id: `meal-${meal.slot}`,
-      type: mealTypeForSlot(meal.slot),
-      time,
-      title: mealKeyForSlot(meal.slot),
-      titleKey: mealKeyForSlot(meal.slot),
-      subtitle: `${kcal} kcal · P${proteinG} · C${carbsG} · G${fatG}`,
-      status: consumed ? "done" : "todo",
-      accent: "amber",
-      data: { slot: meal.slot, kcal, protein: proteinG, carbs: carbsG, fat: fatG, consumed, fromPlan: !!persisted },
-      items,
-    });
+  const hasPersisted = (persistedMeals?.length ?? 0) > 0;
+  if (hasPersisted) {
+    for (const pm of persistedMeals!) {
+      const time = pm.scheduledTime ?? timeBySlot.get(pm.slot) ?? DEFAULT_SLOT_TIME[pm.slot] ?? null;
+      if (!time) continue;
+      const consumed = diaryItems.some((i) => i.mealSlot === pm.slot);
+      const items: TodayFoodItem[] = pm.foods.map((f) => ({
+        mealSlot: pm.slot,
+        foodLabel: f.label,
+        quantityG: f.grams,
+        kcal: f.kcal,
+        carbsG: 0,
+        proteinG: 0,
+        fatG: 0,
+        macroRole: f.macroRole,
+        imageUrl: f.imageUrl,
+      }));
+      events.push({
+        id: `meal-${pm.slot}`,
+        type: mealTypeForSlot(pm.slot),
+        time,
+        title: mealKeyForSlot(pm.slot),
+        titleKey: mealKeyForSlot(pm.slot),
+        subtitle: `${pm.kcal} kcal · P${pm.proteinG} · C${pm.carbsG} · G${pm.fatG}`,
+        status: consumed ? "done" : "todo",
+        accent: "amber",
+        data: { slot: pm.slot, kcal: pm.kcal, protein: pm.proteinG, carbs: pm.carbsG, fat: pm.fatG, consumed, fromPlan: true },
+        items,
+      });
+    }
+  } else {
+    // Fallback: scheletro macro del solver (nessun cibo reale, solo target del pasto).
+    for (const meal of plannedMeals) {
+      const time = timeFromIso(meal.entry_time);
+      if (!time) continue;
+      const diaryForSlot = diaryItems.filter((i) => i.mealSlot === meal.slot);
+      const consumed = diaryForSlot.length > 0;
+      const kcal = Math.round(meal.kcal);
+      const proteinG = Math.round(meal.protein_g ?? 0);
+      const carbsG = Math.round(meal.carbs_g ?? 0);
+      const fatG = Math.round(meal.fat_g ?? 0);
+      events.push({
+        id: `meal-${meal.slot}`,
+        type: mealTypeForSlot(meal.slot),
+        time,
+        title: mealKeyForSlot(meal.slot),
+        titleKey: mealKeyForSlot(meal.slot),
+        subtitle: `${kcal} kcal · P${proteinG} · C${carbsG} · G${fatG}`,
+        status: consumed ? "done" : "todo",
+        accent: "amber",
+        data: { slot: meal.slot, kcal, protein: proteinG, carbs: carbsG, fat: fatG, consumed, fromPlan: false },
+        items: diaryForSlot,
+      });
+    }
   }
 
   // Allenamenti: SEMPRE dentro la timeline. Con orario (contract/routine) → posizionati;

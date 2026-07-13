@@ -5,6 +5,7 @@ import { requireAthleteReadContext, AthleteReadContextError } from "@/lib/auth/a
 import { buildOperationalDayHub } from "@/lib/operational/build-operational-day-hub";
 import { loadNutritionPlanDayContext } from "@/lib/bioenergetics/load-nutrition-plan-for-day";
 import { loadTodayPersistedMeals } from "@/lib/nutrition/load-today-planned-meals";
+import { generateAndPersistMealPlanV2 } from "@/lib/nutrition/generate-meal-plan-v2-headless";
 import type { PlannedWorkout } from "@empathy/domain-training";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
 import { buildTodayEvents, buildFloatingWorkout } from "@/modules/today/lib/build-today-events";
@@ -58,7 +59,20 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
     // service-role (RLS senza policy utente su nutrition_plan/meal/meal_item). Se non
     // esiste un piano per il giorno, la timeline usa solo lo scheletro macro sopra.
     const admin = createSupabaseAdminClient();
-    const persistedMeals = admin ? await loadTodayPersistedMeals(admin, athleteId, date) : [];
+    let persistedMeals = admin ? await loadTodayPersistedMeals(admin, athleteId, date) : [];
+
+    // Auto-generazione: se per OGGI/DOMANI (mai nel passato) non c'è ancora un piano
+    // persistito, lo genera SERVER-SIDE con la stessa pipeline dell'Edge Function (motore DB)
+    // e lo rilegge. Idempotente (persist fa replace per data). Best-effort: se fallisce, la
+    // timeline resta sullo scheletro macro. Normalmente il cron giornaliero lo pre-genera.
+    if (admin && persistedMeals.length === 0 && date >= localCalendarDateString()) {
+      try {
+        const gen = await generateAndPersistMealPlanV2(admin, athleteId, date);
+        if (gen.ok) persistedMeals = await loadTodayPersistedMeals(admin, athleteId, date);
+      } catch {
+        /* best-effort: resta lo scheletro macro */
+      }
+    }
 
     // Cibi già registrati nel diario per il giorno (usati come dettaglio del piano)
     const { data: diaryRows } = await db
