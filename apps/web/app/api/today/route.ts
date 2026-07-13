@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAthleteReadContext, AthleteReadContextError } from "@/lib/auth/athlete-read-context";
 import { buildOperationalDayHub } from "@/lib/operational/build-operational-day-hub";
 import { loadNutritionPlanDayContext } from "@/lib/bioenergetics/load-nutrition-plan-for-day";
-import { loadTodayPersistedMeals } from "@/lib/nutrition/load-today-planned-meals";
-import { generateAndPersistMealPlanV2 } from "@/lib/nutrition/generate-meal-plan-v2-headless";
+import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
 import type { PlannedWorkout } from "@empathy/domain-training";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
 import { buildTodayEvents, buildFloatingWorkout } from "@/modules/today/lib/build-today-events";
@@ -55,26 +53,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
     // Pasti pianificati del giorno (macro solver — usati come scheletro slot/orario)
     const nutritionCtx = await loadNutritionPlanDayContext(db, athleteId, date, hub.planned as unknown as PlannedWorkout[]);
 
-    // Piano pasti PERSISTITO dal motore DB (cibi reali con grammi + immagini). Richiede
-    // service-role (RLS senza policy utente su nutrition_plan/meal/meal_item). Se non
-    // esiste un piano per il giorno, la timeline usa solo lo scheletro macro sopra.
-    const admin = createSupabaseAdminClient();
-    let persistedMeals = admin ? await loadTodayPersistedMeals(admin, athleteId, date) : [];
-
-    // Auto-generazione: se per OGGI/DOMANI (mai nel passato) non c'è ancora un piano
-    // persistito, lo genera SERVER-SIDE con la stessa pipeline dell'Edge Function (motore DB)
-    // e lo rilegge. Idempotente (persist fa replace per data). Best-effort: se fallisce, la
-    // timeline resta sullo scheletro macro. Normalmente il cron giornaliero lo pre-genera.
-    if (admin && persistedMeals.length === 0 && date >= localCalendarDateString()) {
-      try {
-        const gen = await generateAndPersistMealPlanV2(admin, athleteId, date);
-        if (gen.ok) persistedMeals = await loadTodayPersistedMeals(admin, athleteId, date);
-      } catch {
-        /* best-effort: resta lo scheletro macro */
-      }
-    }
-
-    // Cibi già registrati nel diario per il giorno (usati come dettaglio del piano)
+    // Cibi già registrati nel diario per il giorno (per marcare "consumato" gli slot pasto).
+    // Oggi NON legge/genera il piano pasti: i cibi si vedono nel Piano (link «Apri nel Piano»).
     const { data: diaryRows } = await db
       .from("food_diary_entries")
       .select("meal_slot, food_label, quantity_g, kcal, carbs_g, protein_g, fat_g")
@@ -100,14 +80,14 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
     const firstName = typeof profileRes.data?.first_name === "string" ? profileRes.data.first_name : null;
     const weightKg = typeof profileRes.data?.weight_kg === "number" ? profileRes.data.weight_kg : null;
 
-    // Idratazione: target base + extra allenamento
+    // Idratazione: STESSA formula di Nutrizione (card «Quanto bere oggi») via helper condiviso —
+    // base peso×33 (min 2200) + extra allenamento. Prima Oggi usava peso×35 → numero diverso.
     const nutritionConfig = asRecord(hub.profile?.nutrition_config);
     const hydrationAll = asRecord(nutritionConfig.hydration_intake);
     const hydrationDay = asRecord(hydrationAll[date]);
     const currentMl = Number(hydrationDay.ml) || 0;
-    const baselineTarget = Math.round((weightKg ?? 70) * 35);
-    const trainingExtra = hub.planned.reduce((sum, p) => sum + Math.round((Number(p.duration_minutes) || 60) * 10), 0);
-    const targetMl = baselineTarget + trainingExtra;
+    const sessionDurationMin = hub.planned.reduce((sum, p) => sum + (Number(p.duration_minutes) || 0), 0);
+    const targetMl = computeDailyHydrationTargetMl({ weightKg, sessionDurationMin }).totalMl;
 
     // Eventi eseguiti (formato compatibile)
     const executedRows = (hub.executed as Array<Record<string, unknown>>).map((e) => ({
@@ -126,7 +106,6 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       plannedWorkouts: hub.planned,
       executedWorkouts: executedRows,
       plannedMeals: nutritionCtx.plannedMeals,
-      persistedMeals,
       diaryItems,
       hydration: { targetMl, currentMl },
       readiness: { score: null, label: null }, // caricato client-side

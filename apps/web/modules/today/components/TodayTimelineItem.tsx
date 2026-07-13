@@ -330,26 +330,16 @@ export function TodayTimelineItem({
           </div>
         ) : null}
 
+        {/* Pasto: Oggi non mostra i cibi (niente doppia vista) — solo il link al Piano, dove
+            vivono alimenti, grammi e kcal. */}
         {isMeal ? (
-          <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-white">{t("mealDetailsTitle")}</p>
-              <Link
-                href={nutritionPlanHref}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[0.7rem] font-bold text-amber-100 transition hover:bg-amber-500/25"
-              >
-                {t("openInPlan")} <ArrowUpRight className="h-3 w-3" aria-hidden />
-              </Link>
-            </div>
-            {event.items && event.items.length > 0 ? (
-              <ul className="mt-2 space-y-2">
-                {event.items.map((item, idx) => (
-                  <MealFoodRow key={idx} item={item} />
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-1 text-gray-500">{t("mealNoItems")}</p>
-            )}
+          <div className="mt-2">
+            <Link
+              href={nutritionPlanHref}
+              className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-100 transition hover:bg-amber-500/25"
+            >
+              {t("openInPlan")} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </div>
         ) : null}
       </div>
