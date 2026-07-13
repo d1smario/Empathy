@@ -28,15 +28,17 @@ export function HeroVideo({ clips, poster, className = "", rate = 0.72, fadeMs =
   const bufClip = useRef<[number, number]>([0, clips.length > 1 ? 1 : 0]);
   const fading = useRef(false);
   const [active, setActive] = useState(0);
-  // "poster" = immagine statica (default SSR, mobile/tablet, reduced-motion) → nessun download video;
-  // "video" = montaggio completo, solo desktop con motion abilitato.
+  // "poster" = immagine statica (default SSR, reduced-motion o Data Saver) → nessun download video;
+  // "video" = montaggio completo, desktop E mobile, quando il movimento è consentito.
   const [mode, setMode] = useState<"poster" | "video">("poster");
   const { setSport } = useHeroSport();
 
   useEffect(() => {
     const reduce = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const desktop = !!window.matchMedia?.("(min-width: 1024px)").matches;
-    setMode(!reduce && desktop ? "video" : "poster");
+    // Rispetta il Data Saver del device: se attivo resta sul poster (niente download video su rete a consumo).
+    const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
+    const saveData = nav.connection?.saveData === true;
+    setMode(!reduce && !saveData ? "video" : "poster");
   }, []);
 
   useEffect(() => {
