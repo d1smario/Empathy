@@ -1098,6 +1098,19 @@
     "colGoals": "Goals (multiple)",
     "footerNote": "Initial values from the phases; changes here take priority over generation. Weekly hours (aerobic macro) distribute the average duration per session."
   },
+  "AnalyzerPeriodAggregates": {
+    "title": "Period calculator",
+    "subtitle": "Aggregates over the selected period's workouts",
+    "week": "Week",
+    "month": "Month",
+    "period": "Period",
+    "sessions": "Sessions",
+    "duration": "Duration",
+    "elev": "Elev.",
+    "hrZonesTitle": "Time in HR zones",
+    "zonesFromLthr": "zones from LTHR",
+    "zonesFromHrMax": "zones from HR max"
+  },
   "CalendarDaySessionDetail": {
     "sessionFallback": "Session",
     "gpsRoute": "GPS Route",

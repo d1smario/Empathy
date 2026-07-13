@@ -9,6 +9,7 @@ import type {
 import { BarChart3, Hexagon, LineChart } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
+import { AnalyzerPeriodAggregates } from "@/components/training/AnalyzerPeriodAggregates";
 import { useScopedAthleteName } from "@/lib/training/use-scoped-athlete-name";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
@@ -229,6 +230,11 @@ export default function TrainingAnalyticsPageView() {
   const [crossModuleDynamicsLines, setCrossModuleDynamicsLines] = useState<string[]>([]);
   const [crossChannelSessions, setCrossChannelSessions] = useState<CrossChannelSessionVm[]>([]);
   const [executedSessions, setExecutedSessions] = useState<ExecutedWorkout[]>([]);
+  // A1: soglie FC per le zone dell'aggregatore per periodo (dal profilo atleta nel payload).
+  const [hrZoneThresholds, setHrZoneThresholds] = useState<{ lthr: number | null; hrMax: number | null }>({
+    lthr: null,
+    hrMax: null,
+  });
   const [trainingRealityDiagnostics, setTrainingRealityDiagnostics] =
     useState<TrainingRealityDiagnosticsViewModel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,6 +289,10 @@ export default function TrainingAnalyticsPageView() {
         setPlanWindows(payload.planWindows ?? null);
         setAdaptationLoop(payload.adaptationLoop ?? null);
         setTwinState(payload.athleteMemory?.twin ?? payload.twinState ?? null);
+        {
+          const prof = (payload.athleteMemory as { profile?: { thresholdHrBpm?: number | null; maxHrBpm?: number | null } } | null | undefined)?.profile;
+          setHrZoneThresholds({ lthr: prof?.thresholdHrBpm ?? null, hrMax: prof?.maxHrBpm ?? null });
+        }
         setRecoverySummary(payload.recoverySummary ?? null);
         setOperationalContext(payload.operationalContext ?? null);
         setBioenergeticModulation(payload.bioenergeticModulation ?? null);
@@ -594,6 +604,17 @@ export default function TrainingAnalyticsPageView() {
                 );
               })}
             </svg>
+          </div>
+
+          {/* A1: calcolatore aggregato per periodo (settimana/mese) sui workout del range
+              selezionato — peak power 5s/1'/5'/20'/60', tempo in zone FC, dislivello medio.
+              Il toggle settimana/mese e il selettore periodo in cima ricalcolano le tabelle. */}
+          <div className="mb-6">
+            <AnalyzerPeriodAggregates
+              workouts={executedWorkouts}
+              lthrBpm={hrZoneThresholds.lthr}
+              hrMaxBpm={hrZoneThresholds.hrMax}
+            />
           </div>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

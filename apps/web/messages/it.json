@@ -1098,6 +1098,19 @@
     "colGoals": "Obiettivi (multipli)",
     "footerNote": "Valori iniziali dalle fasi; modifiche qui hanno priorità sulla generazione. Le ore settimanali (macro aerobico) ripartiscono la durata media per seduta."
   },
+  "AnalyzerPeriodAggregates": {
+    "title": "Calcolatore per periodo",
+    "subtitle": "Aggregati sui workout del periodo selezionato",
+    "week": "Settimana",
+    "month": "Mese",
+    "period": "Periodo",
+    "sessions": "Sedute",
+    "duration": "Durata",
+    "elev": "Disl.",
+    "hrZonesTitle": "Tempo in zone FC",
+    "zonesFromLthr": "zone da LTHR",
+    "zonesFromHrMax": "zone da FC max"
+  },
   "CalendarDaySessionDetail": {
     "sessionFallback": "Sessione",
     "gpsRoute": "Percorso GPS",
