@@ -10,6 +10,8 @@ const HR_KEYS = [
 
 const POWER_KEYS = ["power_avg_w", "avg_power_w", "avg_power", "normalized_power_w", "np_w"];
 
+const HR_MAX_KEYS = ["hr_max_bpm", "max_hr", "hr_max", "maxHeartRateInBeatsPerMinute", "max_heart_rate"];
+
 function pickNum(trace: Record<string, unknown> | null | undefined, keys: string[]): number | null {
   if (!trace) return null;
   for (const key of keys) {
@@ -32,6 +34,8 @@ export function resolveExecutedTrainingLoad(input: {
   traceSummary?: Record<string, unknown> | null;
   vendorLoad?: number | null;
   ftpW?: number | null;
+  /** FC di soglia (LT2) dell'atleta, per hrTSS quando manca la potenza. */
+  lthrBpm?: number | null;
 }): number {
   const stored = Number(input.storedTss ?? 0);
   if (stored > 0) return Math.round(stored);
@@ -42,6 +46,8 @@ export function resolveExecutedTrainingLoad(input: {
     hrAvgBpm: pickNum(input.traceSummary ?? null, HR_KEYS),
     avgPowerW: pickNum(input.traceSummary ?? null, POWER_KEYS),
     ftpW: input.ftpW ?? null,
+    lthrBpm: input.lthrBpm ?? null,
+    hrMaxBpm: pickNum(input.traceSummary ?? null, HR_MAX_KEYS),
   });
 }
 
@@ -51,6 +57,7 @@ export function trainingLoadForExecutedPersist(input: {
   durationMinutes: number;
   traceSummary?: Record<string, unknown> | null;
   ftpW?: number | null;
+  lthrBpm?: number | null;
 }): number {
   return resolveExecutedTrainingLoad({
     storedTss: 0,
@@ -58,5 +65,6 @@ export function trainingLoadForExecutedPersist(input: {
     traceSummary: input.traceSummary,
     vendorLoad: input.vendorLoad,
     ftpW: input.ftpW,
+    lthrBpm: input.lthrBpm,
   });
 }

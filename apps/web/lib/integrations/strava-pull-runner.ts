@@ -100,6 +100,7 @@ async function upsertExecutedFromStrava(input: {
     traceSummary: {
       power_avg_w: avgPower,
       hr_avg_bpm: num(input.rec.average_heartrate),
+      hr_max_bpm: num(input.rec.max_heartrate),
     },
   });
   const channelCoverage = stravaChannelCoverage(input.rec);

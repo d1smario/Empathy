@@ -377,7 +377,11 @@ function extractGarminActivitySeries(samples: unknown): Record<string, unknown> 
   return out;
 }
 
-function inferGarminTrainingLoad(r: Record<string, unknown>, durationMinutes: number): number {
+function inferGarminTrainingLoad(
+  r: Record<string, unknown>,
+  durationMinutes: number,
+  lthrBpm: number | null = null,
+): number {
   const summary = buildGarminCanonicalSummary(r);
   const direct = r.trainingLoadScore ?? r.trainingStressScore ?? r.tss;
   let vendorLoad: number | null = null;
@@ -393,6 +397,8 @@ function inferGarminTrainingLoad(r: Record<string, unknown>, durationMinutes: nu
     avgPowerW: summary.power_avg_w,
     ftpW: null,
     hrAvgBpm: summary.hr_avg_bpm,
+    hrMaxBpm: summary.hr_max_bpm,
+    lthrBpm,
     durationMinutes,
   });
 }
@@ -454,13 +460,29 @@ export async function materializeGarminActivitiesFromPullResponse(input: {
   const supabase = createNodeSupabaseServicePreferred();
   let upserted = 0;
 
+  // FC di soglia (LT2) dell'atleta per hrTSS quando la seduta non ha potenza.
+  let athleteLthrBpm: number | null = null;
+  try {
+    const { data: physRow } = await supabase
+      .from("physiological_profiles")
+      .select("lt2_heart_rate")
+      .eq("athlete_id", input.athleteId)
+      .order("valid_from", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const v = physRow?.lt2_heart_rate;
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) athleteLthrBpm = v;
+  } catch {
+    athleteLthrBpm = null;
+  }
+
   for (const r of sink) {
     const date = activityDateString(r);
     const durSec = durationSeconds(r);
     if (!date || durSec == null) continue;
 
     const durationMinutes = Math.max(1, Math.round(durSec / 60));
-    const tss = inferGarminTrainingLoad(r, durationMinutes);
+    const tss = inferGarminTrainingLoad(r, durationMinutes, athleteLthrBpm);
     const kcalRaw = r.activeKilocalories ?? r.calories;
     const kcal = typeof kcalRaw === "number" && Number.isFinite(kcalRaw) ? kcalRaw : null;
     const kj = kcal != null ? Math.round(kcal * 4.184 * 1000) / 1000 : null;

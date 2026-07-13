@@ -131,6 +131,8 @@ export {
   EMPATHY_LOAD_METHOD_VERSION,
   inferEmpathyTrainingLoadForSession,
   trainingLoadFromPowerSession,
+  trainingLoadFromHrSession,
+  resolveLthrBpm,
 } from "./empathy-infer-training-load";
 
 export {
