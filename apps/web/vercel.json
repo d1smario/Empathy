@@ -4,24 +4,8 @@
   "buildCommand": "cd ../.. && npm run build",
   "crons": [
     {
-      "path": "/api/integrations/garmin/pull/cron",
+      "path": "/api/cron/daily",
       "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/integrations/whoop/pull/cron",
-      "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/onboarding/email/cron?send=true",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/onboarding/plan/cron?run=true",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/nutrition/weekly-replan/cron?run=true",
-      "schedule": "0 6 * * 2"
     }
   ]
 }
