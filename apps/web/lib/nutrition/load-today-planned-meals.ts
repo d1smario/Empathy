@@ -44,6 +44,8 @@ type MealRow = {
 type MealItemRow = {
   meal_id: string;
   fdc_id: number | null;
+  label: string | null;
+  canonical_key: string | null;
   food_role: string | null;
   grams: number | null;
   kcal: number | null;
@@ -122,7 +124,7 @@ export async function loadTodayPersistedMeals(
 
   const { data: itemRows } = await admin
     .from("meal_item")
-    .select("meal_id, fdc_id, food_role, grams, kcal, carbs_g, protein_g, fat_g")
+    .select("meal_id, fdc_id, label, canonical_key, food_role, grams, kcal, carbs_g, protein_g, fat_g")
     .in(
       "meal_id",
       meals.map((m) => m.id),
@@ -163,9 +165,14 @@ export async function loadTodayPersistedMeals(
     const foods: TodayPlannedFood[] = mealItems.map((it) => {
       const fdcId = typeof it.fdc_id === "number" && Number.isFinite(it.fdc_id) ? it.fdc_id : null;
       const resolved = fdcId != null ? foodByFdc.get(fdcId) : undefined;
+      // Etichetta: cibo FDC → nome da fdc_food; item canonico (fdc_id null) → label salvata.
+      const label =
+        resolved?.label ??
+        (typeof it.label === "string" && it.label.trim() !== "" ? fdcDescriptionToLabelIt(it.label) : null) ??
+        (fdcId != null ? `Alimento FDC ${fdcId}` : "Alimento");
       return {
         fdcId,
-        label: resolved?.label ?? (fdcId != null ? `Alimento FDC ${fdcId}` : "Alimento"),
+        label,
         grams: Math.round(num(it.grams)),
         kcal: Math.round(num(it.kcal)),
         macroRole: macroRoleFromFoodRole(it.food_role),

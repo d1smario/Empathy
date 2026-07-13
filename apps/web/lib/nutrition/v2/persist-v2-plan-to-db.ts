@@ -84,19 +84,23 @@ export async function persistV2PlanToDb(
   const mealIdBySlot = new Map<string, string>();
   for (const row of mealRows as Array<{ id: string; slot: string }>) mealIdBySlot.set(row.slot, String(row.id));
 
-  // Insert voci (cibi reali con fdc_id, ruolo alimentare, grammi, macro).
+  // Insert voci FEDELI: TUTTI gli item, non solo quelli con fdc_id. Un item con alias FDC
+  // va con fdc_id (nome/immagine da fdc_food); un item CANONICO (staple senza alias) va con
+  // fdc_id NULL + label + canonical_key → non viene più scartato, così il DB contiene la
+  // lista-cibi COMPLETA e Oggi mostra gli stessi cibi del Piano (stessa produzione V2).
   const itemPayload: Array<Record<string, unknown>> = [];
   for (const s of slots) {
     const mealId = mealIdBySlot.get(s.slot);
     if (!mealId) continue;
     const roles = MEAL_SLOT_ASSEMBLY[s.slot as MealSlotKey] ?? [];
     s.items.forEach((it, i) => {
-      const fdcId = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
-      if (!fdcId || fdcId <= 0) return; // meal_item.fdc_id è obbligatorio
+      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
       const foodRole = roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple";
       itemPayload.push({
         meal_id: mealId,
-        fdc_id: fdcId,
+        fdc_id: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
+        label: it.description ?? null,
+        canonical_key: it.canonicalKey ?? null,
         food_role: foodRole,
         grams: Math.round(num(it.grams)),
         kcal: Math.round(num(it.kcal)),
