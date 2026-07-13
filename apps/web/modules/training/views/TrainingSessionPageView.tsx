@@ -4,7 +4,7 @@ import {
   type ExecutedWorkout,
   type PlannedWorkout,
 } from "@empathy/domain-training";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
@@ -16,6 +16,7 @@ import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import type { TrainingPlannedWindowOkViewModel, TrainingTwinContextStripViewModel } from "@/api/training/contracts";
 import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
+import { fetchAdjacentSessionDates } from "@/lib/training/adjacent-session-dates";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-session";
 import type { ReadSpineCoverageSummary } from "@/lib/platform/read-spine-coverage";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
@@ -71,6 +72,11 @@ export default function TrainingSessionPageView() {
   const [readSpineCoverage, setReadSpineCoverage] = useState<ReadSpineCoverageSummary | null>(null);
   const [twinContextStrip, setTwinContextStrip] = useState<TrainingTwinContextStripViewModel | null>(null);
   const [plannedProvenanceSummary, setPlannedProvenanceSummary] = useState<Partial<Record<string, number>> | null>(null);
+  // Frecce «precedente / successivo»: date del giorno-con-seduta adiacente (pianificato o eseguito).
+  const [adjacent, setAdjacent] = useState<{ prevDate: string | null; nextDate: string | null }>({
+    prevDate: null,
+    nextDate: null,
+  });
 
   useEffect(() => {
     if (!dateValid) {
@@ -178,6 +184,28 @@ export default function TrainingSessionPageView() {
     };
   }, [athleteId, ctxLoading, date, dateValid, t]);
 
+  useEffect(() => {
+    if (!dateValid || ctxLoading || !athleteId) {
+      setAdjacent({ prevDate: null, nextDate: null });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchAdjacentSessionDates(athleteId, date);
+      if (!cancelled) setAdjacent(res);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, ctxLoading, date, dateValid]);
+
+  // Href fratello per una data diversa: sostituisce il segmento `/session/{date}` nel
+  // pathname CORRENTE → resta nello stesso scope (desktop / `/m/` / `/admin/utenti/...`).
+  const hrefForDate = (targetDate: string): string =>
+    pathname.replace(/\/session\/[^/]+\/?$/, `/session/${targetDate}`);
+  const prevHref = adjacent.prevDate ? hrefForDate(adjacent.prevDate) : null;
+  const nextHref = adjacent.nextDate ? hrefForDate(adjacent.nextDate) : null;
+
   const titleDate = useMemo(() => {
     if (!dateValid) return "—";
     try {
@@ -216,13 +244,49 @@ export default function TrainingSessionPageView() {
       title={dateValid ? titleDate : t("invalidDateTitle")}
       contentMaxWidthClassName="max-w-none"
       headerActions={
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          {t("backToActivities")}
-        </Link>
+        <div className="flex items-center gap-2">
+          {prevHref ? (
+            <Link
+              href={prevHref}
+              aria-label={t("prevSession")}
+              title={t("prevSession")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-orange-400/40 bg-orange-500/10 text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <span
+              aria-hidden
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-600"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </span>
+          )}
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-2 rounded-full border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {t("backToActivities")}
+          </Link>
+          {nextHref ? (
+            <Link
+              href={nextHref}
+              aria-label={t("nextSession")}
+              title={t("nextSession")}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-orange-400/40 bg-orange-500/10 text-orange-100 transition hover:border-orange-300/70 hover:bg-orange-500/20 hover:text-white"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <span
+              aria-hidden
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-600"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          )}
+        </div>
       }
       description={
         !dateValid ? (
