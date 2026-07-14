@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  ChevronLeft,
-  ChevronRight,
   Footprints,
   Gauge,
   Heart,
@@ -12,7 +10,6 @@ import {
   Repeat2,
   Timer,
   Sparkles,
-  Trash2,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -193,9 +190,6 @@ function manualPresetLifestyleBreath(): ManualPlanBlock[] {
 
 const btnPrimary =
   "empathy-btn-gradient inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110 disabled:opacity-40";
-
-const btnIcon =
-  "inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white shadow-inner transition hover:bg-white/20 disabled:opacity-30";
 
 const stepperBtn =
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-black/55 text-lg font-bold text-white shadow-inner transition hover:bg-white/10";
@@ -408,26 +402,6 @@ export function BuilderManualComposer({
     );
   };
 
-  const addBlock = () => {
-    setManualPlanBlocks((p) => {
-      const next = [...p, defaultManualPlanBlock("steady", `Blocco ${p.length + 1}`)];
-      const idx = next.length - 1;
-      queueMicrotask(() => setActiveIndex(idx));
-      return next;
-    });
-  };
-
-  const removeBlock = () => {
-    if (manualPlanBlocks.length <= 1) return;
-    const nextLen = manualPlanBlocks.length - 1;
-    const nextIdx = Math.min(safeIndex, nextLen - 1);
-    setManualPlanBlocks((p) => p.filter((_, i) => i !== safeIndex));
-    setActiveIndex(Math.max(0, nextIdx));
-  };
-
-  const goPrev = () => setActiveIndex((i) => Math.max(0, i - 1));
-  const goNext = () => setActiveIndex((i) => Math.min(manualPlanBlocks.length - 1, i + 1));
-
   // [G1] Comandi grafici: lista blocchi con drag-per-riordinare + click-per-selezionare
   // + «+» per inserire in posizione. Il pannello editor sotto resta l'unico form (fonte
   // di verità), che «appare» sul blocco selezionato — nessun rewrite del maxi-editor.
@@ -578,42 +552,6 @@ export function BuilderManualComposer({
           >
             <Plus className="h-3.5 w-3.5" />
             {t("addBlockShort")}
-          </button>
-        </div>
-        <p className="mt-1.5 text-center text-[0.6rem] text-gray-600">{t("dragHint")}</p>
-      </div>
-
-      {/* Navigazione blocchi */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <button type="button" className={btnIcon} onClick={goPrev} disabled={safeIndex <= 0} aria-label={t("previousBlockAria")}>
-            <ChevronLeft className="h-5 w-5 text-orange-400" />
-          </button>
-          <span className="min-w-[7rem] text-center text-sm font-mono text-gray-300">
-            {t("blockCounter", { current: safeIndex + 1, total: manualPlanBlocks.length })}
-          </span>
-          <button
-            type="button"
-            className={btnIcon}
-            onClick={goNext}
-            disabled={safeIndex >= manualPlanBlocks.length - 1}
-            aria-label={t("nextBlockAria")}
-          >
-            <ChevronRight className="h-5 w-5 text-orange-400" />
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className={`${btnIcon} border-emerald-500/40 bg-emerald-500/20`} onClick={addBlock} aria-label={t("addBlockAria")}>
-            <Plus className="h-5 w-5 text-emerald-200" />
-          </button>
-          <button
-            type="button"
-            className={`${btnIcon} border-rose-500/40 bg-rose-500/15`}
-            onClick={removeBlock}
-            disabled={manualPlanBlocks.length <= 1}
-            aria-label={t("deleteBlockAria")}
-          >
-            <Trash2 className="h-5 w-5 text-rose-200" />
           </button>
         </div>
       </div>

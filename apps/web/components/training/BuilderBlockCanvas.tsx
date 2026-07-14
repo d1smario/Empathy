@@ -21,6 +21,9 @@ import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import type { ManualPlanBlock, PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
 
+/** Altezza dell'area-tela (px): le barre crescono da qui verso l'alto. */
+const CANVAS_HEIGHT = 130;
+
 function formatSec(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -29,7 +32,7 @@ function formatSec(sec: number): string {
   return `${m}′${s.toString().padStart(2, "0")}″`;
 }
 
-/** Nome «forma» del tipo (piatta / salita / denti di sega / triangolo), per l'etichetta gruppo. */
+/** Nome «forma» del tipo, fallback per il label del blocco. */
 const KIND_SHAPE_LABEL: Record<PlanBlockKind, string> = {
   steady: "steady",
   ramp: "ramp",
@@ -50,47 +53,63 @@ type BlockGroup = {
   totalSeconds: number;
 };
 
-function GroupBars({ group }: { group: BlockGroup }) {
+/**
+ * Forma del blocco disegnata a piena altezza dell'area-tela.
+ * - steady → rettangolo pieno (una zona);
+ * - ramp → trapezio in salita da startIntensity a endIntensity (clip-path);
+ * - interval2 / interval3 / pyramid → sotto-barre a denti di sega / scala (segmenti espansi).
+ */
+function BlockShape({ group }: { group: BlockGroup }) {
   const { block, segments } = group;
 
-  // Ramp: i segmenti espansi danno UNA barra sola (limite motore). Qui disegniamo
-  // la salita reale start→end con un trapezio (clip-path) così la «forma» emerge.
   if (block.kind === "ramp") {
     const startPct = heightPct(intensityScore(block.startIntensity));
     const endPct = heightPct(intensityScore(block.endIntensity));
     const color = colorForIntensity(block.endIntensity);
     return (
-      <div className="flex h-full items-end">
-        <div className="relative mx-0.5 h-full w-full">
-          <div
-            className="absolute inset-x-0 bottom-0 rounded-t-sm ring-1 ring-white/10"
-            style={{
-              height: "100%",
-              backgroundColor: color,
-              boxShadow: `0 0 12px ${color}44`,
-              clipPath: `polygon(0% ${100 - startPct}%, 100% ${100 - endPct}%, 100% 100%, 0% 100%)`,
-            }}
-          />
-        </div>
+      <div className="relative h-full w-full">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundColor: color,
+            boxShadow: `0 0 12px ${color}44`,
+            clipPath: `polygon(0% ${100 - startPct}%, 100% ${100 - endPct}%, 100% 100%, 0% 100%)`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (block.kind === "steady" || segments.length <= 1) {
+    const seg = segments[0];
+    const label = seg?.intensityLabel ?? block.intensity;
+    const score = seg ? (seg.barIntensityScore ?? seg.intensityScore) : intensityScore(block.intensity);
+    const color = colorForIntensity(label);
+    return (
+      <div className="flex h-full w-full items-end">
+        <div
+          className="w-full rounded-t-[2px]"
+          style={{ height: `${heightPct(score)}%`, backgroundColor: color, boxShadow: `0 0 10px ${color}44` }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full items-end gap-[2px]">
+    <div className="flex h-full w-full items-end gap-[1px]">
       {segments.map((seg) => {
         const score = seg.barIntensityScore ?? seg.intensityScore;
         const color = colorForIntensity(seg.intensityLabel);
         return (
           <div
             key={seg.id}
-            className="min-w-0 rounded-t-sm ring-1 ring-white/10"
+            className="min-w-0 rounded-t-[1px]"
             style={{
               flexGrow: Math.max(1, seg.durationSeconds),
               flexBasis: 0,
               height: `${heightPct(score)}%`,
               backgroundColor: color,
-              boxShadow: `0 0 10px ${color}44`,
+              boxShadow: `0 0 8px ${color}44`,
             }}
           />
         );
@@ -99,7 +118,17 @@ function GroupBars({ group }: { group: BlockGroup }) {
   );
 }
 
-function SortableBlockGroup({
+function zoneLabelFor(block: ManualPlanBlock): string {
+  if (block.kind === "ramp") return `${block.startIntensity}→${block.endIntensity}`;
+  if (block.kind === "interval2" || block.kind === "interval3") return `${block.repeats}× ${block.intensity}`;
+  return block.intensity;
+}
+
+/**
+ * UNA barra = UN blocco. flexGrow ∝ durata (blocco lungo → barra larga). Cliccabile
+ * per selezionare, maniglia drag per riordinare, x per eliminare. Attiva = ring bianco.
+ */
+function SortableBlockBar({
   group,
   active,
   canDelete,
@@ -118,49 +147,54 @@ function SortableBlockGroup({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    flexGrow: Math.max(1, totalSeconds),
+    flexBasis: 0,
     zIndex: isDragging ? 30 : undefined,
   };
-  const shape = KIND_SHAPE_LABEL[block.kind];
-  const zoneLabel =
-    block.kind === "ramp"
-      ? `${block.startIntensity}→${block.endIntensity}`
-      : block.kind === "interval2" || block.kind === "interval3"
-        ? `${block.repeats}× ${block.intensity}`
-        : block.intensity;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       onClick={() => onSelect(index)}
-      className={`group relative flex w-[8.5rem] shrink-0 cursor-pointer flex-col rounded-xl border p-2 transition ${
-        active
-          ? "border-white bg-white/[0.07] ring-2 ring-white/80"
-          : "border-white/10 bg-black/40 hover:border-white/30"
-      } ${isDragging ? "opacity-70 shadow-2xl" : ""}`}
+      className={`group relative flex min-w-[2.75rem] cursor-pointer flex-col ${isDragging ? "opacity-70" : ""}`}
     >
-      {active ? (
-        <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-white px-1.5 py-0.5 text-[0.5rem] font-black uppercase tracking-wider text-black shadow">
-          {t("canvasActiveMarker")}
-        </span>
-      ) : null}
+      {/* Etichetta sopra la barra: N · nome */}
+      <div className="mb-1 truncate px-0.5 text-[0.62rem] font-semibold leading-tight text-white/90">
+        <span className="mr-0.5 font-mono text-gray-500">{index + 1}</span>
+        <span className={active ? "text-white" : "text-white/75"}>{block.label || KIND_SHAPE_LABEL[block.kind]}</span>
+      </div>
 
-      {/* Testata gruppo: maniglia drag + numero·nome + elimina */}
-      <div className="mb-1.5 flex items-center gap-1">
+      {/* Area-tela della barra: la forma cresce dal fondo. Attiva = ring bianco. */}
+      <div
+        className={`relative rounded-md transition ${
+          active ? "ring-2 ring-white ring-offset-1 ring-offset-black" : "opacity-70 group-hover:opacity-100"
+        }`}
+        style={{ height: CANVAS_HEIGHT }}
+      >
+        <div className="flex h-full items-end">
+          <BlockShape group={group} />
+        </div>
+
+        {active ? (
+          <span className="pointer-events-none absolute -top-1.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white px-1.5 py-0.5 text-[0.5rem] font-black uppercase tracking-wider text-black shadow">
+            {t("canvasActiveMarker")}
+          </span>
+        ) : null}
+
+        {/* Maniglia drag sull'angolo della barra */}
         <button
           type="button"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="cursor-grab touch-none rounded p-0.5 text-gray-500 hover:text-gray-200 active:cursor-grabbing"
+          className="absolute left-0 top-0 z-10 cursor-grab touch-none rounded-br-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-white group-hover:opacity-100 active:cursor-grabbing"
           aria-label={t("dragToReorder")}
         >
-          <GripVertical className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <GripVertical className="h-3.5 w-3.5" aria-hidden />
         </button>
-        <span className="min-w-0 flex-1 truncate text-[0.68rem] font-bold text-white">
-          <span className="mr-1 font-mono text-gray-500">{index + 1}</span>
-          {block.label || shape}
-        </span>
+
+        {/* Elimina sull'angolo opposto */}
         {canDelete ? (
           <button
             type="button"
@@ -168,7 +202,7 @@ function SortableBlockGroup({
               e.stopPropagation();
               onDelete(index);
             }}
-            className="rounded p-0.5 text-gray-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
+            className="absolute right-0 top-0 z-10 rounded-bl-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
             aria-label={t("deleteBlockAria")}
           >
             <X className="h-3 w-3" />
@@ -176,27 +210,22 @@ function SortableBlockGroup({
         ) : null}
       </div>
 
-      {/* Forma del blocco (le barre = i segmenti espansi) */}
-      <div className="h-16 rounded-lg border border-white/5 bg-black/50 p-1 shadow-inner">
-        <GroupBars group={group} />
-      </div>
-
-      {/* Durata / zona */}
-      <div className="mt-1.5 flex items-center justify-between gap-1 text-[0.58rem] leading-tight">
-        <span className="truncate font-mono font-semibold text-white/90">{formatSec(totalSeconds)}</span>
+      {/* Sotto la barra: durata + zona */}
+      <div className="mt-1 flex items-center justify-between gap-1 px-0.5 text-[0.55rem] leading-tight">
+        <span className="truncate font-mono font-semibold text-white/80">{formatSec(totalSeconds)}</span>
         <span className="truncate font-bold" style={{ color: colorForIntensity(block.intensity) }}>
-          {zoneLabel}
+          {zoneLabelFor(block)}
         </span>
       </div>
-      <p className="mt-0.5 truncate text-[0.55rem] uppercase tracking-wider text-gray-500">{shape}</p>
     </div>
   );
 }
 
 /**
- * Tela interattiva del compositore: OGNI blocco è una barra-gruppo (forma + numero·nome
- * + durata/zona), cliccabile per selezionare e trascinabile per riordinare. In coda una
- * drop-zone tratteggiata. LOCALE al composer: NON tocca SessionBlockIntensityChart condiviso.
+ * Tela interattiva del compositore: UNA sola riga di barre affiancate (un grafico
+ * continuo partizionato), ogni barra = un blocco con larghezza ∝ durata e altezza ∝
+ * intensità. Click = seleziona, drag = riordina. In coda, drop-zone tratteggiata.
+ * LOCALE al composer: NON tocca SessionBlockIntensityChart condiviso.
  */
 export function BuilderBlockCanvas({
   blocks,
@@ -251,29 +280,40 @@ export function BuilderBlockCanvas({
         </div>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={blocks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex flex-wrap items-stretch gap-2">
-            {groups.map((group) => (
-              <SortableBlockGroup
-                key={group.block.id}
-                group={group}
-                active={group.index === activeIndex}
-                canDelete={blocks.length > 1}
-                onSelect={onSelect}
-                onDelete={onRemove}
-              />
-            ))}
-            {/* Drop-zone (placeholder visivo: il drag-dalla-tavolozza non è ancora attivo). */}
-            <div
-              aria-hidden
-              className="flex w-[8.5rem] shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-white/15 px-2 py-4 text-center text-[0.6rem] font-semibold uppercase tracking-wider text-gray-600"
-            >
-              {t("canvasDropHere")}
+      {/* UNA sola area-tela scura: dentro, la riga di barre affiancate. */}
+      <div className="rounded-xl border border-white/10 bg-black/60 p-3 shadow-inner">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={blocks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
+            <div className="flex items-end gap-[3px]">
+              {groups.map((group) => (
+                <SortableBlockBar
+                  key={group.block.id}
+                  group={group}
+                  active={group.index === activeIndex}
+                  canDelete={blocks.length > 1}
+                  onSelect={onSelect}
+                  onDelete={onRemove}
+                />
+              ))}
+
+              {/* Drop-zone in coda (placeholder visivo: drag-dalla-tavolozza non attivo). */}
+              <div className="flex shrink-0 flex-col" style={{ flexGrow: 0.4, flexBasis: 0 }} aria-hidden>
+                <div className="mb-1 h-[0.62rem]" />
+                <div
+                  className="flex items-center justify-center rounded-md border-2 border-dashed border-white/15 px-1 text-center text-[0.55rem] font-semibold uppercase leading-tight tracking-wider text-gray-600"
+                  style={{ height: CANVAS_HEIGHT }}
+                >
+                  {t("canvasDropHere")}
+                </div>
+                <div className="mt-1 h-[0.55rem]" />
+              </div>
             </div>
-          </div>
-        </SortableContext>
-      </DndContext>
+          </SortableContext>
+        </DndContext>
+      </div>
+
+      {/* Caption sotto la tela */}
+      <p className="text-center text-[0.6rem] text-gray-500">{t("dragHint")}</p>
     </div>
   );
 }
