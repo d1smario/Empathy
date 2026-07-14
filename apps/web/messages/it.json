@@ -1710,6 +1710,7 @@
     "refineLine": "Rifinisci <muted>— adatta blocchi, esercizi, durata e nome della seduta nell'editor qui sotto.</muted>",
     "saveLine": "Salva <muted>— scegli la data e salva: la seduta appare in «Prossime pianificate» e nel Calendario.</muted>",
     "saveBarDate": "Data nel calendario",
+    "saveBarTime": "Ora",
     "saveBarSave": "Salva nel calendario",
     "saveBarSaving": "Salvo…",
     "saveBarWahoo": "Invia a Wahoo",
