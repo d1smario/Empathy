@@ -22,6 +22,8 @@ export function SessionBlockIntensityChart({
   title,
   estimatedTss,
   compact = false,
+  activeBlockId,
+  onSelectBlock,
 }: {
   segments: ChartSegment[];
   title?: string;
@@ -29,6 +31,14 @@ export function SessionBlockIntensityChart({
   estimatedTss?: number;
   /** Variante compatta per anteprime in lista (libreria coach). */
   compact?: boolean;
+  /** Blocco attualmente selezionato: tutte le barre con questo blockId risaltano. */
+  activeBlockId?: string;
+  /**
+   * Se presente (e i segmenti hanno blockId), le barre diventano cliccabili e
+   * selezionano il blocco. Se assente, il grafico resta identico a prima (nessun
+   * click, nessuna evidenziazione) — retro-compatibile per gli altri consumer.
+   */
+  onSelectBlock?: (blockId: string) => void;
 }) {
   const t = useTranslations("SessionBlockIntensityChart");
   const resolvedTitle = title ?? t("defaultTitle");
@@ -76,6 +86,10 @@ export function SessionBlockIntensityChart({
               typeof seg.pyramidLinearT === "number"
                 ? 0.78 + seg.pyramidLinearT * 0.42
                 : 1;
+            /** Barra cliccabile solo se il consumer passa onSelectBlock E il segmento ha un blockId. */
+            const clickable = Boolean(onSelectBlock && seg.blockId);
+            const isActiveBlock = seg.blockId != null && seg.blockId === activeBlockId;
+            const handleSelect = clickable ? () => onSelectBlock!(seg.blockId!) : undefined;
             return (
               <div
                 key={seg.id}
@@ -84,7 +98,9 @@ export function SessionBlockIntensityChart({
               >
                 <div className={`flex flex-1 flex-col justify-end ${compact ? "min-h-[5rem]" : "min-h-[7.5rem]"}`}>
                   <div
-                    className="mx-0.5 rounded-t-lg shadow-[inset_0_-2px_0_rgba(0,0,0,0.35)] ring-1 ring-white/10 transition hover:brightness-110"
+                    className={`mx-0.5 rounded-t-lg shadow-[inset_0_-2px_0_rgba(0,0,0,0.35)] ring-1 transition hover:brightness-110 ${
+                      isActiveBlock ? "ring-2 ring-white brightness-110" : "ring-white/10"
+                    } ${clickable ? "cursor-pointer" : ""}`}
                     style={{
                       height: `${h}%`,
                       minHeight: "2.25rem",
@@ -93,6 +109,25 @@ export function SessionBlockIntensityChart({
                       filter: typeof seg.pyramidLinearT === "number" ? `brightness(${pyramidBright}) saturate(1.08)` : undefined,
                     }}
                     title={`${seg.label}: ${formatSec(seg.durationSeconds)}, ${seg.intensityLabel}`}
+                    role={clickable ? "button" : undefined}
+                    tabIndex={clickable ? 0 : undefined}
+                    aria-pressed={clickable ? isActiveBlock : undefined}
+                    aria-label={
+                      clickable
+                        ? `${seg.label}: ${formatSec(seg.durationSeconds)}, ${seg.intensityLabel}`
+                        : undefined
+                    }
+                    onClick={handleSelect}
+                    onKeyDown={
+                      clickable
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelect?.();
+                            }
+                          }
+                        : undefined
+                    }
                   />
                 </div>
                 <div className="mt-1.5 px-0.5 text-center">

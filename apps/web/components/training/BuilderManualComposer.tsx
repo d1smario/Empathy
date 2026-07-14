@@ -613,7 +613,13 @@ export function BuilderManualComposer({
       <div
         className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
       >
-        <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreview")} estimatedTss={estimatedTss} />
+        <SessionBlockIntensityChart
+          segments={manualChartSegments}
+          title={t("sessionPreview")}
+          estimatedTss={estimatedTss}
+          activeBlockId={row?.id}
+          onSelectBlock={(id) => setActiveIndex(manualPlanBlocks.findIndex((b) => b.id === id))}
+        />
         {/* [G1] Lista blocchi: trascina la maniglia per riordinare (dnd-kit), clicca per aprire l'editor sotto. */}
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
           <SortableContext items={manualPlanBlocks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
