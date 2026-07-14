@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { loadEnabledLocales, resolveRequestLocale } from "@/lib/i18n/resolve-request-locale";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 /**
  * Marketing Navbar — minimal fixed header.
@@ -25,6 +27,7 @@ const NAV_LINKS = [
 export async function Navbar() {
   const t = await getTranslations("Navbar");
   const tv = await getTranslations("Vetrina.nav");
+  const [enabled, current] = await Promise.all([loadEnabledLocales(), resolveRequestLocale()]);
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
@@ -46,6 +49,7 @@ export async function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <LocaleSwitcher enabled={[...enabled]} current={current} />
           <Link
             href="/access"
             className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-gray-300 backdrop-blur-xl transition-colors hover:border-purple-500/40 hover:text-white sm:px-5"
