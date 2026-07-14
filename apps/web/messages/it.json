@@ -1880,6 +1880,13 @@
     "executedCount": "{count} registrazioni",
     "noExecution": "Nessuna esecuzione in questa giornata."
   },
+  "TrainingScopeTabs": {
+    "aria": "Vista Giorno o Piano",
+    "day": "Giorno",
+    "dayHint": "La singola seduta",
+    "plan": "Piano",
+    "planHint": "Periodizzazione stagionale"
+  },
   "TrainingViryaPageView": {
     "errNoActiveAthlete": "Nessun atleta attivo.",
     "errLoadContext": "Caricamento contesto non riuscito.",

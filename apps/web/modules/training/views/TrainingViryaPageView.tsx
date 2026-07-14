@@ -6,10 +6,12 @@ import { Brain, CalendarRange, FlaskConical, LineChart, ScrollText, Sparkles } f
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
+import { BuilderScopeTabs } from "@/components/training/BuilderScopeTabs";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Button } from "@/components/ui/empathy";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { fetchTrainingPlannerContext, persistTrainingResearchPlans } from "@/modules/training/services/training-virya-api";
 
@@ -57,7 +59,10 @@ let viryaContextCache: Awaited<ReturnType<typeof fetchTrainingPlannerContext>> |
  */
 export default function TrainingViryaPageView() {
   const t = useTranslations("TrainingViryaPageView");
-  const { athleteId, platformAdminView, loading: ctxLoading } = useActiveAthlete();
+  const { athleteId, role, adminScoped, platformAdminView, loading: ctxLoading } = useActiveAthlete();
+  const router = useRouter();
+  /** «Piano» è uno strumento coach: l'atleta non pianifica la stagione. */
+  const isCoachOrAdmin = role === "coach" || adminScoped;
   /**
    * Gergo motore (diagnostica, readSpine, trace, pipeline, readout grezzo): SOLO staff di
    * piattaforma. Il coach vede il «Piano» pulito (wizard + tabelle + grafici + azioni),
@@ -130,6 +135,12 @@ export default function TrainingViryaPageView() {
     void load();
   }, [load]);
 
+  // «Piano» è coach/admin. L'atleta che ci arriva via URL torna al Calendario
+  // (parità col vecchio redirect, ma ora la rotta è viva per lo staff tecnico).
+  useEffect(() => {
+    if (!ctxLoading && !isCoachOrAdmin) router.replace("/training/calendar");
+  }, [ctxLoading, isCoachOrAdmin, router]);
+
   const phys = ctx?.physiology as Record<string, unknown> | null | undefined;
   const ftp = phys && typeof phys.ftp_watts === "number" ? phys.ftp_watts : null;
 
@@ -148,6 +159,8 @@ export default function TrainingViryaPageView() {
       <div className="scroll-mt-28">
         <TrainingSubnav />
       </div>
+
+      <BuilderScopeTabs active="piano" />
 
       {staffOnly && ctx?.readSpineCoverage && !err ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">

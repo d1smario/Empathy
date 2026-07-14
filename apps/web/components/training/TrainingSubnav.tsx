@@ -45,7 +45,13 @@ export function TrainingSubnav() {
     <ModulePillSubnav
       variant="link"
       items={items}
-      isActive={(item) => routeActive(pathname, item.href)}
+      isActive={(item) =>
+        // Il Builder rappresenta l'intero scope di programmazione: resta attivo
+        // sia su «Giorno» (/training/builder) sia su «Piano» (/training/vyria).
+        item.key === "builder"
+          ? routeActive(pathname, "/training/builder") || routeActive(pathname, "/training/vyria")
+          : routeActive(pathname, item.href)
+      }
       ariaLabel="Sotto-moduli training"
     />
   );
