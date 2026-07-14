@@ -848,12 +848,12 @@
     "notAvailable": "n/a"
   },
   "ViryaCalendarPlansCard": {
-    "title": "VIRYA Plans on Calendar",
-    "subtitle": "Sessions tagged [VIRYA:…] for the active athlete — delete an entire plan before republishing",
+    "title": "Plans on the calendar",
+    "subtitle": "Plans already published to this athlete's calendar — delete a whole plan before republishing it",
     "loadingPlans": "Loading plans…",
-    "noPlans": "No VIRYA plan in Calendar for this athlete.",
+    "noPlans": "No plan published to the calendar for this athlete.",
     "sessionCount": "{count} sessions",
-    "openInCalendar": "Open in Calendar",
+    "openInCalendar": "Open in calendar",
     "confirmDelete": "Delete all {count} sessions of the plan «{planName}» ({dateMin} → {dateMax})?",
     "deleteSuccess": "Plan «{planName}» removed: {count} sessions deleted.",
     "deleteError": "Plan deletion failed.",
@@ -877,11 +877,11 @@
   },
   "ViryaHeroHeader": {
     "annualPlanTitle": "Annual plan",
-    "intro": "Five-step path — same session engine as the builder. Weekly focal goals (stimuli) are at step 5, column «Goals (multiple)». Batch deploy to Calendar from there when you're ready.",
-    "annualPlanNameLabel": "Annual plan name",
-    "planNamePlaceholder": "E.g. Gym 2026 · Strength · Spring running",
-    "calendarTagPrefix": "Calendar tag:",
-    "calendarTagSuffix": "— use it to tell Gym, Running, etc. apart in the plan list below."
+    "intro": "A five-step path: sport, goal, races, phases and weeks. Set each week's goals at step 5, then publish the whole plan to the calendar.",
+    "annualPlanNameLabel": "Plan name",
+    "planNamePlaceholder": "E.g. Cycling 2026 · Strength · Spring running",
+    "calendarTagPrefix": "Calendar label:",
+    "calendarTagSuffix": "— so you can tell your plans apart in the list below."
   },
   "ViryaLifestyleConfigBlock": {
     "periodRangeTitle": "1 · Period range",
@@ -1037,7 +1037,7 @@
     "continue": "Continue"
   },
   "ViryaStatusBanners": {
-    "contextSyncing": "Syncing athlete context (recovery / operational)…"
+    "contextSyncing": "Loading the athlete's data…"
   },
   "ViryaStrengthConfigBlock": {
     "periodRangeTitle": "1 · Period range",

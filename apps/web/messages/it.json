@@ -848,12 +848,12 @@
     "notAvailable": "n/d"
   },
   "ViryaCalendarPlansCard": {
-    "title": "Piani VIRYA su Calendar",
-    "subtitle": "Sedute con tag [VIRYA:…] per l’atleta attivo — elimina un piano intero prima di ripubblicare",
+    "title": "Piani sul calendario",
+    "subtitle": "I piani già pubblicati sul calendario di questo atleta — elimina un piano intero prima di ripubblicarlo",
     "loadingPlans": "Caricamento piani…",
-    "noPlans": "Nessun piano VIRYA in Calendar per questo atleta.",
+    "noPlans": "Nessun piano pubblicato sul calendario per questo atleta.",
     "sessionCount": "{count} sedute",
-    "openInCalendar": "Apri in Calendar",
+    "openInCalendar": "Apri nel calendario",
     "confirmDelete": "Eliminare tutte le {count} sedute del piano «{planName}» ({dateMin} → {dateMax})?",
     "deleteSuccess": "Piano «{planName}» rimosso: {count} sedute eliminate.",
     "deleteError": "Eliminazione piano non riuscita.",
@@ -877,11 +877,11 @@
   },
   "ViryaHeroHeader": {
     "annualPlanTitle": "Piano annuale",
-    "intro": "Percorso in cinque passi — stesso motore sessione del builder. Gli obiettivi focali settimanali (stimoli) sono al passo 5, colonna «Obiettivi (multipli)». Deploy batch su Calendar da lì quando sei pronto.",
-    "annualPlanNameLabel": "Nome piano annuale",
-    "planNamePlaceholder": "Es. Gym 2026 · Forza · Running primavera",
-    "calendarTagPrefix": "Tag Calendar:",
-    "calendarTagSuffix": "— usalo per distinguere Gym, Running, ecc. nell’elenco piani sotto."
+    "intro": "Percorso in cinque passi: sport, obiettivo, gare, fasi e settimane. Gli obiettivi della singola settimana si impostano al passo 5, poi pubblichi l’intero piano sul calendario.",
+    "annualPlanNameLabel": "Nome del piano",
+    "planNamePlaceholder": "Es. Ciclismo 2026 · Forza · Running primavera",
+    "calendarTagPrefix": "Etichetta sul calendario:",
+    "calendarTagSuffix": "— così distingui i piani nell’elenco qui sotto."
   },
   "ViryaLifestyleConfigBlock": {
     "periodRangeTitle": "1 · Intervallo periodo",
@@ -1037,7 +1037,7 @@
     "continue": "Continua"
   },
   "ViryaStatusBanners": {
-    "contextSyncing": "Sincronizzazione contesto atleta (recovery / operativo)…"
+    "contextSyncing": "Sto caricando i dati dell’atleta…"
   },
   "ViryaStrengthConfigBlock": {
     "periodRangeTitle": "1 · Intervallo periodo",

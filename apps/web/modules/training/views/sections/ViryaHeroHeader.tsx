@@ -2,7 +2,6 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import { viryaPlanTag } from "@/lib/training/virya/virya-plan-name";
 
 export type ViryaHeroHeaderProps = {
   planName: string;
@@ -33,8 +32,8 @@ export function ViryaHeroHeader({
             onChange={(e) => setPlanName(e.target.value)}
             placeholder={t("planNamePlaceholder")}
           />
-          <p className="mt-1.5 font-mono text-[0.68rem] text-slate-500">
-            {t("calendarTagPrefix")} <span className="text-cyan-300/90">{viryaPlanTag(planName)}</span> {t("calendarTagSuffix")}
+          <p className="mt-1.5 text-[0.68rem] text-slate-500">
+            {t("calendarTagPrefix")} <span className="text-cyan-300/90">{planName.trim() || "—"}</span> {t("calendarTagSuffix")}
           </p>
         </div>
         {viryaHeroStats.length ? (
