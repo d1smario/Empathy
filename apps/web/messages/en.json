@@ -1734,7 +1734,16 @@
     "saveBarWahoo": "Send to Wahoo",
     "saveBarWahooBusy": "Sending…",
     "saveBarWahooIneligible": "Available for structured sessions with a linked Wahoo device.",
-    "saveBarEmpty": "Generate or build a session before saving."
+    "saveBarEmpty": "Generate or build a session before saving.",
+    "saveBarLibraryName": "Library name",
+    "saveBarLibraryNamePlaceholder": "Name for your library",
+    "saveBarLibrarySave": "Save to my library",
+    "saveBarLibrarySaving": "Saving…",
+    "saveBarLibrarySavedOk": "Saved «{title}» to your library.",
+    "saveBarLibraryEmpty": "Build or generate a session before saving it to the library.",
+    "startPointsHeading": "Starting points",
+    "pickFromLibrary": "Select from my library",
+    "pickFromLibraryHint": "Start from one of your saved templates: it loads into the preview, then you refine it."
   },
   "TrainingCalendarAnalyzer": {
     "metricLoad": "Load",

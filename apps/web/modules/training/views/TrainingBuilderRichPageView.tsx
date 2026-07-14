@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachWorkoutLibraryPanel } from "@/components/training/CoachWorkoutLibraryPanel";
+import { saveCoachLibraryItem } from "@/modules/training/services/training-library-api";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { ViryaLongTermStrip } from "@/components/training/ViryaLongTermStrip";
@@ -270,6 +271,13 @@ export default function TrainingBuilderRichPageView() {
   const [wahooPushBusy, setWahooPushBusy] = useState(false);
   const [wahooPushErr, setWahooPushErr] = useState<string | null>(null);
   const [wahooPushOk, setWahooPushOk] = useState<string | null>(null);
+  /** «Salva nella mia libreria» dal box Salva: nome + esito, riusa libraryContractToSave. */
+  const [libName, setLibName] = useState("");
+  const [libSaveBusy, setLibSaveBusy] = useState(false);
+  const [libSaveErr, setLibSaveErr] = useState<string | null>(null);
+  const [libSaveOk, setLibSaveOk] = useState<string | null>(null);
+  /** Apertura controllata del picker libreria coach (bottone «Seleziona dalla mia libreria» in alto). */
+  const [libraryPanelOpen, setLibraryPanelOpen] = useState(false);
 
   const [intensityUnit, setIntensityUnit] = useState<"watt" | "hr">("watt");
   const [ftpW, setFtpW] = useState(250);
@@ -425,6 +433,8 @@ export default function TrainingBuilderRichPageView() {
     setManualSaveErr(null);
     setStructuredImportOk(null);
     setStructuredImportErr(null);
+    setLibSaveOk(null);
+    setLibSaveErr(null);
   }, [athleteId, plannedDate, replacePlannedIdFromQuery]);
 
   useEffect(() => {
@@ -1112,6 +1122,34 @@ export default function TrainingBuilderRichPageView() {
     scheduledTime,
   ]);
 
+  const saveToLibrary = useCallback(async () => {
+    if (!libraryContractToSave) {
+      setLibSaveErr(t("saveBarLibraryEmpty"));
+      setLibSaveOk(null);
+      return;
+    }
+    setLibSaveBusy(true);
+    setLibSaveErr(null);
+    setLibSaveOk(null);
+    const title = (libName.trim() || manualSessionName.trim() || libraryContractToSave.sessionName || "Seduta Pro 2")
+      .trim()
+      .slice(0, 200);
+    const r = await saveCoachLibraryItem({ title, contract: libraryContractToSave });
+    setLibSaveBusy(false);
+    if (!r.ok) {
+      setLibSaveErr(r.error ?? t("saveBarLibraryEmpty"));
+      return;
+    }
+    setLibSaveOk(t("saveBarLibrarySavedOk", { title }));
+  }, [libraryContractToSave, libName, manualSessionName, t]);
+
+  const openLibraryPicker = useCallback(() => {
+    setLibraryPanelOpen(true);
+    requestAnimationFrame(() => {
+      document.getElementById("coach-library-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
   const upcoming = useMemo(() => {
     const today = localCalendarDateString();
     return [...planned]
@@ -1170,6 +1208,73 @@ export default function TrainingBuilderRichPageView() {
           activeMacroId={activeMacroId}
           sport={sport}
           setSport={setSport}
+        />
+
+        {/* [G1] Punti di partenza IN ALTO: «Genera sessione» (motore) + «Seleziona
+            dalla mia libreria» (picker coach). Entrambi caricano l'anteprima qui
+            sotto, che il coach poi rifinisce prima di salvarla. */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
+            {t("startPointsHeading")}
+          </span>
+          <span className="h-px flex-1 bg-white/10" aria-hidden />
+          <Pro2Button
+            type="button"
+            variant="secondary"
+            className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+            onClick={openLibraryPicker}
+            title={t("pickFromLibraryHint")}
+          >
+            {t("pickFromLibrary")}
+          </Pro2Button>
+        </div>
+
+        <BuilderEngineGenerateSection
+          activeMacroId={activeMacroId}
+          currentSportLabel={currentSportLabel}
+          athleteId={athleteId}
+          genBusy={genBusy}
+          runGenerate={runGenerate}
+          gymEquipChannels={gymEquipChannels}
+          setGymEquipChannels={setGymEquipChannels}
+          gymContraction={gymContraction}
+          setGymContraction={setGymContraction}
+          gymAutoExecutionStyle={gymAutoExecutionStyle}
+          setGymAutoExecutionStyle={setGymAutoExecutionStyle}
+          adaptation={adaptation}
+          setAdaptation={setAdaptation}
+          adaptationAllowed={adaptationAllowed}
+          phase={phase}
+          setPhase={setPhase}
+          sessionMinutes={sessionMinutes}
+          setSessionMinutes={setSessionMinutes}
+          sport={sport}
+          setSport={setSport}
+          techWorkPhase={techWorkPhase}
+          setTechWorkPhase={setTechWorkPhase}
+          techGameContext={techGameContext}
+          setTechGameContext={setTechGameContext}
+          techQualities={techQualities}
+          setTechQualities={setTechQualities}
+          genErr={genErr}
+          genResult={genResult}
+          gymManualRows={gymManualRows}
+          manualTssPreview={manualTssPreview}
+          genChartSegments={genChartSegments}
+          genTssPreview={genTssPreview}
+          plannedDate={plannedDate}
+          setPlannedDate={setPlannedDate}
+          saveBusy={saveBusy}
+          saveToCalendar={saveToCalendar}
+          wahooPushBusy={wahooPushBusy}
+          wahooPushEligible={wahooPushEligible}
+          pushSessionToWahooCloud={pushSessionToWahooCloud}
+          saveErr={saveErr}
+          wahooPushErr={wahooPushErr}
+          wahooPushOk={wahooPushOk}
+          saveOkId={saveOkId}
+          showTech={showTech}
+          hideSaveBar
         />
 
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
@@ -1307,15 +1412,28 @@ export default function TrainingBuilderRichPageView() {
             >
               {manualSaveBusy ? t("saveBarSaving") : t("saveBarSave")}
             </Pro2Button>
+          </div>
+          {/* [2] Seconda azione nello STESSO box: salva la seduta corrente nella
+              libreria coach con un nome, riusabile poi come punto di partenza. */}
+          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
+            <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-xs text-gray-500">
+              {t("saveBarLibraryName")}
+              <input
+                type="text"
+                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+                placeholder={t("saveBarLibraryNamePlaceholder")}
+                value={libName}
+                onChange={(e) => setLibName(e.target.value)}
+              />
+            </label>
             <Pro2Button
               type="button"
               variant="secondary"
               className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              disabled={!wahooPushEligible || manualSaveBusy || wahooPushBusy}
-              title={!wahooPushEligible ? t("saveBarWahooIneligible") : undefined}
-              onClick={() => void pushSessionToWahooCloud()}
+              disabled={!athleteId || !libraryContractToSave || libSaveBusy}
+              onClick={() => void saveToLibrary()}
             >
-              {wahooPushBusy ? t("saveBarWahooBusy") : t("saveBarWahoo")}
+              {libSaveBusy ? t("saveBarLibrarySaving") : t("saveBarLibrarySave")}
             </Pro2Button>
           </div>
           {!manualSession ? <p className="mt-3 text-xs text-gray-500">{t("saveBarEmpty")}</p> : null}
@@ -1324,12 +1442,12 @@ export default function TrainingBuilderRichPageView() {
               {manualSaveErr}
             </p>
           ) : null}
-          {wahooPushErr ? (
+          {libSaveErr ? (
             <p className="mt-3 text-sm text-amber-300" role="alert">
-              Wahoo: {wahooPushErr}
+              {libSaveErr}
             </p>
           ) : null}
-          {wahooPushOk ? <p className="mt-3 text-sm text-emerald-200/90">{wahooPushOk}</p> : null}
+          {libSaveOk ? <p className="mt-3 text-sm text-emerald-200/90">{libSaveOk}</p> : null}
           {manualSaveOkId ? (
             <div className="mt-3">
               <BuilderCalendarSaveConfirm date={plannedDate} plannedWorkoutId={manualSaveOkId} />
@@ -1337,73 +1455,21 @@ export default function TrainingBuilderRichPageView() {
           ) : null}
         </section>
 
-        {/* [G1] Sorgenti / punti di partenza: modi alternativi per RIEMPIRE l'editor
-            (l'anteprima + Salva sopra sono il centro). Librerie tenute separate (decisione utente). */}
-        <div className="flex items-center gap-2 pt-2">
-          <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-            {t("sourcesHeading")}
-          </span>
-          <span className="h-px flex-1 bg-white/10" aria-hidden />
+        {/* Picker libreria coach: punto di partenza alternativo. Apribile dal bottone
+            «Seleziona dalla mia libreria» in alto (open controllato); «Builder» carica
+            la seduta nell'anteprima, «Applica» la salva in calendario. */}
+        <div id="coach-library-panel" className="scroll-mt-28">
+          <CoachWorkoutLibraryPanel
+            athleteId={athleteId}
+            targetDate={plannedDate}
+            contractToSave={libraryContractToSave}
+            saveTitle={manualSessionName.trim() || undefined}
+            onApplied={() => setCalendarRefresh((n) => n + 1)}
+            onLoadInBuilder={loadLibraryContractInBuilder}
+            open={libraryPanelOpen}
+            onOpenChange={setLibraryPanelOpen}
+          />
         </div>
-
-        <BuilderEngineGenerateSection
-          activeMacroId={activeMacroId}
-          currentSportLabel={currentSportLabel}
-          athleteId={athleteId}
-          genBusy={genBusy}
-          runGenerate={runGenerate}
-          gymEquipChannels={gymEquipChannels}
-          setGymEquipChannels={setGymEquipChannels}
-          gymContraction={gymContraction}
-          setGymContraction={setGymContraction}
-          gymAutoExecutionStyle={gymAutoExecutionStyle}
-          setGymAutoExecutionStyle={setGymAutoExecutionStyle}
-          adaptation={adaptation}
-          setAdaptation={setAdaptation}
-          adaptationAllowed={adaptationAllowed}
-          phase={phase}
-          setPhase={setPhase}
-          sessionMinutes={sessionMinutes}
-          setSessionMinutes={setSessionMinutes}
-          sport={sport}
-          setSport={setSport}
-          techWorkPhase={techWorkPhase}
-          setTechWorkPhase={setTechWorkPhase}
-          techGameContext={techGameContext}
-          setTechGameContext={setTechGameContext}
-          techQualities={techQualities}
-          setTechQualities={setTechQualities}
-          genErr={genErr}
-          genResult={genResult}
-          gymManualRows={gymManualRows}
-          manualTssPreview={manualTssPreview}
-          genChartSegments={genChartSegments}
-          genTssPreview={genTssPreview}
-          plannedDate={plannedDate}
-          setPlannedDate={setPlannedDate}
-          saveBusy={saveBusy}
-          saveToCalendar={saveToCalendar}
-          wahooPushBusy={wahooPushBusy}
-          wahooPushEligible={wahooPushEligible}
-          pushSessionToWahooCloud={pushSessionToWahooCloud}
-          saveErr={saveErr}
-          wahooPushErr={wahooPushErr}
-          wahooPushOk={wahooPushOk}
-          saveOkId={saveOkId}
-          showTech={showTech}
-          hideSaveBar
-        />
-
-        {/* Template a monte: punto di partenza alternativo. Collassato di default;
-            «Builder» carica la seduta nell'editor, «Applica» la salva in calendario. */}
-        <CoachWorkoutLibraryPanel
-          athleteId={athleteId}
-          targetDate={plannedDate}
-          contractToSave={libraryContractToSave}
-          saveTitle={manualSessionName.trim() || undefined}
-          onApplied={() => setCalendarRefresh((n) => n + 1)}
-          onLoadInBuilder={loadLibraryContractInBuilder}
-        />
 
         <BuilderUpcomingPlannedSection
           ctxLoading={ctxLoading}

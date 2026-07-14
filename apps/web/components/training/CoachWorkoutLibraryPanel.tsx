@@ -34,6 +34,9 @@ export type CoachWorkoutLibraryPanelProps = {
   onApplied?: () => void;
   /** Carica il template (anche bozza modificata) nel composer manuale del Builder. */
   onLoadInBuilder?: (contract: Pro2BuilderSessionContract) => void;
+  /** Stato aperto controllato dall'esterno (es. bottone «Seleziona dalla mia libreria» in alto). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export function CoachWorkoutLibraryPanel({
@@ -44,9 +47,19 @@ export function CoachWorkoutLibraryPanel({
   sourcePlannedId,
   onApplied,
   onLoadInBuilder,
+  open: openProp,
+  onOpenChange,
 }: CoachWorkoutLibraryPanelProps) {
   const t = useTranslations("CoachWorkoutLibraryPanel");
-  const [open, setOpen] = useState(false);
+  const [openUncontrolled, setOpenUncontrolled] = useState(false);
+  const open = openProp ?? openUncontrolled;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (onOpenChange) onOpenChange(next);
+      else setOpenUncontrolled(next);
+    },
+    [onOpenChange],
+  );
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -280,7 +293,7 @@ export function CoachWorkoutLibraryPanel({
       <button
         type="button"
         className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-orange-200">
           <BookMarked className="h-4 w-4" aria-hidden />
