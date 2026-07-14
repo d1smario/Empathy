@@ -30,6 +30,7 @@ export const KNOWN_LOCALES = [
   "zh",
   "ja",
   "ar",
+  "tr",
 ] as const;
 
 export type SupportedLocale = (typeof KNOWN_LOCALES)[number];
