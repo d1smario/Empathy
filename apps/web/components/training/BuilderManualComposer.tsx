@@ -520,9 +520,16 @@ export function BuilderManualComposer({
             <div
               key={b.id}
               draggable
-              onDragStart={() => setDragIndex(i)}
+              onDragStart={(e) => {
+                setDragIndex(i);
+                // Firefox NON avvia il drag senza dati impostati qui → il drop diventa
+                // un no-op e i blocchi non si riordinano. Chrome/Safari sono tolleranti.
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i));
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
                 setDragOverIndex(i);
               }}
               onDragLeave={() => setDragOverIndex((d) => (d === i ? null : d))}
