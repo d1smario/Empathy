@@ -1168,65 +1168,6 @@ export default function TrainingBuilderRichPageView() {
           setSport={setSport}
         />
 
-        {/* Template a monte: punto di partenza alternativo. Collassato di default;
-            «Builder» carica la seduta nell'editor, «Applica» la salva in calendario. */}
-        <CoachWorkoutLibraryPanel
-          athleteId={athleteId}
-          targetDate={plannedDate}
-          contractToSave={libraryContractToSave}
-          saveTitle={manualSessionName.trim() || undefined}
-          onApplied={() => setCalendarRefresh((n) => n + 1)}
-          onLoadInBuilder={loadLibraryContractInBuilder}
-        />
-
-        <BuilderEngineGenerateSection
-          activeMacroId={activeMacroId}
-          currentSportLabel={currentSportLabel}
-          athleteId={athleteId}
-          genBusy={genBusy}
-          runGenerate={runGenerate}
-          gymEquipChannels={gymEquipChannels}
-          setGymEquipChannels={setGymEquipChannels}
-          gymContraction={gymContraction}
-          setGymContraction={setGymContraction}
-          gymAutoExecutionStyle={gymAutoExecutionStyle}
-          setGymAutoExecutionStyle={setGymAutoExecutionStyle}
-          adaptation={adaptation}
-          setAdaptation={setAdaptation}
-          adaptationAllowed={adaptationAllowed}
-          phase={phase}
-          setPhase={setPhase}
-          sessionMinutes={sessionMinutes}
-          setSessionMinutes={setSessionMinutes}
-          sport={sport}
-          setSport={setSport}
-          techWorkPhase={techWorkPhase}
-          setTechWorkPhase={setTechWorkPhase}
-          techGameContext={techGameContext}
-          setTechGameContext={setTechGameContext}
-          techQualities={techQualities}
-          setTechQualities={setTechQualities}
-          genErr={genErr}
-          genResult={genResult}
-          gymManualRows={gymManualRows}
-          manualTssPreview={manualTssPreview}
-          genChartSegments={genChartSegments}
-          genTssPreview={genTssPreview}
-          plannedDate={plannedDate}
-          setPlannedDate={setPlannedDate}
-          saveBusy={saveBusy}
-          saveToCalendar={saveToCalendar}
-          wahooPushBusy={wahooPushBusy}
-          wahooPushEligible={wahooPushEligible}
-          pushSessionToWahooCloud={pushSessionToWahooCloud}
-          saveErr={saveErr}
-          wahooPushErr={wahooPushErr}
-          wahooPushOk={wahooPushOk}
-          saveOkId={saveOkId}
-          showTech={showTech}
-          hideSaveBar
-        />
-
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
           <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
             3
@@ -1391,6 +1332,74 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : null}
         </section>
+
+        {/* [G1] Sorgenti / punti di partenza: modi alternativi per RIEMPIRE l'editor
+            (l'anteprima + Salva sopra sono il centro). Librerie tenute separate (decisione utente). */}
+        <div className="flex items-center gap-2 pt-2">
+          <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
+            {t("sourcesHeading")}
+          </span>
+          <span className="h-px flex-1 bg-white/10" aria-hidden />
+        </div>
+
+        <BuilderEngineGenerateSection
+          activeMacroId={activeMacroId}
+          currentSportLabel={currentSportLabel}
+          athleteId={athleteId}
+          genBusy={genBusy}
+          runGenerate={runGenerate}
+          gymEquipChannels={gymEquipChannels}
+          setGymEquipChannels={setGymEquipChannels}
+          gymContraction={gymContraction}
+          setGymContraction={setGymContraction}
+          gymAutoExecutionStyle={gymAutoExecutionStyle}
+          setGymAutoExecutionStyle={setGymAutoExecutionStyle}
+          adaptation={adaptation}
+          setAdaptation={setAdaptation}
+          adaptationAllowed={adaptationAllowed}
+          phase={phase}
+          setPhase={setPhase}
+          sessionMinutes={sessionMinutes}
+          setSessionMinutes={setSessionMinutes}
+          sport={sport}
+          setSport={setSport}
+          techWorkPhase={techWorkPhase}
+          setTechWorkPhase={setTechWorkPhase}
+          techGameContext={techGameContext}
+          setTechGameContext={setTechGameContext}
+          techQualities={techQualities}
+          setTechQualities={setTechQualities}
+          genErr={genErr}
+          genResult={genResult}
+          gymManualRows={gymManualRows}
+          manualTssPreview={manualTssPreview}
+          genChartSegments={genChartSegments}
+          genTssPreview={genTssPreview}
+          plannedDate={plannedDate}
+          setPlannedDate={setPlannedDate}
+          saveBusy={saveBusy}
+          saveToCalendar={saveToCalendar}
+          wahooPushBusy={wahooPushBusy}
+          wahooPushEligible={wahooPushEligible}
+          pushSessionToWahooCloud={pushSessionToWahooCloud}
+          saveErr={saveErr}
+          wahooPushErr={wahooPushErr}
+          wahooPushOk={wahooPushOk}
+          saveOkId={saveOkId}
+          showTech={showTech}
+          hideSaveBar
+        />
+
+        {/* Template a monte: punto di partenza alternativo. Collassato di default;
+            «Builder» carica la seduta nell'editor, «Applica» la salva in calendario. */}
+        <CoachWorkoutLibraryPanel
+          athleteId={athleteId}
+          targetDate={plannedDate}
+          contractToSave={libraryContractToSave}
+          saveTitle={manualSessionName.trim() || undefined}
+          onApplied={() => setCalendarRefresh((n) => n + 1)}
+          onLoadInBuilder={loadLibraryContractInBuilder}
+        />
 
         <BuilderUpcomingPlannedSection
           ctxLoading={ctxLoading}

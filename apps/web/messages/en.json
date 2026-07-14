@@ -1708,6 +1708,7 @@
     "pageDescription": "Choose the sport, generate the session, refine it, and save it to the calendar in four steps.",
     "pageDescriptionForAthlete": "Choose the sport, generate the session, refine it, and save it to {name}'s calendar, in four steps.",
     "refineLine": "Refine <muted>— adjust blocks, exercises, duration, and session name in the editor below.</muted>",
+    "sourcesHeading": "Sources · starting points",
     "saveLine": "Save <muted>— pick the date and save: the session appears in «Upcoming planned» and in the Calendar.</muted>",
     "saveBarDate": "Calendar date",
     "saveBarTime": "Time",

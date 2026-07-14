@@ -1708,6 +1708,7 @@
     "pageDescription": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario in quattro passi.",
     "pageDescriptionForAthlete": "Scegli lo sport, genera la seduta, rifiniscila e salvala nel calendario di {name}, in quattro passi.",
     "refineLine": "Rifinisci <muted>— adatta blocchi, esercizi, durata e nome della seduta nell'editor qui sotto.</muted>",
+    "sourcesHeading": "Sorgenti · punti di partenza",
     "saveLine": "Salva <muted>— scegli la data e salva: la seduta appare in «Prossime pianificate» e nel Calendario.</muted>",
     "saveBarDate": "Data nel calendario",
     "saveBarTime": "Ora",
