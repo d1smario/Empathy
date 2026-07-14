@@ -1318,6 +1318,8 @@
     "titleAerobicP": "The chart updates as you compose. Watt/HR zones; distance and cadence only for A · Aerobic.",
     "sectionAria": "Coach manual builder",
     "sessionPreview": "Session preview",
+    "sessionDurationReadonly": "Session duration",
+    "sessionDurationFromBlocks": "sum of blocks",
     "goToBlockAria": "Go to {label}",
     "durationInCalendar": "Duration in calendar",
     "segmentsSum": "Sum of segments in the chart: <b>~{minutes} min</b>. The session saved to the calendar uses the duration selected on the left.",

@@ -153,11 +153,17 @@ function SortableBlockBar({
   };
 
   return (
+    // FIX 6 — TUTTA la barra è trascinabile: attributes/listeners sul contenitore radice
+    // (non più solo sulla maniglia). L'onClick seleziona; dnd-kit distingue click da drag
+    // via activationConstraint distance:5 nei sensori, quindi un click puro seleziona e un
+    // trascinamento riordina. touch-none per il drag da touch.
     <div
       ref={setNodeRef}
       style={style}
       onClick={() => onSelect(index)}
-      className={`group relative flex min-w-[2.75rem] cursor-pointer flex-col ${isDragging ? "opacity-70" : ""}`}
+      {...attributes}
+      {...listeners}
+      className={`group relative flex min-w-[2.75rem] cursor-grab touch-none flex-col active:cursor-grabbing ${isDragging ? "opacity-70" : ""}`}
     >
       {/* Etichetta sopra la barra: N · nome */}
       <div className="mb-1 truncate px-0.5 text-[0.62rem] font-semibold leading-tight text-white/90">
@@ -182,22 +188,21 @@ function SortableBlockBar({
           </span>
         ) : null}
 
-        {/* Maniglia drag sull'angolo della barra */}
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute left-0 top-0 z-10 cursor-grab touch-none rounded-br-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-white group-hover:opacity-100 active:cursor-grabbing"
-          aria-label={t("dragToReorder")}
+        {/* Maniglia drag: ora l'intera barra è trascinabile, l'icona resta solo come hint
+            visivo (pointer-events-none così non intercetta pointerdown/drag). */}
+        <span
+          className="pointer-events-none absolute left-0 top-0 z-10 rounded-br-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition group-hover:opacity-100"
+          title={t("dragToReorder")}
+          aria-hidden
         >
-          <GripVertical className="h-3.5 w-3.5" aria-hidden />
-        </button>
+          <GripVertical className="h-3.5 w-3.5" />
+        </span>
 
-        {/* Elimina sull'angolo opposto */}
+        {/* Elimina sull'angolo opposto — stopPropagation su pointerdown+click così NON innesca il drag. */}
         {canDelete ? (
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(index);

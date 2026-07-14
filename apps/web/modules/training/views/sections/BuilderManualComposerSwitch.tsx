@@ -221,8 +221,6 @@ export function BuilderManualComposerSwitch({
             canSave={Boolean(manualSession)}
             hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
-            manualSessionDurationMinutes={manualSessionDurationMinutes}
-            setManualSessionDurationMinutes={setManualSessionDurationMinutes}
           />
         )}
         </div>

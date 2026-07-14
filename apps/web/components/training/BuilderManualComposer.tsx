@@ -35,7 +35,6 @@ import {
   type Pro2IntensityUnit,
 } from "@/lib/training/builder/pro2-intensity";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
-import { SESSION_DURATION_CHOICES } from "@/lib/training/builder/session-duration-choices";
 
 function rangeShort(z: string, unit: Pro2IntensityUnit, ftpW: number, hrMax: number): string {
   const raw = zoneRangeLabel(z, unit, ftpW, hrMax);
@@ -286,9 +285,6 @@ export type BuilderManualComposerProps = {
   estimatedTss: number;
   /** Macro A–D: skin e copy del composer (allineato a TrainingBuilderRichPageView). */
   macroFamily: SportMacroId;
-  /** Durata seduta (calendario) scelta dal coach — non ricavata automaticamente dai blocchi. */
-  manualSessionDurationMinutes: number;
-  setManualSessionDurationMinutes: React.Dispatch<React.SetStateAction<number>>;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
 };
@@ -322,8 +318,6 @@ export function BuilderManualComposer({
   canSave,
   estimatedTss,
   macroFamily,
-  manualSessionDurationMinutes,
-  setManualSessionDurationMinutes,
   hideSaveBar,
 }: BuilderManualComposerProps) {
   const t = useTranslations("BuilderManualComposer");
@@ -381,26 +375,6 @@ export function BuilderManualComposer({
       const total = Math.max(0, b.minutes * 60 + b.seconds + deltaSec);
       return { minutes: Math.floor(total / 60), seconds: total % 60 };
     });
-
-  const setKind = (k: PlanBlockKind) => {
-    setManualPlanBlocks((p) =>
-      p.map((b, i) =>
-        i === safeIndex
-          ? {
-              ...defaultManualPlanBlock(k, b.label),
-              id: b.id,
-              label: b.label,
-              notes: b.notes,
-              cadenceMetric: b.cadenceMetric,
-              cadenceMin: b.cadenceMin,
-              cadenceMax: b.cadenceMax,
-              frequencyHint: b.frequencyHint,
-              target: b.target,
-            }
-          : b,
-      ),
-    );
-  };
 
   // [G1] Comandi grafici: lista blocchi con drag-per-riordinare + click-per-selezionare
   // + «+» per inserire in posizione. Il pannello editor sotto resta l'unico form (fonte
@@ -513,10 +487,34 @@ export function BuilderManualComposer({
         ) : null}
       </div>
 
+      {/* FIX 4 — Nome sessione IN CIMA: prima cosa dopo l'header, prima dell'anteprima. */}
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
+          {t("sessionName")}
+        </span>
+        <input
+          type="text"
+          className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2.5 text-base font-semibold text-white"
+          value={manualSessionName}
+          onChange={(e) => setManualSessionName(e.target.value)}
+        />
+      </label>
+
+      {/* FIX 1 — Durata seduta in SOLA LETTURA = somma durate blocchi (dai segmenti del grafico).
+          È questa la durata che il salvataggio scrive a calendario (via manualSession/contract dai blocchi). */}
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
+          {t("sessionDurationReadonly")}
+        </span>
+        <span className="font-mono text-lg font-semibold text-white">{structureMinutesFromChart}′</span>
+        <span className="text-[0.6rem] text-gray-500">· {t("sessionDurationFromBlocks")}</span>
+      </div>
+
       {/* Tela: OGNI blocco è una barra-gruppo (forma + numero·nome + durata/zona),
           cliccabile per selezionare, con maniglia drag per riordinare e x per eliminare.
-          Sotto, la tavolozza tipi. Nessuna riga di chip separata: le barre SONO i blocchi. */}
-      <div className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner">
+          Sotto, la tavolozza tipi. Nessuna riga di chip separata: le barre SONO i blocchi.
+          FIX 3 — flusso unico: niente card annidata, solo la tela e la tavolozza. */}
+      <div className="mt-3">
         <BuilderBlockCanvas
           blocks={manualPlanBlocks}
           segments={manualChartSegments}
@@ -556,37 +554,19 @@ export function BuilderManualComposer({
         </div>
       </div>
 
-      {/* Un solo pannello blocco */}
-      <div className="mt-4 rounded-2xl border border-white/15 bg-black/40 p-4">
+      {/* FIX 2 + FIX 3 — Editor del blocco selezionato, integrato nel flusso (divisore, non card
+          staccata). Il selettore TIPO è stato rimosso: il tipo si sceglie dalla tavolozza «Aggiungi
+          blocco» sopra la tela. Qui si modifica solo il blocco già selezionato. */}
+      <div className="mt-5 border-t border-white/10 pt-5">
         <input
           type="text"
-          className="mb-3 w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-base font-semibold text-white"
+          className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-base font-semibold text-white"
           value={row.label}
           onChange={(e) => patch({ label: e.target.value })}
           placeholder={t("blockNamePlaceholder")}
         />
 
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{t("typeLabel")}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {kindMetaList.map(({ kind, label, icon: Icon, color, iconClass }) => {
-            const on = row.kind === kind;
-            return (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => setKind(kind)}
-                className={`flex flex-1 min-w-[5.5rem] flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 text-[0.7rem] font-bold transition sm:min-w-[6rem] ${
-                  on ? "border-white text-white shadow-lg scale-[1.02]" : "border-white/10 text-gray-300 opacity-80 hover:opacity-100"
-                } bg-gradient-to-br ${color}`}
-              >
-                <Icon className={`h-5 w-5 ${iconClass}`} aria-hidden />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
+        <div className="mt-4 space-y-4">
           {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/50 px-2 py-2">
@@ -990,32 +970,8 @@ export function BuilderManualComposer({
         </div>
       </div>
 
-      {/* Durata nel calendario: dopo l'editor del blocco, non incastrata nella tela. */}
-      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-        <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-          <span className="font-mono uppercase tracking-[0.2em] text-gray-500">{t("durationInCalendar")}</span>
-          <select
-            className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
-            value={manualSessionDurationMinutes}
-            onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
-          >
-            {SESSION_DURATION_CHOICES.map((m) => (
-              <option key={m} value={m}>
-                {m} min
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-          {t.rich("segmentsSum", {
-            minutes: structureMinutesFromChart,
-            b: (chunks) => <span className="font-mono font-semibold text-gray-300">{chunks}</span>,
-          })}
-        </p>
-      </div>
-
       {macroFamily === "technical" ? (
-        <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
+        <div className="mt-5 border-t border-white/10 pt-5">
           <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {t("quickSessionsTechnical")}
@@ -1054,7 +1010,7 @@ export function BuilderManualComposer({
           </div>
         </div>
       ) : macroFamily === "lifestyle" ? (
-        <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] p-3">
+        <div className="mt-5 border-t border-white/10 pt-5">
           <p className="mb-2 flex items-center gap-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-orange-400">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             {t("quickSessionsLifestyle")}
@@ -1094,7 +1050,7 @@ export function BuilderManualComposer({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/35 p-3">
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-5">
           <div className="flex rounded-full border border-white/15 bg-black/50 p-0.5">
             <button
               type="button"
@@ -1145,15 +1101,6 @@ export function BuilderManualComposer({
               onChange={(e) => setHrMax(Number(e.target.value))}
             />
           </label>
-          <label className="ml-auto flex min-w-[8rem] flex-1 flex-col gap-1 text-[0.65rem] text-gray-500 sm:max-w-xs">
-            {t("sessionName")}
-            <input
-              type="text"
-              className="rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 text-sm text-white"
-              value={manualSessionName}
-              onChange={(e) => setManualSessionName(e.target.value)}
-            />
-          </label>
         </div>
 
       {showAerobicDistance ? (
@@ -1195,9 +1142,11 @@ export function BuilderManualComposer({
         </p>
       )}
 
+      {/* FIX 5 — Salvataggio integrato nel flusso unico (divisore, non scatola staccata):
+          è la coda dello stesso pannello di lavoro. */}
       {!hideSaveBar && (
         <>
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
+          <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-white/10 pt-5">
             <label className="flex flex-col gap-1 text-xs text-gray-500">
               {t("date")}
               <input

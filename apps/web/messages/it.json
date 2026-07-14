@@ -1318,6 +1318,8 @@
     "titleAerobicP": "Il grafico si aggiorna mentre componi. Zone watt/FC; distanza e cadenza solo per A · Aerobico.",
     "sectionAria": "Builder manuale coach",
     "sessionPreview": "Anteprima sessione",
+    "sessionDurationReadonly": "Durata seduta",
+    "sessionDurationFromBlocks": "somma dei blocchi",
     "goToBlockAria": "Vai a {label}",
     "durationInCalendar": "Durata nel calendario",
     "segmentsSum": "Somma segmenti nel grafico: <b>~{minutes} min</b>. La seduta salvata sul calendario usa la durata selezionata a sinistra.",
