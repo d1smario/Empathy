@@ -56,14 +56,18 @@ function BlockShape({ group }: { group: BlockGroup }) {
   if (block.kind === "ramp") {
     const startPct = heightPct(intensityScore(block.startIntensity));
     const endPct = heightPct(intensityScore(block.endIntensity));
-    const color = colorForIntensity(block.endIntensity);
+    // Colore che sale con la zona: gradiente da startIntensity (sinistra) a
+    // endIntensity (destra), così una ramp Z2→Z4 mostra la transizione di colore
+    // lungo la salita. Solo resa — non tocca segmenti né calcolo del carico.
+    const startColor = colorForIntensity(block.startIntensity);
+    const endColor = colorForIntensity(block.endIntensity);
     return (
       <div className="relative h-full w-full">
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: color,
-            boxShadow: `0 0 12px ${color}44`,
+            background: `linear-gradient(to right, ${startColor}, ${endColor})`,
+            boxShadow: `0 0 12px ${endColor}44`,
             clipPath: `polygon(0% ${100 - startPct}%, 100% ${100 - endPct}%, 100% 100%, 0% 100%)`,
           }}
         />
