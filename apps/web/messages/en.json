@@ -1743,7 +1743,14 @@
     "saveBarLibraryEmpty": "Build or generate a session before saving it to the library.",
     "startPointsHeading": "Starting points",
     "pickFromLibrary": "Select from my library",
-    "pickFromLibraryHint": "Start from one of your saved templates: it loads into the preview, then you refine it."
+    "pickFromLibraryHint": "Start from one of your saved templates: it loads into the preview, then you refine it.",
+    "startPointsIntro": "Pick a starting point: generate with the engine, reuse one of your templates, or import a file. Then refine the preview and save.",
+    "startPointGenerate": "Generate session",
+    "startPointImport": "Import FIT/ZWO/ERG",
+    "startPointImportHint": "Import a structured workout (FIT/ZWO/ERG/MRC) into the editor to review and save it.",
+    "importNeedsAthlete": "Select an athlete first",
+    "importBusy": "Importing…",
+    "modalClose": "Close"
   },
   "TrainingCalendarAnalyzer": {
     "metricLoad": "Load",

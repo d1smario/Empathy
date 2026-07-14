@@ -79,6 +79,7 @@ import { BuilderSportMacroSectorPicker } from "@/modules/training/views/sections
 import { BuilderUpcomingPlannedSection } from "@/modules/training/views/sections/BuilderUpcomingPlannedSection";
 import { BuilderEngineGenerateSection } from "@/modules/training/views/sections/BuilderEngineGenerateSection";
 import { BuilderManualComposerSwitch } from "@/modules/training/views/sections/BuilderManualComposerSwitch";
+import { BuilderStartPointModal } from "@/modules/training/views/sections/BuilderStartPointModal";
 
 
 let builderWindowCacheKey: string | null = null;
@@ -276,8 +277,9 @@ export default function TrainingBuilderRichPageView() {
   const [libSaveBusy, setLibSaveBusy] = useState(false);
   const [libSaveErr, setLibSaveErr] = useState<string | null>(null);
   const [libSaveOk, setLibSaveOk] = useState<string | null>(null);
-  /** Apertura controllata del picker libreria coach (bottone «Seleziona dalla mia libreria» in alto). */
-  const [libraryPanelOpen, setLibraryPanelOpen] = useState(false);
+  /** Modale «Punti di partenza»: un solo overlay aperto per volta (Genera / Libreria / Importa). */
+  const [startPointModal, setStartPointModal] = useState<null | "generate" | "library" | "import">(null);
+  const closeStartPointModal = useCallback(() => setStartPointModal(null), []);
 
   const [intensityUnit, setIntensityUnit] = useState<"watt" | "hr">("watt");
   const [ftpW, setFtpW] = useState(250);
@@ -476,12 +478,12 @@ export default function TrainingBuilderRichPageView() {
   );
 
   const handleStructuredWorkoutImport = useCallback(
-    async (file: File | null | undefined) => {
-      if (!file) return;
+    async (file: File | null | undefined): Promise<boolean> => {
+      if (!file) return false;
       if (!athleteId) {
         setStructuredImportErr("Seleziona prima un atleta.");
         setStructuredImportOk(null);
-        return;
+        return false;
       }
       setStructuredImportBusy(true);
       setStructuredImportErr(null);
@@ -497,8 +499,10 @@ export default function TrainingBuilderRichPageView() {
         setSaveErr(null);
         const rows = res.intervalRows > 0 ? ` · ${res.intervalRows} intervalli` : "";
         setStructuredImportOk(`Importato «${res.sessionName}»${rows}. Rivedi i blocchi e salva.`);
+        return true;
       } catch (e) {
         setStructuredImportErr(e instanceof Error ? e.message : "Import non riuscito");
+        return false;
       } finally {
         setStructuredImportBusy(false);
       }
@@ -555,8 +559,8 @@ export default function TrainingBuilderRichPageView() {
   }, [athleteId, sport]);
 
   const runGenerate = useCallback(
-    async (overrides?: EngineGenerateOverrides) => {
-      if (!athleteId) return;
+    async (overrides?: EngineGenerateOverrides): Promise<boolean> => {
+      if (!athleteId) return false;
       const adaptationUse = overrides?.adaptation ?? adaptation;
       const sessionMinutesUse = overrides?.sessionMinutes ?? sessionMinutes;
       const phaseUse = overrides?.phase ?? phase;
@@ -596,7 +600,7 @@ export default function TrainingBuilderRichPageView() {
       if ("error" in out) {
         setGenBusy(false);
         setGenErr(out.error);
-        return;
+        return false;
       }
 
       if (activeMacroId === "strength") {
@@ -609,7 +613,7 @@ export default function TrainingBuilderRichPageView() {
           setGenBusy(false);
           setGenErr(catErr ?? t("errCatalogUnavailable"));
           setGenResult(null);
-          return;
+          return false;
         }
         const built = buildPro2GymManualRowsFromEngine({
           blockExercises: out.blockExercises,
@@ -622,7 +626,7 @@ export default function TrainingBuilderRichPageView() {
           setGenBusy(false);
           setGenErr(t("errNoCompatibleExercise"));
           setGenResult(null);
-          return;
+          return false;
         }
         setGymManualRows(built);
         const scaledMinutes =
@@ -674,6 +678,7 @@ export default function TrainingBuilderRichPageView() {
       setSaveErr(null);
       setSaveOkId(null);
       setGenBusy(false);
+      return true;
     },
     [
       athleteId,
@@ -1143,12 +1148,32 @@ export default function TrainingBuilderRichPageView() {
     setLibSaveOk(t("saveBarLibrarySavedOk", { title }));
   }, [libraryContractToSave, libName, manualSessionName, t]);
 
-  const openLibraryPicker = useCallback(() => {
-    setLibraryPanelOpen(true);
-    requestAnimationFrame(() => {
-      document.getElementById("coach-library-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, []);
+  /** Genera dentro il modale: alla generazione riuscita chiude l'overlay e lascia la tela popolata. */
+  const runGenerateFromModal = useCallback(
+    async (overrides?: EngineGenerateOverrides) => {
+      const ok = await runGenerate(overrides);
+      if (ok) setStartPointModal(null);
+    },
+    [runGenerate],
+  );
+
+  /** Carica un template libreria e chiude il modale «Seleziona dalla mia libreria». */
+  const loadLibraryContractFromModal = useCallback(
+    (contract: Pro2BuilderSessionContract) => {
+      loadLibraryContractInBuilder(contract);
+      setStartPointModal(null);
+    },
+    [loadLibraryContractInBuilder],
+  );
+
+  /** Import da file nel modale: a import riuscito chiude l'overlay. */
+  const handleStructuredWorkoutImportFromModal = useCallback(
+    async (file: File | null | undefined) => {
+      const ok = await handleStructuredWorkoutImport(file);
+      if (ok) setStartPointModal(null);
+    },
+    [handleStructuredWorkoutImport],
+  );
 
   const upcoming = useMemo(() => {
     const today = localCalendarDateString();
@@ -1210,31 +1235,61 @@ export default function TrainingBuilderRichPageView() {
           setSport={setSport}
         />
 
-        {/* [G1] Punti di partenza IN ALTO: «Genera sessione» (motore) + «Seleziona
-            dalla mia libreria» (picker coach). Entrambi caricano l'anteprima qui
-            sotto, che il coach poi rifinisce prima di salvarla. */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-            {t("startPointsHeading")}
-          </span>
-          <span className="h-px flex-1 bg-white/10" aria-hidden />
-          <Pro2Button
-            type="button"
-            variant="secondary"
-            className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-            onClick={openLibraryPicker}
-            title={t("pickFromLibraryHint")}
-          >
-            {t("pickFromLibrary")}
-          </Pro2Button>
+        {/* [G1] Punti di partenza: scatola compatta con TRE bottoni; ognuno apre un
+            modale con la sezione esistente (Genera motore / picker libreria / import
+            FIT·ZWO·ERG). All'azione riuscita il modale si chiude e la tela sotto
+            (anteprima + editor) resta popolata, pronta da rifinire e salvare. */}
+        <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
+              {t("startPointsHeading")}
+            </span>
+            <span className="h-px flex-1 bg-white/10" aria-hidden />
+          </div>
+          <p className="mt-2 text-xs text-gray-400">{t("startPointsIntro")}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Pro2Button type="button" variant="primary" onClick={() => setStartPointModal("generate")}>
+              {t("startPointGenerate")}
+            </Pro2Button>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+              onClick={() => setStartPointModal("library")}
+              title={t("pickFromLibraryHint")}
+            >
+              {t("pickFromLibrary")}
+            </Pro2Button>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+              disabled={!athleteId}
+              title={!athleteId ? t("importNeedsAthlete") : t("startPointImportHint")}
+              onClick={() => setStartPointModal("import")}
+            >
+              {t("startPointImport")}
+            </Pro2Button>
+          </div>
         </div>
 
-        <BuilderEngineGenerateSection
-          activeMacroId={activeMacroId}
+        {/* Esito import: mostrato in pagina (il modale si chiude a import riuscito). */}
+        {structuredImportOk ? <p className="text-sm text-emerald-200/90">{structuredImportOk}</p> : null}
+
+        {/* Modale «Genera sessione»: stessa sezione motore di prima con i suoi input e
+            azione; runGenerateFromModal chiude l'overlay alla generazione riuscita. */}
+        <BuilderStartPointModal
+          open={startPointModal === "generate"}
+          title={t("startPointGenerate")}
+          closeLabel={t("modalClose")}
+          onClose={closeStartPointModal}
+        >
+          <BuilderEngineGenerateSection
+            activeMacroId={activeMacroId}
           currentSportLabel={currentSportLabel}
           athleteId={athleteId}
           genBusy={genBusy}
-          runGenerate={runGenerate}
+          runGenerate={runGenerateFromModal}
           gymEquipChannels={gymEquipChannels}
           setGymEquipChannels={setGymEquipChannels}
           gymContraction={gymContraction}
@@ -1275,53 +1330,67 @@ export default function TrainingBuilderRichPageView() {
           saveOkId={saveOkId}
           showTech={showTech}
           hideSaveBar
-        />
+          />
+        </BuilderStartPointModal>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.06] px-4 py-2.5">
-          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-            3
-          </span>
-          <p className="text-sm font-bold text-white">
-            {t.rich("refineLine", {
-              muted: (chunks) => <span className="font-normal text-gray-400">{chunks}</span>,
-            })}
-          </p>
-          <div className="ml-auto flex items-center gap-2">
-            <input
-              ref={importStructuredInputRef}
-              type="file"
-              accept=".fit,.fit.gz,.gz,.zwo,.erg,.mrc"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                void handleStructuredWorkoutImport(f);
-                e.target.value = "";
-              }}
-            />
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              disabled={!athleteId || structuredImportBusy}
-              title={
-                !athleteId
-                  ? "Seleziona prima un atleta"
-                  : "Importa un workout strutturato (FIT/ZWO/ERG/MRC) nell'editor per rivederlo e salvarlo"
-              }
-              onClick={() => importStructuredInputRef.current?.click()}
-            >
-              {structuredImportBusy ? "Importo…" : "Importa FIT/ZWO/ERG"}
-            </Pro2Button>
-          </div>
-        </div>
-        {structuredImportErr ? (
-          <p className="text-sm text-amber-300" role="alert">
-            {structuredImportErr}
-          </p>
-        ) : null}
-        {structuredImportOk ? (
-          <p className="text-sm text-emerald-200/90">{structuredImportOk}</p>
-        ) : null}
+        {/* Modale «Seleziona dalla mia libreria»: il picker coach aperto nell'overlay.
+            Caricando un template (onLoadInBuilder) chiude e porta la seduta nell'editor;
+            «Applica» salva in calendario e chiude. */}
+        <BuilderStartPointModal
+          open={startPointModal === "library"}
+          title={t("pickFromLibrary")}
+          closeLabel={t("modalClose")}
+          onClose={closeStartPointModal}
+        >
+          <CoachWorkoutLibraryPanel
+            athleteId={athleteId}
+            targetDate={plannedDate}
+            contractToSave={libraryContractToSave}
+            saveTitle={manualSessionName.trim() || undefined}
+            onApplied={() => {
+              setCalendarRefresh((n) => n + 1);
+              setStartPointModal(null);
+            }}
+            onLoadInBuilder={loadLibraryContractFromModal}
+            open
+          />
+        </BuilderStartPointModal>
+
+        {/* Modale «Importa FIT/ZWO/ERG»: flusso file esistente; a import riuscito
+            chiude (handleStructuredWorkoutImportFromModal), l'errore resta nel modale. */}
+        <BuilderStartPointModal
+          open={startPointModal === "import"}
+          title={t("startPointImport")}
+          closeLabel={t("modalClose")}
+          onClose={closeStartPointModal}
+        >
+          <p className="text-sm text-gray-300">{t("startPointImportHint")}</p>
+          <input
+            ref={importStructuredInputRef}
+            type="file"
+            accept=".fit,.fit.gz,.gz,.zwo,.erg,.mrc"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              void handleStructuredWorkoutImportFromModal(f);
+              e.target.value = "";
+            }}
+          />
+          <Pro2Button
+            type="button"
+            variant="primary"
+            disabled={!athleteId || structuredImportBusy}
+            title={!athleteId ? t("importNeedsAthlete") : t("startPointImportHint")}
+            onClick={() => importStructuredInputRef.current?.click()}
+          >
+            {structuredImportBusy ? t("importBusy") : t("startPointImport")}
+          </Pro2Button>
+          {structuredImportErr ? (
+            <p className="text-sm text-amber-300" role="alert">
+              {structuredImportErr}
+            </p>
+          ) : null}
+        </BuilderStartPointModal>
 
         <BuilderManualComposerSwitch
           activeMacroId={activeMacroId}
@@ -1454,22 +1523,6 @@ export default function TrainingBuilderRichPageView() {
             </div>
           ) : null}
         </section>
-
-        {/* Picker libreria coach: punto di partenza alternativo. Apribile dal bottone
-            «Seleziona dalla mia libreria» in alto (open controllato); «Builder» carica
-            la seduta nell'anteprima, «Applica» la salva in calendario. */}
-        <div id="coach-library-panel" className="scroll-mt-28">
-          <CoachWorkoutLibraryPanel
-            athleteId={athleteId}
-            targetDate={plannedDate}
-            contractToSave={libraryContractToSave}
-            saveTitle={manualSessionName.trim() || undefined}
-            onApplied={() => setCalendarRefresh((n) => n + 1)}
-            onLoadInBuilder={loadLibraryContractInBuilder}
-            open={libraryPanelOpen}
-            onOpenChange={setLibraryPanelOpen}
-          />
-        </div>
 
         <BuilderUpcomingPlannedSection
           ctxLoading={ctxLoading}

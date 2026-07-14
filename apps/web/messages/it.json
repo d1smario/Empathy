@@ -1743,7 +1743,14 @@
     "saveBarLibraryEmpty": "Costruisci o genera una seduta prima di salvarla in libreria.",
     "startPointsHeading": "Punti di partenza",
     "pickFromLibrary": "Seleziona dalla mia libreria",
-    "pickFromLibraryHint": "Parti da un tuo template salvato: si carica nell'anteprima, poi lo rifinisci."
+    "pickFromLibraryHint": "Parti da un tuo template salvato: si carica nell'anteprima, poi lo rifinisci.",
+    "startPointsIntro": "Scegli da dove partire: genera con il motore, riusa un tuo template o importa un file. Poi rifinisci l'anteprima e salva.",
+    "startPointGenerate": "Genera sessione",
+    "startPointImport": "Importa FIT/ZWO/ERG",
+    "startPointImportHint": "Importa un workout strutturato (FIT/ZWO/ERG/MRC) nell'editor per rivederlo e salvarlo.",
+    "importNeedsAthlete": "Seleziona prima un atleta",
+    "importBusy": "Importo…",
+    "modalClose": "Chiudi"
   },
   "TrainingCalendarAnalyzer": {
     "metricLoad": "Carico",
