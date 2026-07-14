@@ -107,12 +107,13 @@ export function LocaleSwitcher({ enabled, current }: { enabled: string[]; curren
   if (options.length < 2) return null; // una sola lingua → niente selettore
 
   const choose = (code: string) => {
-    if (code !== current) {
-      document.cookie = `EMPATHY_LOCALE=${code}; path=/; max-age=31536000; samesite=lax`;
-      window.location.reload();
+    if (code === current) {
+      setOpen(false);
       return;
     }
-    setOpen(false);
+    // Il cookie lo imposta il SERVER (Set-Cookie affidabile) + redirect alla pagina corrente.
+    const next = window.location.pathname + window.location.search;
+    window.location.href = `/api/locale?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`;
   };
 
   return (
