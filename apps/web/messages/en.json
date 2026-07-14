@@ -3900,6 +3900,11 @@
     "subgraph": "Subgraph (1-hop): {nodes} nodes, {edges} edges.",
     "inputProxies": "Input proxies: redox {redox}, inflammation {inflammation}, glycogen {glycogen}, readiness {readiness}, gut% {gut}, CHO delivery% {choDelivery}, oxidative {oxidative}."
   },
+  "WatchLabSection": {
+    "eyebrow": "Your data",
+    "heading": "Your watch becomes a laboratory",
+    "body": "Connect your Garmin, Polar or Wahoo device. Empathy reads every beat, every watt, every meter and turns it into scientific analysis to improve your performance."
+  },
   "Navbar": {
     "login": "Log in",
     "register": "Sign up"

@@ -240,6 +240,11 @@
       "contatti": "İletişim"
     }
   },
+  "WatchLabSection": {
+    "eyebrow": "Verilerin",
+    "heading": "Saatin bir laboratuvara dönüşür",
+    "body": "Garmin, Polar veya Wahoo cihazını bağla. Empathy her atışı, her watt'ı, her metreyi okur ve performansını artırmak için bilimsel analizlere dönüştürür."
+  },
   "Navbar": {
     "login": "Giriş yap",
     "register": "Kaydol"

@@ -2,19 +2,11 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Activity, Gauge, Radio } from "lucide-react";
 
 import { AthleteCanvas } from "./hero/AthleteCanvas";
-
-/* =========================================================================
- * COPY — edit Italian text here
- * ========================================================================= */
-const COPY = {
-  eyebrow: "I tuoi dati",
-  heading: "Il tuo orologio diventa un laboratorio",
-  body: "Collega il tuo dispositivo Garmin, Polar o Wahoo. Empathy legge ogni battito, ogni watt, ogni metro e lo trasforma in analisi scientifiche per migliorare la tua performance.",
-} as const;
 
 /* =========================================================================
  * LIVE METRICS — realistic ranges, updated periodically
@@ -49,10 +41,11 @@ type WatchLabSectionProps = {
 export function WatchLabSection({
   id = "piattaforma",
   compact = false,
-  eyebrow = COPY.eyebrow,
-  heading = COPY.heading,
-  body = COPY.body,
+  eyebrow,
+  heading,
+  body,
 }: WatchLabSectionProps = {}) {
+  const t = useTranslations("WatchLabSection");
   // Le metriche arrivano dall'animazione (AthleteCanvas) → l'orologio mostra
   // ESATTAMENTE gli stessi valori della bici/atleta, non un ticker separato.
   const [metrics, setMetrics] = useState<LiveMetrics>(INITIAL_METRICS);
@@ -69,15 +62,15 @@ export function WatchLabSection({
         <div className="flex flex-col">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-orange-500/10 px-4 py-2 font-mono text-[0.65rem] uppercase tracking-[0.25em] text-purple-200 backdrop-blur-xl">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-400" />
-            {eyebrow}
+            {eyebrow ?? t("eyebrow")}
           </span>
 
           <h2 className="mt-6 text-3xl font-black tracking-tight text-white sm:text-4xl">
-            {heading}
+            {heading ?? t("heading")}
           </h2>
 
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-gray-300">
-            {body}
+            {body ?? t("body")}
           </p>
 
           {/* Smartwatch graphic with live metrics */}

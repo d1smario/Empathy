@@ -3900,6 +3900,11 @@
     "subgraph": "Sottografo (1-hop): {nodes} nodi, {edges} archi.",
     "inputProxies": "Proxy ingresso: redox {redox}, infiammazione {inflammation}, glicogeno {glycogen}, readiness {readiness}, gut% {gut}, CHO delivery% {choDelivery}, ossidativo {oxidative}."
   },
+  "WatchLabSection": {
+    "eyebrow": "I tuoi dati",
+    "heading": "Il tuo orologio diventa un laboratorio",
+    "body": "Collega il tuo dispositivo Garmin, Polar o Wahoo. Empathy legge ogni battito, ogni watt, ogni metro e lo trasforma in analisi scientifiche per migliorare la tua performance."
+  },
   "Navbar": {
     "login": "Accedi",
     "register": "Registrati"
