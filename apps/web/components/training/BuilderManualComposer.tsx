@@ -84,12 +84,14 @@ function ZoneStrip({
   );
 }
 
+// Colore per TIPO di blocco (la forma nel grafico usa la zona; qui il tipo si
+// riconosce a colpo d'occhio invece che essere tutto arancione).
 const KIND_META: { kind: PlanBlockKind; label: string; icon: typeof Timer; color: string; iconClass: string }[] = [
-  { kind: "steady", label: "Steady", icon: Timer, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
-  { kind: "ramp", label: "Ramp", icon: TrendingUp, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
-  { kind: "interval2", label: "2 phases", icon: Repeat2, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
-  { kind: "interval3", label: "3 phases", icon: Layers, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
-  { kind: "pyramid", label: "Pyramid", icon: Mountain, color: "from-orange-500/90 to-amber-600/90", iconClass: "text-orange-100" },
+  { kind: "steady", label: "Steady", icon: Timer, color: "from-sky-500/90 to-blue-600/90", iconClass: "text-sky-100" },
+  { kind: "ramp", label: "Ramp", icon: TrendingUp, color: "from-amber-500/90 to-orange-600/90", iconClass: "text-amber-100" },
+  { kind: "interval2", label: "2 phases", icon: Repeat2, color: "from-emerald-500/90 to-teal-600/90", iconClass: "text-emerald-100" },
+  { kind: "interval3", label: "3 phases", icon: Layers, color: "from-violet-500/90 to-purple-600/90", iconClass: "text-violet-100" },
+  { kind: "pyramid", label: "Pyramid", icon: Mountain, color: "from-pink-500/90 to-rose-600/90", iconClass: "text-pink-100" },
 ];
 
 type KindMetaRow = (typeof KIND_META)[number];
