@@ -546,6 +546,17 @@ export function BuilderManualComposer({
     queueMicrotask(() => setActiveIndex(index + 1));
   };
 
+  // [G4] Tavolozza tipi: crea un blocco del kind scelto in coda e lo seleziona,
+  // così l'editor ancorato sotto mostra subito il nuovo blocco.
+  const addBlockOfKind = (kind: PlanBlockKind) => {
+    setManualPlanBlocks((p) => {
+      const next = [...p, defaultManualPlanBlock(kind, `Blocco ${p.length + 1}`)];
+      const idx = next.length - 1;
+      queueMicrotask(() => setActiveIndex(idx));
+      return next;
+    });
+  };
+
   const removeBlockAt = (index: number) => {
     if (manualPlanBlocks.length <= 1) return;
     setManualPlanBlocks((p) => p.filter((_, i) => i !== index));
@@ -649,6 +660,23 @@ export function BuilderManualComposer({
             </div>
           </SortableContext>
         </DndContext>
+        {/* [G4] Tavolozza «Aggiungi blocco»: un tile colorato per ogni tipo valido
+            (riusa KIND_META: gradiente + icona + label), click-to-add in coda + seleziona. */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">Aggiungi blocco:</span>
+          {kindMetaList.map(({ kind, label, icon: Icon, color, iconClass }) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => addBlockOfKind(kind)}
+              className={`flex items-center gap-1.5 rounded-lg bg-gradient-to-br ${color} px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-white/10 transition hover:brightness-110`}
+              aria-label={`Aggiungi blocco ${label}`}
+            >
+              <Icon className={`h-3.5 w-3.5 ${iconClass}`} />
+              {label}
+            </button>
+          ))}
+        </div>
         <p className="mt-1.5 text-center text-[0.6rem] text-gray-600">{t("dragHint")}</p>
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
