@@ -91,6 +91,10 @@ export type PlanChartSegment = {
   barIntensityScore?: number;
   /** 0–1 posizione lineare nel blocco piramide (solo piramide); per luminosità barra. */
   pyramidLinearT?: number;
+  /** Id del ManualPlanBlock che ha generato il segmento (click-barra → seleziona blocco). */
+  blockId?: string;
+  /** Indice del blocco nell'array sorgente (raggruppamento per blocco). */
+  blockIndex?: number;
 };
 
 function newBlockId(): string {
@@ -180,6 +184,7 @@ export function expandPlanBlockSegments(block: ManualPlanBlock, opts: PlanExpand
     durationSeconds: Math.max(1, seconds),
     intensityLabel: intensity,
     intensityScore: intensityScore(intensity),
+    blockId: block.id,
   });
 
   if (block.kind === "steady") {
@@ -222,6 +227,7 @@ export function expandPlanBlockSegments(block: ManualPlanBlock, opts: PlanExpand
         intensityScore: intensityScore(z),
         barIntensityScore,
         pyramidLinearT,
+        blockId: block.id,
       });
     }
     return out;
@@ -255,11 +261,11 @@ export function expandPlanBlockSegments(block: ManualPlanBlock, opts: PlanExpand
 export function manualPlanBlocksToChartSegments(blocks: ManualPlanBlock[], opts: PlanExpandOpts): PlanChartSegment[] {
   const flat: PlanChartSegment[] = [];
   let order = 1;
-  for (const b of blocks) {
+  blocks.forEach((b, i) => {
     for (const seg of expandPlanBlockSegments(b, opts)) {
-      flat.push({ ...seg, order: order++ });
+      flat.push({ ...seg, order: order++, blockIndex: i, blockId: b.id });
     }
-  }
+  });
   return flat;
 }
 
