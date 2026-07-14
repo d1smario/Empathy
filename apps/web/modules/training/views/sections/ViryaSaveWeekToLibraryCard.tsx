@@ -59,7 +59,7 @@ export function ViryaSaveWeekToLibraryCard({
           >
             {programWeekRows.map((w) => (
               <option key={w.weekStart} value={w.weekStart}>
-                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} {t("sessionsSuffix")} · TSS {w.displayTss}
+                W{w.week} · {w.weekStart} · {w.phase} · {w.displaySessions} {t("sessionsSuffix")} · Carico {w.displayTss}
               </option>
             ))}
           </select>

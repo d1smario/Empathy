@@ -36,7 +36,7 @@ export function ViryaMasterPlanCard({
                   <th>{t("colStart")}</th>
                   <th>{t("colPhase")}</th>
                   <th>{t("colSessions")}</th>
-                  <th>TSS</th>
+                  <th>Carico</th>
                   <th>{t("colOpen")}</th>
                 </tr>
               </thead>

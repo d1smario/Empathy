@@ -28,7 +28,7 @@ export function ViryaAnnualLoadProjectionCard({
                       : intensity > 0
                         ? "rgba(255,255,255,0.15)"
                         : "rgba(255,255,255,0.06)";
-              return <div key={idx} className="annual-cell" style={{ background: bg }} title={`Week ${idx + 1} · TSS ${tss}`} />;
+              return <div key={idx} className="annual-cell" style={{ background: bg }} title={`Week ${idx + 1} · Carico ${tss}`} />;
             })}
           </div>
           <div className="builder-zone-legend" style={{ marginTop: "10px" }}>
