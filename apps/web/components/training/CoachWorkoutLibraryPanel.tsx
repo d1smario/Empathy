@@ -37,6 +37,8 @@ export type CoachWorkoutLibraryPanelProps = {
   /** Stato aperto controllato dall'esterno (es. bottone «Seleziona dalla mia libreria» in alto). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Nasconde il bottone «Salva sessione in libreria» (contesto select-only, il salvataggio è altrove). */
+  hideSaveSession?: boolean;
 };
 
 export function CoachWorkoutLibraryPanel({
@@ -49,6 +51,7 @@ export function CoachWorkoutLibraryPanel({
   onLoadInBuilder,
   open: openProp,
   onOpenChange,
+  hideSaveSession = false,
 }: CoachWorkoutLibraryPanelProps) {
   const t = useTranslations("CoachWorkoutLibraryPanel");
   const [openUncontrolled, setOpenUncontrolled] = useState(false);
@@ -307,7 +310,7 @@ export function CoachWorkoutLibraryPanel({
             {t("description")}
           </p>
           <div className="flex flex-wrap gap-2">
-            {contractToSave ? (
+            {contractToSave && !hideSaveSession ? (
               <Pro2Button type="button" variant="secondary" disabled={busy != null} onClick={() => void handleSave()}>
                 {busy === "save" ? t("savingShort") : t("saveToLibrary")}
               </Pro2Button>

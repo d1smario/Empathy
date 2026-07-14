@@ -272,8 +272,7 @@ export default function TrainingBuilderRichPageView() {
   const [wahooPushBusy, setWahooPushBusy] = useState(false);
   const [wahooPushErr, setWahooPushErr] = useState<string | null>(null);
   const [wahooPushOk, setWahooPushOk] = useState<string | null>(null);
-  /** «Salva nella mia libreria» dal box Salva: nome + esito, riusa libraryContractToSave. */
-  const [libName, setLibName] = useState("");
+  /** «Salva nella mia libreria» dal box Salva: usa il nome della seduta, riusa libraryContractToSave. */
   const [libSaveBusy, setLibSaveBusy] = useState(false);
   const [libSaveErr, setLibSaveErr] = useState<string | null>(null);
   const [libSaveOk, setLibSaveOk] = useState<string | null>(null);
@@ -1136,7 +1135,7 @@ export default function TrainingBuilderRichPageView() {
     setLibSaveBusy(true);
     setLibSaveErr(null);
     setLibSaveOk(null);
-    const title = (libName.trim() || manualSessionName.trim() || libraryContractToSave.sessionName || "Seduta Pro 2")
+    const title = (manualSessionName.trim() || libraryContractToSave.sessionName || "Seduta Pro 2")
       .trim()
       .slice(0, 200);
     const r = await saveCoachLibraryItem({ title, contract: libraryContractToSave });
@@ -1146,7 +1145,7 @@ export default function TrainingBuilderRichPageView() {
       return;
     }
     setLibSaveOk(t("saveBarLibrarySavedOk", { title }));
-  }, [libraryContractToSave, libName, manualSessionName, t]);
+  }, [libraryContractToSave, manualSessionName, t]);
 
   /** Genera dentro il modale: alla generazione riuscita chiude l'overlay e lascia la tela popolata. */
   const runGenerateFromModal = useCallback(
@@ -1248,7 +1247,12 @@ export default function TrainingBuilderRichPageView() {
           </div>
           <p className="mt-2 text-xs text-gray-400">{t("startPointsIntro")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Pro2Button type="button" variant="primary" onClick={() => setStartPointModal("generate")}>
+            <Pro2Button
+              type="button"
+              variant="secondary"
+              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+              onClick={() => setStartPointModal("generate")}
+            >
               {t("startPointGenerate")}
             </Pro2Button>
             <Pro2Button
@@ -1353,6 +1357,7 @@ export default function TrainingBuilderRichPageView() {
             }}
             onLoadInBuilder={loadLibraryContractFromModal}
             open
+            hideSaveSession
           />
         </BuilderStartPointModal>
 
@@ -1485,16 +1490,6 @@ export default function TrainingBuilderRichPageView() {
           {/* [2] Seconda azione nello STESSO box: salva la seduta corrente nella
               libreria coach con un nome, riusabile poi come punto di partenza. */}
           <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/10 pt-4">
-            <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-xs text-gray-500">
-              {t("saveBarLibraryName")}
-              <input
-                type="text"
-                className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
-                placeholder={t("saveBarLibraryNamePlaceholder")}
-                value={libName}
-                onChange={(e) => setLibName(e.target.value)}
-              />
-            </label>
             <Pro2Button
               type="button"
               variant="secondary"
