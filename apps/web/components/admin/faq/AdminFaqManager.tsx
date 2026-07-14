@@ -8,6 +8,12 @@ type FaqEntry = {
   answerIt: string;
   questionEn: string;
   answerEn: string;
+  questionTr: string;
+  answerTr: string;
+  questionDe: string;
+  answerDe: string;
+  questionFr: string;
+  answerFr: string;
   category: string | null;
   sortOrder: number;
   published: boolean;
@@ -18,6 +24,12 @@ type Draft = {
   answerIt: string;
   questionEn: string;
   answerEn: string;
+  questionTr: string;
+  answerTr: string;
+  questionDe: string;
+  answerDe: string;
+  questionFr: string;
+  answerFr: string;
   category: string;
   sortOrder: number;
   published: boolean;
@@ -28,10 +40,25 @@ const EMPTY_DRAFT: Draft = {
   answerIt: "",
   questionEn: "",
   answerEn: "",
+  questionTr: "",
+  answerTr: "",
+  questionDe: "",
+  answerDe: "",
+  questionFr: "",
+  answerFr: "",
   category: "",
   sortOrder: 0,
   published: true,
 };
+
+/** Lingue editabili della FAQ (allineate alle colonne DB + lingue vetrina). */
+const LANGS: { label: string; q: keyof Draft; a: keyof Draft }[] = [
+  { label: "Italiano", q: "questionIt", a: "answerIt" },
+  { label: "English", q: "questionEn", a: "answerEn" },
+  { label: "Türkçe", q: "questionTr", a: "answerTr" },
+  { label: "Deutsch", q: "questionDe", a: "answerDe" },
+  { label: "Français", q: "questionFr", a: "answerFr" },
+];
 
 const inputCls =
   "w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-gray-100 outline-none focus:border-pink-400/50 disabled:opacity-50";
@@ -67,6 +94,12 @@ export function AdminFaqManager() {
       answerIt: it.answerIt,
       questionEn: it.questionEn,
       answerEn: it.answerEn,
+      questionTr: it.questionTr,
+      answerTr: it.answerTr,
+      questionDe: it.questionDe,
+      answerDe: it.answerDe,
+      questionFr: it.questionFr,
+      answerFr: it.answerFr,
       category: it.category ?? "",
       sortOrder: it.sortOrder,
       published: it.published,
@@ -134,16 +167,13 @@ export function AdminFaqManager() {
   const editor = (
     <div className="space-y-2 rounded-xl border border-pink-400/20 bg-white/[0.03] p-4">
       <div className="grid gap-2 md:grid-cols-2">
-        <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-wider text-gray-500">Italiano</p>
-          <input className={inputCls} placeholder="Domanda (IT)" value={draft.questionIt} onChange={setField("questionIt")} disabled={busy} />
-          <textarea className={`${inputCls} min-h-[90px]`} placeholder="Risposta (IT)" value={draft.answerIt} onChange={setField("answerIt")} disabled={busy} />
-        </div>
-        <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-wider text-gray-500">English</p>
-          <input className={inputCls} placeholder="Question (EN)" value={draft.questionEn} onChange={setField("questionEn")} disabled={busy} />
-          <textarea className={`${inputCls} min-h-[90px]`} placeholder="Answer (EN)" value={draft.answerEn} onChange={setField("answerEn")} disabled={busy} />
-        </div>
+        {LANGS.map((l) => (
+          <div key={l.q} className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500">{l.label}</p>
+            <input className={inputCls} placeholder={`Domanda (${l.label})`} value={draft[l.q] as string} onChange={setField(l.q)} disabled={busy} />
+            <textarea className={`${inputCls} min-h-[90px]`} placeholder={`Risposta (${l.label})`} value={draft[l.a] as string} onChange={setField(l.a)} disabled={busy} />
+          </div>
+        ))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <input className={`${inputCls} max-w-[160px]`} placeholder="Categoria" value={draft.category} onChange={setField("category")} disabled={busy} />

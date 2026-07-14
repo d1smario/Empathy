@@ -31,6 +31,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   setStr("answerIt", "answer_it");
   setStr("questionEn", "question_en");
   setStr("answerEn", "answer_en");
+  setStr("questionTr", "question_tr");
+  setStr("answerTr", "answer_tr");
+  setStr("questionDe", "question_de");
+  setStr("answerDe", "answer_de");
+  setStr("questionFr", "question_fr");
+  setStr("answerFr", "answer_fr");
   if ("category" in body) patch.category = typeof body.category === "string" && body.category.trim() ? body.category.trim() : null;
   if (typeof body.sortOrder === "number" && Number.isFinite(body.sortOrder)) patch.sort_order = Math.trunc(body.sortOrder);
   if (typeof body.published === "boolean") patch.published = body.published;
