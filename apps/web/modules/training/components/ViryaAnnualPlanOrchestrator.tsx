@@ -81,12 +81,15 @@ export type ViryaAnnualPlanOrchestratorProps = {
   athleteId: string | null;
   viryaContext: TrainingPlannerContextViewModel | null;
   contextLoading: boolean;
+  /** true SOLO per staff di piattaforma: mostra i pannelli di gergo motore (retune-solver, modulazione operativa, KPI grezzi). Il coach vede il piano pulito. */
+  staffView?: boolean;
 };
 
 export function ViryaAnnualPlanOrchestrator({
   athleteId: selectedAthleteId,
   viryaContext,
   contextLoading,
+  staffView = false,
 }: ViryaAnnualPlanOrchestratorProps) {
   const t = useTranslations("ViryaAnnualPlanOrchestrator");
   const start = isoToday();
@@ -438,15 +441,15 @@ export function ViryaAnnualPlanOrchestrator({
     [discipline, phases.length, sportFamilyLabel, totalTss],
   );
   const viryaSummaryCards = useMemo<
-    Array<{ label: string; value: string; tone: "cyan" | "green" | "amber" | "rose" | "slate" }>
+    Array<{ label: string; value: string; tone: "cyan" | "green" | "amber" | "rose" | "slate"; staff?: boolean }>
   >(
     () => [
       { label: t("summaryGoalDate"), value: goalRaceDate ? new Date(`${goalRaceDate}T00:00:00`).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "2-digit" }) : t("summaryGoalDateOpen"), tone: "amber" },
       { label: t("summarySessions"), value: String(totalSessions), tone: "cyan" },
-      { label: t("summaryDemand"), value: objectiveDemand.toFixed(2), tone: objectiveDemand >= 1.2 ? "rose" : objectiveDemand >= 0.9 ? "amber" : "green" },
+      { label: t("summaryDemand"), value: objectiveDemand.toFixed(2), tone: objectiveDemand >= 1.2 ? "rose" : objectiveDemand >= 0.9 ? "amber" : "green", staff: true },
       { label: t("summaryReadiness"), value: physiologyDrive.readiness != null ? `${physiologyDrive.readiness.toFixed(0)}%` : "—", tone: "green" },
-      { label: t("summaryBioenergetics"), value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan" },
-      { label: t("summaryLoop"), value: adaptationLoop ? adaptationLoop.status : "stable", tone: adaptationLoop?.status === "regenerate" ? "rose" : adaptationLoop?.status === "watch" ? "amber" : "slate" },
+      { label: t("summaryBioenergetics"), value: bioenergeticModulation ? `${bioenergeticModulation.mitochondrialReadinessScore}/100` : "—", tone: bioenergeticModulation?.state === "protective" ? "rose" : bioenergeticModulation?.state === "watch" ? "amber" : "cyan", staff: true },
+      { label: t("summaryLoop"), value: adaptationLoop ? adaptationLoop.status : "stable", tone: adaptationLoop?.status === "regenerate" ? "rose" : adaptationLoop?.status === "watch" ? "amber" : "slate", staff: true },
     ],
     [adaptationLoop, bioenergeticModulation, goalRaceDate, objectiveDemand, physiologyDrive.readiness, totalSessions],
   );
@@ -2215,10 +2218,10 @@ export function ViryaAnnualPlanOrchestrator({
       {viryaStep === 5 ? (
         <div className="space-y-6">
           <ViryaContextKpiCard
-            viryaSummaryCards={viryaSummaryCards}
+            viryaSummaryCards={viryaSummaryCards.filter((c) => staffView || !c.staff)}
           />
 
-          {operationalContext ? (
+          {staffView && operationalContext ? (
             <ViryaOperationalModulationCard
               operationalContext={operationalContext}
               recoverySummary={recoverySummary}
@@ -2227,8 +2230,9 @@ export function ViryaAnnualPlanOrchestrator({
             />
           ) : null}
 
-          {viryaApprovedPatches.length > 0 ? (
+          {(staffView ? viryaApprovedPatches.length > 0 : (viryaRetuneProposal?.targetWeeks.length ?? 0) > 0) ? (
             <ViryaApprovedDecisionsCard
+              staffView={staffView}
               viryaApprovedPatches={viryaApprovedPatches}
               viryaRetuneDirective={viryaRetuneDirective}
               viryaRetuneProposalVm={viryaRetuneProposalVm}
@@ -2274,6 +2278,7 @@ export function ViryaAnnualPlanOrchestrator({
           />
 
           <ViryaMicrocyclePreviewCard
+            staffView={staffView}
             viryaWeekdayPattern={viryaWeekdayPattern}
             setViryaWeekdayPattern={setViryaWeekdayPattern}
             microcyclePreviewRows={microcyclePreviewRows}

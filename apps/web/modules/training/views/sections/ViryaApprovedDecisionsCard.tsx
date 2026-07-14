@@ -23,6 +23,8 @@ type ViryaRetuneDirective = {
  * passati via props. JSX verbatim.
  */
 export type ViryaApprovedDecisionsCardProps = {
+  /** Staff-only: mostra il dump del retune-solver (directive, load×, patch, staging id). Il coach vede solo la leva di adattamento + descrizione. */
+  staffView?: boolean;
   viryaApprovedPatches: ApprovedApplicationPatch[];
   viryaRetuneDirective: ViryaRetuneDirective | null;
   viryaRetuneProposalVm: ViryaRetuneProposalVm | null;
@@ -32,6 +34,7 @@ export type ViryaApprovedDecisionsCardProps = {
 };
 
 export function ViryaApprovedDecisionsCard({
+  staffView = false,
   viryaApprovedPatches,
   viryaRetuneDirective,
   viryaRetuneProposalVm,
@@ -47,7 +50,7 @@ export function ViryaApprovedDecisionsCard({
       subtitle={t("subtitle")}
       icon={LineChart}
     >
-      {viryaRetuneDirective ? (
+      {staffView && viryaRetuneDirective ? (
         <div className="mb-3 rounded-xl border border-cyan-500/25 bg-cyan-950/10 p-3">
           <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/80">
             Retune directive · {viryaRetuneDirective.recommendedMode.replaceAll("_", " ")}
@@ -64,7 +67,7 @@ export function ViryaApprovedDecisionsCard({
           </ul>
         </div>
       ) : null}
-      {viryaRetuneProposalVm ? (
+      {staffView && viryaRetuneProposalVm ? (
         <div className="mb-3 rounded-xl border border-violet-500/25 bg-violet-950/10 p-3">
           <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-violet-200/80">
             {t("serverRetuneProposal")}
@@ -91,7 +94,8 @@ export function ViryaApprovedDecisionsCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-amber-200/80">
-                {t("microcycleAutoAdaptPrefix")} · {viryaRetuneProposal.mode.replaceAll("_", " ")}
+                {t("microcycleAutoAdaptPrefix")}
+                {staffView ? ` · ${viryaRetuneProposal.mode.replaceAll("_", " ")}` : null}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-slate-400">
                 {t("autoAdaptDescription")}
@@ -119,25 +123,27 @@ export function ViryaApprovedDecisionsCard({
               </div>
             </div>
           </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {viryaRetuneProposal.targetWeeks.map((week) => (
-              <div key={week.weekStart} className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <div className="font-mono text-[0.62rem] text-slate-500">
-                  Week {week.week} · {week.weekStart} · {week.phase}
+          {staffView ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {viryaRetuneProposal.targetWeeks.map((week) => (
+                <div key={week.weekStart} className="rounded-lg border border-white/10 bg-black/30 p-2">
+                  <div className="font-mono text-[0.62rem] text-slate-500">
+                    Week {week.week} · {week.weekStart} · {week.phase}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-white">
+                    Carico {week.currentTss} → {week.proposedTss} · {t("sessionsLabel")} {week.currentSessions} → {week.proposedSessions}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {t("focusLabel")}: {week.objectives.length ? week.objectives.join(" · ") : t("unchanged")}
+                  </div>
                 </div>
-                <div className="mt-1 text-sm font-semibold text-white">
-                  TSS {week.currentTss} → {week.proposedTss} · {t("sessionsLabel")} {week.currentSessions} → {week.proposedSessions}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {t("focusLabel")}: {week.objectives.length ? week.objectives.join(" · ") : t("unchanged")}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <div className="grid gap-3 md:grid-cols-2">
-        {viryaApprovedPatches.slice(0, 6).map((patch) => (
+        {(staffView ? viryaApprovedPatches.slice(0, 6) : []).map((patch) => (
           <div key={patch.id} className="rounded-xl border border-cyan-500/20 bg-black/30 p-3">
             <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-200/80">
               {patch.target} · {patch.confidence != null ? `${Math.round(patch.confidence * 100)}%` : t("notAvailable")}

@@ -22,12 +22,15 @@ type MicrocyclePreviewRow = {
  * passati via props. JSX verbatim.
  */
 export type ViryaMicrocyclePreviewCardProps = {
+  /** Staff-only: mostra il pattern grezzo + la colonna «adattamento Builder» (gergo motore). */
+  staffView?: boolean;
   viryaWeekdayPattern: "auto" | ViryaWeekdayPatternId;
   setViryaWeekdayPattern: Dispatch<SetStateAction<"auto" | ViryaWeekdayPatternId>>;
   microcyclePreviewRows: MicrocyclePreviewRow[];
 };
 
 export function ViryaMicrocyclePreviewCard({
+  staffView = false,
   viryaWeekdayPattern,
   setViryaWeekdayPattern,
   microcyclePreviewRows,
@@ -64,8 +67,13 @@ export function ViryaMicrocyclePreviewCard({
         {microcyclePreviewRows.length > 0 ? (
           <p className="text-xs text-slate-400">
             {t("previewLoadSum")}{" "}
-            <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.loadSum ?? "—"}</span> · pattern{" "}
-            <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.patternId ?? "—"}</span>
+            <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.loadSum ?? "—"}</span>
+            {staffView ? (
+              <>
+                {" "}· pattern{" "}
+                <span className="font-mono text-violet-200">{microcyclePreviewRows[0]?.patternId ?? "—"}</span>
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>
@@ -79,7 +87,7 @@ export function ViryaMicrocyclePreviewCard({
                 <th className="p-2">{t("colDay")}</th>
                 <th className="p-2">{t("colRole")}</th>
                 <th className="p-2">{t("colLoad")}</th>
-                <th className="p-2">{t("colBuilderAdaptation")}</th>
+                {staffView ? <th className="p-2">{t("colBuilderAdaptation")}</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -101,7 +109,9 @@ export function ViryaMicrocyclePreviewCard({
                     </span>
                   </td>
                   <td className="p-2 font-mono">{row.load}</td>
-                  <td className="p-2 font-mono text-xs text-violet-200/90">{row.adapt}</td>
+                  {staffView ? (
+                    <td className="p-2 font-mono text-xs text-violet-200/90">{row.adapt}</td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

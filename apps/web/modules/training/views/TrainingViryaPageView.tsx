@@ -57,9 +57,13 @@ let viryaContextCache: Awaited<ReturnType<typeof fetchTrainingPlannerContext>> |
  */
 export default function TrainingViryaPageView() {
   const t = useTranslations("TrainingViryaPageView");
-  const { athleteId, role, adminScoped, loading: ctxLoading } = useActiveAthlete();
-  /** Contenuti tecnici (diagnostica, trace, pipeline) visibili solo a coach/admin. */
-  const showTech = role === "coach" || adminScoped;
+  const { athleteId, platformAdminView, loading: ctxLoading } = useActiveAthlete();
+  /**
+   * Gergo motore (diagnostica, readSpine, trace, pipeline, readout grezzo): SOLO staff di
+   * piattaforma. Il coach vede il «Piano» pulito (wizard + tabelle + grafici + azioni),
+   * non il motore — distinto dal vecchio showTech coach-inclusivo.
+   */
+  const staffOnly = platformAdminView;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [ctx, setCtx] = useState<Awaited<ReturnType<typeof fetchTrainingPlannerContext>> | null>(null);
@@ -136,7 +140,7 @@ export default function TrainingViryaPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Virya"
+      eyebrow="Training · Piano"
       eyebrowClassName="text-violet-400"
       title={t("shellTitle")}
       description={t("shellDescription")}
@@ -145,7 +149,7 @@ export default function TrainingViryaPageView() {
         <TrainingSubnav />
       </div>
 
-      {showTech && ctx?.readSpineCoverage && !err ? (
+      {staffOnly && ctx?.readSpineCoverage && !err ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">
           <summary className="cursor-pointer font-mono text-[0.65rem] uppercase tracking-wider text-violet-300/90">
             {t("readSpineSummary", { spineScore: ctx.readSpineCoverage.spineScore })}
@@ -167,17 +171,18 @@ export default function TrainingViryaPageView() {
           athleteId={athleteId}
           viryaContext={ctx}
           contextLoading={loading || ctxLoading}
+          staffView={staffOnly}
         />
       ) : null}
 
-      {loading || ctxLoading ? (
+      {staffOnly && (loading || ctxLoading) ? (
         <div className="mb-6 space-y-2">
           <div className="h-3 w-full max-w-xl animate-pulse rounded-lg bg-violet-500/15" />
           <div className="h-40 w-full animate-pulse rounded-2xl bg-white/5" />
         </div>
       ) : null}
 
-      {!loading && !ctxLoading && ctx ? (
+      {staffOnly && !loading && !ctxLoading && ctx ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <Pro2SectionCard accent="violet" title={t("physiologyTitle")} subtitle={t("physiologySubtitle")} icon={Sparkles}>
             <dl className="grid gap-2 text-sm text-slate-300">
@@ -228,7 +233,7 @@ export default function TrainingViryaPageView() {
                 </span>
               ))}
             </div>
-            {showTech ? (
+            {staffOnly ? (
               flagsList.length ? (
                 <div className="mt-4">
                   <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">{t("activeFlags")}</p>
@@ -315,7 +320,7 @@ export default function TrainingViryaPageView() {
             </Pro2SectionCard>
           ) : null}
 
-          {showTech && (ctx.researchPlans?.length ?? 0) > 0 ? (
+          {staffOnly && (ctx.researchPlans?.length ?? 0) > 0 ? (
             <Pro2SectionCard accent="cyan" title="Research plans (Virya)" subtitle={t("researchPlansSubtitle")} icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchPlans ?? []).map((p) => (
@@ -336,7 +341,7 @@ export default function TrainingViryaPageView() {
             </Pro2SectionCard>
           ) : null}
 
-          {showTech && (ctx.researchPlans?.length ?? 0) > 0 && (ctx.researchTraces?.length ?? 0) === 0 ? (
+          {staffOnly && (ctx.researchPlans?.length ?? 0) > 0 && (ctx.researchTraces?.length ?? 0) === 0 ? (
             <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-100/90">
               <p className="mb-2">
                 {t.rich("noTraceInResponse", {
@@ -349,7 +354,7 @@ export default function TrainingViryaPageView() {
             </div>
           ) : null}
 
-          {showTech && (ctx.researchTraces?.length ?? 0) > 0 ? (
+          {staffOnly && (ctx.researchTraces?.length ?? 0) > 0 ? (
             <Pro2SectionCard accent="orange" title={t("savedTracesTitle")} subtitle={t("savedTracesSubtitle")} icon={FlaskConical}>
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {(ctx.researchTraces ?? []).map((tr: KnowledgeResearchTraceSummary) => (
@@ -377,7 +382,7 @@ export default function TrainingViryaPageView() {
         </div>
       ) : null}
 
-      {showTech ? (
+      {staffOnly ? (
         <Pro2SectionCard accent="orange" title="Pipeline" subtitle={t("pipelineSubtitle")} icon={Sparkles} className="mt-8">
           <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
             <li>{t("pipelineStep1")}</li>
