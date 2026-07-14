@@ -876,6 +876,13 @@
     "raceTypeTest": "Test",
     "raceTypeGoal": "Gara obiettivo"
   },
+  "ViryaLongTermStrip": {
+    "eyebrow": "Virya · lungo periodo",
+    "phase": "Fase",
+    "week": "settimana {n} di {total}",
+    "weekLoad": "Carico target settimana",
+    "session": "questa seduta: {pos} di {count}"
+  },
   "ViryaHeroHeader": {
     "annualPlanTitle": "Piano annuale",
     "intro": "Percorso in cinque passi: sport, obiettivo, gare, fasi e settimane. Gli obiettivi della singola settimana si impostano al passo 5, poi pubblichi l’intero piano sul calendario.",

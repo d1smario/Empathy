@@ -9,6 +9,7 @@ import {
   VIRYA_NOTES_ILIKE_MARKER,
 } from "@/lib/training/virya/virya-planned-notes";
 import { mapEngineSessionToPlannedRow } from "@/lib/training/planned/map-engine-session-to-planned";
+import type { ViryaCalendarRow } from "@/lib/training/virya/virya-context-for-date";
 import type { TrainingPlannerCalendarReplaceInput, TrainingPlannerCalendarReplaceResult } from "@/api/training/contracts";
 
 /** Persistenza sul calendario operativo: ogni insert finisce in `planned_workouts` (stessa sorgente letta da `GET /api/training/planned-window`). */
@@ -272,6 +273,31 @@ export async function fetchViryaCalendarPlans(athleteId: string): Promise<ViryaC
       dateMax: agg.dateMax,
     }))
     .sort((a, b) => b.dateMax.localeCompare(a.dateMax));
+}
+
+/**
+ * Righe `[VIRYA:]` del calendario atleta con `tss_target` + note (per la striscia
+ * anteprima Virya nel Builder). DB-first: lettura diretta browser→Supabase.
+ */
+export async function fetchViryaCalendarRows(athleteId: string): Promise<ViryaCalendarRow[]> {
+  const supabase = createEmpathyBrowserSupabase();
+  if (!supabase) throw new Error("Loading VIRYA rows failed");
+  const { data, error } = await supabase
+    .from("planned_workouts")
+    .select("date, tss_target, notes")
+    .eq("athlete_id", athleteId.trim())
+    .ilike("notes", VIRYA_NOTES_ILIKE_MARKER)
+    .order("date", { ascending: true });
+  if (error) throw new Error(error.message || "Loading VIRYA rows failed");
+  const rows: ViryaCalendarRow[] = [];
+  for (const row of data ?? []) {
+    const notes = typeof row.notes === "string" ? row.notes : null;
+    const tag = extractViryaTagFromPlannedNotes(notes);
+    const date = String(row.date ?? "").slice(0, 10);
+    if (!tag || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    rows.push({ tag, date, tssTarget: Number(row.tss_target) || 0, notes });
+  }
+  return rows;
 }
 
 export async function deleteViryaCalendarPlan(input: { athleteId: string; tag: string }): Promise<number> {

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachWorkoutLibraryPanel } from "@/components/training/CoachWorkoutLibraryPanel";
 import { TrainingPlannedWindowContextStrip } from "@/components/training/TrainingPlannedWindowContextStrip";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
+import { ViryaLongTermStrip } from "@/components/training/ViryaLongTermStrip";
 import { useScopedAthleteName } from "@/lib/training/use-scoped-athlete-name";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import {
@@ -1135,6 +1136,8 @@ export default function TrainingBuilderRichPageView() {
             <TrainingSubnav />
           </div>
         )}
+
+        <ViryaLongTermStrip athleteId={athleteId} date={plannedDate} />
 
         <BuilderViryaEntryBanner
           viryaEntry={viryaEntry}

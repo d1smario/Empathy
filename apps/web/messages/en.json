@@ -876,6 +876,13 @@
     "raceTypeTest": "Test",
     "raceTypeGoal": "Goal race"
   },
+  "ViryaLongTermStrip": {
+    "eyebrow": "Virya · long-term",
+    "phase": "Phase",
+    "week": "week {n} of {total}",
+    "weekLoad": "Week load target",
+    "session": "this session: {pos} of {count}"
+  },
   "ViryaHeroHeader": {
     "annualPlanTitle": "Annual plan",
     "intro": "A five-step path: sport, goal, races, phases and weeks. Set each week's goals at step 5, then publish the whole plan to the calendar.",
