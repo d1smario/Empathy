@@ -556,6 +556,14 @@ export function BuilderManualComposer({
               <GripVertical className="h-3.5 w-3.5 shrink-0 text-gray-500" aria-hidden />
               <span className="font-mono text-[0.6rem] text-gray-500">{i + 1}</span>
               <span className="max-w-[8rem] truncate font-semibold">{b.label || `Blocco ${i + 1}`}</span>
+              {/* Sintesi grafica del blocco: durata (costante/rampa) o ripetizioni (intervalli/piramide). */}
+              <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[0.55rem] text-gray-400">
+                {b.kind === "interval2" || b.kind === "interval3"
+                  ? `${b.repeats}×`
+                  : b.kind === "pyramid"
+                    ? `${b.pyramidSteps}▲`
+                    : `${b.minutes + Math.round(b.seconds / 60)}′`}
+              </span>
               {manualPlanBlocks.length > 1 ? (
                 <button
                   type="button"
