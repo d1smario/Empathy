@@ -863,8 +863,8 @@
     "refreshList": "Refresh list"
   },
   "ViryaContextKpiCard": {
-    "title": "Context · KPI",
-    "subtitle": "Goal, readiness, adaptation loop (from athlete memory)"
+    "title": "Plan summary",
+    "subtitle": "Goal, readiness and athlete status"
   },
   "ViryaEventsCard": {
     "title": "Events and intermediate dates",
@@ -1941,7 +1941,7 @@
     "heroPhases": "Phases",
     "heroAnnualLoad": "Annual load",
     "summaryGoalDate": "Goal date",
-    "summaryGoalDateOpen": "Open",
+    "summaryGoalDateOpen": "TBD",
     "summarySessions": "Sessions",
     "summaryDemand": "Demand",
     "summaryReadiness": "Readiness",

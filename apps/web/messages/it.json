@@ -863,8 +863,8 @@
     "refreshList": "Aggiorna elenco"
   },
   "ViryaContextKpiCard": {
-    "title": "Contesto · KPI",
-    "subtitle": "Goal, readiness, loop adattamento (da memoria atleta)"
+    "title": "Sintesi del piano",
+    "subtitle": "Obiettivo, prontezza e stato dell’atleta"
   },
   "ViryaEventsCard": {
     "title": "Eventi e date intermedie",
@@ -1940,11 +1940,11 @@
     "heroDiscipline": "Discipline",
     "heroPhases": "Phases",
     "heroAnnualLoad": "Carico annuo",
-    "summaryGoalDate": "Goal date",
-    "summaryGoalDateOpen": "Open",
-    "summarySessions": "Sessions",
+    "summaryGoalDate": "Data obiettivo",
+    "summaryGoalDateOpen": "Da definire",
+    "summarySessions": "Sedute",
     "summaryDemand": "Demand",
-    "summaryReadiness": "Readiness",
+    "summaryReadiness": "Prontezza",
     "summaryBioenergetics": "Bioenergetica",
     "summaryLoop": "Loop",
     "errAthleteUnavailableGeneration": "Atleta non disponibile per la generazione.",
