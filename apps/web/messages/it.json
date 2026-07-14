@@ -1366,7 +1366,10 @@
     "loadMultiplier": "Moltiplicatore carico (motore, opz.)",
     "date": "Data",
     "saving": "Salvataggio…",
-    "saveToCalendar": "Salva nel calendario"
+    "saveToCalendar": "Salva nel calendario",
+    "canvasActiveMarker": "selez.",
+    "canvasDropHere": "trascina qui",
+    "canvasTotalSummary": "{total} totali · {count} blocchi"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Mappa di esecuzione",

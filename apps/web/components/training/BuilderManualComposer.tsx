@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Footprints,
   Gauge,
-  GripVertical,
   Heart,
   Layers,
   Mountain,
@@ -17,25 +16,17 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
-  DndContext,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useTranslations } from "next-intl";
-import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
+import { BuilderBlockCanvas } from "@/components/training/BuilderBlockCanvas";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
 import { defaultManualPlanBlock, type ManualPlanBlock, type PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
 import type { SportMacroId } from "@/lib/training/builder/sport-macro-palette";
@@ -308,78 +299,6 @@ export type BuilderManualComposerProps = {
   hideSaveBar?: boolean;
 };
 
-/**
- * Chip-blocco riordinabile con dnd-kit (drag affidabile dalla maniglia, click seleziona).
- * Sostituisce il drag HTML nativo che si rompeva. Prossimo step: fondere i chip nelle barre.
- */
-function SortableBlockChip({
-  block,
-  index,
-  active,
-  canDelete,
-  onSelect,
-  onDelete,
-  deleteLabel,
-  dragLabel,
-}: {
-  block: ManualPlanBlock;
-  index: number;
-  active: boolean;
-  canDelete: boolean;
-  onSelect: (i: number) => void;
-  onDelete: (i: number) => void;
-  deleteLabel: string;
-  dragLabel: string;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 20 : undefined };
-  const summary =
-    block.kind === "interval2" || block.kind === "interval3"
-      ? `${block.repeats}×`
-      : block.kind === "pyramid"
-        ? `${block.pyramidSteps}▲`
-        : `${block.minutes + Math.round(block.seconds / 60)}′`;
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      onClick={() => onSelect(index)}
-      className={`group flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
-        active
-          ? "border-orange-400/70 bg-orange-500/15 text-white"
-          : "border-white/10 bg-black/30 text-gray-300 hover:border-white/25"
-      } ${isDragging ? "opacity-60 shadow-lg" : ""}`}
-    >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-        className="cursor-grab touch-none rounded p-0.5 text-gray-500 hover:text-gray-300 active:cursor-grabbing"
-        aria-label={dragLabel}
-      >
-        <GripVertical className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      </button>
-      <span className="font-mono text-[0.6rem] text-gray-500">{index + 1}</span>
-      <span className="max-w-[8rem] truncate font-semibold">{block.label || `Blocco ${index + 1}`}</span>
-      <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[0.55rem] text-gray-400">{summary}</span>
-      {canDelete ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(index);
-          }}
-          className="ml-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
-          aria-label={deleteLabel}
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 export function BuilderManualComposer({
   athleteId,
   physioHint,
@@ -620,46 +539,21 @@ export function BuilderManualComposer({
         ) : null}
       </div>
 
-      {/* Grafico in alto */}
-      <div
-        className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
-      >
-        <SessionBlockIntensityChart
+      {/* Tela: OGNI blocco è una barra-gruppo (forma + numero·nome + durata/zona),
+          cliccabile per selezionare, con maniglia drag per riordinare e x per eliminare.
+          Sotto, la tavolozza tipi. Nessuna riga di chip separata: le barre SONO i blocchi. */}
+      <div className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner">
+        <BuilderBlockCanvas
+          blocks={manualPlanBlocks}
           segments={manualChartSegments}
+          activeIndex={safeIndex}
+          onSelect={setActiveIndex}
+          onRemove={removeBlockAt}
+          sensors={dndSensors}
+          onDragEnd={handleBlockDragEnd}
           title={t("sessionPreview")}
           estimatedTss={estimatedTss}
-          activeBlockId={row?.id}
-          onSelectBlock={(id) => setActiveIndex(manualPlanBlocks.findIndex((b) => b.id === id))}
         />
-        {/* [G1] Lista blocchi: trascina la maniglia per riordinare (dnd-kit), clicca per aprire l'editor sotto. */}
-        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
-          <SortableContext items={manualPlanBlocks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
-            <div className="mt-3 flex flex-wrap items-stretch gap-1.5">
-              {manualPlanBlocks.map((b, i) => (
-                <SortableBlockChip
-                  key={b.id}
-                  block={b}
-                  index={i}
-                  active={i === safeIndex}
-                  canDelete={manualPlanBlocks.length > 1}
-                  onSelect={setActiveIndex}
-                  onDelete={removeBlockAt}
-                  deleteLabel={t("deleteBlockAria")}
-                  dragLabel={t("dragToReorder")}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={() => insertBlockAfter(safeIndex)}
-                className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-                aria-label={t("addBlockAria")}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("addBlockShort")}
-              </button>
-            </div>
-          </SortableContext>
-        </DndContext>
         {/* [G4] Tavolozza «Aggiungi blocco»: un tile colorato per ogni tipo valido
             (riusa KIND_META: gradiente + icona + label), click-to-add in coda + seleziona. */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -676,30 +570,17 @@ export function BuilderManualComposer({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => insertBlockAfter(safeIndex)}
+            className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+            aria-label={t("addBlockAria")}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("addBlockShort")}
+          </button>
         </div>
         <p className="mt-1.5 text-center text-[0.6rem] text-gray-600">{t("dragHint")}</p>
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
-          <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-mono uppercase tracking-[0.2em] text-gray-500">{t("durationInCalendar")}</span>
-            <select
-              className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
-              value={manualSessionDurationMinutes}
-              onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
-            >
-              {SESSION_DURATION_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            {t.rich("segmentsSum", {
-              minutes: structureMinutesFromChart,
-              b: (chunks) => <span className="font-mono font-semibold text-gray-300">{chunks}</span>,
-            })}
-          </p>
-        </div>
       </div>
 
       {/* Navigazione blocchi */}
@@ -1169,6 +1050,30 @@ export function BuilderManualComposer({
             </>
           )}
         </div>
+      </div>
+
+      {/* Durata nel calendario: dopo l'editor del blocco, non incastrata nella tela. */}
+      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+        <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
+          <span className="font-mono uppercase tracking-[0.2em] text-gray-500">{t("durationInCalendar")}</span>
+          <select
+            className="min-w-[7.5rem] rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-sm font-mono text-white"
+            value={manualSessionDurationMinutes}
+            onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
+          >
+            {SESSION_DURATION_CHOICES.map((m) => (
+              <option key={m} value={m}>
+                {m} min
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
+          {t.rich("segmentsSum", {
+            minutes: structureMinutesFromChart,
+            b: (chunks) => <span className="font-mono font-semibold text-gray-300">{chunks}</span>,
+          })}
+        </p>
       </div>
 
       {macroFamily === "technical" ? (

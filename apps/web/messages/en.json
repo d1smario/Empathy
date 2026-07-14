@@ -1366,7 +1366,10 @@
     "loadMultiplier": "Load multiplier (engine, opt.)",
     "date": "Date",
     "saving": "Saving…",
-    "saveToCalendar": "Save to calendar"
+    "saveToCalendar": "Save to calendar",
+    "canvasActiveMarker": "sel.",
+    "canvasDropHere": "drop here",
+    "canvasTotalSummary": "{total} total · {count} blocks"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Execution map",
