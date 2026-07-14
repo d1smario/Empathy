@@ -750,7 +750,7 @@
     }
   },
   "ViryaAerobicNote": {
-    "note": "Every Virya plan is <b>single-discipline</b>: for multiple sports, create separate plans (same guided flow). The active discipline is the one chosen at step 2; Calendar generation uses only that one."
+    "note": "Every plan is <b>single-discipline</b>: for multiple sports, create separate plans (same guided flow). The active discipline is the one chosen at step 2; generation uses only that one."
   },
   "BuilderDayAdaptationPanel": {
     "sectionAriaLabel": "Guided daily adaptation",
@@ -833,14 +833,15 @@
     "close": "Close"
   },
   "ViryaAnnualLoadProjectionCard": {
-    "dynamicLoopNote": "Annual plan ready for the dynamic loop: Calendar → Analyzer → Adaptation."
+    "dynamicLoopNote": "Annual plan ready: calendar → analysis → adaptation."
   },
   "ViryaApprovedDecisionsCard": {
-    "title": "Approved decisions · VIRYA input",
-    "subtitle": "Patches validated by the Reasoning Dashboard: they influence the retune, but the session stays materialized by the Builder.",
-    "serverRetuneProposal": "Server retune proposal (structured)",
+    "title": "Plan adaptation",
+    "subtitle": "When the athlete’s recovery changes, choose here how much the plan adapts.",
+    "adaptationControlLabel": "Adaptation level",
+    "serverRetuneProposal": "Adaptation proposal",
     "microcycleAutoAdaptPrefix": "Automatic microcycle adaptation",
-    "autoAdaptDescription": "If recovery is inefficient, VIRYA automatically adapts the program according to the coach percentage. The calendar is written only when you save.",
+    "autoAdaptDescription": "If the athlete’s recovery is below expectations, the plan adapts by the percentage you choose. The calendar is updated only when you save.",
     "keepPlan": "Keep plan",
     "sessionsLabel": "sessions",
     "focusLabel": "Focus",
@@ -897,7 +898,7 @@
     "daysOption": "{d} days",
     "weekVolumeLabel": "Week volume (% vs macro-phase TSS)",
     "volumeStatus": "Volume status: {status} ({pct}%)",
-    "openWeekInCalendar": "Open week in Calendar →",
+    "openWeekInCalendar": "Open the week in the calendar →",
     "volumeRule": "Volume rule: Deload 50-99% · Stable 100% · Load 101-180%.",
     "thDay": "Day",
     "thObjective": "Objective",
@@ -928,7 +929,7 @@
     "colSessions": "Sessions",
     "colOpen": "Open",
     "openLink": "Week/Day →",
-    "hint": "Open a specific week in Calendar and edit/replace the single session directly from the day."
+    "hint": "Open a week in the calendar and edit or replace the single session directly from the day."
   },
   "ViryaMicrocyclePreviewCard": {
     "cardTitle": "Microcycle · Builder preview",
@@ -1001,21 +1002,21 @@
     "goalEventsPhases": "Goal, events and phases"
   },
   "ViryaSaveToCalendarCard": {
-    "title": "Save to Calendar",
-    "subtitle": "Bulk-save the plan's sessions to the Calendar",
+    "title": "Save to the calendar",
+    "subtitle": "Bulk-save the plan’s sessions to the calendar",
     "untitledPlan": "Untitled",
-    "planLine": "Plan <strong>«{name}»</strong> · tag <code>{tag}</code>. <warn>Configuring May–Jun in VIRYA does not write to the Calendar: this button is required.</warn> After success, open Calendar on the indicated dates (e.g. May–June).",
-    "replaceLabel": "Replace VIRYA sessions already saved in the same date range as the plan (marker <code>[VIRYA:…]</code> in the notes)",
+    "planLine": "Plan <strong>«{name}»</strong>. <warn>Setting up the weeks does not write to the calendar: this button is required.</warn> After saving, open the calendar on the indicated dates.",
+    "replaceLabel": "Replace this plan’s sessions already saved in the same date range",
     "titleSelectAthlete": "Select / load athlete context",
     "titleAddPhases": "Add phases (step 4) before generating",
     "generating": "Generating…",
-    "generateButton": "Generate annual plan on Calendar",
-    "openCalendar": "Open Calendar →"
+    "generateButton": "Publish the plan to the calendar",
+    "openCalendar": "Open the calendar →"
   },
   "ViryaSaveWeekToLibraryCard": {
     "title": "Save week to library",
-    "subtitle": "Export VIRYA → N coach templates (Builder contract, same materialization as the Calendar)",
-    "intro": "Export a <b>sample week</b> as reusable templates in the coach library — without writing to the Calendar. Same materialization pipeline as the Calendar batch.",
+    "subtitle": "Export the week as reusable templates in the coach library",
+    "intro": "Export a <b>sample week</b> as reusable templates in the coach library — without writing to the calendar.",
     "weekLabel": "Week",
     "sessionsSuffix": "sess",
     "selectAthleteHint": "Select / load athlete context",
@@ -1025,7 +1026,7 @@
   },
   "ViryaSeasonObjectiveStep": {
     "cardTitle": "4 · Key objective",
-    "cardSubtitle": "The reason for the season — drives hints, plan copy and calendar notes",
+    "cardSubtitle": "The goal of the season — drives hints, plan copy and calendar notes",
     "objectiveLabel": "Key objective",
     "objectivePlaceholder": "E.g. double peak on races X/Y, threshold and VO2, lactate management for 40k…"
   },
@@ -1054,8 +1055,8 @@
     "weekVolumeLabel": "Week volume (% vs {load} macro-phase)",
     "annualGymGoal": "Annual Gym goal",
     "volumeStatus": "Volume status: {status} ({pct}%)",
-    "openWeekInCalendar": "Open week in Calendar →",
-    "volumeRule": "Volume rule: Unload 50-99% · Stable 100% · Load 101-180%. Configure up to {slots} days; during Calendar generation the first {sessions} days of the table are used.",
+    "openWeekInCalendar": "Open the week in the calendar →",
+    "volumeRule": "Volume rule: Unload 50-99% · Stable 100% · Load 101-180%. Configure up to {slots} days; during generation the first {sessions} days of the table are used.",
     "colDay": "Day",
     "colTrainedDistricts": "Trained districts (multiple)",
     "colDistrictObjective": "District objective",
@@ -1079,7 +1080,7 @@
     "daysCount": "{d} days",
     "weekVolumeLabel": "Week volume (% vs macro-phase TSS)",
     "volumeStatus": "Volume status: {status} ({pct}%)",
-    "openWeekInCalendar": "Open week in Calendar →",
+    "openWeekInCalendar": "Open the week in the calendar →",
     "volumeRule": "Volume rule: Unload 50-99% · Stable 100% · Load 101-180%.",
     "colDay": "Day",
     "colDayGoal": "Day goal (sequence)",
@@ -1090,7 +1091,7 @@
   },
   "ViryaWeeklyProgramTable": {
     "cardTitle": "5 · Weekly program",
-    "cardSubtitle": "{weeks} weeks (step 3 window: {window}) · {load}, sessions, hours and focus — used in Calendar",
+    "cardSubtitle": "{weeks} weeks · {load}, sessions, hours and focus",
     "colWeekStart": "Week start",
     "colPhase": "Phase",
     "colSessions": "Sessions",
@@ -1443,7 +1444,7 @@
     "thisDayOnly": "This day only",
     "confirm": "Confirm",
     "removeAllViryaTitle": "Removes all sessions with the same VIRYA tag on the calendar",
-    "viryaPlanRemoved": "VIRYA plan removed ({n} sessions). To republish: VIRYA → Save to Calendar.",
+    "viryaPlanRemoved": "Plan removed ({n} sessions). To republish it: open the Plan → Save to the calendar.",
     "viryaPlanDeletionFailed": "VIRYA plan deletion failed",
     "entireViryaPlan": "Entire VIRYA plan",
     "cancel": "Cancel",
@@ -1949,23 +1950,23 @@
     "errAthleteUnavailableGeneration": "Athlete not available for generation.",
     "errAddAtLeastOnePhase": "Add at least one phase.",
     "errNoSessionGenerated": "No session generated: check the dates (step 3 -> Apply period to phases), macro-phases at step 4/5 and gym days/week, then retry.",
-    "hintRange": " Range {minD} → {maxD}: in Calendar use the arrows or open a date in the range (the initial view only shows a few weeks).",
-    "hintGymFallback": " Warning: {count} sessions without a catalog sheet (light fallback) — check districts or republish after deploy.",
+    "hintRange": " Range {minD} → {maxD}: in the calendar use the arrows or open a date in the range (the initial view only shows a few weeks).",
+    "hintGymFallback": " Warning: {count} sessions without a catalog sheet — check the districts or republish.",
     "hintGymSheets": " Builder gym sheets: {gymSchedaSessions}/{total}.",
-    "hintDedupe": " Warning: {count} rows skipped (already present same day/fingerprint) — open Calendar and check all dates.",
+    "hintDedupe": " Warning: {count} rows skipped (already present on the same day) — open the calendar and check the dates.",
     "planDefaultAnnual": "Annual",
     "successPlanGenerated": "Plan «{planLabel}» ({tag}): {count} sessions generated.{dedupeHint}{gymHint}{rangeHint}",
     "errUnexpectedGeneration": "Unexpected error during generation.",
-    "errAthleteUnavailableMaterialize": "Athlete not available: the athlete context is required to materialize the sessions.",
+    "errAthleteUnavailableMaterialize": "Athlete not available: the athlete’s data is required to generate the sessions.",
     "errSelectWeekToExport": "Select the week to export to the library.",
     "errNoSessionMaterialized": "No session materialized for the week {weekStart}.",
     "errBuilderContractsNotFound": "Builder contracts not found in the materialized sessions.",
     "errLibraryExportCoachOnly": "Library export reserved for approved coaches.",
     "errLibraryExportFailed": "Library export failed",
-    "successWeekSavedToLibrary": "Week {weekStart}: {count} sessions saved to the coach library (VIRYA folder · template weeks).",
+    "successWeekSavedToLibrary": "Week {weekStart}: {count} sessions saved to the coach library («template weeks» folder).",
     "errInvalidDateRange": "Invalid date range (end before start).",
     "errSetValidDates": "Set valid start/end dates at step 3 before generating the phases.",
-    "navStepsAria": "Virya steps",
+    "navStepsAria": "Plan steps",
     "step1Label": "Macro",
     "step2Label": "Sport",
     "step2Desc": "Discipline",
@@ -1974,10 +1975,10 @@
     "step4Label": "Season",
     "step4Desc": "Key event · events · phases",
     "step5Label": "Weeks",
-    "step5Desc": "Stimuli · grid · Calendar",
+    "step5Desc": "Goals · grid · calendar",
     "stepPrefix": "Step {n}",
     "back": "Back",
-    "weeklyGridAndCalendar": "Weekly grid and Calendar",
+    "weeklyGridAndCalendar": "Weekly grid and calendar",
     "stepsSummary": "Steps 1–4 summary",
     "sessionBuilder": "Session builder",
     "editGuidedFlow": "Edit guided flow",
@@ -1993,14 +1994,14 @@
     "annualPlanGoalPlaceholder": "Describe the key goal of the season for the athlete…",
     "annualPlanGoalHelper": "Editable at any time; it is propagated into the generation notes.",
     "autoTunePhases": "Auto-tune phases from target",
-    "deployPlanTitle": "Deploy plan to Calendar",
-    "deployPlanDescription": "VIRYA generates the planned sessions. After actual execution, EMPATHY compares planned/executed and re-adapts training + nutrition + fueling.",
-    "replacePreviousLabel": "Replace VIRYA sessions already on the calendar in the same date range (removes the [VIRYA:…] marker before reinserting)",
+    "deployPlanTitle": "Publish the plan to the calendar",
+    "deployPlanDescription": "The plan generates the planned sessions. After actual execution, Empathy compares planned vs executed and re-adapts training, nutrition and fueling.",
+    "replacePreviousLabel": "Replace this plan’s sessions already on the calendar in the same date range",
     "generateTitleNoAthlete": "Select / load athlete context",
     "generateTitleNoPhases": "Add phases (step 4) before generating",
     "generating": "Generating...",
     "generateAnnualPlan": "Generate annual plan",
-    "openCalendar": "Open Calendar →"
+    "openCalendar": "Open the calendar →"
   },
   "BioenergeticTransparencyHubPageView": {
     "eyebrow": "Your energy, in plain sight",

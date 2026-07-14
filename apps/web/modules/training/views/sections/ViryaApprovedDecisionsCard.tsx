@@ -103,7 +103,7 @@ export function ViryaApprovedDecisionsCard({
             </div>
             <div className="rounded-xl border border-white/10 bg-black/30 p-2">
               <div className="mb-2 text-[0.62rem] font-bold uppercase tracking-wider text-slate-500">
-                Coach adaptation control
+                {t("adaptationControlLabel")}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {([0, 50, 70, 100] as const).map((pct) => (
