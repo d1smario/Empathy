@@ -6,7 +6,6 @@ import { Brain, CalendarRange, FlaskConical, LineChart, ScrollText, Sparkles } f
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
-import { BuilderScopeTabs } from "@/components/training/BuilderScopeTabs";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { Pro2SectionCard } from "@/components/shell/Pro2SectionCard";
 import { Pro2Button } from "@/components/ui/empathy";
@@ -154,18 +153,15 @@ export default function TrainingViryaPageView() {
 
   return (
     <Pro2ModulePageShell
-      eyebrow="Training · Piano"
+      eyebrow="Training · Virya"
       eyebrowClassName="text-violet-400"
       title={t("shellTitle")}
       description={t("shellDescription")}
     >
       {adminScoped ? null : (
-        <>
-          <div className="scroll-mt-28">
-            <TrainingSubnav />
-          </div>
-          <BuilderScopeTabs active="piano" />
-        </>
+        <div className="scroll-mt-28">
+          <TrainingSubnav />
+        </div>
       )}
 
       {staffOnly && ctx?.readSpineCoverage && !err ? (

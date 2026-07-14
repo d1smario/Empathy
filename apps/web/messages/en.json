@@ -1881,18 +1881,11 @@
     "executedCount": "{count} recordings",
     "noExecution": "No execution on this day."
   },
-  "TrainingScopeTabs": {
-    "aria": "Day or Plan view",
-    "day": "Day",
-    "dayHint": "The single session",
-    "plan": "Plan",
-    "planHint": "Seasonal periodization"
-  },
   "TrainingViryaPageView": {
     "errNoActiveAthlete": "No active athlete.",
     "errLoadContext": "Failed to load context.",
     "errPersistTraces": "Failed to persist traces.",
-    "shellTitle": "Plan · seasonal periodization",
+    "shellTitle": "Virya · seasonal periodization",
     "shellDescription": "Build the athlete’s season step by step — sport, goal, races, phases and weeks — then publish it to the calendar.",
     "readSpineSummary": "Read spine (athlete-memory) · {spineScore}%",
     "readSpineBody": "Aligned with the hub dashboard: a quick check of profile, physiology, twin and connected modules before planning with Virya.",

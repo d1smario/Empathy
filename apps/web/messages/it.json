@@ -1881,18 +1881,11 @@
     "executedCount": "{count} registrazioni",
     "noExecution": "Nessuna esecuzione in questa giornata."
   },
-  "TrainingScopeTabs": {
-    "aria": "Vista Giorno o Piano",
-    "day": "Giorno",
-    "dayHint": "La singola seduta",
-    "plan": "Piano",
-    "planHint": "Periodizzazione stagionale"
-  },
   "TrainingViryaPageView": {
     "errNoActiveAthlete": "Nessun atleta attivo.",
     "errLoadContext": "Caricamento contesto non riuscito.",
     "errPersistTraces": "Persistenza trace non riuscita.",
-    "shellTitle": "Piano · periodizzazione stagionale",
+    "shellTitle": "Virya · periodizzazione stagionale",
     "shellDescription": "Costruisci la stagione dell’atleta passo dopo passo — sport, obiettivo, gare, fasi e settimane — e pubblicala sul calendario.",
     "readSpineSummary": "Spina lettura (athlete-memory) · {spineScore}%",
     "readSpineBody": "Allineato alla dashboard hub: verifica rapida di profilo, fisiologia, twin e moduli collegati prima di pianificare con Virya.",

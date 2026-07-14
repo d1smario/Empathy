@@ -17,7 +17,7 @@ export function ViryaHeroHeader({
   const t = useTranslations("ViryaHeroHeader");
   return (
       <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/25 via-black/50 to-black/80 p-5 shadow-inner">
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Piano</p>
+        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-violet-300/90">Virya · lungo periodo</p>
         <h2 className="text-xl font-semibold tracking-tight text-white">{t("annualPlanTitle")}</h2>
         <p className="mt-1 max-w-2xl text-sm text-slate-400">
           {t("intro")}

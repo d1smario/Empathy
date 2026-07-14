@@ -32,7 +32,7 @@ type ScopedTrainingTab = "calendar" | "builder" | "piano" | "analyzer";
 const TABS: { key: ScopedTrainingTab; label: string; Icon: typeof CalendarDays }[] = [
   { key: "calendar", label: "Calendario", Icon: CalendarDays },
   { key: "builder", label: "Builder", Icon: Sparkles },
-  { key: "piano", label: "Piano", Icon: CalendarRange },
+  { key: "piano", label: "Virya", Icon: CalendarRange },
   { key: "analyzer", label: "Analyzer", Icon: BarChart3 },
 ];
 

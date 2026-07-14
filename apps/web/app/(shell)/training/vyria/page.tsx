@@ -4,15 +4,16 @@ import TrainingViryaPageView from "@/modules/training/views/TrainingViryaPageVie
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Training · Piano",
-  description: "Piano — periodizzazione stagionale (vista lungo periodo del Builder). Coach/admin.",
+  title: "Training · Virya",
+  description: "Virya — periodizzazione stagionale di lungo periodo. Coach/admin.",
 };
 
 /**
- * «Piano» (ex Virya): vista di lungo periodo dello strumento di programmazione,
- * gemella del Builder «Giorno». Riattivata il 2026-07 dopo il redirect temporaneo.
- * La gate coach/admin vive nella view (l'atleta viene rimandato al Calendario).
+ * Virya: vista di lungo periodo dello strumento di programmazione. Il coach la
+ * raggiunge dalla scheda atleta (tab «Virya» in ScopedTrainingTabs); questa rotta
+ * account-level resta viva per lo staff. La gate coach/admin vive nella view
+ * (l'atleta viene rimandato al Calendario).
  */
-export default function TrainingPianoPage() {
+export default function TrainingViryaPage() {
   return <TrainingViryaPageView />;
 }
