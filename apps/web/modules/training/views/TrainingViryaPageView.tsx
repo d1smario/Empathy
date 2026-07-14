@@ -159,11 +159,14 @@ export default function TrainingViryaPageView() {
       title={t("shellTitle")}
       description={t("shellDescription")}
     >
-      <div className="scroll-mt-28">
-        <TrainingSubnav />
-      </div>
-
-      <BuilderScopeTabs active="piano" />
+      {adminScoped ? null : (
+        <>
+          <div className="scroll-mt-28">
+            <TrainingSubnav />
+          </div>
+          <BuilderScopeTabs active="piano" />
+        </>
+      )}
 
       {staffOnly && ctx?.readSpineCoverage && !err ? (
         <details className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-slate-300">

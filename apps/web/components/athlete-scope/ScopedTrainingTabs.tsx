@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { BarChart3, CalendarDays, Sparkles } from "lucide-react";
+import { BarChart3, CalendarDays, CalendarRange, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const LOADING = (
@@ -22,12 +22,17 @@ const TrainingAnalyticsPageView = dynamic(
   () => import("@/modules/training/views/TrainingAnalyticsPageView"),
   { ssr: false, loading: () => LOADING },
 );
+const TrainingViryaPageView = dynamic(
+  () => import("@/modules/training/views/TrainingViryaPageView"),
+  { ssr: false, loading: () => LOADING },
+);
 
-type ScopedTrainingTab = "calendar" | "builder" | "analyzer";
+type ScopedTrainingTab = "calendar" | "builder" | "piano" | "analyzer";
 
 const TABS: { key: ScopedTrainingTab; label: string; Icon: typeof CalendarDays }[] = [
   { key: "calendar", label: "Calendario", Icon: CalendarDays },
   { key: "builder", label: "Builder", Icon: Sparkles },
+  { key: "piano", label: "Piano", Icon: CalendarRange },
   { key: "analyzer", label: "Analyzer", Icon: BarChart3 },
 ];
 
@@ -70,6 +75,8 @@ export function ScopedTrainingTabs() {
         <TrainingCalendarTableView />
       ) : tab === "builder" ? (
         <TrainingBuilderRichPageView />
+      ) : tab === "piano" ? (
+        <TrainingViryaPageView />
       ) : (
         <TrainingAnalyticsPageView />
       )}
