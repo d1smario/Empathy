@@ -755,12 +755,12 @@
   "BuilderDayAdaptationPanel": {
     "sectionAriaLabel": "Guided daily adaptation",
     "dayAdaptationLabel": "Day adaptation · {plannedDate}",
-    "readingScore": "Reading twin score and planned session…",
+    "readingScore": "Reading the athlete's data and the planned session…",
     "loadWord": "load",
-    "scoreSummary": "Score {scorePct}% ({trafficLight}) · session target ~{loadScalePct}% of the VIRYA plan.",
+    "scoreSummary": "Readiness {scorePct}% ({trafficLight}) · session target ~{loadScalePct}% of the plan.",
     "unabsorbedSupercompensation": " Unabsorbed supercompensation: reduction recommended.",
     "noSessionPlanned": "No session planned for this day: generate from scratch with the current score.",
-    "openWithCalendarDate": "Open with a calendar date to guide duration and TSS.",
+    "openWithCalendarDate": "Open with a calendar date to guide duration and load.",
     "generating": "Generating…",
     "generateWithAdaptation": "Generate with adaptation",
     "calendar": "Calendar"
@@ -818,7 +818,7 @@
   "BuilderSportMacroSectorPicker": {
     "sessionFamiliesAriaLabel": "Session families",
     "sportBySectorTitle": "Sport by sector (A → D)",
-    "sportBySectorDescription": "First choose macro and discipline; the engine domain (endurance / gym / hyrox / crossfit / team_sport / combat / mind_body) feeds engine generation and the manual builder below."
+    "sportBySectorDescription": "First choose macro and discipline (endurance, gym, hyrox, crossfit, team sport, combat, mind-body): it drives both automatic generation and the manual build below."
   },
   "BuilderUpcomingPlannedSection": {
     "regionLabel": "Upcoming planned sessions",

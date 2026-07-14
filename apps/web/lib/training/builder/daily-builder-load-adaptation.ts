@@ -144,14 +144,13 @@ export function resolveDailyBuilderLoadAdaptation(input: {
   const guidanceParts = [
     input.adaptationGuidance.guidance,
     unwantedSupercompensation
-      ? "Risposta fisiologica non sta assorbendo il carico recente: riduci la seduta rispetto al piano VIRYA."
+      ? "L'atleta non sta assorbendo il carico recente: riduci la seduta rispetto al piano."
       : null,
     direction === "increase"
-      ? `Score giornaliero ${scorePct}%: puoi portare la seduta a ~${loadScalePct}% del target pianificato.`
+      ? `Prontezza ${scorePct}%: puoi portare la seduta a ~${loadScalePct}% del target pianificato.`
       : direction === "reduce"
-        ? `Score giornaliero ${scorePct}%: porta la seduta a ~${loadScalePct}% del target pianificato.`
-        : `Score giornaliero ${scorePct}%: mantieni il target pianificato.`,
-    input.bioenergeticModulation?.headline ? `Bio: ${input.bioenergeticModulation.headline}` : null,
+        ? `Prontezza ${scorePct}%: porta la seduta a ~${loadScalePct}% del target pianificato.`
+        : `Prontezza ${scorePct}%: mantieni il target pianificato.`,
   ].filter(Boolean);
 
   return {

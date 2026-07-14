@@ -80,8 +80,8 @@ export function BuilderDayAdaptationPanel({
                     </p>
                     {dayAdaptation.targetPlanned ? (
                       <p className="mt-2 font-mono text-xs tabular-nums text-orange-100/85">
-                        {dayAdaptation.targetPlanned.baselineDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.baselineTssTarget} →{" "}
-                        {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / TSS {dayAdaptation.targetPlanned.adaptedTssTarget}
+                        {dayAdaptation.targetPlanned.baselineDurationMinutes}′ / Carico {dayAdaptation.targetPlanned.baselineTssTarget} →{" "}
+                        {dayAdaptation.targetPlanned.adaptedDurationMinutes}′ / Carico {dayAdaptation.targetPlanned.adaptedTssTarget}
                       </p>
                     ) : (
                       <p className="mt-2 text-xs text-gray-500">{t("noSessionPlanned")}</p>
