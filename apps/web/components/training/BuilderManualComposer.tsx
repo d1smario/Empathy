@@ -18,6 +18,22 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
@@ -292,6 +308,78 @@ export type BuilderManualComposerProps = {
   hideSaveBar?: boolean;
 };
 
+/**
+ * Chip-blocco riordinabile con dnd-kit (drag affidabile dalla maniglia, click seleziona).
+ * Sostituisce il drag HTML nativo che si rompeva. Prossimo step: fondere i chip nelle barre.
+ */
+function SortableBlockChip({
+  block,
+  index,
+  active,
+  canDelete,
+  onSelect,
+  onDelete,
+  deleteLabel,
+  dragLabel,
+}: {
+  block: ManualPlanBlock;
+  index: number;
+  active: boolean;
+  canDelete: boolean;
+  onSelect: (i: number) => void;
+  onDelete: (i: number) => void;
+  deleteLabel: string;
+  dragLabel: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 20 : undefined };
+  const summary =
+    block.kind === "interval2" || block.kind === "interval3"
+      ? `${block.repeats}×`
+      : block.kind === "pyramid"
+        ? `${block.pyramidSteps}▲`
+        : `${block.minutes + Math.round(block.seconds / 60)}′`;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={() => onSelect(index)}
+      className={`group flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
+        active
+          ? "border-orange-400/70 bg-orange-500/15 text-white"
+          : "border-white/10 bg-black/30 text-gray-300 hover:border-white/25"
+      } ${isDragging ? "opacity-60 shadow-lg" : ""}`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+        className="cursor-grab touch-none rounded p-0.5 text-gray-500 hover:text-gray-300 active:cursor-grabbing"
+        aria-label={dragLabel}
+      >
+        <GripVertical className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      </button>
+      <span className="font-mono text-[0.6rem] text-gray-500">{index + 1}</span>
+      <span className="max-w-[8rem] truncate font-semibold">{block.label || `Blocco ${index + 1}`}</span>
+      <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[0.55rem] text-gray-400">{summary}</span>
+      {canDelete ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(index);
+          }}
+          className="ml-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
+          aria-label={deleteLabel}
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function BuilderManualComposer({
   athleteId,
   physioHint,
@@ -424,8 +512,10 @@ export function BuilderManualComposer({
   // [G1] Comandi grafici: lista blocchi con drag-per-riordinare + click-per-selezionare
   // + «+» per inserire in posizione. Il pannello editor sotto resta l'unico form (fonte
   // di verità), che «appare» sul blocco selezionato — nessun rewrite del maxi-editor.
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const moveBlock = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0) return;
@@ -437,6 +527,14 @@ export function BuilderManualComposer({
       return next;
     });
     setActiveIndex(to);
+  };
+
+  const handleBlockDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = manualPlanBlocks.findIndex((b) => b.id === active.id);
+    const to = manualPlanBlocks.findIndex((b) => b.id === over.id);
+    moveBlock(from, to);
   };
 
   const insertBlockAfter = (index: number) => {
@@ -516,81 +614,35 @@ export function BuilderManualComposer({
         className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
       >
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreview")} estimatedTss={estimatedTss} />
-        {/* [G1] Lista blocchi: trascina per riordinare, clicca per aprire l'editor sotto. */}
-        <div className="mt-3 flex flex-wrap items-stretch gap-1.5">
-          {manualPlanBlocks.map((b, i) => (
-            <div
-              key={b.id}
-              draggable
-              onDragStart={(e) => {
-                setDragIndex(i);
-                // Firefox NON avvia il drag senza dati impostati qui → il drop diventa
-                // un no-op e i blocchi non si riordinano. Chrome/Safari sono tolleranti.
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", String(i));
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setDragOverIndex(i);
-              }}
-              onDragLeave={() => setDragOverIndex((d) => (d === i ? null : d))}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragIndex != null) moveBlock(dragIndex, i);
-                setDragIndex(null);
-                setDragOverIndex(null);
-              }}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setDragOverIndex(null);
-              }}
-              onClick={() => setActiveIndex(i)}
-              title={t("dragToReorder")}
-              className={`group flex cursor-grab items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition active:cursor-grabbing ${
-                i === safeIndex
-                  ? "border-orange-400/70 bg-orange-500/15 text-white"
-                  : "border-white/10 bg-black/30 text-gray-300 hover:border-white/25"
-              } ${dragOverIndex === i && dragIndex !== i ? "ring-2 ring-orange-400/60" : ""} ${
-                dragIndex === i ? "opacity-50" : ""
-              }`}
-            >
-              <GripVertical className="h-3.5 w-3.5 shrink-0 text-gray-500" aria-hidden />
-              <span className="font-mono text-[0.6rem] text-gray-500">{i + 1}</span>
-              <span className="max-w-[8rem] truncate font-semibold">{b.label || `Blocco ${i + 1}`}</span>
-              {/* Sintesi grafica del blocco: durata (costante/rampa) o ripetizioni (intervalli/piramide). */}
-              <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[0.55rem] text-gray-400">
-                {b.kind === "interval2" || b.kind === "interval3"
-                  ? `${b.repeats}×`
-                  : b.kind === "pyramid"
-                    ? `${b.pyramidSteps}▲`
-                    : `${b.minutes + Math.round(b.seconds / 60)}′`}
-              </span>
-              {manualPlanBlocks.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeBlockAt(i);
-                  }}
-                  className="ml-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
-                  aria-label={t("deleteBlockAria")}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              ) : null}
+        {/* [G1] Lista blocchi: trascina la maniglia per riordinare (dnd-kit), clicca per aprire l'editor sotto. */}
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
+          <SortableContext items={manualPlanBlocks.map((b) => b.id)} strategy={horizontalListSortingStrategy}>
+            <div className="mt-3 flex flex-wrap items-stretch gap-1.5">
+              {manualPlanBlocks.map((b, i) => (
+                <SortableBlockChip
+                  key={b.id}
+                  block={b}
+                  index={i}
+                  active={i === safeIndex}
+                  canDelete={manualPlanBlocks.length > 1}
+                  onSelect={setActiveIndex}
+                  onDelete={removeBlockAt}
+                  deleteLabel={t("deleteBlockAria")}
+                  dragLabel={t("dragToReorder")}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() => insertBlockAfter(safeIndex)}
+                className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                aria-label={t("addBlockAria")}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("addBlockShort")}
+              </button>
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => insertBlockAfter(safeIndex)}
-            className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-            aria-label={t("addBlockAria")}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("addBlockShort")}
-          </button>
-        </div>
+          </SortableContext>
+        </DndContext>
         <p className="mt-1.5 text-center text-[0.6rem] text-gray-600">{t("dragHint")}</p>
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
