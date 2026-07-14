@@ -149,6 +149,9 @@ export default function TrainingViryaPageView() {
     return Object.entries(ctx.flags).filter(([, v]) => v === true);
   }, [ctx?.flags]);
 
+  // Atleta su rotta coach: non mostrare lo strumento mentre parte il redirect (niente flash).
+  if (!ctxLoading && !isCoachOrAdmin) return null;
+
   return (
     <Pro2ModulePageShell
       eyebrow="Training · Piano"
