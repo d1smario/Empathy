@@ -18,7 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
 import { colorForIntensity, intensityScore } from "@/lib/training/builder/pro2-intensity";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
-import type { ManualPlanBlock, PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
+import type { ManualPlanBlock } from "@/lib/training/builder/manual-plan-block";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
 
 /** Altezza dell'area-tela (px): le barre crescono da qui verso l'alto. */
@@ -31,15 +31,6 @@ function formatSec(sec: number): string {
   if (s === 0) return `${m}′`;
   return `${m}′${s.toString().padStart(2, "0")}″`;
 }
-
-/** Nome «forma» del tipo, fallback per il label del blocco. */
-const KIND_SHAPE_LABEL: Record<PlanBlockKind, string> = {
-  steady: "steady",
-  ramp: "ramp",
-  interval2: "intervalli",
-  interval3: "3 fasi",
-  pyramid: "piramide",
-};
 
 /** Altezza barra in % dell'area (score 0.35–7 → 22–100%). */
 function heightPct(score: number): number {
@@ -165,10 +156,9 @@ function SortableBlockBar({
       {...listeners}
       className={`group relative flex min-w-[2.75rem] cursor-grab touch-none flex-col active:cursor-grabbing ${isDragging ? "opacity-70" : ""}`}
     >
-      {/* Etichetta sopra la barra: N · nome */}
+      {/* FIX A — Etichetta automatica per posizione: «Blocco N» (N = index+1). */}
       <div className="mb-1 truncate px-0.5 text-[0.62rem] font-semibold leading-tight text-white/90">
-        <span className="mr-0.5 font-mono text-gray-500">{index + 1}</span>
-        <span className={active ? "text-white" : "text-white/75"}>{block.label || KIND_SHAPE_LABEL[block.kind]}</span>
+        <span className={active ? "text-white" : "text-white/75"}>{t("blockPositional", { n: index + 1 })}</span>
       </div>
 
       {/* Area-tela della barra: la forma cresce dal fondo. Attiva = ring bianco. */}
@@ -300,18 +290,6 @@ export function BuilderBlockCanvas({
                   onDelete={onRemove}
                 />
               ))}
-
-              {/* Drop-zone in coda (placeholder visivo: drag-dalla-tavolozza non attivo). */}
-              <div className="flex shrink-0 flex-col" style={{ flexGrow: 0.4, flexBasis: 0 }} aria-hidden>
-                <div className="mb-1 h-[0.62rem]" />
-                <div
-                  className="flex items-center justify-center rounded-md border-2 border-dashed border-white/15 px-1 text-center text-[0.55rem] font-semibold uppercase leading-tight tracking-wider text-gray-600"
-                  style={{ height: CANVAS_HEIGHT }}
-                >
-                  {t("canvasDropHere")}
-                </div>
-                <div className="mt-1 h-[0.55rem]" />
-              </div>
             </div>
           </SortableContext>
         </DndContext>

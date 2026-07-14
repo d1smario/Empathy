@@ -1130,6 +1130,7 @@ export default function TrainingBuilderRichPageView() {
       description={
         scopedAthleteName ? t("pageDescriptionForAthlete", { name: scopedAthleteName }) : t("pageDescription")
       }
+      contentMaxWidthClassName="max-w-none"
     >
         {adminScoped ? null : (
           <div className="scroll-mt-28">

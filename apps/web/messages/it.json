@@ -1371,7 +1371,11 @@
     "saveToCalendar": "Salva nel calendario",
     "canvasActiveMarker": "selez.",
     "canvasDropHere": "trascina qui",
-    "canvasTotalSummary": "{total} totali · {count} blocchi"
+    "canvasTotalSummary": "{total} totali · {count} blocchi",
+    "blockPositional": "Blocco {n}",
+    "noBlockSelectedHint": "Nessun blocco selezionato — clicca un tipo per aggiungerne uno, o una barra per modificarla.",
+    "tilesChangeTypeLabel": "Cambia tipo:",
+    "tilesAddLabel": "Aggiungi blocco:"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Mappa di esecuzione",

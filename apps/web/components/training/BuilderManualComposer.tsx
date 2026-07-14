@@ -6,7 +6,6 @@ import {
   Heart,
   Layers,
   Mountain,
-  Plus,
   Repeat2,
   Timer,
   Sparkles,
@@ -321,8 +320,11 @@ export function BuilderManualComposer({
   hideSaveBar,
 }: BuilderManualComposerProps) {
   const t = useTranslations("BuilderManualComposer");
-  const safeIndex = Math.min(Math.max(0, activeIndex), Math.max(0, manualPlanBlocks.length - 1));
-  const row = manualPlanBlocks[safeIndex];
+  // FIX E — Modello selezione a TRE stati: nessuno (-1) oppure un blocco valido.
+  // `hasSelection` guida sia il rendering dell'editor sia il doppio comportamento dei tile.
+  const hasSelection = activeIndex >= 0 && activeIndex < manualPlanBlocks.length;
+  const safeIndex = hasSelection ? activeIndex : -1;
+  const row = hasSelection ? manualPlanBlocks[safeIndex] : undefined;
   const kindMetaList = kindMetaForFamily(macroFamily);
 
   const structureMinutesFromChart = useMemo(
@@ -404,18 +406,23 @@ export function BuilderManualComposer({
     moveBlock(from, to);
   };
 
-  const insertBlockAfter = (index: number) => {
-    setManualPlanBlocks((p) => {
-      const next = [...p];
-      next.splice(index + 1, 0, defaultManualPlanBlock("steady", `Blocco ${p.length + 1}`));
-      return next;
-    });
-    queueMicrotask(() => setActiveIndex(index + 1));
+  // FIX E — Click su una barra: toggle. Se è già la barra attiva → deseleziona (-1);
+  // altrimenti → seleziona quell'indice.
+  const toggleSelectBlock = (index: number) => {
+    setActiveIndex((prev) => (prev === index ? -1 : index));
   };
 
-  // [G4] Tavolozza tipi: crea un blocco del kind scelto in coda e lo seleziona,
-  // così l'editor ancorato sotto mostra subito il nuovo blocco.
-  const addBlockOfKind = (kind: PlanBlockKind) => {
+  // FIX F — Tavolozza tipi con doppio comportamento:
+  // • se c'è un blocco selezionato → MODIFICA il tipo di quel blocco (sostituisce con
+  //   un blocco di default del kind scelto, resta selezionato);
+  // • se NESSUN blocco è selezionato → AGGIUNGE un nuovo blocco in coda e lo seleziona.
+  const applyTileKind = (kind: PlanBlockKind) => {
+    if (hasSelection) {
+      setManualPlanBlocks((p) =>
+        p.map((b, i) => (i === safeIndex ? defaultManualPlanBlock(kind, b.label) : b)),
+      );
+      return;
+    }
     setManualPlanBlocks((p) => {
       const next = [...p, defaultManualPlanBlock(kind, `Blocco ${p.length + 1}`)];
       const idx = next.length - 1;
@@ -429,10 +436,6 @@ export function BuilderManualComposer({
     setManualPlanBlocks((p) => p.filter((_, i) => i !== index));
     setActiveIndex((i) => Math.max(0, Math.min(i > index ? i - 1 : i, manualPlanBlocks.length - 2)));
   };
-
-  if (!row) {
-    return null;
-  }
 
   const ftp = Math.max(1, ftpW);
   const hr = Math.max(1, hrMax);
@@ -487,27 +490,28 @@ export function BuilderManualComposer({
         ) : null}
       </div>
 
-      {/* FIX 4 — Nome sessione IN CIMA: prima cosa dopo l'header, prima dell'anteprima. */}
-      <label className="mt-4 block">
-        <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
-          {t("sessionName")}
-        </span>
-        <input
-          type="text"
-          className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2.5 text-base font-semibold text-white"
-          value={manualSessionName}
-          onChange={(e) => setManualSessionName(e.target.value)}
-        />
-      </label>
-
-      {/* FIX 1 — Durata seduta in SOLA LETTURA = somma durate blocchi (dai segmenti del grafico).
-          È questa la durata che il salvataggio scrive a calendario (via manualSession/contract dai blocchi). */}
-      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
-          {t("sessionDurationReadonly")}
-        </span>
-        <span className="font-mono text-lg font-semibold text-white">{structureMinutesFromChart}′</span>
-        <span className="text-[0.6rem] text-gray-500">· {t("sessionDurationFromBlocks")}</span>
+      {/* FIX B — Nome sessione (SINISTRA, flessibile) + Durata seduta read-only (DESTRA) sulla STESSA riga.
+          La durata è la somma delle durate blocchi (dai segmenti del grafico): è quella che il salvataggio
+          scrive a calendario (via manualSession/contract dai blocchi). */}
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <label className="block min-w-[12rem] flex-1">
+          <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
+            {t("sessionName")}
+          </span>
+          <input
+            type="text"
+            className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2.5 text-base font-semibold text-white"
+            value={manualSessionName}
+            onChange={(e) => setManualSessionName(e.target.value)}
+          />
+        </label>
+        <div className="flex shrink-0 flex-col items-end leading-tight">
+          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">
+            {t("sessionDurationReadonly")}
+          </span>
+          <span className="font-mono text-lg font-semibold text-white">{structureMinutesFromChart}′</span>
+          <span className="text-[0.6rem] text-gray-500">{t("sessionDurationFromBlocks")}</span>
+        </div>
       </div>
 
       {/* Tela: OGNI blocco è una barra-gruppo (forma + numero·nome + durata/zona),
@@ -518,53 +522,43 @@ export function BuilderManualComposer({
         <BuilderBlockCanvas
           blocks={manualPlanBlocks}
           segments={manualChartSegments}
-          activeIndex={safeIndex}
-          onSelect={setActiveIndex}
+          activeIndex={hasSelection ? safeIndex : -1}
+          onSelect={toggleSelectBlock}
           onRemove={removeBlockAt}
           sensors={dndSensors}
           onDragEnd={handleBlockDragEnd}
           title={t("sessionPreview")}
           estimatedTss={estimatedTss}
         />
-        {/* [G4] Tavolozza «Aggiungi blocco»: un tile colorato per ogni tipo valido
-            (riusa KIND_META: gradiente + icona + label), click-to-add in coda + seleziona. */}
+        {/* FIX F — Tavolozza tipi a doppio comportamento: con un blocco selezionato i tile
+            MODIFICANO il tipo di quel blocco; senza selezione AGGIUNGONO un blocco in coda. */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">Aggiungi blocco:</span>
+          <span className="mr-1 text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">
+            {hasSelection ? t("tilesChangeTypeLabel") : t("tilesAddLabel")}
+          </span>
           {kindMetaList.map(({ kind, label, icon: Icon, color, iconClass }) => (
             <button
               key={kind}
               type="button"
-              onClick={() => addBlockOfKind(kind)}
+              onClick={() => applyTileKind(kind)}
               className={`flex items-center gap-1.5 rounded-lg bg-gradient-to-br ${color} px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-white/10 transition hover:brightness-110`}
-              aria-label={`Aggiungi blocco ${label}`}
+              aria-label={`${hasSelection ? t("tilesChangeTypeLabel") : t("tilesAddLabel")} ${label}`}
             >
               <Icon className={`h-3.5 w-3.5 ${iconClass}`} />
               {label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => insertBlockAfter(safeIndex)}
-            className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
-            aria-label={t("addBlockAria")}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("addBlockShort")}
-          </button>
         </div>
       </div>
 
-      {/* FIX 2 + FIX 3 — Editor del blocco selezionato, integrato nel flusso (divisore, non card
-          staccata). Il selettore TIPO è stato rimosso: il tipo si sceglie dalla tavolozza «Aggiungi
-          blocco» sopra la tela. Qui si modifica solo il blocco già selezionato. */}
+      {/* FIX A + FIX E — Editor del blocco selezionato. Appare SOLO con un blocco selezionato.
+          Il nome del blocco è automatico per posizione («Blocco N»), quindi niente input nome:
+          l'header mostra solo il titolo statico. Senza selezione compare l'hint sotto. */}
+      {row ? (
       <div className="mt-5 border-t border-white/10 pt-5">
-        <input
-          type="text"
-          className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2 text-base font-semibold text-white"
-          value={row.label}
-          onChange={(e) => patch({ label: e.target.value })}
-          placeholder={t("blockNamePlaceholder")}
-        />
+        <p className="text-sm font-bold uppercase tracking-wider text-orange-300">
+          {t("blockPositional", { n: safeIndex + 1 })}
+        </p>
 
         <div className="mt-4 space-y-4">
           {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
@@ -969,6 +963,14 @@ export function BuilderManualComposer({
           )}
         </div>
       </div>
+      ) : (
+        // FIX E — Nessun blocco selezionato: hint al posto dell'editor.
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <p className="rounded-xl border border-dashed border-white/15 bg-black/30 px-4 py-6 text-center text-sm text-gray-400">
+            {t("noBlockSelectedHint")}
+          </p>
+        </div>
+      )}
 
       {macroFamily === "technical" ? (
         <div className="mt-5 border-t border-white/10 pt-5">

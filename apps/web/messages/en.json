@@ -1371,7 +1371,11 @@
     "saveToCalendar": "Save to calendar",
     "canvasActiveMarker": "sel.",
     "canvasDropHere": "drop here",
-    "canvasTotalSummary": "{total} total · {count} blocks"
+    "canvasTotalSummary": "{total} total · {count} blocks",
+    "blockPositional": "Block {n}",
+    "noBlockSelectedHint": "No block selected — click a type to add one, or a bar to edit it.",
+    "tilesChangeTypeLabel": "Change type:",
+    "tilesAddLabel": "Add block:"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Execution map",
