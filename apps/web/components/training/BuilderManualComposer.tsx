@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Footprints,
   Gauge,
+  GripVertical,
   Heart,
   Layers,
   Mountain,
@@ -16,7 +17,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
@@ -418,6 +419,39 @@ export function BuilderManualComposer({
   const goPrev = () => setActiveIndex((i) => Math.max(0, i - 1));
   const goNext = () => setActiveIndex((i) => Math.min(manualPlanBlocks.length - 1, i + 1));
 
+  // [G1] Comandi grafici: lista blocchi con drag-per-riordinare + click-per-selezionare
+  // + «+» per inserire in posizione. Il pannello editor sotto resta l'unico form (fonte
+  // di verità), che «appare» sul blocco selezionato — nessun rewrite del maxi-editor.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const moveBlock = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0) return;
+    setManualPlanBlocks((p) => {
+      if (from >= p.length || to >= p.length) return p;
+      const next = [...p];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved!);
+      return next;
+    });
+    setActiveIndex(to);
+  };
+
+  const insertBlockAfter = (index: number) => {
+    setManualPlanBlocks((p) => {
+      const next = [...p];
+      next.splice(index + 1, 0, defaultManualPlanBlock("steady", `Blocco ${p.length + 1}`));
+      return next;
+    });
+    queueMicrotask(() => setActiveIndex(index + 1));
+  };
+
+  const removeBlockAt = (index: number) => {
+    if (manualPlanBlocks.length <= 1) return;
+    setManualPlanBlocks((p) => p.filter((_, i) => i !== index));
+    setActiveIndex((i) => Math.max(0, Math.min(i > index ? i - 1 : i, manualPlanBlocks.length - 2)));
+  };
+
   if (!row) {
     return null;
   }
@@ -453,6 +487,12 @@ export function BuilderManualComposer({
       aria-label={t("sectionAria")}
       className={`rounded-2xl border bg-gradient-to-b ${skin.border} ${skin.bg} p-4 sm:p-6`}
     >
+      {/* [G1] Valori preimpostati per i campi durata degli intervalli (tendina + inserimento libero). */}
+      <datalist id="builder-sec-presets">
+        {[15, 20, 30, 40, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600].map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2
@@ -474,22 +514,67 @@ export function BuilderManualComposer({
         className="mt-4 rounded-2xl border border-orange-500/25 bg-black/50 p-3 shadow-inner"
       >
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreview")} estimatedTss={estimatedTss} />
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+        {/* [G1] Lista blocchi: trascina per riordinare, clicca per aprire l'editor sotto. */}
+        <div className="mt-3 flex flex-wrap items-stretch gap-1.5">
           {manualPlanBlocks.map((b, i) => (
-            <button
+            <div
               key={b.id}
-              type="button"
+              draggable
+              onDragStart={() => setDragIndex(i)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOverIndex(i);
+              }}
+              onDragLeave={() => setDragOverIndex((d) => (d === i ? null : d))}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragIndex != null) moveBlock(dragIndex, i);
+                setDragIndex(null);
+                setDragOverIndex(null);
+              }}
+              onDragEnd={() => {
+                setDragIndex(null);
+                setDragOverIndex(null);
+              }}
               onClick={() => setActiveIndex(i)}
-              className={`h-2.5 rounded-full transition-all ${
+              title={t("dragToReorder")}
+              className={`group flex cursor-grab items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition active:cursor-grabbing ${
                 i === safeIndex
-                  ? "w-8 bg-gradient-to-r from-orange-400 to-amber-400"
-                  : "w-2.5 bg-white/25 hover:bg-white/40"
+                  ? "border-orange-400/70 bg-orange-500/15 text-white"
+                  : "border-white/10 bg-black/30 text-gray-300 hover:border-white/25"
+              } ${dragOverIndex === i && dragIndex !== i ? "ring-2 ring-orange-400/60" : ""} ${
+                dragIndex === i ? "opacity-50" : ""
               }`}
-              title={b.label}
-              aria-label={t("goToBlockAria", { label: b.label })}
-            />
+            >
+              <GripVertical className="h-3.5 w-3.5 shrink-0 text-gray-500" aria-hidden />
+              <span className="font-mono text-[0.6rem] text-gray-500">{i + 1}</span>
+              <span className="max-w-[8rem] truncate font-semibold">{b.label || `Blocco ${i + 1}`}</span>
+              {manualPlanBlocks.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeBlockAt(i);
+                  }}
+                  className="ml-0.5 rounded p-0.5 text-gray-500 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
+                  aria-label={t("deleteBlockAria")}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              ) : null}
+            </div>
           ))}
+          <button
+            type="button"
+            onClick={() => insertBlockAfter(safeIndex)}
+            className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+            aria-label={t("addBlockAria")}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t("addBlockShort")}
+          </button>
         </div>
+        <p className="mt-1.5 text-center text-[0.6rem] text-gray-600">{t("dragHint")}</p>
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
           <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
             <span className="font-mono uppercase tracking-[0.2em] text-gray-500">{t("durationInCalendar")}</span>
@@ -879,6 +964,7 @@ export function BuilderManualComposer({
                     type="number"
                     min={10}
                     className="ml-2 w-16 rounded-lg border border-white/15 bg-black/50 px-2 py-1 text-white"
+                    list="builder-sec-presets"
                     value={row.workSeconds}
                     onChange={(e) => patch({ workSeconds: Number(e.target.value) })}
                   />
@@ -889,6 +975,7 @@ export function BuilderManualComposer({
                     type="number"
                     min={10}
                     className="ml-2 w-16 rounded-lg border border-white/15 bg-black/50 px-2 py-1 text-white"
+                    list="builder-sec-presets"
                     value={row.recoverSeconds}
                     onChange={(e) => patch({ recoverSeconds: Number(e.target.value) })}
                   />
@@ -940,6 +1027,7 @@ export function BuilderManualComposer({
                     type="number"
                     min={10}
                     className="ml-2 w-14 rounded border border-white/15 bg-black/50 px-1 py-1 text-white"
+                    list="builder-sec-presets"
                     value={row.step1Seconds}
                     onChange={(e) => patch({ step1Seconds: Number(e.target.value) })}
                   />
@@ -950,6 +1038,7 @@ export function BuilderManualComposer({
                     type="number"
                     min={10}
                     className="ml-2 w-14 rounded border border-white/15 bg-black/50 px-1 py-1 text-white"
+                    list="builder-sec-presets"
                     value={row.step2Seconds}
                     onChange={(e) => patch({ step2Seconds: Number(e.target.value) })}
                   />
@@ -960,6 +1049,7 @@ export function BuilderManualComposer({
                     type="number"
                     min={10}
                     className="ml-2 w-14 rounded border border-white/15 bg-black/50 px-1 py-1 text-white"
+                    list="builder-sec-presets"
                     value={row.step3Seconds}
                     onChange={(e) => patch({ step3Seconds: Number(e.target.value) })}
                   />
