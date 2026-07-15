@@ -1375,7 +1375,8 @@
     "blockPositional": "Block {n}",
     "noBlockSelectedHint": "No block selected — click a type to add one, or a bar to edit it.",
     "tilesChangeTypeLabel": "Change type:",
-    "tilesAddLabel": "Add block:"
+    "tilesAddLabel": "Add block:",
+    "dialogClose": "Close"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Execution map",

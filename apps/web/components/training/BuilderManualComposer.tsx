@@ -24,6 +24,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useTranslations } from "next-intl";
 import { BuilderBlockCanvas } from "@/components/training/BuilderBlockCanvas";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
+import { BuilderDialog } from "@/components/training/BuilderDialog";
 import { defaultManualPlanBlock, type ManualPlanBlock, type PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
 import type { SportMacroId } from "@/lib/training/builder/sport-macro-palette";
 import {
@@ -552,18 +553,48 @@ export function BuilderManualComposer({
             </button>
           ))}
         </div>
+        {/* FIX E — Nessun blocco selezionato: riga PICCOLA (mai un box che cresce). L'editor
+            del blocco vive ora nel popup modale (BuilderDialog) sotto, non più inline. */}
+        {!hasSelection ? (
+          <p className="mt-2 text-xs text-gray-500">{t("noBlockSelectedHint")}</p>
+        ) : null}
       </div>
 
-      {/* FIX A + FIX E — Editor del blocco selezionato. Appare SOLO con un blocco selezionato.
-          Il nome del blocco è automatico per posizione («Blocco N»), quindi niente input nome:
-          l'header mostra solo il titolo statico. Senza selezione compare l'hint sotto. */}
-      {row ? (
-      <div className="mt-5 rounded-2xl border border-orange-500/25 bg-black/40 p-4 shadow-inner sm:p-5">
-        <p className="text-sm font-bold uppercase tracking-wider text-orange-300">
-          {t("blockPositional", { n: safeIndex + 1 })}
-        </p>
+      {/* FIX A + FIX E — Editor del blocco in POPUP MODALE: si apre col blocco selezionato,
+          così il canvas resta fermo e la pagina non cresce/scrolla. Dentro: tipo blocco,
+          tutti i parametri (spostati da inline), e «Elimina blocco» in fondo. */}
+      <BuilderDialog
+        open={hasSelection}
+        onClose={() => setActiveIndex(-1)}
+        title={t("blockPositional", { n: safeIndex + 1 })}
+        closeLabel={t("dialogClose")}
+      >
+        {row ? (
+        <div className="space-y-4">
+        {/* (a) Tipo blocco: stesse tile-tipo. Con un blocco selezionato applyTileKind CAMBIA
+            il tipo del blocco aperto e resta selezionato → il popup resta aperto e i parametri
+            si aggiornano. */}
+        <div className="space-y-1.5">
+          <p className="text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">{t("tilesChangeTypeLabel")}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {kindMetaList.map(({ kind, label, icon: Icon, color, iconClass }) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => applyTileKind(kind)}
+                className={`flex items-center gap-1.5 rounded-lg bg-gradient-to-br ${color} px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-white/10 transition hover:brightness-110 ${
+                  row.kind === kind ? "ring-2 ring-white/70" : ""
+                }`}
+                aria-label={`${t("tilesChangeTypeLabel")} ${label}`}
+              >
+                <Icon className={`h-3.5 w-3.5 ${iconClass}`} />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/50 px-2 py-2">
@@ -1058,15 +1089,25 @@ export function BuilderManualComposer({
             {t("blocksOnTimeNote")}
           </p>
         )}
-      </div>
-      ) : (
-        // FIX E — Nessun blocco selezionato: hint al posto dell'editor.
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <p className="rounded-xl border border-dashed border-white/15 bg-black/30 px-4 py-6 text-center text-sm text-gray-400">
-            {t("noBlockSelectedHint")}
-          </p>
+
+        {/* (c) Elimina blocco — visibile solo con più di un blocco; chiude il popup dopo. */}
+        {manualPlanBlocks.length > 1 ? (
+          <div className="border-t border-white/10 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                removeBlockAt(safeIndex);
+                setActiveIndex(-1);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-200 transition hover:bg-rose-500/20"
+            >
+              {t("deleteBlockAria")}
+            </button>
+          </div>
+        ) : null}
         </div>
-      )}
+        ) : null}
+      </BuilderDialog>
 
       {macroFamily === "technical" ? (
         <div className="mt-5 border-t border-white/10 pt-5">
