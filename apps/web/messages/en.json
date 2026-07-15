@@ -4074,7 +4074,7 @@
     "rosterLoading": "Loading your athletes…",
     "noAthletes": "No linked athletes: invite your athletes or wait for assignment.",
     "copyAction": "Copy session",
-    "clipboardBanner": "Copied: {title} · click “Paste” on a day",
+    "clipboardShort": "Copied: {title}",
     "pasteHere": "Paste here",
     "cancelCopy": "Cancel",
     "copyWeekAction": "Copy week",

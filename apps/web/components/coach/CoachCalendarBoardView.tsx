@@ -464,7 +464,24 @@ export function CoachCalendarBoardView() {
               </button>
             ) : null}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {/* (A) Indicatore CLIPBOARD compatto, in linea con la data (niente banda full-width → nessuno scroll verticale). «Incolla qui» resta visibile nelle celle. */}
+            {clipboard ? (
+              <span
+                role="status"
+                className="flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[0.72rem] font-medium text-cyan-100"
+              >
+                <span className="max-w-[14rem] truncate">{t("clipboardShort", { title: clipboard.title })}</span>
+                <button
+                  type="button"
+                  onClick={cancelCopy}
+                  aria-label={t("cancelCopy")}
+                  className="flex shrink-0 items-center justify-center rounded text-cyan-50/80 transition hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </span>
+            ) : null}
             {dropBusy ? <span className="text-[0.7rem] text-cyan-300">{t("assigning")}</span> : null}
             {weekLoading && athleteIds.length > 0 ? (
               <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
@@ -483,24 +500,6 @@ export function CoachCalendarBoardView() {
           >
             {dropFeedback.text}
           </p>
-        ) : null}
-
-        {/* (A) BANNER CLIPBOARD — visibile finché la clipboard è piena; «Incolla qui» compare in ogni cella. */}
-        {clipboard ? (
-          <div
-            role="status"
-            className="flex flex-wrap items-center gap-3 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2.5 text-sm text-cyan-100"
-          >
-            <span className="min-w-0 flex-1">{t("clipboardBanner", { title: clipboard.title })}</span>
-            <button
-              type="button"
-              onClick={cancelCopy}
-              className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[0.7rem] font-medium text-cyan-50 transition hover:border-white/30 hover:text-white"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-              {t("cancelCopy")}
-            </button>
-          </div>
         ) : null}
 
         {/* (B) PICKER COPIA SETTIMANA — scelta atleta destinazione dal roster (escluso il sorgente). */}

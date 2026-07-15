@@ -4074,7 +4074,7 @@
     "rosterLoading": "Carico i tuoi atleti…",
     "noAthletes": "Nessun atleta collegato: invita i tuoi atleti o attendi l’assegnazione.",
     "copyAction": "Copia seduta",
-    "clipboardBanner": "Copiato: {title} · clicca «Incolla» su un giorno",
+    "clipboardShort": "Copiato: {title}",
     "pasteHere": "Incolla qui",
     "cancelCopy": "Annulla",
     "copyWeekAction": "Copia settimana",
