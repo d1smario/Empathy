@@ -135,10 +135,19 @@ export function preferredExecutedWorkoutSourcePrefixes(map: DataSourcePreference
   return [`api_sync:${p}:`];
 }
 
-/** Import espliciti da file: sempre visibili in calendario/analytics (non sono sync device). */
+/**
+ * Import espliciti da file: sempre visibili in calendario/analytics (non sono sync device).
+ * Include il prefisso legacy `import:` (righe storiche in prod) oltre a `file_import`,
+ * così non spariscono quando è attiva una preferenza training_activity.
+ */
 export function isUserFileImportExecutedSource(source: string | null | undefined): boolean {
   if (typeof source !== "string" || source.length === 0) return false;
-  return source === "file_import" || source.startsWith("file_import:");
+  return (
+    source === "file_import" ||
+    source.startsWith("file_import:") ||
+    source === "import" ||
+    source.startsWith("import:")
+  );
 }
 
 /** Vero se la `source` di un executed_workout matcha la preferenza cliente. */

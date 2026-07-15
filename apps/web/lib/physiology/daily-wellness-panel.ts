@@ -601,10 +601,18 @@ export async function buildPhysiologyDailyPanel(input: {
     created_at: typeof row.created_at === "string" ? row.created_at : "",
   }));
 
-  const recoveryAligned = alignRecoveryHrvFromGarminStream(
-    alignRecoverySleepDurationWithStages(recovery, sleepStages, rows),
-    rows,
-  );
+  // FIX sonno: la durata sonno va allineata SOLO sulle righe già filtrate per
+  // preferSleep (sleepCandidateRows), altrimenti la riga Garmin più lunga può
+  // sovrascrivere la durata anche con preferSleep=whoop. Senza preferenza,
+  // sleepCandidateRows === rows → comportamento invariato.
+  const recoveryWithSleep = alignRecoverySleepDurationWithStages(recovery, sleepStages, sleepCandidateRows);
+  // FIX HRV: il fallback HRV da stream Garmin va applicato solo se l'atleta non
+  // ha scelto un provider recovery diverso da Garmin (rispetta wellness_recovery).
+  // Senza preferenza → fallback attivo come prima.
+  const recoveryAligned =
+    !preferRecovery || preferRecovery === "garmin"
+      ? alignRecoveryHrvFromGarminStream(recoveryWithSleep, rows)
+      : recoveryWithSleep;
 
   return {
     ok: true,
