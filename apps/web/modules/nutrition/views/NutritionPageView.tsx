@@ -1980,6 +1980,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         food_preferences: profile.food_preferences,
         supplements: profile.supplements,
         routine_config: profile.routine_config,
+        nutrition_config: record(profile.nutrition_config),
         weight_kg: profile.weight_kg,
       },
       mealRows: mealPlanCards.map((m) => ({

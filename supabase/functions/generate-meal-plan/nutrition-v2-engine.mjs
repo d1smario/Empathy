@@ -1611,18 +1611,35 @@ function textMatchesDeny(text, fragments) {
   const t = text.toLowerCase();
   return fragments.some((f) => t.includes(f));
 }
-function optionAllowed(o, fragments) {
+function readExcludedFdcIds(nutritionConfig) {
+  const rec = nutritionConfig && typeof nutritionConfig === "object" && !Array.isArray(nutritionConfig) ? nutritionConfig : null;
+  const raw = rec?.excluded_fdc_foods;
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item2 of raw) {
+    if (!item2 || typeof item2 !== "object") continue;
+    const r = item2;
+    const id = Number(r.fdcId ?? r.fdc_id);
+    if (!Number.isFinite(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+function optionAllowed(o, fragments, excludedFdcIds) {
+  if (o.fdcId != null && excludedFdcIds.has(o.fdcId)) return false;
   if (textMatchesDeny(o.label, fragments)) return false;
   if (o.rationale && textMatchesDeny(o.rationale, fragments)) return false;
   return true;
 }
-function filterGroup(g, fragments) {
-  const options = g.options.filter((o) => optionAllowed(o, fragments));
+function filterGroup(g, fragments, excludedFdcIds) {
+  const options = g.options.filter((o) => optionAllowed(o, fragments, excludedFdcIds));
   if (options.length === 0) return null;
   return { ...g, options };
 }
-function filterSlot(slot, fragments) {
-  const groups = slot.functionalFoodGroups.map((g) => filterGroup(g, fragments)).filter((g) => g != null);
+function filterSlot(slot, fragments, excludedFdcIds) {
+  const groups = slot.functionalFoodGroups.map((g) => filterGroup(g, fragments, excludedFdcIds)).filter((g) => g != null);
   const nutrientIds = new Set(groups.map((g) => g.nutrientId));
   const functionalTargets = slot.functionalTargets.filter((t) => nutrientIds.has(t.nutrientId));
   const foodCandidates = slot.foodCandidates.filter((c) => !textMatchesDeny(c, fragments));
@@ -1635,10 +1652,11 @@ function filterSlot(slot, fragments) {
 }
 function filterIntelligentMealPlanRequestFoods(req) {
   const fragments = buildMealPlanFoodDenyFragments(req);
-  if (fragments.length === 0) return req;
+  const excludedFdcIds = new Set((req.excludedFdcIds ?? []).filter((n) => Number.isFinite(n)));
+  if (fragments.length === 0 && excludedFdcIds.size === 0) return req;
   return {
     ...req,
-    slots: req.slots.map((s) => filterSlot(s, fragments))
+    slots: req.slots.map((s) => filterSlot(s, fragments, excludedFdcIds))
   };
 }
 
@@ -2995,11 +3013,18 @@ async function prepareIntelligentMealPlanContext(db, body) {
     clientSlots,
     preferredMealCount: typeof row2?.preferred_meal_count === "number" ? row2.preferred_meal_count : typeof row2?.preferred_meal_count === "string" ? Number(row2.preferred_meal_count) : null
   });
+  const excludedFdcIds = [
+    ...new Set([
+      ...Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : [],
+      ...readExcludedFdcIds(row2?.nutrition_config ?? null)
+    ].filter((n) => Number.isFinite(n)))
+  ];
   const planFromDiet = {
     ...planMerged,
     athleteId,
     planDate,
     slots: reconciled.slots,
+    excludedFdcIds,
     dietType: row2?.diet_type != null ? String(row2.diet_type) : planMerged.dietType,
     mealPlanSolverMeta: {
       ...planMerged.mealPlanSolverMeta,

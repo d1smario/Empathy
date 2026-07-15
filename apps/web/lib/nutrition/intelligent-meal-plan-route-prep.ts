@@ -3,7 +3,7 @@ import {
   enrichIntelligentMealPlanRequestWithRaceDay,
   plannedSessionsForRaceFromDbRows,
 } from "@/lib/nutrition/enrich-meal-plan-request-race-day";
-import { filterIntelligentMealPlanRequestFoods } from "@/lib/nutrition/meal-plan-profile-food-filter";
+import { filterIntelligentMealPlanRequestFoods, readExcludedFdcIds } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { applyMealSlotRulesToIntelligentMealPlanRequest } from "@/lib/nutrition/meal-slot-food-rules";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
@@ -96,11 +96,21 @@ export async function prepareIntelligentMealPlanContext(
           : null,
   });
 
+  // Esclusioni-cibo per fdcId (globali, da nutrition_config): fonte autorevole = DB, unita a
+  // quanto eventualmente già inviato dal client. Con lista vuota il set resta vuoto (nessun effetto).
+  const excludedFdcIds = [
+    ...new Set([
+      ...(Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : []),
+      ...readExcludedFdcIds(row?.nutrition_config ?? null),
+    ].filter((n) => Number.isFinite(n))),
+  ];
+
   const planFromDiet: IntelligentMealPlanRequest = {
     ...planMerged,
     athleteId,
     planDate,
     slots: reconciled.slots,
+    excludedFdcIds,
     dietType: row?.diet_type != null ? String(row.diet_type) : planMerged.dietType,
     mealPlanSolverMeta: {
       ...planMerged.mealPlanSolverMeta,

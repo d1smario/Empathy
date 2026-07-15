@@ -126,6 +126,7 @@ export async function generateAndPersistMealPlanV2(
       food_preferences: strArr(p.food_preferences),
       supplements: strArr(p.supplements),
       routine_config: routineConfig,
+      nutrition_config: asRecord(p.nutrition_config),
       weight_kg: weightKg,
     },
     mealRows: budgets.map((b) => ({

@@ -105,20 +105,60 @@ function textMatchesDeny(text: string, fragments: string[]): boolean {
   return fragments.some((f) => t.includes(f));
 }
 
-function optionAllowed(o: IntelligentMealPlanFoodOptionRef, fragments: string[]): boolean {
+/**
+ * Estrae in modo difensivo gli fdcId da `nutrition_config.excluded_fdc_foods`
+ * (`[{ fdcId, label }]`, globale). Tollera JSON malformato / chiavi extra, tiene solo
+ * fdcId numerici finiti e deduplica. Con input assente/vuoto → `[]` (nessun effetto).
+ */
+export function readExcludedFdcIds(nutritionConfig: unknown): number[] {
+  const rec =
+    nutritionConfig && typeof nutritionConfig === "object" && !Array.isArray(nutritionConfig)
+      ? (nutritionConfig as Record<string, unknown>)
+      : null;
+  const raw = rec?.excluded_fdc_foods;
+  if (!Array.isArray(raw)) return [];
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const id = Number(r.fdcId ?? r.fdc_id);
+    if (!Number.isFinite(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function optionAllowed(
+  o: IntelligentMealPlanFoodOptionRef,
+  fragments: string[],
+  excludedFdcIds: Set<number>,
+): boolean {
+  if (o.fdcId != null && excludedFdcIds.has(o.fdcId)) return false;
   if (textMatchesDeny(o.label, fragments)) return false;
   if (o.rationale && textMatchesDeny(o.rationale, fragments)) return false;
   return true;
 }
 
-function filterGroup(g: IntelligentMealPlanFunctionalFoodGroup, fragments: string[]): IntelligentMealPlanFunctionalFoodGroup | null {
-  const options = g.options.filter((o) => optionAllowed(o, fragments));
+function filterGroup(
+  g: IntelligentMealPlanFunctionalFoodGroup,
+  fragments: string[],
+  excludedFdcIds: Set<number>,
+): IntelligentMealPlanFunctionalFoodGroup | null {
+  const options = g.options.filter((o) => optionAllowed(o, fragments, excludedFdcIds));
   if (options.length === 0) return null;
   return { ...g, options };
 }
 
-function filterSlot(slot: IntelligentMealPlanRequestSlot, fragments: string[]): IntelligentMealPlanRequestSlot {
-  const groups = slot.functionalFoodGroups.map((g) => filterGroup(g, fragments)).filter((g): g is IntelligentMealPlanFunctionalFoodGroup => g != null);
+function filterSlot(
+  slot: IntelligentMealPlanRequestSlot,
+  fragments: string[],
+  excludedFdcIds: Set<number>,
+): IntelligentMealPlanRequestSlot {
+  const groups = slot.functionalFoodGroups
+    .map((g) => filterGroup(g, fragments, excludedFdcIds))
+    .filter((g): g is IntelligentMealPlanFunctionalFoodGroup => g != null);
   const nutrientIds = new Set(groups.map((g) => g.nutrientId));
   const functionalTargets = slot.functionalTargets.filter((t) => nutrientIds.has(t.nutrientId));
   const foodCandidates = slot.foodCandidates.filter((c) => !textMatchesDeny(c, fragments));
@@ -136,9 +176,10 @@ function filterSlot(slot: IntelligentMealPlanRequestSlot, fragments: string[]): 
  */
 export function filterIntelligentMealPlanRequestFoods(req: IntelligentMealPlanRequest): IntelligentMealPlanRequest {
   const fragments = buildMealPlanFoodDenyFragments(req);
-  if (fragments.length === 0) return req;
+  const excludedFdcIds = new Set<number>((req.excludedFdcIds ?? []).filter((n) => Number.isFinite(n)));
+  if (fragments.length === 0 && excludedFdcIds.size === 0) return req;
   return {
     ...req,
-    slots: req.slots.map((s) => filterSlot(s, fragments)),
+    slots: req.slots.map((s) => filterSlot(s, fragments, excludedFdcIds)),
   };
 }

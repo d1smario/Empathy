@@ -6,7 +6,7 @@ import type {
 import { buildFunctionalFoodOptionGroupsForSlot } from "@/lib/nutrition/functional-food-option-groups";
 import type { IntelligentMealPlanRequest, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
-import { filterIntelligentMealPlanRequestFoods } from "@/lib/nutrition/meal-plan-profile-food-filter";
+import { filterIntelligentMealPlanRequestFoods, readExcludedFdcIds } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { applyMealSlotRulesToIntelligentMealPlanRequest } from "@/lib/nutrition/meal-slot-food-rules";
 import { buildPathwayTimingLinesForMealPlan } from "@/lib/nutrition/meal-plan-pathway-timing-lines";
 import { shortFoodLabelFromUsda } from "@/lib/nutrition/usda-food-label";
@@ -60,6 +60,8 @@ export function buildIntelligentMealPlanRequest(input: {
     food_preferences: string[] | null;
     supplements: string[] | null;
     routine_config: Record<string, unknown> | null;
+    /** `nutrition_config` grezzo dell'atleta: da qui gli fdcId esclusi (`excluded_fdc_foods`). */
+    nutrition_config?: Record<string, unknown> | null;
     weight_kg?: number | null;
   } | null;
   mealRows: Array<{
@@ -260,6 +262,7 @@ export function buildIntelligentMealPlanRequest(input: {
       foodExclusions: input.profile?.food_exclusions ?? null,
       foodPreferences: input.profile?.food_preferences ?? null,
       supplements: input.profile?.supplements ?? null,
+      excludedFdcIds: readExcludedFdcIds(input.profile?.nutrition_config ?? null),
       aggregateInhibitors: input.pathwayModulation?.aggregateInhibitors ?? null,
       pathwayTimingLines,
       trainingDayLines: input.trainingDayLines.slice(0, 12),

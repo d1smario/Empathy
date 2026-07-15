@@ -104,6 +104,12 @@ export type IntelligentMealPlanRequest = {
   foodExclusions: string[] | null;
   foodPreferences: string[] | null;
   supplements: string[] | null;
+  /**
+   * FdcId (USDA) esclusi a mano dall'atleta (`nutrition_config.excluded_fdc_foods`, globale).
+   * Esclusione ESATTA per fdcId, ADDITIVA rispetto al deny testuale (allergie/intolleranze/dieta).
+   * Assente o `[]` → nessun effetto (retro-compat).
+   */
+  excludedFdcIds?: number[];
   /** Da pathway modulation deterministica. */
   aggregateInhibitors: string[] | null;
   pathwayTimingLines: string[];
