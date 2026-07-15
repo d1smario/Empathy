@@ -154,10 +154,7 @@ export function BuilderEngineGenerateSection({
               : "border-orange-500/25 bg-gradient-to-br from-orange-950/[0.12] via-black/60 to-black/85"
       }`}
     >
-      <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-          2
-        </span>
+      <h2 className="text-lg font-bold text-white">
         {t("generateSession")}
       </h2>
       {activeMacroId === "strength" ? (

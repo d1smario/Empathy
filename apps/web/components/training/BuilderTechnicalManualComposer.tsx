@@ -89,6 +89,8 @@ export type BuilderTechnicalManualComposerProps = {
   estimatedTss: number;
   /** Quando true, nasconde la barra di salvataggio interna (bottoni Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
+  footer?: React.ReactNode;
 };
 
 function buildSchemaDataUrlFromPlaybookEntry(entry: TechnicalPlaybookEntry): string {
@@ -147,6 +149,7 @@ export function BuilderTechnicalManualComposer({
   canSave,
   estimatedTss,
   hideSaveBar,
+  footer,
 }: BuilderTechnicalManualComposerProps) {
   const t = useTranslations("BuilderTechnicalManualComposer");
   const playbook = useMemo(() => getTechnicalPlaybookForSport(paletteSport), [paletteSport]);
@@ -669,6 +672,7 @@ export function BuilderTechnicalManualComposer({
           ) : null}
         </div>
       )}
+      {footer}
     </section>
   );
 }

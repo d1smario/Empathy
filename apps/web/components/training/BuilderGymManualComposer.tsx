@@ -84,6 +84,8 @@ export type BuilderGymManualComposerProps = {
   estimatedTss: number;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
+  footer?: React.ReactNode;
 };
 
 export function BuilderGymManualComposer({
@@ -107,6 +109,7 @@ export function BuilderGymManualComposer({
   canSave,
   estimatedTss,
   hideSaveBar,
+  footer,
 }: BuilderGymManualComposerProps) {
   const t = useTranslations("BuilderGymManualComposer");
   const [catalogMuscle, setCatalogMuscle] = useState<Block1MusclePreset | "">("");
@@ -663,6 +666,7 @@ export function BuilderGymManualComposer({
           ) : null}
         </>
       )}
+      {footer}
     </section>
   );
 }

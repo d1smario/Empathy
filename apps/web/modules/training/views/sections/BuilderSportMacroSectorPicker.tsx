@@ -34,10 +34,7 @@ export function BuilderSportMacroSectorPicker({
               <LayoutGrid className="h-5 w-5" strokeWidth={2.35} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-400/45 bg-orange-500/25 text-sm font-black text-orange-100">
-                  1
-                </span>
+              <h2 className="text-lg font-bold text-white">
                 {t("sportBySectorTitle")}
               </h2>
               <p className="mt-1 text-sm text-gray-400">

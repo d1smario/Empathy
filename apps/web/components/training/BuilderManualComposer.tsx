@@ -286,6 +286,8 @@ export type BuilderManualComposerProps = {
   macroFamily: SportMacroId;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
+  footer?: React.ReactNode;
 };
 
 export function BuilderManualComposer({
@@ -318,6 +320,7 @@ export function BuilderManualComposer({
   estimatedTss,
   macroFamily,
   hideSaveBar,
+  footer,
 }: BuilderManualComposerProps) {
   const t = useTranslations("BuilderManualComposer");
   // FIX E — Modello selezione a TRE stati: nessuno (-1) oppure un blocco valido.
@@ -555,7 +558,7 @@ export function BuilderManualComposer({
           Il nome del blocco è automatico per posizione («Blocco N»), quindi niente input nome:
           l'header mostra solo il titolo statico. Senza selezione compare l'hint sotto. */}
       {row ? (
-      <div className="mt-5 border-t border-white/10 pt-5">
+      <div className="mt-5 rounded-2xl border border-orange-500/25 bg-black/40 p-4 shadow-inner sm:p-5">
         <p className="text-sm font-bold uppercase tracking-wider text-orange-300">
           {t("blockPositional", { n: safeIndex + 1 })}
         </p>
@@ -962,6 +965,99 @@ export function BuilderManualComposer({
             </>
           )}
         </div>
+
+        {/* Riferimenti seduta nel modulo del blocco: unità W/HR + FTP/FCmax, poi durata·distanza. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+          <div className="flex rounded-full border border-white/15 bg-black/50 p-0.5">
+            <button
+              type="button"
+              onClick={() => setIntensityUnit("watt")}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
+                intensityUnit === "watt" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black" : "text-gray-400"
+              }`}
+            >
+              <Zap
+                className={`h-3.5 w-3.5 ${intensityUnit === "watt" ? "text-amber-950 drop-shadow-sm" : "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]"}`}
+                aria-hidden
+              />
+              W
+            </button>
+            <button
+              type="button"
+              onClick={() => setIntensityUnit("hr")}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
+                intensityUnit === "hr" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white" : "text-gray-400"
+              }`}
+            >
+              <Heart
+                className={`h-3.5 w-3.5 ${intensityUnit === "hr" ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]" : "text-rose-400 drop-shadow-[0_0_6px_rgba(251,113,133,0.45)]"}`}
+                aria-hidden
+              />
+              HR
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <span className="w-14 shrink-0">FTP</span>
+            <input
+              type="number"
+              min={50}
+              max={600}
+              className="w-20 rounded-lg border border-white/20 bg-black/50 px-2 py-1.5 text-sm font-mono text-white"
+              value={ftpW}
+              onChange={(e) => setFtpW(Number(e.target.value))}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <span className="w-14 shrink-0">{t("hrMax")}</span>
+            <input
+              type="number"
+              min={120}
+              max={220}
+              className="w-20 rounded-lg border border-white/20 bg-black/50 px-2 py-1.5 text-sm font-mono text-white"
+              value={hrMax}
+              onChange={(e) => setHrMax(Number(e.target.value))}
+            />
+          </label>
+        </div>
+
+        {showAerobicDistance ? (
+          <div className="mt-2 flex flex-wrap gap-2 text-[0.65rem] text-gray-500">
+            <span>
+              {t("durationLabel")}{" "}
+              <button
+                type="button"
+                className={lengthMode === "time" ? "text-orange-300 underline" : ""}
+                onClick={() => setLengthMode("time")}
+              >
+                {t("durationTime")}
+              </button>
+              {" · "}
+              <button
+                type="button"
+                className={lengthMode === "distance" ? "text-orange-300 underline" : ""}
+                onClick={() => setLengthMode("distance")}
+              >
+                {t("durationDistance")}
+              </button>
+            </span>
+            <span className="text-gray-600">|</span>
+            <label className="flex items-center gap-1">
+              {t("refSpeedKmh")}
+              <input
+                type="number"
+                min={5}
+                max={60}
+                className="w-14 rounded border border-white/15 bg-black/40 px-1 py-0.5 text-gray-200"
+                value={speedRefKmh}
+                onChange={(e) => setSpeedRefKmh(Number(e.target.value))}
+              />
+            </label>
+          </div>
+        ) : (
+          <p className="mt-2 text-[0.65rem] text-gray-600">
+            {t("blocksOnTimeNote")}
+          </p>
+        )}
       </div>
       ) : (
         // FIX E — Nessun blocco selezionato: hint al posto dell'editor.
@@ -1052,98 +1148,6 @@ export function BuilderManualComposer({
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-5">
-          <div className="flex rounded-full border border-white/15 bg-black/50 p-0.5">
-            <button
-              type="button"
-              onClick={() => setIntensityUnit("watt")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                intensityUnit === "watt" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black" : "text-gray-400"
-              }`}
-            >
-              <Zap
-                className={`h-3.5 w-3.5 ${intensityUnit === "watt" ? "text-amber-950 drop-shadow-sm" : "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]"}`}
-                aria-hidden
-              />
-              W
-            </button>
-            <button
-              type="button"
-              onClick={() => setIntensityUnit("hr")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                intensityUnit === "hr" ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white" : "text-gray-400"
-              }`}
-            >
-              <Heart
-                className={`h-3.5 w-3.5 ${intensityUnit === "hr" ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]" : "text-rose-400 drop-shadow-[0_0_6px_rgba(251,113,133,0.45)]"}`}
-                aria-hidden
-              />
-              HR
-            </button>
-          </div>
-          <label className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-14 shrink-0">FTP</span>
-            <input
-              type="number"
-              min={50}
-              max={600}
-              className="w-20 rounded-lg border border-white/20 bg-black/50 px-2 py-1.5 text-sm font-mono text-white"
-              value={ftpW}
-              onChange={(e) => setFtpW(Number(e.target.value))}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="w-14 shrink-0">{t("hrMax")}</span>
-            <input
-              type="number"
-              min={120}
-              max={220}
-              className="w-20 rounded-lg border border-white/20 bg-black/50 px-2 py-1.5 text-sm font-mono text-white"
-              value={hrMax}
-              onChange={(e) => setHrMax(Number(e.target.value))}
-            />
-          </label>
-        </div>
-
-      {showAerobicDistance ? (
-        <div className="mt-2 flex flex-wrap gap-2 text-[0.65rem] text-gray-500">
-          <span>
-            {t("durationLabel")}{" "}
-            <button
-              type="button"
-              className={lengthMode === "time" ? "text-orange-300 underline" : ""}
-              onClick={() => setLengthMode("time")}
-            >
-              {t("durationTime")}
-            </button>
-            {" · "}
-            <button
-              type="button"
-              className={lengthMode === "distance" ? "text-orange-300 underline" : ""}
-              onClick={() => setLengthMode("distance")}
-            >
-              {t("durationDistance")}
-            </button>
-          </span>
-          <span className="text-gray-600">|</span>
-          <label className="flex items-center gap-1">
-            {t("refSpeedKmh")}
-            <input
-              type="number"
-              min={5}
-              max={60}
-              className="w-14 rounded border border-white/15 bg-black/40 px-1 py-0.5 text-gray-200"
-              value={speedRefKmh}
-              onChange={(e) => setSpeedRefKmh(Number(e.target.value))}
-            />
-          </label>
-        </div>
-      ) : (
-        <p className="mt-2 text-[0.65rem] text-gray-600">
-          {t("blocksOnTimeNote")}
-        </p>
-      )}
-
       {/* FIX 5 — Salvataggio integrato nel flusso unico (divisore, non scatola staccata):
           è la coda dello stesso pannello di lavoro. */}
       {!hideSaveBar && (
@@ -1177,6 +1181,7 @@ export function BuilderManualComposer({
           ) : null}
         </>
       )}
+      {footer}
     </section>
   );
 }

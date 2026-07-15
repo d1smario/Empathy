@@ -88,6 +88,8 @@ export type BuilderLifestyleManualComposerProps = {
   estimatedTss: number;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
+  footer?: React.ReactNode;
 };
 
 export function BuilderLifestyleManualComposer({
@@ -111,6 +113,7 @@ export function BuilderLifestyleManualComposer({
   canSave,
   estimatedTss,
   hideSaveBar,
+  footer,
 }: BuilderLifestyleManualComposerProps) {
   const t = useTranslations("BuilderLifestyleManualComposer");
   const practiceCategoryLabel = (id: LifestylePracticeCategory): string => t(`practiceCategory_${id}`);
@@ -642,6 +645,7 @@ export function BuilderLifestyleManualComposer({
           ) : null}
         </>
       )}
+      {footer}
     </section>
   );
 }
