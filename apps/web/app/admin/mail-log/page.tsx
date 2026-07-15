@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function AdminMailLogPage() {
   return (
     <Pro2ModulePageShell
+      contentMaxWidthClassName="max-w-none"
       eyebrow="Mail Log · Admin"
       eyebrowClassName="text-rose-400"
       title="Mail Log"

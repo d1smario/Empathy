@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export default function AdminEserciziPage() {
   return (
     <Pro2ModulePageShell
+      contentMaxWidthClassName="max-w-none"
       eyebrow="Esercizi · Admin"
       eyebrowClassName="text-rose-400"
       title="Esercizi"
