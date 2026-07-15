@@ -9,6 +9,11 @@ import {
   readExcludedFoodLabels,
 } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { applyMealSlotRulesToIntelligentMealPlanRequest } from "@/lib/nutrition/meal-slot-food-rules";
+import {
+  classDenyFragments,
+  readExcludedFoodClasses,
+  resolveExcludedFdcIdsFromClasses,
+} from "@/lib/nutrition/allergen-class-catalog";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
@@ -100,26 +105,37 @@ export async function prepareIntelligentMealPlanContext(
           : null,
   });
 
+  // Classi allergeniche/intolleranze (globali, da nutrition_config.excluded_food_classes): il
+  // catalogo mappa ogni classe su family + diet_exclude di `nutrition_fdc_food_tags`; UNA query
+  // (paginata) risolve gli fdcId dell'intera FAMIGLIA → confluiscono in `excludedFdcIds` (1b) e i
+  // `denyFragments` bilingui nel deny testuale (1c). Nessuna classe → `[]` (nessuna query, invariato).
+  const excludedClassKeys = readExcludedFoodClasses(row?.nutrition_config ?? null);
+  const classFdcIds =
+    excludedClassKeys.length > 0 ? await resolveExcludedFdcIdsFromClasses(db, excludedClassKeys) : [];
+
   // Esclusioni-cibo per fdcId (globali, da nutrition_config): fonte autorevole = DB, unita a
-  // quanto eventualmente già inviato dal client. Con lista vuota il set resta vuoto (nessun effetto).
+  // quanto eventualmente già inviato dal client + fdcId risolti dalle classi. Con tutto vuoto il
+  // set resta vuoto (nessun effetto).
   const excludedFdcIds = [
     ...new Set([
       ...(Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : []),
       ...readExcludedFdcIds(row?.nutrition_config ?? null),
+      ...classFdcIds,
     ].filter((n) => Number.isFinite(n))),
   ];
 
-  // Etichette dei cibi esclusi dal picker (DB autorevole): confluiscono nel deny testuale
-  // (`foodExclusions` → buildMealPlanFoodDenyFragments), così la composizione/arricchimento pasti
-  // le esclude anche quando il request del client è stale. Merge + dedup case-insensitive;
-  // lista vuota → invariato (retro-compat).
+  // Etichette dei cibi esclusi dal picker + frasi deny delle classi (DB autorevole): confluiscono
+  // nel deny testuale (`foodExclusions` → buildMealPlanFoodDenyFragments), così la
+  // composizione/arricchimento pasti le esclude anche quando il request del client è stale. Merge +
+  // dedup case-insensitive; niente etichette né classi → invariato (retro-compat).
   const excludedFoodLabels = readExcludedFoodLabels(row?.nutrition_config ?? null);
+  const extraFoodExclusions = [...excludedFoodLabels, ...classDenyFragments(excludedClassKeys)];
   const foodExclusions = (() => {
     const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
-    if (excludedFoodLabels.length === 0) return planMerged.foodExclusions ?? null;
+    if (extraFoodExclusions.length === 0) return planMerged.foodExclusions ?? null;
     const out: string[] = [];
     const seen = new Set<string>();
-    for (const raw of [...(base ?? []), ...excludedFoodLabels]) {
+    for (const raw of [...(base ?? []), ...extraFoodExclusions]) {
       const s = String(raw).trim();
       if (!s) continue;
       const key = s.toLowerCase();

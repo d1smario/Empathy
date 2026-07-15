@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   WeekDay,
   DietDayConfig,
@@ -12,6 +12,7 @@ import {
   toggleCsvToken,
   defaultPctForDayType,
 } from "@/lib/profile/profile-page-kit";
+import { ALLERGEN_CLASS_CATALOG } from "@/lib/nutrition/allergen-class-catalog";
 import {
   findSupplementCategory,
   normalizeSupplementCategoryId,
@@ -42,6 +43,9 @@ export type ProfileNutritionSectionProps = {
   /** Esclusioni-cibo strutturate dal DB (globali): nutrition_config.excluded_fdc_foods */
   excludedFdcFoods: ExcludedFdcFood[];
   setExcludedFdcFoods: Dispatch<SetStateAction<ExcludedFdcFood[]>>;
+  /** Classi allergeniche/intolleranze escluse (globali): nutrition_config.excluded_food_classes */
+  excludedFoodClasses: string[];
+  setExcludedFoodClasses: Dispatch<SetStateAction<string[]>>;
 };
 
 /** Item della risposta /api/nutrition/food-lookup (solo i campi usati qui). */
@@ -66,8 +70,11 @@ export function ProfileNutritionSection({
   updateDietDay,
   excludedFdcFoods,
   setExcludedFdcFoods,
+  excludedFoodClasses,
+  setExcludedFoodClasses,
 }: ProfileNutritionSectionProps) {
   const t = useTranslations("ProfileNutritionSection");
+  const locale = useLocale();
   void setDietWeekPlan;
 
   // «Alimenti da evitare (dal database)»: ricerca nel nostro DB via
@@ -127,6 +134,12 @@ export function ProfileNutritionSection({
 
   function removeExcludedFood(fdcId: number) {
     setExcludedFdcFoods((prev) => prev.filter((f) => f.fdcId !== fdcId));
+  }
+
+  function toggleFoodClass(key: string) {
+    setExcludedFoodClasses((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
   }
 
   return (
@@ -250,6 +263,27 @@ export function ProfileNutritionSection({
           <div className="form-group"><label className="form-label">{t("intolerancesCsv")}</label><input className="form-input" type="text" value={form.intolerances} onChange={(e) => setForm((f) => ({ ...f, intolerances: e.target.value }))} /></div>
           <div className="form-group"><label className="form-label">{t("allergiesCsv")}</label><input className="form-input" type="text" value={form.allergies} onChange={(e) => setForm((f) => ({ ...f, allergies: e.target.value }))} /></div>
           <div className="form-group"><label className="form-label">{t("excludedFoodsCsv")}</label><input className="form-input" type="text" value={form.food_exclusions} onChange={(e) => setForm((f) => ({ ...f, food_exclusions: e.target.value }))} /></div>
+
+          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("excludedFoodClassesLabel")}</h4>
+            <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("excludedFoodClassesHint")}</p>
+            <div className="profile-chip-grid">
+              {ALLERGEN_CLASS_CATALOG.map((cls) => {
+                const selected = excludedFoodClasses.includes(cls.key);
+                return (
+                  <button
+                    key={cls.key}
+                    type="button"
+                    className={`profile-black-chip ${selected ? "active" : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => toggleFoodClass(cls.key)}
+                  >
+                    {locale.startsWith("en") ? cls.labelEn : cls.labelIt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
             <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("excludedFdcFoodsLabel")}</h4>

@@ -4877,6 +4877,8 @@
     "intolerancesCsv": "Intolleranze (csv)",
     "allergiesCsv": "Allergie (csv)",
     "excludedFoodsCsv": "Alimenti esclusi (csv)",
+    "excludedFoodClassesLabel": "Allergie / intolleranze (classi)",
+    "excludedFoodClassesHint": "Seleziona le classi da escludere: rimuovono intere famiglie di cibi (es. tutti i latticini, tutto il pesce) dal piano pasti. Vale per tutta la settimana.",
     "excludedFdcFoodsLabel": "Alimenti da evitare (dal database)",
     "excludedFdcFoodsHint": "Cerca un cibo nel nostro database e aggiungilo alla lista degli alimenti da evitare. Vale per tutta la settimana.",
     "excludedFdcFoodsSearchPlaceholder": "Cerca un alimento…",

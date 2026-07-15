@@ -1856,6 +1856,286 @@ function applyMealSlotRulesToIntelligentMealPlanRequest(req) {
   };
 }
 
+// apps/web/lib/nutrition/allergen-class-catalog.ts
+var ALLERGEN_CLASS_CATALOG = [
+  {
+    key: "glutine",
+    labelIt: "Glutine",
+    labelEn: "Gluten",
+    foodFamily: [],
+    dietExclude: ["gluten"],
+    denyFragments: [
+      "glutine",
+      "gluten",
+      "frumento",
+      "wheat",
+      "grano",
+      "orzo",
+      "barley",
+      "segale",
+      "rye",
+      "farro",
+      "spelt",
+      "kamut",
+      "triticale",
+      "semola",
+      "couscous",
+      "cous cous",
+      "bulgur",
+      "seitan",
+      "malto",
+      "malt"
+    ]
+  },
+  {
+    key: "latticini",
+    labelIt: "Latticini",
+    labelEn: "Dairy",
+    foodFamily: ["latticino"],
+    dietExclude: ["lactose"],
+    denyFragments: [
+      "latte",
+      "latticino",
+      "formaggio",
+      "cheese",
+      "yogurt",
+      "yoghurt",
+      "burro",
+      "butter",
+      "panna",
+      "cream",
+      "milk",
+      "dairy",
+      "lactose",
+      "lattosio",
+      "ricotta",
+      "mozzarella",
+      "parmigiano",
+      "pecorino",
+      "mascarpone",
+      "whey",
+      "siero",
+      "kefir",
+      "cottage",
+      "casein",
+      "caseina"
+    ]
+  },
+  {
+    key: "uova",
+    labelIt: "Uova",
+    labelEn: "Eggs",
+    foodFamily: ["uova"],
+    dietExclude: [],
+    denyFragments: [
+      "uovo",
+      "uova",
+      "ovo",
+      "albume",
+      "album",
+      "egg",
+      "tuorlo",
+      "frittata",
+      "omelette",
+      "maionese",
+      "mayo",
+      "mayonnaise"
+    ]
+  },
+  {
+    key: "pesce",
+    labelIt: "Pesce",
+    labelEn: "Fish",
+    foodFamily: ["pesce"],
+    dietExclude: [],
+    denyFragments: [
+      "pesce",
+      "fish",
+      "tonno",
+      "tuna",
+      "salmone",
+      "salmon",
+      "merluzz",
+      "cod",
+      "sgombro",
+      "mackerel",
+      "acciug",
+      "anchovy",
+      "sardin",
+      "trota",
+      "trout",
+      "branzino",
+      "orata",
+      "spigola",
+      "aringa",
+      "herring",
+      "nasello",
+      "platessa"
+    ]
+  },
+  {
+    key: "fruttaGuscio",
+    labelIt: "Frutta a guscio",
+    labelEn: "Tree nuts",
+    foodFamily: ["oleaginoso"],
+    dietExclude: [],
+    denyFragments: [
+      "noci",
+      "noce",
+      "nocciol",
+      "mandorl",
+      "anacard",
+      "pistacch",
+      "pinol",
+      "macadamia",
+      "pecan",
+      "nut",
+      "almond",
+      "hazelnut",
+      "cashew",
+      "walnut",
+      "pistachio",
+      "brazil nut"
+    ]
+  },
+  {
+    key: "legumi",
+    labelIt: "Legumi",
+    labelEn: "Legumes",
+    foodFamily: ["legume"],
+    dietExclude: ["legume"],
+    denyFragments: [
+      "legum",
+      "fagiol",
+      "bean",
+      "lenticchi",
+      "lentil",
+      "ceci",
+      "chickpea",
+      "pisell",
+      "pea",
+      "soia",
+      "soy",
+      "soja",
+      "tofu",
+      "edamame",
+      "fava",
+      "fave",
+      "lupin",
+      "arachid",
+      "peanut"
+    ]
+  },
+  {
+    key: "solanacee",
+    labelIt: "Solanacee",
+    labelEn: "Nightshades",
+    foodFamily: [],
+    dietExclude: ["nightshade"],
+    denyFragments: [
+      "solanace",
+      "nightshade",
+      "pomodor",
+      "tomato",
+      "melanzan",
+      "eggplant",
+      "aubergine",
+      "peperon",
+      "peperoncin",
+      "chili",
+      "chilli",
+      "paprika",
+      "cayenn",
+      "patata",
+      "potato"
+    ]
+  },
+  {
+    key: "istamina",
+    labelIt: "Istamina",
+    labelEn: "Histamine",
+    foodFamily: [],
+    dietExclude: ["high_histamine"],
+    denyFragments: [
+      "istamina",
+      "histamine",
+      "fermentat",
+      "fermented",
+      "stagionat",
+      "aged",
+      "cured"
+    ]
+  }
+];
+var CLASS_BY_KEY = new Map(
+  ALLERGEN_CLASS_CATALOG.map((c) => [c.key, c])
+);
+function parseExcludedFoodClasses(value) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value.excluded_food_classes : value;
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item2 of raw) {
+    const key = typeof item2 === "string" ? item2.trim() : "";
+    if (!key || seen.has(key) || !CLASS_BY_KEY.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+function readExcludedFoodClasses(nutritionConfig) {
+  return parseExcludedFoodClasses(nutritionConfig);
+}
+function collectClassFamiliesAndTags(classKeys) {
+  const families = /* @__PURE__ */ new Set();
+  const tags = /* @__PURE__ */ new Set();
+  for (const key of parseExcludedFoodClasses(classKeys ?? [])) {
+    const cls = CLASS_BY_KEY.get(key);
+    if (!cls) continue;
+    for (const f of cls.foodFamily) families.add(f);
+    for (const t of cls.dietExclude) tags.add(t);
+  }
+  return { families: [...families], tags: [...tags] };
+}
+function classDenyFragments(classKeys) {
+  const out = /* @__PURE__ */ new Set();
+  for (const key of parseExcludedFoodClasses(classKeys ?? [])) {
+    const cls = CLASS_BY_KEY.get(key);
+    if (!cls) continue;
+    for (const f of cls.denyFragments) {
+      const s = f.trim().toLowerCase();
+      if (s.length >= 2) out.add(s);
+    }
+  }
+  return [...out];
+}
+function pgArrayLiteral(values) {
+  return `{${values.join(",")}}`;
+}
+async function resolveExcludedFdcIdsFromClasses(db, classKeys) {
+  const { families, tags } = collectClassFamiliesAndTags(classKeys);
+  if (families.length === 0 && tags.length === 0) return [];
+  const orParts = [];
+  if (families.length) orParts.push(`food_family.ov.${pgArrayLiteral(families)}`);
+  if (tags.length) orParts.push(`diet_exclude.ov.${pgArrayLiteral(tags)}`);
+  const orFilter = orParts.join(",");
+  const pageSize = 1e3;
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db.from("nutrition_fdc_food_tags").select("fdc_id").or(orFilter).range(from, from + pageSize - 1);
+    if (error || !Array.isArray(data) || data.length === 0) break;
+    for (const r of data) {
+      const id = Number(r.fdc_id);
+      if (!Number.isFinite(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(id);
+    }
+    if (data.length < pageSize) break;
+  }
+  return out;
+}
+
 // apps/web/lib/nutrition/diet-meal-slot-budgets.ts
 function resolveSixMealSnackPercentages(dist) {
   const am = dist.snack_am;
@@ -3031,19 +3311,23 @@ async function prepareIntelligentMealPlanContext(db, body) {
     clientSlots,
     preferredMealCount: typeof row2?.preferred_meal_count === "number" ? row2.preferred_meal_count : typeof row2?.preferred_meal_count === "string" ? Number(row2.preferred_meal_count) : null
   });
+  const excludedClassKeys = readExcludedFoodClasses(row2?.nutrition_config ?? null);
+  const classFdcIds = excludedClassKeys.length > 0 ? await resolveExcludedFdcIdsFromClasses(db, excludedClassKeys) : [];
   const excludedFdcIds = [
     ...new Set([
       ...Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : [],
-      ...readExcludedFdcIds(row2?.nutrition_config ?? null)
+      ...readExcludedFdcIds(row2?.nutrition_config ?? null),
+      ...classFdcIds
     ].filter((n) => Number.isFinite(n)))
   ];
   const excludedFoodLabels = readExcludedFoodLabels(row2?.nutrition_config ?? null);
+  const extraFoodExclusions = [...excludedFoodLabels, ...classDenyFragments(excludedClassKeys)];
   const foodExclusions = (() => {
     const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
-    if (excludedFoodLabels.length === 0) return planMerged.foodExclusions ?? null;
+    if (extraFoodExclusions.length === 0) return planMerged.foodExclusions ?? null;
     const out = [];
     const seen = /* @__PURE__ */ new Set();
-    for (const raw of [...base ?? [], ...excludedFoodLabels]) {
+    for (const raw of [...base ?? [], ...extraFoodExclusions]) {
       const s = String(raw).trim();
       if (!s) continue;
       const key = s.toLowerCase();

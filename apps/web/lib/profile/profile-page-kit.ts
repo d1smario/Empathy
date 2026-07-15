@@ -16,6 +16,7 @@
 
 import type { AthleteMemory } from "@/lib/empathy/schemas";
 import { cn } from "@/lib/cn";
+import { parseExcludedFoodClasses } from "@/lib/nutrition/allergen-class-catalog";
 
 export type AthleteProfileRow = {
   id: string;
@@ -233,6 +234,16 @@ export function parseExcludedFdcFoods(value: unknown): ExcludedFdcFood[] {
     out.push({ fdcId, label });
   }
   return out;
+}
+
+/**
+ * Classi allergeniche/intolleranze escluse (chiavi del catalogo `allergen-class-catalog`).
+ * Chiave GLOBALE di `nutrition_config` (`excluded_food_classes`, `string[]`), parallela a
+ * {@link parseExcludedFdcFoods}: la UI la seleziona/salva, il path server-autorevole la risolve
+ * in fdcId di intere famiglie + deny testuale. Con input assente/vuoto → `[]` (retro-compat).
+ */
+export function parseExcludedFoodClassKeys(value: unknown): string[] {
+  return parseExcludedFoodClasses(value);
 }
 
 export function defaultRoutineDayConfig(): RoutineDayConfig {

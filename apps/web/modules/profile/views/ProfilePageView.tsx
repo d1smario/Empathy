@@ -42,6 +42,7 @@ import {
   DietDayConfig,
   ExcludedFdcFood,
   parseExcludedFdcFoods,
+  parseExcludedFoodClassKeys,
   weekDays,
   mapAthleteMemoryToProfileRow,
   mapAthleteMemoryToPhysiologyRow,
@@ -113,6 +114,8 @@ export default function ProfilePage({
   const [dietWeekPlan, setDietWeekPlan] = useState<Record<WeekDay, DietDayConfig>>(defaultDietWeek());
   /** Esclusioni-cibo strutturate dal DB (globali, non per-giorno): nutrition_config.excluded_fdc_foods */
   const [excludedFdcFoods, setExcludedFdcFoods] = useState<ExcludedFdcFood[]>([]);
+  /** Classi allergeniche/intolleranze escluse (globali): nutrition_config.excluded_food_classes (key catalogo) */
+  const [excludedFoodClasses, setExcludedFoodClasses] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -338,6 +341,7 @@ export default function ProfilePage({
     setRoutineWeekPlan(parsedRoutineWeek);
     setDietWeekPlan(parsedDietWeek);
     setExcludedFdcFoods(parseExcludedFdcFoods(nutrition.excluded_fdc_foods));
+    setExcludedFoodClasses(parseExcludedFoodClassKeys(nutrition.excluded_food_classes));
     setForm((f) => ({
       ...f,
       first_name: p.first_name ?? "",
@@ -472,6 +476,7 @@ export default function ProfilePage({
       home_cooked_preference: form.home_cooked_preference === "true",
       week_plan: dietWeekPlan,
       excluded_fdc_foods: excludedFdcFoods,
+      excluded_food_classes: excludedFoodClasses,
     };
 
     const supplementConfig = {
@@ -1076,6 +1081,8 @@ export default function ProfilePage({
               updateDietDay={updateDietDay}
               excludedFdcFoods={excludedFdcFoods}
               setExcludedFdcFoods={setExcludedFdcFoods}
+              excludedFoodClasses={excludedFoodClasses}
+              setExcludedFoodClasses={setExcludedFoodClasses}
             />
           )}
           </div>

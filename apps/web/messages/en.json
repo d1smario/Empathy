@@ -4877,6 +4877,8 @@
     "intolerancesCsv": "Intolerances (csv)",
     "allergiesCsv": "Allergies (csv)",
     "excludedFoodsCsv": "Excluded foods (csv)",
+    "excludedFoodClassesLabel": "Allergies / intolerances (classes)",
+    "excludedFoodClassesHint": "Select the classes to exclude: they remove entire food families (e.g. all dairy, all fish) from the meal plan. Applies to the whole week.",
     "excludedFdcFoodsLabel": "Foods to avoid (from database)",
     "excludedFdcFoodsHint": "Search a food in our database and add it to the list of foods to avoid. Applies to the whole week.",
     "excludedFdcFoodsSearchPlaceholder": "Search a food…",
