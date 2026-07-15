@@ -19,7 +19,6 @@ import {
   type LifestylePracticeCategory,
 } from "@/lib/training/builder/lifestyle-playbook-catalog";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
-import { SESSION_DURATION_CHOICES } from "@/lib/training/builder/session-duration-choices";
 const ROUND_CHIP_PRESETS = [1, 2, 3, 4, 5, 6] as const;
 const REST_CHIP_PRESETS = [0, 20, 30, 45, 60, 90, 120] as const;
 const RPE_CHIP_PRESETS = [3, 4, 5, 6, 7] as const;
@@ -104,8 +103,6 @@ export function BuilderLifestyleManualComposer({
   manualChartSegments,
   manualPlannedDate,
   setManualPlannedDate,
-  manualSessionDurationMinutes,
-  setManualSessionDurationMinutes,
   paletteSport,
   currentSportLabel,
   manualSaveBusy,
@@ -203,22 +200,6 @@ export function BuilderLifestyleManualComposer({
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("chartTitle")} estimatedTss={estimatedTss} />
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-amber-950/25 px-3 py-2.5">
-          <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">{t("calendarDuration")}</span>
-            <select
-              className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
-              value={manualSessionDurationMinutes}
-              onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
-            >
-              {SESSION_DURATION_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
       </div>
 
       <div className={catalogPanel}>

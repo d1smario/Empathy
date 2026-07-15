@@ -21,10 +21,8 @@ import {
   getTechnicalPlaybookForSport,
   type TechnicalPlaybookEntry,
 } from "@/lib/training/builder/technical-playbook-catalog";
-import { TECHNICAL_ATHLETIC_QUALITY_OPTIONS } from "@/lib/training/engine/technical-module-focus";
 import type { TechnicalModuleFocus } from "@/lib/training/engine/types";
 import type { ChartSegment } from "@/lib/training/engine/block-chart-segments";
-import { SESSION_DURATION_CHOICES } from "@/lib/training/builder/session-duration-choices";
 const MINUTE_CHIP_PRESETS = [8, 10, 12, 14, 15, 16, 18, 20, 22, 25] as const;
 const PERIOD_CHIP_PRESETS = [
   "3×4′",
@@ -136,14 +134,11 @@ export function BuilderTechnicalManualComposer({
   currentSportLabel,
   technicalManualRows,
   setTechnicalManualRows,
-  technicalModuleFocus,
   manualSessionName,
   setManualSessionName,
   manualChartSegments,
   manualPlannedDate,
   setManualPlannedDate,
-  manualSessionDurationMinutes,
-  setManualSessionDurationMinutes,
   manualSaveBusy,
   onSaveManual,
   manualSaveErr,
@@ -234,17 +229,6 @@ export function BuilderTechnicalManualComposer({
     [presetMinutes, presetPeriods, presetSpace, setTechnicalManualRows],
   );
 
-  const phaseLabel = technicalModuleFocus.workPhase === "tactics" ? t("tactics") : t("technique");
-  const ctxLabel =
-    technicalModuleFocus.gameContext === "defensive"
-      ? t("defensive")
-      : technicalModuleFocus.gameContext === "offensive"
-        ? t("offensive")
-        : t("buildUp");
-  const qualityLabels = TECHNICAL_ATHLETIC_QUALITY_OPTIONS.filter((q) =>
-    technicalModuleFocus.athleticQualities.includes(q.id),
-  ).map((q) => q.label);
-
   return (
     <section aria-label={t("ariaLabel")} className={`p-4 sm:p-6 ${panelShell}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -285,41 +269,9 @@ export function BuilderTechnicalManualComposer({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/45 p-3">
-        <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">{t("sessionModule")}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <span className={chipOnKind}>{phaseLabel}</span>
-          <span className={chipOnViolet}>{ctxLabel}</span>
-          {qualityLabels.length === 0 ? (
-            <span className={chipOff}>{t("qualitiesLabel")} —</span>
-          ) : (
-            qualityLabels.map((q) => (
-              <span key={q} className={chipOnTeal}>
-                {q}
-              </span>
-            ))
-          )}
-        </div>
-        <p className="mt-2 text-[0.65rem] text-gray-600">{t("editHint")}</p>
-      </div>
-
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("chartTitle")} estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-orange-950/25 px-3 py-2.5">
-          <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">{t("durationInCalendar")}</span>
-            <select
-              className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
-              value={manualSessionDurationMinutes}
-              onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
-            >
-              {SESSION_DURATION_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-          </label>
           {!hideSaveBar && (
             <button
               type="button"

@@ -27,7 +27,6 @@ import {
   type Pro2GymContractionPreset,
   type Pro2GymLibraryEquipmentFilter,
 } from "@/lib/training/builder/pro2-gym-library-filters";
-import { SESSION_DURATION_CHOICES } from "@/lib/training/builder/session-duration-choices";
 
 const SET_CHIP_PRESETS = [2, 3, 4, 5, 6] as const;
 const REP_CHIP_PRESETS = ["5", "6", "8", "10", "12", "15", "20", "AMRAP"] as const;
@@ -100,8 +99,6 @@ export function BuilderGymManualComposer({
   manualChartSegments,
   manualPlannedDate,
   setManualPlannedDate,
-  manualSessionDurationMinutes,
-  setManualSessionDurationMinutes,
   paletteSport,
   currentSportLabel,
   manualSaveBusy,
@@ -228,22 +225,6 @@ export function BuilderGymManualComposer({
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreviewTitle")} estimatedTss={estimatedTss} />
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-orange-950/25 px-3 py-2.5">
-          <label className="flex flex-col gap-1 text-[0.65rem] text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-orange-200/90">{t("durationInCalendar")}</span>
-            <select
-              className="min-w-[7.5rem] rounded-lg border border-orange-500/30 bg-black/50 px-2 py-2 text-sm font-mono text-white"
-              value={manualSessionDurationMinutes}
-              onChange={(e) => setManualSessionDurationMinutes(Number(e.target.value))}
-            >
-              {SESSION_DURATION_CHOICES.map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
       </div>
 
       <div className={catalogPanel}>
