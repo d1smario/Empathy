@@ -147,6 +147,24 @@ export async function applyCoachLibraryItem(input: {
   };
 }
 
+export async function applyEmpathyPreset(input: {
+  presetId: string;
+  athleteId: string;
+  date: string;
+}): Promise<{ ok: boolean; id?: string | null; error?: string }> {
+  const headers = await buildSupabaseAuthHeaders({ "Content-Type": "application/json" });
+  const res = await fetch("/api/training/library/apply-preset", {
+    method: "POST",
+    headers,
+    credentials: "same-origin",
+    body: JSON.stringify({ presetId: input.presetId, athleteId: input.athleteId, date: input.date }),
+    cache: "no-store",
+  });
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string | null; error?: string };
+  if (!res.ok || json.ok !== true) return { ok: false, error: json.error ?? "apply_preset_failed" };
+  return { ok: true, id: json.id ?? null };
+}
+
 export async function fetchCoachLibraryItemContract(
   itemId: string,
 ): Promise<{ ok: boolean; contract?: Pro2BuilderSessionContract; title?: string; error?: string }> {

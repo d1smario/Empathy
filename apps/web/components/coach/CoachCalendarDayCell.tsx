@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type DragEvent } from "react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import { Pencil } from "lucide-react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
@@ -9,6 +10,11 @@ import {
   coachCalendarRowToPlannedWorkout,
   type CoachCalendarPlannedRow,
 } from "@/modules/training/services/use-coach-calendar-week";
+import {
+  COACH_CALENDAR_DRAG_MIME,
+  decodeCoachCalendarDragPayload,
+  type CoachCalendarDragPayload,
+} from "@/lib/training/library/coach-calendar-drag-payload";
 
 /** Massimo chip mostrati per banda; oltre → riga "+N". */
 const MAX_CHIPS_PER_CELL = 3;
@@ -34,8 +40,10 @@ export function CoachCalendarDayCell({
   dayIso,
   onOpenExecuted,
   onEditPlanned,
+  onDropSession,
   editActionLabel,
   emptyHint,
+  dropHint,
   moreLabel,
   plannedBandLabel,
   executedBandLabel,
@@ -51,10 +59,14 @@ export function CoachCalendarDayCell({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Drop di una card libreria/preset sulla cella → assegna la seduta all'atleta in quella data. */
+  onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   /** aria-label «Modifica seduta» (già tradotto). */
   editActionLabel?: string;
   /** Testo screen-reader/placeholder per la cella vuota (già tradotto). */
   emptyHint: string;
+  /** Suggerimento drop «Rilascia per assegnare» (già tradotto). */
+  dropHint?: string;
   /** Funzione copia "+N" (già tradotta) per gli extra oltre il limite. */
   moreLabel: (count: number) => string;
   /** Etichetta banda «Pianificato» (già tradotta). */
@@ -69,12 +81,46 @@ export function CoachCalendarDayCell({
   const hasPlanned = rows.length > 0;
   const hasExecuted = executedRows.length > 0;
 
+  const [dragOver, setDragOver] = useState(false);
+  const canDrop = Boolean(onDropSession && athleteId && dayIso);
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!canDrop) return;
+    if (!e.dataTransfer.types.includes(COACH_CALENDAR_DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    if (!dragOver) setDragOver(true);
+  };
+  const handleDragLeave = () => {
+    if (dragOver) setDragOver(false);
+  };
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!canDrop) return;
+    e.preventDefault();
+    setDragOver(false);
+    const payload = decodeCoachCalendarDragPayload(e.dataTransfer.getData(COACH_CALENDAR_DRAG_MIME));
+    if (payload) onDropSession!({ payload, athleteId: athleteId as string, dateIso: dayIso as string });
+  };
+
   if (!hasPlanned && !hasExecuted) {
     return (
-      <div className="flex min-h-[132px] items-center justify-center rounded-lg border border-dashed border-white/8 bg-white/[0.015] p-1">
-        <span className="text-[0.7rem] text-gray-700" aria-label={emptyHint}>
-          ·
-        </span>
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`flex min-h-[132px] items-center justify-center rounded-lg border border-dashed p-1 transition ${
+          dragOver
+            ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40"
+            : "border-white/8 bg-white/[0.015]"
+        }`}
+      >
+        {dragOver && dropHint ? (
+          <span className="text-center text-[0.6rem] font-semibold text-cyan-200">{dropHint}</span>
+        ) : (
+          <span className="text-[0.7rem] text-gray-700" aria-label={emptyHint}>
+            ·
+          </span>
+        )}
       </div>
     );
   }
@@ -85,7 +131,14 @@ export function CoachCalendarDayCell({
   const extraExecuted = executedRows.length - visibleExecuted.length;
 
   return (
-    <div className="flex min-h-[132px] flex-col gap-1.5 rounded-lg border border-white/10 bg-black/25 p-1.5">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex min-h-[132px] flex-col gap-1.5 rounded-lg border p-1.5 transition ${
+        dragOver ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40" : "border-white/10 bg-black/25"
+      }`}
+    >
       {/* Banda PIANIFICATO */}
       <div className="flex flex-col gap-1">
         <span className="px-0.5 font-mono text-[0.55rem] uppercase tracking-[0.14em] text-gray-500">

@@ -9,6 +9,7 @@ import {
   coachCalendarCellKey,
   type CoachCalendarPlannedRow,
 } from "@/modules/training/services/use-coach-calendar-week";
+import type { CoachCalendarDragPayload } from "@/lib/training/library/coach-calendar-drag-payload";
 
 export type CoachCalendarDay = {
   /** Giorno ISO `YYYY-MM-DD`. */
@@ -33,6 +34,7 @@ export function CoachCalendarWeekGrid({
   executedCells,
   onOpenExecuted,
   onEditPlanned,
+  onDropSession,
   athleteFtpWatts,
 }: {
   athletes: CanonicalAthleteRow[];
@@ -44,6 +46,8 @@ export function CoachCalendarWeekGrid({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Drop di una card libreria/preset su una cella → assegna la seduta all'atleta in quella data. */
+  onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   athleteFtpWatts?: number | null;
 }) {
   const t = useTranslations("CoachCalendarBoard");
@@ -88,8 +92,10 @@ export function CoachCalendarWeekGrid({
                   dayIso={day.iso}
                   onOpenExecuted={onOpenExecuted}
                   onEditPlanned={onEditPlanned}
+                  onDropSession={onDropSession}
                   editActionLabel={t("editAction")}
                   emptyHint={t("cellEmpty")}
+                  dropHint={t("dropHint")}
                   moreLabel={(count) => t("moreInCell", { count })}
                   plannedBandLabel={t("plannedBand")}
                   executedBandLabel={t("executedBand")}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Dumbbell, Sparkles } from "lucide-react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
@@ -20,10 +20,19 @@ import {
   type CoachCalendarPlannedRow,
 } from "@/modules/training/services/use-coach-calendar-week";
 import { useCoachCalendarExecutedWeek } from "@/modules/training/services/use-coach-calendar-executed-week";
-import { fetchCoachLibraryItems } from "@/modules/training/services/training-library-api";
+import {
+  applyCoachLibraryItem,
+  applyEmpathyPreset,
+  fetchCoachLibraryItems,
+} from "@/modules/training/services/training-library-api";
 import { loadAerobicStarterPresetsClient } from "@/lib/training/library/aerobic-starter-presets-client";
 import type { AerobicStarterPreset } from "@/lib/training/library/starter-pack-aerobic";
 import type { CoachWorkoutLibraryItemView } from "@/lib/training/library/coach-workout-library-types";
+import {
+  COACH_CALENDAR_DRAG_MIME,
+  encodeCoachCalendarDragPayload,
+  type CoachCalendarDragPayload,
+} from "@/lib/training/library/coach-calendar-drag-payload";
 
 type SourceTab = "coach" | "empathy";
 
@@ -115,6 +124,60 @@ export function CoachCalendarBoardView() {
   }, []);
   const closeEditModal = useCallback(() => setEditOpen(false), []);
   const onEditSaved = useCallback(() => refetchWeek(), [refetchWeek]);
+
+  // DRAG&DROP: assegnazione seduta da card sinistra → cella giorno×atleta.
+  const [dropBusy, setDropBusy] = useState(false);
+  const [dropFeedback, setDropFeedback] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  const handleCardDragStart = useCallback(
+    (e: DragEvent<HTMLElement>, payload: CoachCalendarDragPayload) => {
+      e.dataTransfer.setData(COACH_CALENDAR_DRAG_MIME, encodeCoachCalendarDragPayload(payload));
+      e.dataTransfer.effectAllowed = "copy";
+    },
+    [],
+  );
+
+  const onDropSession = useCallback(
+    async ({
+      payload,
+      athleteId,
+      dateIso,
+    }: {
+      payload: CoachCalendarDragPayload;
+      athleteId: string;
+      dateIso: string;
+    }) => {
+      if (dropBusy) return;
+      setDropBusy(true);
+      setDropFeedback(null);
+      try {
+        const res =
+          payload.kind === "coach-item"
+            ? await applyCoachLibraryItem({ itemId: payload.itemId, athleteId, date: dateIso, applyScaling: false })
+            : await applyEmpathyPreset({ presetId: payload.presetId, athleteId, date: dateIso });
+        if (res.ok) {
+          setDropFeedback({ tone: "ok", text: t("assignedToast", { title: payload.title }) });
+          refetchWeek();
+        } else if (res.error === "forbidden") {
+          setDropFeedback({ tone: "error", text: t("assignForbidden") });
+        } else {
+          setDropFeedback({ tone: "error", text: t("assignError") });
+        }
+      } catch {
+        setDropFeedback({ tone: "error", text: t("assignError") });
+      } finally {
+        setDropBusy(false);
+      }
+    },
+    [dropBusy, refetchWeek, t],
+  );
+
+  // Auto-dismiss del feedback drop dopo qualche secondo.
+  useEffect(() => {
+    if (!dropFeedback) return;
+    const timer = setTimeout(() => setDropFeedback(null), 4000);
+    return () => clearTimeout(timer);
+  }, [dropFeedback]);
 
   // Pannello sorgenti (sinistra) a DUE sorgenti — SOLA LETTURA (nessun drag/applicazione).
   const [sourceTab, setSourceTab] = useState<SourceTab>("coach");
@@ -218,7 +281,11 @@ export function CoachCalendarBoardView() {
                 {libraryItems.map((item) => (
                   <li
                     key={item.id}
-                    className="cursor-default select-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5"
+                    draggable
+                    onDragStart={(e) =>
+                      handleCardDragStart(e, { kind: "coach-item", itemId: item.id, title: item.title })
+                    }
+                    className="cursor-grab select-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 transition hover:border-white/25 active:cursor-grabbing"
                   >
                     <p className="truncate text-sm font-medium text-white">{item.title}</p>
                     <p className="mt-0.5 text-[0.7rem] text-gray-500">
@@ -249,7 +316,16 @@ export function CoachCalendarBoardView() {
                 {empathyPresets.map((preset) => (
                   <li
                     key={preset.presetId}
-                    className="cursor-default select-none rounded-xl border border-violet-400/20 bg-violet-500/[0.06] px-3 py-2.5"
+                    draggable
+                    onDragStart={(e) =>
+                      handleCardDragStart(e, {
+                        kind: "empathy-preset",
+                        presetId: preset.presetId,
+                        title: preset.title,
+                        discipline: preset.discipline,
+                      })
+                    }
+                    className="cursor-grab select-none rounded-xl border border-violet-400/20 bg-violet-500/[0.06] px-3 py-2.5 transition hover:border-violet-400/40 active:cursor-grabbing"
                   >
                     <p className="truncate text-sm font-medium text-white">{preset.title}</p>
                     <p className="mt-0.5 text-[0.7rem] text-gray-500">
@@ -298,10 +374,26 @@ export function CoachCalendarBoardView() {
               </button>
             ) : null}
           </div>
-          {weekLoading && athleteIds.length > 0 ? (
-            <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {dropBusy ? <span className="text-[0.7rem] text-cyan-300">{t("assigning")}</span> : null}
+            {weekLoading && athleteIds.length > 0 ? (
+              <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
+            ) : null}
+          </div>
         </div>
+
+        {dropFeedback ? (
+          <p
+            role="status"
+            className={`rounded-xl border px-4 py-2.5 text-sm ${
+              dropFeedback.tone === "ok"
+                ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-100"
+                : "border-amber-400/30 bg-amber-500/10 text-amber-200"
+            }`}
+          >
+            {dropFeedback.text}
+          </p>
+        ) : null}
 
         {coachActivation === "suspended" ? (
           <p className="rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-3 text-sm text-rose-100" role="status">
@@ -337,6 +429,7 @@ export function CoachCalendarBoardView() {
             executedCells={executedCells}
             onOpenExecuted={openExecuted}
             onEditPlanned={onEditPlanned}
+            onDropSession={onDropSession}
           />
         ) : null}
       </section>
