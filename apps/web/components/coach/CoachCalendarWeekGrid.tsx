@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import type { ExecutedWorkout } from "@empathy/domain-training";
 import type { CanonicalAthleteRow } from "@/lib/athletes/canonical-profile";
 import { formatAthleteLabel } from "@/lib/coach/use-coach-roster";
 import { CoachCalendarDayCell } from "@/components/coach/CoachCalendarDayCell";
@@ -29,19 +30,25 @@ export function CoachCalendarWeekGrid({
   athletes,
   days,
   cells,
+  executedCells,
+  onOpenExecuted,
   athleteFtpWatts,
 }: {
   athletes: CanonicalAthleteRow[];
   days: CoachCalendarDay[];
   cells: Map<string, CoachCalendarPlannedRow[]>;
+  /** Sedute ESEGUITE per cella `${athleteId}|${giorno}` (banda «Eseguito»). */
+  executedCells?: Map<string, ExecutedWorkout[]>;
+  /** Apre l'analisi di una seduta eseguita cliccata. */
+  onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   athleteFtpWatts?: number | null;
 }) {
   const t = useTranslations("CoachCalendarBoard");
-  const gridTemplate = { gridTemplateColumns: `minmax(9rem, 12rem) repeat(${days.length}, minmax(7.5rem, 1fr))` };
+  const gridTemplate = { gridTemplateColumns: `minmax(9rem, 12rem) repeat(${days.length}, minmax(12rem, 1fr))` };
 
   return (
     <div className="max-h-[70vh] overflow-auto rounded-2xl border border-white/10 bg-white/[0.02]">
-      <div className="min-w-[46rem]">
+      <div className="min-w-[72rem]">
         {/* Header giorni: sticky in alto; prima colonna sticky a sinistra (angolo). */}
         <div className="sticky top-0 z-20 grid border-b border-white/10 bg-zinc-950/95 backdrop-blur" style={gridTemplate}>
           <div className="sticky left-0 z-10 flex items-center border-r border-white/10 bg-zinc-950/95 px-3 py-2 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
@@ -73,8 +80,15 @@ export function CoachCalendarWeekGrid({
               <div key={`${athlete.id}-${day.iso}`} className={`p-1 ${day.isToday ? "bg-cyan-500/5" : ""}`}>
                 <CoachCalendarDayCell
                   rows={cells.get(coachCalendarCellKey(athlete.id, day.iso)) ?? []}
+                  executed={executedCells?.get(coachCalendarCellKey(athlete.id, day.iso)) ?? []}
+                  athleteId={athlete.id}
+                  dayIso={day.iso}
+                  onOpenExecuted={onOpenExecuted}
                   emptyHint={t("cellEmpty")}
                   moreLabel={(count) => t("moreInCell", { count })}
+                  plannedBandLabel={t("plannedBand")}
+                  executedBandLabel={t("executedBand")}
+                  unplannedBadge={t("unplannedBadge")}
                   athleteFtpWatts={athleteFtpWatts}
                 />
               </div>

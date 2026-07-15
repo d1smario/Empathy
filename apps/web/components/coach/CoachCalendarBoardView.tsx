@@ -1,17 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
+import { ChevronLeft, ChevronRight, Dumbbell, Sparkles } from "lucide-react";
+import type { ExecutedWorkout } from "@empathy/domain-training";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { useCoachRoster } from "@/lib/coach/use-coach-roster";
 import {
   CoachCalendarWeekGrid,
   type CoachCalendarDay,
 } from "@/components/coach/CoachCalendarWeekGrid";
+import { CoachSessionAnalysisModal } from "@/components/coach/CoachSessionAnalysisModal";
 import { useCoachCalendarWeek } from "@/modules/training/services/use-coach-calendar-week";
+import { useCoachCalendarExecutedWeek } from "@/modules/training/services/use-coach-calendar-executed-week";
 import { fetchCoachLibraryItems } from "@/modules/training/services/training-library-api";
+import { loadAerobicStarterPresetsClient } from "@/lib/training/library/aerobic-starter-presets-client";
+import type { AerobicStarterPreset } from "@/lib/training/library/starter-pack-aerobic";
 import type { CoachWorkoutLibraryItemView } from "@/lib/training/library/coach-workout-library-types";
+
+type SourceTab = "coach" | "empathy";
+
+type SessionModalState = {
+  open: boolean;
+  executed: ExecutedWorkout | null;
+  athleteId: string | null;
+  dateIso: string | null;
+};
 
 /** Chiave giorno locale `YYYY-MM-DD` (le colonne `date` dei workout sono date pure). */
 function dayKey(d: Date): string {
@@ -66,8 +80,24 @@ export function CoachCalendarBoardView() {
 
   const athleteIds = useMemo(() => athletes.map((a) => a.id), [athletes]);
   const { cells, loading: weekLoading, error: weekError } = useCoachCalendarWeek(athleteIds, weekFrom, weekTo);
+  const { cellMap: executedCells } = useCoachCalendarExecutedWeek(athleteIds, weekFrom, weekTo);
 
-  // Pannello sorgenti (sinistra): elenco sedute di libreria del coach — SOLA LETTURA, non trascinabili.
+  // Popup «Analisi allenamento»: stato sollevato qui, montato in fondo alla vista.
+  const [sessionModal, setSessionModal] = useState<SessionModalState>({
+    open: false,
+    executed: null,
+    athleteId: null,
+    dateIso: null,
+  });
+  const openExecuted = useCallback((executed: ExecutedWorkout, athleteId: string, dayIso: string) => {
+    setSessionModal({ open: true, executed, athleteId, dateIso: dayIso });
+  }, []);
+  const closeSessionModal = useCallback(() => setSessionModal((s) => ({ ...s, open: false })), []);
+
+  // Pannello sorgenti (sinistra) a DUE sorgenti — SOLA LETTURA (nessun drag/applicazione).
+  const [sourceTab, setSourceTab] = useState<SourceTab>("coach");
+
+  // (1) SEDUTE COACH — libreria del coach.
   const [libraryItems, setLibraryItems] = useState<CoachWorkoutLibraryItemView[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -92,6 +122,31 @@ export function CoachCalendarBoardView() {
     };
   }, []);
 
+  // (2) TEMPLATE EMPATHY — preset aerobici (browser→Supabase, stessa fonte di Virya).
+  const [empathyPresets, setEmpathyPresets] = useState<AerobicStarterPreset[]>([]);
+  const [empathyLoading, setEmpathyLoading] = useState(true);
+  const [empathyError, setEmpathyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEmpathyLoading(true);
+    setEmpathyError(null);
+    (async () => {
+      try {
+        const presets = await loadAerobicStarterPresetsClient();
+        if (cancelled) return;
+        setEmpathyPresets(presets);
+      } catch {
+        if (!cancelled) setEmpathyError("load_failed");
+      } finally {
+        if (!cancelled) setEmpathyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const rosterErrText = rosterError
     ? rosterError.kind === "network"
       ? t("rosterErrorNetwork")
@@ -100,40 +155,93 @@ export function CoachCalendarBoardView() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-      {/* SINISTRA — pannello sorgenti (sedute di libreria), non trascinabile in questo incremento. */}
+      {/* SINISTRA — pannello sorgenti a DUE tab (coach + Empathy), SOLA LETTURA (nessun drag). */}
       <aside className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="h-4 w-4 text-cyan-300" aria-hidden />
-          <h2 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-400">{t("sourcesTitle")}</h2>
+        <div className="flex rounded-lg border border-white/10 bg-black/20 p-0.5">
+          <button
+            type="button"
+            onClick={() => setSourceTab("coach")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[0.7rem] font-semibold transition ${
+              sourceTab === "coach" ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <Dumbbell className="h-3.5 w-3.5" aria-hidden />
+            {t("coachSourcesTab")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSourceTab("empathy")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[0.7rem] font-semibold transition ${
+              sourceTab === "empathy" ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            {t("empathySourcesTab")}
+          </button>
         </div>
-        <p className="mt-1 text-[0.7rem] text-gray-500">{t("sourcesHint")}</p>
 
-        {libraryLoading ? (
-          <p className="mt-4 text-xs text-gray-500">{t("sourcesLoading")}</p>
-        ) : libraryError ? (
-          <p className="mt-4 text-xs text-amber-200" role="alert">
-            {t("sourcesError")}
-          </p>
-        ) : libraryItems.length === 0 ? (
-          <p className="mt-4 text-xs text-gray-500">{t("sourcesEmpty")}</p>
+        {sourceTab === "coach" ? (
+          <div>
+            <p className="mt-3 text-[0.7rem] text-gray-500">{t("sourcesHint")}</p>
+            {libraryLoading ? (
+              <p className="mt-4 text-xs text-gray-500">{t("sourcesLoading")}</p>
+            ) : libraryError ? (
+              <p className="mt-4 text-xs text-amber-200" role="alert">
+                {t("sourcesError")}
+              </p>
+            ) : libraryItems.length === 0 ? (
+              <p className="mt-4 text-xs text-gray-500">{t("sourcesEmpty")}</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {libraryItems.map((item) => (
+                  <li
+                    key={item.id}
+                    className="cursor-default select-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5"
+                  >
+                    <p className="truncate text-sm font-medium text-white">{item.title}</p>
+                    <p className="mt-0.5 text-[0.7rem] text-gray-500">
+                      <span className="uppercase tracking-wide">{t(`family.${item.family}`)}</span>
+                      {" · "}
+                      {item.durationMinutes}m
+                      {" · "}
+                      {LOAD_CHIP_LABEL} {item.tssTarget}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
-          <ul className="mt-4 space-y-2">
-            {libraryItems.map((item) => (
-              <li
-                key={item.id}
-                className="cursor-default select-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5"
-              >
-                <p className="truncate text-sm font-medium text-white">{item.title}</p>
-                <p className="mt-0.5 text-[0.7rem] text-gray-500">
-                  <span className="uppercase tracking-wide">{t(`family.${item.family}`)}</span>
-                  {" · "}
-                  {item.durationMinutes}m
-                  {" · "}
-                  {LOAD_CHIP_LABEL} {item.tssTarget}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="mt-3 text-[0.7rem] text-gray-500">{t("empathySourcesHint")}</p>
+            {empathyLoading ? (
+              <p className="mt-4 text-xs text-gray-500">{t("empathyLoading")}</p>
+            ) : empathyError ? (
+              <p className="mt-4 text-xs text-amber-200" role="alert">
+                {t("empathyError")}
+              </p>
+            ) : empathyPresets.length === 0 ? (
+              <p className="mt-4 text-xs text-gray-500">{t("empathyEmpty")}</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {empathyPresets.map((preset) => (
+                  <li
+                    key={preset.presetId}
+                    className="cursor-default select-none rounded-xl border border-violet-400/20 bg-violet-500/[0.06] px-3 py-2.5"
+                  >
+                    <p className="truncate text-sm font-medium text-white">{preset.title}</p>
+                    <p className="mt-0.5 text-[0.7rem] text-gray-500">
+                      <span className="uppercase tracking-wide">{preset.discipline}</span>
+                      {" · "}
+                      {preset.plannedMinutes}m
+                      {" · "}
+                      {LOAD_CHIP_LABEL} {preset.tss}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </aside>
 
@@ -200,9 +308,23 @@ export function CoachCalendarBoardView() {
             {t("noAthletes")}
           </div>
         ) : athletes.length > 0 ? (
-          <CoachCalendarWeekGrid athletes={athletes} days={days} cells={cells} />
+          <CoachCalendarWeekGrid
+            athletes={athletes}
+            days={days}
+            cells={cells}
+            executedCells={executedCells}
+            onOpenExecuted={openExecuted}
+          />
         ) : null}
       </section>
+
+      <CoachSessionAnalysisModal
+        open={sessionModal.open}
+        executed={sessionModal.executed}
+        athleteId={sessionModal.athleteId}
+        dateIso={sessionModal.dateIso}
+        onClose={closeSessionModal}
+      />
     </div>
   );
 }
