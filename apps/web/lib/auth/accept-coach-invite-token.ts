@@ -23,9 +23,18 @@ type InviteRow = {
   consumed_at: string | null;
 };
 
+function joinName(first: unknown, last: unknown, full?: unknown): string {
+  const f = typeof first === "string" ? first.trim() : "";
+  const l = typeof last === "string" ? last.trim() : "";
+  const fu = typeof full === "string" ? full.trim() : "";
+  return fu || [f, l].filter(Boolean).join(" ").trim();
+}
+
 /**
- * Nome visualizzato del coach invitante: `full_name` o `Nome Cognome` da user_metadata,
- * fallback email. Richiede client service-role (`admin.auth.admin.getUserById`).
+ * Nome visualizzato del coach invitante. I coach non hanno `athlete_profiles` collegato
+ * (athlete_id null) e spesso i metadata sono vuoti, quindi peschiamo il nome da TUTTE le
+ * fonti in ordine di affidabilità: user_metadata → user_billing_profiles → athlete_profiles
+ * orfano per email (resta dopo la promozione a coach) → email. Richiede service-role.
  */
 export async function resolveCoachDisplayName(
   admin: SupabaseClient,
@@ -34,12 +43,36 @@ export async function resolveCoachDisplayName(
   try {
     const { data, error } = await admin.auth.admin.getUserById(coachUserId);
     if (error || !data?.user) return null;
-    const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
-    const first = typeof meta.first_name === "string" ? meta.first_name.trim() : "";
-    const last = typeof meta.last_name === "string" ? meta.last_name.trim() : "";
-    const full = typeof meta.full_name === "string" ? meta.full_name.trim() : "";
-    const name = full || [first, last].filter(Boolean).join(" ").trim();
-    return name || data.user.email || null;
+    const user = data.user;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+
+    const metaName = joinName(meta.first_name, meta.last_name, meta.full_name);
+    if (metaName) return metaName;
+
+    // Fallback 1: profilo di fatturazione (popolato al checkout).
+    const { data: bill } = await admin
+      .from("user_billing_profiles")
+      .select("first_name, last_name")
+      .eq("user_id", coachUserId)
+      .maybeSingle();
+    const billName = joinName((bill as { first_name?: string })?.first_name, (bill as { last_name?: string })?.last_name);
+    if (billName) return billName;
+
+    // Fallback 2: athlete_profiles orfano per email (nome dell'ex-atleta promosso a coach).
+    const email = (user.email ?? "").trim().toLowerCase();
+    if (email) {
+      const { data: ap } = await admin
+        .from("athlete_profiles")
+        .select("first_name, last_name")
+        .eq("email", email)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const apName = joinName((ap as { first_name?: string })?.first_name, (ap as { last_name?: string })?.last_name);
+      if (apName) return apName;
+    }
+
+    return user.email || null;
   } catch {
     return null;
   }
