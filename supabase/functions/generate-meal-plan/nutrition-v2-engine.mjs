@@ -1627,6 +1627,24 @@ function readExcludedFdcIds(nutritionConfig) {
   }
   return out;
 }
+function readExcludedFoodLabels(nutritionConfig) {
+  const rec = nutritionConfig && typeof nutritionConfig === "object" && !Array.isArray(nutritionConfig) ? nutritionConfig : null;
+  const raw = rec?.excluded_fdc_foods;
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item2 of raw) {
+    if (!item2 || typeof item2 !== "object") continue;
+    const r = item2;
+    const label = String(r.label ?? "").trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+  }
+  return out;
+}
 function optionAllowed(o, fragments, excludedFdcIds) {
   if (o.fdcId != null && excludedFdcIds.has(o.fdcId)) return false;
   if (textMatchesDeny(o.label, fragments)) return false;
@@ -3019,12 +3037,29 @@ async function prepareIntelligentMealPlanContext(db, body) {
       ...readExcludedFdcIds(row2?.nutrition_config ?? null)
     ].filter((n) => Number.isFinite(n)))
   ];
+  const excludedFoodLabels = readExcludedFoodLabels(row2?.nutrition_config ?? null);
+  const foodExclusions = (() => {
+    const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
+    if (excludedFoodLabels.length === 0) return planMerged.foodExclusions ?? null;
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const raw of [...base ?? [], ...excludedFoodLabels]) {
+      const s = String(raw).trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  })();
   const planFromDiet = {
     ...planMerged,
     athleteId,
     planDate,
     slots: reconciled.slots,
     excludedFdcIds,
+    foodExclusions,
     dietType: row2?.diet_type != null ? String(row2.diet_type) : planMerged.dietType,
     mealPlanSolverMeta: {
       ...planMerged.mealPlanSolverMeta,

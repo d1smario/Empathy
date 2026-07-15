@@ -6,7 +6,11 @@ import type {
 import { buildFunctionalFoodOptionGroupsForSlot } from "@/lib/nutrition/functional-food-option-groups";
 import type { IntelligentMealPlanRequest, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
-import { filterIntelligentMealPlanRequestFoods, readExcludedFdcIds } from "@/lib/nutrition/meal-plan-profile-food-filter";
+import {
+  filterIntelligentMealPlanRequestFoods,
+  readExcludedFdcIds,
+  readExcludedFoodLabels,
+} from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { applyMealSlotRulesToIntelligentMealPlanRequest } from "@/lib/nutrition/meal-slot-food-rules";
 import { buildPathwayTimingLinesForMealPlan } from "@/lib/nutrition/meal-plan-pathway-timing-lines";
 import { shortFoodLabelFromUsda } from "@/lib/nutrition/usda-food-label";
@@ -240,6 +244,27 @@ export function buildIntelligentMealPlanRequest(input: {
     };
   });
 
+  // Cibi esclusi dal picker (`nutrition_config.excluded_fdc_foods`): l'esclusione per fdcId copre
+  // il filtro opzioni, ma la composizione/arricchimento pasti (deny testuale) legge `foodExclusions`.
+  // Facciamo confluire qui le etichette escluse così il deny le vede OVUNQUE. Merge + dedup
+  // case-insensitive; lista vuota → invariato (retro-compat).
+  const excludedFoodLabels = readExcludedFoodLabels(input.profile?.nutrition_config ?? null);
+  const mergedFoodExclusions = (() => {
+    const base = input.profile?.food_exclusions ?? null;
+    if (excludedFoodLabels.length === 0) return base;
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of [...(base ?? []), ...excludedFoodLabels]) {
+      const s = String(raw).trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  })();
+
   return applyMealSlotRulesToIntelligentMealPlanRequest(
     filterIntelligentMealPlanRequestFoods({
       athleteId: input.athleteId,
@@ -259,7 +284,7 @@ export function buildIntelligentMealPlanRequest(input: {
       dietType: input.profile?.diet_type ?? null,
       intolerances: input.profile?.intolerances ?? null,
       allergies: input.profile?.allergies ?? null,
-      foodExclusions: input.profile?.food_exclusions ?? null,
+      foodExclusions: mergedFoodExclusions,
       foodPreferences: input.profile?.food_preferences ?? null,
       supplements: input.profile?.supplements ?? null,
       excludedFdcIds: readExcludedFdcIds(input.profile?.nutrition_config ?? null),

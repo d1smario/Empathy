@@ -130,6 +130,35 @@ export function readExcludedFdcIds(nutritionConfig: unknown): number[] {
   return out;
 }
 
+/**
+ * Estrae le `label` da `nutrition_config.excluded_fdc_foods` (`[{ fdcId, label }]`, globale).
+ * Parallelo a {@link readExcludedFdcIds}: serve a far rientrare i cibi esclusi dal picker anche
+ * nel deny testuale (`buildMealPlanFoodDenyFragments` → composizione/arricchimento pasti), non solo
+ * nel filtro opzioni per fdcId. Tollera JSON malformato, fa trim, scarta le vuote e deduplica
+ * (case-insensitive). Con input assente/vuoto → `[]` (nessun effetto, retro-compat).
+ */
+export function readExcludedFoodLabels(nutritionConfig: unknown): string[] {
+  const rec =
+    nutritionConfig && typeof nutritionConfig === "object" && !Array.isArray(nutritionConfig)
+      ? (nutritionConfig as Record<string, unknown>)
+      : null;
+  const raw = rec?.excluded_fdc_foods;
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const label = String(r.label ?? "").trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+  }
+  return out;
+}
+
 function optionAllowed(
   o: IntelligentMealPlanFoodOptionRef,
   fragments: string[],

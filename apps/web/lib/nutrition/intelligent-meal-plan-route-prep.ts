@@ -3,7 +3,11 @@ import {
   enrichIntelligentMealPlanRequestWithRaceDay,
   plannedSessionsForRaceFromDbRows,
 } from "@/lib/nutrition/enrich-meal-plan-request-race-day";
-import { filterIntelligentMealPlanRequestFoods, readExcludedFdcIds } from "@/lib/nutrition/meal-plan-profile-food-filter";
+import {
+  filterIntelligentMealPlanRequestFoods,
+  readExcludedFdcIds,
+  readExcludedFoodLabels,
+} from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { applyMealSlotRulesToIntelligentMealPlanRequest } from "@/lib/nutrition/meal-slot-food-rules";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
@@ -105,12 +109,34 @@ export async function prepareIntelligentMealPlanContext(
     ].filter((n) => Number.isFinite(n))),
   ];
 
+  // Etichette dei cibi esclusi dal picker (DB autorevole): confluiscono nel deny testuale
+  // (`foodExclusions` → buildMealPlanFoodDenyFragments), così la composizione/arricchimento pasti
+  // le esclude anche quando il request del client è stale. Merge + dedup case-insensitive;
+  // lista vuota → invariato (retro-compat).
+  const excludedFoodLabels = readExcludedFoodLabels(row?.nutrition_config ?? null);
+  const foodExclusions = (() => {
+    const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
+    if (excludedFoodLabels.length === 0) return planMerged.foodExclusions ?? null;
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of [...(base ?? []), ...excludedFoodLabels]) {
+      const s = String(raw).trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  })();
+
   const planFromDiet: IntelligentMealPlanRequest = {
     ...planMerged,
     athleteId,
     planDate,
     slots: reconciled.slots,
     excludedFdcIds,
+    foodExclusions,
     dietType: row?.diet_type != null ? String(row.diet_type) : planMerged.dietType,
     mealPlanSolverMeta: {
       ...planMerged.mealPlanSolverMeta,
