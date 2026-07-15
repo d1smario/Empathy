@@ -54,7 +54,7 @@ export function BuilderSportMacroSectorPicker({
                     <p className="text-base font-black leading-tight tracking-tight text-white sm:text-lg">{m.shortLabel}</p>
                     <p className="mt-1 line-clamp-2 text-[0.68rem] font-medium leading-snug text-white/80 sm:text-xs">{m.title}</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 border-t border-white/20 pt-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-4 gap-1.5 border-t border-white/20 pt-3 sm:grid-cols-5">
                     {m.sports.map((s) => {
                       const active = sport.trim().toLowerCase() === s.sport.trim().toLowerCase();
                       return (
@@ -64,16 +64,16 @@ export function BuilderSportMacroSectorPicker({
                           aria-pressed={active}
                           title={s.label}
                           onClick={() => setSport(s.sport)}
-                          className={`group flex flex-col items-center gap-2 rounded-xl border border-transparent p-2 transition hover:border-white/15 hover:bg-white/[0.04] ${
+                          className={`group flex flex-col items-center gap-1 rounded-lg border border-transparent p-1 transition hover:border-white/15 hover:bg-white/[0.04] ${
                             active ? "border-white/25 bg-white/[0.08] ring-2 ring-white/30" : ""
                           }`}
                         >
                           <span
-                            className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 bg-black/20 shadow-inner transition group-hover:scale-[1.04] ${s.iconRing}`}
+                            className={`flex h-9 w-9 items-center justify-center rounded-xl border-2 bg-black/20 shadow-inner transition group-hover:scale-[1.04] sm:h-10 sm:w-10 ${s.iconRing}`}
                           >
-                            <SportDisciplineGlyph glyph={s.glyph} className="h-8 w-8" />
+                            <SportDisciplineGlyph glyph={s.glyph} className="h-6 w-6 sm:h-7 sm:w-7" />
                           </span>
-                          <span className="text-center text-[0.62rem] font-bold leading-tight text-white">{s.label}</span>
+                          <span className="text-center text-[0.55rem] font-bold leading-tight text-white sm:text-[0.6rem]">{s.label}</span>
                         </button>
                       );
                     })}
