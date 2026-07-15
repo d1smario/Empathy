@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { CopyPlus } from "lucide-react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import type { CanonicalAthleteRow } from "@/lib/athletes/canonical-profile";
 import { formatAthleteLabel } from "@/lib/coach/use-coach-roster";
@@ -34,6 +35,12 @@ export function CoachCalendarWeekGrid({
   executedCells,
   onOpenExecuted,
   onEditPlanned,
+  onCopyPlanned,
+  onPasteInto,
+  onCopyWeek,
+  pasteActive,
+  pasteBusy,
+  copyWeekBusy,
   onDropSession,
   athleteFtpWatts,
 }: {
@@ -46,6 +53,18 @@ export function CoachCalendarWeekGrid({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Copia una riga planned nella clipboard in-memory della board. */
+  onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Incolla la seduta in clipboard su una cella (atleta × giorno). */
+  onPasteInto?: (athleteId: string, dateIso: string) => void;
+  /** Copia l'intera settimana dell'atleta sorgente su un altro atleta. */
+  onCopyWeek?: (sourceAthleteId: string) => void;
+  /** True quando la clipboard è piena: abilita i bottoni «Incolla qui». */
+  pasteActive?: boolean;
+  /** True durante un incolla in corso. */
+  pasteBusy?: boolean;
+  /** True durante una copia settimana in corso (disabilita i trigger). */
+  copyWeekBusy?: boolean;
   /** Drop di una card libreria/preset su una cella → assegna la seduta all'atleta in quella data. */
   onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   athleteFtpWatts?: number | null;
@@ -79,9 +98,23 @@ export function CoachCalendarWeekGrid({
         {/* Una riga per atleta. */}
         {athletes.map((athlete) => (
           <div key={athlete.id} className="grid border-b border-white/5 last:border-b-0" style={gridTemplate}>
-            <div className="sticky left-0 z-10 flex min-w-0 flex-col justify-center border-r border-white/10 bg-zinc-950/95 px-3 py-2">
-              <p className="truncate text-sm font-medium text-white">{formatAthleteLabel(athlete)}</p>
-              {athlete.email ? <p className="truncate text-[0.7rem] text-gray-500">{athlete.email}</p> : null}
+            <div className="sticky left-0 z-10 flex min-w-0 flex-col justify-center gap-1 border-r border-white/10 bg-zinc-950/95 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{formatAthleteLabel(athlete)}</p>
+                {athlete.email ? <p className="truncate text-[0.7rem] text-gray-500">{athlete.email}</p> : null}
+              </div>
+              {onCopyWeek ? (
+                <button
+                  type="button"
+                  disabled={copyWeekBusy}
+                  onClick={() => onCopyWeek(athlete.id)}
+                  title={t("copyWeekAction")}
+                  className="flex w-fit items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[0.6rem] font-semibold text-gray-300 transition enabled:hover:border-white/25 enabled:hover:text-white disabled:cursor-default disabled:opacity-50"
+                >
+                  <CopyPlus className="h-3 w-3" aria-hidden />
+                  {t("copyWeekAction")}
+                </button>
+              ) : null}
             </div>
             {days.map((day) => (
               <div key={`${athlete.id}-${day.iso}`} className={`p-1 ${day.isToday ? "bg-cyan-500/5" : ""}`}>
@@ -92,8 +125,14 @@ export function CoachCalendarWeekGrid({
                   dayIso={day.iso}
                   onOpenExecuted={onOpenExecuted}
                   onEditPlanned={onEditPlanned}
+                  onCopyPlanned={onCopyPlanned}
+                  onPasteInto={onPasteInto}
+                  pasteActive={pasteActive}
+                  pasteBusy={pasteBusy}
                   onDropSession={onDropSession}
                   editActionLabel={t("editAction")}
+                  copyActionLabel={t("copyAction")}
+                  pasteHereLabel={t("pasteHere")}
                   emptyHint={t("cellEmpty")}
                   dropHint={t("dropHint")}
                   moreLabel={(count) => t("moreInCell", { count })}

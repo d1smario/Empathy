@@ -67,9 +67,9 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const { id } = await insertSinglePlannedWorkout(db, row);
+    const { id, dedupeSkipped } = await insertSinglePlannedWorkout(db, row);
     return NextResponse.json(
-      { ok: true as const, athleteId, date, plannedWorkoutId: id, sourceId },
+      { ok: true as const, athleteId, date, plannedWorkoutId: id, dedupeSkipped: dedupeSkipped === true, sourceId },
       { headers: NO_STORE },
     );
   } catch (err) {

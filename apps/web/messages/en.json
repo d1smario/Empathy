@@ -4072,7 +4072,16 @@
     "rosterErrorNetwork": "Network error while loading athletes.",
     "rosterErrorLoad": "Couldn’t load the athlete list.",
     "rosterLoading": "Loading your athletes…",
-    "noAthletes": "No linked athletes: invite your athletes or wait for assignment."
+    "noAthletes": "No linked athletes: invite your athletes or wait for assignment.",
+    "copyAction": "Copy session",
+    "clipboardBanner": "Copied: {title} · click “Paste” on a day",
+    "pasteHere": "Paste here",
+    "cancelCopy": "Cancel",
+    "copyWeekAction": "Copy week",
+    "copyWeekPickTarget": "Copy the week to…",
+    "copyWeekConfirm": "Copy",
+    "copyWeekResult": "Week copied: {copied} sessions · {skipped} already present · {forbidden} not allowed",
+    "copyError": "Copy failed: please try again."
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "You can't accept your own invite: this link should be sent to your coach.",

@@ -2,7 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
-import { Pencil } from "lucide-react";
+import { ClipboardPaste, Copy, Pencil } from "lucide-react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { plannedCalendarChipViewModel, type PlannedWorkoutFamily } from "@/lib/training/planned-workout-display";
@@ -40,8 +40,14 @@ export function CoachCalendarDayCell({
   dayIso,
   onOpenExecuted,
   onEditPlanned,
+  onCopyPlanned,
+  onPasteInto,
+  pasteActive,
+  pasteBusy,
   onDropSession,
   editActionLabel,
+  copyActionLabel,
+  pasteHereLabel,
   emptyHint,
   dropHint,
   moreLabel,
@@ -59,10 +65,22 @@ export function CoachCalendarDayCell({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Copia una riga planned nella clipboard in-memory della board. */
+  onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Incolla la seduta in clipboard su questa cella (atleta × giorno). */
+  onPasteInto?: (athleteId: string, dateIso: string) => void;
+  /** True quando la clipboard è piena: mostra il bottone «Incolla qui». */
+  pasteActive?: boolean;
+  /** True durante un'operazione di incolla in corso (disabilita i bottoni). */
+  pasteBusy?: boolean;
   /** Drop di una card libreria/preset sulla cella → assegna la seduta all'atleta in quella data. */
   onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   /** aria-label «Modifica seduta» (già tradotto). */
   editActionLabel?: string;
+  /** aria-label «Copia seduta» (già tradotto). */
+  copyActionLabel?: string;
+  /** Etichetta bottone «Incolla qui» (già tradotto). */
+  pasteHereLabel?: string;
   /** Testo screen-reader/placeholder per la cella vuota (già tradotto). */
   emptyHint: string;
   /** Suggerimento drop «Rilascia per assegnare» (già tradotto). */
@@ -83,6 +101,19 @@ export function CoachCalendarDayCell({
 
   const [dragOver, setDragOver] = useState(false);
   const canDrop = Boolean(onDropSession && athleteId && dayIso);
+  const canPaste = Boolean(pasteActive && onPasteInto && athleteId && dayIso);
+
+  const pasteButton = canPaste ? (
+    <button
+      type="button"
+      disabled={pasteBusy}
+      onClick={() => onPasteInto!(athleteId as string, dayIso as string)}
+      className="flex items-center justify-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-500/10 px-2 py-1 text-[0.6rem] font-semibold text-cyan-100 transition enabled:hover:border-cyan-300/60 enabled:hover:bg-cyan-500/20 disabled:cursor-default disabled:opacity-50"
+    >
+      <ClipboardPaste className="h-3 w-3" aria-hidden />
+      {pasteHereLabel}
+    </button>
+  ) : null;
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     if (!canDrop) return;
@@ -116,6 +147,8 @@ export function CoachCalendarDayCell({
       >
         {dragOver && dropHint ? (
           <span className="text-center text-[0.6rem] font-semibold text-cyan-200">{dropHint}</span>
+        ) : canPaste ? (
+          pasteButton
         ) : (
           <span className="text-[0.7rem] text-gray-700" aria-label={emptyHint}>
             ·
@@ -139,6 +172,8 @@ export function CoachCalendarDayCell({
         dragOver ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40" : "border-white/10 bg-black/25"
       }`}
     >
+      {canPaste ? pasteButton : null}
+
       {/* Banda PIANIFICATO */}
       <div className="flex flex-col gap-1">
         <span className="px-0.5 font-mono text-[0.55rem] uppercase tracking-[0.14em] text-gray-500">
@@ -149,6 +184,7 @@ export function CoachCalendarDayCell({
             {visiblePlanned.map((row, idx) => {
               const chip = plannedCalendarChipViewModel(coachCalendarRowToPlannedWorkout(row), { athleteFtpWatts });
               const canEdit = Boolean(onEditPlanned && athleteId && row.id);
+              const canCopy = Boolean(onCopyPlanned && athleteId && row.id);
               return (
                 <div
                   key={row.id ?? `${row.date}-${idx}`}
@@ -158,16 +194,31 @@ export function CoachCalendarDayCell({
                   <div className="flex items-center gap-1">
                     {chip.glyph ? <SportDisciplineGlyph glyph={chip.glyph} className="h-3.5 w-3.5 shrink-0" /> : null}
                     <span className="truncate text-[0.65rem] font-bold uppercase tracking-wide">{chip.sportLabel}</span>
-                    {canEdit ? (
-                      <button
-                        type="button"
-                        onClick={() => onEditPlanned!(row, athleteId as string)}
-                        aria-label={editActionLabel}
-                        title={editActionLabel}
-                        className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded text-current opacity-60 transition hover:opacity-100"
-                      >
-                        <Pencil className="h-3 w-3" aria-hidden />
-                      </button>
+                    {canCopy || canEdit ? (
+                      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                        {canCopy ? (
+                          <button
+                            type="button"
+                            onClick={() => onCopyPlanned!(row, athleteId as string)}
+                            aria-label={copyActionLabel}
+                            title={copyActionLabel}
+                            className="flex h-4 w-4 items-center justify-center rounded text-current opacity-60 transition hover:opacity-100"
+                          >
+                            <Copy className="h-3 w-3" aria-hidden />
+                          </button>
+                        ) : null}
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => onEditPlanned!(row, athleteId as string)}
+                            aria-label={editActionLabel}
+                            title={editActionLabel}
+                            className="flex h-4 w-4 items-center justify-center rounded text-current opacity-60 transition hover:opacity-100"
+                          >
+                            <Pencil className="h-3 w-3" aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   <div className="text-[0.65rem] font-medium tabular-nums opacity-90">

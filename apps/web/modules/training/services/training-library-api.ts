@@ -250,7 +250,7 @@ export async function clonePlannedWorkout(input: {
   sourceId: string;
   athleteId: string;
   date: string;
-}): Promise<{ ok: boolean; plannedWorkoutId?: string | null; error?: string }> {
+}): Promise<{ ok: boolean; plannedWorkoutId?: string | null; dedupeSkipped?: boolean; error?: string }> {
   const headers = await buildSupabaseAuthHeaders({ "Content-Type": "application/json" });
   const res = await fetch("/api/training/planned/clone", {
     method: "POST",
@@ -262,8 +262,9 @@ export async function clonePlannedWorkout(input: {
   const json = (await res.json().catch(() => ({}))) as {
     ok?: boolean;
     plannedWorkoutId?: string | null;
+    dedupeSkipped?: boolean;
     error?: string;
   };
   if (!res.ok || json.ok !== true) return { ok: false, error: json.error ?? "planned_clone_failed" };
-  return { ok: true, plannedWorkoutId: json.plannedWorkoutId ?? null };
+  return { ok: true, plannedWorkoutId: json.plannedWorkoutId ?? null, dedupeSkipped: json.dedupeSkipped === true };
 }

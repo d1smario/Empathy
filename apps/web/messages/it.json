@@ -4072,7 +4072,16 @@
     "rosterErrorNetwork": "Errore di rete nel caricamento degli atleti.",
     "rosterErrorLoad": "Impossibile caricare l’elenco atleti.",
     "rosterLoading": "Carico i tuoi atleti…",
-    "noAthletes": "Nessun atleta collegato: invita i tuoi atleti o attendi l’assegnazione."
+    "noAthletes": "Nessun atleta collegato: invita i tuoi atleti o attendi l’assegnazione.",
+    "copyAction": "Copia seduta",
+    "clipboardBanner": "Copiato: {title} · clicca «Incolla» su un giorno",
+    "pasteHere": "Incolla qui",
+    "cancelCopy": "Annulla",
+    "copyWeekAction": "Copia settimana",
+    "copyWeekPickTarget": "Copia la settimana su…",
+    "copyWeekConfirm": "Copia",
+    "copyWeekResult": "Settimana copiata: {copied} sedute · {skipped} già presenti · {forbidden} non consentite",
+    "copyError": "Copia non riuscita: riprova."
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.",
