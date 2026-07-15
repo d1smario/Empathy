@@ -1,0 +1,87 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import type { CanonicalAthleteRow } from "@/lib/athletes/canonical-profile";
+import { formatAthleteLabel } from "@/lib/coach/use-coach-roster";
+import { CoachCalendarDayCell } from "@/components/coach/CoachCalendarDayCell";
+import {
+  coachCalendarCellKey,
+  type CoachCalendarPlannedRow,
+} from "@/modules/training/services/use-coach-calendar-week";
+
+export type CoachCalendarDay = {
+  /** Giorno ISO `YYYY-MM-DD`. */
+  iso: string;
+  /** Etichetta giorno breve, già localizzata (es. "lun"). */
+  label: string;
+  /** Numero del giorno del mese. */
+  dayNum: string;
+  /** True se il giorno è oggi (evidenziazione colonna). */
+  isToday: boolean;
+};
+
+/**
+ * Griglia settimana × atleti (sola lettura): header 7 giorni, prima colonna sticky col nome
+ * atleta, una riga per atleta con 7 celle giorno. I giorni scorrono orizzontalmente, gli atleti
+ * verticalmente — UNA vista responsive (stessa struttura desktop/mobile, cambia solo il viewport).
+ */
+export function CoachCalendarWeekGrid({
+  athletes,
+  days,
+  cells,
+  athleteFtpWatts,
+}: {
+  athletes: CanonicalAthleteRow[];
+  days: CoachCalendarDay[];
+  cells: Map<string, CoachCalendarPlannedRow[]>;
+  athleteFtpWatts?: number | null;
+}) {
+  const t = useTranslations("CoachCalendarBoard");
+  const gridTemplate = { gridTemplateColumns: `minmax(9rem, 12rem) repeat(${days.length}, minmax(7.5rem, 1fr))` };
+
+  return (
+    <div className="max-h-[70vh] overflow-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+      <div className="min-w-[46rem]">
+        {/* Header giorni: sticky in alto; prima colonna sticky a sinistra (angolo). */}
+        <div className="sticky top-0 z-20 grid border-b border-white/10 bg-zinc-950/95 backdrop-blur" style={gridTemplate}>
+          <div className="sticky left-0 z-10 flex items-center border-r border-white/10 bg-zinc-950/95 px-3 py-2 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
+            {t("athleteColumn")}
+          </div>
+          {days.map((day) => (
+            <div
+              key={day.iso}
+              className={`flex flex-col items-center gap-0.5 px-2 py-2 text-center ${
+                day.isToday ? "bg-cyan-500/10" : ""
+              }`}
+            >
+              <span className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-gray-500">{day.label}</span>
+              <span className={`text-sm font-bold tabular-nums ${day.isToday ? "text-cyan-200" : "text-gray-300"}`}>
+                {day.dayNum}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Una riga per atleta. */}
+        {athletes.map((athlete) => (
+          <div key={athlete.id} className="grid border-b border-white/5 last:border-b-0" style={gridTemplate}>
+            <div className="sticky left-0 z-10 flex min-w-0 flex-col justify-center border-r border-white/10 bg-zinc-950/95 px-3 py-2">
+              <p className="truncate text-sm font-medium text-white">{formatAthleteLabel(athlete)}</p>
+              {athlete.email ? <p className="truncate text-[0.7rem] text-gray-500">{athlete.email}</p> : null}
+            </div>
+            {days.map((day) => (
+              <div key={`${athlete.id}-${day.iso}`} className={`p-1 ${day.isToday ? "bg-cyan-500/5" : ""}`}>
+                <CoachCalendarDayCell
+                  rows={cells.get(coachCalendarCellKey(athlete.id, day.iso)) ?? []}
+                  emptyHint={t("cellEmpty")}
+                  moreLabel={(count) => t("moreInCell", { count })}
+                  athleteFtpWatts={athleteFtpWatts}
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

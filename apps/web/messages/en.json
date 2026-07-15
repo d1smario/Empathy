@@ -4023,10 +4023,33 @@
   "CalendarioPage": {
     "eyebrow": "Calendar · Coach",
     "title": "Calendar",
-    "description": "Coach agenda. Module coming soon: here you’ll find appointments, sessions, and commitments for your account.",
-    "comingSoonTitle": "Coming soon",
-    "comingSoonSubtitle": "Coach calendar",
-    "comingSoonBody": "We’re defining the coach’s operational calendar. It stays a fixed item in your account, independent of the selected athlete."
+    "description": "Coach agenda: your athletes’ week at a glance, with the sessions already planned."
+  },
+  "CoachCalendarBoard": {
+    "sourcesTitle": "Library sessions",
+    "sourcesHint": "Drag onto a day · coming soon",
+    "sourcesLoading": "Loading sessions…",
+    "sourcesError": "Couldn’t load the session library.",
+    "sourcesEmpty": "No library sessions yet: create one in the Builder and save it to the library.",
+    "family": {
+      "aerobic": "Aerobic",
+      "strength": "Strength",
+      "technical": "Technical",
+      "lifestyle": "Lifestyle"
+    },
+    "athleteColumn": "Athlete",
+    "cellEmpty": "No planned session",
+    "moreInCell": "+{count}",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "today": "Today",
+    "weekLoading": "Refreshing…",
+    "weekError": "Couldn’t load this week’s sessions.",
+    "coachSuspended": "Your coach account is suspended: contact support to reactivate it.",
+    "rosterErrorNetwork": "Network error while loading athletes.",
+    "rosterErrorLoad": "Couldn’t load the athlete list.",
+    "rosterLoading": "Loading your athletes…",
+    "noAthletes": "No linked athletes: invite your athletes or wait for assignment."
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "You can't accept your own invite: this link should be sent to your coach.",

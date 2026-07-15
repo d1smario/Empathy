@@ -4023,10 +4023,33 @@
   "CalendarioPage": {
     "eyebrow": "Calendario · Coach",
     "title": "Calendario",
-    "description": "Agenda del coach. Modulo in arrivo: qui troverai appuntamenti, sessioni e impegni del tuo account.",
-    "comingSoonTitle": "In arrivo",
-    "comingSoonSubtitle": "Calendario del coach",
-    "comingSoonBody": "Stiamo definendo il calendario operativo del coach. Resta una voce fissa del tuo account, indipendente dall’atleta selezionato."
+    "description": "Agenda del coach: la settimana dei tuoi atleti in un colpo d’occhio, con le sedute già pianificate."
+  },
+  "CoachCalendarBoard": {
+    "sourcesTitle": "Sedute libreria",
+    "sourcesHint": "Trascina su un giorno · in arrivo",
+    "sourcesLoading": "Carico le sedute…",
+    "sourcesError": "Impossibile caricare la libreria sedute.",
+    "sourcesEmpty": "Nessuna seduta in libreria: creala dal Builder e salvala in libreria.",
+    "family": {
+      "aerobic": "Aerobico",
+      "strength": "Forza",
+      "technical": "Tecnico",
+      "lifestyle": "Lifestyle"
+    },
+    "athleteColumn": "Atleta",
+    "cellEmpty": "Nessuna seduta pianificata",
+    "moreInCell": "+{count}",
+    "prevWeek": "Settimana precedente",
+    "nextWeek": "Settimana successiva",
+    "today": "Oggi",
+    "weekLoading": "Aggiorno…",
+    "weekError": "Impossibile caricare le sedute della settimana.",
+    "coachSuspended": "Il tuo account coach è sospeso: contatta il supporto per riattivarlo.",
+    "rosterErrorNetwork": "Errore di rete nel caricamento degli atleti.",
+    "rosterErrorLoad": "Impossibile caricare l’elenco atleti.",
+    "rosterLoading": "Carico i tuoi atleti…",
+    "noAthletes": "Nessun atleta collegato: invita i tuoi atleti o attendi l’assegnazione."
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.",
