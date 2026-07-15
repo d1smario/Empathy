@@ -206,6 +206,35 @@ export type DietDayConfig = {
   };
 };
 
+/**
+ * Alimento del nostro DB (FDC) escluso a mano dall'atleta. È una chiave GLOBALE
+ * di `nutrition_config` (`excluded_fdc_foods`), NON per-giorno: vale per tutta la
+ * settimana. Solo UI + storage: il motore/generatore la leggerà in un passo
+ * successivo (1b).
+ */
+export type ExcludedFdcFood = { fdcId: number; label: string };
+
+/**
+ * Legge/normalizza `nutrition_config.excluded_fdc_foods` in modo difensivo:
+ * tollera valori mancanti, JSON malformato o chiavi extra, tiene solo record con
+ * `fdcId` numerico + `label` non vuota e deduplica per `fdcId`.
+ */
+export function parseExcludedFdcFoods(value: unknown): ExcludedFdcFood[] {
+  if (!Array.isArray(value)) return [];
+  const out: ExcludedFdcFood[] = [];
+  const seen = new Set<number>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const rec = raw as Record<string, unknown>;
+    const fdcId = Number(rec.fdcId ?? rec.fdc_id);
+    const label = typeof rec.label === "string" ? rec.label.trim() : "";
+    if (!Number.isFinite(fdcId) || !label || seen.has(fdcId)) continue;
+    seen.add(fdcId);
+    out.push({ fdcId, label });
+  }
+  return out;
+}
+
 export function defaultRoutineDayConfig(): RoutineDayConfig {
   return {
     wake_time: "06:30",

@@ -1,10 +1,12 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   WeekDay,
   DietDayConfig,
+  ExcludedFdcFood,
   dietOptions,
   weekDays,
   toggleCsvToken,
@@ -37,6 +39,17 @@ export type ProfileNutritionSectionProps = {
   activeSupplementCategory: string;
   setActiveSupplementCategory: Dispatch<SetStateAction<string>>;
   updateDietDay: (day: WeekDay, patch: Partial<DietDayConfig>) => void;
+  /** Esclusioni-cibo strutturate dal DB (globali): nutrition_config.excluded_fdc_foods */
+  excludedFdcFoods: ExcludedFdcFood[];
+  setExcludedFdcFoods: Dispatch<SetStateAction<ExcludedFdcFood[]>>;
+};
+
+/** Item della risposta /api/nutrition/food-lookup (solo i campi usati qui). */
+type FoodLookupResult = {
+  fdcId: number | null;
+  label: string;
+  brand: string | null;
+  kcal_100: number | null;
 };
 
 export function ProfileNutritionSection({
@@ -51,9 +64,71 @@ export function ProfileNutritionSection({
   activeSupplementCategory,
   setActiveSupplementCategory,
   updateDietDay,
+  excludedFdcFoods,
+  setExcludedFdcFoods,
 }: ProfileNutritionSectionProps) {
   const t = useTranslations("ProfileNutritionSection");
   void setDietWeekPlan;
+
+  // «Alimenti da evitare (dal database)»: ricerca nel nostro DB via
+  // /api/nutrition/food-lookup, stessa logica del picker pasti (debounce →
+  // lista risultati → click per aggiungere). Solo cibi con fdcId numerico.
+  const [foodQuery, setFoodQuery] = useState("");
+  const [foodResults, setFoodResults] = useState<FoodLookupResult[]>([]);
+  const [foodSearching, setFoodSearching] = useState(false);
+  const [foodSearched, setFoodSearched] = useState(false);
+
+  useEffect(() => {
+    const q = foodQuery.trim();
+    if (q.length < 2) {
+      setFoodResults([]);
+      setFoodSearching(false);
+      setFoodSearched(false);
+      return;
+    }
+    let cancelled = false;
+    setFoodSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/nutrition/food-lookup?q=${encodeURIComponent(q)}`, { method: "GET" });
+        const payload = (await res.json()) as { items?: FoodLookupResult[] };
+        if (cancelled) return;
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        setFoodResults(
+          items
+            .filter((i) => typeof i.fdcId === "number" && Number.isFinite(i.fdcId) && Boolean(i.label))
+            .slice(0, 8),
+        );
+      } catch {
+        if (!cancelled) setFoodResults([]);
+      } finally {
+        if (!cancelled) {
+          setFoodSearching(false);
+          setFoodSearched(true);
+        }
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [foodQuery]);
+
+  function addExcludedFood(item: FoodLookupResult) {
+    if (typeof item.fdcId !== "number" || !Number.isFinite(item.fdcId)) return;
+    const fdcId = item.fdcId;
+    const label = item.label.trim();
+    if (!label) return;
+    setExcludedFdcFoods((prev) => (prev.some((f) => f.fdcId === fdcId) ? prev : [...prev, { fdcId, label }]));
+    setFoodQuery("");
+    setFoodResults([]);
+    setFoodSearched(false);
+  }
+
+  function removeExcludedFood(fdcId: number) {
+    setExcludedFdcFoods((prev) => prev.filter((f) => f.fdcId !== fdcId));
+  }
+
   return (
     <div>
       <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "24px" }}>
@@ -175,6 +250,62 @@ export function ProfileNutritionSection({
           <div className="form-group"><label className="form-label">{t("intolerancesCsv")}</label><input className="form-input" type="text" value={form.intolerances} onChange={(e) => setForm((f) => ({ ...f, intolerances: e.target.value }))} /></div>
           <div className="form-group"><label className="form-label">{t("allergiesCsv")}</label><input className="form-input" type="text" value={form.allergies} onChange={(e) => setForm((f) => ({ ...f, allergies: e.target.value }))} /></div>
           <div className="form-group"><label className="form-label">{t("excludedFoodsCsv")}</label><input className="form-input" type="text" value={form.food_exclusions} onChange={(e) => setForm((f) => ({ ...f, food_exclusions: e.target.value }))} /></div>
+
+          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("excludedFdcFoodsLabel")}</h4>
+            <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("excludedFdcFoodsHint")}</p>
+            <div className="form-group">
+              <input
+                className="form-input"
+                type="text"
+                value={foodQuery}
+                onChange={(e) => setFoodQuery(e.target.value)}
+                placeholder={t("excludedFdcFoodsSearchPlaceholder")}
+                aria-label={t("excludedFdcFoodsLabel")}
+              />
+            </div>
+            {foodSearching ? (
+              <p className="text-[11px] text-slate-400">{t("excludedFdcFoodsSearching")}</p>
+            ) : foodResults.length > 0 ? (
+              <div className="profile-chip-grid" style={{ marginTop: "4px" }}>
+                {foodResults.map((r) => (
+                  <button
+                    key={r.fdcId}
+                    type="button"
+                    className="profile-black-chip"
+                    onClick={() => addExcludedFood(r)}
+                  >
+                    {[r.brand, r.label].filter(Boolean).join(" · ")}
+                  </button>
+                ))}
+              </div>
+            ) : foodSearched && foodQuery.trim().length >= 2 ? (
+              <p className="text-[11px] text-slate-400">{t("excludedFdcFoodsNoResults")}</p>
+            ) : null}
+
+            {excludedFdcFoods.length > 0 ? (
+              <div className="profile-chip-grid" style={{ marginTop: "16px" }}>
+                {excludedFdcFoods.map((food) => (
+                  <span
+                    key={food.fdcId}
+                    className="profile-black-chip active"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+                  >
+                    {food.label}
+                    <button
+                      type="button"
+                      onClick={() => removeExcludedFood(food.fdcId)}
+                      aria-label={t("excludedFdcFoodsRemoveAria", { label: food.label })}
+                      style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", fontSize: "14px", lineHeight: 1, padding: 0 }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <div className="alert-warning">{t("intolerancesWarning")}</div>
         </div>
       )}
