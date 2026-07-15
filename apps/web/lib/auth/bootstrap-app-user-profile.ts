@@ -182,5 +182,16 @@ export async function bootstrapAppUserProfile(
     }
   }
 
+  // Nome CANONICO su app_user_profiles (fonte unica display name, per atleti E coach:
+  // athlete_profiles si scollega alla promozione a coach, questa colonna no). Scriviamo
+  // solo i campi valorizzati per non azzerare un nome esistente con un bootstrap ripetuto
+  // (es. dal callback conferma-email senza metadata). Best-effort: non blocca il signup.
+  const namePatch: Record<string, string> = {};
+  if (firstName) namePatch.first_name = firstName;
+  if (lastName) namePatch.last_name = lastName;
+  if (Object.keys(namePatch).length > 0) {
+    await db.from("app_user_profiles").update(namePatch).eq("user_id", input.userId);
+  }
+
   return { error: null };
 }

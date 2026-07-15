@@ -41,6 +41,19 @@ export async function resolveCoachDisplayName(
   coachUserId: string,
 ): Promise<string | null> {
   try {
+    // Fonte CANONICA: app_user_profiles.first_name/last_name (una riga per account,
+    // popolata al bootstrap per atleti E coach, non si scollega alla promozione).
+    const { data: prof } = await admin
+      .from("app_user_profiles")
+      .select("first_name, last_name")
+      .eq("user_id", coachUserId)
+      .maybeSingle();
+    const canonical = joinName(
+      (prof as { first_name?: string })?.first_name,
+      (prof as { last_name?: string })?.last_name,
+    );
+    if (canonical) return canonical;
+
     const { data, error } = await admin.auth.admin.getUserById(coachUserId);
     if (error || !data?.user) return null;
     const user = data.user;
