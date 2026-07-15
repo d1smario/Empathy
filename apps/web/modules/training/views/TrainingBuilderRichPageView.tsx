@@ -1234,49 +1234,6 @@ export default function TrainingBuilderRichPageView() {
           setSport={setSport}
         />
 
-        {/* [G1] Punti di partenza: scatola compatta con TRE bottoni; ognuno apre un
-            modale con la sezione esistente (Genera motore / picker libreria / import
-            FIT·ZWO·ERG). All'azione riuscita il modale si chiude e la tela sotto
-            (anteprima + editor) resta popolata, pronta da rifinire e salvare. */}
-        <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
-              {t("startPointsHeading")}
-            </span>
-            <span className="h-px flex-1 bg-white/10" aria-hidden />
-          </div>
-          <p className="mt-2 text-xs text-gray-400">{t("startPointsIntro")}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              onClick={() => setStartPointModal("generate")}
-            >
-              {t("startPointGenerate")}
-            </Pro2Button>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              onClick={() => setStartPointModal("library")}
-              title={t("pickFromLibraryHint")}
-            >
-              {t("pickFromLibrary")}
-            </Pro2Button>
-            <Pro2Button
-              type="button"
-              variant="secondary"
-              className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
-              disabled={!athleteId}
-              title={!athleteId ? t("importNeedsAthlete") : t("startPointImportHint")}
-              onClick={() => setStartPointModal("import")}
-            >
-              {t("startPointImport")}
-            </Pro2Button>
-          </div>
-        </div>
-
         {/* Esito import: mostrato in pagina (il modale si chiude a import riuscito). */}
         {structuredImportOk ? <p className="text-sm text-emerald-200/90">{structuredImportOk}</p> : null}
 
@@ -1440,6 +1397,50 @@ export default function TrainingBuilderRichPageView() {
           manualSession={manualSession}
           manualTssPreview={manualTssPreview}
           hideSaveBar
+          intro={
+            /* [G1] Punti di partenza: in testa al box «Costruisci seduta». TRE bottoni;
+               ognuno apre un modale con la sezione esistente (Genera motore / picker
+               libreria / import FIT·ZWO·ERG). All'azione riuscita il modale si chiude e
+               la tela sotto (anteprima + editor) resta popolata, pronta da rifinire. */
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-gray-500">
+                  {t("startPointsHeading")}
+                </span>
+                <span className="h-px flex-1 bg-white/10" aria-hidden />
+              </div>
+              <p className="mt-2 text-xs text-gray-400">{t("startPointsIntro")}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+                  onClick={() => setStartPointModal("generate")}
+                >
+                  {t("startPointGenerate")}
+                </Pro2Button>
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+                  onClick={() => setStartPointModal("library")}
+                  title={t("pickFromLibraryHint")}
+                >
+                  {t("pickFromLibrary")}
+                </Pro2Button>
+                <Pro2Button
+                  type="button"
+                  variant="secondary"
+                  className="!border-orange-500/30 !bg-orange-500/10 !text-orange-100 hover:!border-orange-400/50 hover:!bg-orange-500/20"
+                  disabled={!athleteId}
+                  title={!athleteId ? t("importNeedsAthlete") : t("startPointImportHint")}
+                  onClick={() => setStartPointModal("import")}
+                >
+                  {t("startPointImport")}
+                </Pro2Button>
+              </div>
+            </div>
+          }
           footer={
             <div className="mt-5 border-t border-orange-500/20 pt-5">
               <p className="text-sm font-bold text-white">

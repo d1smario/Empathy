@@ -287,6 +287,8 @@ export type BuilderManualComposerProps = {
   macroFamily: SportMacroId;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in TESTA al box: «Punti di partenza» (Genera / Seleziona / Importa). */
+  intro?: React.ReactNode;
   /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
   footer?: React.ReactNode;
 };
@@ -321,6 +323,7 @@ export function BuilderManualComposer({
   estimatedTss,
   macroFamily,
   hideSaveBar,
+  intro,
   footer,
 }: BuilderManualComposerProps) {
   const t = useTranslations("BuilderManualComposer");
@@ -493,6 +496,8 @@ export function BuilderManualComposer({
           </span>
         ) : null}
       </div>
+
+      {intro ? <div className="mt-4">{intro}</div> : null}
 
       {/* FIX B — Nome sessione (SINISTRA, flessibile) + Durata seduta read-only (DESTRA) sulla STESSA riga.
           La durata è la somma delle durate blocchi (dai segmenti del grafico): è quella che il salvataggio

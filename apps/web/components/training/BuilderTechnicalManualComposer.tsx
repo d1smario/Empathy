@@ -89,6 +89,8 @@ export type BuilderTechnicalManualComposerProps = {
   estimatedTss: number;
   /** Quando true, nasconde la barra di salvataggio interna (bottoni Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in TESTA al box: «Punti di partenza» (Genera / Seleziona / Importa). */
+  intro?: React.ReactNode;
   /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
   footer?: React.ReactNode;
 };
@@ -149,6 +151,7 @@ export function BuilderTechnicalManualComposer({
   canSave,
   estimatedTss,
   hideSaveBar,
+  intro,
   footer,
 }: BuilderTechnicalManualComposerProps) {
   const t = useTranslations("BuilderTechnicalManualComposer");
@@ -262,6 +265,8 @@ export function BuilderTechnicalManualComposer({
           </span>
         ) : null}
       </div>
+
+      {intro ? <div className="mt-4">{intro}</div> : null}
 
       <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/45 p-3">
         <p className="text-[0.6rem] font-bold uppercase tracking-wider text-orange-200/90">{t("sessionModule")}</p>

@@ -68,6 +68,8 @@ export type BuilderManualComposerSwitchProps = {
   /** Nasconde la barra salva interna del composer: il salvataggio è accentrato
    *  nella barra «Salva» unica dell'orchestratore. */
   hideSaveBar?: boolean;
+  /** «Punti di partenza», reso in testa al box del composer attivo. */
+  intro?: React.ReactNode;
   /** Footer «Salva» unico dell'orchestratore, reso in coda al box del composer attivo. */
   footer?: React.ReactNode;
 };
@@ -115,6 +117,7 @@ export function BuilderManualComposerSwitch({
   manualSession,
   manualTssPreview,
   hideSaveBar,
+  intro,
   footer,
 }: BuilderManualComposerSwitchProps) {
   return (
@@ -141,6 +144,7 @@ export function BuilderManualComposerSwitch({
             canSave={Boolean(manualSession)}
             hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
+            intro={intro}
             footer={footer}
           />
         ) : activeMacroId === "technical" ? (
@@ -170,6 +174,7 @@ export function BuilderManualComposerSwitch({
             canSave={Boolean(manualSession)}
             hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
+            intro={intro}
             footer={footer}
           />
         ) : activeMacroId === "lifestyle" ? (
@@ -194,6 +199,7 @@ export function BuilderManualComposerSwitch({
             canSave={Boolean(manualSession)}
             hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
+            intro={intro}
             footer={footer}
           />
         ) : (
@@ -227,6 +233,7 @@ export function BuilderManualComposerSwitch({
             canSave={Boolean(manualSession)}
             hideSaveBar={hideSaveBar}
             estimatedTss={manualTssPreview}
+            intro={intro}
             footer={footer}
           />
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { GripVertical, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -139,6 +139,10 @@ function SortableBlockBar({
   const t = useTranslations("BuilderManualComposer");
   const { block, index, totalSeconds } = group;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  // Trascina ≠ seleziona: memorizza dove è iniziato il pointer (fase di cattura, così
+  // non interferisce coi listeners dnd-kit in bubble); a fine gesto l'onClick seleziona
+  // solo se è stato un click «fermo» (spostamento ≤5px e non un drag).
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -155,7 +159,16 @@ function SortableBlockBar({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onSelect(index)}
+      onPointerDownCapture={(e) => {
+        pointerStart.current = { x: e.clientX, y: e.clientY };
+      }}
+      onClick={(e) => {
+        const s = pointerStart.current;
+        pointerStart.current = null;
+        if (isDragging) return;
+        if (s && (Math.abs(e.clientX - s.x) > 5 || Math.abs(e.clientY - s.y) > 5)) return;
+        onSelect(index);
+      }}
       {...attributes}
       {...listeners}
       className={`group relative flex min-w-[2.75rem] cursor-grab touch-none flex-col active:cursor-grabbing ${isDragging ? "opacity-70" : ""}`}

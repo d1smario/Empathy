@@ -84,6 +84,8 @@ export type BuilderGymManualComposerProps = {
   estimatedTss: number;
   /** Quando true, nasconde la barra di salvataggio interna (date + Salva + messaggi). */
   hideSaveBar?: boolean;
+  /** Slot in TESTA al box: «Punti di partenza» (Genera / Seleziona / Importa). */
+  intro?: React.ReactNode;
   /** Slot in coda al box: salvataggio unico dell'orchestratore (Data/Ora + Salva). */
   footer?: React.ReactNode;
 };
@@ -109,6 +111,7 @@ export function BuilderGymManualComposer({
   canSave,
   estimatedTss,
   hideSaveBar,
+  intro,
   footer,
 }: BuilderGymManualComposerProps) {
   const t = useTranslations("BuilderGymManualComposer");
@@ -203,6 +206,8 @@ export function BuilderGymManualComposer({
           </span>
         ) : null}
       </div>
+
+      {intro ? <div className="mt-4">{intro}</div> : null}
 
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreviewTitle")} estimatedTss={estimatedTss} />
