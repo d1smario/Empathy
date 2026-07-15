@@ -209,6 +209,23 @@ export function BuilderGymManualComposer({
 
       {intro ? <div className="mt-4">{intro}</div> : null}
 
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <label className="block min-w-[12rem] flex-1">
+          <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{t("sessionName")}</span>
+          <input
+            type="text"
+            className="w-full rounded-xl border border-white/15 bg-black/50 px-3 py-2.5 text-base font-semibold text-white"
+            value={manualSessionName}
+            onChange={(e) => setManualSessionName(e.target.value)}
+          />
+        </label>
+        <div className="flex shrink-0 flex-col items-end leading-tight">
+          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-gray-500">{t("sessionDurationReadonly")}</span>
+          <span className="font-mono text-lg font-semibold text-white">{structureMinutesFromChart}′</span>
+          <span className="text-[0.6rem] text-gray-500">{t("sessionDurationFromBlocks")}</span>
+        </div>
+      </div>
+
       <div className="mt-4 rounded-2xl border border-orange-500/30 bg-black/45 p-3 shadow-inner">
         <SessionBlockIntensityChart segments={manualChartSegments} title={t("sessionPreviewTitle")} estimatedTss={estimatedTss} />
         <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-950/40 to-orange-950/25 px-3 py-2.5">
@@ -226,13 +243,6 @@ export function BuilderGymManualComposer({
               ))}
             </select>
           </label>
-          <p className="max-w-md pb-1 text-[0.65rem] leading-relaxed text-gray-500">
-            {t.rich("estimatedTimeFromChart", {
-              minutes: () => (
-                <span className="font-mono font-semibold text-orange-200/90">~{structureMinutesFromChart} min</span>
-              ),
-            })}
-          </p>
         </div>
       </div>
 
@@ -343,18 +353,6 @@ export function BuilderGymManualComposer({
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-orange-500/25 bg-black/35 p-3">
-        <label className="flex max-w-xl flex-col gap-1 text-[0.65rem] text-gray-400">
-          {t("sessionName")}
-          <input
-            type="text"
-            className="rounded-lg border border-orange-400/30 bg-black/50 px-2 py-2 text-sm text-white"
-            value={manualSessionName}
-            onChange={(e) => setManualSessionName(e.target.value)}
-          />
-        </label>
       </div>
 
       <div className="mt-4 space-y-3">
