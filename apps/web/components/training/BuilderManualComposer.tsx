@@ -402,7 +402,7 @@ export function BuilderManualComposer({
       next.splice(to, 0, moved!);
       return next;
     });
-    setActiveIndex(to);
+    setActiveIndex((prev) => (prev < 0 ? -1 : to));
   };
 
   const handleBlockDragEnd = (event: DragEndEvent) => {

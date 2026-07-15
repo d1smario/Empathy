@@ -290,7 +290,7 @@ export default function TrainingBuilderRichPageView() {
   const [manualSaveBusy, setManualSaveBusy] = useState(false);
   const [manualSaveErr, setManualSaveErr] = useState<string | null>(null);
   const [manualSaveOkId, setManualSaveOkId] = useState<string | null>(null);
-  const [manualActiveIndex, setManualActiveIndex] = useState(0);
+  const [manualActiveIndex, setManualActiveIndex] = useState(-1);
   // [M1] Import FIT/ZWO/ERG/MRC direttamente nell'editor manuale (anteprima editabile,
   // niente scrittura DB): parse server-side → contratto → idratazione dello stato Builder.
   const importStructuredInputRef = useRef<HTMLInputElement | null>(null);
@@ -466,7 +466,7 @@ export default function TrainingBuilderRichPageView() {
       setGymManualRows(state.gymManualRows);
       setTechnicalManualRows(state.technicalManualRows);
       setLifestyleManualRows(state.lifestyleManualRows);
-      setManualActiveIndex(0);
+      setManualActiveIndex(-1);
       if (opts?.scroll !== false) {
         requestAnimationFrame(() => {
           document.getElementById("builder-manual-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
