@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { BrutalistAppBackdrop } from "@/components/shell/BrutalistAppBackdrop";
 import { Navbar } from "@/components/marketing/Navbar";
 import { FooterSection } from "@/components/marketing/FooterSection";
 import { VetrinaFaqList } from "@/components/marketing/vetrina/VetrinaFaqList";
 import { VetrinaEventsList } from "@/components/marketing/vetrina/VetrinaEventsList";
+import { VetrinaContactForm } from "@/components/marketing/vetrina/VetrinaContactForm";
 import { loadPublishedFaq } from "@/lib/marketing/faq";
 import { loadPublishedUpcomingEvents } from "@/lib/marketing/events";
 import { resolveRequestLocale } from "@/lib/i18n/resolve-request-locale";
@@ -22,6 +22,7 @@ export default async function FaqPage() {
   const locale = await resolveRequestLocale();
   const t = await getTranslations("Vetrina.faq");
   const te = await getTranslations("Vetrina.events");
+  const tc = await getTranslations("Vetrina.contact");
   const [items, events] = await Promise.all([loadPublishedFaq(locale), loadPublishedUpcomingEvents(locale)]);
 
   return (
@@ -48,17 +49,16 @@ export default async function FaqPage() {
             </div>
           </section>
 
-          {/* ultimo box: contattaci */}
+          {/* ultima sezione: contatti (stesso form di /contatti) */}
           <section className="mt-20">
-            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-purple-600/15 to-pink-600/15 p-8 text-center">
-              <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl">{t("ctaTitle")}</h2>
-              <p className="mx-auto mt-2 max-w-md text-sm text-gray-300">{t("ctaBody")}</p>
-              <Link
-                href="/contatti"
-                className="empathy-btn-gradient mt-5 inline-block rounded-full px-7 py-3 text-sm font-bold text-white shadow-lg shadow-purple-500/25"
-              >
-                {t("cta")}
-              </Link>
+            <div className="mx-auto max-w-2xl">
+              <div className="text-center">
+                <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{tc("title")}</h2>
+                <p className="mx-auto mt-3 max-w-xl text-sm text-gray-400 sm:text-base">{tc("sub")}</p>
+              </div>
+              <div className="mt-8">
+                <VetrinaContactForm />
+              </div>
             </div>
           </section>
         </div>
