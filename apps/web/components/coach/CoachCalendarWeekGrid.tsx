@@ -32,6 +32,7 @@ export function CoachCalendarWeekGrid({
   cells,
   executedCells,
   onOpenExecuted,
+  onEditPlanned,
   athleteFtpWatts,
 }: {
   athletes: CanonicalAthleteRow[];
@@ -41,6 +42,8 @@ export function CoachCalendarWeekGrid({
   executedCells?: Map<string, ExecutedWorkout[]>;
   /** Apre l'analisi di una seduta eseguita cliccata. */
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
+  /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
+  onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
   athleteFtpWatts?: number | null;
 }) {
   const t = useTranslations("CoachCalendarBoard");
@@ -84,6 +87,8 @@ export function CoachCalendarWeekGrid({
                   athleteId={athlete.id}
                   dayIso={day.iso}
                   onOpenExecuted={onOpenExecuted}
+                  onEditPlanned={onEditPlanned}
+                  editActionLabel={t("editAction")}
                   emptyHint={t("cellEmpty")}
                   moreLabel={(count) => t("moreInCell", { count })}
                   plannedBandLabel={t("plannedBand")}

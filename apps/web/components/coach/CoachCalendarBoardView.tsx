@@ -11,7 +11,14 @@ import {
   type CoachCalendarDay,
 } from "@/components/coach/CoachCalendarWeekGrid";
 import { CoachSessionAnalysisModal } from "@/components/coach/CoachSessionAnalysisModal";
-import { useCoachCalendarWeek } from "@/modules/training/services/use-coach-calendar-week";
+import {
+  CalendarSessionEditModal,
+  type CalendarEditPlannedRow,
+} from "@/components/coach/CalendarSessionEditModal";
+import {
+  useCoachCalendarWeek,
+  type CoachCalendarPlannedRow,
+} from "@/modules/training/services/use-coach-calendar-week";
 import { useCoachCalendarExecutedWeek } from "@/modules/training/services/use-coach-calendar-executed-week";
 import { fetchCoachLibraryItems } from "@/modules/training/services/training-library-api";
 import { loadAerobicStarterPresetsClient } from "@/lib/training/library/aerobic-starter-presets-client";
@@ -79,7 +86,11 @@ export function CoachCalendarBoardView() {
   }, [weekOffset, locale, todayKey]);
 
   const athleteIds = useMemo(() => athletes.map((a) => a.id), [athletes]);
-  const { cells, loading: weekLoading, error: weekError } = useCoachCalendarWeek(athleteIds, weekFrom, weekTo);
+  const { cells, loading: weekLoading, error: weekError, refetch: refetchWeek } = useCoachCalendarWeek(
+    athleteIds,
+    weekFrom,
+    weekTo,
+  );
   const { cellMap: executedCells } = useCoachCalendarExecutedWeek(athleteIds, weekFrom, weekTo);
 
   // Popup «Analisi allenamento»: stato sollevato qui, montato in fondo alla vista.
@@ -93,6 +104,17 @@ export function CoachCalendarBoardView() {
     setSessionModal({ open: true, executed, athleteId, dateIso: dayIso });
   }, []);
   const closeSessionModal = useCallback(() => setSessionModal((s) => ({ ...s, open: false })), []);
+
+  // Popup «Modifica seduta pianificata»: editor del Builder in un modale, salvataggio in-place.
+  const [editOpen, setEditOpen] = useState(false);
+  const [editRow, setEditRow] = useState<CalendarEditPlannedRow | null>(null);
+  const onEditPlanned = useCallback((row: CoachCalendarPlannedRow, athleteId: string) => {
+    if (!row.id) return;
+    setEditRow({ id: row.id, athleteId, date: String(row.date ?? "").slice(0, 10) });
+    setEditOpen(true);
+  }, []);
+  const closeEditModal = useCallback(() => setEditOpen(false), []);
+  const onEditSaved = useCallback(() => refetchWeek(), [refetchWeek]);
 
   // Pannello sorgenti (sinistra) a DUE sorgenti — SOLA LETTURA (nessun drag/applicazione).
   const [sourceTab, setSourceTab] = useState<SourceTab>("coach");
@@ -314,6 +336,7 @@ export function CoachCalendarBoardView() {
             cells={cells}
             executedCells={executedCells}
             onOpenExecuted={openExecuted}
+            onEditPlanned={onEditPlanned}
           />
         ) : null}
       </section>
@@ -324,6 +347,13 @@ export function CoachCalendarBoardView() {
         athleteId={sessionModal.athleteId}
         dateIso={sessionModal.dateIso}
         onClose={closeSessionModal}
+      />
+
+      <CalendarSessionEditModal
+        open={editOpen}
+        plannedRow={editRow}
+        onClose={closeEditModal}
+        onSaved={onEditSaved}
       />
     </div>
   );

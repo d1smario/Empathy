@@ -1,6 +1,7 @@
 "use client";
 
 import type { ExecutedWorkout } from "@empathy/domain-training";
+import { Pencil } from "lucide-react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { plannedCalendarChipViewModel, type PlannedWorkoutFamily } from "@/lib/training/planned-workout-display";
@@ -32,6 +33,8 @@ export function CoachCalendarDayCell({
   athleteId,
   dayIso,
   onOpenExecuted,
+  onEditPlanned,
+  editActionLabel,
   emptyHint,
   moreLabel,
   plannedBandLabel,
@@ -46,6 +49,10 @@ export function CoachCalendarDayCell({
   dayIso?: string;
   /** Apre l'analisi di una seduta eseguita. */
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
+  /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
+  onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** aria-label «Modifica seduta» (già tradotto). */
+  editActionLabel?: string;
   /** Testo screen-reader/placeholder per la cella vuota (già tradotto). */
   emptyHint: string;
   /** Funzione copia "+N" (già tradotta) per gli extra oltre il limite. */
@@ -88,6 +95,7 @@ export function CoachCalendarDayCell({
           <>
             {visiblePlanned.map((row, idx) => {
               const chip = plannedCalendarChipViewModel(coachCalendarRowToPlannedWorkout(row), { athleteFtpWatts });
+              const canEdit = Boolean(onEditPlanned && athleteId && row.id);
               return (
                 <div
                   key={row.id ?? `${row.date}-${idx}`}
@@ -97,6 +105,17 @@ export function CoachCalendarDayCell({
                   <div className="flex items-center gap-1">
                     {chip.glyph ? <SportDisciplineGlyph glyph={chip.glyph} className="h-3.5 w-3.5 shrink-0" /> : null}
                     <span className="truncate text-[0.65rem] font-bold uppercase tracking-wide">{chip.sportLabel}</span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => onEditPlanned!(row, athleteId as string)}
+                        aria-label={editActionLabel}
+                        title={editActionLabel}
+                        className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded text-current opacity-60 transition hover:opacity-100"
+                      >
+                        <Pencil className="h-3 w-3" aria-hidden />
+                      </button>
+                    ) : null}
                   </div>
                   <div className="text-[0.65rem] font-medium tabular-nums opacity-90">
                     {chip.minutes}m · {LOAD_CHIP_LABEL} {chip.load}
