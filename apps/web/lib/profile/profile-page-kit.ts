@@ -226,6 +226,29 @@ export function defaultRoutineDayConfig(): RoutineDayConfig {
   };
 }
 
+/**
+ * % calorie rappresentativa per categoria «Tipologia giorno». Scegliendo una categoria
+ * il campo day_type_pct si porta a questo valore (poi il coach lo affina). Il motore di
+ * generazione legge il %, quindi la categoria diventa così effettiva. Non retroattivo:
+ * vale dalla generazione successiva; non tocca reintegro né piani già materializzati.
+ */
+export function defaultPctForDayType(dayType: DietDayConfig["day_type"]): number {
+  switch (dayType) {
+    case "fasting-0":
+      return 0;
+    case "severe-15-30":
+      return 22;
+    case "catabolic-50-99":
+      return 75;
+    case "normocaloric-100":
+      return 100;
+    case "anabolic-101-130":
+      return 115;
+    default:
+      return 100;
+  }
+}
+
 export function defaultDietDayConfig(): DietDayConfig {
   return {
     meal_count_mode: "4",

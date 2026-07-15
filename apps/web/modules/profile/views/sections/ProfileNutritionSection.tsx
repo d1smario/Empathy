@@ -8,6 +8,7 @@ import {
   dietOptions,
   weekDays,
   toggleCsvToken,
+  defaultPctForDayType,
 } from "@/lib/profile/profile-page-kit";
 import {
   findSupplementCategory,
@@ -103,7 +104,7 @@ export function ProfileNutritionSection({
                   updateDietDay(activeDietDay, { meal_count_mode });
                 }
               }}><option value="1">{t("oneMeal")}</option><option value="2">{t("twoMeals")}</option><option value="3">{t("threeMeals")}</option><option value="4">{t("fourMeals")}</option><option value="5">{t("fiveMeals")}</option><option value="6">{t("sixMeals")}</option><option value="fasting">{t("fasting")}</option><option value="semi-8-16">{t("semiFasting816")}</option><option value="semi-6-18">{t("semiFasting618")}</option><option value="semi-4-20">{t("semiFasting420")}</option></select></div>
-              <div className="form-group"><label className="form-label">{t("dayType")}</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].day_type} onChange={(e) => updateDietDay(activeDietDay, { day_type: e.target.value as DietDayConfig["day_type"] })}><option value="fasting-0">{t("dayTypeFasting")}</option><option value="severe-15-30">{t("dayTypeSevere")}</option><option value="catabolic-50-99">{t("dayTypeCatabolic")}</option><option value="normocaloric-100">{t("dayTypeNormocaloric")}</option><option value="anabolic-101-130">{t("dayTypeAnabolic")}</option></select></div>
+              <div className="form-group"><label className="form-label">{t("dayType")}</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].day_type} onChange={(e) => { const day_type = e.target.value as DietDayConfig["day_type"]; updateDietDay(activeDietDay, { day_type, day_type_pct: defaultPctForDayType(day_type) }); }}><option value="fasting-0">{t("dayTypeFasting")}</option><option value="severe-15-30">{t("dayTypeSevere")}</option><option value="catabolic-50-99">{t("dayTypeCatabolic")}</option><option value="normocaloric-100">{t("dayTypeNormocaloric")}</option><option value="anabolic-101-130">{t("dayTypeAnabolic")}</option></select></div>
               <div className="form-group"><label className="form-label">{t("pctCaloriesVsRequirement")}</label><input className="form-input" type="number" min={0} max={130} value={dietWeekPlan[activeDietDay].day_type_pct} onChange={(e) => updateDietDay(activeDietDay, { day_type_pct: Number(e.target.value || 0) })} /></div>
             </div>
           </div>
