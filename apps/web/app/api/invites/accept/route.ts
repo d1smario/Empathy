@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
+import { acceptCoachInviteToken } from "@/lib/auth/accept-coach-invite-token";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,34 +43,6 @@ export async function POST(request: Request) {
   const token = typeof body.token === "string" ? body.token.trim() : "";
   if (!token) {
     return NextResponse.json({ ok: false as const, error: "Token mancante." }, { status: 400 });
-  }
-
-  const { data: invite, error: invErr } = await admin
-    .from("coach_invitations")
-    .select("id, org_id, inviting_coach_user_id, expires_at, consumed_at")
-    .eq("token", token)
-    .maybeSingle();
-
-  if (invErr) {
-    return NextResponse.json({ ok: false as const, error: invErr.message }, { status: 500 });
-  }
-  if (!invite) {
-    return NextResponse.json({ ok: false as const, error: "Invito non trovato." }, { status: 404 });
-  }
-
-  const inv = invite as {
-    id: string;
-    org_id: string;
-    inviting_coach_user_id: string;
-    expires_at: string;
-    consumed_at: string | null;
-  };
-
-  if (inv.consumed_at) {
-    return NextResponse.json({ ok: false as const, error: "Invito già utilizzato." }, { status: 409 });
-  }
-  if (new Date(inv.expires_at) <= new Date()) {
-    return NextResponse.json({ ok: false as const, error: "Invito scaduto." }, { status: 410 });
   }
 
   const { data: profile, error: profErr } = await cookieClient
@@ -125,43 +98,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // ESCLUSIVO (come la RPC codice-coach e la route admin): un solo coach per
-  // atleta → rimuovi i legami precedenti prima di collegare il coach invitante.
-  // Senza questo, accettare un secondo invito accumulava un coach in più.
-  const { error: unlinkErr } = await admin.from("coach_athletes").delete().eq("athlete_id", athleteId);
-  if (unlinkErr) {
-    return NextResponse.json({ ok: false as const, error: unlinkErr.message }, { status: 500 });
-  }
-
-  const { error: linkErr } = await admin.from("coach_athletes").upsert(
-    {
-      org_id: inv.org_id,
-      coach_user_id: inv.inviting_coach_user_id,
-      athlete_id: athleteId,
-    },
-    { onConflict: "org_id,coach_user_id,athlete_id" },
-  );
-
-  if (linkErr) {
-    return NextResponse.json({ ok: false as const, error: linkErr.message }, { status: 500 });
-  }
-
-  const { error: updErr } = await admin
-    .from("coach_invitations")
-    .update({
-      consumed_at: new Date().toISOString(),
-      consumed_by_user_id: user.id,
-    })
-    .eq("id", inv.id);
-
-  if (updErr) {
-    return NextResponse.json({ ok: false as const, error: updErr.message }, { status: 500 });
+  // Collegamento ESCLUSIVO + consumo token via punto server-side condiviso
+  // (stesso codice usato da ensure-profile e /auth/callback per l'auto-collegamento).
+  const result = await acceptCoachInviteToken(admin, { token, userId: user.id, athleteId });
+  if (!result.ok) {
+    const status = result.error === "Invito già utilizzato."
+      ? 409
+      : result.error === "Invito scaduto."
+        ? 410
+        : result.error === "Invito non trovato."
+          ? 404
+          : 500;
+    return NextResponse.json({ ok: false as const, error: result.error ?? "Errore invito." }, { status });
   }
 
   return NextResponse.json({
     ok: true as const,
-    orgId: inv.org_id,
-    coachUserId: inv.inviting_coach_user_id,
+    orgId: result.orgId,
+    coachUserId: result.coachUserId,
     athleteId,
   });
 }

@@ -11,6 +11,7 @@ import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { EMPATHY_DESKTOP_COOKIE, EMPATHY_MOBILE_COOKIE } from "@/core/navigation/mobile-module-registry";
 import { isMobilePreferred } from "@/lib/shell/mobile-detect";
 import { loadUserAccessEntitlement } from "@/lib/billing/access-entitlement";
+import { resolveCoachInvitePreview } from "@/lib/auth/accept-coach-invite-token";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 
@@ -28,8 +29,29 @@ export async function generateMetadata(): Promise<Metadata> {
  * Pagina di REGISTRAZIONE (porta unica, separata dal login `/access`).
  * Se già loggato, instrada per identità come `/access`.
  */
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const t = await getTranslations("RegistratiPage");
+
+  // Arrivo da link coach `/invite/<token>` → `/registrati?invite=<token>`:
+  // risolviamo (validazione + nome coach) per pre-collegare l'atleta senza codici.
+  const inviteTokenRaw = typeof searchParams?.invite === "string" ? searchParams.invite.trim() : "";
+  let inviteToken: string | null = null;
+  let invitedByName: string | null = null;
+  if (inviteTokenRaw) {
+    const admin = createSupabaseAdminClient();
+    if (admin) {
+      const preview = await resolveCoachInvitePreview(admin, inviteTokenRaw);
+      if (preview.status === "valid") {
+        inviteToken = inviteTokenRaw;
+        invitedByName = preview.coachName;
+      }
+    }
+  }
+
   if (getSupabasePublicConfig()) {
     const sb = createSupabaseCookieClient();
     if (sb) {
@@ -89,7 +111,7 @@ export default async function RegisterPage() {
           </Link>
           <div className="mx-auto mt-4 h-px w-16 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 opacity-80" />
         </div>
-        <AccessRegisterForm />
+        <AccessRegisterForm inviteToken={inviteToken} invitedByName={invitedByName} />
         <Link href="/" className="text-xs text-gray-500 transition-colors hover:text-gray-300">
           {t("backToHome")}
         </Link>

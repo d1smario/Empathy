@@ -390,11 +390,22 @@
     "badge": "Esempio",
     "title": "Un giorno del tuo piano",
     "periodizationLabel": "La tua stagione",
-    "phases": { "base": "Base", "build": "Costruzione", "deload": "Scarico" },
-    "workout": { "title": "Fondo medio · 75'", "detail": "Z2–Z3 · costruzione aerobica" },
+    "phases": {
+      "base": "Base",
+      "build": "Costruzione",
+      "deload": "Scarico"
+    },
+    "workout": {
+      "title": "Fondo medio · 75'",
+      "detail": "Z2–Z3 · costruzione aerobica"
+    },
     "compensation": "Dopo l'allenamento: reintegro automatico",
     "mealsTitle": "Pasti del giorno",
-    "slots": { "breakfast": "Colazione", "lunch": "Pranzo", "dinner": "Cena" },
+    "slots": {
+      "breakfast": "Colazione",
+      "lunch": "Pranzo",
+      "dinner": "Cena"
+    },
     "meals": {
       "breakfast": "Avena, banana, yogurt greco",
       "lunch": "Pasta integrale, pollo, verdure",
@@ -3971,7 +3982,9 @@
     "consentText": "Accetto la <privacy>Privacy Policy</privacy> e i <terms>Termini di Servizio</terms>.",
     "submitBusy": "Creazione account…",
     "submit": "Registrati",
-    "alreadyHaveAccount": "Hai già un account? <signin>Accedi</signin>"
+    "alreadyHaveAccount": "Hai già un account? <signin>Accedi</signin>",
+    "inviteBanner": "Ti stai registrando su invito di <b>{name}</b>. Verrai collegato automaticamente al suo team — non serve inserire alcun codice.",
+    "inviteBannerFallbackName": "il tuo coach"
   },
   "AerodynamicsPage": {
     "loading": "Caricamento Aerodynamics..."
@@ -4178,7 +4191,11 @@
     "processing": "Elaborazione…",
     "acceptInvite": "Accetta invito",
     "checkingSession": "Verifica sessione…",
-    "backToDashboard": "Torna alla dashboard"
+    "backToDashboard": "Torna alla dashboard",
+    "invitedBy": "Sei stato invitato da <b>{name}</b>.",
+    "newHerePrompt": "Crea il tuo account per collegarti automaticamente al coach.",
+    "registerCta": "Registrati",
+    "signInExisting": "Hai già un account? Accedi"
   },
   "Loading": {
     "loadingLabel": "Caricamento"

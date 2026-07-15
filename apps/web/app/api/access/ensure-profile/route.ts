@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
 import { linkAthleteByCoachCode } from "@/lib/auth/link-coach-by-code";
+import { acceptCoachInviteToken } from "@/lib/auth/accept-coach-invite-token";
 import { resolveBootstrapRole } from "@/lib/auth/resolve-bootstrap-role";
 import { coachOperationalApproved } from "@/lib/platform-coach-status";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
     firstName?: string | null;
     lastName?: string | null;
     coachCode?: string | null;
+    inviteToken?: string | null;
   };
   const userId = (body.userId ?? "").trim();
   const requestedRole = body.role ?? "private";
@@ -112,12 +115,32 @@ export async function POST(req: Request) {
   // Fallback: se il caller non passa coachCode (es. retry shell dopo conferma email),
   // lo recuperiamo da user_metadata.coach_code, dove viene persistito a signup → così
   // il collegamento è recuperabile anche se il primo tentativo nel callback è fallito.
-  const metaCoachCodeRaw = (user.user_metadata as Record<string, unknown>)?.coach_code;
+  const meta = user.user_metadata as Record<string, unknown>;
+  const metaCoachCodeRaw = meta?.coach_code;
   const metaCoachCode = typeof metaCoachCodeRaw === "string" ? metaCoachCodeRaw : null;
   const bodyCoachCode = typeof body.coachCode === "string" && body.coachCode.trim() ? body.coachCode : null;
   const effectiveCoachCode = bodyCoachCode ?? metaCoachCode;
+
+  // Token invito coach (dal link `/invite/<token>`): ha la precedenza sul codice.
+  // Fallback da user_metadata.invite_token come per il codice, così è recuperabile.
+  const metaInviteTokenRaw = meta?.invite_token;
+  const metaInviteToken = typeof metaInviteTokenRaw === "string" ? metaInviteTokenRaw : null;
+  const bodyInviteToken = typeof body.inviteToken === "string" && body.inviteToken.trim() ? body.inviteToken : null;
+  const effectiveInviteToken = bodyInviteToken ?? metaInviteToken;
+
   let coachLinked = false;
-  if (effectiveRole === "private" && resolvedAthleteId && effectiveCoachCode) {
+  if (effectiveRole === "private" && resolvedAthleteId && effectiveInviteToken) {
+    // Collegamento via TOKEN (auto da link): richiede client service-role.
+    const admin = createSupabaseAdminClient();
+    if (admin) {
+      const accepted = await acceptCoachInviteToken(admin, {
+        token: effectiveInviteToken,
+        userId,
+        athleteId: resolvedAthleteId,
+      });
+      coachLinked = accepted.ok;
+    }
+  } else if (effectiveRole === "private" && resolvedAthleteId && effectiveCoachCode) {
     const link = await linkAthleteByCoachCode(supabase, effectiveCoachCode);
     coachLinked = link.ok;
   }

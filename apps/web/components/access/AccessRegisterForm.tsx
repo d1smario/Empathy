@@ -41,13 +41,25 @@ const inputClass =
 const inputIconClass =
   "w-full rounded-xl border border-white/15 bg-white/5 py-2.5 pl-4 pr-11 text-sm text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:outline-none";
 
+type AccessRegisterFormProps = {
+  /** Token di invito coach (dal link `/invite/<token>` → `/registrati?invite=…`). */
+  inviteToken?: string | null;
+  /** Nome del coach invitante, per il banner "sei stato invitato da X". */
+  invitedByName?: string | null;
+};
+
 /**
  * Form di registrazione (porta unica, ruolo sempre `private`).
  * Raccoglie nome, cognome, email, password + conferma, con semaforo robustezza
  * e consenso obbligatorio a Privacy + Termini di Servizio.
+ *
+ * Con `inviteToken` (arrivo da link coach): nasconde il campo codice, mostra un
+ * banner col nome del coach e collega l'atleta in automatico a fine registrazione.
  */
-export function AccessRegisterForm() {
+export function AccessRegisterForm({ inviteToken = null, invitedByName = null }: AccessRegisterFormProps = {}) {
   const t = useTranslations("AccessRegisterForm");
+  const invited = Boolean(inviteToken);
+  const inviteName = (invitedByName ?? "").trim() || t("inviteBannerFallbackName");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -108,14 +120,17 @@ export function AccessRegisterForm() {
     setPendingAppRoleCookieClient("private");
     const origin = accessAppOriginFromWindow();
     const signupNext = postSignupRegistrationPath("private");
+    // coach_code / invite_token finiscono in user_metadata: /auth/callback li rilegge
+    // nel ramo conferma-email per collegare l'atleta al coach. Dal link usiamo il token
+    // (auto-collegamento, zero codici); il codice resta per l'inserimento manuale.
+    const signupMeta: Record<string, string> = { first_name: fn, last_name: ln };
+    if (invited && inviteToken) signupMeta.invite_token = inviteToken;
+    else if (coachCodeNorm) signupMeta.coach_code = coachCodeNorm;
     const { data, error } = await supabase.auth.signUp({
       email: em,
       password,
       options: {
-        // coach_code finisce in user_metadata: /auth/callback lo rilegge nel ramo conferma-email.
-        data: coachCodeNorm
-          ? { first_name: fn, last_name: ln, coach_code: coachCodeNorm }
-          : { first_name: fn, last_name: ln },
+        data: signupMeta,
         emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(signupNext)}`,
       },
     });
@@ -137,8 +152,9 @@ export function AccessRegisterForm() {
             email: em,
             firstName: fn,
             lastName: ln,
-            // Ramo sessione-immediata: il codice coach viaggia nel body (riconvalidato server-side).
-            coachCode: coachCodeNorm || null,
+            // Ramo sessione-immediata: codice coach / token invito nel body (riconvalidati server-side).
+            coachCode: invited ? null : coachCodeNorm || null,
+            inviteToken: invited ? inviteToken : null,
           }),
         });
       } catch {
@@ -184,6 +200,23 @@ export function AccessRegisterForm() {
       className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-md"
       aria-label={t("formAriaLabel")}
     >
+      {invited ? (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-purple-400/25 bg-gradient-to-r from-purple-500/15 via-pink-500/10 to-orange-500/10 p-3 text-left"
+          role="status"
+        >
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-purple-400/40 bg-purple-500/20 text-sm">
+            🤝
+          </span>
+          <p className="text-xs leading-relaxed text-gray-200">
+            {t.rich("inviteBanner", {
+              name: inviteName,
+              b: (chunks) => <strong className="font-semibold text-white">{chunks}</strong>,
+            })}
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-left">
           <span className={labelClass}>{t("firstNameLabel")}</span>
@@ -222,18 +255,20 @@ export function AccessRegisterForm() {
         />
       </label>
 
-      <label className="text-left">
-        <span className={labelClass}>{t("coachCodeLabel")}</span>
-        <input
-          type="text"
-          autoComplete="off"
-          value={coachCode}
-          onChange={(e) => setCoachCode(e.target.value.toUpperCase())}
-          disabled={busy}
-          className={`${inputClass} font-mono uppercase tracking-[0.15em]`}
-          placeholder={t("coachCodePlaceholder")}
-        />
-      </label>
+      {invited ? null : (
+        <label className="text-left">
+          <span className={labelClass}>{t("coachCodeLabel")}</span>
+          <input
+            type="text"
+            autoComplete="off"
+            value={coachCode}
+            onChange={(e) => setCoachCode(e.target.value.toUpperCase())}
+            disabled={busy}
+            className={`${inputClass} font-mono uppercase tracking-[0.15em]`}
+            placeholder={t("coachCodePlaceholder")}
+          />
+        </label>
+      )}
 
       <label className="text-left">
         <span className={labelClass}>{t("passwordLabel")}</span>

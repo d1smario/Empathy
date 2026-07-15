@@ -390,11 +390,22 @@
     "badge": "Sample",
     "title": "A day in your plan",
     "periodizationLabel": "Your season",
-    "phases": { "base": "Base", "build": "Build", "deload": "Deload" },
-    "workout": { "title": "Steady endurance · 75'", "detail": "Z2–Z3 · aerobic base" },
+    "phases": {
+      "base": "Base",
+      "build": "Build",
+      "deload": "Deload"
+    },
+    "workout": {
+      "title": "Steady endurance · 75'",
+      "detail": "Z2–Z3 · aerobic base"
+    },
     "compensation": "After training: automatic top-up",
     "mealsTitle": "Meals of the day",
-    "slots": { "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner" },
+    "slots": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner"
+    },
     "meals": {
       "breakfast": "Oats, banana, Greek yogurt",
       "lunch": "Whole-grain pasta, chicken, veggies",
@@ -3971,7 +3982,9 @@
     "consentText": "I accept the <privacy>Privacy Policy</privacy> and the <terms>Terms of Service</terms>.",
     "submitBusy": "Creating account…",
     "submit": "Sign up",
-    "alreadyHaveAccount": "Already have an account? <signin>Sign in</signin>"
+    "alreadyHaveAccount": "Already have an account? <signin>Sign in</signin>",
+    "inviteBanner": "You're signing up on an invite from <b>{name}</b>. You'll be linked to their team automatically — no code needed.",
+    "inviteBannerFallbackName": "your coach"
   },
   "AerodynamicsPage": {
     "loading": "Loading Aerodynamics..."
@@ -4178,7 +4191,11 @@
     "processing": "Processing…",
     "acceptInvite": "Accept invite",
     "checkingSession": "Checking session…",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "invitedBy": "You've been invited by <b>{name}</b>.",
+    "newHerePrompt": "Create your account to get linked to the coach automatically.",
+    "registerCta": "Sign up",
+    "signInExisting": "Already have an account? Sign in"
   },
   "Loading": {
     "loadingLabel": "Loading"

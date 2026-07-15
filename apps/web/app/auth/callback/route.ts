@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { safeAppInternalPath } from "@/core/routing/guards";
 import { bootstrapAppUserProfile } from "@/lib/auth/bootstrap-app-user-profile";
 import { linkAthleteByCoachCode } from "@/lib/auth/link-coach-by-code";
+import { acceptCoachInviteToken } from "@/lib/auth/accept-coach-invite-token";
 import { resolvePostLoginDestination } from "@/lib/auth/post-login-destination";
 import { PENDING_APP_ROLE_COOKIE, parsePendingAppRole } from "@/lib/auth/pending-role-cookie";
 import {
@@ -83,13 +84,14 @@ export async function GET(request: NextRequest) {
   }
   const meta = user.user_metadata as Record<string, unknown>;
   const coachCodeFromMeta = typeof meta?.coach_code === "string" ? meta.coach_code : null;
+  const inviteTokenFromMeta = typeof meta?.invite_token === "string" ? meta.invite_token : null;
   // Bootstrap del profilo: serve se c'è un ruolo `pending` (signup stesso device) OPPURE se
-  // arriva un codice coach. Quest'ultimo caso è critico: con la conferma email aperta su un
-  // browser/device diverso il cookie pending non c'è, ma il link coach richiede comunque
-  // `athlete_id` → senza bootstrap la RPC fallirebbe e il collegamento andrebbe perso in
+  // arriva un codice coach / token invito. Questi ultimi sono critici: con la conferma email
+  // aperta su un browser/device diverso il cookie pending non c'è, ma il collegamento coach
+  // richiede comunque `athlete_id` → senza bootstrap fallirebbe e il legame andrebbe perso in
   // silenzio. bootstrapAppUserProfile è idempotente e resolveBootstrapRole non declassa un
   // coach esistente, quindi è sicuro chiamarlo anche qui col ruolo atleta di default.
-  if (pending || coachCodeFromMeta) {
+  if (pending || coachCodeFromMeta || inviteTokenFromMeta) {
     await bootstrapAppUserProfile(supabase, {
       userId: user.id,
       role: pending ?? "private",
@@ -123,6 +125,20 @@ export async function GET(request: NextRequest) {
   const appRole = profileRow?.role === "coach" ? "coach" : "private";
   const isPlatformAdmin = profileRow?.is_platform_admin === true;
   const athleteId = typeof profileRow?.athlete_id === "string" ? profileRow.athlete_id : null;
+
+  // Token invito coach (dal link `/invite/<token>`, propagato via user_metadata.invite_token):
+  // collega l'atleta al coach invitante in automatico (ESCLUSIVO, consuma il token). Richiede
+  // service-role; il bootstrap sopra ha già garantito athlete_id anche nel ramo cross-device.
+  if (inviteTokenFromMeta && appRole === "private" && athleteId && admin) {
+    const accepted = await acceptCoachInviteToken(admin, {
+      token: inviteTokenFromMeta,
+      userId: user.id,
+      athleteId,
+    });
+    if (!accepted.ok) {
+      console.warn("[auth/callback] invite-token link failed", accepted.error ?? "unknown");
+    }
+  }
 
   let entitlement: { hasAthleteAccess: boolean; hasOperatorAccess: boolean } = {
     hasAthleteAccess: false,

@@ -13,12 +13,16 @@ export type InviteInitialStatus = "valid" | "expired" | "consumed" | "not_found"
 export function InviteTokenClient({
   token,
   initialStatus,
+  coachName = null,
 }: {
   token: string;
   initialStatus: InviteInitialStatus;
+  coachName?: string | null;
 }) {
   const t = useTranslations("InviteTokenClient");
   const router = useRouter();
+  const inviteName = (coachName ?? "").trim();
+  const registerHref = `/registrati?invite=${encodeURIComponent(token)}`;
   const [status, setStatus] = useState<InviteInitialStatus>(initialStatus);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   /** Profilo atleta già collegato all'account loggato: pilota l'auto-accept on-mount. */
@@ -117,6 +121,15 @@ export function InviteTokenClient({
           {t("title")}
         </h1>
 
+        {status === "valid" && inviteName ? (
+          <p className="max-w-md text-sm text-gray-300">
+            {t.rich("invitedBy", {
+              name: inviteName,
+              b: (chunks) => <strong className="font-semibold text-white">{chunks}</strong>,
+            })}
+          </p>
+        ) : null}
+
         {status === "misconfigured" ? (
           <p className="max-w-md text-sm text-amber-300/90">
             {t("misconfigured")}
@@ -136,12 +149,18 @@ export function InviteTokenClient({
           <div className="flex max-w-md flex-col items-center gap-4">
             {signedIn === false ? (
               <>
-                <p className="text-sm text-gray-400">{t("signInPrompt")}</p>
+                <p className="text-sm text-gray-400">{t("newHerePrompt")}</p>
                 <Link
-                  href={accessHref}
+                  href={registerHref}
                   className="rounded-full border border-purple-500/40 bg-purple-500/15 px-6 py-2.5 text-sm font-bold text-purple-100 transition hover:border-purple-400/60"
                 >
-                  {t("goToAccess")}
+                  {t("registerCta")}
+                </Link>
+                <Link
+                  href={accessHref}
+                  className="text-xs text-gray-400 underline-offset-4 hover:text-gray-200 hover:underline"
+                >
+                  {t("signInExisting")}
                 </Link>
               </>
             ) : null}
