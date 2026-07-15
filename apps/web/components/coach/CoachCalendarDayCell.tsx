@@ -159,7 +159,7 @@ export function CoachCalendarDayCell({
                       {Math.round(exec.durationMinutes)}m · {LOAD_CHIP_LABEL} {Math.round(exec.tss)}
                     </span>
                     {unplanned ? (
-                      <span className="shrink-0 rounded-sm bg-emerald-400/20 px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide text-emerald-200">
+                      <span className="shrink-0 rounded-sm border border-amber-400/50 bg-amber-500/30 px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide text-amber-100">
                         {unplannedBadge}
                       </span>
                     ) : null}
