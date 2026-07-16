@@ -23,7 +23,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
+// NB: il secret su Supabase è salvato come `STRIPE-SECRET-KEY` (trattini, non
+// rinominabile da dashboard). Leggiamo prima il nome canonico con underscore,
+// poi il fallback coi trattini così funziona con l'attuale segreto.
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? Deno.env.get("STRIPE-SECRET-KEY") ?? "";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",

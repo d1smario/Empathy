@@ -9,7 +9,9 @@ function normalizeStripeEnvValue(raw: string): string {
 }
 
 export function readStripeSecretKey(): string | null {
-  const raw = process.env.STRIPE_SECRET_KEY;
+  // Fallback al nome coi trattini `STRIPE-SECRET-KEY` (come salvato su Supabase,
+  // non rinominabile da dashboard); il nome canonico con underscore ha priorità.
+  const raw = process.env.STRIPE_SECRET_KEY ?? process.env["STRIPE-SECRET-KEY"];
   if (raw == null) return null;
   const v = normalizeStripeEnvValue(raw);
   return v.length > 0 ? v : null;
