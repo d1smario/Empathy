@@ -116,7 +116,8 @@ async function validatePromo(admin: any, rawCode: string | null): Promise<PromoO
     .ilike("code", rawCode)
     .limit(1);
   if (error) {
-    return { ok: false, response: jsonResponse({ error: `Lettura codice promo fallita: ${error.message}` }, 500) };
+    console.error("[stripe-checkout] promo read error:", error.message);
+    return { ok: false, response: jsonResponse({ error: "Verifica del codice promo non riuscita." }, 500) };
   }
   const promo = ((rows ?? []) as PromoRow[])[0] ?? null;
   if (!promo) return { ok: false, response: jsonResponse({ error: "Codice promo non valido." }, 404) };
@@ -236,7 +237,8 @@ Deno.serve(async (req: Request) => {
     )
     .in("code", wantedCodes);
   if (productsError) {
-    return jsonResponse({ error: `Lettura prodotti fallita: ${productsError.message}` }, 500);
+    console.error("[stripe-checkout] products read error:", productsError.message);
+    return jsonResponse({ error: "Caricamento dei piani non riuscito. Riprova più tardi." }, 500);
   }
 
   const byCode = new Map<string, ProductRow>(
@@ -315,7 +317,8 @@ Deno.serve(async (req: Request) => {
       created_by: user.id,
     });
     if (saleError) {
-      return jsonResponse({ error: `Registrazione vendita fallita: ${saleError.message}` }, 500);
+      console.error("[stripe-checkout] free sale insert error:", saleError.message);
+      return jsonResponse({ error: "Attivazione del piano non riuscita. Riprova più tardi." }, 500);
     }
 
     // Codice speso: la vendita gratuita è andata a buon fine.
@@ -333,7 +336,8 @@ Deno.serve(async (req: Request) => {
       granted_by_email: "checkout@empathy",
     });
     if (grantError) {
-      return jsonResponse({ error: `Attivazione accesso fallita: ${grantError.message}` }, 500);
+      console.error("[stripe-checkout] free grant insert error:", grantError.message);
+      return jsonResponse({ error: "Attivazione del piano non riuscita. Riprova più tardi." }, 500);
     }
 
     return jsonResponse({ freeActivated: true });
@@ -341,7 +345,15 @@ Deno.serve(async (req: Request) => {
 
   // ── A PAGAMENTO: Stripe Checkout Session (REST, price_data al volo) ─────
   if (!STRIPE_SECRET_KEY) {
-    return jsonResponse({ error: "STRIPE_SECRET_KEY non configurata." }, 500);
+    console.error("[stripe-checkout] chiave API Stripe assente (STRIPE_SECRET_KEY / STRIPE-SECRET-KEY).");
+    return jsonResponse({ error: "Pagamenti non disponibili al momento." }, 503);
+  }
+  if (!/^(sk|rk)_(live|test)_/.test(STRIPE_SECRET_KEY)) {
+    // Valore presente ma NON una chiave API (tipico: incollato un webhook secret
+    // whsec_...). Se lo passassimo, Stripe risponderebbe «Invalid API Key» ECHEGGIANDO
+    // un frammento del segreto → il dettaglio resta nei log server, mai al client.
+    console.error("[stripe-checkout] chiave API Stripe non valida: atteso prefisso sk_/rk_ (live|test).");
+    return jsonResponse({ error: "Pagamenti non disponibili al momento." }, 503);
   }
 
   // Anagrafica fatturazione COMPLETA obbligatoria per i piani a pagamento
@@ -440,7 +452,10 @@ Deno.serve(async (req: Request) => {
   const stripeBody = await stripeRes.json().catch(() => null);
   if (!stripeRes.ok || !stripeBody?.url) {
     const detail = stripeBody?.error?.message ?? `HTTP ${stripeRes.status}`;
-    return jsonResponse({ error: `Creazione sessione Stripe fallita: ${detail}` }, 502);
+    // MAI rimandare al client l'errore grezzo di Stripe: può contenere frammenti
+    // di chiavi/segreti. Dettaglio nei log server, messaggio generico all'utente.
+    console.error("[stripe-checkout] Stripe checkout session error:", detail);
+    return jsonResponse({ error: "Creazione della sessione di pagamento non riuscita. Riprova più tardi." }, 502);
   }
 
   // La redenzione del codice promo viene contata dal webhook su
