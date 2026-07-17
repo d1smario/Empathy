@@ -3,6 +3,7 @@ import { Outfit, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ClientRootProviders } from "@/app/client-root-providers";
+import { VetrinaAnalytics } from "@/components/marketing/VetrinaAnalytics";
 import { getCanonicalSiteOrigin, getMetadataBaseUrl, isSiteIndexingDisabled } from "@/lib/site-url";
 import "./globals.css";
 
@@ -86,6 +87,8 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ClientRootProviders>{children}</ClientRootProviders>
         </NextIntlClientProvider>
+        {/* Vercel Web Analytics SOLO sulle pagine vetrina (beforeSend filtra le URL). */}
+        <VetrinaAnalytics />
       </body>
     </html>
   );

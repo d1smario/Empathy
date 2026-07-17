@@ -44,6 +44,7 @@
     "@empathy/integrations-supabase": "0.1.0",
     "@markw65/fit-file-writer": "^0.1.9",
     "@supabase/ssr": "^0.5.2",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^1.5.0",
     "express": "^4.22.1",
     "fit-file-parser": "^2.3.3",
