@@ -40,6 +40,14 @@ export type ProfileNutritionSectionProps = {
   activeSupplementCategory: string;
   setActiveSupplementCategory: Dispatch<SetStateAction<string>>;
   updateDietDay: (day: WeekDay, patch: Partial<DietDayConfig>) => void;
+  /** «Copia dal giorno precedente»: clona nel padre la config del giorno prima (con wrap lun←dom). */
+  copyDietDayFromPrevious: (day: WeekDay) => void;
+  /**
+   * Le % nutrizionali (distribuzione calorica, macro giornalieri, macro per pasto)
+   * sono editabili solo da coach/admin: per l'atleta gli input restano visibili e
+   * bindati (vede i valori aggiornati dal sistema) ma disabled.
+   */
+  canEditNutritionPercents?: boolean;
   /** Esclusioni-cibo strutturate dal DB (globali): nutrition_config.excluded_fdc_foods */
   excludedFdcFoods: ExcludedFdcFood[];
   setExcludedFdcFoods: Dispatch<SetStateAction<ExcludedFdcFood[]>>;
@@ -68,6 +76,8 @@ export function ProfileNutritionSection({
   activeSupplementCategory,
   setActiveSupplementCategory,
   updateDietDay,
+  copyDietDayFromPrevious,
+  canEditNutritionPercents = true,
   excludedFdcFoods,
   setExcludedFdcFoods,
   excludedFoodClasses,
@@ -76,6 +86,10 @@ export function ProfileNutritionSection({
   const t = useTranslations("ProfileNutritionSection");
   const locale = useLocale();
   void setDietWeekPlan;
+  const previousDietDay = weekDays[(weekDays.indexOf(activeDietDay) + 6) % 7];
+  // Stile input % read-only: gli input non hanno uno stato :disabled in CSS, quindi
+  // aggiungiamo opacity/cursor via utility Tailwind quando disabled.
+  const pctInputClass = "form-input disabled:opacity-50 disabled:cursor-not-allowed";
 
   // «Alimenti da evitare (dal database)»: ricerca nel nostro DB via
   // /api/nutrition/food-lookup, stessa logica del picker pasti (debounce →
@@ -169,6 +183,13 @@ export function ProfileNutritionSection({
             {weekDays.map((day) => (
               <button key={day} type="button" className={`profile-day-chip ${activeDietDay === day ? "active" : ""}`} onClick={() => setActiveDietDay(day)}>{day}</button>
             ))}
+            <button
+              type="button"
+              className="profile-black-chip"
+              onClick={() => copyDietDayFromPrevious(activeDietDay)}
+            >
+              {t("copyFromPreviousDay", { day: previousDietDay })}
+            </button>
           </div>
 
           <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
@@ -200,24 +221,24 @@ export function ProfileNutritionSection({
           <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
             <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("mealCaloricDistribution")}</h4>
             <div className="profile-editor-grid profile-editor-grid-compact">
-              <div className="form-group"><label className="form-label">{t("breakfast")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.breakfast} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, breakfast: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">{t("lunch")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.lunch} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, lunch: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">{t("dinner")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.dinner} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, dinner: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">{t("breakfast")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.breakfast} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, breakfast: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">{t("lunch")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.lunch} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, lunch: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">{t("dinner")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.dinner} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, dinner: Number(e.target.value || 0) } })} /></div>
               {dietWeekPlan[activeDietDay].meal_count_mode === "6" ? (
                 <>
-                  <div className="form-group"><label className="form-label">{t("snackMorning")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10} onChange={(e) => {
+                  <div className="form-group"><label className="form-label">{t("snackMorning")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10} onChange={(e) => {
                     const snack_am = Number(e.target.value || 0);
                     const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
                     const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
                     updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
                   }} /></div>
-                  <div className="form-group"><label className="form-label">{t("snackAfternoon")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10} onChange={(e) => {
+                  <div className="form-group"><label className="form-label">{t("snackAfternoon")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10} onChange={(e) => {
                     const snack_pm = Number(e.target.value || 0);
                     const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
                     const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
                     updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
                   }} /></div>
-                  <div className="form-group"><label className="form-label">{t("snackEvening")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10} onChange={(e) => {
+                  <div className="form-group"><label className="form-label">{t("snackEvening")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10} onChange={(e) => {
                     const snack_evening = Number(e.target.value || 0);
                     const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
                     const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
@@ -226,7 +247,7 @@ export function ProfileNutritionSection({
                   <p className="col-span-full text-[11px] text-slate-400">{t("sixMealsSnackNote", { dayTotal: Math.round(dietWeekPlan[activeDietDay].caloric_distribution.breakfast + dietWeekPlan[activeDietDay].caloric_distribution.lunch + dietWeekPlan[activeDietDay].caloric_distribution.dinner + dietWeekPlan[activeDietDay].caloric_distribution.snacks) })}</p>
                 </>
               ) : (
-                <div className="form-group"><label className="form-label">{t("snacks")}</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snacks} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snacks: Number(e.target.value || 0) } })} /></div>
+                <div className="form-group"><label className="form-label">{t("snacks")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snacks} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snacks: Number(e.target.value || 0) } })} /></div>
               )}
             </div>
           </div>
@@ -234,9 +255,9 @@ export function ProfileNutritionSection({
           <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
             <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("dailyMacronutrients")}</h4>
             <div className="profile-editor-grid profile-editor-grid-compact">
-              <div className="form-group"><label className="form-label">CHO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.cho_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, cho_pct: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">PRO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.pro_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, pro_pct: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">FAT</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.fat_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, fat_pct: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">CHO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.cho_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, cho_pct: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">PRO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.pro_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, pro_pct: Number(e.target.value || 0) } })} /></div>
+              <div className="form-group"><label className="form-label">FAT</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.fat_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, fat_pct: Number(e.target.value || 0) } })} /></div>
             </div>
           </div>
 
@@ -246,9 +267,9 @@ export function ProfileNutritionSection({
               {(["breakfast", "lunch", "dinner", "snacks"] as const).map((meal) => (
                 <div key={meal} className="profile-meal-macro-card">
                   <strong>{meal}</strong>
-                  <div className="form-group"><label className="form-label">CHO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].cho_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], cho_pct: Number(e.target.value || 0) } } })} /></div>
-                  <div className="form-group"><label className="form-label">PRO</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].pro_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], pro_pct: Number(e.target.value || 0) } } })} /></div>
-                  <div className="form-group"><label className="form-label">FAT</label><input className="form-input" type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].fat_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], fat_pct: Number(e.target.value || 0) } } })} /></div>
+                  <div className="form-group"><label className="form-label">CHO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].cho_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], cho_pct: Number(e.target.value || 0) } } })} /></div>
+                  <div className="form-group"><label className="form-label">PRO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].pro_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], pro_pct: Number(e.target.value || 0) } } })} /></div>
+                  <div className="form-group"><label className="form-label">FAT</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].fat_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], fat_pct: Number(e.target.value || 0) } } })} /></div>
                 </div>
               ))}
             </div>

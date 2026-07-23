@@ -87,6 +87,9 @@ export default function ProfilePage({
   // in scope coach/admin i device restano nascosti e l'email è read-only (evita
   // identity drift sul match/dedup coach). Il resto del profilo il coach lo modifica.
   const canManageDevices = !adminScoped;
+  // Le % nutrizionali (distribuzione calorica, macro giornalieri, macro per pasto)
+  // le governa il sistema/coach: l'atleta le vede aggiornate ma non le modifica.
+  const canEditNutritionPercents = role === "coach" || adminScoped;
   const [profiles, setProfiles] = useState<AthleteProfileRow[]>([]);
   const [physioMap, setPhysioMap] = useState<Record<string, PhysiologyRow>>({});
   const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
@@ -424,6 +427,19 @@ export default function ProfilePage({
       ...prev,
       [day]: { ...prev[day], ...patch },
     }));
+  }
+
+  // «Copia dal giorno precedente»: clona la config del giorno prima (lunedì copia
+  // da domenica, wrap). structuredClone obbligatorio: le config hanno oggetti
+  // annidati e uno spread shallow condividerebbe i riferimenti tra i due giorni.
+  function copyRoutineDayFromPrevious(day: WeekDay) {
+    const prevDay = weekDays[(weekDays.indexOf(day) + 6) % 7];
+    setRoutineWeekPlan((prev) => ({ ...prev, [day]: structuredClone(prev[prevDay]) }));
+  }
+
+  function copyDietDayFromPrevious(day: WeekDay) {
+    const prevDay = weekDays[(weekDays.indexOf(day) + 6) % 7];
+    setDietWeekPlan((prev) => ({ ...prev, [day]: structuredClone(prev[prevDay]) }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -1063,6 +1079,7 @@ export default function ProfilePage({
               activeRoutineDay={activeRoutineDay}
               setActiveRoutineDay={setActiveRoutineDay}
               updateRoutineDay={updateRoutineDay}
+              copyRoutineDayFromPrevious={copyRoutineDayFromPrevious}
             />
           )}
 
@@ -1079,6 +1096,8 @@ export default function ProfilePage({
               activeSupplementCategory={activeSupplementCategory}
               setActiveSupplementCategory={setActiveSupplementCategory}
               updateDietDay={updateDietDay}
+              copyDietDayFromPrevious={copyDietDayFromPrevious}
+              canEditNutritionPercents={canEditNutritionPercents}
               excludedFdcFoods={excludedFdcFoods}
               setExcludedFdcFoods={setExcludedFdcFoods}
               excludedFoodClasses={excludedFoodClasses}

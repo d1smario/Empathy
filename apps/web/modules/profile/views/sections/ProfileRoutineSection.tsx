@@ -23,6 +23,8 @@ export type ProfileRoutineSectionProps = {
   activeRoutineDay: WeekDay;
   setActiveRoutineDay: Dispatch<SetStateAction<WeekDay>>;
   updateRoutineDay: (day: WeekDay, patch: Partial<RoutineDayConfig>) => void;
+  /** «Copia dal giorno precedente»: clona nel padre la config del giorno prima (con wrap lun←dom). */
+  copyRoutineDayFromPrevious: (day: WeekDay) => void;
 };
 
 export function ProfileRoutineSection({
@@ -33,9 +35,11 @@ export function ProfileRoutineSection({
   activeRoutineDay,
   setActiveRoutineDay,
   updateRoutineDay,
+  copyRoutineDayFromPrevious,
 }: ProfileRoutineSectionProps) {
   const t = useTranslations("ProfileRoutineSection");
   void setRoutineWeekPlan;
+  const previousRoutineDay = weekDays[(weekDays.indexOf(activeRoutineDay) + 6) % 7];
   return (
     <div>
       <h3 className={`profile-section-band tone-${profileToneForEditorSection("routine")}`}><span className="profile-kpi-dot" />{t("weeklyRoutineTitle")}</h3>
@@ -50,6 +54,13 @@ export function ProfileRoutineSection({
             {day}
           </button>
         ))}
+        <button
+          type="button"
+          className="profile-black-chip"
+          onClick={() => copyRoutineDayFromPrevious(activeRoutineDay)}
+        >
+          {t("copyFromPreviousDay", { day: previousRoutineDay })}
+        </button>
       </div>
       <div className="profile-subpanel tone-green" style={{ marginBottom: "12px" }}>
         <div className="profile-editor-grid profile-editor-grid-compact">
