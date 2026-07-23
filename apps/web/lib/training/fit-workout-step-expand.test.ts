@@ -87,6 +87,73 @@ test("integrazione durata: 5×(4'+8') + warm/cool ≈ 70 min", () => {
   assert.equal(totalSec, 4800);
 });
 
+/**
+ * Forma REALE emessa da fit-file-parser (TrainingPeaks/Garmin): il repeat marker
+ * NON ha repeat_steps/duration_step ma {duration_value:<msg_idx inizio loop>,
+ * target_type:"open", target_value:<N ripetizioni>}.
+ */
+const REAL_PARSER_REPEAT_STEPS: Array<Record<string, unknown>> = [
+  { message_index: 0, duration_type: "time", duration_value: 600_000, wkt_step_name: "Warm up" },
+  {
+    message_index: 1,
+    duration_type: "time",
+    duration_value: 240_000,
+    wkt_step_name: "Z5 tork",
+    target_type: "power",
+    custom_target_value_low: 1300,
+    custom_target_value_high: 1400,
+  },
+  {
+    message_index: 2,
+    duration_type: "time",
+    duration_value: 480_000,
+    wkt_step_name: "Recupero",
+    target_type: "power",
+    custom_target_value_low: 1100,
+    custom_target_value_high: 1150,
+  },
+  {
+    message_index: 3,
+    duration_type: "repeat_until_steps_cmplt",
+    duration_value: 1,
+    target_type: "open",
+    target_value: 5,
+  },
+  { message_index: 4, duration_type: "time", duration_value: 600_000, wkt_step_name: "Cool down" },
+];
+
+test("forma reale fit-file-parser: target_value → repeat count", () => {
+  assert.equal(pickFitRepeatCount(REAL_PARSER_REPEAT_STEPS[3]!), 5);
+  /** target_value NON è repeat count su step normali (non repeat marker). */
+  assert.equal(pickFitRepeatCount({ duration_type: "time", target_type: "power", target_value: 250 }), 1);
+});
+
+test("forma reale fit-file-parser: duration_value → loop start (message_index)", () => {
+  const idx = resolveFitRepeatLoopStartIndex(REAL_PARSER_REPEAT_STEPS[3]!, 3, REAL_PARSER_REPEAT_STEPS);
+  assert.equal(idx, 1);
+});
+
+test("forma reale fit-file-parser: flatten warm + 5×(work+rec) + cool", () => {
+  const flat = flattenFitWorkoutStepsWithRepeats(REAL_PARSER_REPEAT_STEPS);
+  assert.equal(flat.length, 12, "warm + 5×2 interval + cool");
+  assert.equal(flat[0]?.wkt_step_name, "Warm up");
+  assert.equal(flat[1]?.wkt_step_name, "Z5 tork");
+  assert.equal(flat[2]?.wkt_step_name, "Recupero");
+  assert.equal(flat[9]?.wkt_step_name, "Z5 tork");
+  assert.equal(flat[10]?.wkt_step_name, "Recupero");
+  assert.equal(flat[11]?.wkt_step_name, "Cool down");
+});
+
+test("forma reale fit-file-parser: expand → interval2 con repeats=5", () => {
+  const expanded = expandFitWorkoutStepsForImport(REAL_PARSER_REPEAT_STEPS);
+  const intervalMarkers = expanded.filter((s) => s._fitInterval2);
+  assert.equal(intervalMarkers.length, 1);
+  assert.equal(intervalMarkers[0]?._fitInterval2?.repeats, 5);
+  assert.equal(intervalMarkers[0]?._fitInterval2?.work?.wkt_step_name, "Z5 tork");
+  assert.equal(intervalMarkers[0]?._fitInterval2?.recovery?.wkt_step_name, "Recupero");
+  assert.equal(expanded.length, 3, "warm + interval2 + cool");
+});
+
 test("repeat marker PRIMA del corpo (lookahead)", () => {
   const steps: Array<Record<string, unknown>> = [
     { message_index: 0, duration_type: "time", duration_value: 300, wkt_step_name: "Warm" },

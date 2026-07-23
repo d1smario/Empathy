@@ -40,7 +40,21 @@ export function pickFitRepeatCount(step: Record<string, unknown>): number {
     "num_repetitions",
     "repetitions",
   ]);
-  if (n == null || !Number.isFinite(n) || n < 1) return 1;
+  if (n == null) {
+    /**
+     * fit-file-parser reale: il repeat marker arriva come
+     * {duration_type:"repeat_until_steps_cmplt", duration_value:<msg_idx>, target_type:"open", target_value:<N>}
+     * — mai repeat_steps. Il conteggio ripetizioni vive in target_value.
+     */
+    if (normalizeFitWktDurationType(step) === "repeat_until_steps_cmplt") {
+      const tv = pickStepNumber(step, ["target_value", "targetValue"]);
+      if (tv != null && Number.isFinite(tv) && Number.isInteger(tv) && tv >= 2) {
+        return Math.min(400, tv);
+      }
+    }
+    return 1;
+  }
+  if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(400, Math.max(1, Math.round(n)));
 }
 
@@ -50,8 +64,17 @@ export function resolveFitRepeatLoopStartIndex(
   repeatArrayIndex: number,
   steps: Record<string, unknown>[],
 ): number {
-  const durationStep = pickStepNumber(repeatStep, ["duration_step", "durationStep"]);
-  if (durationStep != null && Number.isFinite(durationStep)) {
+  /**
+   * duration_step = chiave Garmin SDK; fit-file-parser reale espone invece il
+   * message_index d'inizio loop in duration_value sul repeat marker.
+   */
+  const durationStep = pickStepNumber(repeatStep, [
+    "duration_step",
+    "durationStep",
+    "duration_value",
+    "durationValue",
+  ]);
+  if (durationStep != null && Number.isFinite(durationStep) && Number.isInteger(durationStep) && durationStep >= 0) {
     const asMsgIdx = Math.round(durationStep);
     for (let j = 0; j < steps.length; j += 1) {
       if (pickMessageIndex(steps[j]!, j) === asMsgIdx) return j;
