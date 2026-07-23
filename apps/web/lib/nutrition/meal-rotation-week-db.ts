@@ -50,11 +50,16 @@ type WeekPlanRow = {
 /**
  * Conteggi staple della settimana ISO di `planDate` dal DB (escluso `planDate` stesso).
  * Best-effort: qualsiasi errore → `{}` (la generazione non deve rompersi).
+ * `opts.resolveRotationKey` (dal catalogo nutrition_menu_foods): le righe `meal_item`
+ * portano solo canonical_key, e per i cibi NUOVI del catalogo la costante hardcoded non
+ * conosce la rotation key — senza resolver conterebbero come chiave singola invece che
+ * come famiglia (es. carb:riso).
  */
 export async function loadWeeklyStapleCountsFromDb(
   db: SupabaseClient,
   athleteId: string,
   planDate: string,
+  opts?: { resolveRotationKey?: (canonicalKey: string) => string | undefined },
 ): Promise<Record<string, number>> {
   try {
     const { start, end } = isoWeekRangeForDate(planDate);
@@ -73,6 +78,7 @@ export async function loadWeeklyStapleCountsFromDb(
       const items = meals.flatMap((m) => (Array.isArray(m?.meal_item) ? m.meal_item : []));
       const dayKeys = mealRotationStaplesFromComposedItems(
         items.map((it) => ({ canonicalKey: typeof it?.canonical_key === "string" ? it.canonical_key : null })),
+        opts?.resolveRotationKey,
       );
       for (const k of dayKeys) counts[k] = (counts[k] ?? 0) + 1;
     }

@@ -18,6 +18,7 @@ import {
   loadWeeklyStapleCountsFromDb,
   mergeWeeklyStapleCounts,
 } from "@/lib/nutrition/meal-rotation-week-db";
+import { loadMenuFoodPools, menuRotationKeyResolver } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
@@ -77,8 +78,15 @@ export async function prepareIntelligentMealPlanContext(
       .eq("athlete_id", athleteId)
       .eq("date", planDate),
     // Memoria settimanale server-autorevole: conteggi staple dei giorni GIÀ persistiti
-    // nella settimana ISO di planDate (escluso il giorno in rigenerazione).
-    loadWeeklyStapleCountsFromDb(db, athleteId, planDate),
+    // nella settimana ISO di planDate (escluso il giorno in rigenerazione). Il catalogo
+    // menù (cache di processo, riusato poi da buildMealPlanV2Production) fornisce la
+    // rotation key anche per i cibi nuovi che la costante hardcoded non conosce.
+    (async () => {
+      const menuPools = await loadMenuFoodPools(db);
+      return loadWeeklyStapleCountsFromDb(db, athleteId, planDate, {
+        resolveRotationKey: menuPools ? menuRotationKeyResolver(menuPools) : undefined,
+      });
+    })(),
   ]);
 
   const plan = body.plan as unknown;

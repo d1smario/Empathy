@@ -12,6 +12,7 @@ import type { ResolvedNutritionDietDay } from "@/lib/nutrition/resolve-nutrition
 import type { FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
 import { buildNutritionDayModelV2 } from "@/lib/nutrition/v2/nutrition-day-model-v2";
 import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
+import { loadMenuFoodPools } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { FDC_BRANCH_POOL_SPECS } from "@/lib/nutrition/v2/fdc-pool-specs";
 import { queryFdcBranchPool } from "@/lib/nutrition/v2/fdc-branch-query";
 import type { FdcFoodBrowseFilter } from "@/lib/nutrition/v2/fdc-food-taxonomy";
@@ -168,7 +169,12 @@ export async function buildMealPlanV2Production(
 
   const mealTimes = mealTimesFromRequest(input.request, input.mealTimes ?? DEFAULT_MEAL_TIMES);
   const dietMealSlotBudgets = resolveDietSlots(requirements, input.request, input.dietDay, mealTimes);
-  const pools = await loadFdcPools(admin, requirements.dietProfileActive);
+  // Catalogo curato DB in parallelo ai pool taggati: fonte primaria dei pool staple;
+  // null (tabella vuota/irraggiungibile) → il compose ricade sull'allowlist hardcoded.
+  const [pools, menuFoodPools] = await Promise.all([
+    loadFdcPools(admin, requirements.dietProfileActive),
+    loadMenuFoodPools(admin),
+  ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
 
   const composedMealPlan = composeMealPlanV2(requirements, dietMealSlotBudgets, pools, {
@@ -176,6 +182,7 @@ export async function buildMealPlanV2Production(
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
     request: input.request,
+    menuFoodPools,
   });
 
   const sessions = requirements.substrateFueling?.sessions ?? [];

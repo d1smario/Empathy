@@ -9,6 +9,7 @@ import {
   type BuildDailyRequirementsInput,
 } from "@/lib/nutrition/v2/daily-nutrition-requirements";
 import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
+import { loadMenuFoodPools } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { FDC_BRANCH_POOL_SPECS } from "@/lib/nutrition/v2/fdc-pool-specs";
 import { buildMealPlanFoodDenyFragments } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { buildNutritionDayModelV2 } from "@/lib/nutrition/v2/nutrition-day-model-v2";
@@ -154,10 +155,14 @@ export async function buildMealPlanV2Preview(
       })),
     ]),
   );
+  // Stessa fonte primaria del path production: catalogo DB quando c'è un client admin
+  // (path locale senza admin → null → allowlist hardcoded, comportamento storico).
+  const menuFoodPools = admin != null ? await loadMenuFoodPools(admin) : null;
   const composedMealPlan = composeMealPlanV2(requirements, dietMealSlotBudgets, poolMap, {
     denyFragments: buildMealPlanFoodDenyFragments(input.request),
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
+    menuFoodPools,
   });
 
   return {

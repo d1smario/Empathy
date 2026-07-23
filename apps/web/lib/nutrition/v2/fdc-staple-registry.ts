@@ -17,6 +17,7 @@ import {
 } from "@/lib/nutrition/meal-composition-rules";
 import type { MediterraneanDayContext, MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
 import { isCanonicalKeyUsedToday } from "@/lib/nutrition/meal-rotation-guard";
+import type { MenuFoodEntry } from "@/lib/nutrition/v2/menu-food-catalog-db";
 
 export type StapleRegistryEntry = {
   canonicalKey: string;
@@ -461,7 +462,60 @@ export type StaplePickContext = {
   dayCtx?: Pick<MediterraneanDayContext, "weekStapleCounts" | "dayUsedCanonicalKeys">;
   usedCarbFamilies?: Set<string>;
   usedFdcIds?: Set<number>;
+  /**
+   * Pool dal catalogo DB (nutrition_menu_foods): quando presente e non vuoto sostituisce
+   * IN TOTO l'allowlist hardcoded per questo pool — stesso scoring/rotazione/penalità,
+   * ma filtro dieta sui flag espliciti e macro dal DB. Assente → comportamento storico.
+   */
+  menuEntries?: MenuFoodEntry[];
 };
+
+/**
+ * Filtro dieta per le entry del catalogo DB: usa i flag ESPLICITI della riga invece
+ * delle liste hardcoded MEAT/FISH/ANIMAL_PRODUCT_KEYS (che conoscono solo i cibi storici).
+ */
+function filterMenuFoodsByDiet(entries: MenuFoodEntry[], dietType?: MediterraneanDietType): MenuFoodEntry[] {
+  if (dietType === "pescatarian") return entries.filter((e) => !e.isMeat);
+  if (dietType === "vegetarian") return entries.filter((e) => !e.isMeat && !e.isFish);
+  if (dietType === "vegan") return entries.filter((e) => !e.isMeat && !e.isFish && !e.isAnimalProduct);
+  return entries;
+}
+
+/** Hit dal catalogo DB: macro per 100 g reali (nutrition_fdc_foods), label italiana come description. */
+function menuFoodEntryToHit(entry: MenuFoodEntry): FdcFoodBrowseHit | null {
+  if (!entry.kcalPer100g) return null;
+  if (
+    !isPlausiblePer100gMacros({
+      kcal_100: entry.kcalPer100g,
+      carbs_100: entry.carbsPer100g,
+      protein_100: entry.proteinPer100g,
+      fat_100: entry.fatPer100g,
+    })
+  ) {
+    return null;
+  }
+  return {
+    fdcId: entry.fdcId,
+    description: entry.labelIt,
+    kcalPer100g: entry.kcalPer100g,
+    proteinPer100g: entry.proteinPer100g,
+    carbsPer100g: entry.carbsPer100g,
+    fatPer100g: entry.fatPer100g,
+    tags: {
+      mealCourse: [],
+      foodFamily: [],
+      macroDominant: [],
+      slotFit: [],
+      dietProfile: ["omnivore"],
+      dietExclude: [],
+      mealRole: [],
+      aminoProfile: [],
+      nutrientDensity: [],
+      classifierVersion: "menu_food_catalog",
+    },
+    tagSource: "db",
+  };
+}
 
 function denyHit(key: string, denyFragments: string[]): boolean {
   const d = key.toLowerCase();
@@ -469,8 +523,12 @@ function denyHit(key: string, denyFragments: string[]): boolean {
 }
 
 export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegistryEntry; hit: FdcFoodBrowseHit } | null {
-  const raw = STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [];
-  const entries = filterByDiet(raw, ctx.dietType);
+  // Fonte pool: catalogo DB quando fornito e non vuoto (pool_keys della tabella),
+  // altrimenti l'allowlist hardcoded — identica al comportamento storico.
+  const menuEntries = ctx.menuEntries != null && ctx.menuEntries.length > 0 ? ctx.menuEntries : null;
+  const entries: StapleRegistryEntry[] = menuEntries
+    ? filterMenuFoodsByDiet(menuEntries, ctx.dietType)
+    : filterByDiet(STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [], ctx.dietType);
   const deny = ctx.denyFragments ?? [];
 
   // Rotazione vera per (atleta, data): il seed sposta l'ORDINE di preferenza del pool,
@@ -491,7 +549,7 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       else if (!e.rotationKey && e.carbFamily && ctx.usedCarbFamilies?.has(e.carbFamily)) {
         return { e, score: -3000, idx };
       }
-      const hit = canonicalToHit(e);
+      const hit = menuEntries ? menuFoodEntryToHit(e as MenuFoodEntry) : canonicalToHit(e);
       if (!hit) return { e, score: -8000, idx };
       if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4000, idx };
       let score = 1000 - ((idx + poolSize - dayOffset) % poolSize) * 10;
@@ -527,14 +585,22 @@ export function weekStapleCountForEntry(
   );
 }
 
+/**
+ * Chiavi rotazione del giorno dagli item composti. La rotation key viene risolta in ordine:
+ * 1. `item.rotationKey` (viaggia sull'item composto — copre i cibi NUOVI del catalogo DB);
+ * 2. `resolveRotationKey` (mappa dal catalogo caricato — per righe DB che hanno solo canonical_key);
+ * 3. costante hardcoded (cibi storici);
+ * 4. fallback canonical_key (accettabile, ma la famiglia deve vincere quando c'è).
+ */
 export function mealRotationStaplesFromComposedItems(
-  items: Array<{ canonicalKey?: string | null }>,
+  items: Array<{ canonicalKey?: string | null; rotationKey?: string | null }>,
+  resolveRotationKey?: (canonicalKey: string) => string | undefined,
 ): string[] {
   const keys = new Set<string>();
   for (const item of items) {
     const ck = item.canonicalKey?.trim();
     if (!ck) continue;
-    const rk = rotationKeyForCanonical(ck);
+    const rk = item.rotationKey?.trim() || resolveRotationKey?.(ck) || rotationKeyForCanonical(ck);
     keys.add(rk ?? ck);
   }
   return [...keys].slice(0, 24);

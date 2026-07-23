@@ -28,6 +28,7 @@ import {
   servingBasisForCanonical,
   type StapleRegistryEntry,
 } from "@/lib/nutrition/v2/fdc-staple-registry";
+import type { MenuFoodPoolMap } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { mediterraneanMealToV2Items } from "@/lib/nutrition/v2/v2-mediterranean-meal-adapter";
 import {
   MEAL_SLOT_ASSEMBLY,
@@ -122,6 +123,11 @@ function pickLineForRole(
   const roleCtx: RolePickContext = { slot: slotKey, poolKey: spec.poolKey, spec };
   const seed = ctx.seed + spec.poolKey.length;
 
+  // Catalogo DB prima: se il pool del menù esiste ed è non-vuoto, pickStapleForPool usa
+  // SOLO quello (il catalogo contiene già tutti gli alimenti pescabili: se il pick torna
+  // null per penalità NON ritentiamo l'allowlist — il fallback resta il rawPool taggato).
+  const menuEntries = ctx.menuPools?.get(spec.poolKey);
+
   const staplePick = pickStapleForPool({
     poolKey: spec.poolKey,
     seed,
@@ -130,6 +136,7 @@ function pickLineForRole(
     dayCtx: ctx.dayCtx,
     usedCarbFamilies: ctx.usedCarbFamilies,
     usedFdcIds: ctx.usedFdcIds,
+    menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : undefined,
   });
 
   if (staplePick) {
@@ -160,6 +167,8 @@ type ComposeContext = {
   usedCarbFamilies: Set<string>;
   staplePenalty: (description: string) => number;
   request?: IntelligentMealPlanRequest;
+  /** Pool dal catalogo DB nutrition_menu_foods (null/assente → allowlist hardcoded). */
+  menuPools?: MenuFoodPoolMap | null;
 };
 
 function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolMap, ctx: ComposeContext): MealPlanV2ComposedSlot {
@@ -201,6 +210,9 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
       grams: g,
       canonicalKey,
       servingBasis,
+      // La rotation key viaggia sull'item: la memoria settimanale conta la famiglia
+      // anche per i cibi del catalogo DB ignoti alla costante hardcoded.
+      rotationKey: line.staple?.rotationKey,
       ...macrosFromHit(line.hit, g),
     });
   });
@@ -231,6 +243,7 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
   if (choIdx < 0) return;
   const choLine = lines[choIdx]!;
   if (target.carbsG > 100 && choLine.staple?.canonicalKey === "bread_white") {
+    const altMenuEntries = ctx.menuPools?.get(choLine.spec.poolKey);
     const alt = pickStapleForPool({
       poolKey: choLine.spec.poolKey,
       seed: ctx.seed + 17,
@@ -239,12 +252,14 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
       dayCtx: ctx.dayCtx,
       usedCarbFamilies: ctx.usedCarbFamilies,
       usedFdcIds: ctx.usedFdcIds,
+      menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : undefined,
     });
     if (alt && alt.entry.canonicalKey !== "bread_white") {
       lines[choIdx] = { spec: choLine.spec, hit: alt.hit, staple: alt.entry };
     }
   }
   if (target.carbsG >= 130 && !lines.some((l) => l.staple?.canonicalKey === "bread_white")) {
+    const breadMenuEntries = ctx.menuPools?.get("breakfast_cho");
     const breadHit = pickStapleForPool({
       poolKey: "breakfast_cho",
       seed: ctx.seed + 31,
@@ -253,6 +268,7 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
       dayCtx: ctx.dayCtx,
       usedCarbFamilies: ctx.usedCarbFamilies,
       usedFdcIds: ctx.usedFdcIds,
+      menuEntries: breadMenuEntries && breadMenuEntries.length > 0 ? breadMenuEntries : undefined,
     });
     if (breadHit?.entry.canonicalKey === "bread_white") {
       lines.push({
@@ -355,6 +371,8 @@ export function composeMealPlanV2(
     weeklyStapleCounts?: Record<string, number>;
     suppressedSlots?: MealSlotKey[];
     request?: IntelligentMealPlanRequest;
+    /** Pool dal catalogo DB nutrition_menu_foods — fonte primaria; null/assente → allowlist. */
+    menuFoodPools?: MenuFoodPoolMap | null;
   },
 ): MealPlanV2ComposedSlot[] {
   void requirements;
@@ -391,6 +409,7 @@ export function composeMealPlanV2(
     usedCarbFamilies,
     staplePenalty,
     request,
+    menuPools: options?.menuFoodPools ?? null,
   };
 
   return dietSlots.map((slot) => {

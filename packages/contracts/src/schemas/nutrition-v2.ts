@@ -248,6 +248,12 @@ export type MealPlanV2ComposedItem = {
   canonicalKey?: string;
   /** Base porzione per scaling USDA (allineato a portionHint). */
   servingBasis?: MealPlanV2ServingBasis;
+  /**
+   * Chiave rotazione settimanale (es. carb:pasta) risolta al momento della composizione:
+   * viaggia sull'item così la memoria settimanale conta la FAMIGLIA anche per i cibi del
+   * catalogo DB che la costante hardcoded non conosce.
+   */
+  rotationKey?: string;
 };
 
 export type MealPlanV2ComposedSlot = {

@@ -3756,18 +3756,18 @@ function scaleCanonicalNutrientsToKcal(row2, targetKcal) {
   const dens = row2.kcalPer100g / 100;
   const factor = dens > 0 ? k / dens : 0;
   const f = factor / 100;
-  const num3 = (v) => Math.round(v * f * 1e3) / 1e3;
+  const num4 = (v) => Math.round(v * f * 1e3) / 1e3;
   const numMicro = (v) => Math.round(v * f * 10) / 10;
   return {
     kcal: k,
-    proteinG: num3(row2.proteinG),
-    carbsG: num3(row2.carbsG),
-    fatG: num3(row2.fatG),
-    fiberG: num3(row2.fiberG),
-    saturatedFatG: num3(row2.saturatedFatG),
-    monoFatG: num3(row2.monoFatG),
-    polyFatG: num3(row2.polyFatG),
-    omega3G: num3(row2.omega3G),
+    proteinG: num4(row2.proteinG),
+    carbsG: num4(row2.carbsG),
+    fatG: num4(row2.fatG),
+    fiberG: num4(row2.fiberG),
+    saturatedFatG: num4(row2.saturatedFatG),
+    monoFatG: num4(row2.monoFatG),
+    polyFatG: num4(row2.polyFatG),
+    omega3G: num4(row2.omega3G),
     vitA_mcg_RAE: numMicro(row2.vitA_mcg_RAE),
     vitC_mg: numMicro(row2.vitC_mg),
     vitD_mcg: numMicro(row2.vitD_mcg),
@@ -3787,15 +3787,15 @@ function scaleCanonicalNutrientsToKcal(row2, targetKcal) {
     na_mg: numMicro(row2.na_mg),
     zn_mg: numMicro(row2.zn_mg),
     se_mcg: numMicro(row2.se_mcg),
-    eaa_leu: num3(row2.eaa_leu),
-    eaa_lys: num3(row2.eaa_lys),
-    eaa_met: num3(row2.eaa_met),
-    eaa_phe: num3(row2.eaa_phe),
-    eaa_thr: num3(row2.eaa_thr),
-    eaa_trp: num3(row2.eaa_trp),
-    eaa_ile: num3(row2.eaa_ile),
-    eaa_val: num3(row2.eaa_val),
-    eaa_his: num3(row2.eaa_his),
+    eaa_leu: num4(row2.eaa_leu),
+    eaa_lys: num4(row2.eaa_lys),
+    eaa_met: num4(row2.eaa_met),
+    eaa_phe: num4(row2.eaa_phe),
+    eaa_thr: num4(row2.eaa_thr),
+    eaa_trp: num4(row2.eaa_trp),
+    eaa_ile: num4(row2.eaa_ile),
+    eaa_val: num4(row2.eaa_val),
+    eaa_his: num4(row2.eaa_his),
     glycemicIndex: 0,
     insulinIndex: 0,
     glycemicLoad: 0
@@ -3848,19 +3848,19 @@ function resolveServingGramsFromPortionHint(portionHint, compositionKey) {
 function scaleCanonicalNutrientsToGrams(row2, gramsEdible) {
   const g = Math.max(0.1, gramsEdible);
   const f = g / 100;
-  const num3 = (v) => Math.round(v * f * 1e3) / 1e3;
+  const num4 = (v) => Math.round(v * f * 1e3) / 1e3;
   const numMicro = (v) => Math.round(v * f * 10) / 10;
   const kcal = Math.max(1, Math.round(row2.kcalPer100g * f));
   return {
     kcal,
-    proteinG: num3(row2.proteinG),
-    carbsG: num3(row2.carbsG),
-    fatG: num3(row2.fatG),
-    fiberG: num3(row2.fiberG),
-    saturatedFatG: num3(row2.saturatedFatG),
-    monoFatG: num3(row2.monoFatG),
-    polyFatG: num3(row2.polyFatG),
-    omega3G: num3(row2.omega3G),
+    proteinG: num4(row2.proteinG),
+    carbsG: num4(row2.carbsG),
+    fatG: num4(row2.fatG),
+    fiberG: num4(row2.fiberG),
+    saturatedFatG: num4(row2.saturatedFatG),
+    monoFatG: num4(row2.monoFatG),
+    polyFatG: num4(row2.polyFatG),
+    omega3G: num4(row2.omega3G),
     vitA_mcg_RAE: numMicro(row2.vitA_mcg_RAE),
     vitC_mg: numMicro(row2.vitC_mg),
     vitD_mcg: numMicro(row2.vitD_mcg),
@@ -3880,15 +3880,15 @@ function scaleCanonicalNutrientsToGrams(row2, gramsEdible) {
     na_mg: numMicro(row2.na_mg),
     zn_mg: numMicro(row2.zn_mg),
     se_mcg: numMicro(row2.se_mcg),
-    eaa_leu: num3(row2.eaa_leu),
-    eaa_lys: num3(row2.eaa_lys),
-    eaa_met: num3(row2.eaa_met),
-    eaa_phe: num3(row2.eaa_phe),
-    eaa_thr: num3(row2.eaa_thr),
-    eaa_trp: num3(row2.eaa_trp),
-    eaa_ile: num3(row2.eaa_ile),
-    eaa_val: num3(row2.eaa_val),
-    eaa_his: num3(row2.eaa_his),
+    eaa_leu: num4(row2.eaa_leu),
+    eaa_lys: num4(row2.eaa_lys),
+    eaa_met: num4(row2.eaa_met),
+    eaa_phe: num4(row2.eaa_phe),
+    eaa_thr: num4(row2.eaa_thr),
+    eaa_trp: num4(row2.eaa_trp),
+    eaa_ile: num4(row2.eaa_ile),
+    eaa_val: num4(row2.eaa_val),
+    eaa_his: num4(row2.eaa_his),
     glycemicIndex: 0,
     insulinIndex: 0,
     glycemicLoad: 0
@@ -4684,13 +4684,51 @@ function canonicalToHit(entry2) {
     tagSource: "db"
   };
 }
+function filterMenuFoodsByDiet(entries, dietType) {
+  if (dietType === "pescatarian") return entries.filter((e) => !e.isMeat);
+  if (dietType === "vegetarian") return entries.filter((e) => !e.isMeat && !e.isFish);
+  if (dietType === "vegan") return entries.filter((e) => !e.isMeat && !e.isFish && !e.isAnimalProduct);
+  return entries;
+}
+function menuFoodEntryToHit(entry2) {
+  if (!entry2.kcalPer100g) return null;
+  if (!isPlausiblePer100gMacros({
+    kcal_100: entry2.kcalPer100g,
+    carbs_100: entry2.carbsPer100g,
+    protein_100: entry2.proteinPer100g,
+    fat_100: entry2.fatPer100g
+  })) {
+    return null;
+  }
+  return {
+    fdcId: entry2.fdcId,
+    description: entry2.labelIt,
+    kcalPer100g: entry2.kcalPer100g,
+    proteinPer100g: entry2.proteinPer100g,
+    carbsPer100g: entry2.carbsPer100g,
+    fatPer100g: entry2.fatPer100g,
+    tags: {
+      mealCourse: [],
+      foodFamily: [],
+      macroDominant: [],
+      slotFit: [],
+      dietProfile: ["omnivore"],
+      dietExclude: [],
+      mealRole: [],
+      aminoProfile: [],
+      nutrientDensity: [],
+      classifierVersion: "menu_food_catalog"
+    },
+    tagSource: "db"
+  };
+}
 function denyHit2(key, denyFragments) {
   const d = key.toLowerCase();
   return denyFragments.some((f) => f && d.includes(f.toLowerCase()));
 }
 function pickStapleForPool(ctx) {
-  const raw = STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [];
-  const entries = filterByDiet(raw, ctx.dietType);
+  const menuEntries = ctx.menuEntries != null && ctx.menuEntries.length > 0 ? ctx.menuEntries : null;
+  const entries = menuEntries ? filterMenuFoodsByDiet(menuEntries, ctx.dietType) : filterByDiet(STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [], ctx.dietType);
   const deny = ctx.denyFragments ?? [];
   const poolSize = entries.length;
   const dayOffset = poolSize > 0 ? (Math.floor(Math.abs(ctx.seed)) % poolSize + poolSize) % poolSize : 0;
@@ -4705,7 +4743,7 @@ function pickStapleForPool(ctx) {
     else if (!e.rotationKey && e.carbFamily && ctx.usedCarbFamilies?.has(e.carbFamily)) {
       return { e, score: -3e3, idx };
     }
-    const hit = canonicalToHit(e);
+    const hit = menuEntries ? menuFoodEntryToHit(e) : canonicalToHit(e);
     if (!hit) return { e, score: -8e3, idx };
     if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4e3, idx };
     let score = 1e3 - (idx + poolSize - dayOffset) % poolSize * 10;
@@ -4731,12 +4769,12 @@ function weekStapleCountForEntry(entry2, week) {
     entry2.rotationKey ? week[entry2.rotationKey] ?? 0 : 0
   );
 }
-function mealRotationStaplesFromComposedItems(items) {
+function mealRotationStaplesFromComposedItems(items, resolveRotationKey) {
   const keys = /* @__PURE__ */ new Set();
   for (const item2 of items) {
     const ck = item2.canonicalKey?.trim();
     if (!ck) continue;
-    const rk = rotationKeyForCanonical(ck);
+    const rk = item2.rotationKey?.trim() || resolveRotationKey?.(ck) || rotationKeyForCanonical(ck);
     keys.add(rk ?? ck);
   }
   return [...keys].slice(0, 24);
@@ -4776,7 +4814,7 @@ function mergeWeeklyStapleCounts(...sources) {
   }
   return Object.keys(out).length ? out : void 0;
 }
-async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate) {
+async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate, opts) {
   try {
     const { start, end } = isoWeekRangeForDate(planDate);
     const { data, error } = await db.from("nutrition_plan").select("plan_date, meal(meal_item(canonical_key))").eq("athlete_id", athleteId).gte("plan_date", start).lte("plan_date", end).neq("plan_date", planDate);
@@ -4786,7 +4824,8 @@ async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate) {
       const meals = Array.isArray(row2?.meal) ? row2.meal : [];
       const items = meals.flatMap((m) => Array.isArray(m?.meal_item) ? m.meal_item : []);
       const dayKeys = mealRotationStaplesFromComposedItems(
-        items.map((it) => ({ canonicalKey: typeof it?.canonical_key === "string" ? it.canonical_key : null }))
+        items.map((it) => ({ canonicalKey: typeof it?.canonical_key === "string" ? it.canonical_key : null })),
+        opts?.resolveRotationKey
       );
       for (const k of dayKeys) counts[k] = (counts[k] ?? 0) + 1;
     }
@@ -4794,6 +4833,121 @@ async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate) {
   } catch {
     return {};
   }
+}
+
+// apps/web/lib/nutrition/v2/menu-food-catalog-db.ts
+var SERVING_BASES = /* @__PURE__ */ new Set(["dry_grams", "cooked_grams", "ml"]);
+function str(v) {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+function num(v) {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+function mapMenuFoodRows(menuRows, macroRows) {
+  const macroByFdc = /* @__PURE__ */ new Map();
+  for (const raw of macroRows) {
+    const r = raw;
+    const fdcId = num(r?.fdc_id);
+    const kcal = num(r?.kcal_100g);
+    if (fdcId == null || fdcId <= 0 || kcal == null || kcal <= 0) continue;
+    macroByFdc.set(fdcId, {
+      kcal,
+      carbs: num(r?.carbs_100g) ?? 0,
+      protein: num(r?.protein_100g) ?? 0,
+      fat: num(r?.fat_100g) ?? 0
+    });
+  }
+  const parsed = [];
+  for (const raw of menuRows) {
+    const r = raw;
+    const canonicalKey = str(r?.canonical_key);
+    const fdcId = num(r?.fdc_id);
+    const poolKeys = Array.isArray(r?.pool_keys) ? r.pool_keys.filter((k) => typeof k === "string" && k.trim().length > 0) : [];
+    if (!canonicalKey || fdcId == null || fdcId <= 0 || poolKeys.length === 0) continue;
+    const macro = macroByFdc.get(fdcId);
+    if (!macro) continue;
+    const servingBasisRaw = str(r?.serving_basis) ?? "";
+    parsed.push({
+      entry: {
+        canonicalKey,
+        labelIt: str(r?.label_it) ?? canonicalKey.replace(/_/g, " "),
+        servingBasis: SERVING_BASES.has(servingBasisRaw) ? servingBasisRaw : "dry_grams",
+        rotationKey: str(r?.rotation_key) ?? void 0,
+        carbFamily: str(r?.carb_family) ?? void 0,
+        fdcId,
+        kcalPer100g: macro.kcal,
+        carbsPer100g: macro.carbs,
+        proteinPer100g: macro.protein,
+        fatPer100g: macro.fat,
+        isMeat: r?.is_meat === true,
+        isFish: r?.is_fish === true,
+        isAnimalProduct: r?.is_animal_product === true
+      },
+      poolKeys,
+      sortPriority: num(r?.sort_priority) ?? 999
+    });
+  }
+  if (parsed.length === 0) return null;
+  parsed.sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
+    return a.entry.canonicalKey < b.entry.canonicalKey ? -1 : a.entry.canonicalKey > b.entry.canonicalKey ? 1 : 0;
+  });
+  const pools = /* @__PURE__ */ new Map();
+  for (const p of parsed) {
+    for (const poolKey of p.poolKeys) {
+      const list = pools.get(poolKey) ?? [];
+      list.push(p.entry);
+      pools.set(poolKey, list);
+    }
+  }
+  return pools.size > 0 ? pools : null;
+}
+var menuFoodPoolsCache = null;
+var MENU_FOOD_CACHE_TTL_MS = 5 * 6e4;
+var FDC_IN_CHUNK = 200;
+async function loadMenuFoodPools(admin) {
+  if (menuFoodPoolsCache && Date.now() - menuFoodPoolsCache.at < MENU_FOOD_CACHE_TTL_MS) {
+    return menuFoodPoolsCache.pools;
+  }
+  try {
+    const { data: menuRows, error } = await admin.from("nutrition_menu_foods").select(
+      "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority"
+    ).eq("is_active", true);
+    if (error || !Array.isArray(menuRows) || menuRows.length === 0) {
+      menuFoodPoolsCache = { at: Date.now(), pools: null };
+      return null;
+    }
+    const fdcIds = [
+      ...new Set(
+        menuRows.map((r) => num(r?.fdc_id)).filter((n) => n != null && n > 0)
+      )
+    ];
+    const macroRows = [];
+    for (let i = 0; i < fdcIds.length; i += FDC_IN_CHUNK) {
+      const { data, error: macroError } = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g").in("fdc_id", fdcIds.slice(i, i + FDC_IN_CHUNK));
+      if (macroError) {
+        menuFoodPoolsCache = { at: Date.now(), pools: null };
+        return null;
+      }
+      if (Array.isArray(data)) macroRows.push(...data);
+    }
+    const pools = mapMenuFoodRows(menuRows, macroRows);
+    menuFoodPoolsCache = { at: Date.now(), pools };
+    return pools;
+  } catch {
+    menuFoodPoolsCache = { at: Date.now(), pools: null };
+    return null;
+  }
+}
+function menuRotationKeyResolver(pools) {
+  const byCanonical = /* @__PURE__ */ new Map();
+  for (const entries of pools.values()) {
+    for (const e of entries) {
+      if (e.rotationKey && !byCanonical.has(e.canonicalKey)) byCanonical.set(e.canonicalKey, e.rotationKey);
+    }
+  }
+  return (canonicalKey) => byCanonical.get(canonicalKey);
 }
 
 // apps/web/lib/nutrition/diet-meal-slot-budgets.ts
@@ -4955,7 +5109,7 @@ function parseNutritionConfigRecord(nutritionConfig) {
 }
 function distributionImpliesSixMeals(dist, dayRaw) {
   const cal = asRecord5(dayRaw?.caloric_distribution);
-  if (num(cal.snack_am) != null || num(cal.snack_pm) != null || num(cal.snack_evening) != null) {
+  if (num2(cal.snack_am) != null || num2(cal.snack_pm) != null || num2(cal.snack_evening) != null) {
     return true;
   }
   const r = resolveSixMealSnackPercentages(dist);
@@ -4968,7 +5122,7 @@ function distributionImpliesSixMeals(dist, dayRaw) {
   if (dist.snacks > 0 && dist.snacks * 3 + mains <= 100.5) return true;
   return false;
 }
-function num(v) {
+function num2(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string" && v.trim() !== "") {
     const n = Number(v);
@@ -4981,13 +5135,13 @@ function readCaloricDistributionFields(cal, pctSuffix) {
   const lKey = pctSuffix ? "lunch_pct" : "lunch";
   const dKey = pctSuffix ? "dinner_pct" : "dinner";
   const sKey = pctSuffix ? "snacks_pct" : "snacks";
-  const breakfast = num(cal[bKey] ?? cal.breakfast);
-  const lunch = num(cal[lKey] ?? cal.lunch);
-  const dinner = num(cal[dKey] ?? cal.dinner);
-  const snacks = num(cal[sKey] ?? cal.snacks);
-  const snackAm = num(cal.snack_am ?? cal.snack_am_pct);
-  const snackPm = num(cal.snack_pm ?? cal.snack_pm_pct);
-  const snackEvening = num(cal.snack_evening ?? cal.snack_evening_pct);
+  const breakfast = num2(cal[bKey] ?? cal.breakfast);
+  const lunch = num2(cal[lKey] ?? cal.lunch);
+  const dinner = num2(cal[dKey] ?? cal.dinner);
+  const snacks = num2(cal[sKey] ?? cal.snacks);
+  const snackAm = num2(cal.snack_am ?? cal.snack_am_pct);
+  const snackPm = num2(cal.snack_pm ?? cal.snack_pm_pct);
+  const snackEvening = num2(cal.snack_evening ?? cal.snack_evening_pct);
   if (breakfast == null && lunch == null && dinner == null && snacks == null && snackAm == null && snackPm == null && snackEvening == null) {
     return null;
   }
@@ -5015,10 +5169,10 @@ function isUsableCaloricDistribution(dist) {
 function profileParityCaloricDistribution(dayRaw) {
   const cal = asRecord5(dayRaw.caloric_distribution);
   return normalizeCaloricDistribution({
-    breakfast: num(cal.breakfast) ?? 30,
-    lunch: num(cal.lunch) ?? 35,
-    dinner: num(cal.dinner) ?? 25,
-    snacks: num(cal.snacks) ?? 10
+    breakfast: num2(cal.breakfast) ?? 30,
+    lunch: num2(cal.lunch) ?? 35,
+    dinner: num2(cal.dinner) ?? 25,
+    snacks: num2(cal.snacks) ?? 10
   });
 }
 function resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigured) {
@@ -5033,9 +5187,9 @@ function resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigur
 }
 function readDailyMacros(raw) {
   const macros = asRecord5(raw.daily_macros);
-  const carbs = num(macros.cho_pct ?? macros.carbs_pct);
-  const protein = num(macros.pro_pct ?? macros.protein_pct);
-  const fat = num(macros.fat_pct);
+  const carbs = num2(macros.cho_pct ?? macros.carbs_pct);
+  const protein = num2(macros.pro_pct ?? macros.protein_pct);
+  const fat = num2(macros.fat_pct);
   if (carbs == null && protein == null && fat == null) return null;
   return {
     carbs: carbs ?? 50,
@@ -5049,10 +5203,10 @@ function readFromLegacyRoot(nc) {
   const macroRoot = asRecord5(nc.macro_split);
   const macroMealPlan = asRecord5(mealPlan.macro_split);
   const macro = Object.keys(macroMealPlan).length ? macroMealPlan : macroRoot;
-  const dailyMacros = num(macro.carbs_pct) != null || num(macro.protein_pct) != null || num(macro.fat_pct) != null ? {
-    carbs: num(macro.carbs_pct) ?? 50,
-    protein: num(macro.protein_pct) ?? 25,
-    fat: num(macro.fat_pct) ?? 25
+  const dailyMacros = num2(macro.carbs_pct) != null || num2(macro.protein_pct) != null || num2(macro.fat_pct) != null ? {
+    carbs: num2(macro.carbs_pct) ?? 50,
+    protein: num2(macro.protein_pct) ?? 25,
+    fat: num2(macro.fat_pct) ?? 25
   } : null;
   const mealStrategy = String(mealPlan.meal_strategy ?? nc.meal_strategy ?? "").trim();
   let mealCountMode = "4";
@@ -5095,7 +5249,7 @@ function resolveNutritionDietDay(nutritionConfig, planDate, options) {
   const weekPlan = asRecord5(nc.week_plan);
   const dayRaw = asRecord5(weekPlan[weekDayKey]);
   const dayType = String(dayRaw.day_type ?? "normocaloric-100");
-  const dayTypePctRaw = num(dayRaw.day_type_pct);
+  const dayTypePctRaw = num2(dayRaw.day_type_pct);
   const dayTypePct = dayTypePctRaw != null ? Math.max(0, Math.min(200, dayTypePctRaw)) : 100;
   const weekMacros = readDailyMacros(dayRaw);
   const weekMealMode = String(dayRaw.meal_count_mode ?? "").trim();
@@ -5953,8 +6107,15 @@ async function prepareIntelligentMealPlanContext(db, body) {
     ).eq("id", athleteId).maybeSingle(),
     db.from("planned_workouts").select("duration_minutes, type, notes, tss_target, kcal_target").eq("athlete_id", athleteId).eq("date", planDate),
     // Memoria settimanale server-autorevole: conteggi staple dei giorni GIÀ persistiti
-    // nella settimana ISO di planDate (escluso il giorno in rigenerazione).
-    loadWeeklyStapleCountsFromDb(db, athleteId, planDate)
+    // nella settimana ISO di planDate (escluso il giorno in rigenerazione). Il catalogo
+    // menù (cache di processo, riusato poi da buildMealPlanV2Production) fornisce la
+    // rotation key anche per i cibi nuovi che la costante hardcoded non conosce.
+    (async () => {
+      const menuPools = await loadMenuFoodPools(db);
+      return loadWeeklyStapleCountsFromDb(db, athleteId, planDate, {
+        resolveRotationKey: menuPools ? menuRotationKeyResolver(menuPools) : void 0
+      });
+    })()
   ]);
   const plan = body.plan;
   if (!isRecord(plan)) return { error: "Missing plan", status: 400 };
@@ -6802,6 +6963,7 @@ function portionHintIt(label, grams, spec, servingBasis) {
 function pickLineForRole(spec, slotKey, pools, ctx) {
   const roleCtx = { slot: slotKey, poolKey: spec.poolKey, spec };
   const seed = ctx.seed + spec.poolKey.length;
+  const menuEntries = ctx.menuPools?.get(spec.poolKey);
   const staplePick = pickStapleForPool({
     poolKey: spec.poolKey,
     seed,
@@ -6809,7 +6971,8 @@ function pickLineForRole(spec, slotKey, pools, ctx) {
     denyFragments: ctx.denyFragments,
     dayCtx: ctx.dayCtx,
     usedCarbFamilies: ctx.usedCarbFamilies,
-    usedFdcIds: ctx.usedFdcIds
+    usedFdcIds: ctx.usedFdcIds,
+    menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : void 0
   });
   if (staplePick) {
     if (staplePick.entry.rotationKey) {
@@ -6862,6 +7025,9 @@ function composeSlotFromAssembly(slot, pools, ctx) {
       grams: g,
       canonicalKey,
       servingBasis,
+      // La rotation key viaggia sull'item: la memoria settimanale conta la famiglia
+      // anche per i cibi del catalogo DB ignoti alla costante hardcoded.
+      rotationKey: line.staple?.rotationKey,
       ...macrosFromHit(line.hit, g)
     });
   });
@@ -6888,6 +7054,7 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
   if (choIdx < 0) return;
   const choLine = lines[choIdx];
   if (target.carbsG > 100 && choLine.staple?.canonicalKey === "bread_white") {
+    const altMenuEntries = ctx.menuPools?.get(choLine.spec.poolKey);
     const alt = pickStapleForPool({
       poolKey: choLine.spec.poolKey,
       seed: ctx.seed + 17,
@@ -6895,13 +7062,15 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
       denyFragments: ctx.denyFragments,
       dayCtx: ctx.dayCtx,
       usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds
+      usedFdcIds: ctx.usedFdcIds,
+      menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : void 0
     });
     if (alt && alt.entry.canonicalKey !== "bread_white") {
       lines[choIdx] = { spec: choLine.spec, hit: alt.hit, staple: alt.entry };
     }
   }
   if (target.carbsG >= 130 && !lines.some((l) => l.staple?.canonicalKey === "bread_white")) {
+    const breadMenuEntries = ctx.menuPools?.get("breakfast_cho");
     const breadHit = pickStapleForPool({
       poolKey: "breakfast_cho",
       seed: ctx.seed + 31,
@@ -6909,7 +7078,8 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
       denyFragments: ctx.denyFragments,
       dayCtx: ctx.dayCtx,
       usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds
+      usedFdcIds: ctx.usedFdcIds,
+      menuEntries: breadMenuEntries && breadMenuEntries.length > 0 ? breadMenuEntries : void 0
     });
     if (breadHit?.entry.canonicalKey === "bread_white") {
       lines.push({
@@ -7014,7 +7184,8 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
     usedFdcIds,
     usedCarbFamilies,
     staplePenalty,
-    request
+    request,
+    menuPools: options?.menuFoodPools ?? null
   };
   return dietSlots.map((slot) => {
     if (suppressed.has(slot.key)) {
@@ -7762,13 +7933,17 @@ async function buildMealPlanV2Production(input, admin) {
   });
   const mealTimes = mealTimesFromRequest(input.request, input.mealTimes ?? DEFAULT_MEAL_TIMES);
   const dietMealSlotBudgets = resolveDietSlots(requirements, input.request, input.dietDay, mealTimes);
-  const pools = await loadFdcPools(admin, requirements.dietProfileActive);
+  const [pools, menuFoodPools] = await Promise.all([
+    loadFdcPools(admin, requirements.dietProfileActive),
+    loadMenuFoodPools(admin)
+  ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
   const composedMealPlan = composeMealPlanV2(requirements, dietMealSlotBudgets, pools, {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
-    request: input.request
+    request: input.request,
+    menuFoodPools
   });
   const sessions = requirements.substrateFueling?.sessions ?? [];
   const fuelingProtocolMeta = sessions.length > 0 && requirements.substrateFueling ? bridgeSubstrateFuelingToProtocolMeta({
@@ -9220,7 +9395,7 @@ async function mapV2PlanToV1Response(production, request) {
 }
 
 // apps/web/lib/nutrition/v2/persist-v2-plan-to-db.ts
-function num2(v) {
+function num3(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
@@ -9231,10 +9406,10 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
   if (delErr) return { ok: false, error: `delete piano: ${delErr.message}` };
   const planTotals = slots.reduce(
     (acc, s) => {
-      acc.kcal += num2(s.totals.kcal);
-      acc.cho += num2(s.totals.choG);
-      acc.pro += num2(s.totals.proG);
-      acc.fat += num2(s.totals.fatG);
+      acc.kcal += num3(s.totals.kcal);
+      acc.cho += num3(s.totals.choG);
+      acc.pro += num3(s.totals.proG);
+      acc.fat += num3(s.totals.fatG);
       return acc;
     },
     { kcal: 0, cho: 0, pro: 0, fat: 0 }
@@ -9257,10 +9432,10 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     plan_id: planId,
     slot: s.slot,
     slot_order: idx + 1,
-    kcal_target: Math.round(num2(s.totals.kcal)),
-    carbs_g_target: Math.round(num2(s.totals.choG)),
-    protein_g_target: Math.round(num2(s.totals.proG)),
-    fat_g_target: Math.round(num2(s.totals.fatG))
+    kcal_target: Math.round(num3(s.totals.kcal)),
+    carbs_g_target: Math.round(num3(s.totals.choG)),
+    protein_g_target: Math.round(num3(s.totals.proG)),
+    fat_g_target: Math.round(num3(s.totals.fatG))
   }));
   const { data: mealRows, error: mealErr } = await admin.from("meal").insert(mealPayload).select("id, slot");
   if (mealErr || !mealRows?.length) return { ok: false, error: `insert pasti: ${mealErr?.message ?? "no rows"}` };
@@ -9280,11 +9455,11 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
         label: it.description ?? null,
         canonical_key: it.canonicalKey ?? null,
         food_role: foodRole,
-        grams: Math.round(num2(it.grams)),
-        kcal: Math.round(num2(it.kcal)),
-        carbs_g: num2(it.choG),
-        protein_g: num2(it.proG),
-        fat_g: num2(it.fatG)
+        grams: Math.round(num3(it.grams)),
+        kcal: Math.round(num3(it.kcal)),
+        carbs_g: num3(it.choG),
+        protein_g: num3(it.proG),
+        fat_g: num3(it.fatG)
       });
     });
   }
