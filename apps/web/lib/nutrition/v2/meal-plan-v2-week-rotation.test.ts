@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { MealPlanV2DietSlotBudget } from "@empathy/contracts";
 import type { IntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-types";
-import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
+import {
+  composeMealPlanV2,
+  mealPlanSeedForAthleteDate,
+  type FdcPoolMap,
+} from "@/lib/nutrition/v2/compose-meal-plan-v2";
 import {
   mealRotationStaplesFromComposedItems,
   rotationKeyForCanonical,
@@ -74,6 +78,37 @@ test("mealRotationStaplesFromComposedItems: chiavi rotation compatibili con cach
   assert.equal(rotationKeyForCanonical("rice_dry"), "carb:riso");
 });
 
+test("mealPlanSeedForAthleteDate: deterministico e sensibile ad atleta e data", () => {
+  const a = mealPlanSeedForAthleteDate("athlete-1", "2026-07-22");
+  assert.equal(a, mealPlanSeedForAthleteDate("athlete-1", "2026-07-22"));
+  assert.ok(Number.isInteger(a) && a >= 0);
+  assert.notEqual(a, mealPlanSeedForAthleteDate("athlete-1", "2026-07-23"));
+  assert.notEqual(a, mealPlanSeedForAthleteDate("athlete-2", "2026-07-22"));
+  // 7 giorni consecutivi → seed tutti distinti (niente seed degenerato da somma-data).
+  const seeds = WEEK_DATES.map((d) => mealPlanSeedForAthleteDate("athlete-1", d));
+  assert.equal(new Set(seeds).size, WEEK_DATES.length);
+});
+
+test("composeMealPlanV2: stesso (atleta, data) → stesso piano; date diverse → primo giorno diverso", () => {
+  const emptyPools = new Map() as FdcPoolMap;
+  const run = (planDate: string, athleteId = "rotation-test") =>
+    composeMealPlanV2(requirements, lunchDinnerSlots(), emptyPools, {
+      request: { ...baseRequest(planDate), athleteId },
+    });
+
+  // Idempotenza: persist replace per (atleta, data) invariato.
+  assert.deepEqual(run("2026-06-01"), run("2026-06-01"));
+
+  // A memoria settimanale VUOTA, la rotazione da sola varia i cibi tra i giorni.
+  const firstPicks = WEEK_DATES.map((d) =>
+    run(d)
+      .flatMap((s) => s.items)
+      .map((i) => i.canonicalKey)
+      .join("|"),
+  );
+  assert.ok(new Set(firstPicks).size >= 4, `Rotazione piatta: ${firstPicks.join("\n")}`);
+});
+
 test("V2 alternanza settimanale: 7 giorni lunch+dinner -> >=4 carb e >=4 prot, max 3 usi per staple", () => {
   const weeklyStapleCounts: Record<string, number> = {};
   const stapleByDay: string[][] = [];
@@ -88,13 +123,10 @@ test("V2 alternanza settimanale: 7 giorni lunch+dinner -> >=4 carb e >=4 prot, m
     for (const s of dayStaples) {
       weeklyStapleCounts[s] = (weeklyStapleCounts[s] ?? 0) + 1;
     }
-    /** Ogni giorno deve avere carb diversi a pranzo e cena quando possibile. */
-    const lunchCarb = out.find((s) => s.slot === "lunch")?.items.find((i) =>
-      /pasta|riso|patate|farro|quinoa/i.test(i.description),
-    );
-    const dinnerCarb = out.find((s) => s.slot === "dinner")?.items.find((i) =>
-      /pasta|riso|patate|farro|quinoa/i.test(i.description),
-    );
+    /** Ogni giorno deve avere carb diversi a pranzo e cena quando possibile (pool espanso lug 2026). */
+    const CARB_RE = /pasta|riso|patat|farro|quinoa|cous|orzo|bulgur|miglio|polenta/i;
+    const lunchCarb = out.find((s) => s.slot === "lunch")?.items.find((i) => CARB_RE.test(i.description));
+    const dinnerCarb = out.find((s) => s.slot === "dinner")?.items.find((i) => CARB_RE.test(i.description));
     assert.ok(lunchCarb, `${planDate}: pranzo senza carb staple`);
     assert.ok(dinnerCarb, `${planDate}: cena senza carb staple`);
     if (lunchCarb?.canonicalKey && dinnerCarb?.canonicalKey) {

@@ -2156,1386 +2156,6 @@ async function resolveExcludedFdcIdsFromClasses(db, classKeys) {
   return out;
 }
 
-// apps/web/lib/nutrition/diet-meal-slot-budgets.ts
-function resolveSixMealSnackPercentages(dist) {
-  const am = dist.snack_am;
-  const pm = dist.snack_pm;
-  const ev = dist.snack_evening;
-  const hasExplicit = am != null && Number.isFinite(am) || pm != null && Number.isFinite(pm) || ev != null && Number.isFinite(ev);
-  if (hasExplicit) {
-    const snack_am = am ?? 0;
-    const snack_pm = pm ?? 0;
-    const snack_evening = ev ?? 0;
-    const snacksTotal = snack_am + snack_pm + snack_evening;
-    return { snack_am, snack_pm, snack_evening, snacksTotal };
-  }
-  const mains = dist.breakfast + dist.lunch + dist.dinner;
-  const s = dist.snacks;
-  if (s > 0 && s * 3 + mains <= 100.5) {
-    return { snack_am: s, snack_pm: s, snack_evening: s, snacksTotal: s * 3 };
-  }
-  const third = s / 3;
-  return { snack_am: third, snack_pm: third, snack_evening: third, snacksTotal: s };
-}
-function round0(v) {
-  return Math.round(v);
-}
-function normalizeCaloricDistribution(dist) {
-  const sum = dist.breakfast + dist.lunch + dist.dinner + dist.snacks;
-  if (sum <= 0) return dist;
-  if (Math.abs(sum - 100) < 0.05) return dist;
-  const f = 100 / sum;
-  return {
-    breakfast: dist.breakfast * f,
-    lunch: dist.lunch * f,
-    dinner: dist.dinner * f,
-    snacks: dist.snacks * f
-  };
-}
-function redistributeSnacksOntoMains(dist) {
-  const mainSum = dist.breakfast + dist.lunch + dist.dinner;
-  if (mainSum <= 0) return { breakfast: 100 / 3, lunch: 100 / 3, dinner: 100 / 3 };
-  const extra = dist.snacks;
-  const scale = (mainSum + extra) / mainSum;
-  return {
-    breakfast: dist.breakfast * scale,
-    lunch: dist.lunch * scale,
-    dinner: dist.dinner * scale
-  };
-}
-function dietMealSlotSpecsForMode(mealCountMode) {
-  const m = String(mealCountMode ?? "").trim();
-  const dist = (d, fn) => fn(d);
-  if (m === "1") {
-    return [{ key: "dinner", label: "Cena", pct: () => 100 }];
-  }
-  if (m === "2") {
-    const mains = (d) => redistributeSnacksOntoMains(d);
-    return [
-      { key: "lunch", label: "Pranzo", pct: (d) => dist(d, (x) => mains(x).lunch) },
-      { key: "dinner", label: "Cena", pct: (d) => dist(d, (x) => mains(x).dinner) }
-    ];
-  }
-  if (m === "3") {
-    const mains = (d) => redistributeSnacksOntoMains(d);
-    return [
-      { key: "breakfast", label: "Colazione", pct: (d) => dist(d, (x) => mains(x).breakfast) },
-      { key: "lunch", label: "Pranzo", pct: (d) => dist(d, (x) => mains(x).lunch) },
-      { key: "dinner", label: "Cena", pct: (d) => dist(d, (x) => mains(x).dinner) }
-    ];
-  }
-  if (m === "4") {
-    return [
-      { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
-      { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
-      { key: "dinner", label: "Cena", pct: (d) => d.dinner },
-      { key: "snack_am", label: "Spuntino", pct: (d) => d.snacks }
-    ];
-  }
-  if (m === "6") {
-    const snackPct = (which) => (d) => {
-      const r = resolveSixMealSnackPercentages(d);
-      if (which === "am") return r.snack_am;
-      if (which === "pm") return r.snack_pm;
-      return r.snack_evening;
-    };
-    return [
-      { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
-      { key: "snack_am", label: "Spuntino \xB7 mattina", pct: snackPct("am") },
-      { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
-      { key: "snack_pm", label: "Spuntino \xB7 pomeriggio", pct: snackPct("pm") },
-      { key: "dinner", label: "Cena", pct: (d) => d.dinner },
-      { key: "snack_evening", label: "Spuntino \xB7 serale", pct: snackPct("evening") }
-    ];
-  }
-  const half = (d) => d.snacks / 2;
-  return [
-    { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
-    { key: "snack_am", label: "Spuntino \xB7 mattina", pct: half },
-    { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
-    { key: "snack_pm", label: "Spuntino \xB7 pomeriggio", pct: half },
-    { key: "dinner", label: "Cena", pct: (d) => d.dinner }
-  ];
-}
-function buildDietMealSlotBudgets(input) {
-  const round6 = input.round ?? round0;
-  const dist = normalizeCaloricDistribution(input.caloricDistribution);
-  const specs = dietMealSlotSpecsForMode(input.mealCountMode);
-  const t = input.mealTimes;
-  const timeFor = (key) => {
-    switch (key) {
-      case "breakfast":
-        return t.breakfast;
-      case "lunch":
-        return t.lunch;
-      case "dinner":
-        return t.dinner;
-      case "snack_am":
-        return t.snack_am;
-      case "snack_pm":
-        return t.snack_pm;
-      case "snack_evening":
-        return t.snack_evening?.trim() || "22:00";
-      default:
-        return "12:00";
-    }
-  };
-  return specs.map((spec) => {
-    const pct = spec.pct(dist);
-    const kcal = input.dailyKcal * pct / 100;
-    const macro = input.macroSplit;
-    return {
-      key: spec.key,
-      label: spec.label,
-      pct,
-      time: timeFor(spec.key),
-      kcal: round6(kcal),
-      carbs: round6(kcal * (macro.carbs / 100) / 4),
-      protein: round6(kcal * (macro.protein / 100) / 4),
-      fat: round6(kcal * (macro.fat / 100) / 9)
-    };
-  });
-}
-
-// apps/web/lib/nutrition/resolve-nutrition-diet-day.ts
-function asRecord5(v) {
-  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
-}
-function parseNutritionConfigRecord(nutritionConfig) {
-  if (typeof nutritionConfig === "string") {
-    const t = nutritionConfig.trim();
-    if (!t) return {};
-    try {
-      return asRecord5(JSON.parse(t));
-    } catch {
-      return {};
-    }
-  }
-  return asRecord5(nutritionConfig);
-}
-function distributionImpliesSixMeals(dist, dayRaw) {
-  const cal = asRecord5(dayRaw?.caloric_distribution);
-  if (num(cal.snack_am) != null || num(cal.snack_pm) != null || num(cal.snack_evening) != null) {
-    return true;
-  }
-  const r = resolveSixMealSnackPercentages(dist);
-  const mains = dist.breakfast + dist.lunch + dist.dinner;
-  const daySum = mains + dist.snacks;
-  if (dist.snacks >= 20 && mains >= 55 && Math.abs(daySum - 100) < 2) return true;
-  if (r.snacksTotal >= 24 && Math.abs(r.snack_am - r.snack_pm) < 2 && Math.abs(r.snack_pm - r.snack_evening) < 2) {
-    return true;
-  }
-  if (dist.snacks > 0 && dist.snacks * 3 + mains <= 100.5) return true;
-  return false;
-}
-function num(v) {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-function readCaloricDistributionFields(cal, pctSuffix) {
-  const bKey = pctSuffix ? "breakfast_pct" : "breakfast";
-  const lKey = pctSuffix ? "lunch_pct" : "lunch";
-  const dKey = pctSuffix ? "dinner_pct" : "dinner";
-  const sKey = pctSuffix ? "snacks_pct" : "snacks";
-  const breakfast = num(cal[bKey] ?? cal.breakfast);
-  const lunch = num(cal[lKey] ?? cal.lunch);
-  const dinner = num(cal[dKey] ?? cal.dinner);
-  const snacks = num(cal[sKey] ?? cal.snacks);
-  const snackAm = num(cal.snack_am ?? cal.snack_am_pct);
-  const snackPm = num(cal.snack_pm ?? cal.snack_pm_pct);
-  const snackEvening = num(cal.snack_evening ?? cal.snack_evening_pct);
-  if (breakfast == null && lunch == null && dinner == null && snacks == null && snackAm == null && snackPm == null && snackEvening == null) {
-    return null;
-  }
-  return normalizeCaloricDistribution({
-    breakfast: breakfast ?? 0,
-    lunch: lunch ?? 0,
-    dinner: dinner ?? 0,
-    snacks: snacks ?? 0,
-    ...snackAm != null ? { snack_am: snackAm } : {},
-    ...snackPm != null ? { snack_pm: snackPm } : {},
-    ...snackEvening != null ? { snack_evening: snackEvening } : {}
-  });
-}
-function readCaloricDistribution(raw) {
-  const fromDiet = readCaloricDistributionFields(asRecord5(raw.caloric_distribution), false);
-  if (isUsableCaloricDistribution(fromDiet)) return fromDiet;
-  const fromSplit = readCaloricDistributionFields(asRecord5(raw.caloric_split), true);
-  if (isUsableCaloricDistribution(fromSplit)) return fromSplit;
-  return fromDiet ?? fromSplit;
-}
-function isUsableCaloricDistribution(dist) {
-  if (!dist) return false;
-  return dist.breakfast + dist.lunch + dist.dinner + dist.snacks > 0;
-}
-function profileParityCaloricDistribution(dayRaw) {
-  const cal = asRecord5(dayRaw.caloric_distribution);
-  return normalizeCaloricDistribution({
-    breakfast: num(cal.breakfast) ?? 30,
-    lunch: num(cal.lunch) ?? 35,
-    dinner: num(cal.dinner) ?? 25,
-    snacks: num(cal.snacks) ?? 10
-  });
-}
-function resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigured) {
-  const fromWeek = readCaloricDistribution(dayRaw);
-  if (isUsableCaloricDistribution(fromWeek)) return fromWeek;
-  const legacy = readFromLegacyRoot(nc);
-  if (isUsableCaloricDistribution(legacy.caloricDistribution)) return legacy.caloricDistribution;
-  if (weekMealMode.length > 0 || weekConfigured) {
-    return profileParityCaloricDistribution(dayRaw);
-  }
-  return null;
-}
-function readDailyMacros(raw) {
-  const macros = asRecord5(raw.daily_macros);
-  const carbs = num(macros.cho_pct ?? macros.carbs_pct);
-  const protein = num(macros.pro_pct ?? macros.protein_pct);
-  const fat = num(macros.fat_pct);
-  if (carbs == null && protein == null && fat == null) return null;
-  return {
-    carbs: carbs ?? 50,
-    protein: protein ?? 25,
-    fat: fat ?? 25
-  };
-}
-function readFromLegacyRoot(nc) {
-  const mealPlan = asRecord5(nc.meal_plan);
-  const dist = readCaloricDistributionFields(asRecord5(mealPlan.caloric_split), true) ?? readCaloricDistributionFields(asRecord5(nc.caloric_split), true);
-  const macroRoot = asRecord5(nc.macro_split);
-  const macroMealPlan = asRecord5(mealPlan.macro_split);
-  const macro = Object.keys(macroMealPlan).length ? macroMealPlan : macroRoot;
-  const dailyMacros = num(macro.carbs_pct) != null || num(macro.protein_pct) != null || num(macro.fat_pct) != null ? {
-    carbs: num(macro.carbs_pct) ?? 50,
-    protein: num(macro.protein_pct) ?? 25,
-    fat: num(macro.fat_pct) ?? 25
-  } : null;
-  const mealStrategy = String(mealPlan.meal_strategy ?? nc.meal_strategy ?? "").trim();
-  let mealCountMode = "4";
-  if (mealStrategy === "6-meals") mealCountMode = "6";
-  else if (mealStrategy === "5-meals") mealCountMode = "5";
-  else if (mealStrategy === "3-meals") mealCountMode = "3";
-  return { mealCountMode, caloricDistribution: dist, dailyMacros };
-}
-function inferMealCountModeForDay(dayRaw, weekDist, legacyMealCountMode) {
-  const explicit = String(dayRaw.meal_count_mode ?? "").trim();
-  if (explicit && explicit !== "fasting") {
-    if (explicit === "4" && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) return "6";
-    return explicit;
-  }
-  if (weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) return "6";
-  if (legacyMealCountMode === "6" || legacyMealCountMode === "5" || legacyMealCountMode === "3") {
-    return legacyMealCountMode;
-  }
-  if (legacyMealCountMode === "4" && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) {
-    return "6";
-  }
-  return legacyMealCountMode || "4";
-}
-function enrichCaloricDistributionForMealMode(dist, mealCountMode) {
-  if (!dist || mealCountMode !== "6") return dist;
-  const r = resolveSixMealSnackPercentages(dist);
-  return {
-    ...dist,
-    snack_am: r.snack_am,
-    snack_pm: r.snack_pm,
-    snack_evening: r.snack_evening,
-    snacks: r.snacksTotal
-  };
-}
-function resolveNutritionDietDay(nutritionConfig, planDate, options) {
-  const preferredMealCount = options?.preferredMealCount != null ? Math.trunc(options.preferredMealCount) : null;
-  const iso = planDate.slice(0, 10);
-  const weekDayKey = profileWeekDayKeyFromIsoLocal(iso);
-  const nc = parseNutritionConfigRecord(nutritionConfig);
-  const weekPlan = asRecord5(nc.week_plan);
-  const dayRaw = asRecord5(weekPlan[weekDayKey]);
-  const dayType = String(dayRaw.day_type ?? "normocaloric-100");
-  const dayTypePctRaw = num(dayRaw.day_type_pct);
-  const dayTypePct = dayTypePctRaw != null ? Math.max(0, Math.min(200, dayTypePctRaw)) : 100;
-  const weekMacros = readDailyMacros(dayRaw);
-  const weekMealMode = String(dayRaw.meal_count_mode ?? "").trim();
-  const weekConfigured = Boolean(weekMealMode) || readCaloricDistribution(dayRaw) != null || weekMacros != null || dayTypePctRaw != null;
-  const legacy = readFromLegacyRoot(nc);
-  const weekDist = resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigured);
-  if (weekConfigured) {
-    let mealCountMode = inferMealCountModeForDay(dayRaw, weekDist, legacy.mealCountMode);
-    if (mealCountMode === "4" && preferredMealCount === 6 && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) {
-      mealCountMode = "6";
-    }
-    const caloricDistribution = enrichCaloricDistributionForMealMode(weekDist, mealCountMode);
-    return {
-      planDate: iso,
-      weekDayKey,
-      source: "week_plan",
-      configured: isUsableCaloricDistribution(caloricDistribution) && mealCountMode.length > 0,
-      mealCountMode,
-      caloricDistribution,
-      dailyMacros: weekMacros ?? legacy.dailyMacros,
-      dayType,
-      dayTypePct
-    };
-  }
-  if (isUsableCaloricDistribution(legacy.caloricDistribution)) {
-    let mealCountMode = inferMealCountModeForDay({}, legacy.caloricDistribution, legacy.mealCountMode);
-    if (mealCountMode === "4" && preferredMealCount === 6 && legacy.caloricDistribution && distributionImpliesSixMeals(legacy.caloricDistribution, {})) {
-      mealCountMode = "6";
-    }
-    const caloricDistribution = enrichCaloricDistributionForMealMode(legacy.caloricDistribution, mealCountMode);
-    return {
-      planDate: iso,
-      weekDayKey,
-      source: "legacy_root",
-      configured: true,
-      mealCountMode,
-      caloricDistribution,
-      dailyMacros: legacy.dailyMacros,
-      dayType,
-      dayTypePct
-    };
-  }
-  return {
-    planDate: iso,
-    weekDayKey,
-    source: "missing",
-    configured: false,
-    mealCountMode: "4",
-    caloricDistribution: null,
-    dailyMacros: null,
-    dayType,
-    dayTypePct
-  };
-}
-
-// apps/web/lib/nutrition/reconcile-meal-plan-slots-with-diet.ts
-function routineMealTimesFlat(routine) {
-  const rc = routine && typeof routine === "object" && !Array.isArray(routine) ? routine : {};
-  const mt = rc.meal_times && typeof rc.meal_times === "object" && !Array.isArray(rc.meal_times) ? rc.meal_times : {};
-  return {
-    breakfast: String(mt.breakfast ?? "07:30"),
-    lunch: String(mt.lunch ?? "13:00"),
-    dinner: String(mt.dinner ?? "20:00"),
-    snack_am: String(mt.snack_am ?? "10:30"),
-    snack_pm: String(mt.snack_pm ?? mt.snacks ?? "16:30"),
-    snack_evening: String(mt.snack_evening ?? "22:30")
-  };
-}
-var DEFAULT_MACRO = { carbs: 50, protein: 25, fat: 25 };
-function reconcileMealPlanSlotsWithDiet(input) {
-  const clientSlots = input.clientSlots ?? [];
-  const dietDay = resolveNutritionDietDay(input.nutritionConfig, input.planDate, {
-    preferredMealCount: input.preferredMealCount
-  });
-  if (!dietDay.configured || !dietDay.caloricDistribution) {
-    return {
-      slots: clientSlots,
-      mealCountMode: dietDay.mealCountMode || "4",
-      dietConfigured: false,
-      rebuiltFromDiet: false
-    };
-  }
-  const flatRoot = routineMealTimesFlat(
-    input.routineConfig && typeof input.routineConfig === "object" && !Array.isArray(input.routineConfig) ? input.routineConfig : null
-  );
-  const mealTimes = mealTimesFromRoutineWeekPlanForDate(
-    input.routineConfig,
-    input.planDate,
-    flatRoot
-  );
-  const macroSplit = dietDay.dailyMacros ?? DEFAULT_MACRO;
-  const dailyKcal = Math.max(0, Math.round(input.dailyMealsKcalTotal));
-  const budgets = buildDietMealSlotBudgets({
-    mealCountMode: dietDay.mealCountMode,
-    caloricDistribution: dietDay.caloricDistribution,
-    dailyKcal,
-    macroSplit,
-    mealTimes
-  });
-  const clientBySlot = /* @__PURE__ */ new Map();
-  for (const s of clientSlots) {
-    if (s?.slot) clientBySlot.set(s.slot, s);
-  }
-  const rebuiltFromDiet = budgets.length !== clientSlots.length || budgets.some((b) => !clientBySlot.has(b.key)) || clientSlots.some((s) => !budgets.find((b) => b.key === s.slot));
-  const slots = budgets.map((b) => {
-    const prev = clientBySlot.get(b.key);
-    return {
-      slot: b.key,
-      labelIt: b.label,
-      scheduledTimeLocal: b.time,
-      targetKcal: b.kcal,
-      targetCarbsG: b.carbs,
-      targetProteinG: b.protein,
-      targetFatG: b.fat,
-      functionalTargets: prev?.functionalTargets ?? [],
-      functionalFoodGroups: prev?.functionalFoodGroups ?? [],
-      foodCandidates: prev?.foodCandidates ?? []
-    };
-  });
-  return {
-    slots,
-    mealCountMode: dietDay.mealCountMode,
-    dietConfigured: true,
-    rebuiltFromDiet
-  };
-}
-
-// apps/web/lib/nutrition/intelligent-meal-plan-route-prep.ts
-init_pro2_session_notes();
-init_planned_session_metrics();
-
-// apps/web/lib/nutrition/daily-energy-solver.ts
-var LIFESTYLE_PCT = {
-  sedentary: 0.15,
-  moderate: 0.2,
-  active: 0.3,
-  very_active: 0.4
-};
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-function round(value, digits = 0) {
-  const factor = 10 ** digits;
-  return Math.round(value * factor) / factor;
-}
-function asFinite(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const t = value.trim();
-    if (!t) return null;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-function deriveAgeYears(birthDate) {
-  if (!birthDate) return null;
-  const birth = /* @__PURE__ */ new Date(`${birthDate}T00:00:00`);
-  if (Number.isNaN(birth.getTime())) return null;
-  const now = /* @__PURE__ */ new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const monthDiff = now.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || monthDiff === 0 && now.getDate() < birth.getDate()) {
-    age -= 1;
-  }
-  return age >= 0 ? age : null;
-}
-function normalizeLifestyleActivityClass(value) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "sedentary") return "sedentary";
-  if (normalized === "moderate") return "moderate";
-  if (normalized === "active") return "active";
-  if (normalized === "very_active" || normalized === "very active") return "very_active";
-  return "moderate";
-}
-function computeLeanMassKg(input) {
-  const weightKg = asFinite(input.weightKg);
-  const bodyFatPct = asFinite(input.bodyFatPct);
-  if (weightKg == null || bodyFatPct == null) return null;
-  return round(weightKg * (1 - clamp(bodyFatPct, 0, 70) / 100), 1);
-}
-function computeMifflinStJeor(input) {
-  const ageYears = asFinite(input.ageYears);
-  const heightCm = asFinite(input.heightCm);
-  const weightKg = asFinite(input.weightKg);
-  if (ageYears == null || heightCm == null || weightKg == null) return null;
-  const sex = String(input.sex ?? "").toLowerCase();
-  const sexOffset = sex === "male" ? 5 : sex === "female" ? -161 : -78;
-  return 10 * weightKg + 6.25 * heightCm - 5 * ageYears + sexOffset;
-}
-function computeWeightProxyBmr(weightKg) {
-  const weight = asFinite(weightKg);
-  if (weight == null) return null;
-  return weight * 22;
-}
-function deriveAthleteCalibrationPct(input) {
-  const vo2max = asFinite(input.vo2maxMlMinKg);
-  const ftpWatts = asFinite(input.ftpWatts);
-  const weightKg = asFinite(input.weightKg);
-  const ftpWKg = ftpWatts != null && weightKg != null && weightKg > 0 ? ftpWatts / weightKg : null;
-  const vo2Score = vo2max != null ? clamp((vo2max - 45) / 25, 0, 1) : 0;
-  const ftpScore = ftpWKg != null ? clamp((ftpWKg - 3.2) / 1.8, 0, 1) : 0;
-  return round(clamp(vo2Score * 0.03 + ftpScore * 0.02, 0, 0.05), 3);
-}
-function deriveBmr(input) {
-  const notes = [];
-  const ageYears = deriveAgeYears(input.birthDate);
-  const weightKg = asFinite(input.weightKg);
-  const leanMassKg = computeLeanMassKg({
-    weightKg,
-    bodyFatPct: input.bodyFatPct
-  });
-  const ftpWKg = input.ftpWatts != null && weightKg != null && weightKg > 0 ? round(input.ftpWatts / weightKg, 2) : null;
-  if (leanMassKg != null) {
-    notes.push("BMR anchored to Cunningham using fat-free mass.");
-    return {
-      bmrKcal: round(500 + 22 * leanMassKg),
-      bmrMethod: "cunningham_ffm",
-      leanMassKg,
-      ageYears,
-      ftpWKg,
-      notes
-    };
-  }
-  const mifflin = computeMifflinStJeor({
-    sex: input.sex,
-    ageYears,
-    heightCm: input.heightCm,
-    weightKg
-  });
-  if (mifflin != null) {
-    const athleteCalibrationPct = deriveAthleteCalibrationPct(input);
-    if (athleteCalibrationPct > 0) {
-      notes.push("BMR calibrated upward from Mifflin using athlete aerobic phenotype proxies.");
-    } else {
-      notes.push("BMR derived from Mifflin-St Jeor fallback due to missing body-fat data.");
-    }
-    return {
-      bmrKcal: round(mifflin * (1 + athleteCalibrationPct)),
-      bmrMethod: "mifflin_st_jeor",
-      leanMassKg,
-      ageYears,
-      ftpWKg,
-      notes
-    };
-  }
-  const proxy = computeWeightProxyBmr(weightKg);
-  notes.push("BMR derived from weight-only fallback because composition and full anthropometry are incomplete.");
-  return {
-    bmrKcal: round(proxy ?? 0),
-    bmrMethod: "weight_proxy",
-    leanMassKg,
-    ageYears,
-    ftpWKg,
-    notes
-  };
-}
-function estimateTrainingKcalFromTss(totalTss, durationMin) {
-  if (totalTss <= 0) return 0;
-  const hours = Math.max(0.25, durationMin / 60);
-  const tssPerHour = totalTss / hours;
-  const scale = clamp(tssPerHour / 80, 0.85, 1.15);
-  return round(totalTss * 10 * scale);
-}
-function deriveTrainingSummary(plannedTraining = []) {
-  const sessions = plannedTraining.filter((session) => {
-    const duration = asFinite(session.durationMinutes) ?? 0;
-    const kcal2 = asFinite(session.kcalTarget) ?? 0;
-    const tss = asFinite(session.tssTarget) ?? 0;
-    return duration > 0 || kcal2 > 0 || tss > 0;
-  });
-  const durationMin = round(
-    sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.durationMinutes) ?? 0), 0)
-  );
-  let kcal = round(
-    sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.kcalTarget) ?? 0), 0)
-  );
-  const totalTss = sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.tssTarget) ?? 0), 0);
-  if (kcal === 0 && totalTss > 0) {
-    kcal = estimateTrainingKcalFromTss(totalTss, durationMin);
-  }
-  const totalWeightedPower = sessions.reduce((sum, session) => {
-    const avgPowerW = asFinite(session.avgPowerW);
-    const durationMinutes = Math.max(0, asFinite(session.durationMinutes) ?? 0);
-    return sum + (avgPowerW != null ? avgPowerW * Math.max(1, durationMinutes) : 0);
-  }, 0);
-  const totalPowerMinutes = sessions.reduce((sum, session) => {
-    const avgPowerW = asFinite(session.avgPowerW);
-    const durationMinutes = Math.max(0, asFinite(session.durationMinutes) ?? 0);
-    return sum + (avgPowerW != null ? Math.max(1, durationMinutes) : 0);
-  }, 0);
-  const hours = durationMin > 0 ? durationMin / 60 : 0;
-  const avgIntensityPctFtp = hours > 0 ? round(clamp(Math.sqrt(Math.max(0, totalTss / hours) / 100) * 100, 45, 120), 1) : null;
-  return {
-    sessionsCount: sessions.length,
-    durationMin,
-    kcal,
-    avgIntensityPctFtp,
-    avgPowerW: totalPowerMinutes > 0 ? round(totalWeightedPower / totalPowerMinutes) : null
-  };
-}
-function deriveEvidenceChoRange(input) {
-  const duration = Math.max(0, input.durationMin);
-  const intensity = asFinite(input.avgIntensityPctFtp) ?? 70;
-  const avgPower = asFinite(input.estimatedAvgPowerW) ?? 0;
-  const ftpWKg = asFinite(input.ftpWKg) ?? 0;
-  const vo2max = asFinite(input.vo2maxMlMinKg) ?? 0;
-  if (duration >= 60 && avgPower >= 300 && (ftpWKg >= 4.8 || vo2max >= 68)) {
-    return { tier: "elite", min: 100, target: 120, max: 130 };
-  }
-  if (duration >= 75 && (avgPower >= 250 || ftpWKg >= 4.2 || vo2max >= 60)) {
-    return { tier: "high", min: 90, target: 100, max: 110 };
-  }
-  if (duration < 45) {
-    return { tier: "base", min: 0, target: 15, max: 30 };
-  }
-  if (duration < 120) {
-    return intensity >= 85 ? { tier: "base", min: 30, target: 50, max: 60 } : { tier: "base", min: 20, target: 40, max: 50 };
-  }
-  if (duration < 180) {
-    return intensity >= 85 ? { tier: "base", min: 50, target: 70, max: 90 } : { tier: "base", min: 40, target: 60, max: 75 };
-  }
-  return intensity >= 85 ? { tier: "base", min: 60, target: 90, max: 90 } : { tier: "base", min: 50, target: 75, max: 90 };
-}
-function computeNutritionDailyEnergyModel(input) {
-  const bmr = deriveBmr(input);
-  const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass);
-  const lifestylePct = LIFESTYLE_PCT[lifestyleClass];
-  const lifestyleKcal = round(bmr.bmrKcal * lifestylePct);
-  const training = deriveTrainingSummary(input.plannedTraining);
-  const integration = input.performanceIntegration ?? null;
-  const trainingEnergyScale = integration?.trainingEnergyScale ?? 1;
-  const mealTrainingFraction = integration?.mealTrainingFraction ?? 0.4;
-  const fuelingChoScale = integration?.fuelingChoScale ?? 1;
-  const trainingKcal = training.kcal;
-  const estimatedAvgPowerW = training.avgPowerW != null ? training.avgPowerW : input.ftpWatts != null && training.avgIntensityPctFtp != null ? round(input.ftpWatts * (training.avgIntensityPctFtp / 100)) : null;
-  const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? clamp(input.dietDayMealsScalePct, 0, 200) / 100 : 1;
-  const observedActiveKcal = input.observedActiveKcal != null && Number.isFinite(input.observedActiveKcal) && input.observedActiveKcal >= 0 ? input.observedActiveKcal : null;
-  const usesObserved = observedActiveKcal != null;
-  const observedTotalKcal = usesObserved ? bmr.bmrKcal + observedActiveKcal : null;
-  const fuelingKcal = round(trainingKcal * (1 - mealTrainingFraction));
-  const totalDailyKcal = round(
-    (usesObserved ? observedTotalKcal : bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale
-  );
-  const mealsKcal = round(
-    (usesObserved ? Math.max(0, observedTotalKcal - fuelingKcal) : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale
-  );
-  const recoveryStatus = input.recoveryStatus ?? "unknown";
-  const split = recoveryStatus === "poor" ? { pre: 0.08, intra: 0.4, post: 0.12 } : recoveryStatus === "moderate" ? { pre: 0.06, intra: 0.44, post: 0.1 } : { pre: 0.05, intra: 0.45, post: 0.1 };
-  const preKcal = round(trainingKcal * split.pre);
-  const intraKcal = round(trainingKcal * split.intra);
-  const postKcal = round(trainingKcal * split.post);
-  const preChoG = round(preKcal / 4, 1);
-  const intraChoG = round(intraKcal / 4, 1);
-  const postChoG = round(postKcal / 4, 1);
-  const hours = training.durationMin > 0 ? training.durationMin / 60 : 0;
-  const energyDrivenChoGPerHour = hours > 0 ? round(intraChoG / hours, 1) : 0;
-  const evidenceRange = deriveEvidenceChoRange({
-    durationMin: training.durationMin,
-    avgIntensityPctFtp: training.avgIntensityPctFtp,
-    estimatedAvgPowerW,
-    ftpWKg: bmr.ftpWKg,
-    vo2maxMlMinKg: input.vo2maxMlMinKg
-  });
-  let adjustedChoGPerHour = hours > 0 ? round(
-    recoveryStatus === "poor" ? clamp(energyDrivenChoGPerHour, evidenceRange.min, evidenceRange.target) : recoveryStatus === "moderate" ? clamp(energyDrivenChoGPerHour, evidenceRange.min, Math.min(evidenceRange.max, evidenceRange.target + 5)) : clamp(energyDrivenChoGPerHour, evidenceRange.min, evidenceRange.max),
-    1
-  ) : 0;
-  if (hours > 0 && fuelingChoScale !== 1) {
-    adjustedChoGPerHour = round(
-      clamp(adjustedChoGPerHour * fuelingChoScale, evidenceRange.min, evidenceRange.max),
-      1
-    );
-  }
-  const notes = [...bmr.notes];
-  notes.push(
-    "Daily total = BMR + lifestyle load + planned training cost (kcal del consumo programmato; sostituito dall'eseguito quando importato).",
-    "Meals cover BMR + lifestyle load + 40% of planned training energy.",
-    "Fueling covers the remaining 60% of planned training energy split as 5% pre, 45% intra, 10% post.",
-    "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
-    "Integrazione performance (recovery/bio): agisce su distribuzione pasti\u2194fueling, CHO/h, proteine, idratazione \u2014 NON riduce il fabbisogno energetico totale."
-  );
-  if (usesObserved) {
-    notes.push(
-      `Consumo OSSERVATO (device): BMR ${bmr.bmrKcal} + kcal attive ${Math.round(observedActiveKcal)} = ${observedTotalKcal} kcal. Il fabbisogno segue il consumo reale; fueling intra-seduta (${fuelingKcal} kcal) resta dal pianificato.`
-    );
-  }
-  if (recoveryStatus === "moderate") {
-    notes.push("Recovery-aware solver active: moderate recovery shifts more energy toward pre/post support and slightly tempers intra CHO aggressiveness.");
-  }
-  if (recoveryStatus === "poor") {
-    notes.push("Recovery-aware solver active: poor recovery protects the day by simplifying intra CHO delivery and reinforcing pre/post support.");
-  }
-  if (input.recoverySleepHours != null) {
-    notes.push(`Recovery feed detected: sleep ${round(input.recoverySleepHours, 1)} h.`);
-  }
-  if (input.recoveryHrvMs != null) {
-    notes.push(`Recovery feed detected: HRV ${round(input.recoveryHrvMs)} ms.`);
-  }
-  if (input.recoveryStrainScore != null) {
-    notes.push(`Recovery feed detected: strain ${round(input.recoveryStrainScore)}.`);
-  }
-  if (evidenceRange.tier === "high") {
-    notes.push("High-capacity athlete tier enabled: intra-workout CHO can scale into the 90-110 g/h band.");
-  }
-  if (evidenceRange.tier === "elite") {
-    notes.push("Elite fueling tier enabled: sustained high-power sessions can scale into the 120-130 g/h band.");
-  }
-  if (integration) {
-    notes.push(
-      `Integrazione performance (informativa): indicatore recovery/bio \xD7${trainingEnergyScale}, quota pasti sul training ${Math.round(mealTrainingFraction * 100)}%, CHO/h \xD7${fuelingChoScale}. Non viene applicata al fabbisogno totale.`
-    );
-    notes.push(...integration.rationale);
-  }
-  if (dietScale !== 1) {
-    notes.push(`Profile Diet: fabbisogno pasti scalato al ${Math.round(dietScale * 100)}% del giorno (day_type_pct).`);
-  }
-  return {
-    athleteId: input.athleteId,
-    date: input.date,
-    algorithmVersion: "v1",
-    bmrMethod: bmr.bmrMethod,
-    bmrKcal: bmr.bmrKcal,
-    leanMassKg: bmr.leanMassKg,
-    ageYears: bmr.ageYears,
-    ftpWKg: bmr.ftpWKg,
-    vo2maxMlMinKg: asFinite(input.vo2maxMlMinKg),
-    lifestyle: {
-      activityClass: lifestyleClass,
-      pct: lifestylePct,
-      kcal: lifestyleKcal
-    },
-    training: {
-      ...training,
-      kcal: trainingKcal,
-      estimatedAvgPowerW
-    },
-    totals: {
-      dailyKcal: totalDailyKcal,
-      mealsKcal,
-      fuelingKcal
-    },
-    fueling: {
-      capabilityTier: evidenceRange.tier,
-      preKcal,
-      intraKcal,
-      postKcal,
-      preChoG,
-      intraChoG,
-      postChoG,
-      evidenceMinChoGPerHour: evidenceRange.min,
-      evidenceTargetChoGPerHour: evidenceRange.target,
-      evidenceMaxChoGPerHour: evidenceRange.max,
-      energyDrivenChoGPerHour,
-      adjustedChoGPerHour
-    },
-    performanceIntegration: integration ? {
-      trainingEnergyScale: integration.trainingEnergyScale,
-      mealTrainingFraction: integration.mealTrainingFraction,
-      fuelingChoScale: integration.fuelingChoScale,
-      proteinBiasPctPoints: integration.proteinBiasPctPoints,
-      hydrationFloorMultiplier: integration.hydrationFloorMultiplier,
-      sessionFluidMultiplier: integration.sessionFluidMultiplier,
-      rationale: integration.rationale,
-      ...integration.diaryInsight != null ? { diaryInsight: integration.diaryInsight } : {}
-    } : void 0,
-    notes
-  };
-}
-
-// apps/web/lib/nutrition/v2/fdc-food-taxonomy.ts
-var CLASSIFIER_VERSION = "empathy_v2_rules_v1";
-function dietProfileFromAthleteDietType(raw) {
-  const d = (raw ?? "").trim().toLowerCase();
-  if (!d || d === "omnivore" || d === "other") return "omnivore";
-  if (d.includes("vegan")) return "vegan";
-  if (d.includes("veget")) return "vegetarian";
-  if (d.includes("pesc")) return "pescatarian";
-  if (d.includes("carniv")) return "carnivore";
-  if (d.includes("paleo")) return "paleo";
-  if (d.includes("mediterr")) return "mediterranean";
-  if (d.includes("thai")) return "thai";
-  if (d.includes("celiac") || d.includes("gluten")) return "celiac";
-  if (d.includes("lactose") || d.includes("lattosio")) return "lactose_free";
-  if (d.includes("histamin")) return "low_histamine";
-  return "mediterranean";
-}
-
-// apps/web/lib/nutrition/v2/substrate-rates.ts
-var DEFAULT_EFFICIENCY = 0.24;
-var DEFAULT_FTP_W = 250;
-function clamp2(n, lo, hi) {
-  return Math.max(lo, Math.min(hi, n));
-}
-function round2(n, d = 1) {
-  const f = 10 ** d;
-  return Math.round(n * f) / f;
-}
-function rerFromIntensityPctFtp(intensityPctFtp) {
-  const i = clamp2(intensityPctFtp, 40, 120);
-  if (i < 60) return 0.82;
-  if (i < 75) return 0.88;
-  if (i < 85) return 0.92;
-  if (i < 95) return 0.96;
-  return 1.02;
-}
-function substrateRatesAtPowerW(avgPowerW, options) {
-  const ftp = Math.max(120, options?.ftpW ?? DEFAULT_FTP_W);
-  const efficiency = options?.efficiency ?? DEFAULT_EFFICIENCY;
-  const intensityPctFtp = avgPowerW / ftp * 100;
-  const rer = rerFromIntensityPctFtp(intensityPctFtp);
-  const choFrac = clamp2((rer - 0.7) / 0.3, 0.05, 0.99);
-  const fatFrac = 1 - choFrac;
-  const kcalPerH = avgPowerW / efficiency * 3600 / 4184;
-  const choGPerH = kcalPerH * choFrac / 4;
-  const fatGPerH = kcalPerH * fatFrac / 9;
-  const proGPerH = options?.proteinGPerH ?? clamp2(0.08 * (avgPowerW / 100), 2, 12);
-  return {
-    choGPerH: round2(choGPerH),
-    fatGPerH: round2(fatGPerH),
-    proGPerH: round2(proGPerH),
-    rer: round2(rer, 2),
-    kcalPerH: round2(kcalPerH)
-  };
-}
-function substrateTotalsForSession(avgPowerW, durationMinutes, options) {
-  const durationH = Math.max(0.05, durationMinutes / 60);
-  const perH = substrateRatesAtPowerW(avgPowerW, options);
-  return {
-    ...perH,
-    durationH: round2(durationH, 2),
-    choG: round2(perH.choGPerH * durationH),
-    fatG: round2(perH.fatGPerH * durationH),
-    proG: round2(perH.proGPerH * durationH)
-  };
-}
-
-// apps/web/lib/nutrition/v2/fueling-from-substrates.ts
-function clamp3(n, lo, hi) {
-  return Math.max(lo, Math.min(hi, n));
-}
-function round3(n, d = 1) {
-  const f = 10 ** d;
-  return Math.round(n * f) / f;
-}
-function intraChoReplaceFractionFromEnergyShare(choEnergyShare) {
-  const s = clamp3(choEnergyShare, 0, 1);
-  if (s >= 0.88) return 0.85;
-  if (s >= 0.78) return 0.75;
-  if (s >= 0.65) return 0.65;
-  if (s >= 0.52) return 0.55;
-  return 0.45;
-}
-function evidenceMaxChoGPerHour(durationMin, choEnergyShare) {
-  const h = durationMin / 60;
-  if (h < 0.75) return 30;
-  if (h < 2) return choEnergyShare >= 0.85 ? 90 : 60;
-  if (h < 3) return choEnergyShare >= 0.85 ? 110 : 75;
-  return choEnergyShare >= 0.85 ? 120 : 90;
-}
-function computeSubstrateFuelingPlan(input) {
-  const ftp = Math.max(120, input.ftpW ?? 250);
-  const weightKg = Math.max(45, input.weightKg ?? 70);
-  const sessions = [];
-  const provenance = [
-    "Fueling intra: frazione del CHO bruciato in seduta (substrati), non % kcal training.",
-    "Alta intensit\xE0 (CHO \u2248 energia) \u2192 replace fino ~85%; Z1/Z2 (CHO 50\u201365%) \u2192 replace ~45\u201355%.",
-    "Cap intra g/h da durata + intensit\xE0 (evidence band). Pre/post = CHO mirato, non split % kcal training."
-  ];
-  for (const s of input.sessions) {
-    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftp });
-    const choKcal = totals.choG * 4;
-    const fatKcal = totals.fatG * 9;
-    const proKcal = totals.proG * 4;
-    const substrateKcal = choKcal + fatKcal + proKcal;
-    const choEnergyShare = substrateKcal > 0 ? choKcal / substrateKcal : 0.5;
-    const replaceFrac = intraChoReplaceFractionFromEnergyShare(choEnergyShare);
-    const maxPerH = evidenceMaxChoGPerHour(s.durationMin, choEnergyShare);
-    let intraChoG2 = round3(totals.choG * replaceFrac);
-    const intraCap = round3(maxPerH * totals.durationH);
-    if (intraChoG2 > intraCap) {
-      intraChoG2 = intraCap;
-      provenance.push(
-        `Sessione ${s.label.slice(0, 40)}: intra CHO capped a ${maxPerH} g/h \xD7 ${totals.durationH} h.`
-      );
-    }
-    const preChoG2 = s.durationMin >= 45 ? round3(clamp3(weightKg * 0.35, 20, 70)) : round3(clamp3(weightKg * 0.2, 10, 40));
-    const postChoG2 = round3(totals.choG * clamp3(0.22 + choEnergyShare * 0.12, 0.2, 0.38));
-    const preKcal = round3(preChoG2 * 4, 0);
-    const intraKcal = round3(intraChoG2 * 4, 0);
-    const postKcal = round3(postChoG2 * 4, 0);
-    sessions.push({
-      sessionLabel: s.label,
-      avgPowerW: s.avgPowerW,
-      durationH: totals.durationH,
-      choBurnedG: totals.choG,
-      fatBurnedG: totals.fatG,
-      proBurnedG: totals.proG,
-      choEnergyShare: round3(choEnergyShare, 2),
-      intraChoReplaceFraction: replaceFrac,
-      preChoG: preChoG2,
-      intraChoG: intraChoG2,
-      postChoG: postChoG2,
-      preKcal,
-      intraKcal,
-      postKcal,
-      evidenceMaxChoGPerH: maxPerH,
-      intraChoGPerH: totals.durationH > 0 ? round3(intraChoG2 / totals.durationH) : 0
-    });
-  }
-  const preChoG = round3(sessions.reduce((sum, x) => sum + x.preChoG, 0));
-  const intraChoG = round3(sessions.reduce((sum, x) => sum + x.intraChoG, 0));
-  const postChoG = round3(sessions.reduce((sum, x) => sum + x.postChoG, 0));
-  const fuelingKcal = Math.round(preChoG * 4 + intraChoG * 4 + postChoG * 4);
-  const fatKcalTotal = sessions.reduce((sum, x) => sum + x.fatBurnedG * 9, 0);
-  const proKcalTotal = sessions.reduce((sum, x) => sum + x.proBurnedG * 4, 0);
-  const choNotOral = sessions.reduce(
-    (sum, x) => sum + (x.choBurnedG - x.intraChoG) * 4,
-    0
-  );
-  return {
-    algorithmVersion: "substrate_fueling_v1",
-    sessions,
-    totals: {
-      preChoG,
-      intraChoG,
-      postChoG,
-      fuelingKcal,
-      oralTrainingKcal: fuelingKcal,
-      endogenousFatKcal: Math.round(fatKcalTotal + proKcalTotal + choNotOral)
-    },
-    provenance
-  };
-}
-
-// apps/web/lib/nutrition/v2/daily-nutrition-requirements.ts
-var PAL_BY_LIFESTYLE = {
-  sedentary: 1.25,
-  moderate: 1.4,
-  active: 1.55,
-  very_active: 1.75
-};
-var STRATEGY_TEMPLATES = {
-  maintenance: { choMinGPerKg: 3, choMaxGPerKg: 5, proGPerKg: 1.4, fatGPerKg: 0.9 },
-  load: { choMinGPerKg: 8, choMaxGPerKg: 12, proGPerKg: 1.5, fatGPerKg: 0.5 },
-  deload: { choMinGPerKg: 0.5, choMaxGPerKg: 1, proGPerKg: 2.5, fatGPerKg: 1.5 },
-  recovery: { choMinGPerKg: 2, choMaxGPerKg: 4, proGPerKg: 1.8, fatGPerKg: 1 },
-  race: { choMinGPerKg: 7, choMaxGPerKg: 10, proGPerKg: 1.6, fatGPerKg: 0.6 },
-  custom: { choMinGPerKg: 4, choMaxGPerKg: 6, proGPerKg: 1.5, fatGPerKg: 0.8 }
-};
-function roundG(n) {
-  return Math.round(n);
-}
-function basalMacrosFromTemplate(weightKg, template) {
-  const choMid = (template.choMinGPerKg + template.choMaxGPerKg) / 2;
-  return {
-    choG: roundG(choMid * weightKg),
-    proG: roundG(template.proGPerKg * weightKg),
-    fatG: roundG(template.fatGPerKg * weightKg)
-  };
-}
-function sumMacros(a, b) {
-  return {
-    choG: roundG(a.choG + b.choG),
-    proG: roundG(a.proG + b.proG),
-    fatG: roundG(a.fatG + b.fatG)
-  };
-}
-function inferStrategyKindFromRequest(req) {
-  const trainingLines = (req.trainingDayLines ?? []).join(" ").toLowerCase();
-  if (req.racePreLunch || req.racePostRecovery) return "race";
-  if (/recovery|scarico|deload|riposo/.test(trainingLines)) return "recovery";
-  if (/long|endurance|4h|>3|carbo.?load|load|vo2|soglia|threshold/.test(trainingLines)) return "load";
-  return "maintenance";
-}
-function buildDailyNutritionRequirementsV2(input) {
-  const { request, weightKg } = input;
-  const w = Math.max(45, weightKg);
-  const strategyKind = input.strategyKind ?? inferStrategyKindFromRequest(request);
-  const template = STRATEGY_TEMPLATES[strategyKind];
-  const dietProfileActive = dietProfileFromAthleteDietType(request.dietType);
-  const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass ?? "moderate");
-  const pal = PAL_BY_LIFESTYLE[lifestyleClass] ?? 1.4;
-  const sessions = input.plannedSessions?.length ? input.plannedSessions : extractPlannedSessionsFromRequest(request, input.ftpWatts ?? 250);
-  const energyModel = computeNutritionDailyEnergyModel({
-    athleteId: request.athleteId,
-    date: request.planDate,
-    weightKg: w,
-    ftpWatts: input.ftpWatts ?? null,
-    lifestyleActivityClass: lifestyleClass,
-    dietDayMealsScalePct: input.dietDayMealsScalePct ?? 100,
-    plannedTraining: sessions.map((s) => ({
-      durationMinutes: s.durationMin,
-      avgPowerW: s.avgPowerW,
-      kcalTarget: null,
-      tssTarget: null
-    }))
-  });
-  const lifestyleKcalPal = Math.round(energyModel.bmrKcal * (pal - 1));
-  let trainingCho = 0;
-  let trainingFat = 0;
-  let trainingPro = 0;
-  const substrateRates = [];
-  for (const s of sessions) {
-    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
-    trainingCho += totals.choG;
-    trainingFat += totals.fatG;
-    trainingPro += totals.proG;
-    substrateRates.push({
-      sessionLabel: s.label,
-      avgPowerW: s.avgPowerW,
-      durationH: totals.durationH,
-      choGPerH: totals.choGPerH,
-      fatGPerH: totals.fatGPerH,
-      proGPerH: totals.proGPerH
-    });
-  }
-  const basal = basalMacrosFromTemplate(w, template);
-  const training = {
-    choG: roundG(trainingCho),
-    proG: roundG(trainingPro),
-    fatG: roundG(trainingFat)
-  };
-  const total = sumMacros(basal, training);
-  const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? Math.max(0, Math.min(200, input.dietDayMealsScalePct)) / 100 : 1;
-  const substrateTrainingKcal = roundG(
-    sessions.reduce((sum, s) => {
-      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
-      return sum + t.kcalPerH * t.durationH;
-    }, 0)
-  );
-  const trainingKcal = energyModel.training.kcal > 0 ? energyModel.training.kcal : substrateTrainingKcal;
-  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcalPal + trainingKcal) * dietScale);
-  const substrateFueling = sessions.length > 0 ? computeSubstrateFuelingPlan({
-    sessions: sessions.map((s) => ({
-      label: s.label,
-      avgPowerW: s.avgPowerW,
-      durationMin: s.durationMin
-    })),
-    ftpW: input.ftpWatts ?? 250,
-    weightKg: w
-  }) : void 0;
-  const fuelingKcal = substrateFueling?.totals.fuelingKcal ?? energyModel.totals.fuelingKcal;
-  const mealsKcal = Math.max(800, Math.round(dailyKcal - fuelingKcal));
-  const provenance = [
-    `Strategia V2 preview: ${strategyKind} (CHO ${template.choMinGPerKg}\u2013${template.choMaxGPerKg} g/kg, PRO ${template.proGPerKg} g/kg, FAT ${template.fatGPerKg} g/kg).`,
-    `Profilo dieta attivo (asse 4): ${dietProfileActive}.`,
-    `PAL ${pal} \xD7 BMR ${energyModel.bmrKcal} kcal \u2192 lifestyle stimato ${lifestyleKcalPal} kcal (V1 solver lifestyle: ${energyModel.lifestyle.kcal} kcal).`,
-    `Training: ${trainingKcal} kcal \xB7 ${sessions.length} seduta/e \xB7 substrati CHO/FAT/PRO da potenza media.`,
-    substrateFueling ? `Fueling V2: ${fuelingKcal} kcal oral (pre+intra+post CHO da consumo substrati); pasti ${mealsKcal} kcal = fabbisogno \u2212 fueling.` : "Nessuna seduta: fueling V1 solver legacy.",
-    "Ripartizione % tra pasti: Profile Diet (`buildDietMealSlotBudgets`), non preset composer.",
-    ...substrateFueling?.provenance ?? []
-  ];
-  return {
-    athleteId: request.athleteId,
-    planDate: request.planDate,
-    algorithmVersion: "nutrition_requirements_v2_production",
-    weightKg: w,
-    strategyKind,
-    dietProfileActive,
-    dailyMacroTargetsGPerKg: {
-      choMinGPerKg: template.choMinGPerKg,
-      choMaxGPerKg: template.choMaxGPerKg,
-      proGPerKg: template.proGPerKg,
-      fatGPerKg: template.fatGPerKg
-    },
-    energy: {
-      bmrKcal: energyModel.bmrKcal,
-      lifestyleKcal: lifestyleKcalPal,
-      trainingKcal,
-      dailyKcal,
-      mealsKcal,
-      fuelingKcal,
-      palMultiplier: pal,
-      endogenousTrainingKcal: substrateFueling?.totals.endogenousFatKcal
-    },
-    substrateFueling: substrateFueling ? {
-      algorithmVersion: substrateFueling.algorithmVersion,
-      sessions: substrateFueling.sessions.map((s) => ({
-        sessionLabel: s.sessionLabel,
-        avgPowerW: s.avgPowerW,
-        durationH: s.durationH,
-        choBurnedG: s.choBurnedG,
-        fatBurnedG: s.fatBurnedG,
-        choEnergyShare: s.choEnergyShare,
-        intraChoReplaceFraction: s.intraChoReplaceFraction,
-        preChoG: s.preChoG,
-        intraChoG: s.intraChoG,
-        postChoG: s.postChoG,
-        intraChoGPerH: s.intraChoGPerH
-      })),
-      totals: {
-        preChoG: substrateFueling.totals.preChoG,
-        intraChoG: substrateFueling.totals.intraChoG,
-        postChoG: substrateFueling.totals.postChoG,
-        fuelingKcal: substrateFueling.totals.fuelingKcal,
-        endogenousFatKcal: substrateFueling.totals.endogenousFatKcal
-      }
-    } : void 0,
-    macros: { basal, training, total },
-    substrateRates,
-    provenance
-  };
-}
-function extractPlannedSessionsFromRequest(req, defaultFtp) {
-  const out = [];
-  for (const line of req.trainingDayLines ?? []) {
-    const power = parsePowerFromLine(line, defaultFtp);
-    const dur = parseDurationFromLine(line);
-    if (dur > 0 && power > 0) {
-      out.push({ label: line.slice(0, 80), avgPowerW: power, durationMin: dur });
-    }
-  }
-  if (out.length === 0 && (req.suppressedSlots?.length || req.trainingDayLines?.length)) {
-    out.push({ label: "Allenamento pianificato (stima preview)", avgPowerW: Math.round(defaultFtp * 0.86), durationMin: 240 });
-  }
-  return out;
-}
-function parsePowerFromLine(line, ftp) {
-  const w = line.match(/(\d{2,4})\s*w\b/i);
-  if (w) return Number(w[1]);
-  const pct = line.match(/(\d{2,3})\s*%\s*ftp/i);
-  if (pct) return Math.round(Number(pct[1]) / 100 * ftp);
-  return 0;
-}
-function parseDurationFromLine(line) {
-  const h = line.match(/(\d+(?:[.,]\d+)?)\s*h\b/i);
-  if (h) return Math.round(Number(h[1].replace(",", ".")) * 60);
-  const min = line.match(/(\d+)\s*min/i);
-  if (min) return Number(min[1]);
-  return 0;
-}
-
-// apps/web/lib/nutrition/intelligent-meal-plan-route-prep.ts
-function isRecord(v) {
-  return v != null && typeof v === "object" && !Array.isArray(v);
-}
-function sanitizeWeeklyStapleCounts(raw) {
-  if (!isRecord(raw)) return void 0;
-  const out = {};
-  for (const [k, v] of Object.entries(raw)) {
-    if (typeof k !== "string" || k.length > 72) continue;
-    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 21) continue;
-    out[k] = Math.min(21, Math.floor(v));
-  }
-  return Object.keys(out).length ? out : void 0;
-}
-async function prepareIntelligentMealPlanContext(db, body) {
-  const athleteId = String(body.athleteId ?? "").trim();
-  if (!athleteId) return { error: "Missing athleteId", status: 400 };
-  const planDate = String(body.plan?.planDate ?? "").slice(0, 10) || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const [{ data: profileRow }, { data: plannedRows }] = await Promise.all([
-    db.from("athlete_profiles").select(
-      "nutrition_config, routine_config, preferred_meal_count, weight_kg, diet_type, lifestyle_activity_class, ftp_watts, supplement_config"
-    ).eq("id", athleteId).maybeSingle(),
-    db.from("planned_workouts").select("duration_minutes, type, notes, tss_target, kcal_target").eq("athlete_id", athleteId).eq("date", planDate)
-  ]);
-  const plan = body.plan;
-  if (!isRecord(plan)) return { error: "Missing plan", status: 400 };
-  const weekly = sanitizeWeeklyStapleCounts(plan.weeklyStapleCounts);
-  const planMerged = {
-    ...plan,
-    ...weekly ? { weeklyStapleCounts: weekly } : {}
-  };
-  const clientSlots = Array.isArray(planMerged.slots) ? planMerged.slots : [];
-  const dailyMealsKcalTotal = typeof planMerged.mealPlanSolverMeta?.dailyMealsKcalTotal === "number" ? planMerged.mealPlanSolverMeta.dailyMealsKcalTotal : clientSlots.reduce((s, sl) => s + (Number.isFinite(sl.targetKcal) ? sl.targetKcal : 0), 0);
-  const row2 = profileRow ?? null;
-  const reconciled = reconcileMealPlanSlotsWithDiet({
-    planDate,
-    nutritionConfig: row2?.nutrition_config ?? null,
-    routineConfig: row2?.routine_config ?? null,
-    dailyMealsKcalTotal,
-    clientSlots,
-    preferredMealCount: typeof row2?.preferred_meal_count === "number" ? row2.preferred_meal_count : typeof row2?.preferred_meal_count === "string" ? Number(row2.preferred_meal_count) : null
-  });
-  const excludedClassKeys = readExcludedFoodClasses(row2?.nutrition_config ?? null);
-  const classFdcIds = excludedClassKeys.length > 0 ? await resolveExcludedFdcIdsFromClasses(db, excludedClassKeys) : [];
-  const excludedFdcIds = [
-    ...new Set([
-      ...Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : [],
-      ...readExcludedFdcIds(row2?.nutrition_config ?? null),
-      ...classFdcIds
-    ].filter((n) => Number.isFinite(n)))
-  ];
-  const excludedFoodLabels = readExcludedFoodLabels(row2?.nutrition_config ?? null);
-  const extraFoodExclusions = [...excludedFoodLabels, ...classDenyFragments(excludedClassKeys)];
-  const foodExclusions = (() => {
-    const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
-    if (extraFoodExclusions.length === 0) return planMerged.foodExclusions ?? null;
-    const out = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (const raw of [...base ?? [], ...extraFoodExclusions]) {
-      const s = String(raw).trim();
-      if (!s) continue;
-      const key = s.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(s);
-    }
-    return out;
-  })();
-  const planFromDiet = {
-    ...planMerged,
-    athleteId,
-    planDate,
-    slots: reconciled.slots,
-    excludedFdcIds,
-    foodExclusions,
-    dietType: row2?.diet_type != null ? String(row2.diet_type) : planMerged.dietType,
-    mealPlanSolverMeta: {
-      ...planMerged.mealPlanSolverMeta,
-      dailyMealsKcalTotal: Math.round(dailyMealsKcalTotal),
-      integrationLeverLines: [
-        ...planMerged.mealPlanSolverMeta?.integrationLeverLines ?? [],
-        ...reconciled.rebuiltFromDiet ? [`Diet ${reconciled.mealCountMode} pasti (${reconciled.slots.length} slot) da athlete_profiles.`] : []
-      ].slice(0, 16)
-    }
-  };
-  const routineConfig = row2?.routine_config && typeof row2.routine_config === "object" && !Array.isArray(row2.routine_config) ? row2.routine_config : null;
-  const raceSessions = plannedSessionsForRaceFromDbRows(Array.isArray(plannedRows) ? plannedRows : []);
-  const withRace = enrichIntelligentMealPlanRequestWithRaceDay({
-    request: planFromDiet,
-    routineConfig,
-    weightKg: row2?.weight_kg,
-    plannedSessions: raceSessions
-  });
-  const request = applyMealSlotRulesToIntelligentMealPlanRequest(filterIntelligentMealPlanRequestFoods(withRace));
-  if (request.athleteId !== athleteId) return { error: "athleteId mismatch", status: 400 };
-  if (!Array.isArray(request.slots) || request.slots.length < 3 || request.slots.length > 6) {
-    return { error: "plan.slots: da 3 a 6 pasti (Profile Diet)", status: 400 };
-  }
-  if (!request.mealPlanSolverMeta || typeof request.mealPlanSolverMeta.dailyMealsKcalTotal !== "number" || !Array.isArray(request.mealPlanSolverMeta.integrationLeverLines)) {
-    return { error: "plan.mealPlanSolverMeta obbligatorio", status: 400 };
-  }
-  const dietDay = resolveNutritionDietDay(row2?.nutrition_config ?? null, planDate, {
-    preferredMealCount: row2?.preferred_meal_count
-  });
-  const ftp = Number(row2?.ftp_watts) || 250;
-  const weightKg = Number(row2?.weight_kg) || 70;
-  const plannedSessions = (Array.isArray(plannedRows) ? plannedRows : []).map((pr, idx) => {
-    const notes = String(pr.notes ?? "");
-    const bs = parsePro2BuilderSessionFromNotes(notes || null);
-    const m = resolvePlannedSessionMetrics({
-      contract: bs,
-      durationMinutesDb: Number(pr.duration_minutes) || 0,
-      tssTargetDb: Number(pr.tss_target) || 0,
-      kcalTargetDb: Number(pr.kcal_target) || 0,
-      athleteFtpWatts: ftp
-    });
-    return {
-      label: `${String(pr.type ?? "session")} #${idx + 1} \xB7 ${m.avgPowerW ?? "?"}W \xB7 ${m.durationMinutes}min`,
-      avgPowerW: m.avgPowerW ?? Math.round(ftp * 0.75),
-      durationMin: m.durationMinutes
-    };
-  });
-  const sessions = plannedSessions.length > 0 ? plannedSessions : extractPlannedSessionsFromRequest(request, ftp);
-  const perfRaw = body.plan?.performanceIntegration ?? request.performanceIntegration;
-  const performanceIntegration = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : null;
-  return {
-    request,
-    athleteId,
-    planDate,
-    profileRow: row2,
-    dietDay,
-    plannedSessions: sessions,
-    ftp,
-    weightKg,
-    performanceIntegration
-  };
-}
-
-// apps/web/lib/nutrition/v2/apply-performance-integration-fueling.ts
-function round4(n, d = 1) {
-  const f = 10 ** d;
-  return Math.round(n * f) / f;
-}
-function applyPerformanceIntegrationToSubstrateFueling(requirements, integration) {
-  const sf = requirements.substrateFueling;
-  if (!sf?.sessions.length) return requirements;
-  const scale = integration.fuelingChoScale ?? 1;
-  if (scale === 1) {
-    return {
-      ...requirements,
-      provenance: [
-        ...requirements.provenance,
-        `Integrazione performance: CHO/h fueling \xD7${scale} (informativo recovery/bio).`,
-        ...integration.rationale.slice(0, 3)
-      ]
-    };
-  }
-  const sessions = sf.sessions.map((s) => {
-    const intraChoG2 = round4(s.intraChoG * scale);
-    const intraChoGPerH = s.durationH > 0 ? round4(intraChoG2 / s.durationH) : 0;
-    return {
-      ...s,
-      intraChoG: intraChoG2,
-      intraChoGPerH
-    };
-  });
-  const intraChoG = round4(sessions.reduce((sum, x) => sum + x.intraChoG, 0));
-  const fuelingKcal = Math.round(sf.totals.preChoG * 4 + intraChoG * 4 + sf.totals.postChoG * 4);
-  const mealsKcal = Math.max(800, Math.round(requirements.energy.dailyKcal - fuelingKcal));
-  return {
-    ...requirements,
-    energy: {
-      ...requirements.energy,
-      mealsKcal,
-      fuelingKcal
-    },
-    substrateFueling: {
-      ...sf,
-      sessions,
-      totals: {
-        ...sf.totals,
-        intraChoG,
-        fuelingKcal
-      }
-    },
-    provenance: [
-      ...requirements.provenance,
-      `Integrazione performance: intra CHO scalato \xD7${scale} (cap evidence in composer fueling).`,
-      ...integration.rationale.slice(0, 3)
-    ]
-  };
-}
-
-// apps/web/lib/nutrition/v2/nutrition-day-model-v2.ts
-function buildNutritionDayModelV2(input) {
-  const base = buildDailyNutritionRequirementsV2(input);
-  if (!input.performanceIntegration || !base.substrateFueling) {
-    return { requirements: base };
-  }
-  const adjusted = applyPerformanceIntegrationToSubstrateFueling(base, input.performanceIntegration);
-  return { requirements: adjusted };
-}
-
-// apps/web/lib/nutrition/meal-composition-rules.ts
-var MAIN_MEAL_SLOTS = /* @__PURE__ */ new Set(["lunch", "dinner"]);
-var FRUIT_CANONICAL_KEYS = /* @__PURE__ */ new Set([
-  "banana",
-  "mixed_fruit",
-  "orange_raw",
-  "kiwi_raw",
-  "strawberries_raw",
-  "jam_fruit"
-]);
-var VEG_CANONICAL_KEYS = /* @__PURE__ */ new Set([
-  "mixed_veg",
-  "spinach_raw",
-  "broccoli_raw",
-  "zucchini_raw",
-  "bell_pepper_red",
-  "carrot_raw",
-  "tomato_raw",
-  "asparagus_raw",
-  "arugula_raw",
-  "lettuce_romaine"
-]);
-var MAIN_ROLE_CAPS = {
-  cho_complex: 2,
-  cho_simple: 0,
-  protein_primary: 1,
-  protein_secondary: 1,
-  fat: 2,
-  veg_condiment: 3,
-  composite_dish: 1,
-  beverage: 0
-};
-var ROTATION_TARGET_WEEK_USES = 2;
-var ROTATION_MAX_WEEK_USES = 3;
-function isMainMealSlot(slot) {
-  return MAIN_MEAL_SLOTS.has(slot);
-}
-function isFruitCanonicalKey(key) {
-  return typeof key === "string" && FRUIT_CANONICAL_KEYS.has(key);
-}
-function isVegCanonicalKey(key) {
-  return typeof key === "string" && VEG_CANONICAL_KEYS.has(key);
-}
-
 // apps/web/lib/nutrition/canonical-food-composition.ts
 var Z = {
   kcalPer100g: 0,
@@ -4951,7 +3571,91 @@ var CANONICAL_FOOD_TABLE = {
     eaa_ile: 0.28,
     eaa_val: 0.38,
     eaa_his: 0.18
-  })
+  }),
+  // --- Espansione pool staple V2 (lug 2026) ---
+  // Macro per 100 g da `nutrition_fdc_foods` (fdc_id in canonical-food-fdc-aliases).
+  // Micro/EAA arrivano dal DB via fdc_id in fase di enrichment: qui bastano i macro
+  // per il gate `canonicalToHit` + solver.
+  // Colazione — carboidrati
+  bread_whole_wheat: row({ kcalPer100g: 278, proteinG: 8.4, carbsG: 51.4, fatG: 5.4, fiberG: 6 }),
+  bread_rye: row({ kcalPer100g: 259, proteinG: 8.5, carbsG: 48.3, fatG: 3.3, fiberG: 5.8 }),
+  rusk_toast: row({ kcalPer100g: 407, proteinG: 13.5, carbsG: 72.3, fatG: 7.2 }),
+  corn_flakes: row({ kcalPer100g: 384, proteinG: 5.9, carbsG: 88, fatG: 0.9, fiberG: 2.7 }),
+  granola: row({ kcalPer100g: 489, proteinG: 13.7, carbsG: 53.9, fatG: 24.3, fiberG: 8.9 }),
+  rice_cakes: row({ kcalPer100g: 387, proteinG: 8.2, carbsG: 81.5, fatG: 2.8, fiberG: 4.2 }),
+  bagel_plain: row({ kcalPer100g: 264, proteinG: 10.6, carbsG: 52.4, fatG: 1.3, fiberG: 1.6 }),
+  pancakes_plain: row({ kcalPer100g: 227, proteinG: 6.4, carbsG: 28.3, fatG: 9.7 }),
+  honey: row({ kcalPer100g: 304, proteinG: 0.3, carbsG: 82.4, fatG: 0, fiberG: 0.2 }),
+  // Colazione — proteine
+  yogurt_greek: row({ kcalPer100g: 73, proteinG: 10, carbsG: 3.9, fatG: 1.9 }),
+  milk_whole: row({ kcalPer100g: 60, proteinG: 3.3, carbsG: 4.6, fatG: 3.2 }),
+  kefir: row({ kcalPer100g: 43, proteinG: 3.8, carbsG: 4.8, fatG: 1 }),
+  soymilk: row({ kcalPer100g: 54, proteinG: 3.3, carbsG: 6.3, fatG: 1.8 }),
+  egg_white: row({ kcalPer100g: 52, proteinG: 10.9, carbsG: 0.7, fatG: 0.2 }),
+  // Colazione — grassi
+  walnuts: row({ kcalPer100g: 654, proteinG: 15.2, carbsG: 13.7, fatG: 65.2, fiberG: 6.7 }),
+  hazelnuts: row({ kcalPer100g: 628, proteinG: 15, carbsG: 16.7, fatG: 60.8, fiberG: 9.7 }),
+  pistachios: row({ kcalPer100g: 598, proteinG: 20.5, carbsG: 27.7, fatG: 45, fiberG: 7 }),
+  cashews: row({ kcalPer100g: 565, proteinG: 17.4, carbsG: 36.3, fatG: 38.9, fiberG: 4.1 }),
+  peanut_butter: row({ kcalPer100g: 632, proteinG: 24, carbsG: 22.7, fatG: 49.4, fiberG: 6.3 }),
+  chia_seeds: row({ kcalPer100g: 486, proteinG: 16.5, carbsG: 42.1, fatG: 30.7, fiberG: 34.4 }),
+  flaxseed: row({ kcalPer100g: 534, proteinG: 18.3, carbsG: 28.9, fatG: 42.2, fiberG: 27.3 }),
+  // Pranzo/cena — carboidrati
+  pasta_whole: row({ kcalPer100g: 362, proteinG: 13.5, carbsG: 73.1, fatG: 2.7, fiberG: 10.1 }),
+  rice_brown: row({ kcalPer100g: 123, proteinG: 2.7, carbsG: 25.6, fatG: 1, fiberG: 1.6 }),
+  couscous: row({ kcalPer100g: 112, proteinG: 3.8, carbsG: 23.2, fatG: 0.2, fiberG: 1.4 }),
+  barley_pearled: row({ kcalPer100g: 123, proteinG: 2.3, carbsG: 28.2, fatG: 0.4, fiberG: 3.8 }),
+  bulgur: row({ kcalPer100g: 83, proteinG: 3.1, carbsG: 18.6, fatG: 0.2, fiberG: 4.5 }),
+  millet: row({ kcalPer100g: 119, proteinG: 3.5, carbsG: 23.7, fatG: 1, fiberG: 1.3 }),
+  cornmeal_polenta: row({ kcalPer100g: 370, proteinG: 7.1, carbsG: 79.4, fatG: 1.8 }),
+  sweet_potato: row({ kcalPer100g: 86, proteinG: 1.6, carbsG: 20.1, fatG: 0.1, fiberG: 3 }),
+  // Pranzo/cena — proteine
+  turkey_breast: row({ kcalPer100g: 114, proteinG: 23.7, carbsG: 0.1, fatG: 1.5 }),
+  tuna_canned: row({ kcalPer100g: 198, proteinG: 29.1, carbsG: 0, fatG: 8.2 }),
+  mackerel_atlantic: row({ kcalPer100g: 205, proteinG: 18.6, carbsG: 0, fatG: 13.9 }),
+  sardines: row({ kcalPer100g: 208, proteinG: 24.6, carbsG: 0, fatG: 11.4 }),
+  shrimp: row({ kcalPer100g: 99, proteinG: 24, carbsG: 0.2, fatG: 0.3 }),
+  octopus: row({ kcalPer100g: 82, proteinG: 14.9, carbsG: 2.2, fatG: 1 }),
+  squid: row({ kcalPer100g: 92, proteinG: 15.6, carbsG: 3.1, fatG: 1.4 }),
+  veal_loin: row({ kcalPer100g: 114, proteinG: 21.8, carbsG: 0, fatG: 2.9 }),
+  rabbit: row({ kcalPer100g: 136, proteinG: 20, carbsG: 0, fatG: 5.6 }),
+  lamb_leg: row({ kcalPer100g: 125, proteinG: 20.5, carbsG: 0, fatG: 4.2 }),
+  pork_loin: row({ kcalPer100g: 168, proteinG: 21.1, carbsG: 0, fatG: 9.5 }),
+  cod_raw: row({ kcalPer100g: 82, proteinG: 17.8, carbsG: 0, fatG: 0.7 }),
+  beans_white: row({ kcalPer100g: 139, proteinG: 9.7, carbsG: 25.1, fatG: 0.4, fiberG: 6.3 }),
+  beans_kidney: row({ kcalPer100g: 127, proteinG: 8.7, carbsG: 22.8, fatG: 0.5, fiberG: 7.4 }),
+  peas_green: row({ kcalPer100g: 81, proteinG: 5.4, carbsG: 14.4, fatG: 0.4, fiberG: 5.7 }),
+  edamame: row({ kcalPer100g: 121, proteinG: 11.9, carbsG: 8.9, fatG: 5.2, fiberG: 5.2 }),
+  mozzarella: row({ kcalPer100g: 254, proteinG: 24.3, carbsG: 2.8, fatG: 15.9 }),
+  feta: row({ kcalPer100g: 265, proteinG: 14.2, carbsG: 3.9, fatG: 21.5 }),
+  // Verdure
+  eggplant: row({ kcalPer100g: 26, proteinG: 0.9, carbsG: 5.4, fatG: 0.1, fiberG: 2.5 }),
+  cauliflower: row({ kcalPer100g: 28, proteinG: 1.6, carbsG: 4.7, fatG: 0.2, fiberG: 2 }),
+  green_beans: row({ kcalPer100g: 40, proteinG: 2, carbsG: 7.4, fatG: 0.3, fiberG: 3 }),
+  mushrooms_white: row({ kcalPer100g: 22, proteinG: 3.1, carbsG: 3.3, fatG: 0.3, fiberG: 1 }),
+  cucumber: row({ kcalPer100g: 16, proteinG: 0.6, carbsG: 3, fatG: 0.2 }),
+  fennel: row({ kcalPer100g: 27, proteinG: 0.9, carbsG: 5.5, fatG: 0.1, fiberG: 2.1 }),
+  onion: row({ kcalPer100g: 40, proteinG: 1.1, carbsG: 9.3, fatG: 0.1, fiberG: 1.7 }),
+  leek: row({ kcalPer100g: 61, proteinG: 1.5, carbsG: 14.2, fatG: 0.3, fiberG: 1.8 }),
+  swiss_chard: row({ kcalPer100g: 19, proteinG: 1.8, carbsG: 3.7, fatG: 0.2, fiberG: 1.6 }),
+  brussels_sprouts: row({ kcalPer100g: 60, proteinG: 4, carbsG: 9.6, fatG: 0.6, fiberG: 4.8 }),
+  butternut_squash: row({ kcalPer100g: 48, proteinG: 1.2, carbsG: 10.5, fatG: 0.2, fiberG: 2 }),
+  // Spuntini — frutta
+  raspberries: row({ kcalPer100g: 57, proteinG: 1, carbsG: 12.9, fatG: 0.2 }),
+  grapes: row({ kcalPer100g: 69, proteinG: 0.7, carbsG: 18.1, fatG: 0.2, fiberG: 0.9 }),
+  peach: row({ kcalPer100g: 42, proteinG: 0.9, carbsG: 10.1, fatG: 0.3 }),
+  apricot: row({ kcalPer100g: 48, proteinG: 1.4, carbsG: 11.1, fatG: 0.4, fiberG: 2 }),
+  pineapple: row({ kcalPer100g: 60, proteinG: 0.5, carbsG: 14.1, fatG: 0.2, fiberG: 0.9 }),
+  melon_cantaloupe: row({ kcalPer100g: 34, proteinG: 0.8, carbsG: 8.2, fatG: 0.2, fiberG: 0.9 }),
+  watermelon: row({ kcalPer100g: 30, proteinG: 0.6, carbsG: 7.6, fatG: 0.2, fiberG: 0.4 }),
+  cherries: row({ kcalPer100g: 63, proteinG: 1.1, carbsG: 16, fatG: 0.2, fiberG: 2.1 }),
+  figs: row({ kcalPer100g: 74, proteinG: 0.8, carbsG: 19.2, fatG: 0.3, fiberG: 2.9 }),
+  dates_medjool: row({ kcalPer100g: 277, proteinG: 1.8, carbsG: 75, fatG: 0.2, fiberG: 6.7 }),
+  tangerine: row({ kcalPer100g: 53, proteinG: 0.8, carbsG: 13.3, fatG: 0.3, fiberG: 1.8 }),
+  raisins: row({ kcalPer100g: 296, proteinG: 2.5, carbsG: 78.5, fatG: 0.5, fiberG: 6.8 }),
+  // Spuntini — proteine
+  hummus: row({ kcalPer100g: 237, proteinG: 7.8, carbsG: 15, fatG: 17.8, fiberG: 5.5 }),
+  ham_cooked: row({ kcalPer100g: 106, proteinG: 16.7, carbsG: 0.3, fatG: 3.7 })
 };
 var INFER_RULES = [
   { test: /omega|epa|dha|capsula/i, key: "omega_capsule" },
@@ -5269,6 +3973,292 @@ function sumScaledNutrients(rows) {
   return out;
 }
 
+// apps/web/lib/nutrition/canonical-food-fdc-aliases.ts
+var CANONICAL_FOOD_TO_FDC_ID = {
+  // Cereali e amidi
+  bread_white: 174925,
+  // Bread, white, commercially prepared, toasted
+  bread_whole_wheat: 172690,
+  // Bread, whole-wheat, prepared from recipe
+  bread_rye: 172684,
+  // Bread, rye
+  rusk_toast: 174981,
+  // Crackers, rusk toast
+  corn_flakes: 174648,
+  // Cereals ready-to-eat, RALSTON Corn Flakes
+  granola: 171646,
+  // Cereals ready-to-eat, granola, homemade
+  rice_cakes: 170250,
+  // Snacks, rice cakes, brown rice, plain, unsalted
+  bagel_plain: 174899,
+  // Bagels, plain, enriched
+  pancakes_plain: 175009,
+  // Pancakes, plain, prepared from recipe
+  pasta_whole: 168915,
+  // Pasta, whole grain, 51% whole wheat, dry
+  rice_brown: 169704,
+  // Rice, brown, long-grain, cooked
+  couscous: 169700,
+  // Couscous, cooked
+  barley_pearled: 170285,
+  // Barley, pearled, cooked
+  bulgur: 170287,
+  // Bulgur, cooked
+  millet: 168871,
+  // Millet, cooked
+  cornmeal_polenta: 168929,
+  // Cornmeal, degermed, unenriched, yellow
+  sweet_potato: 168482,
+  // Sweet potato, raw, unprepared
+  pasta_cooked: 168928,
+  // Pasta, cooked, unenriched, without added salt
+  pasta_dry: 168927,
+  // Pasta, dry, unenriched
+  rice_cooked: 169757,
+  // Rice, white, long-grain, regular, unenriched, cooked without salt
+  rice_dry: 169756,
+  // Rice, white, long-grain, regular, raw, unenriched
+  oat_dry: 172989,
+  // Cereals, QUAKER, Quick Oats, Dry (proxy SR Legacy per fiocchi avena secchi)
+  farro_cooked: 169746,
+  // Spelt, cooked (farro = spelt USDA)
+  farro_dry: 169746,
+  // proxy spelt — macro da TS table se mismatch
+  quinoa_dry: 168874,
+  // Quinoa, uncooked
+  tofu_firm: 172475,
+  tempeh: 174272,
+  potato_cooked: 170093,
+  // Potatoes, baked, flesh and skin, without salt
+  crackers_whole: 174985,
+  // Crackers, wheat, regular
+  // Verdure
+  mixed_veg: 168462,
+  // Spinach, raw — proxy verdura foglia generica
+  spinach_raw: 168462,
+  kale_raw: 168421,
+  broccoli_raw: 170379,
+  bell_pepper_red: 170108,
+  asparagus_raw: 168389,
+  beetroot_raw: 2685576,
+  arugula_raw: 169387,
+  zucchini_raw: 169291,
+  tomato_raw: 170457,
+  carrot_raw: 170393,
+  lettuce_romaine: 169247,
+  eggplant: 2685577,
+  // Eggplant, raw
+  cauliflower: 2685573,
+  // Cauliflower, raw
+  green_beans: 2346400,
+  // Beans, snap, green, raw
+  mushrooms_white: 169251,
+  // Mushrooms, white, raw
+  cucumber: 2346406,
+  // Cucumber, with peel, raw
+  fennel: 2747655,
+  // Fennel, bulb, raw
+  onion: 17e4,
+  // Onions, raw
+  leek: 169246,
+  // Leeks, (bulb and lower leaf-portion), raw
+  swiss_chard: 169991,
+  // Chard, swiss, raw
+  brussels_sprouts: 2685575,
+  // Brussels sprouts, raw
+  butternut_squash: 2685570,
+  // Squash, winter, butternut, raw
+  // Frutta
+  banana: 173944,
+  mixed_fruit: 2346411,
+  // Blueberries, raw — proxy frutta rossa ricca
+  orange_raw: 169097,
+  kiwi_raw: 327046,
+  strawberries_raw: 167762,
+  apple_raw: 1750340,
+  blueberries_raw: 2346411,
+  pear_raw: 169118,
+  raspberries: 2346410,
+  // Raspberries, raw
+  grapes: 174683,
+  // Grapes, red or green (European type), raw
+  peach: 325430,
+  // Peaches, yellow, raw (Foundation)
+  apricot: 171697,
+  // Apricots, raw
+  pineapple: 2346398,
+  // Pineapple, raw
+  melon_cantaloupe: 746770,
+  // Melons, cantaloupe, raw
+  watermelon: 167765,
+  // Watermelon, raw
+  cherries: 171719,
+  // Cherries, sweet, raw
+  figs: 173021,
+  // Figs, raw
+  dates_medjool: 168191,
+  // Dates, medjool
+  tangerine: 169105,
+  // Tangerines, (mandarin oranges), raw
+  raisins: 168166,
+  // Raisins, seeded
+  // Legumi
+  legumes_cooked: 172421,
+  // Lentils, mature seeds, cooked, boiled, without salt
+  chickpeas_cooked: 173799,
+  beans_white: 175249,
+  // Beans, white, mature seeds, cooked, boiled, with salt
+  beans_kidney: 175242,
+  // Beans, kidney, red, mature seeds, cooked, boiled, with salt
+  peas_green: 170419,
+  // Peas, green, raw
+  edamame: 168411,
+  // Edamame, frozen, prepared
+  // Semi / snack
+  pumpkin_seeds_raw: 170556,
+  almonds_raw: 2346393,
+  dark_chocolate_70: 170273,
+  walnuts: 170187,
+  // Nuts, walnuts, english
+  hazelnuts: 170581,
+  // Nuts, hazelnuts or filberts
+  pistachios: 2515379,
+  // Nuts, pistachio nuts, raw
+  cashews: 2515374,
+  // Nuts, cashew nuts, raw
+  peanut_butter: 2262072,
+  // Peanut butter, creamy
+  chia_seeds: 170554,
+  // Seeds, chia seeds, dried
+  flaxseed: 169414,
+  // Seeds, flaxseed
+  honey: 169640,
+  // Honey
+  jam_fruit: 169641,
+  // Jams and preserves
+  hummus: 174289,
+  // Hummus, commercial
+  // Proteine animali
+  egg_whole: 171287,
+  egg_white: 172183,
+  // Egg, white, raw, fresh
+  chicken_breast: 171077,
+  beef_lean: 168608,
+  turkey_breast: 171098,
+  // Turkey, whole, breast, meat only, raw
+  veal_loin: 173826,
+  // Veal, loin, separable lean only, raw
+  rabbit: 172521,
+  // Game meat, rabbit, domesticated, composite of cuts, raw
+  lamb_leg: 172486,
+  // Lamb, leg, shank half, separable lean only, raw
+  pork_loin: 2646168,
+  // Pork, loin, boneless, raw
+  ham_cooked: 332397,
+  // Ham, sliced, pre-packaged, deli meat (96% fat free)
+  fish_white: 175167,
+  // Fish, salmon, Atlantic, farmed, raw — proxy pesce ricco di micro/omega
+  cod_raw: 171955,
+  // Fish, cod, Atlantic, raw
+  tuna_canned: 173708,
+  // Fish, tuna, light, canned in oil, drained solids
+  mackerel_atlantic: 175119,
+  // Fish, mackerel, Atlantic, raw
+  sardines: 175139,
+  // Fish, sardine, Atlantic, canned in oil, drained solids with bone
+  shrimp: 175180,
+  // Crustaceans, shrimp, cooked
+  octopus: 174218,
+  // Mollusks, octopus, common, raw
+  squid: 174223,
+  // Mollusks, squid, mixed species, raw
+  deli_lean: 167876,
+  // Latticini
+  milk_goat: 171278,
+  milk_whole: 746782,
+  // Milk, whole, 3.25% milkfat, with added vitamin D
+  yogurt_plain: 171284,
+  yogurt_greek: 170903,
+  // Yogurt, Greek, plain, lowfat
+  kefir: 170904,
+  // Kefir, lowfat, plain, LIFEWAY
+  soymilk: 172446,
+  // Soymilk, original and vanilla, unfortified
+  cheese_hard: 171247,
+  ricotta_cheese: 170851,
+  cottage_cheese: 173417,
+  mozzarella: 170847,
+  // Cheese, mozzarella, part skim milk
+  feta: 173420,
+  // Cheese, feta
+  // Grassi
+  olive_oil: 171413,
+  avocado: 171705,
+  // Senza fdcId (proxy interni — USDA non offre un match diretto rilevante)
+  generic_mixed: void 0,
+  whey_powder: void 0,
+  omega_capsule: void 0
+};
+function fdcIdForCanonicalKey(canonicalKey) {
+  return CANONICAL_FOOD_TO_FDC_ID[canonicalKey];
+}
+
+// apps/web/lib/nutrition/macro-plausibility.ts
+var MAX_KCAL_PER_100G = 900;
+var MAX_MACRO_PER_100G = 100;
+function isPlausiblePer100gMacros(row2) {
+  const { kcal_100, carbs_100, protein_100, fat_100 } = row2;
+  if (kcal_100 != null && (!Number.isFinite(kcal_100) || kcal_100 < 0 || kcal_100 > MAX_KCAL_PER_100G)) return false;
+  for (const m of [carbs_100, protein_100, fat_100]) {
+    if (m != null && (!Number.isFinite(m) || m < 0 || m > MAX_MACRO_PER_100G)) return false;
+  }
+  return true;
+}
+
+// apps/web/lib/nutrition/meal-composition-rules.ts
+var MAIN_MEAL_SLOTS = /* @__PURE__ */ new Set(["lunch", "dinner"]);
+var FRUIT_CANONICAL_KEYS = /* @__PURE__ */ new Set([
+  "banana",
+  "mixed_fruit",
+  "orange_raw",
+  "kiwi_raw",
+  "strawberries_raw",
+  "jam_fruit"
+]);
+var VEG_CANONICAL_KEYS = /* @__PURE__ */ new Set([
+  "mixed_veg",
+  "spinach_raw",
+  "broccoli_raw",
+  "zucchini_raw",
+  "bell_pepper_red",
+  "carrot_raw",
+  "tomato_raw",
+  "asparagus_raw",
+  "arugula_raw",
+  "lettuce_romaine"
+]);
+var MAIN_ROLE_CAPS = {
+  cho_complex: 2,
+  cho_simple: 0,
+  protein_primary: 1,
+  protein_secondary: 1,
+  fat: 2,
+  veg_condiment: 3,
+  composite_dish: 1,
+  beverage: 0
+};
+var ROTATION_TARGET_WEEK_USES = 2;
+var ROTATION_MAX_WEEK_USES = 3;
+function isMainMealSlot(slot) {
+  return MAIN_MEAL_SLOTS.has(slot);
+}
+function isFruitCanonicalKey(key) {
+  return typeof key === "string" && FRUIT_CANONICAL_KEYS.has(key);
+}
+function isVegCanonicalKey(key) {
+  return typeof key === "string" && VEG_CANONICAL_KEYS.has(key);
+}
+
 // apps/web/lib/nutrition/meal-rotation-guard.ts
 function weekCountFor(stapleKey, week) {
   return week?.[stapleKey] ?? 0;
@@ -5295,6 +4285,1854 @@ function registerMealCanonicalKeys(ctx, meal) {
     const key = inferCanonicalFoodKeyPreferName(it.name, it.portionHint);
     if (key) ctx.dayUsedCanonicalKeys.add(key);
   }
+}
+
+// apps/web/lib/nutrition/v2/fdc-staple-registry.ts
+var LABEL_IT = {
+  oat_dry: "Fiocchi d'avena",
+  bread_white: "Pane",
+  pasta_dry: "Pasta di semola",
+  rice_dry: "Riso",
+  potato_cooked: "Patate",
+  farro_dry: "Farro",
+  quinoa_dry: "Quinoa",
+  egg_whole: "Uova",
+  yogurt_plain: "Yogurt bianco",
+  chicken_breast: "Petto di pollo",
+  fish_white: "Salmone",
+  beef_lean: "Manzo magro",
+  legumes_cooked: "Legumi",
+  tofu_firm: "Tofu",
+  tempeh: "Tempeh",
+  seitan: "Seitan",
+  ricotta_cheese: "Ricotta",
+  cottage_cheese: "Ricotta magra",
+  milk_2pct: "Latte",
+  milk_goat: "Latte di capra",
+  olive_oil: "Olio EVO",
+  almonds_raw: "Mandorle",
+  avocado: "Avocado",
+  spinach_raw: "Spinaci",
+  broccoli_raw: "Broccoli",
+  zucchini_raw: "Zucchine",
+  mixed_veg: "Insalata mista",
+  tomato_raw: "Pomodori",
+  carrot_raw: "Carote",
+  banana: "Banana",
+  apple_raw: "Mela",
+  orange_raw: "Arancia",
+  blueberries_raw: "Mirtilli",
+  mixed_fruit: "Frutta mista",
+  cheese_hard: "Grana Padano",
+  // --- Espansione pool staple V2 (lug 2026) ---
+  bread_whole_wheat: "Pane integrale",
+  bread_rye: "Pane di segale",
+  rusk_toast: "Fette biscottate",
+  corn_flakes: "Corn flakes",
+  granola: "Granola",
+  rice_cakes: "Gallette di riso",
+  bagel_plain: "Bagel",
+  pancakes_plain: "Pancake",
+  honey: "Miele",
+  jam_fruit: "Marmellata",
+  yogurt_greek: "Yogurt greco",
+  milk_whole: "Latte",
+  kefir: "Kefir",
+  soymilk: "Latte di soia",
+  egg_white: "Albume d'uovo",
+  walnuts: "Noci",
+  hazelnuts: "Nocciole",
+  pistachios: "Pistacchi",
+  cashews: "Anacardi",
+  peanut_butter: "Burro di arachidi",
+  chia_seeds: "Semi di chia",
+  flaxseed: "Semi di lino",
+  pumpkin_seeds_raw: "Semi di zucca",
+  dark_chocolate_70: "Cioccolato fondente",
+  pasta_whole: "Pasta integrale",
+  rice_brown: "Riso integrale",
+  couscous: "Cous cous",
+  barley_pearled: "Orzo perlato",
+  bulgur: "Bulgur",
+  millet: "Miglio",
+  cornmeal_polenta: "Polenta (farina di mais)",
+  sweet_potato: "Patata dolce",
+  turkey_breast: "Petto di tacchino",
+  tuna_canned: "Tonno in scatola",
+  mackerel_atlantic: "Sgombro",
+  sardines: "Sardine",
+  shrimp: "Gamberi",
+  octopus: "Polpo",
+  squid: "Calamari",
+  veal_loin: "Vitello magro",
+  rabbit: "Coniglio",
+  lamb_leg: "Agnello (coscia)",
+  pork_loin: "Lonza di maiale",
+  cod_raw: "Merluzzo",
+  chickpeas_cooked: "Ceci",
+  beans_white: "Fagioli cannellini",
+  beans_kidney: "Fagioli rossi",
+  peas_green: "Piselli",
+  edamame: "Edamame",
+  mozzarella: "Mozzarella",
+  feta: "Feta",
+  bell_pepper_red: "Peperoni",
+  eggplant: "Melanzane",
+  cauliflower: "Cavolfiore",
+  green_beans: "Fagiolini",
+  mushrooms_white: "Funghi champignon",
+  lettuce_romaine: "Lattuga romana",
+  arugula_raw: "Rucola",
+  asparagus_raw: "Asparagi",
+  cucumber: "Cetrioli",
+  fennel: "Finocchio",
+  kale_raw: "Cavolo riccio",
+  onion: "Cipolla",
+  leek: "Porro",
+  swiss_chard: "Bietole",
+  brussels_sprouts: "Cavolini di Bruxelles",
+  butternut_squash: "Zucca",
+  pear_raw: "Pera",
+  kiwi_raw: "Kiwi",
+  strawberries_raw: "Fragole",
+  raspberries: "Lamponi",
+  grapes: "Uva",
+  peach: "Pesca",
+  apricot: "Albicocche",
+  pineapple: "Ananas",
+  melon_cantaloupe: "Melone",
+  watermelon: "Anguria",
+  cherries: "Ciliegie",
+  figs: "Fichi",
+  dates_medjool: "Datteri",
+  tangerine: "Mandarino",
+  raisins: "Uvetta",
+  hummus: "Hummus",
+  ham_cooked: "Prosciutto cotto"
+};
+function entry(canonicalKey, servingBasis, opts) {
+  return {
+    canonicalKey,
+    labelIt: opts?.labelIt ?? LABEL_IT[canonicalKey] ?? canonicalKey.replace(/_/g, " "),
+    servingBasis,
+    rotationKey: opts?.rotationKey,
+    carbFamily: opts?.carbFamily
+  };
+}
+var MAIN_CARB_EXPANSION = () => [
+  entry("pasta_whole", "dry_grams", { rotationKey: "carb:pasta", carbFamily: "carb_starch" }),
+  entry("rice_brown", "cooked_grams", { rotationKey: "carb:riso", carbFamily: "carb_starch" }),
+  entry("couscous", "cooked_grams", { rotationKey: "carb:couscous", carbFamily: "carb_starch" }),
+  entry("barley_pearled", "cooked_grams", { rotationKey: "carb:orzo", carbFamily: "carb_starch" }),
+  entry("bulgur", "cooked_grams", { rotationKey: "carb:bulgur", carbFamily: "carb_starch" }),
+  entry("millet", "cooked_grams", { rotationKey: "carb:miglio", carbFamily: "carb_starch" }),
+  entry("cornmeal_polenta", "dry_grams", { rotationKey: "carb:polenta", carbFamily: "carb_starch" }),
+  entry("sweet_potato", "dry_grams", { rotationKey: "carb:patate", carbFamily: "carb_starch" })
+];
+var MAIN_PRO_EXPANSION = () => [
+  entry("turkey_breast", "dry_grams", { rotationKey: "prot:tacchino" }),
+  entry("cod_raw", "dry_grams", { rotationKey: "prot:merluzzo" }),
+  entry("tuna_canned", "cooked_grams", { rotationKey: "prot:tonno" }),
+  entry("mackerel_atlantic", "dry_grams", { rotationKey: "prot:sgombro" }),
+  entry("sardines", "cooked_grams", { rotationKey: "prot:sardine" }),
+  entry("shrimp", "cooked_grams", { rotationKey: "prot:gamberi" }),
+  entry("octopus", "dry_grams", { rotationKey: "prot:polpo" }),
+  entry("squid", "dry_grams", { rotationKey: "prot:calamari" }),
+  entry("veal_loin", "dry_grams", { rotationKey: "prot:vitello" }),
+  entry("rabbit", "dry_grams", { rotationKey: "prot:coniglio" }),
+  entry("lamb_leg", "dry_grams", { rotationKey: "prot:agnello" }),
+  entry("pork_loin", "dry_grams", { rotationKey: "prot:maiale" }),
+  entry("chickpeas_cooked", "cooked_grams", { rotationKey: "prot:ceci" }),
+  entry("beans_white", "cooked_grams", { rotationKey: "prot:fagioli" }),
+  entry("beans_kidney", "cooked_grams", { rotationKey: "prot:fagioli" }),
+  entry("peas_green", "dry_grams", { rotationKey: "prot:piselli" }),
+  entry("edamame", "cooked_grams", { rotationKey: "prot:edamame" }),
+  entry("mozzarella", "dry_grams", { rotationKey: "prot:mozzarella" }),
+  entry("feta", "dry_grams", { rotationKey: "prot:feta" })
+];
+var MAIN_VEG_EXPANSION = () => [
+  entry("bell_pepper_red", "dry_grams"),
+  entry("eggplant", "dry_grams"),
+  entry("cauliflower", "dry_grams"),
+  entry("green_beans", "dry_grams"),
+  entry("mushrooms_white", "dry_grams"),
+  entry("lettuce_romaine", "dry_grams"),
+  entry("arugula_raw", "dry_grams"),
+  entry("asparagus_raw", "dry_grams"),
+  entry("cucumber", "dry_grams"),
+  entry("fennel", "dry_grams"),
+  entry("kale_raw", "dry_grams"),
+  entry("onion", "dry_grams"),
+  entry("leek", "dry_grams"),
+  entry("swiss_chard", "dry_grams"),
+  entry("brussels_sprouts", "dry_grams"),
+  entry("butternut_squash", "dry_grams")
+];
+var STAPLE_ALLOWLIST_BY_POOL = {
+  breakfast_cho: [
+    entry("oat_dry", "dry_grams", { rotationKey: "breakfast:oat" }),
+    entry("bread_white", "dry_grams", { rotationKey: "breakfast:bread" }),
+    entry("crackers_whole", "dry_grams", { rotationKey: "breakfast:crackers" }),
+    entry("bread_whole_wheat", "dry_grams", { rotationKey: "breakfast:bread" }),
+    entry("bread_rye", "dry_grams", { rotationKey: "breakfast:bread" }),
+    entry("rusk_toast", "dry_grams", { rotationKey: "breakfast:fette" }),
+    entry("corn_flakes", "dry_grams", { rotationKey: "breakfast:cereali" }),
+    entry("granola", "dry_grams", { rotationKey: "breakfast:granola" }),
+    entry("rice_cakes", "dry_grams", { rotationKey: "breakfast:gallette" }),
+    entry("bagel_plain", "dry_grams", { rotationKey: "breakfast:bagel" }),
+    entry("pancakes_plain", "dry_grams", { rotationKey: "breakfast:pancake" })
+    // honey/jam_fruit RIMOSSI dal pool primario: sono CONDIMENTI, non fonti carbo —
+    // con la rotazione per data vincevano il ruolo cho («Miele 85g» come tutta la
+    // quota carbo della colazione). Alias/label restano per usi futuri da topping.
+  ],
+  breakfast_pro: [
+    entry("yogurt_plain", "dry_grams", { rotationKey: "breakfast:yogurt" }),
+    entry("egg_whole", "dry_grams", { rotationKey: "breakfast:egg" }),
+    entry("ricotta_cheese", "dry_grams"),
+    entry("cottage_cheese", "dry_grams"),
+    entry("yogurt_greek", "dry_grams", { rotationKey: "breakfast:yogurt" }),
+    entry("milk_whole", "ml", { rotationKey: "breakfast:latte" }),
+    entry("kefir", "ml", { rotationKey: "breakfast:kefir" }),
+    entry("soymilk", "ml", { rotationKey: "breakfast:latte" }),
+    entry("egg_white", "dry_grams", { rotationKey: "breakfast:egg" })
+  ],
+  breakfast_fat: [
+    entry("almonds_raw", "dry_grams"),
+    entry("olive_oil", "ml"),
+    entry("avocado", "dry_grams"),
+    entry("walnuts", "dry_grams"),
+    entry("hazelnuts", "dry_grams"),
+    entry("pistachios", "dry_grams"),
+    entry("cashews", "dry_grams"),
+    entry("peanut_butter", "dry_grams"),
+    entry("chia_seeds", "dry_grams"),
+    entry("flaxseed", "dry_grams"),
+    entry("pumpkin_seeds_raw", "dry_grams"),
+    entry("dark_chocolate_70", "dry_grams")
+  ],
+  lunch_carb: [
+    entry("pasta_dry", "dry_grams", { rotationKey: "carb:pasta", carbFamily: "carb_starch" }),
+    entry("rice_dry", "dry_grams", { rotationKey: "carb:riso", carbFamily: "carb_starch" }),
+    entry("potato_cooked", "cooked_grams", { rotationKey: "carb:patate", carbFamily: "carb_starch" }),
+    entry("farro_dry", "dry_grams", { rotationKey: "carb:farro", carbFamily: "carb_starch" }),
+    entry("quinoa_dry", "dry_grams", { rotationKey: "carb:quinoa", carbFamily: "carb_starch" }),
+    ...MAIN_CARB_EXPANSION()
+  ],
+  dinner_carb: [
+    entry("rice_dry", "dry_grams", { rotationKey: "carb:riso", carbFamily: "carb_starch" }),
+    entry("pasta_dry", "dry_grams", { rotationKey: "carb:pasta", carbFamily: "carb_starch" }),
+    entry("potato_cooked", "cooked_grams", { rotationKey: "carb:patate", carbFamily: "carb_starch" }),
+    entry("farro_dry", "dry_grams", { rotationKey: "carb:farro", carbFamily: "carb_starch" }),
+    entry("quinoa_dry", "dry_grams", { rotationKey: "carb:quinoa", carbFamily: "carb_starch" }),
+    ...MAIN_CARB_EXPANSION()
+  ],
+  lunch_pro: [
+    entry("chicken_breast", "dry_grams", { rotationKey: "prot:pollo" }),
+    entry("fish_white", "dry_grams", { rotationKey: "prot:pesce" }),
+    entry("beef_lean", "dry_grams", { rotationKey: "prot:manzo" }),
+    entry("legumes_cooked", "cooked_grams", { rotationKey: "prot:legumi" }),
+    entry("egg_whole", "dry_grams"),
+    entry("tofu_firm", "dry_grams"),
+    ...MAIN_PRO_EXPANSION()
+  ],
+  dinner_pro: [
+    entry("fish_white", "dry_grams", { rotationKey: "prot:pesce" }),
+    entry("chicken_breast", "dry_grams", { rotationKey: "prot:pollo" }),
+    entry("beef_lean", "dry_grams", { rotationKey: "prot:manzo" }),
+    entry("legumes_cooked", "cooked_grams", { rotationKey: "prot:legumi" }),
+    entry("tofu_firm", "dry_grams"),
+    entry("tempeh", "dry_grams"),
+    ...MAIN_PRO_EXPANSION()
+  ],
+  lunch_veg: [
+    entry("mixed_veg", "dry_grams"),
+    entry("spinach_raw", "dry_grams"),
+    entry("broccoli_raw", "dry_grams"),
+    entry("zucchini_raw", "dry_grams"),
+    entry("tomato_raw", "dry_grams"),
+    ...MAIN_VEG_EXPANSION()
+  ],
+  dinner_veg: [
+    entry("spinach_raw", "dry_grams"),
+    entry("broccoli_raw", "dry_grams"),
+    entry("zucchini_raw", "dry_grams"),
+    entry("mixed_veg", "dry_grams"),
+    entry("carrot_raw", "dry_grams"),
+    ...MAIN_VEG_EXPANSION()
+  ],
+  snack_cho: [
+    entry("banana", "dry_grams"),
+    entry("apple_raw", "dry_grams"),
+    entry("orange_raw", "dry_grams"),
+    entry("blueberries_raw", "dry_grams"),
+    entry("mixed_fruit", "dry_grams"),
+    entry("pear_raw", "dry_grams"),
+    entry("kiwi_raw", "dry_grams"),
+    entry("strawberries_raw", "dry_grams"),
+    entry("raspberries", "dry_grams"),
+    entry("grapes", "dry_grams"),
+    entry("peach", "dry_grams"),
+    entry("apricot", "dry_grams"),
+    entry("pineapple", "dry_grams"),
+    entry("melon_cantaloupe", "dry_grams"),
+    entry("watermelon", "dry_grams"),
+    entry("cherries", "dry_grams"),
+    entry("figs", "dry_grams"),
+    entry("dates_medjool", "dry_grams"),
+    entry("tangerine", "dry_grams"),
+    entry("raisins", "dry_grams")
+  ],
+  snack_pro: [
+    entry("yogurt_plain", "dry_grams"),
+    entry("cottage_cheese", "dry_grams"),
+    entry("almonds_raw", "dry_grams"),
+    entry("egg_whole", "dry_grams"),
+    entry("yogurt_greek", "dry_grams"),
+    entry("cheese_hard", "dry_grams"),
+    entry("mozzarella", "dry_grams"),
+    entry("hummus", "dry_grams"),
+    entry("ham_cooked", "dry_grams")
+  ]
+};
+var MEAT_KEYS = [
+  "chicken_breast",
+  "beef_lean",
+  "turkey_breast",
+  "veal_loin",
+  "rabbit",
+  "lamb_leg",
+  "pork_loin",
+  "ham_cooked",
+  "deli_lean"
+];
+var FISH_KEYS = [
+  "fish_white",
+  "cod_raw",
+  "tuna_canned",
+  "mackerel_atlantic",
+  "sardines",
+  "shrimp",
+  "octopus",
+  "squid"
+];
+var ANIMAL_PRODUCT_KEYS = [
+  "egg_whole",
+  "egg_white",
+  "yogurt_plain",
+  "yogurt_greek",
+  "kefir",
+  "milk_whole",
+  "milk_2pct",
+  "milk_goat",
+  "ricotta_cheese",
+  "cottage_cheese",
+  "cheese_hard",
+  "mozzarella",
+  "feta",
+  "honey",
+  // Compositi a base cereali con ingredienti animali nella ricetta USDA
+  // (uova/latte/miele): non sono «cibi animali» ma per un vegan non vanno proposti.
+  "pancakes_plain",
+  "rusk_toast",
+  "granola"
+];
+function filterByDiet(entries, dietType) {
+  if (dietType === "pescatarian") {
+    return entries.filter((e) => !MEAT_KEYS.includes(e.canonicalKey));
+  }
+  if (dietType === "vegetarian") {
+    return entries.filter((e) => !MEAT_KEYS.includes(e.canonicalKey) && !FISH_KEYS.includes(e.canonicalKey));
+  }
+  if (dietType === "vegan") {
+    return entries.filter(
+      (e) => !MEAT_KEYS.includes(e.canonicalKey) && !FISH_KEYS.includes(e.canonicalKey) && !ANIMAL_PRODUCT_KEYS.includes(e.canonicalKey)
+    );
+  }
+  return entries;
+}
+function canonicalToHit(entry2) {
+  const row2 = CANONICAL_FOOD_TABLE[entry2.canonicalKey];
+  if (!row2?.kcalPer100g) return null;
+  const fdcId = fdcIdForCanonicalKey(entry2.canonicalKey) ?? 0;
+  if (!isPlausiblePer100gMacros({
+    kcal_100: row2.kcalPer100g,
+    carbs_100: row2.carbsG,
+    protein_100: row2.proteinG,
+    fat_100: row2.fatG
+  })) {
+    return null;
+  }
+  return {
+    fdcId,
+    description: entry2.labelIt,
+    kcalPer100g: row2.kcalPer100g,
+    proteinPer100g: row2.proteinG,
+    carbsPer100g: row2.carbsG,
+    fatPer100g: row2.fatG,
+    tags: {
+      mealCourse: [],
+      foodFamily: [],
+      macroDominant: [],
+      slotFit: [],
+      dietProfile: ["omnivore"],
+      dietExclude: [],
+      mealRole: [],
+      aminoProfile: [],
+      nutrientDensity: [],
+      classifierVersion: "staple_registry"
+    },
+    tagSource: "db"
+  };
+}
+function denyHit2(key, denyFragments) {
+  const d = key.toLowerCase();
+  return denyFragments.some((f) => f && d.includes(f.toLowerCase()));
+}
+function pickStapleForPool(ctx) {
+  const raw = STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [];
+  const entries = filterByDiet(raw, ctx.dietType);
+  const deny = ctx.denyFragments ?? [];
+  const poolSize = entries.length;
+  const dayOffset = poolSize > 0 ? (Math.floor(Math.abs(ctx.seed)) % poolSize + poolSize) % poolSize : 0;
+  const scored = entries.map((e, idx) => {
+    if (denyHit2(e.labelIt, deny) || denyHit2(e.canonicalKey, deny)) return { e, score: -1e4, idx };
+    const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
+    if (weekCount >= ROTATION_MAX_WEEK_USES) return { e, score: -5e3, idx };
+    if (ctx.dayCtx && isCanonicalKeyUsedToday(ctx.dayCtx, e.canonicalKey)) {
+      return { e, score: -5e3, idx };
+    }
+    if (e.rotationKey && ctx.usedCarbFamilies?.has(e.rotationKey)) return { e, score: -3e3, idx };
+    else if (!e.rotationKey && e.carbFamily && ctx.usedCarbFamilies?.has(e.carbFamily)) {
+      return { e, score: -3e3, idx };
+    }
+    const hit = canonicalToHit(e);
+    if (!hit) return { e, score: -8e3, idx };
+    if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4e3, idx };
+    let score = 1e3 - (idx + poolSize - dayOffset) % poolSize * 10;
+    if (weekCount >= ROTATION_TARGET_WEEK_USES) score -= 120;
+    else if (weekCount > 0) score -= weekCount * 80;
+    return { e, score, idx, hit };
+  }).filter((x) => x.score > 0 && "hit" in x && x.hit).sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  if (!best || !("hit" in best) || !best.hit) return null;
+  return { entry: best.e, hit: best.hit };
+}
+function rotationKeyForCanonical(canonicalKey) {
+  for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
+    const found = list.find((e) => e.canonicalKey === canonicalKey);
+    if (found?.rotationKey) return found.rotationKey;
+  }
+  return void 0;
+}
+function weekStapleCountForEntry(entry2, week) {
+  if (!week) return 0;
+  return Math.max(
+    week[entry2.canonicalKey] ?? 0,
+    entry2.rotationKey ? week[entry2.rotationKey] ?? 0 : 0
+  );
+}
+function mealRotationStaplesFromComposedItems(items) {
+  const keys = /* @__PURE__ */ new Set();
+  for (const item2 of items) {
+    const ck = item2.canonicalKey?.trim();
+    if (!ck) continue;
+    const rk = rotationKeyForCanonical(ck);
+    keys.add(rk ?? ck);
+  }
+  return [...keys].slice(0, 24);
+}
+function servingBasisForCanonical(canonicalKey) {
+  for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
+    const found = list.find((e) => e.canonicalKey === canonicalKey);
+    if (found) return found.servingBasis;
+  }
+  if (/_cooked$/.test(canonicalKey)) return "cooked_grams";
+  if (/oil|milk|drink/.test(canonicalKey)) return "ml";
+  return "dry_grams";
+}
+
+// apps/web/lib/nutrition/meal-rotation-week-db.ts
+function isoWeekRangeForDate(isoDate) {
+  const d = /* @__PURE__ */ new Date(`${isoDate}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return { start: isoDate, end: isoDate };
+  const dayNr = (d.getUTCDay() + 6) % 7;
+  const start = new Date(d);
+  start.setUTCDate(d.getUTCDate() - dayNr);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+  const fmt = (x) => `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}-${String(x.getUTCDate()).padStart(2, "0")}`;
+  return { start: fmt(start), end: fmt(end) };
+}
+function mergeWeeklyStapleCounts(...sources) {
+  const out = {};
+  for (const src of sources) {
+    if (!src) continue;
+    for (const [k, v] of Object.entries(src)) {
+      if (typeof k !== "string" || !k || k.length > 72) continue;
+      if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+      const n = Math.min(21, Math.floor(v));
+      if (n > (out[k] ?? 0)) out[k] = n;
+    }
+  }
+  return Object.keys(out).length ? out : void 0;
+}
+async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate) {
+  try {
+    const { start, end } = isoWeekRangeForDate(planDate);
+    const { data, error } = await db.from("nutrition_plan").select("plan_date, meal(meal_item(canonical_key))").eq("athlete_id", athleteId).gte("plan_date", start).lte("plan_date", end).neq("plan_date", planDate);
+    if (error || !Array.isArray(data)) return {};
+    const counts = {};
+    for (const row2 of data) {
+      const meals = Array.isArray(row2?.meal) ? row2.meal : [];
+      const items = meals.flatMap((m) => Array.isArray(m?.meal_item) ? m.meal_item : []);
+      const dayKeys = mealRotationStaplesFromComposedItems(
+        items.map((it) => ({ canonicalKey: typeof it?.canonical_key === "string" ? it.canonical_key : null }))
+      );
+      for (const k of dayKeys) counts[k] = (counts[k] ?? 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+// apps/web/lib/nutrition/diet-meal-slot-budgets.ts
+function resolveSixMealSnackPercentages(dist) {
+  const am = dist.snack_am;
+  const pm = dist.snack_pm;
+  const ev = dist.snack_evening;
+  const hasExplicit = am != null && Number.isFinite(am) || pm != null && Number.isFinite(pm) || ev != null && Number.isFinite(ev);
+  if (hasExplicit) {
+    const snack_am = am ?? 0;
+    const snack_pm = pm ?? 0;
+    const snack_evening = ev ?? 0;
+    const snacksTotal = snack_am + snack_pm + snack_evening;
+    return { snack_am, snack_pm, snack_evening, snacksTotal };
+  }
+  const mains = dist.breakfast + dist.lunch + dist.dinner;
+  const s = dist.snacks;
+  if (s > 0 && s * 3 + mains <= 100.5) {
+    return { snack_am: s, snack_pm: s, snack_evening: s, snacksTotal: s * 3 };
+  }
+  const third = s / 3;
+  return { snack_am: third, snack_pm: third, snack_evening: third, snacksTotal: s };
+}
+function round0(v) {
+  return Math.round(v);
+}
+function normalizeCaloricDistribution(dist) {
+  const sum = dist.breakfast + dist.lunch + dist.dinner + dist.snacks;
+  if (sum <= 0) return dist;
+  if (Math.abs(sum - 100) < 0.05) return dist;
+  const f = 100 / sum;
+  return {
+    breakfast: dist.breakfast * f,
+    lunch: dist.lunch * f,
+    dinner: dist.dinner * f,
+    snacks: dist.snacks * f
+  };
+}
+function redistributeSnacksOntoMains(dist) {
+  const mainSum = dist.breakfast + dist.lunch + dist.dinner;
+  if (mainSum <= 0) return { breakfast: 100 / 3, lunch: 100 / 3, dinner: 100 / 3 };
+  const extra = dist.snacks;
+  const scale = (mainSum + extra) / mainSum;
+  return {
+    breakfast: dist.breakfast * scale,
+    lunch: dist.lunch * scale,
+    dinner: dist.dinner * scale
+  };
+}
+function dietMealSlotSpecsForMode(mealCountMode) {
+  const m = String(mealCountMode ?? "").trim();
+  const dist = (d, fn) => fn(d);
+  if (m === "1") {
+    return [{ key: "dinner", label: "Cena", pct: () => 100 }];
+  }
+  if (m === "2") {
+    const mains = (d) => redistributeSnacksOntoMains(d);
+    return [
+      { key: "lunch", label: "Pranzo", pct: (d) => dist(d, (x) => mains(x).lunch) },
+      { key: "dinner", label: "Cena", pct: (d) => dist(d, (x) => mains(x).dinner) }
+    ];
+  }
+  if (m === "3") {
+    const mains = (d) => redistributeSnacksOntoMains(d);
+    return [
+      { key: "breakfast", label: "Colazione", pct: (d) => dist(d, (x) => mains(x).breakfast) },
+      { key: "lunch", label: "Pranzo", pct: (d) => dist(d, (x) => mains(x).lunch) },
+      { key: "dinner", label: "Cena", pct: (d) => dist(d, (x) => mains(x).dinner) }
+    ];
+  }
+  if (m === "4") {
+    return [
+      { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
+      { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
+      { key: "dinner", label: "Cena", pct: (d) => d.dinner },
+      { key: "snack_am", label: "Spuntino", pct: (d) => d.snacks }
+    ];
+  }
+  if (m === "6") {
+    const snackPct = (which) => (d) => {
+      const r = resolveSixMealSnackPercentages(d);
+      if (which === "am") return r.snack_am;
+      if (which === "pm") return r.snack_pm;
+      return r.snack_evening;
+    };
+    return [
+      { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
+      { key: "snack_am", label: "Spuntino \xB7 mattina", pct: snackPct("am") },
+      { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
+      { key: "snack_pm", label: "Spuntino \xB7 pomeriggio", pct: snackPct("pm") },
+      { key: "dinner", label: "Cena", pct: (d) => d.dinner },
+      { key: "snack_evening", label: "Spuntino \xB7 serale", pct: snackPct("evening") }
+    ];
+  }
+  const half = (d) => d.snacks / 2;
+  return [
+    { key: "breakfast", label: "Colazione", pct: (d) => d.breakfast },
+    { key: "snack_am", label: "Spuntino \xB7 mattina", pct: half },
+    { key: "lunch", label: "Pranzo", pct: (d) => d.lunch },
+    { key: "snack_pm", label: "Spuntino \xB7 pomeriggio", pct: half },
+    { key: "dinner", label: "Cena", pct: (d) => d.dinner }
+  ];
+}
+function buildDietMealSlotBudgets(input) {
+  const round6 = input.round ?? round0;
+  const dist = normalizeCaloricDistribution(input.caloricDistribution);
+  const specs = dietMealSlotSpecsForMode(input.mealCountMode);
+  const t = input.mealTimes;
+  const timeFor = (key) => {
+    switch (key) {
+      case "breakfast":
+        return t.breakfast;
+      case "lunch":
+        return t.lunch;
+      case "dinner":
+        return t.dinner;
+      case "snack_am":
+        return t.snack_am;
+      case "snack_pm":
+        return t.snack_pm;
+      case "snack_evening":
+        return t.snack_evening?.trim() || "22:00";
+      default:
+        return "12:00";
+    }
+  };
+  return specs.map((spec) => {
+    const pct = spec.pct(dist);
+    const kcal = input.dailyKcal * pct / 100;
+    const macro = input.macroSplit;
+    return {
+      key: spec.key,
+      label: spec.label,
+      pct,
+      time: timeFor(spec.key),
+      kcal: round6(kcal),
+      carbs: round6(kcal * (macro.carbs / 100) / 4),
+      protein: round6(kcal * (macro.protein / 100) / 4),
+      fat: round6(kcal * (macro.fat / 100) / 9)
+    };
+  });
+}
+
+// apps/web/lib/nutrition/resolve-nutrition-diet-day.ts
+function asRecord5(v) {
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+function parseNutritionConfigRecord(nutritionConfig) {
+  if (typeof nutritionConfig === "string") {
+    const t = nutritionConfig.trim();
+    if (!t) return {};
+    try {
+      return asRecord5(JSON.parse(t));
+    } catch {
+      return {};
+    }
+  }
+  return asRecord5(nutritionConfig);
+}
+function distributionImpliesSixMeals(dist, dayRaw) {
+  const cal = asRecord5(dayRaw?.caloric_distribution);
+  if (num(cal.snack_am) != null || num(cal.snack_pm) != null || num(cal.snack_evening) != null) {
+    return true;
+  }
+  const r = resolveSixMealSnackPercentages(dist);
+  const mains = dist.breakfast + dist.lunch + dist.dinner;
+  const daySum = mains + dist.snacks;
+  if (dist.snacks >= 20 && mains >= 55 && Math.abs(daySum - 100) < 2) return true;
+  if (r.snacksTotal >= 24 && Math.abs(r.snack_am - r.snack_pm) < 2 && Math.abs(r.snack_pm - r.snack_evening) < 2) {
+    return true;
+  }
+  if (dist.snacks > 0 && dist.snacks * 3 + mains <= 100.5) return true;
+  return false;
+}
+function num(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+function readCaloricDistributionFields(cal, pctSuffix) {
+  const bKey = pctSuffix ? "breakfast_pct" : "breakfast";
+  const lKey = pctSuffix ? "lunch_pct" : "lunch";
+  const dKey = pctSuffix ? "dinner_pct" : "dinner";
+  const sKey = pctSuffix ? "snacks_pct" : "snacks";
+  const breakfast = num(cal[bKey] ?? cal.breakfast);
+  const lunch = num(cal[lKey] ?? cal.lunch);
+  const dinner = num(cal[dKey] ?? cal.dinner);
+  const snacks = num(cal[sKey] ?? cal.snacks);
+  const snackAm = num(cal.snack_am ?? cal.snack_am_pct);
+  const snackPm = num(cal.snack_pm ?? cal.snack_pm_pct);
+  const snackEvening = num(cal.snack_evening ?? cal.snack_evening_pct);
+  if (breakfast == null && lunch == null && dinner == null && snacks == null && snackAm == null && snackPm == null && snackEvening == null) {
+    return null;
+  }
+  return normalizeCaloricDistribution({
+    breakfast: breakfast ?? 0,
+    lunch: lunch ?? 0,
+    dinner: dinner ?? 0,
+    snacks: snacks ?? 0,
+    ...snackAm != null ? { snack_am: snackAm } : {},
+    ...snackPm != null ? { snack_pm: snackPm } : {},
+    ...snackEvening != null ? { snack_evening: snackEvening } : {}
+  });
+}
+function readCaloricDistribution(raw) {
+  const fromDiet = readCaloricDistributionFields(asRecord5(raw.caloric_distribution), false);
+  if (isUsableCaloricDistribution(fromDiet)) return fromDiet;
+  const fromSplit = readCaloricDistributionFields(asRecord5(raw.caloric_split), true);
+  if (isUsableCaloricDistribution(fromSplit)) return fromSplit;
+  return fromDiet ?? fromSplit;
+}
+function isUsableCaloricDistribution(dist) {
+  if (!dist) return false;
+  return dist.breakfast + dist.lunch + dist.dinner + dist.snacks > 0;
+}
+function profileParityCaloricDistribution(dayRaw) {
+  const cal = asRecord5(dayRaw.caloric_distribution);
+  return normalizeCaloricDistribution({
+    breakfast: num(cal.breakfast) ?? 30,
+    lunch: num(cal.lunch) ?? 35,
+    dinner: num(cal.dinner) ?? 25,
+    snacks: num(cal.snacks) ?? 10
+  });
+}
+function resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigured) {
+  const fromWeek = readCaloricDistribution(dayRaw);
+  if (isUsableCaloricDistribution(fromWeek)) return fromWeek;
+  const legacy = readFromLegacyRoot(nc);
+  if (isUsableCaloricDistribution(legacy.caloricDistribution)) return legacy.caloricDistribution;
+  if (weekMealMode.length > 0 || weekConfigured) {
+    return profileParityCaloricDistribution(dayRaw);
+  }
+  return null;
+}
+function readDailyMacros(raw) {
+  const macros = asRecord5(raw.daily_macros);
+  const carbs = num(macros.cho_pct ?? macros.carbs_pct);
+  const protein = num(macros.pro_pct ?? macros.protein_pct);
+  const fat = num(macros.fat_pct);
+  if (carbs == null && protein == null && fat == null) return null;
+  return {
+    carbs: carbs ?? 50,
+    protein: protein ?? 25,
+    fat: fat ?? 25
+  };
+}
+function readFromLegacyRoot(nc) {
+  const mealPlan = asRecord5(nc.meal_plan);
+  const dist = readCaloricDistributionFields(asRecord5(mealPlan.caloric_split), true) ?? readCaloricDistributionFields(asRecord5(nc.caloric_split), true);
+  const macroRoot = asRecord5(nc.macro_split);
+  const macroMealPlan = asRecord5(mealPlan.macro_split);
+  const macro = Object.keys(macroMealPlan).length ? macroMealPlan : macroRoot;
+  const dailyMacros = num(macro.carbs_pct) != null || num(macro.protein_pct) != null || num(macro.fat_pct) != null ? {
+    carbs: num(macro.carbs_pct) ?? 50,
+    protein: num(macro.protein_pct) ?? 25,
+    fat: num(macro.fat_pct) ?? 25
+  } : null;
+  const mealStrategy = String(mealPlan.meal_strategy ?? nc.meal_strategy ?? "").trim();
+  let mealCountMode = "4";
+  if (mealStrategy === "6-meals") mealCountMode = "6";
+  else if (mealStrategy === "5-meals") mealCountMode = "5";
+  else if (mealStrategy === "3-meals") mealCountMode = "3";
+  return { mealCountMode, caloricDistribution: dist, dailyMacros };
+}
+function inferMealCountModeForDay(dayRaw, weekDist, legacyMealCountMode) {
+  const explicit = String(dayRaw.meal_count_mode ?? "").trim();
+  if (explicit && explicit !== "fasting") {
+    if (explicit === "4" && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) return "6";
+    return explicit;
+  }
+  if (weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) return "6";
+  if (legacyMealCountMode === "6" || legacyMealCountMode === "5" || legacyMealCountMode === "3") {
+    return legacyMealCountMode;
+  }
+  if (legacyMealCountMode === "4" && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) {
+    return "6";
+  }
+  return legacyMealCountMode || "4";
+}
+function enrichCaloricDistributionForMealMode(dist, mealCountMode) {
+  if (!dist || mealCountMode !== "6") return dist;
+  const r = resolveSixMealSnackPercentages(dist);
+  return {
+    ...dist,
+    snack_am: r.snack_am,
+    snack_pm: r.snack_pm,
+    snack_evening: r.snack_evening,
+    snacks: r.snacksTotal
+  };
+}
+function resolveNutritionDietDay(nutritionConfig, planDate, options) {
+  const preferredMealCount = options?.preferredMealCount != null ? Math.trunc(options.preferredMealCount) : null;
+  const iso = planDate.slice(0, 10);
+  const weekDayKey = profileWeekDayKeyFromIsoLocal(iso);
+  const nc = parseNutritionConfigRecord(nutritionConfig);
+  const weekPlan = asRecord5(nc.week_plan);
+  const dayRaw = asRecord5(weekPlan[weekDayKey]);
+  const dayType = String(dayRaw.day_type ?? "normocaloric-100");
+  const dayTypePctRaw = num(dayRaw.day_type_pct);
+  const dayTypePct = dayTypePctRaw != null ? Math.max(0, Math.min(200, dayTypePctRaw)) : 100;
+  const weekMacros = readDailyMacros(dayRaw);
+  const weekMealMode = String(dayRaw.meal_count_mode ?? "").trim();
+  const weekConfigured = Boolean(weekMealMode) || readCaloricDistribution(dayRaw) != null || weekMacros != null || dayTypePctRaw != null;
+  const legacy = readFromLegacyRoot(nc);
+  const weekDist = resolveCaloricDistributionForDay(dayRaw, nc, weekMealMode, weekConfigured);
+  if (weekConfigured) {
+    let mealCountMode = inferMealCountModeForDay(dayRaw, weekDist, legacy.mealCountMode);
+    if (mealCountMode === "4" && preferredMealCount === 6 && weekDist && distributionImpliesSixMeals(weekDist, dayRaw)) {
+      mealCountMode = "6";
+    }
+    const caloricDistribution = enrichCaloricDistributionForMealMode(weekDist, mealCountMode);
+    return {
+      planDate: iso,
+      weekDayKey,
+      source: "week_plan",
+      configured: isUsableCaloricDistribution(caloricDistribution) && mealCountMode.length > 0,
+      mealCountMode,
+      caloricDistribution,
+      dailyMacros: weekMacros ?? legacy.dailyMacros,
+      dayType,
+      dayTypePct
+    };
+  }
+  if (isUsableCaloricDistribution(legacy.caloricDistribution)) {
+    let mealCountMode = inferMealCountModeForDay({}, legacy.caloricDistribution, legacy.mealCountMode);
+    if (mealCountMode === "4" && preferredMealCount === 6 && legacy.caloricDistribution && distributionImpliesSixMeals(legacy.caloricDistribution, {})) {
+      mealCountMode = "6";
+    }
+    const caloricDistribution = enrichCaloricDistributionForMealMode(legacy.caloricDistribution, mealCountMode);
+    return {
+      planDate: iso,
+      weekDayKey,
+      source: "legacy_root",
+      configured: true,
+      mealCountMode,
+      caloricDistribution,
+      dailyMacros: legacy.dailyMacros,
+      dayType,
+      dayTypePct
+    };
+  }
+  return {
+    planDate: iso,
+    weekDayKey,
+    source: "missing",
+    configured: false,
+    mealCountMode: "4",
+    caloricDistribution: null,
+    dailyMacros: null,
+    dayType,
+    dayTypePct
+  };
+}
+
+// apps/web/lib/nutrition/reconcile-meal-plan-slots-with-diet.ts
+function routineMealTimesFlat(routine) {
+  const rc = routine && typeof routine === "object" && !Array.isArray(routine) ? routine : {};
+  const mt = rc.meal_times && typeof rc.meal_times === "object" && !Array.isArray(rc.meal_times) ? rc.meal_times : {};
+  return {
+    breakfast: String(mt.breakfast ?? "07:30"),
+    lunch: String(mt.lunch ?? "13:00"),
+    dinner: String(mt.dinner ?? "20:00"),
+    snack_am: String(mt.snack_am ?? "10:30"),
+    snack_pm: String(mt.snack_pm ?? mt.snacks ?? "16:30"),
+    snack_evening: String(mt.snack_evening ?? "22:30")
+  };
+}
+var DEFAULT_MACRO = { carbs: 50, protein: 25, fat: 25 };
+function reconcileMealPlanSlotsWithDiet(input) {
+  const clientSlots = input.clientSlots ?? [];
+  const dietDay = resolveNutritionDietDay(input.nutritionConfig, input.planDate, {
+    preferredMealCount: input.preferredMealCount
+  });
+  if (!dietDay.configured || !dietDay.caloricDistribution) {
+    return {
+      slots: clientSlots,
+      mealCountMode: dietDay.mealCountMode || "4",
+      dietConfigured: false,
+      rebuiltFromDiet: false
+    };
+  }
+  const flatRoot = routineMealTimesFlat(
+    input.routineConfig && typeof input.routineConfig === "object" && !Array.isArray(input.routineConfig) ? input.routineConfig : null
+  );
+  const mealTimes = mealTimesFromRoutineWeekPlanForDate(
+    input.routineConfig,
+    input.planDate,
+    flatRoot
+  );
+  const macroSplit = dietDay.dailyMacros ?? DEFAULT_MACRO;
+  const dailyKcal = Math.max(0, Math.round(input.dailyMealsKcalTotal));
+  const budgets = buildDietMealSlotBudgets({
+    mealCountMode: dietDay.mealCountMode,
+    caloricDistribution: dietDay.caloricDistribution,
+    dailyKcal,
+    macroSplit,
+    mealTimes
+  });
+  const clientBySlot = /* @__PURE__ */ new Map();
+  for (const s of clientSlots) {
+    if (s?.slot) clientBySlot.set(s.slot, s);
+  }
+  const rebuiltFromDiet = budgets.length !== clientSlots.length || budgets.some((b) => !clientBySlot.has(b.key)) || clientSlots.some((s) => !budgets.find((b) => b.key === s.slot));
+  const slots = budgets.map((b) => {
+    const prev = clientBySlot.get(b.key);
+    return {
+      slot: b.key,
+      labelIt: b.label,
+      scheduledTimeLocal: b.time,
+      targetKcal: b.kcal,
+      targetCarbsG: b.carbs,
+      targetProteinG: b.protein,
+      targetFatG: b.fat,
+      functionalTargets: prev?.functionalTargets ?? [],
+      functionalFoodGroups: prev?.functionalFoodGroups ?? [],
+      foodCandidates: prev?.foodCandidates ?? []
+    };
+  });
+  return {
+    slots,
+    mealCountMode: dietDay.mealCountMode,
+    dietConfigured: true,
+    rebuiltFromDiet
+  };
+}
+
+// apps/web/lib/nutrition/intelligent-meal-plan-route-prep.ts
+init_pro2_session_notes();
+init_planned_session_metrics();
+
+// apps/web/lib/nutrition/daily-energy-solver.ts
+var LIFESTYLE_PCT = {
+  sedentary: 0.15,
+  moderate: 0.2,
+  active: 0.3,
+  very_active: 0.4
+};
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+function round(value, digits = 0) {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+function asFinite(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+function deriveAgeYears(birthDate) {
+  if (!birthDate) return null;
+  const birth = /* @__PURE__ */ new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = /* @__PURE__ */ new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || monthDiff === 0 && now.getDate() < birth.getDate()) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+}
+function normalizeLifestyleActivityClass(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "sedentary") return "sedentary";
+  if (normalized === "moderate") return "moderate";
+  if (normalized === "active") return "active";
+  if (normalized === "very_active" || normalized === "very active") return "very_active";
+  return "moderate";
+}
+function computeLeanMassKg(input) {
+  const weightKg = asFinite(input.weightKg);
+  const bodyFatPct = asFinite(input.bodyFatPct);
+  if (weightKg == null || bodyFatPct == null) return null;
+  return round(weightKg * (1 - clamp(bodyFatPct, 0, 70) / 100), 1);
+}
+function computeMifflinStJeor(input) {
+  const ageYears = asFinite(input.ageYears);
+  const heightCm = asFinite(input.heightCm);
+  const weightKg = asFinite(input.weightKg);
+  if (ageYears == null || heightCm == null || weightKg == null) return null;
+  const sex = String(input.sex ?? "").toLowerCase();
+  const sexOffset = sex === "male" ? 5 : sex === "female" ? -161 : -78;
+  return 10 * weightKg + 6.25 * heightCm - 5 * ageYears + sexOffset;
+}
+function computeWeightProxyBmr(weightKg) {
+  const weight = asFinite(weightKg);
+  if (weight == null) return null;
+  return weight * 22;
+}
+function deriveAthleteCalibrationPct(input) {
+  const vo2max = asFinite(input.vo2maxMlMinKg);
+  const ftpWatts = asFinite(input.ftpWatts);
+  const weightKg = asFinite(input.weightKg);
+  const ftpWKg = ftpWatts != null && weightKg != null && weightKg > 0 ? ftpWatts / weightKg : null;
+  const vo2Score = vo2max != null ? clamp((vo2max - 45) / 25, 0, 1) : 0;
+  const ftpScore = ftpWKg != null ? clamp((ftpWKg - 3.2) / 1.8, 0, 1) : 0;
+  return round(clamp(vo2Score * 0.03 + ftpScore * 0.02, 0, 0.05), 3);
+}
+function deriveBmr(input) {
+  const notes = [];
+  const ageYears = deriveAgeYears(input.birthDate);
+  const weightKg = asFinite(input.weightKg);
+  const leanMassKg = computeLeanMassKg({
+    weightKg,
+    bodyFatPct: input.bodyFatPct
+  });
+  const ftpWKg = input.ftpWatts != null && weightKg != null && weightKg > 0 ? round(input.ftpWatts / weightKg, 2) : null;
+  if (leanMassKg != null) {
+    notes.push("BMR anchored to Cunningham using fat-free mass.");
+    return {
+      bmrKcal: round(500 + 22 * leanMassKg),
+      bmrMethod: "cunningham_ffm",
+      leanMassKg,
+      ageYears,
+      ftpWKg,
+      notes
+    };
+  }
+  const mifflin = computeMifflinStJeor({
+    sex: input.sex,
+    ageYears,
+    heightCm: input.heightCm,
+    weightKg
+  });
+  if (mifflin != null) {
+    const athleteCalibrationPct = deriveAthleteCalibrationPct(input);
+    if (athleteCalibrationPct > 0) {
+      notes.push("BMR calibrated upward from Mifflin using athlete aerobic phenotype proxies.");
+    } else {
+      notes.push("BMR derived from Mifflin-St Jeor fallback due to missing body-fat data.");
+    }
+    return {
+      bmrKcal: round(mifflin * (1 + athleteCalibrationPct)),
+      bmrMethod: "mifflin_st_jeor",
+      leanMassKg,
+      ageYears,
+      ftpWKg,
+      notes
+    };
+  }
+  const proxy = computeWeightProxyBmr(weightKg);
+  notes.push("BMR derived from weight-only fallback because composition and full anthropometry are incomplete.");
+  return {
+    bmrKcal: round(proxy ?? 0),
+    bmrMethod: "weight_proxy",
+    leanMassKg,
+    ageYears,
+    ftpWKg,
+    notes
+  };
+}
+function estimateTrainingKcalFromTss(totalTss, durationMin) {
+  if (totalTss <= 0) return 0;
+  const hours = Math.max(0.25, durationMin / 60);
+  const tssPerHour = totalTss / hours;
+  const scale = clamp(tssPerHour / 80, 0.85, 1.15);
+  return round(totalTss * 10 * scale);
+}
+function deriveTrainingSummary(plannedTraining = []) {
+  const sessions = plannedTraining.filter((session) => {
+    const duration = asFinite(session.durationMinutes) ?? 0;
+    const kcal2 = asFinite(session.kcalTarget) ?? 0;
+    const tss = asFinite(session.tssTarget) ?? 0;
+    return duration > 0 || kcal2 > 0 || tss > 0;
+  });
+  const durationMin = round(
+    sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.durationMinutes) ?? 0), 0)
+  );
+  let kcal = round(
+    sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.kcalTarget) ?? 0), 0)
+  );
+  const totalTss = sessions.reduce((sum, session) => sum + Math.max(0, asFinite(session.tssTarget) ?? 0), 0);
+  if (kcal === 0 && totalTss > 0) {
+    kcal = estimateTrainingKcalFromTss(totalTss, durationMin);
+  }
+  const totalWeightedPower = sessions.reduce((sum, session) => {
+    const avgPowerW = asFinite(session.avgPowerW);
+    const durationMinutes = Math.max(0, asFinite(session.durationMinutes) ?? 0);
+    return sum + (avgPowerW != null ? avgPowerW * Math.max(1, durationMinutes) : 0);
+  }, 0);
+  const totalPowerMinutes = sessions.reduce((sum, session) => {
+    const avgPowerW = asFinite(session.avgPowerW);
+    const durationMinutes = Math.max(0, asFinite(session.durationMinutes) ?? 0);
+    return sum + (avgPowerW != null ? Math.max(1, durationMinutes) : 0);
+  }, 0);
+  const hours = durationMin > 0 ? durationMin / 60 : 0;
+  const avgIntensityPctFtp = hours > 0 ? round(clamp(Math.sqrt(Math.max(0, totalTss / hours) / 100) * 100, 45, 120), 1) : null;
+  return {
+    sessionsCount: sessions.length,
+    durationMin,
+    kcal,
+    avgIntensityPctFtp,
+    avgPowerW: totalPowerMinutes > 0 ? round(totalWeightedPower / totalPowerMinutes) : null
+  };
+}
+function deriveEvidenceChoRange(input) {
+  const duration = Math.max(0, input.durationMin);
+  const intensity = asFinite(input.avgIntensityPctFtp) ?? 70;
+  const avgPower = asFinite(input.estimatedAvgPowerW) ?? 0;
+  const ftpWKg = asFinite(input.ftpWKg) ?? 0;
+  const vo2max = asFinite(input.vo2maxMlMinKg) ?? 0;
+  if (duration >= 60 && avgPower >= 300 && (ftpWKg >= 4.8 || vo2max >= 68)) {
+    return { tier: "elite", min: 100, target: 120, max: 130 };
+  }
+  if (duration >= 75 && (avgPower >= 250 || ftpWKg >= 4.2 || vo2max >= 60)) {
+    return { tier: "high", min: 90, target: 100, max: 110 };
+  }
+  if (duration < 45) {
+    return { tier: "base", min: 0, target: 15, max: 30 };
+  }
+  if (duration < 120) {
+    return intensity >= 85 ? { tier: "base", min: 30, target: 50, max: 60 } : { tier: "base", min: 20, target: 40, max: 50 };
+  }
+  if (duration < 180) {
+    return intensity >= 85 ? { tier: "base", min: 50, target: 70, max: 90 } : { tier: "base", min: 40, target: 60, max: 75 };
+  }
+  return intensity >= 85 ? { tier: "base", min: 60, target: 90, max: 90 } : { tier: "base", min: 50, target: 75, max: 90 };
+}
+function computeNutritionDailyEnergyModel(input) {
+  const bmr = deriveBmr(input);
+  const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass);
+  const lifestylePct = LIFESTYLE_PCT[lifestyleClass];
+  const lifestyleKcal = round(bmr.bmrKcal * lifestylePct);
+  const training = deriveTrainingSummary(input.plannedTraining);
+  const integration = input.performanceIntegration ?? null;
+  const trainingEnergyScale = integration?.trainingEnergyScale ?? 1;
+  const mealTrainingFraction = integration?.mealTrainingFraction ?? 0.4;
+  const fuelingChoScale = integration?.fuelingChoScale ?? 1;
+  const trainingKcal = training.kcal;
+  const estimatedAvgPowerW = training.avgPowerW != null ? training.avgPowerW : input.ftpWatts != null && training.avgIntensityPctFtp != null ? round(input.ftpWatts * (training.avgIntensityPctFtp / 100)) : null;
+  const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? clamp(input.dietDayMealsScalePct, 0, 200) / 100 : 1;
+  const observedActiveKcal = input.observedActiveKcal != null && Number.isFinite(input.observedActiveKcal) && input.observedActiveKcal >= 0 ? input.observedActiveKcal : null;
+  const usesObserved = observedActiveKcal != null;
+  const observedTotalKcal = usesObserved ? bmr.bmrKcal + observedActiveKcal : null;
+  const fuelingKcal = round(trainingKcal * (1 - mealTrainingFraction));
+  const totalDailyKcal = round(
+    (usesObserved ? observedTotalKcal : bmr.bmrKcal + lifestyleKcal + trainingKcal) * dietScale
+  );
+  const mealsKcal = round(
+    (usesObserved ? Math.max(0, observedTotalKcal - fuelingKcal) : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale
+  );
+  const recoveryStatus = input.recoveryStatus ?? "unknown";
+  const split = recoveryStatus === "poor" ? { pre: 0.08, intra: 0.4, post: 0.12 } : recoveryStatus === "moderate" ? { pre: 0.06, intra: 0.44, post: 0.1 } : { pre: 0.05, intra: 0.45, post: 0.1 };
+  const preKcal = round(trainingKcal * split.pre);
+  const intraKcal = round(trainingKcal * split.intra);
+  const postKcal = round(trainingKcal * split.post);
+  const preChoG = round(preKcal / 4, 1);
+  const intraChoG = round(intraKcal / 4, 1);
+  const postChoG = round(postKcal / 4, 1);
+  const hours = training.durationMin > 0 ? training.durationMin / 60 : 0;
+  const energyDrivenChoGPerHour = hours > 0 ? round(intraChoG / hours, 1) : 0;
+  const evidenceRange = deriveEvidenceChoRange({
+    durationMin: training.durationMin,
+    avgIntensityPctFtp: training.avgIntensityPctFtp,
+    estimatedAvgPowerW,
+    ftpWKg: bmr.ftpWKg,
+    vo2maxMlMinKg: input.vo2maxMlMinKg
+  });
+  let adjustedChoGPerHour = hours > 0 ? round(
+    recoveryStatus === "poor" ? clamp(energyDrivenChoGPerHour, evidenceRange.min, evidenceRange.target) : recoveryStatus === "moderate" ? clamp(energyDrivenChoGPerHour, evidenceRange.min, Math.min(evidenceRange.max, evidenceRange.target + 5)) : clamp(energyDrivenChoGPerHour, evidenceRange.min, evidenceRange.max),
+    1
+  ) : 0;
+  if (hours > 0 && fuelingChoScale !== 1) {
+    adjustedChoGPerHour = round(
+      clamp(adjustedChoGPerHour * fuelingChoScale, evidenceRange.min, evidenceRange.max),
+      1
+    );
+  }
+  const notes = [...bmr.notes];
+  notes.push(
+    "Daily total = BMR + lifestyle load + planned training cost (kcal del consumo programmato; sostituito dall'eseguito quando importato).",
+    "Meals cover BMR + lifestyle load + 40% of planned training energy.",
+    "Fueling covers the remaining 60% of planned training energy split as 5% pre, 45% intra, 10% post.",
+    "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
+    "Integrazione performance (recovery/bio): agisce su distribuzione pasti\u2194fueling, CHO/h, proteine, idratazione \u2014 NON riduce il fabbisogno energetico totale."
+  );
+  if (usesObserved) {
+    notes.push(
+      `Consumo OSSERVATO (device): BMR ${bmr.bmrKcal} + kcal attive ${Math.round(observedActiveKcal)} = ${observedTotalKcal} kcal. Il fabbisogno segue il consumo reale; fueling intra-seduta (${fuelingKcal} kcal) resta dal pianificato.`
+    );
+  }
+  if (recoveryStatus === "moderate") {
+    notes.push("Recovery-aware solver active: moderate recovery shifts more energy toward pre/post support and slightly tempers intra CHO aggressiveness.");
+  }
+  if (recoveryStatus === "poor") {
+    notes.push("Recovery-aware solver active: poor recovery protects the day by simplifying intra CHO delivery and reinforcing pre/post support.");
+  }
+  if (input.recoverySleepHours != null) {
+    notes.push(`Recovery feed detected: sleep ${round(input.recoverySleepHours, 1)} h.`);
+  }
+  if (input.recoveryHrvMs != null) {
+    notes.push(`Recovery feed detected: HRV ${round(input.recoveryHrvMs)} ms.`);
+  }
+  if (input.recoveryStrainScore != null) {
+    notes.push(`Recovery feed detected: strain ${round(input.recoveryStrainScore)}.`);
+  }
+  if (evidenceRange.tier === "high") {
+    notes.push("High-capacity athlete tier enabled: intra-workout CHO can scale into the 90-110 g/h band.");
+  }
+  if (evidenceRange.tier === "elite") {
+    notes.push("Elite fueling tier enabled: sustained high-power sessions can scale into the 120-130 g/h band.");
+  }
+  if (integration) {
+    notes.push(
+      `Integrazione performance (informativa): indicatore recovery/bio \xD7${trainingEnergyScale}, quota pasti sul training ${Math.round(mealTrainingFraction * 100)}%, CHO/h \xD7${fuelingChoScale}. Non viene applicata al fabbisogno totale.`
+    );
+    notes.push(...integration.rationale);
+  }
+  if (dietScale !== 1) {
+    notes.push(`Profile Diet: fabbisogno pasti scalato al ${Math.round(dietScale * 100)}% del giorno (day_type_pct).`);
+  }
+  return {
+    athleteId: input.athleteId,
+    date: input.date,
+    algorithmVersion: "v1",
+    bmrMethod: bmr.bmrMethod,
+    bmrKcal: bmr.bmrKcal,
+    leanMassKg: bmr.leanMassKg,
+    ageYears: bmr.ageYears,
+    ftpWKg: bmr.ftpWKg,
+    vo2maxMlMinKg: asFinite(input.vo2maxMlMinKg),
+    lifestyle: {
+      activityClass: lifestyleClass,
+      pct: lifestylePct,
+      kcal: lifestyleKcal
+    },
+    training: {
+      ...training,
+      kcal: trainingKcal,
+      estimatedAvgPowerW
+    },
+    totals: {
+      dailyKcal: totalDailyKcal,
+      mealsKcal,
+      fuelingKcal
+    },
+    fueling: {
+      capabilityTier: evidenceRange.tier,
+      preKcal,
+      intraKcal,
+      postKcal,
+      preChoG,
+      intraChoG,
+      postChoG,
+      evidenceMinChoGPerHour: evidenceRange.min,
+      evidenceTargetChoGPerHour: evidenceRange.target,
+      evidenceMaxChoGPerHour: evidenceRange.max,
+      energyDrivenChoGPerHour,
+      adjustedChoGPerHour
+    },
+    performanceIntegration: integration ? {
+      trainingEnergyScale: integration.trainingEnergyScale,
+      mealTrainingFraction: integration.mealTrainingFraction,
+      fuelingChoScale: integration.fuelingChoScale,
+      proteinBiasPctPoints: integration.proteinBiasPctPoints,
+      hydrationFloorMultiplier: integration.hydrationFloorMultiplier,
+      sessionFluidMultiplier: integration.sessionFluidMultiplier,
+      rationale: integration.rationale,
+      ...integration.diaryInsight != null ? { diaryInsight: integration.diaryInsight } : {}
+    } : void 0,
+    notes
+  };
+}
+
+// apps/web/lib/nutrition/v2/fdc-food-taxonomy.ts
+var CLASSIFIER_VERSION = "empathy_v2_rules_v1";
+function dietProfileFromAthleteDietType(raw) {
+  const d = (raw ?? "").trim().toLowerCase();
+  if (!d || d === "omnivore" || d === "other") return "omnivore";
+  if (d.includes("vegan")) return "vegan";
+  if (d.includes("veget")) return "vegetarian";
+  if (d.includes("pesc")) return "pescatarian";
+  if (d.includes("carniv")) return "carnivore";
+  if (d.includes("paleo")) return "paleo";
+  if (d.includes("mediterr")) return "mediterranean";
+  if (d.includes("thai")) return "thai";
+  if (d.includes("celiac") || d.includes("gluten")) return "celiac";
+  if (d.includes("lactose") || d.includes("lattosio")) return "lactose_free";
+  if (d.includes("histamin")) return "low_histamine";
+  return "mediterranean";
+}
+
+// apps/web/lib/nutrition/v2/substrate-rates.ts
+var DEFAULT_EFFICIENCY = 0.24;
+var DEFAULT_FTP_W = 250;
+function clamp2(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function round2(n, d = 1) {
+  const f = 10 ** d;
+  return Math.round(n * f) / f;
+}
+function rerFromIntensityPctFtp(intensityPctFtp) {
+  const i = clamp2(intensityPctFtp, 40, 120);
+  if (i < 60) return 0.82;
+  if (i < 75) return 0.88;
+  if (i < 85) return 0.92;
+  if (i < 95) return 0.96;
+  return 1.02;
+}
+function substrateRatesAtPowerW(avgPowerW, options) {
+  const ftp = Math.max(120, options?.ftpW ?? DEFAULT_FTP_W);
+  const efficiency = options?.efficiency ?? DEFAULT_EFFICIENCY;
+  const intensityPctFtp = avgPowerW / ftp * 100;
+  const rer = rerFromIntensityPctFtp(intensityPctFtp);
+  const choFrac = clamp2((rer - 0.7) / 0.3, 0.05, 0.99);
+  const fatFrac = 1 - choFrac;
+  const kcalPerH = avgPowerW / efficiency * 3600 / 4184;
+  const choGPerH = kcalPerH * choFrac / 4;
+  const fatGPerH = kcalPerH * fatFrac / 9;
+  const proGPerH = options?.proteinGPerH ?? clamp2(0.08 * (avgPowerW / 100), 2, 12);
+  return {
+    choGPerH: round2(choGPerH),
+    fatGPerH: round2(fatGPerH),
+    proGPerH: round2(proGPerH),
+    rer: round2(rer, 2),
+    kcalPerH: round2(kcalPerH)
+  };
+}
+function substrateTotalsForSession(avgPowerW, durationMinutes, options) {
+  const durationH = Math.max(0.05, durationMinutes / 60);
+  const perH = substrateRatesAtPowerW(avgPowerW, options);
+  return {
+    ...perH,
+    durationH: round2(durationH, 2),
+    choG: round2(perH.choGPerH * durationH),
+    fatG: round2(perH.fatGPerH * durationH),
+    proG: round2(perH.proGPerH * durationH)
+  };
+}
+
+// apps/web/lib/nutrition/v2/fueling-from-substrates.ts
+function clamp3(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function round3(n, d = 1) {
+  const f = 10 ** d;
+  return Math.round(n * f) / f;
+}
+function intraChoReplaceFractionFromEnergyShare(choEnergyShare) {
+  const s = clamp3(choEnergyShare, 0, 1);
+  if (s >= 0.88) return 0.85;
+  if (s >= 0.78) return 0.75;
+  if (s >= 0.65) return 0.65;
+  if (s >= 0.52) return 0.55;
+  return 0.45;
+}
+function evidenceMaxChoGPerHour(durationMin, choEnergyShare) {
+  const h = durationMin / 60;
+  if (h < 0.75) return 30;
+  if (h < 2) return choEnergyShare >= 0.85 ? 90 : 60;
+  if (h < 3) return choEnergyShare >= 0.85 ? 110 : 75;
+  return choEnergyShare >= 0.85 ? 120 : 90;
+}
+function computeSubstrateFuelingPlan(input) {
+  const ftp = Math.max(120, input.ftpW ?? 250);
+  const weightKg = Math.max(45, input.weightKg ?? 70);
+  const sessions = [];
+  const provenance = [
+    "Fueling intra: frazione del CHO bruciato in seduta (substrati), non % kcal training.",
+    "Alta intensit\xE0 (CHO \u2248 energia) \u2192 replace fino ~85%; Z1/Z2 (CHO 50\u201365%) \u2192 replace ~45\u201355%.",
+    "Cap intra g/h da durata + intensit\xE0 (evidence band). Pre/post = CHO mirato, non split % kcal training."
+  ];
+  for (const s of input.sessions) {
+    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftp });
+    const choKcal = totals.choG * 4;
+    const fatKcal = totals.fatG * 9;
+    const proKcal = totals.proG * 4;
+    const substrateKcal = choKcal + fatKcal + proKcal;
+    const choEnergyShare = substrateKcal > 0 ? choKcal / substrateKcal : 0.5;
+    const replaceFrac = intraChoReplaceFractionFromEnergyShare(choEnergyShare);
+    const maxPerH = evidenceMaxChoGPerHour(s.durationMin, choEnergyShare);
+    let intraChoG2 = round3(totals.choG * replaceFrac);
+    const intraCap = round3(maxPerH * totals.durationH);
+    if (intraChoG2 > intraCap) {
+      intraChoG2 = intraCap;
+      provenance.push(
+        `Sessione ${s.label.slice(0, 40)}: intra CHO capped a ${maxPerH} g/h \xD7 ${totals.durationH} h.`
+      );
+    }
+    const preChoG2 = s.durationMin >= 45 ? round3(clamp3(weightKg * 0.35, 20, 70)) : round3(clamp3(weightKg * 0.2, 10, 40));
+    const postChoG2 = round3(totals.choG * clamp3(0.22 + choEnergyShare * 0.12, 0.2, 0.38));
+    const preKcal = round3(preChoG2 * 4, 0);
+    const intraKcal = round3(intraChoG2 * 4, 0);
+    const postKcal = round3(postChoG2 * 4, 0);
+    sessions.push({
+      sessionLabel: s.label,
+      avgPowerW: s.avgPowerW,
+      durationH: totals.durationH,
+      choBurnedG: totals.choG,
+      fatBurnedG: totals.fatG,
+      proBurnedG: totals.proG,
+      choEnergyShare: round3(choEnergyShare, 2),
+      intraChoReplaceFraction: replaceFrac,
+      preChoG: preChoG2,
+      intraChoG: intraChoG2,
+      postChoG: postChoG2,
+      preKcal,
+      intraKcal,
+      postKcal,
+      evidenceMaxChoGPerH: maxPerH,
+      intraChoGPerH: totals.durationH > 0 ? round3(intraChoG2 / totals.durationH) : 0
+    });
+  }
+  const preChoG = round3(sessions.reduce((sum, x) => sum + x.preChoG, 0));
+  const intraChoG = round3(sessions.reduce((sum, x) => sum + x.intraChoG, 0));
+  const postChoG = round3(sessions.reduce((sum, x) => sum + x.postChoG, 0));
+  const fuelingKcal = Math.round(preChoG * 4 + intraChoG * 4 + postChoG * 4);
+  const fatKcalTotal = sessions.reduce((sum, x) => sum + x.fatBurnedG * 9, 0);
+  const proKcalTotal = sessions.reduce((sum, x) => sum + x.proBurnedG * 4, 0);
+  const choNotOral = sessions.reduce(
+    (sum, x) => sum + (x.choBurnedG - x.intraChoG) * 4,
+    0
+  );
+  return {
+    algorithmVersion: "substrate_fueling_v1",
+    sessions,
+    totals: {
+      preChoG,
+      intraChoG,
+      postChoG,
+      fuelingKcal,
+      oralTrainingKcal: fuelingKcal,
+      endogenousFatKcal: Math.round(fatKcalTotal + proKcalTotal + choNotOral)
+    },
+    provenance
+  };
+}
+
+// apps/web/lib/nutrition/v2/daily-nutrition-requirements.ts
+var PAL_BY_LIFESTYLE = {
+  sedentary: 1.25,
+  moderate: 1.4,
+  active: 1.55,
+  very_active: 1.75
+};
+var STRATEGY_TEMPLATES = {
+  maintenance: { choMinGPerKg: 3, choMaxGPerKg: 5, proGPerKg: 1.4, fatGPerKg: 0.9 },
+  load: { choMinGPerKg: 8, choMaxGPerKg: 12, proGPerKg: 1.5, fatGPerKg: 0.5 },
+  deload: { choMinGPerKg: 0.5, choMaxGPerKg: 1, proGPerKg: 2.5, fatGPerKg: 1.5 },
+  recovery: { choMinGPerKg: 2, choMaxGPerKg: 4, proGPerKg: 1.8, fatGPerKg: 1 },
+  race: { choMinGPerKg: 7, choMaxGPerKg: 10, proGPerKg: 1.6, fatGPerKg: 0.6 },
+  custom: { choMinGPerKg: 4, choMaxGPerKg: 6, proGPerKg: 1.5, fatGPerKg: 0.8 }
+};
+function roundG(n) {
+  return Math.round(n);
+}
+function basalMacrosFromTemplate(weightKg, template) {
+  const choMid = (template.choMinGPerKg + template.choMaxGPerKg) / 2;
+  return {
+    choG: roundG(choMid * weightKg),
+    proG: roundG(template.proGPerKg * weightKg),
+    fatG: roundG(template.fatGPerKg * weightKg)
+  };
+}
+function sumMacros(a, b) {
+  return {
+    choG: roundG(a.choG + b.choG),
+    proG: roundG(a.proG + b.proG),
+    fatG: roundG(a.fatG + b.fatG)
+  };
+}
+function inferStrategyKindFromRequest(req) {
+  const trainingLines = (req.trainingDayLines ?? []).join(" ").toLowerCase();
+  if (req.racePreLunch || req.racePostRecovery) return "race";
+  if (/recovery|scarico|deload|riposo/.test(trainingLines)) return "recovery";
+  if (/long|endurance|4h|>3|carbo.?load|load|vo2|soglia|threshold/.test(trainingLines)) return "load";
+  return "maintenance";
+}
+function buildDailyNutritionRequirementsV2(input) {
+  const { request, weightKg } = input;
+  const w = Math.max(45, weightKg);
+  const strategyKind = input.strategyKind ?? inferStrategyKindFromRequest(request);
+  const template = STRATEGY_TEMPLATES[strategyKind];
+  const dietProfileActive = dietProfileFromAthleteDietType(request.dietType);
+  const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass ?? "moderate");
+  const pal = PAL_BY_LIFESTYLE[lifestyleClass] ?? 1.4;
+  const sessions = input.plannedSessions?.length ? input.plannedSessions : extractPlannedSessionsFromRequest(request, input.ftpWatts ?? 250);
+  const energyModel = computeNutritionDailyEnergyModel({
+    athleteId: request.athleteId,
+    date: request.planDate,
+    weightKg: w,
+    ftpWatts: input.ftpWatts ?? null,
+    lifestyleActivityClass: lifestyleClass,
+    dietDayMealsScalePct: input.dietDayMealsScalePct ?? 100,
+    plannedTraining: sessions.map((s) => ({
+      durationMinutes: s.durationMin,
+      avgPowerW: s.avgPowerW,
+      kcalTarget: null,
+      tssTarget: null
+    }))
+  });
+  const lifestyleKcalPal = Math.round(energyModel.bmrKcal * (pal - 1));
+  let trainingCho = 0;
+  let trainingFat = 0;
+  let trainingPro = 0;
+  const substrateRates = [];
+  for (const s of sessions) {
+    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+    trainingCho += totals.choG;
+    trainingFat += totals.fatG;
+    trainingPro += totals.proG;
+    substrateRates.push({
+      sessionLabel: s.label,
+      avgPowerW: s.avgPowerW,
+      durationH: totals.durationH,
+      choGPerH: totals.choGPerH,
+      fatGPerH: totals.fatGPerH,
+      proGPerH: totals.proGPerH
+    });
+  }
+  const basal = basalMacrosFromTemplate(w, template);
+  const training = {
+    choG: roundG(trainingCho),
+    proG: roundG(trainingPro),
+    fatG: roundG(trainingFat)
+  };
+  const total = sumMacros(basal, training);
+  const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? Math.max(0, Math.min(200, input.dietDayMealsScalePct)) / 100 : 1;
+  const substrateTrainingKcal = roundG(
+    sessions.reduce((sum, s) => {
+      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+      return sum + t.kcalPerH * t.durationH;
+    }, 0)
+  );
+  const trainingKcal = energyModel.training.kcal > 0 ? energyModel.training.kcal : substrateTrainingKcal;
+  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcalPal + trainingKcal) * dietScale);
+  const substrateFueling = sessions.length > 0 ? computeSubstrateFuelingPlan({
+    sessions: sessions.map((s) => ({
+      label: s.label,
+      avgPowerW: s.avgPowerW,
+      durationMin: s.durationMin
+    })),
+    ftpW: input.ftpWatts ?? 250,
+    weightKg: w
+  }) : void 0;
+  const fuelingKcal = substrateFueling?.totals.fuelingKcal ?? energyModel.totals.fuelingKcal;
+  const mealsKcal = Math.max(800, Math.round(dailyKcal - fuelingKcal));
+  const provenance = [
+    `Strategia V2 preview: ${strategyKind} (CHO ${template.choMinGPerKg}\u2013${template.choMaxGPerKg} g/kg, PRO ${template.proGPerKg} g/kg, FAT ${template.fatGPerKg} g/kg).`,
+    `Profilo dieta attivo (asse 4): ${dietProfileActive}.`,
+    `PAL ${pal} \xD7 BMR ${energyModel.bmrKcal} kcal \u2192 lifestyle stimato ${lifestyleKcalPal} kcal (V1 solver lifestyle: ${energyModel.lifestyle.kcal} kcal).`,
+    `Training: ${trainingKcal} kcal \xB7 ${sessions.length} seduta/e \xB7 substrati CHO/FAT/PRO da potenza media.`,
+    substrateFueling ? `Fueling V2: ${fuelingKcal} kcal oral (pre+intra+post CHO da consumo substrati); pasti ${mealsKcal} kcal = fabbisogno \u2212 fueling.` : "Nessuna seduta: fueling V1 solver legacy.",
+    "Ripartizione % tra pasti: Profile Diet (`buildDietMealSlotBudgets`), non preset composer.",
+    ...substrateFueling?.provenance ?? []
+  ];
+  return {
+    athleteId: request.athleteId,
+    planDate: request.planDate,
+    algorithmVersion: "nutrition_requirements_v2_production",
+    weightKg: w,
+    strategyKind,
+    dietProfileActive,
+    dailyMacroTargetsGPerKg: {
+      choMinGPerKg: template.choMinGPerKg,
+      choMaxGPerKg: template.choMaxGPerKg,
+      proGPerKg: template.proGPerKg,
+      fatGPerKg: template.fatGPerKg
+    },
+    energy: {
+      bmrKcal: energyModel.bmrKcal,
+      lifestyleKcal: lifestyleKcalPal,
+      trainingKcal,
+      dailyKcal,
+      mealsKcal,
+      fuelingKcal,
+      palMultiplier: pal,
+      endogenousTrainingKcal: substrateFueling?.totals.endogenousFatKcal
+    },
+    substrateFueling: substrateFueling ? {
+      algorithmVersion: substrateFueling.algorithmVersion,
+      sessions: substrateFueling.sessions.map((s) => ({
+        sessionLabel: s.sessionLabel,
+        avgPowerW: s.avgPowerW,
+        durationH: s.durationH,
+        choBurnedG: s.choBurnedG,
+        fatBurnedG: s.fatBurnedG,
+        choEnergyShare: s.choEnergyShare,
+        intraChoReplaceFraction: s.intraChoReplaceFraction,
+        preChoG: s.preChoG,
+        intraChoG: s.intraChoG,
+        postChoG: s.postChoG,
+        intraChoGPerH: s.intraChoGPerH
+      })),
+      totals: {
+        preChoG: substrateFueling.totals.preChoG,
+        intraChoG: substrateFueling.totals.intraChoG,
+        postChoG: substrateFueling.totals.postChoG,
+        fuelingKcal: substrateFueling.totals.fuelingKcal,
+        endogenousFatKcal: substrateFueling.totals.endogenousFatKcal
+      }
+    } : void 0,
+    macros: { basal, training, total },
+    substrateRates,
+    provenance
+  };
+}
+function extractPlannedSessionsFromRequest(req, defaultFtp) {
+  const out = [];
+  for (const line of req.trainingDayLines ?? []) {
+    const power = parsePowerFromLine(line, defaultFtp);
+    const dur = parseDurationFromLine(line);
+    if (dur > 0 && power > 0) {
+      out.push({ label: line.slice(0, 80), avgPowerW: power, durationMin: dur });
+    }
+  }
+  if (out.length === 0 && (req.suppressedSlots?.length || req.trainingDayLines?.length)) {
+    out.push({ label: "Allenamento pianificato (stima preview)", avgPowerW: Math.round(defaultFtp * 0.86), durationMin: 240 });
+  }
+  return out;
+}
+function parsePowerFromLine(line, ftp) {
+  const w = line.match(/(\d{2,4})\s*w\b/i);
+  if (w) return Number(w[1]);
+  const pct = line.match(/(\d{2,3})\s*%\s*ftp/i);
+  if (pct) return Math.round(Number(pct[1]) / 100 * ftp);
+  return 0;
+}
+function parseDurationFromLine(line) {
+  const h = line.match(/(\d+(?:[.,]\d+)?)\s*h\b/i);
+  if (h) return Math.round(Number(h[1].replace(",", ".")) * 60);
+  const min = line.match(/(\d+)\s*min/i);
+  if (min) return Number(min[1]);
+  return 0;
+}
+
+// apps/web/lib/nutrition/intelligent-meal-plan-route-prep.ts
+function isRecord(v) {
+  return v != null && typeof v === "object" && !Array.isArray(v);
+}
+function sanitizeWeeklyStapleCounts(raw) {
+  if (!isRecord(raw)) return void 0;
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof k !== "string" || k.length > 72) continue;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 21) continue;
+    out[k] = Math.min(21, Math.floor(v));
+  }
+  return Object.keys(out).length ? out : void 0;
+}
+async function prepareIntelligentMealPlanContext(db, body) {
+  const athleteId = String(body.athleteId ?? "").trim();
+  if (!athleteId) return { error: "Missing athleteId", status: 400 };
+  const planDate = String(body.plan?.planDate ?? "").slice(0, 10) || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const [{ data: profileRow }, { data: plannedRows }, weeklyFromDb] = await Promise.all([
+    db.from("athlete_profiles").select(
+      "nutrition_config, routine_config, preferred_meal_count, weight_kg, diet_type, lifestyle_activity_class, ftp_watts, supplement_config"
+    ).eq("id", athleteId).maybeSingle(),
+    db.from("planned_workouts").select("duration_minutes, type, notes, tss_target, kcal_target").eq("athlete_id", athleteId).eq("date", planDate),
+    // Memoria settimanale server-autorevole: conteggi staple dei giorni GIÀ persistiti
+    // nella settimana ISO di planDate (escluso il giorno in rigenerazione).
+    loadWeeklyStapleCountsFromDb(db, athleteId, planDate)
+  ]);
+  const plan = body.plan;
+  if (!isRecord(plan)) return { error: "Missing plan", status: 400 };
+  const weekly = mergeWeeklyStapleCounts(sanitizeWeeklyStapleCounts(plan.weeklyStapleCounts), weeklyFromDb);
+  const planMerged = {
+    ...plan,
+    ...weekly ? { weeklyStapleCounts: weekly } : {}
+  };
+  const clientSlots = Array.isArray(planMerged.slots) ? planMerged.slots : [];
+  const dailyMealsKcalTotal = typeof planMerged.mealPlanSolverMeta?.dailyMealsKcalTotal === "number" ? planMerged.mealPlanSolverMeta.dailyMealsKcalTotal : clientSlots.reduce((s, sl) => s + (Number.isFinite(sl.targetKcal) ? sl.targetKcal : 0), 0);
+  const row2 = profileRow ?? null;
+  const reconciled = reconcileMealPlanSlotsWithDiet({
+    planDate,
+    nutritionConfig: row2?.nutrition_config ?? null,
+    routineConfig: row2?.routine_config ?? null,
+    dailyMealsKcalTotal,
+    clientSlots,
+    preferredMealCount: typeof row2?.preferred_meal_count === "number" ? row2.preferred_meal_count : typeof row2?.preferred_meal_count === "string" ? Number(row2.preferred_meal_count) : null
+  });
+  const excludedClassKeys = readExcludedFoodClasses(row2?.nutrition_config ?? null);
+  const classFdcIds = excludedClassKeys.length > 0 ? await resolveExcludedFdcIdsFromClasses(db, excludedClassKeys) : [];
+  const excludedFdcIds = [
+    ...new Set([
+      ...Array.isArray(planMerged.excludedFdcIds) ? planMerged.excludedFdcIds : [],
+      ...readExcludedFdcIds(row2?.nutrition_config ?? null),
+      ...classFdcIds
+    ].filter((n) => Number.isFinite(n)))
+  ];
+  const excludedFoodLabels = readExcludedFoodLabels(row2?.nutrition_config ?? null);
+  const extraFoodExclusions = [...excludedFoodLabels, ...classDenyFragments(excludedClassKeys)];
+  const foodExclusions = (() => {
+    const base = Array.isArray(planMerged.foodExclusions) ? planMerged.foodExclusions : null;
+    if (extraFoodExclusions.length === 0) return planMerged.foodExclusions ?? null;
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const raw of [...base ?? [], ...extraFoodExclusions]) {
+      const s = String(raw).trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  })();
+  const planFromDiet = {
+    ...planMerged,
+    athleteId,
+    planDate,
+    slots: reconciled.slots,
+    excludedFdcIds,
+    foodExclusions,
+    dietType: row2?.diet_type != null ? String(row2.diet_type) : planMerged.dietType,
+    mealPlanSolverMeta: {
+      ...planMerged.mealPlanSolverMeta,
+      dailyMealsKcalTotal: Math.round(dailyMealsKcalTotal),
+      integrationLeverLines: [
+        ...planMerged.mealPlanSolverMeta?.integrationLeverLines ?? [],
+        ...reconciled.rebuiltFromDiet ? [`Diet ${reconciled.mealCountMode} pasti (${reconciled.slots.length} slot) da athlete_profiles.`] : []
+      ].slice(0, 16)
+    }
+  };
+  const routineConfig = row2?.routine_config && typeof row2.routine_config === "object" && !Array.isArray(row2.routine_config) ? row2.routine_config : null;
+  const raceSessions = plannedSessionsForRaceFromDbRows(Array.isArray(plannedRows) ? plannedRows : []);
+  const withRace = enrichIntelligentMealPlanRequestWithRaceDay({
+    request: planFromDiet,
+    routineConfig,
+    weightKg: row2?.weight_kg,
+    plannedSessions: raceSessions
+  });
+  const request = applyMealSlotRulesToIntelligentMealPlanRequest(filterIntelligentMealPlanRequestFoods(withRace));
+  if (request.athleteId !== athleteId) return { error: "athleteId mismatch", status: 400 };
+  if (!Array.isArray(request.slots) || request.slots.length < 3 || request.slots.length > 6) {
+    return { error: "plan.slots: da 3 a 6 pasti (Profile Diet)", status: 400 };
+  }
+  if (!request.mealPlanSolverMeta || typeof request.mealPlanSolverMeta.dailyMealsKcalTotal !== "number" || !Array.isArray(request.mealPlanSolverMeta.integrationLeverLines)) {
+    return { error: "plan.mealPlanSolverMeta obbligatorio", status: 400 };
+  }
+  const dietDay = resolveNutritionDietDay(row2?.nutrition_config ?? null, planDate, {
+    preferredMealCount: row2?.preferred_meal_count
+  });
+  const ftp = Number(row2?.ftp_watts) || 250;
+  const weightKg = Number(row2?.weight_kg) || 70;
+  const plannedSessions = (Array.isArray(plannedRows) ? plannedRows : []).map((pr, idx) => {
+    const notes = String(pr.notes ?? "");
+    const bs = parsePro2BuilderSessionFromNotes(notes || null);
+    const m = resolvePlannedSessionMetrics({
+      contract: bs,
+      durationMinutesDb: Number(pr.duration_minutes) || 0,
+      tssTargetDb: Number(pr.tss_target) || 0,
+      kcalTargetDb: Number(pr.kcal_target) || 0,
+      athleteFtpWatts: ftp
+    });
+    return {
+      label: `${String(pr.type ?? "session")} #${idx + 1} \xB7 ${m.avgPowerW ?? "?"}W \xB7 ${m.durationMinutes}min`,
+      avgPowerW: m.avgPowerW ?? Math.round(ftp * 0.75),
+      durationMin: m.durationMinutes
+    };
+  });
+  const sessions = plannedSessions.length > 0 ? plannedSessions : extractPlannedSessionsFromRequest(request, ftp);
+  const perfRaw = body.plan?.performanceIntegration ?? request.performanceIntegration;
+  const performanceIntegration = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : null;
+  return {
+    request,
+    athleteId,
+    planDate,
+    profileRow: row2,
+    dietDay,
+    plannedSessions: sessions,
+    ftp,
+    weightKg,
+    performanceIntegration
+  };
+}
+
+// apps/web/lib/nutrition/v2/apply-performance-integration-fueling.ts
+function round4(n, d = 1) {
+  const f = 10 ** d;
+  return Math.round(n * f) / f;
+}
+function applyPerformanceIntegrationToSubstrateFueling(requirements, integration) {
+  const sf = requirements.substrateFueling;
+  if (!sf?.sessions.length) return requirements;
+  const scale = integration.fuelingChoScale ?? 1;
+  if (scale === 1) {
+    return {
+      ...requirements,
+      provenance: [
+        ...requirements.provenance,
+        `Integrazione performance: CHO/h fueling \xD7${scale} (informativo recovery/bio).`,
+        ...integration.rationale.slice(0, 3)
+      ]
+    };
+  }
+  const sessions = sf.sessions.map((s) => {
+    const intraChoG2 = round4(s.intraChoG * scale);
+    const intraChoGPerH = s.durationH > 0 ? round4(intraChoG2 / s.durationH) : 0;
+    return {
+      ...s,
+      intraChoG: intraChoG2,
+      intraChoGPerH
+    };
+  });
+  const intraChoG = round4(sessions.reduce((sum, x) => sum + x.intraChoG, 0));
+  const fuelingKcal = Math.round(sf.totals.preChoG * 4 + intraChoG * 4 + sf.totals.postChoG * 4);
+  const mealsKcal = Math.max(800, Math.round(requirements.energy.dailyKcal - fuelingKcal));
+  return {
+    ...requirements,
+    energy: {
+      ...requirements.energy,
+      mealsKcal,
+      fuelingKcal
+    },
+    substrateFueling: {
+      ...sf,
+      sessions,
+      totals: {
+        ...sf.totals,
+        intraChoG,
+        fuelingKcal
+      }
+    },
+    provenance: [
+      ...requirements.provenance,
+      `Integrazione performance: intra CHO scalato \xD7${scale} (cap evidence in composer fueling).`,
+      ...integration.rationale.slice(0, 3)
+    ]
+  };
+}
+
+// apps/web/lib/nutrition/v2/nutrition-day-model-v2.ts
+function buildNutritionDayModelV2(input) {
+  const base = buildDailyNutritionRequirementsV2(input);
+  if (!input.performanceIntegration || !base.substrateFueling) {
+    return { requirements: base };
+  }
+  const adjusted = applyPerformanceIntegrationToSubstrateFueling(base, input.performanceIntegration);
+  return { requirements: adjusted };
 }
 
 // apps/web/lib/nutrition/nutrient-pathway-slot-registry.ts
@@ -5783,343 +6621,6 @@ function pickBestFdcForRole(pool, ctx, denyFragments, usedFdcIds, staplePenalty)
   return best;
 }
 
-// apps/web/lib/nutrition/canonical-food-fdc-aliases.ts
-var CANONICAL_FOOD_TO_FDC_ID = {
-  // Cereali e amidi
-  bread_white: 174925,
-  // Bread, white, commercially prepared, toasted
-  pasta_cooked: 168928,
-  // Pasta, cooked, unenriched, without added salt
-  pasta_dry: 168927,
-  // Pasta, dry, unenriched
-  rice_cooked: 169757,
-  // Rice, white, long-grain, regular, unenriched, cooked without salt
-  rice_dry: 169756,
-  // Rice, white, long-grain, regular, raw, unenriched
-  oat_dry: 172989,
-  // Cereals, QUAKER, Quick Oats, Dry (proxy SR Legacy per fiocchi avena secchi)
-  farro_cooked: 169746,
-  // Spelt, cooked (farro = spelt USDA)
-  farro_dry: 169746,
-  // proxy spelt — macro da TS table se mismatch
-  quinoa_dry: 168874,
-  // Quinoa, uncooked
-  tofu_firm: 172475,
-  tempeh: 174272,
-  potato_cooked: 170093,
-  // Potatoes, baked, flesh and skin, without salt
-  crackers_whole: 174985,
-  // Crackers, wheat, regular
-  // Verdure
-  mixed_veg: 168462,
-  // Spinach, raw — proxy verdura foglia generica
-  spinach_raw: 168462,
-  kale_raw: 168421,
-  broccoli_raw: 170379,
-  bell_pepper_red: 170108,
-  asparagus_raw: 168389,
-  beetroot_raw: 2685576,
-  arugula_raw: 169387,
-  zucchini_raw: 169291,
-  tomato_raw: 170457,
-  carrot_raw: 170393,
-  lettuce_romaine: 169247,
-  // Frutta
-  banana: 173944,
-  mixed_fruit: 2346411,
-  // Blueberries, raw — proxy frutta rossa ricca
-  orange_raw: 169097,
-  kiwi_raw: 327046,
-  strawberries_raw: 167762,
-  apple_raw: 1750340,
-  blueberries_raw: 2346411,
-  pear_raw: 169118,
-  // Legumi
-  legumes_cooked: 172421,
-  // Lentils, mature seeds, cooked, boiled, without salt
-  chickpeas_cooked: 173799,
-  // Semi / snack
-  pumpkin_seeds_raw: 170556,
-  almonds_raw: 2346393,
-  dark_chocolate_70: 170273,
-  // Proteine animali
-  egg_whole: 171287,
-  chicken_breast: 171077,
-  beef_lean: 168608,
-  fish_white: 175167,
-  // Fish, salmon, Atlantic, farmed, raw — proxy pesce ricco di micro/omega
-  deli_lean: 167876,
-  // Latticini
-  milk_goat: 171278,
-  yogurt_plain: 171284,
-  cheese_hard: 171247,
-  ricotta_cheese: 170851,
-  cottage_cheese: 173417,
-  // Grassi
-  olive_oil: 171413,
-  avocado: 171705,
-  // Senza fdcId (proxy interni — USDA non offre un match diretto rilevante)
-  generic_mixed: void 0,
-  whey_powder: void 0,
-  omega_capsule: void 0
-};
-function fdcIdForCanonicalKey(canonicalKey) {
-  return CANONICAL_FOOD_TO_FDC_ID[canonicalKey];
-}
-
-// apps/web/lib/nutrition/macro-plausibility.ts
-var MAX_KCAL_PER_100G = 900;
-var MAX_MACRO_PER_100G = 100;
-function isPlausiblePer100gMacros(row2) {
-  const { kcal_100, carbs_100, protein_100, fat_100 } = row2;
-  if (kcal_100 != null && (!Number.isFinite(kcal_100) || kcal_100 < 0 || kcal_100 > MAX_KCAL_PER_100G)) return false;
-  for (const m of [carbs_100, protein_100, fat_100]) {
-    if (m != null && (!Number.isFinite(m) || m < 0 || m > MAX_MACRO_PER_100G)) return false;
-  }
-  return true;
-}
-
-// apps/web/lib/nutrition/v2/fdc-staple-registry.ts
-var LABEL_IT = {
-  oat_dry: "Fiocchi d'avena",
-  bread_white: "Pane integrale",
-  pasta_dry: "Pasta di semola",
-  rice_dry: "Riso",
-  potato_cooked: "Patate",
-  farro_dry: "Farro",
-  quinoa_dry: "Quinoa",
-  egg_whole: "Uova",
-  yogurt_plain: "Yogurt greco",
-  chicken_breast: "Petto di pollo",
-  fish_white: "Salmone",
-  beef_lean: "Manzo magro",
-  legumes_cooked: "Legumi",
-  tofu_firm: "Tofu",
-  tempeh: "Tempeh",
-  seitan: "Seitan",
-  ricotta_cheese: "Ricotta",
-  cottage_cheese: "Ricotta magra",
-  milk_2pct: "Latte",
-  milk_goat: "Latte di capra",
-  olive_oil: "Olio EVO",
-  almonds_raw: "Mandorle",
-  avocado: "Avocado",
-  spinach_raw: "Spinaci",
-  broccoli_raw: "Broccoli",
-  zucchini_raw: "Zucchine",
-  mixed_veg: "Insalata mista",
-  tomato_raw: "Pomodori",
-  carrot_raw: "Carote",
-  banana: "Banana",
-  apple_raw: "Mela",
-  orange_raw: "Arancia",
-  blueberries_raw: "Mirtilli",
-  mixed_fruit: "Frutta mista",
-  cheese_hard: "Grana Padano"
-};
-function entry(canonicalKey, servingBasis, opts) {
-  return {
-    canonicalKey,
-    labelIt: opts?.labelIt ?? LABEL_IT[canonicalKey] ?? canonicalKey.replace(/_/g, " "),
-    servingBasis,
-    rotationKey: opts?.rotationKey,
-    carbFamily: opts?.carbFamily
-  };
-}
-var STAPLE_ALLOWLIST_BY_POOL = {
-  breakfast_cho: [
-    entry("oat_dry", "dry_grams", { rotationKey: "breakfast:oat" }),
-    entry("bread_white", "dry_grams", { rotationKey: "breakfast:bread" }),
-    entry("crackers_whole", "dry_grams", { rotationKey: "breakfast:crackers" })
-  ],
-  breakfast_pro: [
-    entry("yogurt_plain", "dry_grams", { rotationKey: "breakfast:yogurt" }),
-    entry("egg_whole", "dry_grams", { rotationKey: "breakfast:egg" }),
-    entry("ricotta_cheese", "dry_grams"),
-    entry("cottage_cheese", "dry_grams")
-  ],
-  breakfast_fat: [
-    entry("almonds_raw", "dry_grams"),
-    entry("olive_oil", "ml"),
-    entry("avocado", "dry_grams")
-  ],
-  lunch_carb: [
-    entry("pasta_dry", "dry_grams", { rotationKey: "carb:pasta", carbFamily: "carb_starch" }),
-    entry("rice_dry", "dry_grams", { rotationKey: "carb:riso", carbFamily: "carb_starch" }),
-    entry("potato_cooked", "cooked_grams", { rotationKey: "carb:patate", carbFamily: "carb_starch" }),
-    entry("farro_dry", "dry_grams", { rotationKey: "carb:farro", carbFamily: "carb_starch" }),
-    entry("quinoa_dry", "dry_grams", { rotationKey: "carb:quinoa", carbFamily: "carb_starch" })
-  ],
-  dinner_carb: [
-    entry("rice_dry", "dry_grams", { rotationKey: "carb:riso", carbFamily: "carb_starch" }),
-    entry("pasta_dry", "dry_grams", { rotationKey: "carb:pasta", carbFamily: "carb_starch" }),
-    entry("potato_cooked", "cooked_grams", { rotationKey: "carb:patate", carbFamily: "carb_starch" }),
-    entry("farro_dry", "dry_grams", { rotationKey: "carb:farro", carbFamily: "carb_starch" }),
-    entry("quinoa_dry", "dry_grams", { rotationKey: "carb:quinoa", carbFamily: "carb_starch" })
-  ],
-  lunch_pro: [
-    entry("chicken_breast", "dry_grams", { rotationKey: "prot:pollo" }),
-    entry("fish_white", "dry_grams", { rotationKey: "prot:pesce" }),
-    entry("beef_lean", "dry_grams", { rotationKey: "prot:manzo" }),
-    entry("legumes_cooked", "cooked_grams", { rotationKey: "prot:legumi" }),
-    entry("egg_whole", "dry_grams"),
-    entry("tofu_firm", "dry_grams")
-  ],
-  dinner_pro: [
-    entry("fish_white", "dry_grams", { rotationKey: "prot:pesce" }),
-    entry("chicken_breast", "dry_grams", { rotationKey: "prot:pollo" }),
-    entry("beef_lean", "dry_grams", { rotationKey: "prot:manzo" }),
-    entry("legumes_cooked", "cooked_grams", { rotationKey: "prot:legumi" }),
-    entry("tofu_firm", "dry_grams"),
-    entry("tempeh", "dry_grams")
-  ],
-  lunch_veg: [
-    entry("mixed_veg", "dry_grams"),
-    entry("spinach_raw", "dry_grams"),
-    entry("broccoli_raw", "dry_grams"),
-    entry("zucchini_raw", "dry_grams"),
-    entry("tomato_raw", "dry_grams")
-  ],
-  dinner_veg: [
-    entry("spinach_raw", "dry_grams"),
-    entry("broccoli_raw", "dry_grams"),
-    entry("zucchini_raw", "dry_grams"),
-    entry("mixed_veg", "dry_grams"),
-    entry("carrot_raw", "dry_grams")
-  ],
-  snack_cho: [
-    entry("banana", "dry_grams"),
-    entry("apple_raw", "dry_grams"),
-    entry("orange_raw", "dry_grams"),
-    entry("blueberries_raw", "dry_grams"),
-    entry("mixed_fruit", "dry_grams")
-  ],
-  snack_pro: [
-    entry("yogurt_plain", "dry_grams"),
-    entry("cottage_cheese", "dry_grams"),
-    entry("almonds_raw", "dry_grams"),
-    entry("egg_whole", "dry_grams")
-  ]
-};
-function filterByDiet(entries, dietType) {
-  if (!dietType || dietType === "omnivore" || dietType === "pescatarian") {
-    if (dietType === "pescatarian") {
-      return entries.filter((e) => !["chicken_breast", "beef_lean"].includes(e.canonicalKey));
-    }
-    return entries;
-  }
-  if (dietType === "vegetarian") {
-    return entries.filter((e) => !["chicken_breast", "beef_lean", "fish_white"].includes(e.canonicalKey));
-  }
-  if (dietType === "vegan") {
-    return entries.filter(
-      (e) => !["chicken_breast", "beef_lean", "fish_white", "egg_whole", "yogurt_plain", "ricotta_cheese", "cottage_cheese", "cheese_hard", "milk_2pct", "milk_goat"].includes(
-        e.canonicalKey
-      )
-    );
-  }
-  return entries;
-}
-function canonicalToHit(entry2) {
-  const row2 = CANONICAL_FOOD_TABLE[entry2.canonicalKey];
-  if (!row2?.kcalPer100g) return null;
-  const fdcId = fdcIdForCanonicalKey(entry2.canonicalKey) ?? 0;
-  if (!isPlausiblePer100gMacros({
-    kcal_100: row2.kcalPer100g,
-    carbs_100: row2.carbsG,
-    protein_100: row2.proteinG,
-    fat_100: row2.fatG
-  })) {
-    return null;
-  }
-  return {
-    fdcId,
-    description: entry2.labelIt,
-    kcalPer100g: row2.kcalPer100g,
-    proteinPer100g: row2.proteinG,
-    carbsPer100g: row2.carbsG,
-    fatPer100g: row2.fatG,
-    tags: {
-      mealCourse: [],
-      foodFamily: [],
-      macroDominant: [],
-      slotFit: [],
-      dietProfile: ["omnivore"],
-      dietExclude: [],
-      mealRole: [],
-      aminoProfile: [],
-      nutrientDensity: [],
-      classifierVersion: "staple_registry"
-    },
-    tagSource: "db"
-  };
-}
-function denyHit2(key, denyFragments) {
-  const d = key.toLowerCase();
-  return denyFragments.some((f) => f && d.includes(f.toLowerCase()));
-}
-function pickStapleForPool(ctx) {
-  const raw = STAPLE_ALLOWLIST_BY_POOL[ctx.poolKey] ?? [];
-  const entries = filterByDiet(raw, ctx.dietType);
-  const deny = ctx.denyFragments ?? [];
-  const scored = entries.map((e, idx) => {
-    if (denyHit2(e.labelIt, deny) || denyHit2(e.canonicalKey, deny)) return { e, score: -1e4, idx };
-    const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
-    if (weekCount >= ROTATION_MAX_WEEK_USES) return { e, score: -5e3, idx };
-    if (ctx.dayCtx && isCanonicalKeyUsedToday(ctx.dayCtx, e.canonicalKey)) {
-      return { e, score: -5e3, idx };
-    }
-    if (e.rotationKey && ctx.usedCarbFamilies?.has(e.rotationKey)) return { e, score: -3e3, idx };
-    else if (!e.rotationKey && e.carbFamily && ctx.usedCarbFamilies?.has(e.carbFamily)) {
-      return { e, score: -3e3, idx };
-    }
-    const hit = canonicalToHit(e);
-    if (!hit) return { e, score: -8e3, idx };
-    if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4e3, idx };
-    let score = 1e3 - idx * 10;
-    if (weekCount >= ROTATION_TARGET_WEEK_USES) score -= 120;
-    else if (weekCount > 0) score -= weekCount * 80;
-    score += (ctx.seed + idx * 7) % 11;
-    return { e, score, idx, hit };
-  }).filter((x) => x.score > 0 && "hit" in x && x.hit).sort((a, b) => b.score - a.score);
-  const best = scored[0];
-  if (!best || !("hit" in best) || !best.hit) return null;
-  return { entry: best.e, hit: best.hit };
-}
-function rotationKeyForCanonical(canonicalKey) {
-  for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
-    const found = list.find((e) => e.canonicalKey === canonicalKey);
-    if (found?.rotationKey) return found.rotationKey;
-  }
-  return void 0;
-}
-function weekStapleCountForEntry(entry2, week) {
-  if (!week) return 0;
-  return Math.max(
-    week[entry2.canonicalKey] ?? 0,
-    entry2.rotationKey ? week[entry2.rotationKey] ?? 0 : 0
-  );
-}
-function mealRotationStaplesFromComposedItems(items) {
-  const keys = /* @__PURE__ */ new Set();
-  for (const item2 of items) {
-    const ck = item2.canonicalKey?.trim();
-    if (!ck) continue;
-    const rk = rotationKeyForCanonical(ck);
-    keys.add(rk ?? ck);
-  }
-  return [...keys].slice(0, 24);
-}
-function servingBasisForCanonical(canonicalKey) {
-  for (const list of Object.values(STAPLE_ALLOWLIST_BY_POOL)) {
-    const found = list.find((e) => e.canonicalKey === canonicalKey);
-    if (found) return found.servingBasis;
-  }
-  if (/_cooked$/.test(canonicalKey)) return "cooked_grams";
-  if (/oil|milk|drink/.test(canonicalKey)) return "ml";
-  return "dry_grams";
-}
-
 // apps/web/lib/nutrition/meal-exposition-helpers.ts
 function parseGramsFromPortion(hint) {
   if (!hint) return void 0;
@@ -6467,6 +6968,15 @@ function composeRaceSlot(slot, ctx) {
   }
   return null;
 }
+function mealPlanSeedForAthleteDate(athleteId, planDate) {
+  const key = `${(athleteId ?? "").trim()}|${(planDate ?? "2026-01-01").trim()}`;
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i += 1) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
 function normalizeDietType(raw) {
   const d = (raw ?? "").trim().toLowerCase();
   if (d === "vegan" || d.includes("vegan")) return "vegan";
@@ -6479,7 +6989,7 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
   const denyFragments = options?.denyFragments ?? [];
   const suppressed = new Set(options?.suppressedSlots ?? []);
   const request = options?.request;
-  const seed = Math.abs((request?.planDate ?? "2026-01-01").split("-").reduce((a, p) => a + Number(p), 0));
+  const seed = mealPlanSeedForAthleteDate(request?.athleteId, request?.planDate);
   const dayCtx = createMediterraneanDayContext(
     request?.planDate ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
     options?.weeklyStapleCounts,

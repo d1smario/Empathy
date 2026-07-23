@@ -6,6 +6,7 @@ import { buildIntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-mea
 import { prepareIntelligentMealPlanContext } from "@/lib/nutrition/intelligent-meal-plan-route-prep";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
+import { mealRotationStaplesFromComposedItems } from "@/lib/nutrition/v2/fdc-staple-registry";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import type { FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
@@ -43,8 +44,18 @@ export async function generateAndPersistMealPlanV2(
   db: SupabaseClient,
   athleteId: string,
   planDate: string,
-  opts?: { tdeeCorrectionFactor?: number },
-): Promise<{ ok: true; planId: string; slots: number } | { ok: false; error: string }> {
+  opts?: {
+    tdeeCorrectionFactor?: number;
+    /**
+     * Memoria settimanale accumulata dal chiamante (loop 7 giorni): conteggi staple
+     * (es. carb:pasta) dei giorni già generati, passati al compose per la rotazione.
+     * Si FONDE (max per chiave) con quanto letto dal DB in prepare.
+     */
+    weeklyStapleCounts?: Record<string, number>;
+  },
+): Promise<
+  { ok: true; planId: string; slots: number; staples: string[] } | { ok: false; error: string }
+> {
   const [{ data: profile }, { data: plannedRows }, observedActiveKcal] = await Promise.all([
     db
       .from("athlete_profiles")
@@ -145,7 +156,11 @@ export async function generateAndPersistMealPlanV2(
   });
 
   // 4. Prepare (food filter + slot rules) → V2 → persist (stessa pipeline dell'Edge Function).
-  const prepared = await prepareIntelligentMealPlanContext(db, { athleteId, plan: request });
+  const requestWithWeekly =
+    opts?.weeklyStapleCounts && Object.keys(opts.weeklyStapleCounts).length > 0
+      ? { ...request, weeklyStapleCounts: { ...opts.weeklyStapleCounts } }
+      : request;
+  const prepared = await prepareIntelligentMealPlanContext(db, { athleteId, plan: requestWithWeekly });
   if ("error" in prepared) return { ok: false, error: `prepare: ${prepared.error}` };
 
   const v2 = await buildMealPlanV2Production(
@@ -169,5 +184,6 @@ export async function generateAndPersistMealPlanV2(
     hydrationMlTarget: prepared.weightKg != null ? Math.round(prepared.weightKg * 35) : null,
   });
   if (!persisted.ok) return { ok: false, error: `persist: ${persisted.error}` };
-  return { ok: true, planId: persisted.planId, slots: v2.composedMealPlan.length };
+  const staples = mealRotationStaplesFromComposedItems(v2.composedMealPlan.flatMap((s) => s.items));
+  return { ok: true, planId: persisted.planId, slots: v2.composedMealPlan.length, staples };
 }

@@ -29,8 +29,18 @@ export async function runWeeklyReplan(
   const correction = await computeWeeklyTdeeCorrection(db, athleteId, referenceDate);
   const days = Array.from({ length: 7 }, (_, i) => addDaysUTC(weekStartMonday, i));
   const results: WeeklyReplanResult["days"] = [];
+  // Memoria settimanale della RIGENERAZIONE: accumula gli staple giorno dopo giorno e li
+  // passa al giorno successivo, così la rotazione vede i giorni appena generati anche
+  // prima/oltre la lettura DB (stessa semantica cache client: 1 occorrenza per giorno-chiave).
+  const weeklyStapleCounts: Record<string, number> = {};
   for (const day of days) {
-    const r = await generateAndPersistMealPlanV2(db, athleteId, day, { tdeeCorrectionFactor: correction.factor });
+    const r = await generateAndPersistMealPlanV2(db, athleteId, day, {
+      tdeeCorrectionFactor: correction.factor,
+      weeklyStapleCounts: { ...weeklyStapleCounts },
+    });
+    if (r.ok) {
+      for (const s of r.staples) weeklyStapleCounts[s] = (weeklyStapleCounts[s] ?? 0) + 1;
+    }
     results.push(r.ok ? { day, ok: true, slots: r.slots } : { day, ok: false, error: r.error });
   }
   return { ok: results.every((d) => d.ok), weekStart: weekStartMonday, correction, days: results };

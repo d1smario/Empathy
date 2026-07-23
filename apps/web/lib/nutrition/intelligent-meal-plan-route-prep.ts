@@ -14,6 +14,10 @@ import {
   readExcludedFoodClasses,
   resolveExcludedFdcIdsFromClasses,
 } from "@/lib/nutrition/allergen-class-catalog";
+import {
+  loadWeeklyStapleCountsFromDb,
+  mergeWeeklyStapleCounts,
+} from "@/lib/nutrition/meal-rotation-week-db";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
@@ -59,7 +63,7 @@ export async function prepareIntelligentMealPlanContext(
     String((body.plan as Record<string, unknown> | undefined)?.planDate ?? "")
       .slice(0, 10) || new Date().toISOString().slice(0, 10);
 
-  const [{ data: profileRow }, { data: plannedRows }] = await Promise.all([
+  const [{ data: profileRow }, { data: plannedRows }, weeklyFromDb] = await Promise.all([
     db
       .from("athlete_profiles")
       .select(
@@ -72,12 +76,16 @@ export async function prepareIntelligentMealPlanContext(
       .select("duration_minutes, type, notes, tss_target, kcal_target")
       .eq("athlete_id", athleteId)
       .eq("date", planDate),
+    // Memoria settimanale server-autorevole: conteggi staple dei giorni GIÀ persistiti
+    // nella settimana ISO di planDate (escluso il giorno in rigenerazione).
+    loadWeeklyStapleCountsFromDb(db, athleteId, planDate),
   ]);
 
   const plan = body.plan as unknown;
   if (!isRecord(plan)) return { error: "Missing plan", status: 400 };
 
-  const weekly = sanitizeWeeklyStapleCounts(plan.weeklyStapleCounts);
+  // Fusione con i conteggi del client (localStorage): MAX per chiave, mai doppio conteggio.
+  const weekly = mergeWeeklyStapleCounts(sanitizeWeeklyStapleCounts(plan.weeklyStapleCounts), weeklyFromDb);
   const planMerged: IntelligentMealPlanRequest = {
     ...(plan as IntelligentMealPlanRequest),
     ...(weekly ? { weeklyStapleCounts: weekly } : {}),

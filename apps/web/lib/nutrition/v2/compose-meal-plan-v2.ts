@@ -320,6 +320,24 @@ function composeRaceSlot(
   return null;
 }
 
+/**
+ * Seed deterministico per (atleta, data): hash FNV-1a 32-bit di `${athleteId}|${planDate}`.
+ * Sostituisce il vecchio seed degenerato (somma delle parti della data, range ~0-40) con un
+ * valore ben distribuito: atleti diversi e giorni diversi ruotano l'ordine dei pool staple.
+ */
+export function mealPlanSeedForAthleteDate(
+  athleteId: string | null | undefined,
+  planDate: string | null | undefined,
+): number {
+  const key = `${(athleteId ?? "").trim()}|${(planDate ?? "2026-01-01").trim()}`;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i += 1) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
 function normalizeDietType(raw: string | null | undefined): MediterraneanDietType {
   const d = (raw ?? "").trim().toLowerCase();
   if (d === "vegan" || d.includes("vegan")) return "vegan";
@@ -343,7 +361,7 @@ export function composeMealPlanV2(
   const denyFragments = options?.denyFragments ?? [];
   const suppressed = new Set(options?.suppressedSlots ?? []);
   const request = options?.request;
-  const seed = Math.abs((request?.planDate ?? "2026-01-01").split("-").reduce((a, p) => a + Number(p), 0));
+  const seed = mealPlanSeedForAthleteDate(request?.athleteId, request?.planDate);
 
   const dayCtx = createMediterraneanDayContext(
     request?.planDate ?? new Date().toISOString().slice(0, 10),

@@ -1514,6 +1514,99 @@ export const CANONICAL_FOOD_TABLE: Record<string, CanonicalFoodNutrients> = {
     eaa_val: 0.38,
     eaa_his: 0.18,
   }),
+
+  // --- Espansione pool staple V2 (lug 2026) ---
+  // Macro per 100 g da `nutrition_fdc_foods` (fdc_id in canonical-food-fdc-aliases).
+  // Micro/EAA arrivano dal DB via fdc_id in fase di enrichment: qui bastano i macro
+  // per il gate `canonicalToHit` + solver.
+
+  // Colazione — carboidrati
+  bread_whole_wheat: row({ kcalPer100g: 278, proteinG: 8.4, carbsG: 51.4, fatG: 5.4, fiberG: 6 }),
+  bread_rye: row({ kcalPer100g: 259, proteinG: 8.5, carbsG: 48.3, fatG: 3.3, fiberG: 5.8 }),
+  rusk_toast: row({ kcalPer100g: 407, proteinG: 13.5, carbsG: 72.3, fatG: 7.2 }),
+  corn_flakes: row({ kcalPer100g: 384, proteinG: 5.9, carbsG: 88, fatG: 0.9, fiberG: 2.7 }),
+  granola: row({ kcalPer100g: 489, proteinG: 13.7, carbsG: 53.9, fatG: 24.3, fiberG: 8.9 }),
+  rice_cakes: row({ kcalPer100g: 387, proteinG: 8.2, carbsG: 81.5, fatG: 2.8, fiberG: 4.2 }),
+  bagel_plain: row({ kcalPer100g: 264, proteinG: 10.6, carbsG: 52.4, fatG: 1.3, fiberG: 1.6 }),
+  pancakes_plain: row({ kcalPer100g: 227, proteinG: 6.4, carbsG: 28.3, fatG: 9.7 }),
+  honey: row({ kcalPer100g: 304, proteinG: 0.3, carbsG: 82.4, fatG: 0, fiberG: 0.2 }),
+
+  // Colazione — proteine
+  yogurt_greek: row({ kcalPer100g: 73, proteinG: 10, carbsG: 3.9, fatG: 1.9 }),
+  milk_whole: row({ kcalPer100g: 60, proteinG: 3.3, carbsG: 4.6, fatG: 3.2 }),
+  kefir: row({ kcalPer100g: 43, proteinG: 3.8, carbsG: 4.8, fatG: 1 }),
+  soymilk: row({ kcalPer100g: 54, proteinG: 3.3, carbsG: 6.3, fatG: 1.8 }),
+  egg_white: row({ kcalPer100g: 52, proteinG: 10.9, carbsG: 0.7, fatG: 0.2 }),
+
+  // Colazione — grassi
+  walnuts: row({ kcalPer100g: 654, proteinG: 15.2, carbsG: 13.7, fatG: 65.2, fiberG: 6.7 }),
+  hazelnuts: row({ kcalPer100g: 628, proteinG: 15, carbsG: 16.7, fatG: 60.8, fiberG: 9.7 }),
+  pistachios: row({ kcalPer100g: 598, proteinG: 20.5, carbsG: 27.7, fatG: 45, fiberG: 7 }),
+  cashews: row({ kcalPer100g: 565, proteinG: 17.4, carbsG: 36.3, fatG: 38.9, fiberG: 4.1 }),
+  peanut_butter: row({ kcalPer100g: 632, proteinG: 24, carbsG: 22.7, fatG: 49.4, fiberG: 6.3 }),
+  chia_seeds: row({ kcalPer100g: 486, proteinG: 16.5, carbsG: 42.1, fatG: 30.7, fiberG: 34.4 }),
+  flaxseed: row({ kcalPer100g: 534, proteinG: 18.3, carbsG: 28.9, fatG: 42.2, fiberG: 27.3 }),
+
+  // Pranzo/cena — carboidrati
+  pasta_whole: row({ kcalPer100g: 362, proteinG: 13.5, carbsG: 73.1, fatG: 2.7, fiberG: 10.1 }),
+  rice_brown: row({ kcalPer100g: 123, proteinG: 2.7, carbsG: 25.6, fatG: 1, fiberG: 1.6 }),
+  couscous: row({ kcalPer100g: 112, proteinG: 3.8, carbsG: 23.2, fatG: 0.2, fiberG: 1.4 }),
+  barley_pearled: row({ kcalPer100g: 123, proteinG: 2.3, carbsG: 28.2, fatG: 0.4, fiberG: 3.8 }),
+  bulgur: row({ kcalPer100g: 83, proteinG: 3.1, carbsG: 18.6, fatG: 0.2, fiberG: 4.5 }),
+  millet: row({ kcalPer100g: 119, proteinG: 3.5, carbsG: 23.7, fatG: 1, fiberG: 1.3 }),
+  cornmeal_polenta: row({ kcalPer100g: 370, proteinG: 7.1, carbsG: 79.4, fatG: 1.8 }),
+  sweet_potato: row({ kcalPer100g: 86, proteinG: 1.6, carbsG: 20.1, fatG: 0.1, fiberG: 3 }),
+
+  // Pranzo/cena — proteine
+  turkey_breast: row({ kcalPer100g: 114, proteinG: 23.7, carbsG: 0.1, fatG: 1.5 }),
+  tuna_canned: row({ kcalPer100g: 198, proteinG: 29.1, carbsG: 0, fatG: 8.2 }),
+  mackerel_atlantic: row({ kcalPer100g: 205, proteinG: 18.6, carbsG: 0, fatG: 13.9 }),
+  sardines: row({ kcalPer100g: 208, proteinG: 24.6, carbsG: 0, fatG: 11.4 }),
+  shrimp: row({ kcalPer100g: 99, proteinG: 24, carbsG: 0.2, fatG: 0.3 }),
+  octopus: row({ kcalPer100g: 82, proteinG: 14.9, carbsG: 2.2, fatG: 1 }),
+  squid: row({ kcalPer100g: 92, proteinG: 15.6, carbsG: 3.1, fatG: 1.4 }),
+  veal_loin: row({ kcalPer100g: 114, proteinG: 21.8, carbsG: 0, fatG: 2.9 }),
+  rabbit: row({ kcalPer100g: 136, proteinG: 20, carbsG: 0, fatG: 5.6 }),
+  lamb_leg: row({ kcalPer100g: 125, proteinG: 20.5, carbsG: 0, fatG: 4.2 }),
+  pork_loin: row({ kcalPer100g: 168, proteinG: 21.1, carbsG: 0, fatG: 9.5 }),
+  cod_raw: row({ kcalPer100g: 82, proteinG: 17.8, carbsG: 0, fatG: 0.7 }),
+  beans_white: row({ kcalPer100g: 139, proteinG: 9.7, carbsG: 25.1, fatG: 0.4, fiberG: 6.3 }),
+  beans_kidney: row({ kcalPer100g: 127, proteinG: 8.7, carbsG: 22.8, fatG: 0.5, fiberG: 7.4 }),
+  peas_green: row({ kcalPer100g: 81, proteinG: 5.4, carbsG: 14.4, fatG: 0.4, fiberG: 5.7 }),
+  edamame: row({ kcalPer100g: 121, proteinG: 11.9, carbsG: 8.9, fatG: 5.2, fiberG: 5.2 }),
+  mozzarella: row({ kcalPer100g: 254, proteinG: 24.3, carbsG: 2.8, fatG: 15.9 }),
+  feta: row({ kcalPer100g: 265, proteinG: 14.2, carbsG: 3.9, fatG: 21.5 }),
+
+  // Verdure
+  eggplant: row({ kcalPer100g: 26, proteinG: 0.9, carbsG: 5.4, fatG: 0.1, fiberG: 2.5 }),
+  cauliflower: row({ kcalPer100g: 28, proteinG: 1.6, carbsG: 4.7, fatG: 0.2, fiberG: 2 }),
+  green_beans: row({ kcalPer100g: 40, proteinG: 2, carbsG: 7.4, fatG: 0.3, fiberG: 3 }),
+  mushrooms_white: row({ kcalPer100g: 22, proteinG: 3.1, carbsG: 3.3, fatG: 0.3, fiberG: 1 }),
+  cucumber: row({ kcalPer100g: 16, proteinG: 0.6, carbsG: 3, fatG: 0.2 }),
+  fennel: row({ kcalPer100g: 27, proteinG: 0.9, carbsG: 5.5, fatG: 0.1, fiberG: 2.1 }),
+  onion: row({ kcalPer100g: 40, proteinG: 1.1, carbsG: 9.3, fatG: 0.1, fiberG: 1.7 }),
+  leek: row({ kcalPer100g: 61, proteinG: 1.5, carbsG: 14.2, fatG: 0.3, fiberG: 1.8 }),
+  swiss_chard: row({ kcalPer100g: 19, proteinG: 1.8, carbsG: 3.7, fatG: 0.2, fiberG: 1.6 }),
+  brussels_sprouts: row({ kcalPer100g: 60, proteinG: 4, carbsG: 9.6, fatG: 0.6, fiberG: 4.8 }),
+  butternut_squash: row({ kcalPer100g: 48, proteinG: 1.2, carbsG: 10.5, fatG: 0.2, fiberG: 2 }),
+
+  // Spuntini — frutta
+  raspberries: row({ kcalPer100g: 57, proteinG: 1, carbsG: 12.9, fatG: 0.2 }),
+  grapes: row({ kcalPer100g: 69, proteinG: 0.7, carbsG: 18.1, fatG: 0.2, fiberG: 0.9 }),
+  peach: row({ kcalPer100g: 42, proteinG: 0.9, carbsG: 10.1, fatG: 0.3 }),
+  apricot: row({ kcalPer100g: 48, proteinG: 1.4, carbsG: 11.1, fatG: 0.4, fiberG: 2 }),
+  pineapple: row({ kcalPer100g: 60, proteinG: 0.5, carbsG: 14.1, fatG: 0.2, fiberG: 0.9 }),
+  melon_cantaloupe: row({ kcalPer100g: 34, proteinG: 0.8, carbsG: 8.2, fatG: 0.2, fiberG: 0.9 }),
+  watermelon: row({ kcalPer100g: 30, proteinG: 0.6, carbsG: 7.6, fatG: 0.2, fiberG: 0.4 }),
+  cherries: row({ kcalPer100g: 63, proteinG: 1.1, carbsG: 16, fatG: 0.2, fiberG: 2.1 }),
+  figs: row({ kcalPer100g: 74, proteinG: 0.8, carbsG: 19.2, fatG: 0.3, fiberG: 2.9 }),
+  dates_medjool: row({ kcalPer100g: 277, proteinG: 1.8, carbsG: 75, fatG: 0.2, fiberG: 6.7 }),
+  tangerine: row({ kcalPer100g: 53, proteinG: 0.8, carbsG: 13.3, fatG: 0.3, fiberG: 1.8 }),
+  raisins: row({ kcalPer100g: 296, proteinG: 2.5, carbsG: 78.5, fatG: 0.5, fiberG: 6.8 }),
+
+  // Spuntini — proteine
+  hummus: row({ kcalPer100g: 237, proteinG: 7.8, carbsG: 15, fatG: 17.8, fiberG: 5.5 }),
+  ham_cooked: row({ kcalPer100g: 106, proteinG: 16.7, carbsG: 0.3, fatG: 3.7 }),
 };
 
 const INFER_RULES: Array<{ test: RegExp; key: string }> = [
