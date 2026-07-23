@@ -1393,7 +1393,15 @@
     "noBlockSelectedHint": "Nessun blocco selezionato — clicca un tipo per aggiungerne uno, o una barra per modificarla.",
     "tilesChangeTypeLabel": "Cambia tipo:",
     "tilesAddLabel": "Aggiungi blocco:",
-    "dialogClose": "Chiudi"
+    "dialogClose": "Chiudi",
+    "markedCount": "{n, plural, one {1 selezionato} other {# selezionati}}",
+    "bulkDuplicate": "Duplica selezionati",
+    "bulkDelete": "Elimina selezionati",
+    "bulkDeleteGuardTitle": "Deve restare almeno un blocco",
+    "bulkMoveLeftAria": "Sposta i blocchi selezionati a sinistra",
+    "bulkMoveRightAria": "Sposta i blocchi selezionati a destra",
+    "clearMarksAria": "Deseleziona tutti i blocchi",
+    "toggleMarkAria": "Marca il blocco per le azioni multiple"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Mappa di esecuzione",

@@ -1393,7 +1393,15 @@
     "noBlockSelectedHint": "No block selected — click a type to add one, or a bar to edit it.",
     "tilesChangeTypeLabel": "Change type:",
     "tilesAddLabel": "Add block:",
-    "dialogClose": "Close"
+    "dialogClose": "Close",
+    "markedCount": "{n, plural, one {1 selected} other {# selected}}",
+    "bulkDuplicate": "Duplicate selected",
+    "bulkDelete": "Delete selected",
+    "bulkDeleteGuardTitle": "At least one block must remain",
+    "bulkMoveLeftAria": "Move selected blocks left",
+    "bulkMoveRightAria": "Move selected blocks right",
+    "clearMarksAria": "Unmark all blocks",
+    "toggleMarkAria": "Mark block for bulk actions"
   },
   "BuilderPlannedSessionViz": {
     "titleDefault": "Execution map",

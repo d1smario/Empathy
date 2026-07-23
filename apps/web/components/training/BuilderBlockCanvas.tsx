@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, GripVertical, X } from "lucide-react";
+import { Check, Copy, GripVertical, X } from "lucide-react";
 import { useMemo, useRef } from "react";
 import {
   DndContext,
@@ -126,17 +126,25 @@ function zoneLabelFor(block: ManualPlanBlock): string {
 function SortableBlockBar({
   group,
   active,
+  marked,
+  anyMarked,
   canDelete,
   onSelect,
   onDelete,
   onDuplicate,
+  onToggleMark,
 }: {
   group: BlockGroup;
   active: boolean;
+  /** Marcato per le azioni multiple (stato SEPARATO dalla selezione attiva). */
+  marked: boolean;
+  /** Almeno un blocco marcato nella tela → checkbox sempre visibili. */
+  anyMarked: boolean;
   canDelete: boolean;
   onSelect: (index: number) => void;
   onDelete: (index: number) => void;
   onDuplicate: (index: number) => void;
+  onToggleMark: (id: string) => void;
 }) {
   const t = useTranslations("BuilderManualComposer");
   const { block, index, totalSeconds } = group;
@@ -169,6 +177,11 @@ function SortableBlockBar({
         pointerStart.current = null;
         if (isDragging) return;
         if (s && (Math.abs(e.clientX - s.x) > 5 || Math.abs(e.clientY - s.y) > 5)) return;
+        // Selezione multipla: ctrl/cmd-click = toggle marcatura, NON apre il popup.
+        if (e.ctrlKey || e.metaKey) {
+          onToggleMark(block.id);
+          return;
+        }
         onSelect(index);
       }}
       {...attributes}
@@ -180,10 +193,15 @@ function SortableBlockBar({
         <span className={active ? "text-white" : "text-white/75"}>{t("blockPositional", { n: index + 1 })}</span>
       </div>
 
-      {/* Area-tela della barra: la forma cresce dal fondo. Attiva = ring bianco. */}
+      {/* Area-tela della barra: la forma cresce dal fondo. Attiva = ring bianco;
+          marcata (selezione multipla) = ring ciano, distinto e coesistente. */}
       <div
         className={`relative rounded-md transition ${
-          active ? "ring-2 ring-white ring-offset-1 ring-offset-black" : "opacity-70 group-hover:opacity-100"
+          active
+            ? "ring-2 ring-white ring-offset-1 ring-offset-black"
+            : marked
+              ? "ring-2 ring-cyan-400 ring-offset-1 ring-offset-black"
+              : "opacity-70 group-hover:opacity-100"
         }`}
         style={{ height: CANVAS_HEIGHT }}
       >
@@ -197,15 +215,43 @@ function SortableBlockBar({
           </span>
         ) : null}
 
-        {/* Maniglia drag: ora l'intera barra è trascinabile, l'icona resta solo come hint
-            visivo (pointer-events-none così non intercetta pointerdown/drag). */}
-        <span
-          className="pointer-events-none absolute left-0 top-0 z-10 rounded-br-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition group-hover:opacity-100"
-          title={t("dragToReorder")}
-          aria-hidden
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </span>
+        {/* Angolo in alto-sinistra: CHECKBOX di marcatura (selezione multipla) + maniglia
+            hint. La checkbox è sempre visibile se c'è almeno un blocco marcato, altrimenti
+            compare su hover; stopPropagation su pointerdown+click (stesso pattern di
+            Copy/X) così non seleziona/apre il popup né innesca il drag. Marcata = badge
+            check ciano. */}
+        <div className="absolute left-0 top-0 z-10 flex overflow-hidden rounded-br-md">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleMark(block.id);
+            }}
+            className={`bg-black/55 p-0.5 transition ${
+              marked || anyMarked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+            aria-label={t("toggleMarkAria")}
+            aria-pressed={marked}
+          >
+            <span
+              className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border transition ${
+                marked ? "border-cyan-400 bg-cyan-400 text-black" : "border-gray-400 text-transparent hover:border-cyan-300"
+              }`}
+            >
+              <Check className="h-2.5 w-2.5" strokeWidth={4} aria-hidden />
+            </span>
+          </button>
+          {/* Maniglia drag: l'intera barra è trascinabile, l'icona resta solo come hint
+              visivo (pointer-events-none così non intercetta pointerdown/drag). */}
+          <span
+            className="pointer-events-none bg-black/55 p-0.5 text-gray-400 opacity-0 transition group-hover:opacity-100"
+            title={t("dragToReorder")}
+            aria-hidden
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        </div>
 
         {/* Duplica + Elimina sull'angolo opposto — stopPropagation su pointerdown+click
             così NON innescano il drag. */}
@@ -260,7 +306,9 @@ export function BuilderBlockCanvas({
   blocks,
   segments,
   activeIndex,
+  markedIds,
   onSelect,
+  onToggleMark,
   onRemove,
   onDuplicate,
   sensors,
@@ -271,7 +319,10 @@ export function BuilderBlockCanvas({
   blocks: ManualPlanBlock[];
   segments: ChartSegment[];
   activeIndex: number;
+  /** Id dei blocchi marcati per le azioni multiple (separato dalla selezione attiva). */
+  markedIds: ReadonlySet<string>;
   onSelect: (index: number) => void;
+  onToggleMark: (id: string) => void;
   onRemove: (index: number) => void;
   onDuplicate: (index: number) => void;
   sensors: SensorDescriptor<SensorOptions>[];
@@ -321,10 +372,13 @@ export function BuilderBlockCanvas({
                   key={group.block.id}
                   group={group}
                   active={group.index === activeIndex}
+                  marked={markedIds.has(group.block.id)}
+                  anyMarked={markedIds.size > 0}
                   canDelete={blocks.length > 1}
                   onSelect={onSelect}
                   onDelete={onRemove}
                   onDuplicate={onDuplicate}
+                  onToggleMark={onToggleMark}
                 />
               ))}
             </div>

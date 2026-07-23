@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
   Footprints,
   Gauge,
   Heart,
@@ -9,10 +12,12 @@ import {
   Repeat2,
   Timer,
   Sparkles,
+  Trash2,
   TrendingUp,
+  X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   KeyboardSensor,
   PointerSensor,
@@ -339,6 +344,36 @@ export function BuilderManualComposer({
   const row = hasSelection ? manualPlanBlocks[safeIndex] : undefined;
   const kindMetaList = kindMetaForFamily(macroFamily);
 
+  // Selezione MULTIPLA (marcatura per azioni massive): COMPLETAMENTE separata da
+  // activeIndex — marcare un blocco NON apre il popup editor. Tracciata per id, così
+  // sopravvive a riordini/drag.
+  const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
+
+  // Prune automatico: se un blocco marcato sparisce (elimina singolo, load preset,
+  // reset piano), il suo id esce dalla marcatura.
+  useEffect(() => {
+    setMarkedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const alive = new Set(manualPlanBlocks.map((b) => b.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (alive.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [manualPlanBlocks]);
+
+  const toggleMark = (id: string) => {
+    setMarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const structureMinutesFromChart = useMemo(
     () => Math.max(0, Math.round(manualChartSegments.reduce((s, seg) => s + seg.durationSeconds, 0) / 60)),
     [manualChartSegments],
@@ -462,6 +497,77 @@ export function BuilderManualComposer({
     setActiveIndex((i) => Math.max(0, Math.min(i > index ? i - 1 : i, manualPlanBlocks.length - 2)));
   };
 
+  // ——— Azioni MASSIVE sui blocchi marcati (selezione multipla) ———
+
+  /** Indici dei blocchi marcati, in ordine di posizione nella tela. */
+  const markedIndices = manualPlanBlocks
+    .map((b, i) => (markedIds.has(b.id) ? i : -1))
+    .filter((i) => i >= 0);
+
+  /** Duplica i marcati (in ordine di posizione) e inserisce il GRUPPO di cloni subito
+   *  DOPO l'ultimo marcato. I cloni hanno id nuovi → NON risultano marcati. */
+  const bulkDuplicateMarked = () => {
+    if (markedIndices.length === 0) return;
+    const insertAt = markedIndices[markedIndices.length - 1]! + 1;
+    const n = markedIndices.length;
+    setManualPlanBlocks((p) => {
+      const clones = markedIndices
+        .map((i) => p[i])
+        .filter((b): b is ManualPlanBlock => Boolean(b))
+        .map((b) => cloneManualPlanBlock(b));
+      return [...p.slice(0, insertAt), ...clones, ...p.slice(insertAt)];
+    });
+    // Il blocco attivo shifta se sta dal punto di inserimento in poi.
+    setActiveIndex((a) => (a >= insertAt ? a + n : a));
+  };
+
+  /** Elimina i marcati. Guard: deve restare almeno un blocco. Svuota la marcatura e
+   *  ricalcola activeIndex per id (se il blocco attivo è stato eliminato → -1). */
+  const bulkDeleteMarked = () => {
+    if (markedIds.size === 0 || markedIds.size >= manualPlanBlocks.length) return;
+    const activeId = hasSelection ? manualPlanBlocks[safeIndex]?.id ?? null : null;
+    const next = manualPlanBlocks.filter((b) => !markedIds.has(b.id));
+    setManualPlanBlocks(next);
+    setMarkedIds(new Set());
+    if (activeId) {
+      setActiveIndex(markedIds.has(activeId) ? -1 : next.findIndex((b) => b.id === activeId));
+    }
+  };
+
+  /** Sposta i marcati di UNO step (◀ dir=-1 / ▶ dir=+1) con shift-by-one stabile:
+   *  per ◀ itera gli indici in ordine crescente e scambia con il vicino sinistro solo
+   *  se NON marcato; per ▶ specularmente in ordine decrescente. I marcati preservano
+   *  l'ordine relativo e si compattano ai bordi senza scavalcarsi. */
+  const bulkMoveMarked = (dir: -1 | 1) => {
+    if (markedIds.size === 0) return;
+    const activeId = hasSelection ? manualPlanBlocks[safeIndex]?.id ?? null : null;
+    const next = [...manualPlanBlocks];
+    const len = next.length;
+    if (dir === -1) {
+      for (let i = 0; i < len; i++) {
+        const cur = next[i];
+        const prev = next[i - 1];
+        if (!cur || !prev || !markedIds.has(cur.id) || markedIds.has(prev.id)) continue;
+        next[i - 1] = cur;
+        next[i] = prev;
+      }
+    } else {
+      for (let i = len - 2; i >= 0; i--) {
+        const cur = next[i];
+        const after = next[i + 1];
+        if (!cur || !after || !markedIds.has(cur.id) || markedIds.has(after.id)) continue;
+        next[i + 1] = cur;
+        next[i] = after;
+      }
+    }
+    setManualPlanBlocks(next);
+    // Il blocco attivo può essersi spostato (marcato o scavalcato): track by id.
+    if (activeId) {
+      const ni = next.findIndex((b) => b.id === activeId);
+      if (ni >= 0) setActiveIndex(ni);
+    }
+  };
+
   const ftp = Math.max(1, ftpW);
   const hr = Math.max(1, hrMax);
 
@@ -550,7 +656,9 @@ export function BuilderManualComposer({
           blocks={manualPlanBlocks}
           segments={manualChartSegments}
           activeIndex={hasSelection ? safeIndex : -1}
+          markedIds={markedIds}
           onSelect={toggleSelectBlock}
+          onToggleMark={toggleMark}
           onRemove={removeBlockAt}
           onDuplicate={duplicateBlockAt}
           sensors={dndSensors}
@@ -558,6 +666,57 @@ export function BuilderManualComposer({
           title={t("sessionPreview")}
           estimatedTss={estimatedTss}
         />
+        {/* Barra AZIONI MASSIVE: compare solo con almeno un blocco marcato (checkbox o
+            ctrl/cmd-click sulla barra). Duplica/Elimina/◀ ▶/Deseleziona sul gruppo. */}
+        {markedIds.size > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/[0.07] px-3 py-2">
+            <span className="text-xs font-bold text-cyan-200">{t("markedCount", { n: markedIds.size })}</span>
+            <button
+              type="button"
+              onClick={bulkDuplicateMarked}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10"
+            >
+              <Copy className="h-3.5 w-3.5" aria-hidden />
+              {t("bulkDuplicate")}
+            </button>
+            <button
+              type="button"
+              onClick={bulkDeleteMarked}
+              disabled={markedIds.size >= manualPlanBlocks.length}
+              title={markedIds.size >= manualPlanBlocks.length ? t("bulkDeleteGuardTitle") : undefined}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-xs font-bold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              {t("bulkDelete")}
+            </button>
+            <div className="flex overflow-hidden rounded-lg border border-white/20">
+              <button
+                type="button"
+                onClick={() => bulkMoveMarked(-1)}
+                aria-label={t("bulkMoveLeftAria")}
+                className="bg-white/5 px-2 py-1.5 text-gray-200 transition hover:bg-white/10"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => bulkMoveMarked(1)}
+                aria-label={t("bulkMoveRightAria")}
+                className="border-l border-white/20 bg-white/5 px-2 py-1.5 text-gray-200 transition hover:bg-white/10"
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMarkedIds(new Set())}
+              aria-label={t("clearMarksAria")}
+              className="ml-auto rounded-lg p-1.5 text-gray-400 transition hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {/* FIX F — Tavolozza tipi a doppio comportamento: con un blocco selezionato i tile
             MODIFICANO il tipo di quel blocco; senza selezione AGGIUNGONO un blocco in coda. */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
