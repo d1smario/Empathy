@@ -67,6 +67,9 @@ function toPlannedTraining(rows: Array<Record<string, unknown>>) {
  * Riduzione del giorno corrente: se allenamenti programmati NON risultano fatti (finestra passata,
  * nessun executed collegato), alleggerisce i pasti RIMANENTI. Reversibile: ricalcolo azzera se
  * l'attività compare. Persiste kind='reduction' (extra_kcal negativo) in nutrition_daily_adjustment.
+ * NB: questa run scrive SOLO sul suo dominio adjustment — l'alert `plan_adjusted` ha un unico
+ * owner: `reconcilePlanAdjustedAlert` chiamato dai call-site DOPO che tutte le run del giorno
+ * hanno finito (evita race con `runPostWorkoutReintegration` sulla stessa riga alert).
  */
 export async function runDailyReduction(
   db: SupabaseClient,

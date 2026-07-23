@@ -3,6 +3,7 @@ import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/a
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runPostWorkoutReintegration } from "@/lib/nutrition/reintegration-run";
 import { runDailyReduction } from "@/lib/nutrition/reduction-run";
+import { reconcilePlanAdjustedAlert } from "@/lib/alerts/athlete-alerts-writers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,6 +44,9 @@ export async function POST(req: NextRequest) {
       runPostWorkoutReintegration(admin, athleteId, date),
       runDailyReduction(admin, athleteId, date),
     ]);
+    // SINGLE-OWNER: l'alert `plan_adjusted` si riconcilia in UN passo dopo entrambe le run
+    // (le run non toccano più gli alert → niente race sulla stessa riga). Fail-safe: mai throw.
+    await reconcilePlanAdjustedAlert(admin, { athleteId, date });
     return NextResponse.json({ date, ok: reintegration.ok && reduction.ok, reintegration, reduction });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {

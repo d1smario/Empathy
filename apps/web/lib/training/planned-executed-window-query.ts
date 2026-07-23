@@ -40,7 +40,8 @@ export function executedWorkoutsWindowSelect(includeTraceSummary: boolean): stri
 /** PostgREST default cap = 1000 righe: alza il tetto per finestre calendario ampie. */
 const EXECUTED_WINDOW_ROW_LIMIT = 5000;
 
-function plannedRowsForDedupe(raw: unknown[]): PlannedWorkoutDbDedupeRow[] {
+/** Coercizione righe DB `planned_workouts` → shape richiesta dal fingerprint canonico di dedupe. */
+export function plannedRowsForDedupe(raw: unknown[]): PlannedWorkoutDbDedupeRow[] {
   return raw.map((row) => {
     const r = row as Record<string, unknown>;
     return {

@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { flagMissingSleepForDate } from "@/lib/alerts/athlete-alerts-writers";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,10 +67,26 @@ export async function GET(req: NextRequest) {
     }),
   );
 
+  // Fallback alert «sonno mancante» per IERI (UTC) — dopo i pull device (le fetch sopra
+  // attendono la risposta dei sotto-cron, quindi i pull sono già passati). Best-effort:
+  // qualunque errore qui non tocca l'esito dei job.
+  let sleepMissing: { checked: number; flagged: number } | null = null;
+  try {
+    const db = createSupabaseAdminClient();
+    if (db) {
+      const y = new Date(Date.now() - 86_400_000);
+      const yesterday = `${y.getUTCFullYear()}-${String(y.getUTCMonth() + 1).padStart(2, "0")}-${String(y.getUTCDate()).padStart(2, "0")}`;
+      sleepMissing = await flagMissingSleepForDate(db, yesterday);
+    }
+  } catch {
+    /* best-effort */
+  }
+
   return NextResponse.json({
     ok: results.every((r) => r.ok),
     ranAt: new Date().toISOString(),
     isTuesday,
     results,
+    sleepMissing,
   });
 }

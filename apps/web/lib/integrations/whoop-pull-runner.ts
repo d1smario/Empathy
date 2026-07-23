@@ -1,5 +1,6 @@
 import "server-only";
 
+import { recordSleepLowAlertAfterIngest } from "@/lib/alerts/athlete-alerts-writers";
 import type { ObservationIngestTags, RealityDomain } from "@/lib/empathy/schemas";
 import {
   dedupeWhoopRecordsById,
@@ -12,6 +13,8 @@ import { exchangeWhoopRefreshToken, WHOOP_V2_COLLECTION_PATHS, whoopApiBaseUrl }
 import { readVendorOauthTokens } from "@/lib/integrations/vendor-oauth-read";
 import { updateVendorOauthTokens } from "@/lib/integrations/vendor-oauth-persist";
 import { persistRealityDeviceExport } from "@/lib/reality/provider-adapters";
+import { extractSleepRecoverySignal } from "@/lib/reality/sleep-recovery-signals";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { defaultObservationIngestTags } from "@/lib/reality/observation-ingest-defaults";
 import { mergeObservationIngestTags } from "@/lib/reality/observation-merge";
 import { buildExecutedTrainingImportQuality } from "@/lib/reality/training-import-quality";
@@ -292,6 +295,8 @@ async function persistWhoopRecords(input: {
   const errors: string[] = [];
   let inserted = 0;
   let skipped = 0;
+  /** Ore sonno notturno per giorno viste in questo batch (no nap) → alert event-driven. */
+  const sleepHoursByDay = new Map<string, number>();
 
   for (const rec of input.records) {
     const id = whoopRecordPrimaryId(rec);
@@ -333,10 +338,28 @@ async function persistWhoopRecords(input: {
           rec,
         });
       }
+      if (input.domain === "sleep" && day && rec.nap !== true) {
+        const hours = extractSleepRecoverySignal({ [input.payloadKey]: rec }).sleepDurationHours;
+        if (hours != null) sleepHoursByDay.set(day, Math.max(sleepHoursByDay.get(day) ?? 0, hours));
+      }
       if (exportOk) inserted += 1;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errors.push(`[${input.domain}] ${msg}`);
+    }
+  }
+
+  // Alert «sonno basso» sui giorni appena ingeriti — FAIL-SAFE: mai rompere il pull WHOOP.
+  if (sleepHoursByDay.size > 0) {
+    try {
+      const alertDb = createSupabaseAdminClient();
+      if (alertDb) {
+        for (const [day, sleepHours] of sleepHoursByDay) {
+          await recordSleepLowAlertAfterIngest(alertDb, { athleteId: input.athleteId, date: day, sleepHours });
+        }
+      }
+    } catch {
+      /* alert best-effort */
     }
   }
 

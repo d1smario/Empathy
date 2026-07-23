@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { recordTrainingAlertAfterExecutedUpsert } from "@/lib/alerts/athlete-alerts-writers";
 
 export type ExecutedWorkoutUpsertPayload = {
   athlete_id: string;
@@ -36,11 +37,25 @@ export async function upsertExecutedWorkoutByExternalId(
   if (existing.data?.id) {
     const upd = await db.from("executed_workouts").update(payload).eq("id", existing.data.id);
     if (upd.error) throw new Error(upd.error.message);
+    await fireTrainingAlert(db, payload);
     return { id: existing.data.id, status: "updated" };
   }
 
   const ins = await db.from("executed_workouts").insert(payload).select("id").maybeSingle();
   if (ins.error) throw new Error(ins.error.message);
   const id = ins.data && typeof (ins.data as { id?: unknown }).id === "string" ? (ins.data as { id: string }).id : null;
+  await fireTrainingAlert(db, payload);
   return { id, status: "inserted" };
+}
+
+/**
+ * Alert event-driven eseguito vs pianificato del giorno (training_over/under) — FAIL-SAFE:
+ * il writer non lancia mai, ma il try/catch protegge comunque il sync dal punto alert.
+ */
+async function fireTrainingAlert(db: SupabaseClient, payload: ExecutedWorkoutUpsertPayload): Promise<void> {
+  try {
+    await recordTrainingAlertAfterExecutedUpsert(db, { athleteId: payload.athlete_id, date: payload.date });
+  } catch {
+    /* alert best-effort */
+  }
 }

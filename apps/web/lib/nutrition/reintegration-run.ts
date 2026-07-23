@@ -18,6 +18,9 @@ function num(v: unknown): number | null {
  * vs osservato (device, Decisione B) — e persiste il delta come EXTRA additivo in
  * nutrition_daily_adjustment (kind='reintegration'). Reversibile: se il surplus non c'è più,
  * rimuove la riga. Senza dato device osservato non fa nulla (non sa quanto hai speso davvero).
+ * NB: questa run scrive SOLO sul suo dominio adjustment — l'alert `plan_adjusted` ha un unico
+ * owner: `reconcilePlanAdjustedAlert` chiamato dai call-site DOPO che tutte le run del giorno
+ * hanno finito (evita race con `runDailyReduction` sulla stessa riga alert).
  */
 export async function runPostWorkoutReintegration(
   db: SupabaseClient,

@@ -1,8 +1,10 @@
 import "server-only";
 
+import { recordSleepLowAlertAfterIngest } from "@/lib/alerts/athlete-alerts-writers";
 import { isGarminActivitySummaryStreamKey } from "@/lib/integrations/garmin-health-api-notification-schema";
 import { parseGarminWellnessLogicalDay } from "@/lib/integrations/garmin-wellness-day-parse";
 import { persistRealityDeviceExport } from "@/lib/reality/provider-adapters";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   buildSleepRecoveryCanonicalPreview,
   buildSleepRecoveryCoverage,
@@ -114,11 +116,17 @@ export async function materializeGarminWellnessFromPullResponse(input: {
   if (items.length === 0) return { persisted: 0 };
 
   let persisted = 0;
+  /** Ore sonno per giorno logico viste in questo batch (stream `sleeps`) → alert event-driven. */
+  const sleepHoursByDay = new Map<string, number>();
   for (const { streamKey, rec } of items) {
     const day = garminWellnessCalendarDay(rec);
     const extId = stableExternalEventId(streamKey, rec, day);
     try {
       const cov = buildSleepRecoveryCoverage(rec);
+      if (streamKey === "sleeps" && day && cov.signal.sleepDurationHours != null) {
+        const prev = sleepHoursByDay.get(day) ?? 0;
+        sleepHoursByDay.set(day, Math.max(prev, cov.signal.sleepDurationHours));
+      }
       await persistRealityDeviceExport(
         {
           athleteId: input.athleteId,
@@ -143,6 +151,20 @@ export async function materializeGarminWellnessFromPullResponse(input: {
       persisted += 1;
     } catch {
       /* dedup / envelope: skip singola riga */
+    }
+  }
+
+  // Alert «sonno basso» sui giorni appena ingeriti — FAIL-SAFE: mai rompere l'ingest wellness.
+  if (sleepHoursByDay.size > 0) {
+    try {
+      const alertDb = createSupabaseAdminClient();
+      if (alertDb) {
+        for (const [day, sleepHours] of sleepHoursByDay) {
+          await recordSleepLowAlertAfterIngest(alertDb, { athleteId: input.athleteId, date: day, sleepHours });
+        }
+      }
+    } catch {
+      /* alert best-effort */
     }
   }
   return { persisted };
