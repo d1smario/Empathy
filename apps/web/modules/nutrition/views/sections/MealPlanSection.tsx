@@ -4,6 +4,8 @@ import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
 import { NutritionSubnav } from "@/components/nutrition/NutritionSubnav";
+import { DailyAdjustmentCard } from "@/components/nutrition/DailyAdjustmentCard";
+import type { TodayAdjustment } from "@/app/api/today/contracts";
 import { round } from "@/lib/nutrition/nutrition-view-helpers";
 import {
   NutritionMealPlanDailyTargets,
@@ -57,6 +59,12 @@ export type MealPlanSectionProps = {
   complianceOverview: { target: { kcal: number; carbs: number; protein: number; fat: number } };
   selectedPlanDateLabel: string;
   hydrationPlan: { minDailyMl: number };
+  /** Reintegro/riduzione del giorno (stessa card di Oggi) — resa dopo il target del giorno. */
+  dayAdjustments: TodayAdjustment[];
+  /** Target idratazione FONTE UNICA (helper condiviso) + eventuale extra reintegro già sommato. */
+  hydrationTotalTargetMl: number;
+  /** Quota reintegro (extra_water_ml) inclusa nel totale — per la caption della card acqua. */
+  hydrationReintegrationMl: number;
   mealPlanEnergyLedger: NutritionMealPlanEnergyLedger | null;
   mealPlanWorkspaceRows: MealPlanDisplayRow[];
   mealDisplayByKey: Map<MealSlotKey, MealPlanDisplayRow>;
@@ -110,6 +118,9 @@ export function MealPlanSection({
   complianceOverview,
   selectedPlanDateLabel,
   hydrationPlan,
+  dayAdjustments,
+  hydrationTotalTargetMl,
+  hydrationReintegrationMl,
   mealPlanEnergyLedger,
   mealPlanWorkspaceRows,
   mealDisplayByKey,
@@ -233,6 +244,15 @@ export function MealPlanSection({
         />
       </section>
 
+      {/* Compensazione adattiva del giorno (reintegro/riduzione): stessa card di Oggi —
+          il reintegro deve essere visibile dove vive il piano. La card ritorna null
+          senza extra attivi; il gate qui evita solo il margine orfano del wrapper. */}
+      {dayAdjustments.some((a) => a.extraKcal !== 0 || a.extraWaterMl !== 0 || a.supplements.length > 0) ? (
+        <div style={{ marginBottom: "12px" }}>
+          <DailyAdjustmentCard adjustments={dayAdjustments} />
+        </div>
+      ) : null}
+
       {athleteId ? (
         <NutritionMealPlanWorkspace
           athleteId={athleteId}
@@ -294,6 +314,8 @@ export function MealPlanSection({
           onDeleteDiaryEntry={onDeleteDiaryEntry}
           diaryEntryDeleteBusyId={diaryEntryDeleteBusyId}
           hydrationMinDailyMl={hydrationPlan.minDailyMl}
+          hydrationTotalTargetMl={hydrationTotalTargetMl}
+          hydrationReintegrationMl={hydrationReintegrationMl}
           hydrationIntakeMl={hydrationIntakeMl}
           onAddHydrationIntake={onAddHydrationIntake}
           hydrationIntakeBusy={hydrationIntakeBusy}

@@ -1,8 +1,12 @@
 /**
- * Target idratazione giornaliero — STESSA formula della card «Quanto bere oggi» di Nutrizione
- * (NutritionPageView `hydrationPlan`): base = max(2200, peso×33) × floorMul; extra allenamento =
- * max(600, ore×fluidRate) quando c'è una seduta. Fonte condivisa così Oggi e Nutrizione mostrano
- * lo stesso numero (prima Oggi usava peso×35 → valore diverso).
+ * Target idratazione giornaliero — FONTE UNICA per Oggi (app/api/today) e Nutrizione
+ * (NutritionPageView `hydrationPlan` → card «Quanto bere oggi»). Formula canonica:
+ * base = max(2200, peso×33); extra allenamento = max(600, ore×650) SOLO se c'è una seduta
+ * pianificata (trainingMl = 0 a riposo). I parametri `fluidMlPerHour`/`floorMultiplier`
+ * restano opzionali per compatibilità ma le superfici NON li passano più: niente
+ * moltiplicatori personalizzati, così Oggi e Nutrizione mostrano lo stesso numero.
+ * Il reintegro del giorno (nutrition_daily_adjustment.extra_water_ml) si somma DOPO,
+ * lato superficie, come componente esplicita sopra questo totale.
  */
 export function computeDailyHydrationTargetMl(input: {
   weightKg: number | null;

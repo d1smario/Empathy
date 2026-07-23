@@ -4,6 +4,11 @@ import { requireAthleteReadContext, AthleteReadContextError } from "@/lib/auth/a
 import { buildOperationalDayHub } from "@/lib/operational/build-operational-day-hub";
 import { loadNutritionPlanDayContext } from "@/lib/bioenergetics/load-nutrition-plan-for-day";
 import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
+import { buildEffectiveDayTrainingContext } from "@/lib/training/day-reality-context";
+import {
+  effectivePlannedWorkoutNutritionMetrics,
+  resolveBuilderSessionForPlannedRow,
+} from "@/lib/training/builder/pro2-session-notes";
 import type { PlannedWorkout } from "@empathy/domain-training";
 import type { NutritionModuleFlatProfile } from "@/lib/nutrition/nutrition-module-profile-merge";
 import { buildTodayEvents, buildFloatingWorkout } from "@/modules/today/lib/build-today-events";
@@ -78,16 +83,27 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       .eq("id", athleteId)
       .maybeSingle();
     const firstName = typeof profileRes.data?.first_name === "string" ? profileRes.data.first_name : null;
-    const weightKg = typeof profileRes.data?.weight_kg === "number" ? profileRes.data.weight_kg : null;
+    // Peso: stesso profilo MERGED memory-first di Nutrizione (hub.profile); la colonna
+    // athlete_profiles.weight_kg resta solo come fallback se il profilo merged manca.
+    const fallbackWeightKg = typeof profileRes.data?.weight_kg === "number" ? profileRes.data.weight_kg : null;
+    const weightKg = hub.profile ? (Number(hub.profile.weight_kg) || null) : fallbackWeightKg;
 
-    // Idratazione: STESSA formula di Nutrizione (card «Quanto bere oggi») via helper condiviso —
-    // base peso×33 (min 2200) + extra allenamento. Prima Oggi usava peso×35 → numero diverso.
-    const nutritionConfig = asRecord(hub.profile?.nutrition_config);
-    const hydrationAll = asRecord(nutritionConfig.hydration_intake);
-    const hydrationDay = asRecord(hydrationAll[date]);
-    const currentMl = Number(hydrationDay.ml) || 0;
-    const sessionDurationMin = hub.planned.reduce((sum, p) => sum + (Number(p.duration_minutes) || 0), 0);
-    const targetMl = computeDailyHydrationTargetMl({ weightKg, sessionDurationMin }).totalMl;
+    // Aggiustamenti adattivi del giorno (reintegro/riduzione) — extra sopra il piano base.
+    // Letti PRIMA dell'idratazione: l'extra acqua del reintegro entra nel target del giorno.
+    const { data: adjRows } = await db
+      .from("nutrition_daily_adjustment")
+      .select("kind, extra_kcal, extra_carbs_g, extra_water_ml, extra_supplements, reason")
+      .eq("athlete_id", athleteId)
+      .eq("date", date);
+    const adjustments = ((adjRows ?? []) as Record<string, unknown>[]).map((r) => ({
+      kind: r.kind === "reduction" ? ("reduction" as const) : ("reintegration" as const),
+      extraKcal: Number(r.extra_kcal) || 0,
+      extraCarbsG: Number(r.extra_carbs_g) || 0,
+      extraWaterMl: Number(r.extra_water_ml) || 0,
+      supplements: Array.isArray(r.extra_supplements) ? (r.extra_supplements as string[]) : [],
+      reason: typeof r.reason === "string" ? r.reason : null,
+    }));
+    const extraWaterMl = adjustments.reduce((sum, a) => sum + Math.max(0, a.extraWaterMl), 0);
 
     // Eventi eseguiti (formato compatibile)
     const executedRows = (hub.executed as Array<Record<string, unknown>>).map((e) => ({
@@ -99,6 +115,47 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
       tss: typeof e.tss === "number" ? e.tss : null,
       kcal: typeof e.kcal === "number" ? e.kcal : null,
     }));
+
+    // Durata seduta del giorno: STESSO percorso di Nutrizione (buildEffectiveDayTrainingContext)
+    // — planned dedupati (già a monte nel window query) con metriche effettive dal contratto
+    // builder in notes, preferenza ESEGUITO quando ha segnale energetico (TSS/kcal), inclusi
+    // eseguiti orfani. Niente somma raw di planned.duration_minutes.
+    const effectiveDayContext = buildEffectiveDayTrainingContext({
+      planned: hub.planned.map((row, index) => {
+        const bs = resolveBuilderSessionForPlannedRow({ notes: row.notes ?? null });
+        const m = effectivePlannedWorkoutNutritionMetrics({
+          durationMinutesDb: Number(row.duration_minutes) || null,
+          tssTargetDb: Number(row.tss_target) || null,
+          kcalTargetDb: row.kcal_target != null ? Number(row.kcal_target) || null : null,
+          builderSession: bs,
+          athleteFtpWatts: hub.physio.ftp_watts,
+        });
+        return {
+          id: String(row.id ?? index),
+          title: String(bs?.sessionName ?? bs?.discipline ?? row.type ?? "Sessione"),
+          duration_minutes: m.durationMinutes,
+          tss_target: m.tss,
+          kcal_target: m.kcal,
+        };
+      }),
+      executed: (hub.executed as Array<Record<string, unknown>>).map((e) => ({
+        id: String(e.id ?? ""),
+        duration_minutes: Number(e.duration_minutes) || null,
+        tss: Number(e.tss) || null,
+        kcal: Number(e.kcal) || null,
+      })),
+    });
+
+    // Idratazione: FONTE UNICA con Nutrizione (card «Quanto bere oggi») via helper condiviso —
+    // base max(2200, peso×33) + extra allenamento solo se c'è seduta reale in calendario; il
+    // reintegro del giorno (extra_water_ml) si somma come componente esplicita, identico su Nutrizione.
+    const nutritionConfig = asRecord(hub.profile?.nutrition_config);
+    const hydrationAll = asRecord(nutritionConfig.hydration_intake);
+    const hydrationDay = asRecord(hydrationAll[date]);
+    const currentMl = Number(hydrationDay.ml) || 0;
+    const sessionDurationMin =
+      effectiveDayContext.mode === "none" ? 0 : effectiveDayContext.summary.totalDurationMin;
+    const targetMl = computeDailyHydrationTargetMl({ weightKg, sessionDurationMin }).totalMl + extraWaterMl;
 
     const events = buildTodayEvents({
       date,
@@ -119,21 +176,6 @@ export async function GET(req: NextRequest): Promise<NextResponse<TodayApiRespon
 
     // Domani preview (leggero)
     const tomorrow = null; // TODO: implementare preview giorno successivo
-
-    // Aggiustamenti adattivi del giorno (reintegro/riduzione) — extra sopra il piano base.
-    const { data: adjRows } = await db
-      .from("nutrition_daily_adjustment")
-      .select("kind, extra_kcal, extra_carbs_g, extra_water_ml, extra_supplements, reason")
-      .eq("athlete_id", athleteId)
-      .eq("date", date);
-    const adjustments = ((adjRows ?? []) as Record<string, unknown>[]).map((r) => ({
-      kind: r.kind === "reduction" ? ("reduction" as const) : ("reintegration" as const),
-      extraKcal: Number(r.extra_kcal) || 0,
-      extraCarbsG: Number(r.extra_carbs_g) || 0,
-      extraWaterMl: Number(r.extra_water_ml) || 0,
-      supplements: Array.isArray(r.extra_supplements) ? (r.extra_supplements as string[]) : [],
-      reason: typeof r.reason === "string" ? r.reason : null,
-    }));
 
     return NextResponse.json({
       ok: true,

@@ -4973,6 +4973,7 @@
     "trainingLabel": "Extra allenamento · {liters} L",
     "columnsUnit": "colonne in ml per finestra",
     "minDaily": "minimo {liters} L",
+    "reintegrationIncluded": "incluso reintegro +{ml} ml",
     "drunkToday": "Bevuto oggi",
     "savingIntake": "Salvataggio…"
   },

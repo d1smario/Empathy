@@ -13,7 +13,7 @@ import { useNutritionQuickActions } from "@/modules/nutrition/hooks/use-nutritio
 import { setScheduledTimeInPlannedNotes } from "@/lib/training/builder/pro2-session-notes";
 import { patchPlannedWorkout } from "@/modules/training/services/training-planned-api";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
-import { TodayAdjustmentCard } from "./TodayAdjustmentCard";
+import { DailyAdjustmentCard } from "@/components/nutrition/DailyAdjustmentCard";
 import type { TodayApiResponse } from "@/app/api/today/contracts";
 
 export type TodayPageViewProps = {
@@ -162,7 +162,7 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
 
         {/* Compensazione adattiva del giorno (reintegro/riduzione) — extra sopra il piano. */}
         {data.adjustments && data.adjustments.length > 0 ? (
-          <TodayAdjustmentCard adjustments={data.adjustments} />
+          <DailyAdjustmentCard adjustments={data.adjustments} />
         ) : null}
 
         {actionError || scheduleError ? (

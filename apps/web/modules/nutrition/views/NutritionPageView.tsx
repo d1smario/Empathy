@@ -75,6 +75,8 @@ import type {
   TwinStateRow,
 } from "@/lib/nutrition/nutrition-view-types";
 import { buildEffectiveDayTrainingContext } from "@/lib/training/day-reality-context";
+import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
+import type { TodayAdjustment } from "@/app/api/today/contracts";
 import {
   fetchNutritionModuleContext,
   type NutritionPlannedWorkoutRow,
@@ -501,6 +503,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [profileFoodExcludeBusy, setProfileFoodExcludeBusy] = useState<string | null>(null);
   /** Slot pasto in salvataggio conferma consumo (carosello Piano), null = nessuno. */
   const [mealConfirmBusySlot, setMealConfirmBusySlot] = useState<string | null>(null);
+  /** Aggiustamenti adattivi del giorno (reintegro/riduzione) — stessa card di Oggi, sul Piano. */
+  const [dayAdjustments, setDayAdjustments] = useState<TodayAdjustment[]>([]);
 
   useEffect(() => {
     if (!athleteId) return;
@@ -533,6 +537,52 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (!athleteId || loading) return;
     writePersistedNutritionPlanDate(athleteId, selectedPlanDate);
   }, [athleteId, selectedPlanDate, loading]);
+
+  /** Reintegro/riduzione del giorno selezionato — lettura diretta browser→Supabase (RLS su athlete_id). */
+  useEffect(() => {
+    if (!athleteId) {
+      setDayAdjustments([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const supabase = createEmpathyBrowserSupabase();
+      if (!supabase) return;
+      // `extra_supplements` DIFENSIVA: la colonna può mancare in ambienti vecchi →
+      // fallback su una select senza quella colonna (supplements = []).
+      let rows: Record<string, unknown>[] = [];
+      const full = await supabase
+        .from("nutrition_daily_adjustment")
+        .select("kind, extra_kcal, extra_carbs_g, extra_water_ml, extra_supplements, reason")
+        .eq("athlete_id", athleteId)
+        .eq("date", selectedPlanDate);
+      if (full.error) {
+        const fallback = await supabase
+          .from("nutrition_daily_adjustment")
+          .select("kind, extra_kcal, extra_carbs_g, extra_water_ml, reason")
+          .eq("athlete_id", athleteId)
+          .eq("date", selectedPlanDate);
+        rows = (fallback.data ?? []) as Record<string, unknown>[];
+      } else {
+        rows = (full.data ?? []) as Record<string, unknown>[];
+      }
+      if (cancelled) return;
+      // Stesso mapping di app/api/today (contratto TodayAdjustment): Oggi e Piano leggono uguale.
+      setDayAdjustments(
+        rows.map((r) => ({
+          kind: r.kind === "reduction" ? ("reduction" as const) : ("reintegration" as const),
+          extraKcal: Number(r.extra_kcal) || 0,
+          extraCarbsG: Number(r.extra_carbs_g) || 0,
+          extraWaterMl: Number(r.extra_water_ml) || 0,
+          supplements: Array.isArray(r.extra_supplements) ? (r.extra_supplements as string[]) : [],
+          reason: typeof r.reason === "string" ? r.reason : null,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, selectedPlanDate]);
 
   useEffect(() => {
     setIntelligentMealPlan(null);
@@ -2331,17 +2381,24 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [fluidMlPerHour, nutritionPerformanceIntegration],
   );
 
+  /**
+   * FONTE UNICA con Oggi (app/api/today): helper condiviso, niente floorMultiplier/fluidRate
+   * personalizzati. Extra allenamento SOLO se il giorno ha una seduta reale in calendario
+   * (mode "none" = slider manuale, non seduta pianificata → trainingMl 0 a riposo).
+   */
   const hydrationPlan = useMemo(() => {
-    const floorMul = nutritionPerformanceIntegration?.hydrationFloorMultiplier ?? 1;
-    const minDailyMl = Math.max(2200, n(profile?.weight_kg, 0) * 33) * floorMul;
-    const fluidRate = effectiveFluidMlPerHour > 0 ? effectiveFluidMlPerHour : 650;
-    const trainingMl = Math.max(600, Math.round((effectiveSessionDurationMin / 60) * fluidRate));
-    return {
-      minDailyMl: round(minDailyMl),
-      trainingMl,
-      sodiumMinMg: Math.round((trainingMl / 500) * 400),
-    };
-  }, [effectiveSessionDurationMin, profile, nutritionPerformanceIntegration, effectiveFluidMlPerHour]);
+    const target = computeDailyHydrationTargetMl({
+      weightKg: n(profile?.weight_kg, 0) || null,
+      sessionDurationMin: effectiveDayContext.mode === "none" ? 0 : effectiveDayContext.summary.totalDurationMin,
+    });
+    return { minDailyMl: target.baseMl, trainingMl: target.trainingMl, totalMl: target.totalMl };
+  }, [effectiveDayContext, profile?.weight_kg]);
+
+  /** Extra acqua del reintegro del giorno: componente esplicita sopra il target dell'helper. */
+  const dayReintegrationWaterMl = useMemo(
+    () => dayAdjustments.reduce((sum, a) => sum + Math.max(0, a.extraWaterMl), 0),
+    [dayAdjustments],
+  );
 
   const mealTabMicronutrientProps = useMemo(() => {
     const dayTotals = intelligentMealPlan?.nutrientRollup?.dayTotals;
@@ -3162,6 +3219,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               complianceOverview={complianceOverview}
               selectedPlanDateLabel={selectedPlanDateLabel}
               hydrationPlan={hydrationPlan}
+              dayAdjustments={dayAdjustments}
+              hydrationTotalTargetMl={hydrationPlan.totalMl + dayReintegrationWaterMl}
+              hydrationReintegrationMl={dayReintegrationWaterMl}
               mealPlanEnergyLedger={mealPlanEnergyLedger}
               mealPlanWorkspaceRows={mealPlanWorkspaceRows}
               mealDisplayByKey={mealDisplayByKey}

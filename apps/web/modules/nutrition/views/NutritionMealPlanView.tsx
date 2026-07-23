@@ -233,6 +233,10 @@ export type NutritionMealPlanWorkspaceProps = {
   diaryEntryDeleteBusyId: string | null;
   /** Idratazione: minimo del giorno + contatore bevuto (card «Quanto bere oggi»). */
   hydrationMinDailyMl: number;
+  /** Target del giorno FONTE UNICA (helper condiviso + reintegro): sostituisce il totale kcal-based della routine. */
+  hydrationTotalTargetMl: number;
+  /** Quota reintegro inclusa nel totale (caption «incluso reintegro» se > 0). */
+  hydrationReintegrationMl: number;
   hydrationIntakeMl: number;
   onAddHydrationIntake: (deltaMl: number) => void;
   hydrationIntakeBusy: boolean;
@@ -271,6 +275,8 @@ export function NutritionMealPlanWorkspace({
   onDeleteDiaryEntry,
   diaryEntryDeleteBusyId,
   hydrationMinDailyMl,
+  hydrationTotalTargetMl,
+  hydrationReintegrationMl,
   hydrationIntakeMl,
   onAddHydrationIntake,
   hydrationIntakeBusy,
@@ -470,6 +476,8 @@ export function NutritionMealPlanWorkspace({
                 <div className="empathy-plan-companion-aside">
                   <HydrationDayCard
                     routine={intelligentMealPlan.hydrationRoutine}
+                    totalTargetMl={hydrationTotalTargetMl}
+                    reintegrationMl={hydrationReintegrationMl}
                     minDailyMl={hydrationMinDailyMl}
                     intakeMl={hydrationIntakeMl}
                     onAddIntake={adminScoped ? undefined : onAddHydrationIntake}

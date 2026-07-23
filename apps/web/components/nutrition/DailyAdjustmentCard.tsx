@@ -7,8 +7,9 @@ import type { TodayAdjustment } from "@/app/api/today/contracts";
  * «Compensazione di oggi» — extra additivi del loop adattivo (reintegro/riduzione) sopra il
  * piano base. Reintegro (verde): hai speso di più → aggiungi cibo/acqua/integratori. Riduzione
  * (ambra): allenamento non fatto → alleggerisci i pasti rimanenti. Sempre col motivo.
+ * Condivisa tra Oggi e Nutrizione (il reintegro deve essere visibile dove vive il piano).
  */
-export function TodayAdjustmentCard({ adjustments }: { adjustments: TodayAdjustment[] }) {
+export function DailyAdjustmentCard({ adjustments }: { adjustments: TodayAdjustment[] }) {
   const active = adjustments.filter((a) => a.extraKcal !== 0 || a.extraWaterMl !== 0 || a.supplements.length > 0);
   if (active.length === 0) return null;
 

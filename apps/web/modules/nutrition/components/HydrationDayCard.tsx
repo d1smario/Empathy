@@ -50,12 +50,22 @@ function isTrainingWindow(labelIt: string): boolean {
 
 export function HydrationDayCard({
   routine,
+  totalTargetMl,
+  reintegrationMl = 0,
   minDailyMl,
   intakeMl = 0,
   onAddIntake,
   intakeBusy = false,
 }: {
   routine: HydrationRoutineVm;
+  /**
+   * Target del giorno FONTE UNICA (helper `computeDailyHydrationTargetMl` + eventuale
+   * reintegro, calcolato dal padre): sostituisce il totale kcal-based della routine.
+   * Assente/0 = fallback al totale della routine (chiamanti legacy).
+   */
+  totalTargetMl?: number | null;
+  /** Quota reintegro (extra_water_ml) inclusa nel totale — caption «incluso reintegro» se > 0. */
+  reintegrationMl?: number;
   /** Idratazione minima del giorno (dal target giornaliero — vive qui, non più sotto i KPI). */
   minDailyMl?: number | null;
   /** Ml bevuti registrati dall'utente per la data selezionata. */
@@ -65,15 +75,18 @@ export function HydrationDayCard({
   intakeBusy?: boolean;
 }) {
   const t = useTranslations("HydrationDayCard");
-  const windows = routine.windows ?? [];
+  // Totale mostrato = target dell'helper condiviso (se passato); le finestre orarie
+  // kcal-based della routine restano ma i volumi si RISCALANO proporzionalmente al
+  // nuovo totale qui dentro (client-only: la routine del motore non si tocca).
+  const totalMl = totalTargetMl != null && totalTargetMl > 0 ? Math.round(totalTargetMl) : routine.totalTargetMl;
+  const scale = routine.totalTargetMl > 0 ? totalMl / routine.totalTargetMl : 1;
+  const windows = (routine.windows ?? []).map((w) => ({ ...w, volumeMl: Math.round(w.volumeMl * scale) }));
+  const baselineMl = Math.round(routine.baselineDailyMl * scale);
+  const trainingExtraMl = Math.round(routine.trainingExtraMl * scale);
   const maxVolume = Math.max(1, ...windows.map((w) => w.volumeMl));
-  const basePct = routine.totalTargetMl > 0
-    ? Math.round((routine.baselineDailyMl / routine.totalTargetMl) * 100)
-    : 100;
-  const intakePct = routine.totalTargetMl > 0
-    ? Math.min(100, Math.round((intakeMl / routine.totalTargetMl) * 100))
-    : 0;
-  const intakeDone = routine.totalTargetMl > 0 && intakeMl >= routine.totalTargetMl;
+  const basePct = totalMl > 0 ? Math.round((baselineMl / totalMl) * 100) : 100;
+  const intakePct = totalMl > 0 ? Math.min(100, Math.round((intakeMl / totalMl) * 100)) : 0;
+  const intakeDone = totalMl > 0 && intakeMl >= totalMl;
 
   return (
     <section className="viz-card builder-panel" style={{ marginBottom: 12 }}>
@@ -88,12 +101,15 @@ export function HydrationDayCard({
         {/* Etichetta e minimo AFFIANCO al numero, non sotto (feedback utente 2026-07). */}
         <div className="flex items-center gap-2.5">
           <p className="text-3xl font-black tabular-nums text-cyan-200">
-            {liters(routine.totalTargetMl)} <span className="text-base font-bold text-cyan-300/70">L</span>
+            {liters(totalMl)} <span className="text-base font-bold text-cyan-300/70">L</span>
           </p>
           <div className="text-left leading-tight">
             <p className="text-[0.65rem] uppercase tracking-wider text-gray-500">{t("dailyTotal")}</p>
             {minDailyMl != null && minDailyMl > 0 ? (
               <p className="text-[0.65rem] text-gray-500">{t("minDaily", { liters: liters(minDailyMl) })}</p>
+            ) : null}
+            {reintegrationMl > 0 ? (
+              <p className="text-[0.65rem] text-emerald-300/90">{t("reintegrationIncluded", { ml: reintegrationMl })}</p>
             ) : null}
           </div>
         </div>
@@ -107,7 +123,7 @@ export function HydrationDayCard({
             <p className="text-[0.7rem] font-bold uppercase tracking-wider text-cyan-200/90">{t("drunkToday")}</p>
             <p className="text-sm font-black tabular-nums text-white">
               {liters(intakeMl)} L
-              <span className="font-semibold text-gray-500"> / {liters(routine.totalTargetMl)} L</span>
+              <span className="font-semibold text-gray-500"> / {liters(totalMl)} L</span>
               {intakeDone ? <span className="ml-1 text-emerald-300">✓</span> : null}
             </p>
           </div>
@@ -156,19 +172,19 @@ export function HydrationDayCard({
             style={{ width: `${Math.min(100, Math.max(0, basePct))}%`, backgroundColor: WATER_BAR }}
             aria-hidden
           />
-          {routine.trainingExtraMl > 0 ? (
+          {trainingExtraMl > 0 ? (
             <div className="h-full flex-1" style={{ backgroundColor: TRAINING_BAR }} aria-hidden />
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[0.68rem] text-gray-400">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: WATER_BAR }} aria-hidden />
-            {t("baseLabel", { liters: liters(routine.baselineDailyMl) })}
+            {t("baseLabel", { liters: liters(baselineMl) })}
           </span>
-          {routine.trainingExtraMl > 0 ? (
+          {trainingExtraMl > 0 ? (
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TRAINING_BAR }} aria-hidden />
-              {t("trainingLabel", { liters: liters(routine.trainingExtraMl) })}
+              {t("trainingLabel", { liters: liters(trainingExtraMl) })}
             </span>
           ) : null}
         </div>
