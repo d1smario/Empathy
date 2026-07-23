@@ -334,6 +334,8 @@ export type TrainingAnalyticsComparePointViewModel = {
 export type TrainingAnalyticsWindowViewModel = {
   last7: { external: number; internal: number; coupling: number };
   last28: { external: number; internal: number; coupling: number };
+  /** Intera finestra `from`–`to` richiesta (opzionale: risposte vecchie in cache non lo hanno). */
+  fullRange?: { external: number; internal: number; coupling: number };
   couplingDelta: number;
 };
 
@@ -349,10 +351,10 @@ export type TrainingAnalyticsPlanWindowSliceViewModel = {
 export type TrainingAnalyticsPlanWindowViewModel = {
   last7: TrainingAnalyticsPlanWindowSliceViewModel;
   last28: TrainingAnalyticsPlanWindowSliceViewModel;
-  /** Ultimi 90 giorni (se la serie è più corta, usa tutta la serie). */
-  last90: TrainingAnalyticsPlanWindowSliceViewModel;
-  /** Intera finestra `from`–`to` richiesta all’API. */
-  fullRange: TrainingAnalyticsPlanWindowSliceViewModel;
+  /** Ultimi 90 giorni (se la serie è più corta, usa tutta la serie). Opzionale: retro-compat con risposte vecchie in cache. */
+  last90?: TrainingAnalyticsPlanWindowSliceViewModel;
+  /** Intera finestra `from`–`to` richiesta all’API. Opzionale: retro-compat con risposte vecchie in cache. */
+  fullRange?: TrainingAnalyticsPlanWindowSliceViewModel;
 };
 
 /** Volume aggregato da tracce import/sync nella finestra (vedi `trace-volume-rollup.ts`). */

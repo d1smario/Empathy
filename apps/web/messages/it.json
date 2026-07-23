@@ -1673,6 +1673,8 @@
     "kpiInternalLoad7d": "Carico interno 7g",
     "kpiPlannedActual7d": "Pianificato / reale 7g",
     "kpiExecutionCompliance7d": "Compliance esecuzione 7g",
+    "kpiPlannedActualPeriod": "Pianificato / reale {days}g",
+    "kpiExecutionCompliancePeriod": "Compliance esecuzione {days}g",
     "kpiCoupling7d": "Coupling 7g",
     "kpiReadinessFatigue": "Readiness / fatica",
     "kpiGlycogenAdaptation": "Glicogeno / adattamento",
@@ -1713,6 +1715,7 @@
     "thInternal": "Interno",
     "thCompliance": "Compliance",
     "thCoupling": "Coupling",
+    "windowSelectedPeriod": "Periodo selezionato ({days}g)",
     "windowLast7d": "Ultimi 7g",
     "windowLast28d": "Ultimi 28g",
     "adaptationLoopSummary": "Adaptation loop · adattabilità {score}/100"

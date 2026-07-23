@@ -519,6 +519,8 @@ export async function GET(req: NextRequest) {
         windows: {
           last7,
           last28,
+          // Intera finestra from→to richiesta (la serie è già limitata al range).
+          fullRange: summarizeWindow(series, series.length),
           couplingDelta: last7.coupling - last28.coupling,
         },
         planWindows: {

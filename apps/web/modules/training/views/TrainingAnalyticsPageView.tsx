@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import type {
   TrainingAdaptationLoopViewModel,
+  TrainingAnalyticsPlanWindowViewModel,
+  TrainingAnalyticsWindowViewModel,
   TrainingBioenergeticModulationViewModel,
 } from "@/api/training/contracts";
 import { BarChart3, Hexagon, LineChart } from "lucide-react";
@@ -189,29 +191,9 @@ export default function TrainingAnalyticsPageView() {
     iAtl: number;
     iTsb: number;
   } | null>(null);
-  const [windows, setWindows] = useState<{
-    last7: { external: number; internal: number; coupling: number };
-    last28: { external: number; internal: number; coupling: number };
-    couplingDelta: number;
-  } | null>(null);
-  const [planWindows, setPlanWindows] = useState<{
-    last7: {
-      planned: number;
-      executed: number;
-      internal: number;
-      delta: number;
-      compliancePct: number;
-      internalVsExecuted: number;
-    };
-    last28: {
-      planned: number;
-      executed: number;
-      internal: number;
-      delta: number;
-      compliancePct: number;
-      internalVsExecuted: number;
-    };
-  } | null>(null);
+  // Tipi di contratto (non locali ristretti): così `fullRange` non viene perso nel setState.
+  const [windows, setWindows] = useState<TrainingAnalyticsWindowViewModel | null>(null);
+  const [planWindows, setPlanWindows] = useState<TrainingAnalyticsPlanWindowViewModel | null>(null);
   const [adaptationLoop, setAdaptationLoop] = useState<TrainingAdaptationLoopViewModel | null>(null);
   const [twinState, setTwinState] = useState<{
     readiness?: number;
@@ -366,7 +348,10 @@ export default function TrainingAnalyticsPageView() {
   const couplingToneClass = coupling7 > 1.15 ? "text-rose-300" : coupling7 < 0.85 ? "text-amber-300" : "text-emerald-300";
   const plan7 = planWindows?.last7;
   const plan28 = planWindows?.last28;
-  const compliance7 = plan7?.compliancePct ?? 0;
+  // Finestra = periodo selezionato (fullRange); fallback safe su last7 per risposte vecchie in cache.
+  const planFull = planWindows?.fullRange ?? planWindows?.last7;
+  const windowFull = windows?.fullRange ?? windows?.last7;
+  const complianceFull = planFull?.compliancePct ?? 0;
   const divergenceScore = adaptationLoop?.divergenceScore ?? twinState?.divergenceScore ?? 0;
   const interventionScore = adaptationLoop?.interventionScore ?? twinState?.interventionScore ?? 0;
   const adaptationToneClass =
@@ -621,11 +606,14 @@ export default function TrainingAnalyticsPageView() {
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {kpiCard(t("kpiExternalLoad7d"), external7.toFixed(0))}
             {kpiCard(t("kpiInternalLoad7d"), internal7.toFixed(0))}
-            {kpiCard(t("kpiPlannedActual7d"), plan7 ? `${plan7.planned.toFixed(0)} / ${plan7.executed.toFixed(0)}` : "—")}
             {kpiCard(
-              t("kpiExecutionCompliance7d"),
-              `${compliance7.toFixed(0)}%`,
-              compliance7 < 70 || compliance7 > 130 ? "text-amber-200" : "text-emerald-200",
+              t("kpiPlannedActualPeriod", { days: windowDays }),
+              planFull ? `${planFull.planned.toFixed(0)} / ${planFull.executed.toFixed(0)}` : "—",
+            )}
+            {kpiCard(
+              t("kpiExecutionCompliancePeriod", { days: windowDays }),
+              `${complianceFull.toFixed(0)}%`,
+              complianceFull < 70 || complianceFull > 130 ? "text-amber-200" : "text-emerald-200",
             )}
             {kpiCard(
               t("kpiCoupling7d"),
@@ -989,6 +977,15 @@ export default function TrainingAnalyticsPageView() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {[
+                  // Periodo selezionato in testa; last7/last28 restano come confronto.
+                  {
+                    label: t("windowSelectedPeriod", { days: windowDays }),
+                    planned: planFull?.planned ?? 0,
+                    ext: planFull?.executed ?? windowFull?.external ?? 0,
+                    int: planFull?.internal ?? windowFull?.internal ?? 0,
+                    compliance: planFull?.compliancePct ?? 0,
+                    coupling: windowFull?.coupling ?? 0,
+                  },
                   {
                     label: t("windowLast7d"),
                     planned: plan7?.planned ?? 0,

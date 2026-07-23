@@ -1673,6 +1673,8 @@
     "kpiInternalLoad7d": "Internal load 7d",
     "kpiPlannedActual7d": "Planned / actual 7d",
     "kpiExecutionCompliance7d": "Execution compliance 7d",
+    "kpiPlannedActualPeriod": "Planned / actual {days}d",
+    "kpiExecutionCompliancePeriod": "Execution compliance {days}d",
     "kpiCoupling7d": "Coupling 7d",
     "kpiReadinessFatigue": "Readiness / fatigue",
     "kpiGlycogenAdaptation": "Glycogen / adaptation",
@@ -1713,6 +1715,7 @@
     "thInternal": "Internal",
     "thCompliance": "Compliance",
     "thCoupling": "Coupling",
+    "windowSelectedPeriod": "Selected period ({days}d)",
     "windowLast7d": "Last 7d",
     "windowLast28d": "Last 28d",
     "adaptationLoopSummary": "Adaptation loop · adaptability {score}/100"
