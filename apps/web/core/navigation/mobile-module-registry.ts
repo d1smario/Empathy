@@ -41,6 +41,9 @@ const MOBILE_HREF: Partial<Record<ProductModuleId, `${typeof MOBILE_APP_PREFIX}/
   nutrition: "/m/nutrition",
   biomechanics: "/m/biomechanics",
   aerodynamics: "/m/aerodynamics",
+  bioenergetics: "/m/bioenergetics",
+  longevity: "/m/longevity",
+  settings: "/m/settings",
   athletes: "/m/athletes",
   commissioni: "/m/commissioni",
 };
@@ -138,6 +141,8 @@ export function toMobilePath(pathname: string): string | null {
     ["/biomechanics", `${MOBILE_APP_PREFIX}/biomechanics`],
     ["/aerodynamics", `${MOBILE_APP_PREFIX}/aerodynamics`],
     ["/longevity", `${MOBILE_APP_PREFIX}/longevity`],
+    ["/athletes", `${MOBILE_APP_PREFIX}/athletes`],
+    ["/commissioni", `${MOBILE_APP_PREFIX}/commissioni`],
   ];
 
   for (const [desktop, mobile] of directMap) {

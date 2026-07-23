@@ -10,6 +10,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
+ * Override SOLO-IMMAGINE per chiavi canoniche il cui fdc_id alias è un proxy
+ * nutrizionale con la foto "sbagliata": es. fish_white → 175167 (salmone, proxy
+ * macro voluto) ma la FOTO deve essere il merluzzo (171955, già nel bucket).
+ * Non tocca canonical-food-fdc-aliases.ts: qui cambia solo il thumb.
+ */
+const CANONICAL_IMAGE_FDC_OVERRIDES: Record<string, number> = { fish_white: 171955 };
+
+/**
  * Mappe immagini-cibo per il thumb del Piano alimentare.
  *
  * - `byFdcId`: `fdc_id → imageUrl` per OGNI riga `fdc_food` con foto specifica
@@ -86,6 +94,13 @@ export async function GET() {
     const fdcId = Number(row.fdc_id);
     const url = typeof row.image_url === "string" ? row.image_url.trim() : "";
     if (Number.isFinite(fdcId) && url) byFdcId[String(fdcId)] = url;
+  }
+
+  // Applica gli override immagine: se l'fdc_id "fotografico" ha una foto in
+  // libreria, vince sulla foto del proxy nutrizionale per quella chiave canonica.
+  for (const [key, fdcId] of Object.entries(CANONICAL_IMAGE_FDC_OVERRIDES)) {
+    const url = byFdcId[String(fdcId)];
+    if (url) byKey[key] = url;
   }
 
   const res = NextResponse.json({ byKey, byFdcId });

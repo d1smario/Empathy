@@ -405,9 +405,10 @@ export default function TrainingAnalyticsPageView() {
     return weeks;
   }, [compareSeries]);
   const analyticsEndDate = compareSeries.at(-1)?.date ?? bounds.to;
-  const refKpis7d = useMemo(
-    () => refKpisLastNDays(rows as ExecutedAnalyticsRow[], 7, analyticsEndDate),
-    [rows, analyticsEndDate],
+  // Le 4 card in alto sommano il PERIODO selezionato (windowDays), non 7g fissi.
+  const refKpisWindow = useMemo(
+    () => refKpisLastNDays(rows as ExecutedAnalyticsRow[], windowDays, analyticsEndDate),
+    [rows, windowDays, analyticsEndDate],
   );
 
   const toCompareRow = (c: (typeof compareSeries)[number]): CompareDayRow => ({
@@ -553,27 +554,27 @@ export default function TrainingAnalyticsPageView() {
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} {t("perWeekSuffix")}</div>
-              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{refKpis7d.tss.toFixed(0)}</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{EMPATHY_LOAD_LABELS_IT.trainingLoad} {t("periodSuffix", { days: windowDays })}</div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{refKpisWindow.tss.toFixed(0)}</div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal {t("perWeekSuffix")}</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">Kcal {t("periodSuffix", { days: windowDays })}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
-                {refKpis7d.kcal.toFixed(0)}
+                {refKpisWindow.kcal.toFixed(0)}
                 <span className="ml-1 text-xs font-medium text-gray-500">kcal</span>
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
               <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("avgWatts")}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
-                {refKpis7d.wattAvg != null ? refKpis7d.wattAvg.toFixed(0) : "—"}
-                {refKpis7d.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
+                {refKpisWindow.wattAvg != null ? refKpisWindow.wattAvg.toFixed(0) : "—"}
+                {refKpisWindow.wattAvg != null ? <span className="ml-1 text-xs font-medium text-gray-500">W</span> : null}
               </div>
             </div>
             <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
-              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("totalTime")} {t("perWeekSuffix")}</div>
+              <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("totalTime")} {t("periodSuffix", { days: windowDays })}</div>
               <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
-                {formatDurationTotal(refKpis7d.totalMinutes)}
+                {formatDurationTotal(refKpisWindow.totalMinutes)}
               </div>
             </div>
           </div>
