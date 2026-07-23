@@ -5117,5 +5117,28 @@
     "miniTwinSubtitle": "Sintesi giornaliera",
     "errorTitle": "Errore",
     "errorRetry": "Riprova"
+  },
+  "AthleteAlerts": {
+    "stripAria": "Avvisi delle ultime 48 ore",
+    "kind": {
+      "sleep_low": "Hai dormito meno del dovuto",
+      "training_over": "Ti sei allenato più del pianificato",
+      "training_under": "Ti sei allenato meno del pianificato",
+      "plan_adjusted": "Il tuo piano nutrizionale è stato adattato",
+      "sleep_missing": "Non abbiamo ricevuto i dati del sonno"
+    },
+    "markRead": "Segna letto",
+    "markReadAria": "Segna come letto: {label}",
+    "markReadFailed": "Impossibile segnare l'avviso come letto."
+  },
+  "CoachAlerts": {
+    "kind": {
+      "sleep_low": "Ha dormito meno del dovuto",
+      "training_over": "Si è allenato più del pianificato",
+      "training_under": "Si è allenato meno del pianificato",
+      "plan_adjusted": "Piano nutrizionale adattato",
+      "sleep_missing": "Dati sonno non ricevuti"
+    },
+    "badgeAria": "{count, plural, one {# avviso non letto} other {# avvisi non letti}} nelle ultime 48 ore"
   }
 }

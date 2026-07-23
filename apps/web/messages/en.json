@@ -5117,5 +5117,28 @@
     "miniTwinSubtitle": "Daily summary",
     "errorTitle": "Error",
     "errorRetry": "Retry"
+  },
+  "AthleteAlerts": {
+    "stripAria": "Alerts from the last 48 hours",
+    "kind": {
+      "sleep_low": "You slept less than you should have",
+      "training_over": "You trained more than planned",
+      "training_under": "You trained less than planned",
+      "plan_adjusted": "Your nutrition plan was adjusted",
+      "sleep_missing": "We didn't receive your sleep data"
+    },
+    "markRead": "Mark read",
+    "markReadAria": "Mark as read: {label}",
+    "markReadFailed": "Could not mark the alert as read."
+  },
+  "CoachAlerts": {
+    "kind": {
+      "sleep_low": "Slept less than they should have",
+      "training_over": "Trained more than planned",
+      "training_under": "Trained less than planned",
+      "plan_adjusted": "Nutrition plan adjusted",
+      "sleep_missing": "Sleep data not received"
+    },
+    "badgeAria": "{count, plural, one {# unread alert} other {# unread alerts}} in the last 48 hours"
   }
 }

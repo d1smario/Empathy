@@ -6,6 +6,7 @@ import { DailyCheckinCard } from "@/components/dashboard/DailyCheckinCard";
 import { TwinFigureArt } from "@/components/dashboard/TwinFigureArt";
 import { CalendarDayWellnessDetail } from "@/components/training/CalendarDayWellnessDetail";
 import { useDashboardScores } from "@/lib/dashboard/use-dashboard-scores";
+import { TodayAlertsStrip } from "./TodayAlertsStrip";
 import { TodayHeader } from "./TodayHeader";
 import { TodayHydrationTracker } from "./TodayHydrationTracker";
 import { TodayTimeline } from "./TodayTimeline";
@@ -170,6 +171,11 @@ export function TodayPageView({ athleteId, date, firstName }: TodayPageViewProps
             {actionError || scheduleError}
           </p>
         ) : null}
+
+        {/* Alert event-driven delle ultime 48h (athlete_alerts, query diretta browser→
+            Supabase): card compatte con orario reale dell'evento + «segna letto».
+            Nessun alert = nessuna strip. */}
+        <TodayAlertsStrip athleteId={athleteId} />
 
         {/* La seduta senza orario ora vive DENTRO la timeline (blocco «da fissare»
             con anteprima + chips orario): niente più card flottante separata. */}

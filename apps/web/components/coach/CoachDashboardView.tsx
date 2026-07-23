@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, RefreshCw } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { BellRing, LayoutGrid, RefreshCw } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
+import type { AlertKind } from "@/lib/alerts/athlete-alerts";
+import { alertsSinceIso, formatAlertTime, isAlertKind } from "@/lib/alerts/alerts-ui";
 import { coachOrgIdForClient } from "@/lib/coach-org-id";
 import { cn } from "@/lib/cn";
 
@@ -53,6 +56,13 @@ type AthleteRow = {
 type WorkoutLite = {
   athlete_id: string;
   date: string | null;
+};
+
+/** Alert non letto delle ultime 48h di un atleta del roster (policy coach-read). */
+type AlertLite = {
+  athlete_id: string;
+  kind: AlertKind;
+  created_at: string;
 };
 
 type CommissionStatus = "accrued" | "requested" | "paid" | "cancelled";
@@ -143,6 +153,7 @@ let coachDashboardCache: {
   athletes: AthleteRow[];
   planned: WorkoutLite[];
   executed: WorkoutLite[];
+  alerts: AlertLite[];
   commissions: CommissionRow[];
   updatedAt: string | null;
 } | null = null;
@@ -154,10 +165,13 @@ let coachDashboardCache: {
  * di pagamento via update di stato — tutto con query Supabase dirette dal browser.
  */
 export function CoachDashboardView() {
+  const tAlerts = useTranslations("CoachAlerts");
+  const locale = useLocale();
   const [firstName, setFirstName] = useState<string | null>(null);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [planned, setPlanned] = useState<WorkoutLite[]>([]);
   const [executed, setExecuted] = useState<WorkoutLite[]>([]);
+  const [alerts, setAlerts] = useState<AlertLite[]>([]);
   const [commissions, setCommissions] = useState<CommissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -195,6 +209,7 @@ export function CoachDashboardView() {
         setAthletes(cached.athletes);
         setPlanned(cached.planned);
         setExecuted(cached.executed);
+        setAlerts(cached.alerts);
         setCommissions(cached.commissions);
         setUpdatedAt(cached.updatedAt);
         setLoaded(true);
@@ -235,6 +250,7 @@ export function CoachDashboardView() {
       let nextAthletes: AthleteRow[] = [];
       let nextPlanned: WorkoutLite[] = [];
       let nextExecuted: WorkoutLite[] = [];
+      let nextAlerts: AlertLite[] = [];
       let nextCommissions: CommissionRow[] = [];
 
       if (ids.length === 0) {
@@ -246,9 +262,10 @@ export function CoachDashboardView() {
         nextAthletes = [];
         nextPlanned = [];
         nextExecuted = [];
+        nextAlerts = [];
         nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       } else {
-        const [profilesRes, plannedRes, executedRes, commissionsRes] = await Promise.all([
+        const [profilesRes, plannedRes, executedRes, alertsRes, commissionsRes] = await Promise.all([
           supabase.from("athlete_profiles").select("id, first_name, last_name, email").in("id", ids),
           supabase
             .from("planned_workouts")
@@ -264,9 +281,20 @@ export function CoachDashboardView() {
             .gte("date", last7.from)
             .lte("date", last7.to)
             .limit(5000),
+          // Alert non letti delle ultime 48h su tutto il roster (policy coach-read
+          // della migrazione athlete_alerts): badge per riga atleta.
+          supabase
+            .from("athlete_alerts")
+            .select("athlete_id, kind, created_at")
+            .in("athlete_id", ids)
+            .gte("created_at", alertsSinceIso())
+            .is("read_at", null)
+            .order("created_at", { ascending: false })
+            .limit(2000),
           commissionsQuery,
         ]);
-        const firstError = profilesRes.error ?? plannedRes.error ?? executedRes.error ?? commissionsRes.error;
+        const firstError =
+          profilesRes.error ?? plannedRes.error ?? executedRes.error ?? alertsRes.error ?? commissionsRes.error;
         if (firstError) {
           setErr(`${COPY.errPrefix}: ${firstError.message}`);
           return;
@@ -274,11 +302,15 @@ export function CoachDashboardView() {
         nextAthletes = (profilesRes.data ?? []) as AthleteRow[];
         nextPlanned = (plannedRes.data ?? []) as WorkoutLite[];
         nextExecuted = (executedRes.data ?? []) as WorkoutLite[];
+        nextAlerts = ((alertsRes.data ?? []) as { athlete_id: string; kind: string; created_at: string }[]).filter(
+          (row): row is AlertLite => isAlertKind(row.kind),
+        );
         nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       }
       setAthletes(nextAthletes);
       setPlanned(nextPlanned);
       setExecuted(nextExecuted);
+      setAlerts(nextAlerts);
       setCommissions(nextCommissions);
       setLoaded(true);
       const nextUpdatedAt = new Intl.DateTimeFormat("it-CH", { timeStyle: "short" }).format(new Date());
@@ -290,6 +322,7 @@ export function CoachDashboardView() {
         athletes: nextAthletes,
         planned: nextPlanned,
         executed: nextExecuted,
+        alerts: nextAlerts,
         commissions: nextCommissions,
         updatedAt: nextUpdatedAt,
       };
@@ -357,6 +390,17 @@ export function CoachDashboardView() {
     for (const w of executed) m.set(w.athlete_id, (m.get(w.athlete_id) ?? 0) + 1);
     return m;
   }, [executed]);
+
+  // Alert non letti (48h) raggruppati per atleta, già in ordine created_at desc dalla query.
+  const alertsByAthlete = useMemo(() => {
+    const m = new Map<string, AlertLite[]>();
+    for (const a of alerts) {
+      const list = m.get(a.athlete_id);
+      if (list) list.push(a);
+      else m.set(a.athlete_id, [a]);
+    }
+    return m;
+  }, [alerts]);
 
   const accrued = useMemo(() => commissions.filter((c) => c.status === "accrued"), [commissions]);
 
@@ -459,30 +503,49 @@ export function CoachDashboardView() {
               <p className="py-8 text-center text-xs text-gray-500">{COPY.athletesEmpty}</p>
             ) : (
               <ul className="mt-4 space-y-2">
-                {athletes.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-white">{athleteLabel(a)}</p>
-                      {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}
-                      <p className="mt-1 text-xs text-gray-400">
-                        <span className="font-mono text-orange-300">{plannedByAthlete.get(a.id) ?? 0}</span>{" "}
-                        {COPY.athletePlanned} ·{" "}
-                        <span className="font-mono text-emerald-300">{executedByAthlete.get(a.id) ?? 0}</span>{" "}
-                        {COPY.athleteExecuted}
-                      </p>
-                    </div>
-                    <Link
-                      href={`/athletes/${a.id}/health`}
-                      className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
+                {athletes.map((a) => {
+                  // Badge alert: count non letti 48h + tooltip (title) con tipi e orari reali.
+                  const rowAlerts = alertsByAthlete.get(a.id) ?? [];
+                  const alertsTooltip = rowAlerts
+                    .map((al) => `${tAlerts(`kind.${al.kind}`)} · ${formatAlertTime(al.created_at, locale)}`)
+                    .join("\n");
+                  return (
+                    <li
+                      key={a.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3"
                     >
-                      <LayoutGrid className="h-4 w-4" aria-hidden />
-                      {COPY.openCards}
-                    </Link>
-                  </li>
-                ))}
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 truncate font-medium text-white">
+                          <span className="truncate">{athleteLabel(a)}</span>
+                          {rowAlerts.length > 0 ? (
+                            <span
+                              title={alertsTooltip}
+                              aria-label={tAlerts("badgeAria", { count: rowAlerts.length })}
+                              className="inline-flex shrink-0 cursor-help items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums text-amber-200"
+                            >
+                              <BellRing className="h-3 w-3" aria-hidden />
+                              {rowAlerts.length}
+                            </span>
+                          ) : null}
+                        </p>
+                        {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}
+                        <p className="mt-1 text-xs text-gray-400">
+                          <span className="font-mono text-orange-300">{plannedByAthlete.get(a.id) ?? 0}</span>{" "}
+                          {COPY.athletePlanned} ·{" "}
+                          <span className="font-mono text-emerald-300">{executedByAthlete.get(a.id) ?? 0}</span>{" "}
+                          {COPY.athleteExecuted}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/athletes/${a.id}/health`}
+                        className="empathy-btn-gradient flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-white shadow-md shadow-purple-500/20 sm:w-auto"
+                      >
+                        <LayoutGrid className="h-4 w-4" aria-hidden />
+                        {COPY.openCards}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
