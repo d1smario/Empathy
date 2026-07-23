@@ -369,7 +369,7 @@ export function athleteTypePillClass(tone: "green" | "violet" | "amber" | "neutr
   return "border-white/15 bg-white/5 text-gray-300";
 }
 
-export function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amber" | "rose" | "slate") {
+export function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amber" | "rose" | "emerald" | "slate") {
   const base =
     "rounded-xl border px-2.5 py-1.5 text-left text-[0.6rem] font-bold uppercase tracking-wider transition sm:px-4 sm:py-2 sm:text-[0.65rem]";
   const idle: Record<typeof accent, string> = {
@@ -377,6 +377,7 @@ export function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amb
     cyan: "border-white/10 bg-black/30 text-gray-400 hover:border-cyan-500/30",
     amber: "border-white/10 bg-black/30 text-gray-400 hover:border-amber-500/30",
     rose: "border-white/10 bg-black/30 text-gray-400 hover:border-rose-500/30",
+    emerald: "border-white/10 bg-black/30 text-gray-400 hover:border-emerald-500/30",
     slate: "border-white/10 bg-black/30 text-gray-400 hover:border-white/25",
   };
   const activeCls: Record<typeof accent, string> = {
@@ -384,15 +385,20 @@ export function editorTabClass(active: boolean, accent: "violet" | "cyan" | "amb
     cyan: "border-cyan-400/55 bg-cyan-500/15 text-white shadow-[0_0_20px_rgba(34,211,238,0.12)]",
     amber: "border-amber-400/55 bg-amber-500/15 text-white shadow-[0_0_20px_rgba(251,191,36,0.12)]",
     rose: "border-rose-400/55 bg-rose-500/15 text-white shadow-[0_0_20px_rgba(251,113,133,0.12)]",
+    emerald: "border-emerald-400/55 bg-emerald-500/15 text-white shadow-[0_0_20px_rgba(52,211,153,0.12)]",
     slate: "border-white/30 bg-white/10 text-white",
   };
   return cn(base, active ? activeCls[accent] : idle[accent]);
 }
 
-export function profileToneForEditorSection(section: "personal" | "physical" | "routine" | "nutrition" | "devices") {
+export function profileToneForEditorSection(
+  section: "personal" | "physical" | "routine" | "nutrition" | "questionnaires" | "devices",
+) {
   if (section === "personal") return "violet";
   if (section === "physical") return "cyan";
   if (section === "routine") return "amber";
+  // "green" è il tone verde già definito in globals.css (profile-editor-shell/subpanel).
+  if (section === "questionnaires") return "green";
   if (section === "devices") return "slate";
   return "rose";
 }

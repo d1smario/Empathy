@@ -3390,6 +3390,7 @@
     "tabPersonal": "Personale",
     "tabPhysical": "Fisico",
     "tabNutrition": "Alimentazione",
+    "tabQuestionnaires": "Questionari",
     "saving": "Salvataggio…",
     "updateProfile": "Aggiorna profilo",
     "saveProfile": "Salva profilo",
@@ -4936,6 +4937,22 @@
     "restingHr": "FC Riposo",
     "maxHr": "FC Massima",
     "thresholdHr": "FC Soglia"
+  },
+  "ProfileQuestionnairesSection": {
+    "sectionTitle": "Questionari",
+    "sectionHint": "Rispondi ai questionari proposti dal team: ogni risposta sovrascrive la precedente.",
+    "readOnlyHint": "Le risposte le compila l'atleta: qui le vedi in sola lettura.",
+    "loading": "Caricamento questionari…",
+    "loadError": "Impossibile caricare i questionari. Riprova più tardi.",
+    "noQuestionnaires": "Nessun questionario attivo al momento.",
+    "noQuestions": "Questo questionario non ha ancora domande.",
+    "save": "Salva risposte",
+    "saving": "Salvataggio…",
+    "saved": "Risposte salvate ✓",
+    "saveError": "Errore nel salvataggio delle risposte. Riprova.",
+    "yes": "Sì",
+    "no": "No",
+    "selectPlaceholder": "Seleziona…"
   },
   "ProfileRoutineSection": {
     "weeklyRoutineTitle": "Routine settimanale",

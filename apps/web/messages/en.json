@@ -3390,6 +3390,7 @@
     "tabPersonal": "Personal",
     "tabPhysical": "Physical",
     "tabNutrition": "Nutrition",
+    "tabQuestionnaires": "Questionnaires",
     "saving": "Saving…",
     "updateProfile": "Update profile",
     "saveProfile": "Save profile",
@@ -4936,6 +4937,22 @@
     "restingHr": "Resting HR",
     "maxHr": "Max HR",
     "thresholdHr": "Threshold HR"
+  },
+  "ProfileQuestionnairesSection": {
+    "sectionTitle": "Questionnaires",
+    "sectionHint": "Answer the questionnaires proposed by your team: each answer overwrites the previous one.",
+    "readOnlyHint": "Answers are filled in by the athlete: here you see them read-only.",
+    "loading": "Loading questionnaires…",
+    "loadError": "Could not load questionnaires. Try again later.",
+    "noQuestionnaires": "No active questionnaire at the moment.",
+    "noQuestions": "This questionnaire has no questions yet.",
+    "save": "Save answers",
+    "saving": "Saving…",
+    "saved": "Answers saved ✓",
+    "saveError": "Error saving answers. Try again.",
+    "yes": "Yes",
+    "no": "No",
+    "selectPlaceholder": "Select…"
   },
   "ProfileRoutineSection": {
     "weeklyRoutineTitle": "Weekly routine",

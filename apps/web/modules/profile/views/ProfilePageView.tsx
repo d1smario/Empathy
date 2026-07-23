@@ -28,6 +28,7 @@ import { ProfilePersonalSection } from "@/modules/profile/views/sections/Profile
 import { ProfilePhysicalSection } from "@/modules/profile/views/sections/ProfilePhysicalSection";
 import { ProfileRoutineSection } from "@/modules/profile/views/sections/ProfileRoutineSection";
 import { ProfileNutritionSection } from "@/modules/profile/views/sections/ProfileNutritionSection";
+import { ProfileQuestionnairesSection } from "@/modules/profile/views/sections/ProfileQuestionnairesSection";
 import {
   normalizeSupplementCategoryId,
   normalizeSupplementToken,
@@ -91,6 +92,9 @@ export default function ProfilePage({
   // Le % nutrizionali (distribuzione calorica, macro giornalieri, macro per pasto)
   // le governa il sistema/coach: l'atleta le vede aggiornate ma non le modifica.
   const canEditNutritionPercents = role === "coach" || adminScoped;
+  // Questionari: pattern INVERSO rispetto a canEditNutritionPercents — le risposte
+  // le compila SOLO l'atleta; in scope coach/admin la sezione è in sola lettura.
+  const questionnairesReadOnly = role === "coach" || adminScoped;
   const [profiles, setProfiles] = useState<AthleteProfileRow[]>([]);
   const [physioMap, setPhysioMap] = useState<Record<string, PhysiologyRow>>({});
   const [physiologyState, setPhysiologyState] = useState<PhysiologyState | null>(null);
@@ -107,7 +111,7 @@ export default function ProfilePage({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<"personal" | "physical" | "routine" | "nutrition" | "devices">("personal");
+  const [activeSection, setActiveSection] = useState<"personal" | "physical" | "routine" | "nutrition" | "questionnaires" | "devices">("personal");
   const [activeNutritionTab, setActiveNutritionTab] = useState<"diet" | "intolerances" | "supplements">("diet");
   const editorScrollRef = useRef<HTMLDivElement>(null);
   const [activeSupplementCategory, setActiveSupplementCategory] = useState("carboidrati");
@@ -413,7 +417,7 @@ export default function ProfilePage({
   }
 
   function goToEditorSection(
-    section: "personal" | "physical" | "routine" | "nutrition" | "devices",
+    section: "personal" | "physical" | "routine" | "nutrition" | "questionnaires" | "devices",
     nutritionTab?: "diet" | "intolerances" | "supplements",
   ) {
     setActiveSection(section);
@@ -1068,6 +1072,7 @@ export default function ProfilePage({
           <button type="button" className={editorTabClass(activeSection === "physical", "cyan")} onClick={() => goToEditorSection("physical")}>{t("tabPhysical")}</button>
           <button type="button" className={editorTabClass(activeSection === "routine", "amber")} onClick={() => goToEditorSection("routine")}>Routine</button>
           <button type="button" className={editorTabClass(activeSection === "nutrition", "rose")} onClick={() => goToEditorSection("nutrition")}>{t("tabNutrition")}</button>
+          <button type="button" className={editorTabClass(activeSection === "questionnaires", "emerald")} onClick={() => goToEditorSection("questionnaires")}>{t("tabQuestionnaires")}</button>
           {canManageDevices ? (
             <button type="button" className={editorTabClass(activeSection === "devices", "slate")} onClick={() => goToEditorSection("devices")}>Devices</button>
           ) : null}
@@ -1119,6 +1124,10 @@ export default function ProfilePage({
               excludedFoodClasses={excludedFoodClasses}
               setExcludedFoodClasses={setExcludedFoodClasses}
             />
+          )}
+
+          {activeSection === "questionnaires" && (
+            <ProfileQuestionnairesSection athleteId={activeAthleteId} readOnly={questionnairesReadOnly} />
           )}
           </div>
 
