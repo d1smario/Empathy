@@ -3,8 +3,17 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslations } from "next-intl";
 import { SettingsLocalePreference } from "@/components/settings/SettingsLocalePreference";
-import { profileToneForEditorSection } from "@/lib/profile/profile-page-kit";
-import type { ProfileFormState } from "@/modules/profile/views/sections/profile-form-state";
+import { profileToneForEditorSection, toggleCsvToken } from "@/lib/profile/profile-page-kit";
+import { PROFILE_GOAL_OPTIONS, type ProfileFormState } from "@/modules/profile/views/sections/profile-form-state";
+
+/** Etichetta i18n per ogni valore canonico (i valori restano IT nel DB). */
+const GOAL_OPTION_LABEL_KEY: Record<(typeof PROFILE_GOAL_OPTIONS)[number], string> = {
+  performance: "goalOptionPerformance",
+  salute: "goalOptionSalute",
+  dimagrimento: "goalOptionDimagrimento",
+  gara: "goalOptionGara",
+  resistenza: "goalOptionResistenza",
+};
 
 /**
  * Sezione "Personale" dell'editor profilo (decomposizione del God-component).
@@ -20,6 +29,7 @@ export type ProfilePersonalSectionProps = {
 
 export function ProfilePersonalSection({ form, setForm, lockIdentity = false }: ProfilePersonalSectionProps) {
   const t = useTranslations("ProfilePersonalSection");
+  const selectedGoals = new Set(form.goals.split(",").map((s) => s.trim()).filter(Boolean));
   return (
     <div>
       <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`}><span className="profile-kpi-dot" />{t("personalDataTitle")}</h3>
@@ -33,6 +43,44 @@ export function ProfilePersonalSection({ form, setForm, lockIdentity = false }: 
       <div className="form-group"><label className="form-label">Lifestyle</label><select className="form-select" value={form.lifestyle_activity_class} onChange={(e) => setForm((f) => ({ ...f, lifestyle_activity_class: e.target.value }))}><option value="sedentary">Sedentary +15%</option><option value="moderate">Moderate +20%</option><option value="active">Active +30%</option><option value="very_active">Very active +40%</option></select></div>
       <div className="form-group"><label className="form-label">{t("timezoneLabel")}</label><input type="text" className="form-input" value={form.timezone} onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))} /></div>
       </div>
+
+      {/* Obiettivo / focus: chips canonici (valori IT persistiti in athlete_profiles.goals,
+          letti dal generatore settimana) + testo libero opzionale. */}
+      <h3 className={`profile-section-band tone-${profileToneForEditorSection("personal")}`} style={{ marginTop: "16px" }}>
+        <span className="profile-kpi-dot" />{t("goalFocusTitle")}
+      </h3>
+      <p className="mb-2 text-xs text-gray-400">{t("goalFocusHint")}</p>
+      <div className="flex flex-wrap gap-2">
+        {PROFILE_GOAL_OPTIONS.map((goal) => {
+          const active = selectedGoals.has(goal);
+          return (
+            <button
+              key={goal}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setForm((f) => ({ ...f, goals: toggleCsvToken(f.goals, goal) }))}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                active
+                  ? "border-orange-500/60 bg-orange-500/15 text-orange-100"
+                  : "border-white/15 bg-white/5 text-gray-300 hover:border-white/30 hover:text-white"
+              }`}
+            >
+              {t(GOAL_OPTION_LABEL_KEY[goal])}
+            </button>
+          );
+        })}
+      </div>
+      <div className="form-group" style={{ marginTop: "10px" }}>
+        <label className="form-label">{t("goalFreeTextLabel")}</label>
+        <input
+          type="text"
+          className="form-input"
+          placeholder={t("goalFreeTextPlaceholder")}
+          value={form.goal_note}
+          onChange={(e) => setForm((f) => ({ ...f, goal_note: e.target.value }))}
+        />
+      </div>
+
       <div style={{ marginTop: "12px" }}>
         <SettingsLocalePreference />
       </div>

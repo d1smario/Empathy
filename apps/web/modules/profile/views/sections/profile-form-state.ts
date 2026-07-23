@@ -6,6 +6,14 @@
  * props `form`/`setForm` senza importare dal padre (no cicli) e senza cast: il
  * padre può passare il suo `typeof form` direttamente.
  */
+/**
+ * Chips canonici «Obiettivo / focus» (valori IT come persistiti in
+ * `athlete_profiles.goals` string[]; il generatore settimana li legge via
+ * `deriveTrainingWeekParams` / onboarding-completeness). Le etichette UI sono
+ * chiavi i18n in `ProfilePersonalSection.goalOption*`.
+ */
+export const PROFILE_GOAL_OPTIONS = ["performance", "salute", "dimagrimento", "gara", "resistenza"] as const;
+
 export type ProfileFormState = {
   first_name: string;
   last_name: string;
@@ -14,6 +22,10 @@ export type ProfileFormState = {
   sex: string;
   timezone: string;
   activity_level: string;
+  /** Obiettivi canonici selezionati (CSV di valori `PROFILE_GOAL_OPTIONS`). */
+  goals: string;
+  /** Obiettivo/focus in testo libero (facoltativo, entra in `goals` al salvataggio). */
+  goal_note: string;
   height_cm: string;
   weight_kg: string;
   body_fat_pct: string;

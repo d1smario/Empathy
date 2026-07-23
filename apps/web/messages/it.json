@@ -4919,7 +4919,16 @@
     "genderFemale": "Donna",
     "genderOther": "Altro",
     "activityLevelLabel": "Livello attivita",
-    "timezoneLabel": "Fuso orario"
+    "timezoneLabel": "Fuso orario",
+    "goalFocusTitle": "Obiettivo / focus",
+    "goalFocusHint": "Seleziona uno o più obiettivi: guidano la generazione della settimana di allenamento e del piano.",
+    "goalOptionPerformance": "Performance",
+    "goalOptionSalute": "Salute",
+    "goalOptionDimagrimento": "Dimagrimento",
+    "goalOptionGara": "Gara",
+    "goalOptionResistenza": "Resistenza",
+    "goalFreeTextLabel": "Altro obiettivo (facoltativo)",
+    "goalFreeTextPlaceholder": "Es. preparare la Maratona di New York"
   },
   "ProfilePhysicalSection": {
     "physicalMeasurementsTitle": "Misure fisiche",

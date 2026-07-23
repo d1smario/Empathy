@@ -8,6 +8,7 @@ import { Check, ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
 import type { ExecutedWorkout, PlannedWorkout } from "@empathy/domain-training";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
+import { PlannedRowPreview } from "@/components/training/PlannedRowPreview";
 import { SessionRowPreview } from "@/components/training/SessionRowPreview";
 import { TrainingSubnav } from "@/components/training/TrainingSubnav";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
@@ -45,7 +46,8 @@ async function loadTrainingWindow(athleteId: string, from: string, to: string): 
   q.set("includeExecuted", "1");
   q.set("includeAthleteContext", "0");
   q.set("includeTraceSummary", "0");
-  q.set("includePlannedNotes", "0");
+  // Notes attive: portano il contratto builder → anteprima grafico nella riga pianificata.
+  q.set("includePlannedNotes", "1");
   const headers = await buildSupabaseAuthHeaders();
   const { ok, json } = await fetchPlannedWindowCached<{
     ok?: boolean;
@@ -65,6 +67,8 @@ type Activity = {
   done: boolean;
   /** Seduta eseguita agganciata alla riga → anteprima KPI + mini grafico (se presente). */
   executed: ExecutedWorkout | null;
+  /** Riga pianificata (con notes → contratto builder) → anteprima grafico blocchi. */
+  planned: PlannedWorkout | null;
 };
 type DayGroup = { dayKey: string; dayLabel: string; isToday: boolean; activities: Activity[] };
 
@@ -163,7 +167,7 @@ export default function TrainingCalendarTableView() {
         const vm = plannedCalendarChipViewModel(w, { athleteFtpWatts });
         const ex = executed.find((e) => e.plannedWorkoutId === w.id) ?? null;
         if (ex) linkedExecIds.add(ex.id);
-        return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done: ex != null, executed: ex };
+        return { title: vm.title, sportLabel: vm.sportLabel, minutes: vm.minutes, glyph: vm.glyph, done: ex != null, executed: ex, planned: w };
       });
       // Sedute ESEGUITE non collegate a nessun piano del giorno (es. avviate dall'orologio,
       // non previste da Empathy): ognuna ha SEMPRE la sua riga «Seduta svolta», anche nei
@@ -177,6 +181,7 @@ export default function TrainingCalendarTableView() {
           glyph: null,
           done: true,
           executed: w,
+          planned: null,
         }));
       const activities: Activity[] = [...plannedRows, ...unplannedRows];
 
@@ -348,6 +353,8 @@ export default function TrainingCalendarTableView() {
                       </div>
                       {a.executed ? (
                         <SessionRowPreview workout={a.executed} athleteId={athleteId} ftpW={athleteFtpWatts} />
+                      ) : a.planned ? (
+                        <PlannedRowPreview workout={a.planned} />
                       ) : null}
                     </Link>
                   );

@@ -4919,7 +4919,16 @@
     "genderFemale": "Female",
     "genderOther": "Other",
     "activityLevelLabel": "Activity level",
-    "timezoneLabel": "Time zone"
+    "timezoneLabel": "Time zone",
+    "goalFocusTitle": "Goal / focus",
+    "goalFocusHint": "Pick one or more goals: they drive the generated training week and plan.",
+    "goalOptionPerformance": "Performance",
+    "goalOptionSalute": "Health",
+    "goalOptionDimagrimento": "Weight loss",
+    "goalOptionGara": "Race",
+    "goalOptionResistenza": "Endurance",
+    "goalFreeTextLabel": "Other goal (optional)",
+    "goalFreeTextPlaceholder": "E.g. training for the New York Marathon"
   },
   "ProfilePhysicalSection": {
     "physicalMeasurementsTitle": "Physical Measurements",

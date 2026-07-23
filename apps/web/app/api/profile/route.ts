@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
           resting_hr_bpm: profileSource.restingHrBpm ?? null,
           max_hr_bpm: profileSource.maxHrBpm ?? null,
           threshold_hr_bpm: profileSource.thresholdHrBpm ?? null,
+          goals: profileSource.goals ?? null,
           diet_type: profileSource.dietType ?? null,
           intolerances: profileSource.intolerances ?? null,
           allergies: profileSource.allergies ?? null,

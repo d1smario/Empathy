@@ -22,6 +22,7 @@ import type { AthleteMemory, PhysiologyState, TwinState } from "@/lib/empathy/sc
 import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { createProfilePayload, fetchProfileViewModel, updateProfilePayload } from "@/modules/profile/services/profile-api";
+import { PROFILE_GOAL_OPTIONS } from "@/modules/profile/views/sections/profile-form-state";
 import { ProfileDevicesSection } from "@/modules/profile/views/sections/ProfileDevicesSection";
 import { ProfilePersonalSection } from "@/modules/profile/views/sections/ProfilePersonalSection";
 import { ProfilePhysicalSection } from "@/modules/profile/views/sections/ProfilePhysicalSection";
@@ -128,6 +129,8 @@ export default function ProfilePage({
     sex: "",
     timezone: "Europe/Rome",
     activity_level: "advanced",
+    goals: "",
+    goal_note: "",
     height_cm: "",
     weight_kg: "",
     body_fat_pct: "",
@@ -268,6 +271,12 @@ export default function ProfilePage({
     const routineWeekRaw = toRecord(routine.week_plan);
     const nutritionWeekRaw = toRecord(nutrition.week_plan);
 
+    // Obiettivo/focus: separa i valori canonici (chips) dal testo libero.
+    const goalsStored = Array.isArray(p.goals) ? p.goals.map((g) => String(g).trim()).filter(Boolean) : [];
+    const canonicalGoalSet = new Set<string>(PROFILE_GOAL_OPTIONS);
+    const goalChips = goalsStored.filter((g) => canonicalGoalSet.has(g));
+    const goalFreeText = goalsStored.filter((g) => !canonicalGoalSet.has(g));
+
     const parsedRoutineWeek = defaultRoutineWeek();
     const parsedDietWeek = defaultDietWeek();
 
@@ -354,6 +363,8 @@ export default function ProfilePage({
       sex: p.sex ?? "",
       timezone: p.timezone ?? "Europe/Rome",
       activity_level: p.activity_level ?? "advanced",
+      goals: goalChips.join(", "),
+      goal_note: goalFreeText.join(", "),
       height_cm: p.height_cm != null ? String(p.height_cm) : "",
       weight_kg: p.weight_kg != null ? String(p.weight_kg) : "",
       body_fat_pct: p.body_fat_pct != null ? String(p.body_fat_pct) : "",
@@ -517,6 +528,11 @@ export default function ProfilePage({
       threshold_hr_bpm: form.threshold_hr_bpm ? parseInt(form.threshold_hr_bpm, 10) : null,
       training_days_per_week: form.training_days_per_week ? parseInt(form.training_days_per_week, 10) : null,
       training_max_session_minutes: form.training_max_session_minutes ? parseInt(form.training_max_session_minutes, 10) : null,
+      // Obiettivo/focus: chips canonici + testo libero → athlete_profiles.goals (string[]).
+      goals: joinUnique([
+        ...(parseCsvList(form.goals) ?? []),
+        ...(parseCsvList(form.goal_note) ?? []),
+      ]),
       routine_summary: form.routine_summary || null,
       routine_config: routineConfig,
       nutrition_config: nutritionConfig,

@@ -18,10 +18,14 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { TodayEvent, TodayFoodItem } from "@/app/api/today/contracts";
 import { BuilderPlannedSessionViz } from "@/components/training/BuilderPlannedSessionViz";
+import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { scopedShellHref } from "@/lib/athlete-scope/scoped-athlete-href";
 import { productHrefForPathname } from "@/lib/shell/use-product-href";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
-import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
+import {
+  parsePro2BuilderSessionFromNotes,
+  pro2BuilderContractToChartSegments,
+} from "@/lib/training/builder/pro2-session-notes";
 import { useScopedSessionHref } from "@/lib/training/use-scoped-session-href";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 
@@ -156,6 +160,12 @@ export function TodayTimelineItem({
     const notes = typeof event.data?.notes === "string" ? event.data.notes : null;
     return parsePro2BuilderSessionFromNotes(notes) as unknown as Pro2BuilderSessionContract | null;
   }, [isWorkout, event.data?.notes]);
+
+  // Path robusto (stesso del calendario): contratto → segmenti espansi → grafico a barre.
+  const workoutSegments = useMemo(
+    () => (workoutContract ? pro2BuilderContractToChartSegments(workoutContract) : []),
+    [workoutContract],
+  );
 
   // Link «Dettaglio seduta» (eseguito): scope-aware.
   const detailDate = typeof event.data?.detailDate === "string" ? event.data.detailDate : null;
@@ -306,10 +316,16 @@ export function TodayTimelineItem({
           </div>
         ) : null}
 
-        {/* Anteprima seduta pianificata: blocchi/intensità dal contratto builder. */}
+        {/* Anteprima seduta pianificata: grafico blocchi/intensità dal contratto builder
+            (stesso path del calendario); fallback alla Viz legacy quando non ci sono
+            segmenti o per la famiglia strength (la scheda palestra vive altrove). */}
         {isWorkout && event.status !== "done" && workoutContract ? (
           <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-            <BuilderPlannedSessionViz contract={workoutContract} compact />
+            {workoutSegments.length > 0 && workoutContract.family !== "strength" ? (
+              <SessionBlockIntensityChart segments={workoutSegments} compact />
+            ) : (
+              <BuilderPlannedSessionViz contract={workoutContract} compact />
+            )}
           </div>
         ) : null}
 

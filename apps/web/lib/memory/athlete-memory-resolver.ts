@@ -131,6 +131,7 @@ function toAthleteProfile(row: Record<string, unknown>, athleteId: string): Athl
     restingHrBpm: asNumberFromDb(row.resting_hr_bpm),
     maxHrBpm: asNumberFromDb(row.max_hr_bpm),
     thresholdHrBpm: asNumberFromDb(row.threshold_hr_bpm),
+    goals: asStringArray(row.goals),
     dietType: typeof row.diet_type === "string" ? (row.diet_type as AthleteProfile["dietType"]) : undefined,
     intolerances: asStringArray(row.intolerances),
     allergies: asStringArray(row.allergies),

@@ -34,6 +34,7 @@ export type AthleteProfileRow = {
   resting_hr_bpm: number | null;
   max_hr_bpm: number | null;
   threshold_hr_bpm: number | null;
+  goals: string[] | null;
   diet_type: string | null;
   intolerances: string[] | null;
   allergies: string[] | null;
@@ -95,6 +96,7 @@ export function mapAthleteMemoryToProfileRow(memory: AthleteMemory | null | unde
     resting_hr_bpm: profile.restingHrBpm ?? null,
     max_hr_bpm: profile.maxHrBpm ?? null,
     threshold_hr_bpm: profile.thresholdHrBpm ?? null,
+    goals: profile.goals ?? null,
     diet_type: profile.dietType ?? null,
     intolerances: profile.intolerances ?? null,
     allergies: profile.allergies ?? null,
