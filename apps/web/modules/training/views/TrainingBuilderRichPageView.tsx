@@ -1375,7 +1375,6 @@ export default function TrainingBuilderRichPageView() {
           hrMax={hrMax}
           setHrMax={setHrMax}
           lengthMode={lengthMode}
-          setLengthMode={setLengthMode}
           speedRefKmh={speedRefKmh}
           setSpeedRefKmh={setSpeedRefKmh}
           manualSessionName={manualSessionName}

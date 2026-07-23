@@ -277,7 +277,6 @@ export function useBuilderComposerState({ athleteId }: { athleteId: string | nul
     hrMax,
     setHrMax,
     lengthMode,
-    setLengthMode,
     speedRefKmh,
     setSpeedRefKmh,
     manualSessionName,

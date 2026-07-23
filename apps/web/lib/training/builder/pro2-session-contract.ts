@@ -41,6 +41,11 @@ export type Pro2BlockChart = {
   pyramidStepSeconds: number;
   pyramidStartTarget: number;
   pyramidEndTarget: number;
+  /**
+   * B6 — modo lunghezza del blocco: "time" (default) o "distance" (distanceKm governa
+   * la durata via `renderProfile.speedRefKmh`, solo steady/ramp). Assente nei contratti legacy.
+   */
+  lengthMode?: "time" | "distance";
   distanceKm: number;
   gradePercent: number;
   elevationMeters: number;

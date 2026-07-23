@@ -16,6 +16,11 @@ import {
   zoneRangeLabel,
 } from "@/lib/training/builder/pro2-intensity";
 import { estimateTssFromSegments } from "@/lib/training/builder/tss-estimate";
+import {
+  type BlockLengthMode,
+  distanceModeDurationSeconds,
+  kindSupportsDistanceMode,
+} from "@/lib/training/builder/block-length-mode";
 import { metabolicKcalFromMechanicalKj, mechanicalKjFromIntensitySegments } from "@empathy/domain-physiology";
 import type {
   Pro2BlockChart,
@@ -49,6 +54,11 @@ export type ManualPlanBlock = {
   pyramidStepSeconds: number;
   pyramidStartTarget: number;
   pyramidEndTarget: number;
+  /**
+   * B6 — modo lunghezza del blocco: minuti (default) o distanza km (solo steady/ramp).
+   * Assente = contratto legacy → segue il modo di sessione (`PlanExpandOpts.lengthMode`).
+   */
+  lengthMode?: BlockLengthMode;
   distanceKm: number;
   gradePercent: number;
   elevationMeters: number;
@@ -173,9 +183,12 @@ export function formatGymPrescriptionLine(b: ManualPlanBlock): string {
 }
 
 export function resolveBlockDurationSeconds(block: ManualPlanBlock, opts: PlanExpandOpts): number {
-  if (opts.lengthMode === "distance" && (block.kind === "steady" || block.kind === "ramp" || block.kind === "pyramid")) {
-    const km = Math.max(0.1, block.distanceKm || 0);
-    return Math.max(30, Math.round((km / Math.max(1, opts.speedRefKmh)) * 3600));
+  // B6 — modo effettivo: campo esplicito del blocco, altrimenti modo legacy di sessione.
+  // Distanza solo steady/ramp (piramide esclusa in v1: non passava comunque da qui,
+  // la sua durata è pyramidSteps × pyramidStepSeconds).
+  const mode = block.lengthMode ?? opts.lengthMode;
+  if (mode === "distance" && kindSupportsDistanceMode(block.kind)) {
+    return distanceModeDurationSeconds(block.distanceKm, opts.speedRefKmh);
   }
   return Math.max(30, block.minutes * 60 + block.seconds);
 }
@@ -446,6 +459,8 @@ function manualPlanBlockToChart(b: ManualPlanBlock): Pro2BlockChart {
     pyramidStepSeconds: Math.max(0, b.pyramidStepSeconds),
     pyramidStartTarget: b.pyramidStartTarget,
     pyramidEndTarget: b.pyramidEndTarget,
+    /* B6 — round-trip del modo lunghezza (assente nei blocchi legacy → chart legacy identico). */
+    lengthMode: b.lengthMode,
     distanceKm: b.distanceKm,
     gradePercent: b.gradePercent,
     elevationMeters: b.elevationMeters,

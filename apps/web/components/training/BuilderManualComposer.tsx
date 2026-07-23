@@ -37,6 +37,7 @@ import {
   type PlanBlockKind,
 } from "@/lib/training/builder/manual-plan-block";
 import type { SportMacroId } from "@/lib/training/builder/sport-macro-palette";
+import { distanceModeDurationSeconds } from "@/lib/training/builder/block-length-mode";
 import {
   colorForIntensity,
   PRO2_INTENSITY_OPTIONS,
@@ -277,8 +278,8 @@ export type BuilderManualComposerProps = {
   setFtpW: React.Dispatch<React.SetStateAction<number>>;
   hrMax: number;
   setHrMax: React.Dispatch<React.SetStateAction<number>>;
+  /** B6 — modo legacy di SESSIONE: fallback per blocchi senza `lengthMode` per-blocco (contratti vecchi). */
   lengthMode: "time" | "distance";
-  setLengthMode: React.Dispatch<React.SetStateAction<"time" | "distance">>;
   speedRefKmh: number;
   setSpeedRefKmh: React.Dispatch<React.SetStateAction<number>>;
   manualSessionName: string;
@@ -317,7 +318,6 @@ export function BuilderManualComposer({
   hrMax,
   setHrMax,
   lengthMode,
-  setLengthMode,
   speedRefKmh,
   setSpeedRefKmh,
   manualSessionName,
@@ -594,6 +594,15 @@ export function BuilderManualComposer({
   const showAerobicDistance = macroFamily === "aerobic";
   const showCadenceRow = macroFamily === "aerobic";
 
+  // B6 — modo lunghezza EFFETTIVO del blocco aperto: campo per-blocco, altrimenti modo
+  // legacy di sessione. Solo steady/ramp aerobici possono stare su distanza (piramide esclusa v1).
+  const rowSupportsDistance = Boolean(row && showAerobicDistance && (row.kind === "steady" || row.kind === "ramp"));
+  const rowLengthMode: "time" | "distance" =
+    rowSupportsDistance && row ? (row.lengthMode ?? lengthMode) : "time";
+  // Hint «≈ mm:ss @ vel. rif.» calcolato live sul valore distanza del blocco.
+  const rowDistanceSeconds = row ? distanceModeDurationSeconds(row.distanceKm, speedRefKmh) : 0;
+  const rowDistanceHintTime = `${Math.floor(rowDistanceSeconds / 60)}:${String(rowDistanceSeconds % 60).padStart(2, "0")}`;
+
   return (
     <section
       aria-label={t("sectionAria")}
@@ -778,8 +787,61 @@ export function BuilderManualComposer({
         </div>
 
         <div className="space-y-4">
-          {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
+          {row.kind === "steady" || row.kind === "ramp" ? (
             <div className="flex flex-wrap items-end gap-3">
+              {/* B6 — chip «Min | Km» accanto alla durata (solo settore A · Aerobico, solo
+                  steady/ramp: piramide esclusa in v1). Il cambio modo NON perde i dati:
+                  min/sec e distanza restano entrambi nel blocco. */}
+              {rowSupportsDistance ? (
+                <div className="space-y-1.5">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-gray-500">
+                    {t("lengthModeLabel")}
+                  </p>
+                  <div className="flex rounded-full border border-white/15 bg-black/50 p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => patch({ lengthMode: "time" })}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                        rowLengthMode === "time" ? "bg-white/15 text-white" : "text-gray-500"
+                      }`}
+                    >
+                      {t("lengthModeMin")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => patch({ lengthMode: "distance" })}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                        rowLengthMode === "distance"
+                          ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {t("lengthModeKm")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {rowLengthMode === "distance" ? (
+                <>
+                  {/* B6 — modo Km: distanza (decimale) + hint durata calcolata alla vel. rif.
+                      UNICA di sessione (input in fondo al popup). */}
+                  <label className="flex w-36 flex-col gap-1 text-xs text-gray-500">
+                    {t("distanceKm")}
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0.1}
+                      className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 font-mono text-sm text-white"
+                      value={row.distanceKm}
+                      onChange={(e) => patch({ distanceKm: Number(e.target.value) })}
+                    />
+                  </label>
+                  <p className="pb-2 font-mono text-xs text-gray-400">
+                    {t("distanceHint", { time: rowDistanceHintTime, speed: speedRefKmh })}
+                  </p>
+                </>
+              ) : (
+                <>
               {/* B4 — Min: big-step ±5′ (stepperBtn) + ±1′ + valore EDITABILE. I bottoni passano
                   tutti da stepDurationSeconds → il prestito sec↔min (B2) resta intatto; l'input
                   setta i minuti direttamente (clamp ≥ 0). */}
@@ -856,21 +918,9 @@ export function BuilderManualComposer({
                   +
                 </button>
               </div>
+                </>
+              )}
             </div>
-          ) : null}
-
-          {(row.kind === "steady" || row.kind === "ramp" || row.kind === "pyramid") && showAerobicDistance && lengthMode === "distance" ? (
-            <label className="flex max-w-xs flex-col gap-1 text-xs text-gray-500">
-              {t("distanceKm")}
-              <input
-                type="number"
-                step="0.1"
-                min={0.1}
-                className="rounded-lg border border-white/15 bg-black/50 px-2 py-2 text-white"
-                value={row.distanceKm}
-                onChange={(e) => patch({ distanceKm: Number(e.target.value) })}
-              />
-            </label>
           ) : null}
 
           {row.kind === "steady" ? (
@@ -1278,27 +1328,11 @@ export function BuilderManualComposer({
           </label>
         </div>
 
+        {/* B6 — il modo tempo|distanza è ora PER-BLOCCO (chip «Min | Km» accanto alla durata);
+            qui resta solo la velocità di riferimento UNICA di sessione, usata da tutti i
+            blocchi in modo Km. */}
         {showAerobicDistance ? (
           <div className="mt-2 flex flex-wrap gap-2 text-[0.65rem] text-gray-500">
-            <span>
-              {t("durationLabel")}{" "}
-              <button
-                type="button"
-                className={lengthMode === "time" ? "text-orange-300 underline" : ""}
-                onClick={() => setLengthMode("time")}
-              >
-                {t("durationTime")}
-              </button>
-              {" · "}
-              <button
-                type="button"
-                className={lengthMode === "distance" ? "text-orange-300 underline" : ""}
-                onClick={() => setLengthMode("distance")}
-              >
-                {t("durationDistance")}
-              </button>
-            </span>
-            <span className="text-gray-600">|</span>
             <label className="flex items-center gap-1">
               {t("refSpeedKmh")}
               <input

@@ -112,6 +112,21 @@ var init_zwo_step_text_events = __esm({
   }
 });
 
+// apps/web/lib/training/builder/block-length-mode.ts
+function kindSupportsDistanceMode(kind) {
+  const k = (kind ?? "").toLowerCase();
+  return k === "steady" || k === "ramp";
+}
+function distanceModeDurationSeconds(distanceKm, refSpeedKmh) {
+  const km = Math.max(0.1, distanceKm || 0);
+  return Math.max(30, Math.round(km / Math.max(1, refSpeedKmh) * 3600));
+}
+var init_block_length_mode = __esm({
+  "apps/web/lib/training/builder/block-length-mode.ts"() {
+    "use strict";
+  }
+});
+
 // apps/web/lib/training/builder/pro2-structured-interval-ladder.ts
 function chartOrDefaults(block) {
   const ch = block.chart;
@@ -144,8 +159,12 @@ function chartOrDefaults(block) {
 }
 function blockDurationSeconds(block, lengthMode, speedRefKmh) {
   const ch = block.chart;
-  if (lengthMode === "distance" && ch && (ch.distanceKm ?? 0) > 0) {
-    return Math.max(30, Math.round(Math.max(0.1, ch.distanceKm) / Math.max(1, speedRefKmh) * 3600));
+  if (ch?.lengthMode != null) {
+    if (ch.lengthMode === "distance" && kindSupportsDistanceMode(block.kind)) {
+      return distanceModeDurationSeconds(ch.distanceKm, speedRefKmh);
+    }
+  } else if (lengthMode === "distance" && ch && (ch.distanceKm ?? 0) > 0) {
+    return distanceModeDurationSeconds(ch.distanceKm, speedRefKmh);
   }
   const dm = Number(block.durationMinutes);
   if (Number.isFinite(dm) && dm > 0) return Math.max(30, Math.round(dm * 60));
@@ -305,6 +324,7 @@ var init_pro2_structured_interval_ladder = __esm({
     init_pro2_intensity();
     init_pro2_session_notes();
     init_zwo_step_text_events();
+    init_block_length_mode();
   }
 });
 

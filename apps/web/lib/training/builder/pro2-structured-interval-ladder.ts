@@ -6,6 +6,7 @@ import { intensityScore, zoneForTargetValue, zoneFromIntensityCue, zoneRelativeR
 import { intensityLabelForContractBlock } from "@/lib/training/builder/pro2-session-notes";
 import type { Pro2BlockChart, Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { coachNoteToTextEvents, type ZwoTextEvent } from "@/lib/training/builder/zwo-step-text-events";
+import { distanceModeDurationSeconds, kindSupportsDistanceMode } from "@/lib/training/builder/block-length-mode";
 import type { StructuredIntervalRow } from "@/lib/training/planned-structured-interval-csv";
 
 export type ExpandedLadderStep = {
@@ -60,8 +61,16 @@ function blockDurationSeconds(
   speedRefKmh: number,
 ): number {
   const ch = block.chart;
-  if (lengthMode === "distance" && ch && (ch.distanceKm ?? 0) > 0) {
-    return Math.max(30, Math.round((Math.max(0.1, ch.distanceKm) / Math.max(1, speedRefKmh)) * 3600));
+  // B6 — modo per-blocco: `chart.lengthMode` esplicito vince sul modo legacy di sessione.
+  // Stessa aritmetica di resolveBlockDurationSeconds (manual-plan-block): SPECULARE o niente.
+  if (ch?.lengthMode != null) {
+    if (ch.lengthMode === "distance" && kindSupportsDistanceMode(block.kind)) {
+      return distanceModeDurationSeconds(ch.distanceKm, speedRefKmh);
+    }
+    // Modo esplicito "time" (o distanza su kind non supportato): cade sul percorso a tempo.
+  } else if (lengthMode === "distance" && ch && (ch.distanceKm ?? 0) > 0) {
+    /* Contratti legacy senza campo per-blocco: comportamento identico a prima. */
+    return distanceModeDurationSeconds(ch.distanceKm, speedRefKmh);
   }
   const dm = Number(block.durationMinutes);
   if (Number.isFinite(dm) && dm > 0) return Math.max(30, Math.round(dm * 60));

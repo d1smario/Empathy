@@ -60,3 +60,23 @@ test("scaleLibraryContract: 1.0 is identity", () => {
   const scaled = scaleLibraryContract(base, 1);
   assert.equal(scaled.summary?.tss, base.summary?.tss);
 });
+
+/* B6 — blocco governato dalla distanza: lo scaling passa da distanceKm (la durata deriva da lì). */
+test("scaleLibraryContract: distance-mode block scales distanceKm, time-mode keeps it", () => {
+  const base = contract();
+  const b1 = base.blocks?.[0];
+  assert.ok(b1?.chart);
+  b1.chart.lengthMode = "distance";
+  b1.chart.distanceKm = 4;
+  const scaled = scaleLibraryContract(base, 0.5);
+  assert.equal(scaled.blocks?.[0]?.chart?.distanceKm, 2);
+
+  const timeBase = contract();
+  const t1 = timeBase.blocks?.[0];
+  assert.ok(t1?.chart);
+  t1.chart.lengthMode = "time";
+  t1.chart.distanceKm = 4;
+  const timeScaled = scaleLibraryContract(timeBase, 0.5);
+  /* Blocco a tempo: distanceKm è informativo, resta invariato. */
+  assert.equal(timeScaled.blocks?.[0]?.chart?.distanceKm, 4);
+});

@@ -94,6 +94,8 @@ function manualPlanBlockFromContractBlock(block: Pro2BuilderBlockContract): Manu
     pyramidStepSeconds: Math.max(0, ch.pyramidStepSeconds ?? base.pyramidStepSeconds),
     pyramidStartTarget: ch.pyramidStartTarget ?? base.pyramidStartTarget,
     pyramidEndTarget: ch.pyramidEndTarget ?? base.pyramidEndTarget,
+    /* B6 — round-trip modo lunghezza per-blocco (assente nei contratti legacy). */
+    lengthMode: ch.lengthMode === "distance" || ch.lengthMode === "time" ? ch.lengthMode : undefined,
     distanceKm: ch.distanceKm ?? base.distanceKm,
     gradePercent: ch.gradePercent ?? base.gradePercent,
     elevationMeters: ch.elevationMeters ?? base.elevationMeters,

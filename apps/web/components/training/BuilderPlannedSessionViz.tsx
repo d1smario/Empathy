@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { intensityLabelForContractBlock } from "@/lib/training/builder/pro2-session-notes";
+import { distanceModeDurationSeconds, kindSupportsDistanceMode } from "@/lib/training/builder/block-length-mode";
 
 type StoredChartBlock = NonNullable<NonNullable<Pro2BuilderBlockContract["chart"]>> & {
   id: string;
@@ -84,9 +85,15 @@ function zoneForTargetValue(value: number, unit: "watt" | "hr", ftpW: number, hr
 }
 
 function resolveBlockDurationSeconds(block: StoredChartBlock, lengthMode: "time" | "distance", speedRefKmh: number): number {
-  if (lengthMode === "distance" && (block.kind === "steady" || block.kind === "ramp" || block.kind === "pyramid")) {
-    const km = Math.max(0.1, block.distanceKm || 0);
-    return Math.max(30, Math.round((km / Math.max(1, speedRefKmh)) * 3600));
+  // B6 — modo per-blocco (`chart.lengthMode`) esplicito vince sul modo legacy di sessione;
+  // stessa aritmetica delle due espansioni canoniche (manual-plan-block / ladder).
+  if (block.lengthMode != null) {
+    if (block.lengthMode === "distance" && kindSupportsDistanceMode(block.kind)) {
+      return distanceModeDurationSeconds(block.distanceKm, speedRefKmh);
+    }
+  } else if (lengthMode === "distance" && (block.kind === "steady" || block.kind === "ramp" || block.kind === "pyramid")) {
+    /* Contratti legacy senza campo per-blocco: comportamento identico a prima. */
+    return distanceModeDurationSeconds(block.distanceKm, speedRefKmh);
   }
   return Math.max(30, block.minutes * 60 + block.seconds);
 }

@@ -12,7 +12,19 @@ function scaleRounded(value: number, scale: number, minimum = 1): number {
   return Math.max(minimum, Math.round(value * scale));
 }
 
-function scaleChart(chart: Pro2BlockChart, scale: number): Pro2BlockChart {
+function scaleChart(
+  chart: Pro2BlockChart,
+  scale: number,
+  sessionLengthMode: "time" | "distance" | undefined,
+): Pro2BlockChart {
+  /* B6 — blocco governato dalla distanza (per-blocco o legacy di sessione): la durata deriva
+   * da distanceKm, quindi lo scaling proporzionale passa dalla distanza (2 decimali, ≥ 0.1 km).
+   * Nei blocchi a tempo distanceKm resta INVARIATO (campo informativo, non governa la durata). */
+  const lengthMode = chart.lengthMode ?? sessionLengthMode ?? "time";
+  const scaledDistanceKm =
+    lengthMode === "distance" && chart.distanceKm > 0
+      ? Math.max(0.1, Math.round(chart.distanceKm * scale * 100) / 100)
+      : chart.distanceKm;
   return {
     ...chart,
     minutes: chart.minutes > 0 ? scaleRounded(chart.minutes, scale, 0) : 0,
@@ -23,6 +35,7 @@ function scaleChart(chart: Pro2BlockChart, scale: number): Pro2BlockChart {
     step2Seconds: chart.step2Seconds > 0 ? scaleRounded(chart.step2Seconds, scale, 1) : 0,
     step3Seconds: chart.step3Seconds > 0 ? scaleRounded(chart.step3Seconds, scale, 1) : 0,
     pyramidStepSeconds: chart.pyramidStepSeconds > 0 ? scaleRounded(chart.pyramidStepSeconds, scale, 1) : 0,
+    distanceKm: scaledDistanceKm,
   };
 }
 
@@ -41,7 +54,9 @@ export function scaleLibraryContract(
   }
 
   const blocks = (contract.blocks ?? []).map((block) => {
-    const chart = block.chart ? scaleChart(block.chart, loadScale) : block.chart;
+    const chart = block.chart
+      ? scaleChart(block.chart, loadScale, contract.renderProfile?.lengthMode)
+      : block.chart;
     return {
       ...block,
       durationMinutes: scaleRounded(Number(block.durationMinutes ?? 0) || 10, loadScale, 1),

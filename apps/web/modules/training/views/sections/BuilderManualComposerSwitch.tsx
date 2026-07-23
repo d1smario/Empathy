@@ -43,8 +43,8 @@ export type BuilderManualComposerSwitchProps = {
   setFtpW: Dispatch<SetStateAction<number>>;
   hrMax: number;
   setHrMax: Dispatch<SetStateAction<number>>;
+  /** B6 — modo legacy di SESSIONE (fallback per blocchi senza `lengthMode` per-blocco). */
   lengthMode: "time" | "distance";
-  setLengthMode: Dispatch<SetStateAction<"time" | "distance">>;
   speedRefKmh: number;
   setSpeedRefKmh: Dispatch<SetStateAction<number>>;
   manualSessionName: string;
@@ -95,7 +95,6 @@ export function BuilderManualComposerSwitch({
   hrMax,
   setHrMax,
   lengthMode,
-  setLengthMode,
   speedRefKmh,
   setSpeedRefKmh,
   manualSessionName,
@@ -218,7 +217,6 @@ export function BuilderManualComposerSwitch({
             hrMax={hrMax}
             setHrMax={setHrMax}
             lengthMode={lengthMode}
-            setLengthMode={setLengthMode}
             speedRefKmh={speedRefKmh}
             setSpeedRefKmh={setSpeedRefKmh}
             manualSessionName={manualSessionName}
