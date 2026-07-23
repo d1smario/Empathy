@@ -144,6 +144,11 @@ export function defaultManualPlanBlock(kind: PlanBlockKind = "steady", label = "
   };
 }
 
+/** Duplica blocco (B5a): stessa configurazione, NUOVO id (id univoco per dnd-kit/segmenti). */
+export function cloneManualPlanBlock(b: ManualPlanBlock): ManualPlanBlock {
+  return { ...b, id: newBlockId() };
+}
+
 /**
  * Prescrizione gym in cue / contratto.
  * Compare solo se c’è esercizio da catalogo, nome libero o carico: evita duplicare il solo label blocco.

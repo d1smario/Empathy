@@ -1355,6 +1355,10 @@
     "nextBlockAria": "Next block",
     "addBlockAria": "Add block",
     "deleteBlockAria": "Delete block",
+    "duplicateBlock": "Duplicate block",
+    "duplicateBlockAria": "Duplicate block",
+    "minutesMinus5Aria": "Minus 5 minutes",
+    "minutesPlus5Aria": "Plus 5 minutes",
     "addBlockShort": "Block",
     "dragToReorder": "Drag to reorder · click to edit",
     "dragHint": "Drag blocks to reorder · click a block to open its editor",
@@ -1648,7 +1652,7 @@
     "noAthleteProfile": "Athlete profile not available.",
     "loading": "Loading…",
     "noData": "No planned/executed data in the period {from} → {to}. Try a wider range or a different window day.",
-    "perWeekSuffix": "· 7d",
+    "periodSuffix": "· {days}d period",
     "avgWatts": "Avg watts",
     "totalTime": "Total time",
     "weeklyProgressionTitle": "Weekly progression · external load (6×7d)",
@@ -4890,7 +4894,8 @@
     "availableSupplements": "Available supplements",
     "preferredBrands": "Preferred brands (40)",
     "selectedSupplementsCsv": "Selected supplements (csv)",
-    "selectedBrandsCsv": "Selected brands (csv)"
+    "selectedBrandsCsv": "Selected brands (csv)",
+    "copyFromPreviousDay": "Copy from {day}"
   },
   "ProfilePersonalSection": {
     "emailLockedForCoach": "Email is the athlete's identity key: editable only by the athlete.",
@@ -4929,7 +4934,8 @@
     "training1Duration": "Training 1 duration (min)",
     "training2Planned": "Training 2 planned",
     "training2Start": "Training 2 start",
-    "training2Duration": "Training 2 duration (min)"
+    "training2Duration": "Training 2 duration (min)",
+    "copyFromPreviousDay": "Copy from {day}"
   },
   "NutritionSubnav": {
     "plan": "Plan",

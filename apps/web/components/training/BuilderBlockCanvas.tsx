@@ -1,6 +1,6 @@
 "use client";
 
-import { GripVertical, X } from "lucide-react";
+import { Copy, GripVertical, X } from "lucide-react";
 import { useMemo, useRef } from "react";
 import {
   DndContext,
@@ -129,12 +129,14 @@ function SortableBlockBar({
   canDelete,
   onSelect,
   onDelete,
+  onDuplicate,
 }: {
   group: BlockGroup;
   active: boolean;
   canDelete: boolean;
   onSelect: (index: number) => void;
   onDelete: (index: number) => void;
+  onDuplicate: (index: number) => void;
 }) {
   const t = useTranslations("BuilderManualComposer");
   const { block, index, totalSeconds } = group;
@@ -205,21 +207,36 @@ function SortableBlockBar({
           <GripVertical className="h-3.5 w-3.5" />
         </span>
 
-        {/* Elimina sull'angolo opposto — stopPropagation su pointerdown+click così NON innesca il drag. */}
-        {canDelete ? (
+        {/* Duplica + Elimina sull'angolo opposto — stopPropagation su pointerdown+click
+            così NON innescano il drag. */}
+        <div className="absolute right-0 top-0 z-10 flex overflow-hidden rounded-bl-md">
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(index);
+              onDuplicate(index);
             }}
-            className="absolute right-0 top-0 z-10 rounded-bl-md bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
-            aria-label={t("deleteBlockAria")}
+            className="bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-sky-300 group-hover:opacity-100"
+            aria-label={t("duplicateBlockAria")}
           >
-            <X className="h-3 w-3" />
+            <Copy className="h-3 w-3" />
           </button>
-        ) : null}
+          {canDelete ? (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(index);
+              }}
+              className="bg-black/55 p-0.5 text-gray-400 opacity-0 transition hover:text-rose-300 group-hover:opacity-100"
+              aria-label={t("deleteBlockAria")}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Sotto la barra: durata + zona */}
@@ -245,6 +262,7 @@ export function BuilderBlockCanvas({
   activeIndex,
   onSelect,
   onRemove,
+  onDuplicate,
   sensors,
   onDragEnd,
   title,
@@ -255,6 +273,7 @@ export function BuilderBlockCanvas({
   activeIndex: number;
   onSelect: (index: number) => void;
   onRemove: (index: number) => void;
+  onDuplicate: (index: number) => void;
   sensors: SensorDescriptor<SensorOptions>[];
   onDragEnd: (event: DragEndEvent) => void;
   title: string;
@@ -305,6 +324,7 @@ export function BuilderBlockCanvas({
                   canDelete={blocks.length > 1}
                   onSelect={onSelect}
                   onDelete={onRemove}
+                  onDuplicate={onDuplicate}
                 />
               ))}
             </div>

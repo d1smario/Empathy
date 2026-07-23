@@ -25,7 +25,12 @@ import { useTranslations } from "next-intl";
 import { BuilderBlockCanvas } from "@/components/training/BuilderBlockCanvas";
 import { BuilderCalendarSaveConfirm } from "@/components/training/BuilderCalendarSaveConfirm";
 import { BuilderDialog } from "@/components/training/BuilderDialog";
-import { defaultManualPlanBlock, type ManualPlanBlock, type PlanBlockKind } from "@/lib/training/builder/manual-plan-block";
+import {
+  cloneManualPlanBlock,
+  defaultManualPlanBlock,
+  type ManualPlanBlock,
+  type PlanBlockKind,
+} from "@/lib/training/builder/manual-plan-block";
 import type { SportMacroId } from "@/lib/training/builder/sport-macro-palette";
 import {
   colorForIntensity,
@@ -438,6 +443,19 @@ export function BuilderManualComposer({
     });
   };
 
+  /** B5a — Duplica: inserisce il clone SUBITO DOPO l'originale. NON auto-seleziona la
+   *  copia (aprirebbe/riaprirebbe il popup); shifta solo l'indice attivo se sta dopo. */
+  const duplicateBlockAt = (index: number) => {
+    if (index < 0 || index >= manualPlanBlocks.length) return;
+    setManualPlanBlocks((p) => {
+      const src = p[index];
+      if (!src) return p;
+      const clone = cloneManualPlanBlock(src);
+      return [...p.slice(0, index + 1), clone, ...p.slice(index + 1)];
+    });
+    setActiveIndex((i) => (i > index ? i + 1 : i));
+  };
+
   const removeBlockAt = (index: number) => {
     if (manualPlanBlocks.length <= 1) return;
     setManualPlanBlocks((p) => p.filter((_, i) => i !== index));
@@ -534,6 +552,7 @@ export function BuilderManualComposer({
           activeIndex={hasSelection ? safeIndex : -1}
           onSelect={toggleSelectBlock}
           onRemove={removeBlockAt}
+          onDuplicate={duplicateBlockAt}
           sensors={dndSensors}
           onDragEnd={handleBlockDragEnd}
           title={t("sessionPreview")}
@@ -602,16 +621,46 @@ export function BuilderManualComposer({
         <div className="space-y-4">
           {(row.kind === "steady" || row.kind === "ramp") && lengthMode === "time" ? (
             <div className="flex flex-wrap items-end gap-3">
+              {/* B4 — Min: big-step ±5′ (stepperBtn) + ±1′ + valore EDITABILE. I bottoni passano
+                  tutti da stepDurationSeconds → il prestito sec↔min (B2) resta intatto; l'input
+                  setta i minuti direttamente (clamp ≥ 0). */}
               <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/50 px-2 py-2">
+                <button
+                  type="button"
+                  className={stepperBtn}
+                  onClick={() => stepDurationSeconds(-300)}
+                  aria-label={t("minutesMinus5Aria")}
+                >
+                  −5
+                </button>
                 <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => stepDurationSeconds(-60)}>
                   −
                 </button>
                 <div className="text-center">
                   <p className="text-[0.6rem] text-gray-500">Min</p>
-                  <p className="font-mono text-xl text-white">{row.minutes}</p>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    className="h-9 w-14 rounded-lg border border-white/15 bg-black/60 px-1 text-center font-mono text-sm text-white"
+                    value={row.minutes}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      patchFn(() => ({ minutes: Math.max(0, Math.round(n)) }));
+                    }}
+                  />
                 </div>
                 <button type="button" className="rounded-lg bg-white/10 px-2 py-1 text-lg" onClick={() => stepDurationSeconds(60)}>
                   +
+                </button>
+                <button
+                  type="button"
+                  className={stepperBtn}
+                  onClick={() => stepDurationSeconds(300)}
+                  aria-label={t("minutesPlus5Aria")}
+                >
+                  +5
                 </button>
               </div>
               <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/50 px-2 py-2">
@@ -622,9 +671,23 @@ export function BuilderManualComposer({
                 >
                   −
                 </button>
+                {/* B4 — Sec EDITABILE (clamp 0–59, set diretto); i −/+ restano su
+                    stepDurationSeconds ±5 → prestito sec↔min (B2) intatto. */}
                 <div className="text-center">
                   <p className="text-[0.6rem] text-gray-500">Sec</p>
-                  <p className="font-mono text-xl text-white">{row.seconds}</p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={1}
+                    className="h-9 w-14 rounded-lg border border-white/15 bg-black/60 px-1 text-center font-mono text-sm text-white"
+                    value={row.seconds}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      patchFn(() => ({ seconds: Math.min(59, Math.max(0, Math.round(n))) }));
+                    }}
+                  />
                 </div>
                 <button
                   type="button"
@@ -1095,9 +1158,18 @@ export function BuilderManualComposer({
           </p>
         )}
 
-        {/* (c) Elimina blocco — visibile solo con più di un blocco; chiude il popup dopo. */}
-        {manualPlanBlocks.length > 1 ? (
-          <div className="border-t border-white/10 pt-4">
+        {/* (c) Duplica blocco (B5a: clone dopo l'originale, popup resta aperto sul blocco
+            corrente) + Elimina blocco (solo con più di un blocco; chiude il popup dopo). */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+          <button
+            type="button"
+            onClick={() => duplicateBlockAt(safeIndex)}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-bold text-gray-200 transition hover:bg-white/10"
+            aria-label={t("duplicateBlockAria")}
+          >
+            {t("duplicateBlock")}
+          </button>
+          {manualPlanBlocks.length > 1 ? (
             <button
               type="button"
               onClick={() => {
@@ -1108,8 +1180,8 @@ export function BuilderManualComposer({
             >
               {t("deleteBlockAria")}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
         </div>
         ) : null}
       </BuilderDialog>
