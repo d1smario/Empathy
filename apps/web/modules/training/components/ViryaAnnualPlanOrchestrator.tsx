@@ -2284,15 +2284,22 @@ export function ViryaAnnualPlanOrchestrator({
             microcyclePreviewRows={microcyclePreviewRows}
           />
 
-          <ViryaSaveToCalendarCard
-            planName={planName}
-            replacePrevious={replacePrevious}
-            setReplacePrevious={setReplacePrevious}
-            generateOnCalendar={generateOnCalendar}
-            saving={saving}
-            selectedAthleteId={selectedAthleteId}
-            phases={phases}
-          />
+          {/* [F13] Gate staff sul «Genera»: ogni run del wizard accumula righe legacy senza
+              plan_id (POST /api/training/planned) — congelato per i non-staff mentre F2/F3
+              introducono lo scheletro L1 approvabile. Card NASCOSTA (non disabled): senza
+              il suo bottone sarebbe solo rumore; il resto del wizard resta consultabile
+              come anteprima. */}
+          {staffView ? (
+            <ViryaSaveToCalendarCard
+              planName={planName}
+              replacePrevious={replacePrevious}
+              setReplacePrevious={setReplacePrevious}
+              generateOnCalendar={generateOnCalendar}
+              saving={saving}
+              selectedAthleteId={selectedAthleteId}
+              phases={phases}
+            />
+          ) : null}
 
           <ViryaSaveWeekToLibraryCard
             libraryWeekStart={libraryWeekStart}
@@ -2439,38 +2446,43 @@ export function ViryaAnnualPlanOrchestrator({
         <ViryaMasterPlanCard
           programWeekRows={programWeekRows}
         />
-        <article className="viz-card builder-panel">
-          <h3 className="viz-title">{t("deployPlanTitle")}</h3>
-          <p style={{ margin: "0 0 10px 0", color: "var(--empathy-text-muted)", fontSize: "13px" }}>
-            {t("deployPlanDescription")}
-          </p>
-          <label className="form-field" style={{ marginBottom: "10px" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input type="checkbox" checked={replacePrevious} onChange={(e) => setReplacePrevious(e.target.checked)} />
-              {t("replacePreviousLabel")}
-            </span>
-          </label>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void generateOnCalendar()}
-              disabled={saving || !selectedAthleteId || phases.length === 0}
-              title={
-                !selectedAthleteId
-                  ? t("generateTitleNoAthlete")
-                  : phases.length === 0
-                    ? t("generateTitleNoPhases")
-                    : undefined
-              }
-            >
-              {saving ? t("generating") : t("generateAnnualPlan")}
-            </button>
-            <Link href="/training/calendar" style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
-              {t("openCalendar")}
-            </Link>
-          </div>
-        </article>
+        {/* [F13] Secondo «Genera» dello stesso path di scrittura (generateOnCalendar):
+            stesso gate staff della card sopra. Checkbox «sostituisci» e link inclusi
+            nel blocco nascosto perché esistono solo in funzione della scrittura. */}
+        {staffView ? (
+          <article className="viz-card builder-panel">
+            <h3 className="viz-title">{t("deployPlanTitle")}</h3>
+            <p style={{ margin: "0 0 10px 0", color: "var(--empathy-text-muted)", fontSize: "13px" }}>
+              {t("deployPlanDescription")}
+            </p>
+            <label className="form-field" style={{ marginBottom: "10px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input type="checkbox" checked={replacePrevious} onChange={(e) => setReplacePrevious(e.target.checked)} />
+                {t("replacePreviousLabel")}
+              </span>
+            </label>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => void generateOnCalendar()}
+                disabled={saving || !selectedAthleteId || phases.length === 0}
+                title={
+                  !selectedAthleteId
+                    ? t("generateTitleNoAthlete")
+                    : phases.length === 0
+                      ? t("generateTitleNoPhases")
+                      : undefined
+                }
+              >
+                {saving ? t("generating") : t("generateAnnualPlan")}
+              </button>
+              <Link href="/training/calendar" style={{ color: "var(--empathy-primary)", textDecoration: "none", alignSelf: "center" }}>
+                {t("openCalendar")}
+              </Link>
+            </div>
+          </article>
+        ) : null}
       </section>
         </div>
       ) : null}
