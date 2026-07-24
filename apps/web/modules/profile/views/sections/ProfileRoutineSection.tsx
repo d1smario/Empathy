@@ -41,8 +41,21 @@ export function ProfileRoutineSection({
   void setRoutineWeekPlan;
   const previousRoutineDay = weekDays[(weekDays.indexOf(activeRoutineDay) + 6) % 7];
   return (
-    <div>
+    // id="routine": ancora del deep-link onboarding (/profile#routine) — i campi
+    // richiesti da planReady (giorni/settimana, durata max) devono stare qui sotto.
+    <div id="routine">
       <h3 className={`profile-section-band tone-${profileToneForEditorSection("routine")}`}><span className="profile-kpi-dot" />{t("weeklyRoutineTitle")}</h3>
+      {/* T4: training_days_per_week / training_max_session_minutes erano già nel form
+          state e nel save ma senza render — senza questi input l'onboarding restava
+          bloccato su campi impossibili da compilare. Vanno in testa: sono i vincoli
+          del piano, non parte della routine per-giorno sotto. */}
+      <div className="profile-subpanel tone-green" style={{ marginBottom: "12px" }}>
+        <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("planConstraintsTitle")}</h4>
+        <div className="profile-editor-grid profile-editor-grid-compact">
+          <div className="form-group"><label className="form-label">{t("trainingDaysPerWeek")}</label><input className="form-input" type="number" min={1} max={7} step={1} value={form.training_days_per_week} onChange={(e) => setForm((f) => ({ ...f, training_days_per_week: e.target.value }))} /></div>
+          <div className="form-group"><label className="form-label">{t("maxSessionMinutes")}</label><input className="form-input" type="number" min={30} max={480} step={15} value={form.training_max_session_minutes} onChange={(e) => setForm((f) => ({ ...f, training_max_session_minutes: e.target.value }))} /></div>
+        </div>
+      </div>
       <div className="profile-day-strip">
         {weekDays.map((day) => (
           <button

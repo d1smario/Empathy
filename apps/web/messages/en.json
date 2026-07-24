@@ -4956,6 +4956,9 @@
   },
   "ProfileRoutineSection": {
     "weeklyRoutineTitle": "Weekly routine",
+    "planConstraintsTitle": "Plan constraints",
+    "trainingDaysPerWeek": "Training days per week",
+    "maxSessionMinutes": "Max session duration (min)",
     "wakeUp": "Wake up",
     "breakfast": "Breakfast",
     "snack": "Snack",

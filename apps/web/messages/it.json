@@ -4956,6 +4956,9 @@
   },
   "ProfileRoutineSection": {
     "weeklyRoutineTitle": "Routine settimanale",
+    "planConstraintsTitle": "Vincoli del piano",
+    "trainingDaysPerWeek": "Giorni di allenamento a settimana",
+    "maxSessionMinutes": "Durata massima seduta (min)",
     "wakeUp": "Sveglia",
     "breakfast": "Colazione",
     "snack": "Spuntino",
