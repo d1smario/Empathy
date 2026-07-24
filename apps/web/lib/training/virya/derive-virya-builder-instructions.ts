@@ -59,13 +59,17 @@ export function formatViryaBriefMetaLine(
     .join(";");
 }
 
-/** Proxy energetico da TSS target VIRYA (senza contratto) — stessa catena kJ→kcal del builder. */
-export function kcalFromLoadTarget(load: number, durationMinutes = 60): number {
+/**
+ * Proxy energetico da TSS target VIRYA (senza contratto) — stessa catena kJ→kcal del builder.
+ * `ftpW` opzionale: il motore L2 passa l'FTP REALE dell'atleta (blueprint C: «MAI più
+ * FTP fisso 250 nelle kcal»); il default 250 preserva il comportamento del wizard legacy.
+ */
+export function kcalFromLoadTarget(load: number, durationMinutes = 60, ftpW = 250): number {
   const tss = Math.max(0, load);
   const sec = Math.max(60, Math.round(durationMinutes) * 60);
   const hours = sec / 3600;
   const ifN = hours > 0 ? Math.sqrt(Math.max(0, tss) / (hours * 100)) : 0;
-  const powerW = Math.round(ifN * 250);
+  const powerW = Math.round(ifN * Math.max(40, ftpW));
   const kj = mechanicalKjFromAvgPower(powerW, sec);
   return metabolicKcalFromMechanicalKj(kj);
 }

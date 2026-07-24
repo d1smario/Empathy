@@ -196,6 +196,8 @@ function presetsByCatalogDiscipline(
  * Sceglie un template catalogo per archetipo VIRYA + disciplina + slot settimanale (rotazione).
  * `presets` opzionale: default al catalogo statico, ma i chiamanti DB-first possono iniettare
  * il pool letto da `aerobic_starter_presets` (vedi starter-pack-aerobic-db.ts).
+ * `rules` opzionale: il motore L2 inietta le regole da `virya_archetype_catalog_match`
+ * (fonte unica DB, regolabile senza deploy); default = mappa storica hardcoded.
  */
 export function resolveViryaCatalogPreset(
   input: {
@@ -204,10 +206,12 @@ export function resolveViryaCatalogPreset(
     sessionIndexInWeek: number;
   },
   presets: AerobicStarterPreset[] = AEROBIC_STARTER_PRESETS,
+  rules: Record<string, ViryaCatalogMatchRule> = VIRYA_ARCHETYPE_CATALOG_MATCH,
 ): AerobicStarterPreset | null {
   const catalogDiscipline = viryaDisciplineToCatalogDiscipline(input.discipline);
   const rule =
-    VIRYA_ARCHETYPE_CATALOG_MATCH[input.archetypeId] ??
+    rules[input.archetypeId] ??
+    rules.base_z2_volume ??
     VIRYA_ARCHETYPE_CATALOG_MATCH.base_z2_volume;
 
   const pool = presetsByCatalogDiscipline(catalogDiscipline, presets);

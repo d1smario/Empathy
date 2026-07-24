@@ -5,25 +5,47 @@ import {
   readDbEngineWorkouts,
 } from "@/lib/training/db-engine/publish-db-workouts";
 import { extractWorkoutIds } from "@/lib/training/generate-training-week-headless";
+import { loadAthleteRenderProfile } from "@/lib/training/l2/athlete-render-profile";
+import { loadBuilderEngineCatalogs } from "@/lib/training/l2/load-builder-engine-catalogs";
+import {
+  materializeWeekWithBuilderEngine,
+  type BuilderEngineSkeletonWeek,
+} from "@/lib/training/l2/materialize-week-builder-engine";
+import {
+  resolveTrainingL2Engine,
+  type TrainingL2Engine,
+} from "@/lib/training/l2/resolve-training-l2-engine";
+import { loadViryaConfigFromDb } from "@/lib/training/l2/virya-db-config";
+import {
+  familyMixFromJson,
+  weekObjectivesFromJson,
+  coercePhase,
+} from "@/lib/training/plan/plan-skeleton-mappers";
+import { insertPlannedWorkoutRows } from "@/lib/training/planned/insert-planned-workout";
 import { addDaysIso } from "@/lib/training/propose-training-macro";
 import { VIRYA_NOTES_ILIKE_MARKER } from "@/lib/training/virya/virya-planned-notes";
 
 /**
- * SPLIT proponi/materializza — metà «materializza» (VIRYA rework F2, blueprint sezione D).
+ * SPLIT proponi/materializza — metà «materializza» (VIRYA rework F2/F3, blueprint D).
  *
- * Trasforma lo scheletro L1 PERSISTITO in sedute `planned_workouts`: per ogni
- * settimana selezionata invoca la RPC `generate_training_week` con i parametri
- * DELLA RIGA `training_plan_week` (budget_tss/sessions/phase dal DB, MAI
- * ricalcolati) e pubblica via `publishDbWorkoutsToCalendar` taggando `plan_id`.
+ * Trasforma lo scheletro L1 PERSISTITO in sedute `planned_workouts`, con DUE
+ * motori dietro un commutatore (`resolveTrainingL2Engine`, F3):
  *
- * Il motore resta quello di oggi (RPC Postgres + publish canonico): il port a
- * Edge Function `materialize-training-week` è F3 — quando arriverà, questo modulo
- * diventerà il wrapper che la invoca per-settimana, e il gate status vivrà
- * IN-FUNCTION [F4]. Qui il gate `status ∈ {approved, active}` è comunque
- * verificato: un draft non materializza MAI.
+ * - `db` (DEFAULT, invariato): RPC `generate_training_week` con i parametri
+ *   DELLA RIGA `training_plan_week` (budget_tss/sessions/phase dal DB, MAI
+ *   ricalcolati) + publish via `publishDbWorkoutsToCalendar` taggando `plan_id`.
+ * - `builder` (opt-in via env, shadow/QA): la catena TS del Builder in-process
+ *   (`materializeWeekWithBuilderEngine`), che consuma gli edit coach dello
+ *   scheletro (objectives/hours_target/budget/family_mix) e le tabelle config
+ *   `virya_*` come fonte unica. La FUTURA Edge Function `materialize-training-week`
+ *   importerà la STESSA funzione: qui cambia solo il runtime, mai il motore.
+ *
+ * Il gate `status ∈ {approved, active}` è verificato qui e vivrà anche
+ * IN-FUNCTION nella EF [F4]: un draft non materializza MAI.
  *
  * IDEMPOTENZA PER SETTIMANA [F11]: prima di ogni insert si esegue SEMPRE il passo
- * delete (mai opzionale) — vedi `purgeWeekBeforeInsert`.
+ * delete (mai opzionale) — vedi `purgeWeekBeforeInsert` — identico per i due rami,
+ * come identico è lo skip dei giorni con seduta Builder del coach.
  */
 
 export type MaterializeWeeksMode =
@@ -147,11 +169,24 @@ type SkeletonWeekRow = {
   phase: string;
   budget_tss: number;
   sessions: number;
+  hours_target: number | string | null;
+  objectives: unknown;
+  family_mix: unknown;
 };
 
 export async function materializeTrainingMacro(
   db: SupabaseClient,
-  args: { planId: string; weeks: MaterializeWeeksMode; todayIso?: string },
+  args: {
+    planId: string;
+    weeks: MaterializeWeeksMode;
+    todayIso?: string;
+    /**
+     * Motore L2 (F3). Assente → deciso da `resolveTrainingL2Engine(athleteId)`
+     * (env TRAINING_L2_ENGINE / TRAINING_L2_BUILDER_ATHLETES, default 'db'):
+     * approve route, cron e continuità passano dal resolver senza modifiche.
+     */
+    engine?: TrainingL2Engine;
+  },
 ): Promise<MaterializeTrainingMacroResult> {
   const planId = args.planId.trim();
   if (!planId) return { ok: false, error: "materializeTrainingMacro: planId mancante" };
@@ -175,7 +210,9 @@ export async function materializeTrainingMacro(
 
   const { data: weekRowsRaw, error: weekErr } = await db
     .from("training_plan_week")
-    .select("id, week_start, phase, budget_tss, sessions")
+    // objectives/family_mix/hours_target: consumati dal ramo builder (edit coach
+    // dello scheletro); il ramo db li ignora e resta identico byte-per-byte.
+    .select("id, week_start, phase, budget_tss, sessions, hours_target, objectives, family_mix")
     .eq("plan_id", planId)
     .order("week_start", { ascending: true });
   if (weekErr) return { ok: false, error: `lettura settimane: ${weekErr.message}` };
@@ -198,9 +235,31 @@ export async function materializeTrainingMacro(
     }
   }
 
+  // Commutatore F3: il motore si decide UNA volta per piano (mai per settimana,
+  // niente settimane miste). Default 'db' — il ramo builder è opt-in via env.
+  const engine = args.engine ?? resolveTrainingL2Engine(plan.athlete_id);
+  if (engine === "builder") {
+    const builder = await materializeSelectedWeeksWithBuilderEngine(db, {
+      planId,
+      athleteId: plan.athlete_id,
+      discipline: plan.discipline ?? "cycling",
+      selected,
+      byWeekStart,
+      errors,
+    });
+    return {
+      ok: true,
+      planId,
+      materialized: builder.materialized,
+      skipped,
+      errors,
+      publishedCount: builder.publishedCount,
+    };
+  }
+
   // goal_text identico al comportamento di oggi (obiettivi liberi del profilo):
   // gli stimoli STRUTTURATI della settimana restano negli objectives L1; il loro
-  // consumo diretto dal motore è materia della EF F3, non di questo wrapper.
+  // consumo diretto è materia del motore builder (sopra) e della EF F3.
   const { data: profileRow } = await db
     .from("athlete_profiles")
     .select("goals")
@@ -257,4 +316,121 @@ export async function materializeTrainingMacro(
   }
 
   return { ok: true, planId, materialized, skipped, errors, publishedCount };
+}
+
+function asFiniteOrNull(value: unknown): number | null {
+  const n = typeof value === "string" ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Ramo BUILDER del commutatore F3: stessa orchestrazione del ramo db
+ * (purge SEMPRE prima [F11], skip giorni con seduta Builder del coach,
+ * workout_count come segnale per la continuità), motore diverso.
+ *
+ * Config VIRYA, profilo render REALE e cataloghi si caricano UNA volta per piano
+ * e si passano alla funzione PURA `materializeWeekWithBuilderEngine` — la stessa
+ * che la Edge Function `materialize-training-week` importerà dal bundle. Se la
+ * config `virya_*` manca, il giro FALLISCE esplicito (mai fallback silenzioso al
+ * motore db: maschererebbe un errore di config proprio durante il QA).
+ */
+async function materializeSelectedWeeksWithBuilderEngine(
+  db: SupabaseClient,
+  args: {
+    planId: string;
+    athleteId: string;
+    discipline: string;
+    selected: string[];
+    byWeekStart: Map<string, SkeletonWeekRow>;
+    errors: Array<{ weekStart: string; error: string }>;
+  },
+): Promise<{ materialized: string[]; publishedCount: number }> {
+  const { planId, athleteId, discipline, selected, byWeekStart, errors } = args;
+  const materialized: string[] = [];
+  let publishedCount = 0;
+  if (!selected.length) return { materialized, publishedCount };
+
+  let shared: {
+    config: Awaited<ReturnType<typeof loadViryaConfigFromDb>>;
+    profile: Awaited<ReturnType<typeof loadAthleteRenderProfile>>;
+    catalogs: Awaited<ReturnType<typeof loadBuilderEngineCatalogs>>;
+  };
+  try {
+    const [config, profile] = await Promise.all([
+      loadViryaConfigFromDb(db),
+      loadAthleteRenderProfile(db, athleteId),
+    ]);
+    // Il catalogo gym si carica solo se almeno una settimana selezionata ha quota
+    // gym: per i piani 100/0 (default F2) il giro resta a due query in meno.
+    const includeGym = selected.some((weekStart) => {
+      const week = byWeekStart.get(weekStart);
+      return week ? familyMixFromJson(week.family_mix).gymPct > 0 : false;
+    });
+    const catalogs = await loadBuilderEngineCatalogs(db, { discipline, includeGym });
+    shared = { config, profile, catalogs };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    for (const weekStart of selected) {
+      errors.push({ weekStart, error: `builder_engine_setup: ${message}` });
+    }
+    return { materialized, publishedCount };
+  }
+
+  for (const weekStart of selected) {
+    const week = byWeekStart.get(weekStart);
+    if (!week) continue; // impossibile per costruzione, difensivo
+    const weekEnd = addDaysIso(weekStart, 6);
+    try {
+      await purgeWeekBeforeInsert(db, { planId, athleteId, weekStart, weekEnd });
+      const coachBusyDates = await loadCoachBusyDates(db, { athleteId, weekStart, weekEnd });
+
+      const phase = coercePhase(week.phase);
+      const skeletonWeek: BuilderEngineSkeletonWeek = {
+        weekStart,
+        phase,
+        loadTarget: Math.max(0, Math.round(Number(week.budget_tss) || 0)),
+        sessionsTarget: Math.max(1, Math.round(Number(week.sessions) || 1)),
+        hoursTarget: asFiniteOrNull(week.hours_target),
+        // Edit coach dello scheletro: stimoli espliciti (o derivati dalla fase se
+        // '{}') e quota famiglie — stessi mapper difensivi del contratto L1.
+        stimulus: weekObjectivesFromJson(week.objectives, phase),
+        familyMix: familyMixFromJson(week.family_mix),
+        // Disponibilità LIVE dalla routine (fonte unica, mai snapshot): riletta a
+        // ogni giro dal loader profilo.
+        availableDays: shared.profile.availableDays,
+      };
+
+      const result = materializeWeekWithBuilderEngine({
+        planId,
+        athleteId,
+        discipline,
+        week: skeletonWeek,
+        profile: shared.profile,
+        config: shared.config,
+        catalogs: shared.catalogs,
+      });
+      for (const slotError of result.errors) {
+        errors.push({ weekStart, error: `${slotError.date}: ${slotError.error}` });
+      }
+
+      // Skip-day coach identico al ramo db: L2 non tocca mai i giorni con una
+      // seduta Builder senza plan_id (il coach domina il motore sul giorno).
+      const publishable = result.rows.filter((row) => !coachBusyDates.has(row.date));
+      const inserted = await insertPlannedWorkoutRows(db, publishable);
+      publishedCount += inserted.ids.length;
+      materialized.push(weekStart);
+
+      // workout_count > 0 = settimana materializzata: segnale letto dalla
+      // continuità per distinguere «scheletro da consumare» da «piano esaurito».
+      const { error: countErr } = await db
+        .from("training_plan_week")
+        .update({ workout_count: inserted.ids.length })
+        .eq("id", week.id);
+      if (countErr) errors.push({ weekStart, error: `workout_count: ${countErr.message}` });
+    } catch (e) {
+      errors.push({ weekStart, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return { materialized, publishedCount };
 }
