@@ -3566,7 +3566,7 @@
     "sessionDurationReadonly": "Durata seduta",
     "sessionDurationFromBlocks": "somma dei blocchi",
     "date": "Data",
-    "dailySheetBlocks": "Scheda giornaliera · {count} blocchi",
+    "dailySheetBlocks": "{count, plural, =0 {Scheda giornaliera} other {Scheda giornaliera · # blocchi}}",
     "emptySheet": "Aggiungi dal playbook: ogni blocco ha schema V1 + <code>visualAssetKey</code> per le immagini future.",
     "rowScheme": "Schema",
     "removeBlock": "Rimuovi blocco",
