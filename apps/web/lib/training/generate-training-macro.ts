@@ -7,6 +7,14 @@ import {
 import type { MacroPhase } from "@/lib/training/build-macro-phases";
 
 /**
+ * @deprecated LEGACY (VIRYA F2): il choke point è stato splittato in
+ * `proposeTrainingMacro` (scheletro L1 approvabile) + `materializeTrainingMacro`
+ * (sedute dal DB scheletro, righe taggate plan_id). Questo percorso monolitico
+ * (RPC `generate_training_plan_custom` genera+pubblica in un colpo, senza status
+ * né supersessione) non ha più chiamanti runtime: resta SOLO come via di rollback
+ * finché il QA del nuovo split non è firmato — poi si elimina insieme al ramo
+ * plan della RPC (F3/F4).
+ *
  * Materializza un MACRO periodizzato (multi-settimana) e lo pubblica sul calendario.
  * Compone: RPC `generate_training_plan_custom(p_phases)` (progressione build, taper peak/deload,
  * scarichi — periodizzazione coerente in un colpo) → `readDbEngineWorkouts` → `publishDbWorkoutsToCalendar`

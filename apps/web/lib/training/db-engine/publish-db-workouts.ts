@@ -330,16 +330,20 @@ export type PublishDbWorkoutsResult = {
   builderContractCount: number;
 };
 
-/** Pubblica i workout DB sul calendario via percorso canonico (dedupe fingerprint + clamp). */
+/**
+ * Pubblica i workout DB sul calendario via percorso canonico (dedupe fingerprint + clamp).
+ * `opts.planId` (split proponi/materializza, blueprint D): tagga le righe con l'identità
+ * del piano L1 — pensiona i marker testuali nelle notes come criterio di appartenenza.
+ */
 export async function publishDbWorkoutsToCalendar(
   db: SupabaseClient,
   details: DbEngineWorkoutDetail[],
+  opts?: { planId?: string | null },
 ): Promise<PublishDbWorkoutsResult> {
   const mappings = details.map((detail) => mapDbWorkoutToPlannedRow(detail));
-  const { ids, dedupeSkippedCount, replacedSameTypeCount } = await insertPlannedWorkoutRows(
-    db,
-    mappings.map((m) => m.row),
-  );
+  const planId = opts?.planId?.trim() || null;
+  const rows = mappings.map((m) => (planId ? { ...m.row, plan_id: planId } : m.row));
+  const { ids, dedupeSkippedCount, replacedSameTypeCount } = await insertPlannedWorkoutRows(db, rows);
   return {
     publishedIds: ids,
     insertedCount: Math.max(0, ids.length - dedupeSkippedCount),

@@ -27,6 +27,9 @@ export function toPlannedWorkoutInsertRecord(row: PlannedWorkoutInsertPayload): 
     notes: clamped.notes,
   };
   if (clamped.kj_target != null) payload.kj_target = clamped.kj_target;
+  // plan_id solo quando presente: i chiamanti storici (Builder, import) non lo passano
+  // e il payload resta identico byte-per-byte (nessuna colonna esplicita a null).
+  if (clamped.plan_id) payload.plan_id = clamped.plan_id;
   return payload;
 }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
-import { buildMacroPhases } from "@/lib/training/build-macro-phases";
-import { generateAndPublishTrainingMacro } from "@/lib/training/generate-training-macro";
+import { materializeTrainingMacro } from "@/lib/training/materialize-training-macro";
+import { proposeTrainingMacro } from "@/lib/training/propose-training-macro";
 import { generateAndPersistMealPlanV2 } from "@/lib/nutrition/generate-meal-plan-v2-headless";
 import { loadEntitledAthleteIds, resolvePlanWindowStartIso } from "@/lib/onboarding/onboarding-window";
 
@@ -110,21 +110,35 @@ export async function GET(req: NextRequest) {
     let nutritionOk = false;
     let errMsg: string | undefined;
     try {
-      // Training: MACRO periodizzato (base→build→deload…), non più 1 sola settimana.
-      // Open-ended di default (nessuna gara collegata): arco base/build con scarichi.
-      const goals = Array.isArray(raw.goals)
-        ? (raw.goals as unknown[]).filter((g): g is string => typeof g === "string")
-        : [];
-      const phases = buildMacroPhases({ startDate: weekStart, goalEventDate: null });
-      const tRes = await generateAndPublishTrainingMacro(db, {
+      // Training, SPLIT proponi/materializza (VIRYA F2, blueprint D): la proposta
+      // scrive SOLO lo scheletro L1 (gara A da athlete_races → fasi goal-driven).
+      // DOPPIO RAMO: atleta senza coach → auto-approve + materializzazione immediata
+      // (comportamento di oggi); atleta CON coach → piano in draft e STOP, il
+      // calendario resta vuoto finché il coach non approva (/api/training/plan/approve).
+      const pRes = await proposeTrainingMacro(db, {
         athleteId,
         startDate: weekStart,
-        phases,
-        discipline: "cycling",
-        goalText: goals.join(", "),
+        source: "onboarding_d3",
       });
-      trainingOk = tRes.ok;
-      if (!tRes.ok) errMsg = tRes.error;
+      if (!pRes.ok) {
+        errMsg = pRes.error;
+      } else if (pRes.status === "approved") {
+        // Runway incrementale (pattern ensureTrainingContinuity): le settimane oltre
+        // l'orizzonte restano scheletro e verranno materializzate dalla continuità.
+        const mRes = await materializeTrainingMacro(db, {
+          planId: pRes.planId,
+          weeks: { mode: "runway", minFutureWeeks: 3 },
+        });
+        trainingOk = mRes.ok;
+        if (!mRes.ok) errMsg = mRes.error;
+        else if (mRes.errors.length > 0) {
+          errMsg = mRes.errors.map((e) => `${e.weekStart}: ${e.error}`).join(" | ");
+        }
+      } else {
+        // Draft in attesa del coach: per il bootstrap è un successo (il piano esiste).
+        trainingOk = true;
+        errMsg = "training: draft in attesa di approvazione coach";
+      }
 
       const nRes = await generateAndPersistMealPlanV2(db, athleteId, planStart);
       nutritionOk = nRes.ok;
