@@ -4971,6 +4971,22 @@ function resolveSixMealSnackPercentages(dist) {
   const third = s / 3;
   return { snack_am: third, snack_pm: third, snack_evening: third, snacksTotal: s };
 }
+function mealMacroKeyForSlot(key) {
+  switch (key) {
+    case "breakfast":
+      return "breakfast";
+    case "lunch":
+      return "lunch";
+    case "dinner":
+      return "dinner";
+    case "snack_am":
+    case "snack_pm":
+    case "snack_evening":
+      return "snacks";
+    default:
+      return null;
+  }
+}
 function round0(v) {
   return Math.round(v);
 }
@@ -5077,7 +5093,8 @@ function buildDietMealSlotBudgets(input) {
   return specs.map((spec) => {
     const pct = spec.pct(dist);
     const kcal = input.dailyKcal * pct / 100;
-    const macro = input.macroSplit;
+    const mealKey = mealMacroKeyForSlot(spec.key);
+    const macro = (mealKey != null ? input.macroSplitByMeal?.[mealKey] : void 0) ?? input.macroSplit;
     return {
       key: spec.key,
       label: spec.label,
@@ -5197,6 +5214,40 @@ function readDailyMacros(raw) {
     fat: fat ?? 25
   };
 }
+var MEAL_MACRO_CUSTOM_MEALS = ["breakfast", "lunch", "dinner", "snacks"];
+var MEAL_MACRO_CUSTOM_UI_PRESET = {
+  breakfast: { carbs: 55, protein: 20, fat: 25 },
+  lunch: { carbs: 45, protein: 30, fat: 25 },
+  dinner: { carbs: 40, protein: 35, fat: 25 },
+  snacks: { carbs: 60, protein: 20, fat: 20 }
+};
+function isUiPresetMealMacroCustom(map) {
+  if (Object.keys(map).length !== MEAL_MACRO_CUSTOM_MEALS.length) return false;
+  return MEAL_MACRO_CUSTOM_MEALS.every((meal) => {
+    const v = map[meal];
+    const preset = MEAL_MACRO_CUSTOM_UI_PRESET[meal];
+    return v != null && Math.abs(v.carbs - preset.carbs) < 0.01 && Math.abs(v.protein - preset.protein) < 0.01 && Math.abs(v.fat - preset.fat) < 0.01;
+  });
+}
+function readMealMacroCustom(dayRaw) {
+  const raw = asRecord5(dayRaw.meal_macro_custom);
+  const out = {};
+  for (const meal of MEAL_MACRO_CUSTOM_MEALS) {
+    const rec = asRecord5(raw[meal]);
+    const carbs = num2(rec.cho_pct ?? rec.carbs_pct);
+    const protein = num2(rec.pro_pct ?? rec.protein_pct);
+    const fat = num2(rec.fat_pct);
+    if (carbs == null || protein == null || fat == null) continue;
+    if (carbs < 0 || carbs > 100 || protein < 0 || protein > 100 || fat < 0 || fat > 100) continue;
+    const sum = carbs + protein + fat;
+    if (sum <= 0 || Math.abs(sum - 100) > 5) continue;
+    const f = 100 / sum;
+    out[meal] = { carbs: carbs * f, protein: protein * f, fat: fat * f };
+  }
+  if (Object.keys(out).length === 0) return null;
+  if (isUiPresetMealMacroCustom(out)) return null;
+  return out;
+}
 function readFromLegacyRoot(nc) {
   const mealPlan = asRecord5(nc.meal_plan);
   const dist = readCaloricDistributionFields(asRecord5(mealPlan.caloric_split), true) ?? readCaloricDistributionFields(asRecord5(nc.caloric_split), true);
@@ -5270,6 +5321,7 @@ function resolveNutritionDietDay(nutritionConfig, planDate, options) {
       mealCountMode,
       caloricDistribution,
       dailyMacros: weekMacros ?? legacy.dailyMacros,
+      mealMacroCustom: readMealMacroCustom(dayRaw),
       dayType,
       dayTypePct
     };
@@ -5288,6 +5340,8 @@ function resolveNutritionDietDay(nutritionConfig, planDate, options) {
       mealCountMode,
       caloricDistribution,
       dailyMacros: legacy.dailyMacros,
+      // legacy_root non ha mai avuto meal_macro_custom → split globale, invariato
+      mealMacroCustom: null,
       dayType,
       dayTypePct
     };
@@ -5300,6 +5354,7 @@ function resolveNutritionDietDay(nutritionConfig, planDate, options) {
     mealCountMode: "4",
     caloricDistribution: null,
     dailyMacros: null,
+    mealMacroCustom: null,
     dayType,
     dayTypePct
   };
@@ -5347,6 +5402,9 @@ function reconcileMealPlanSlotsWithDiet(input) {
     caloricDistribution: dietDay.caloricDistribution,
     dailyKcal,
     macroSplit,
+    // Coerenza col compose: i target slot della request seguono le stesse macro
+    // custom per-pasto del Profilo Diet (null → split globale, invariato).
+    macroSplitByMeal: dietDay.mealMacroCustom,
     mealTimes
   });
   const clientBySlot = /* @__PURE__ */ new Map();
@@ -7889,6 +7947,9 @@ function resolveDietSlots(requirements, request, dietDay, mealTimes) {
       caloricDistribution: dietDay.caloricDistribution,
       dailyKcal: requirements.energy.mealsKcal,
       macroSplit,
+      // Macro custom per-pasto dal Profilo Diet: solo gli slot con voce dedicata deviano
+      // dallo split globale; null (profilo non personalizzato) → identico a prima.
+      macroSplitByMeal: dietDay.mealMacroCustom,
       mealTimes
     }).map((b) => ({
       key: b.key,

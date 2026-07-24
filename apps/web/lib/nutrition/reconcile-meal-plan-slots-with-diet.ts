@@ -78,6 +78,9 @@ export function reconcileMealPlanSlotsWithDiet(input: {
     caloricDistribution: dietDay.caloricDistribution,
     dailyKcal,
     macroSplit,
+    // Coerenza col compose: i target slot della request seguono le stesse macro
+    // custom per-pasto del Profilo Diet (null → split globale, invariato).
+    macroSplitByMeal: dietDay.mealMacroCustom,
     mealTimes,
   });
 

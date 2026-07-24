@@ -118,6 +118,9 @@ function resolveDietSlots(
       caloricDistribution: dietDay.caloricDistribution,
       dailyKcal: requirements.energy.mealsKcal,
       macroSplit,
+      // Macro custom per-pasto dal Profilo Diet: solo gli slot con voce dedicata deviano
+      // dallo split globale; null (profilo non personalizzato) → identico a prima.
+      macroSplitByMeal: dietDay.mealMacroCustom,
       mealTimes,
     }).map((b) => ({
       key: b.key,

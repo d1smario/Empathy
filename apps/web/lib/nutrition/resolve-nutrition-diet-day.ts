@@ -6,11 +6,14 @@
  * Nessun preset globale 30/35/25/10: se il giorno non è configurato, `configured === false`.
  */
 
-import type { CaloricDistribution, MacroSplitPct } from "@/lib/nutrition/diet-meal-slot-budgets";
+import type { CaloricDistribution, MacroSplitPct, MealMacroMealKey } from "@/lib/nutrition/diet-meal-slot-budgets";
 import { normalizeCaloricDistribution, resolveSixMealSnackPercentages } from "@/lib/nutrition/diet-meal-slot-budgets";
 import { profileWeekDayKeyFromIsoLocal } from "@/lib/nutrition/routine-week-plan-meal-times";
 
 export type NutritionDietDaySource = "week_plan" | "legacy_root" | "missing";
+
+/** Macro custom per-PASTO (Profile Diet → `meal_macro_custom`): pasti assenti → split globale. */
+export type MealMacroCustomMap = Partial<Record<MealMacroMealKey, MacroSplitPct>>;
 
 export type ResolvedNutritionDietDay = {
   planDate: string;
@@ -20,6 +23,12 @@ export type ResolvedNutritionDietDay = {
   mealCountMode: string;
   caloricDistribution: CaloricDistribution | null;
   dailyMacros: MacroSplitPct | null;
+  /**
+   * Split macro personalizzato per singolo pasto (`week_plan[wd].meal_macro_custom`), già
+   * normalizzato a 100%. `null` = nessuna personalizzazione reale → i budget slot usano
+   * il solo split giornaliero (`dailyMacros`), identico al comportamento storico.
+   */
+  mealMacroCustom: MealMacroCustomMap | null;
   dayType: string;
   /** % calorie rispetto fabbisogno (Profile Diet → «% calorie rispetto fabbisogno»). */
   dayTypePct: number;
@@ -198,6 +207,63 @@ function readDailyMacros(raw: Record<string, unknown>): MacroSplitPct | null {
   };
 }
 
+const MEAL_MACRO_CUSTOM_MEALS: MealMacroMealKey[] = ["breakfast", "lunch", "dinner", "snacks"];
+
+/**
+ * Preset che la UI Profilo (`defaultDietDayConfig`) scrive SEMPRE in `meal_macro_custom`
+ * al salvataggio, anche quando il coach non tocca quei campi. Se il giorno ha esattamente
+ * questo preset su tutti e quattro i pasti lo trattiamo come «non personalizzato»:
+ * attivarlo cambierebbe i piani di TUTTI gli atleti già salvati dalla UI (retro-compat
+ * inviolabile), non solo di chi ha scelto davvero macro per-pasto diverse.
+ */
+const MEAL_MACRO_CUSTOM_UI_PRESET: Record<MealMacroMealKey, MacroSplitPct> = {
+  breakfast: { carbs: 55, protein: 20, fat: 25 },
+  lunch: { carbs: 45, protein: 30, fat: 25 },
+  dinner: { carbs: 40, protein: 35, fat: 25 },
+  snacks: { carbs: 60, protein: 20, fat: 20 },
+};
+
+function isUiPresetMealMacroCustom(map: MealMacroCustomMap): boolean {
+  if (Object.keys(map).length !== MEAL_MACRO_CUSTOM_MEALS.length) return false;
+  return MEAL_MACRO_CUSTOM_MEALS.every((meal) => {
+    const v = map[meal];
+    const preset = MEAL_MACRO_CUSTOM_UI_PRESET[meal];
+    return (
+      v != null &&
+      Math.abs(v.carbs - preset.carbs) < 0.01 &&
+      Math.abs(v.protein - preset.protein) < 0.01 &&
+      Math.abs(v.fat - preset.fat) < 0.01
+    );
+  });
+}
+
+/**
+ * Legge `meal_macro_custom` del giorno in modo difensivo: tiene solo i pasti con i tre
+ * campi numerici completi, ciascuno in 0–100 e con somma ~100 (tolleranza ±5 per gli
+ * arrotondamenti UI), poi normalizza a 100 esatto. Pasto malformato (es. somma 150) →
+ * scartato → quello slot resta sullo split globale. Nessun pasto valido o solo il
+ * preset UI intonso → `null` (comportamento identico a oggi).
+ */
+export function readMealMacroCustom(dayRaw: Record<string, unknown>): MealMacroCustomMap | null {
+  const raw = asRecord(dayRaw.meal_macro_custom);
+  const out: MealMacroCustomMap = {};
+  for (const meal of MEAL_MACRO_CUSTOM_MEALS) {
+    const rec = asRecord(raw[meal]);
+    const carbs = num(rec.cho_pct ?? rec.carbs_pct);
+    const protein = num(rec.pro_pct ?? rec.protein_pct);
+    const fat = num(rec.fat_pct);
+    if (carbs == null || protein == null || fat == null) continue;
+    if (carbs < 0 || carbs > 100 || protein < 0 || protein > 100 || fat < 0 || fat > 100) continue;
+    const sum = carbs + protein + fat;
+    if (sum <= 0 || Math.abs(sum - 100) > 5) continue;
+    const f = 100 / sum;
+    out[meal] = { carbs: carbs * f, protein: protein * f, fat: fat * f };
+  }
+  if (Object.keys(out).length === 0) return null;
+  if (isUiPresetMealMacroCustom(out)) return null;
+  return out;
+}
+
 function readFromLegacyRoot(nc: Record<string, unknown>): {
   mealCountMode: string;
   caloricDistribution: CaloricDistribution | null;
@@ -315,6 +381,7 @@ export function resolveNutritionDietDay(
       mealCountMode,
       caloricDistribution,
       dailyMacros: weekMacros ?? legacy.dailyMacros,
+      mealMacroCustom: readMealMacroCustom(dayRaw),
       dayType,
       dayTypePct,
     };
@@ -339,6 +406,8 @@ export function resolveNutritionDietDay(
       mealCountMode,
       caloricDistribution,
       dailyMacros: legacy.dailyMacros,
+      // legacy_root non ha mai avuto meal_macro_custom → split globale, invariato
+      mealMacroCustom: null,
       dayType,
       dayTypePct,
     };
@@ -352,6 +421,7 @@ export function resolveNutritionDietDay(
     mealCountMode: "4",
     caloricDistribution: null,
     dailyMacros: null,
+    mealMacroCustom: null,
     dayType,
     dayTypePct,
   };

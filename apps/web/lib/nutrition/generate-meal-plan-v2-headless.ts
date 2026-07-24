@@ -9,7 +9,7 @@ import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2
 import { mealRotationStaplesFromComposedItems } from "@/lib/nutrition/v2/fdc-staple-registry";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
-import type { FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
+import { mealTimesFromRoutineWeekPlanForDate, type FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
 
 /** Default deterministici quando il Profilo Diet non definisce distribuzione/macro/orari. */
 const DEFAULT_DISTRIBUTION: CaloricDistribution = { breakfast: 25, lunch: 35, dinner: 30, snacks: 10 };
@@ -116,12 +116,18 @@ export async function generateAndPersistMealPlanV2(
   // 2. Budget per slot dal Profilo Diet (con default se non configurato).
   const dietDay = resolveNutritionDietDay(p.nutrition_config ?? null, planDate, { preferredMealCount });
   const mealCountMode = dietDay.mealCountMode || (preferredMealCount ? String(Math.round(preferredMealCount)) : "5");
+  // Orari pasto reali dalla Routine dell'atleta per il giorno (stesso reader del path
+  // browser): senza il lookup il piano cron nasceva con orari hardcoded. Giorno senza
+  // routine configurata → DEFAULT_MEAL_TIMES, comportamento identico a prima.
+  const mealTimes = mealTimesFromRoutineWeekPlanForDate(routineConfig, planDate, DEFAULT_MEAL_TIMES);
   const budgets = buildDietMealSlotBudgets({
     mealCountMode,
     caloricDistribution: dietDay.caloricDistribution ?? DEFAULT_DISTRIBUTION,
     dailyKcal,
     macroSplit: dietDay.dailyMacros ?? DEFAULT_MACRO,
-    mealTimes: DEFAULT_MEAL_TIMES,
+    // Macro custom per-pasto (Profile Diet): null → split globale come oggi.
+    macroSplitByMeal: dietDay.mealMacroCustom,
+    mealTimes,
   });
   if (budgets.length < 3) return { ok: false, error: `Profilo Diet insufficiente (${budgets.length} slot)` };
 
@@ -175,6 +181,9 @@ export async function generateAndPersistMealPlanV2(
       dietDayMealsScalePct: prepared.dietDay.dayTypePct,
       plannedSessions: prepared.plannedSessions,
       dietDay: prepared.dietDay,
+      // Cintura: gli orari routine viaggiano già negli slot della request (scheduledTimeLocal),
+      // ma passarli anche qui evita il fallback sul default hardcoded del builder.
+      mealTimes,
       performanceIntegration: prepared.performanceIntegration ?? null,
     },
     db,

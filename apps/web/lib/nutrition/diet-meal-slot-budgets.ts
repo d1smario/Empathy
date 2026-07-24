@@ -72,6 +72,29 @@ export type MacroSplitPct = {
   fat: number;
 };
 
+/**
+ * Pasto «Profilo Diet» a cui appartiene uno slot motore: la UI custom macro lavora su
+ * 4 voci (colazione/pranzo/cena/spuntini), quindi i tre spuntini condividono `snacks`.
+ */
+export type MealMacroMealKey = "breakfast" | "lunch" | "dinner" | "snacks";
+
+export function mealMacroKeyForSlot(key: MealSlotKey): MealMacroMealKey | null {
+  switch (key) {
+    case "breakfast":
+      return "breakfast";
+    case "lunch":
+      return "lunch";
+    case "dinner":
+      return "dinner";
+    case "snack_am":
+    case "snack_pm":
+    case "snack_evening":
+      return "snacks";
+    default:
+      return null;
+  }
+}
+
 function round0(v: number): number {
   return Math.round(v);
 }
@@ -178,6 +201,13 @@ export function buildDietMealSlotBudgets(input: {
   caloricDistribution: CaloricDistribution;
   dailyKcal: number;
   macroSplit: MacroSplitPct;
+  /**
+   * Split macro custom per-pasto (Profile Diet → `meal_macro_custom`): lo slot che ha la
+   * sua voce usa quella, gli altri restano su `macroSplit` globale. Assente/`null` →
+   * comportamento identico a prima (un solo split per tutti gli slot). Le kcal/pct per
+   * slot NON cambiano: derivano sempre da `caloricDistribution`.
+   */
+  macroSplitByMeal?: Partial<Record<MealMacroMealKey, MacroSplitPct>> | null;
   mealTimes: FlatMealTimes & { snack_evening?: string };
   round?: (v: number) => number;
 }): DietMealSlotBudget[] {
@@ -208,7 +238,8 @@ export function buildDietMealSlotBudgets(input: {
   return specs.map((spec) => {
     const pct = spec.pct(dist);
     const kcal = (input.dailyKcal * pct) / 100;
-    const macro = input.macroSplit;
+    const mealKey = mealMacroKeyForSlot(spec.key);
+    const macro = (mealKey != null ? input.macroSplitByMeal?.[mealKey] : undefined) ?? input.macroSplit;
     return {
       key: spec.key,
       label: spec.label,

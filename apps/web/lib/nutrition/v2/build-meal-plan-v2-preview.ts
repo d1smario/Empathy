@@ -97,6 +97,8 @@ function resolveDietMealSlotBudgets(
     caloricDistribution: dietDay.caloricDistribution,
     dailyKcal: requirements.energy.mealsKcal,
     macroSplit,
+    // Parità col path production: macro custom per-pasto anche in anteprima/shadow.
+    macroSplitByMeal: dietDay.mealMacroCustom,
     mealTimes,
   });
   return budgets.map((b) => ({
