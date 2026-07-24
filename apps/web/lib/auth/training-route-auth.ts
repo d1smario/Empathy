@@ -43,6 +43,40 @@ const AUTH_GATE_CACHE_MAX = 5000;
 const entitlementOkAt = new Map<string, number>();
 const athleteAccessOkAt = new Map<string, number>();
 
+/** Ruolo del CALLER (non del target): serve alle route per l'enforcement dei campi coach-only. */
+export type CallerRoleInfo = {
+  role: string | null;
+  isPlatformAdmin: boolean;
+};
+
+const callerRoleInfoCache = new Map<string, { at: number; info: CallerRoleInfo }>();
+
+/**
+ * Ruolo + is_platform_admin del caller da `app_user_profiles` (RLS: la propria riga è leggibile,
+ * stesso pattern di `getSessionProfile`). Micro-cache 60 s come gli altri gate; su errore di
+ * query NON cachiamo e degradiamo a non-privilegiato (least privilege), così un errore
+ * transitorio non blocca un coach per un minuto intero.
+ */
+async function resolveCallerRoleInfoCached(userId: string, rlsClient: SupabaseClient): Promise<CallerRoleInfo> {
+  const hit = callerRoleInfoCache.get(userId);
+  if (hit && Date.now() - hit.at < AUTH_GATE_OK_TTL_MS) return hit.info;
+  const { data, error } = await rlsClient
+    .from("app_user_profiles")
+    .select("role, is_platform_admin")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const p = data as { role?: string | null; is_platform_admin?: boolean | null } | null;
+  const info: CallerRoleInfo = {
+    role: typeof p?.role === "string" ? p.role : null,
+    isPlatformAdmin: p?.is_platform_admin === true,
+  };
+  if (!error) {
+    if (callerRoleInfoCache.size > AUTH_GATE_CACHE_MAX) callerRoleInfoCache.clear();
+    callerRoleInfoCache.set(userId, { at: Date.now(), info });
+  }
+  return info;
+}
+
 async function assertPlatformEntitlementCached(userId: string, rlsClient: SupabaseClient): Promise<void> {
   const at = entitlementOkAt.get(userId);
   if (at != null && Date.now() - at < AUTH_GATE_OK_TTL_MS) return;
@@ -110,7 +144,7 @@ export async function requireAuthenticatedTrainingUser(req: NextRequest): Promis
 export async function requireTrainingAthleteWriteContext(
   req: NextRequest,
   athleteId: string,
-): Promise<{ userId: string; db: SupabaseClient }> {
+): Promise<{ userId: string; db: SupabaseClient; role: string | null; isPlatformAdmin: boolean }> {
   const target = athleteId.trim();
   if (!target) {
     throw new TrainingRouteAuthError(400, "Missing athleteId");
@@ -118,9 +152,12 @@ export async function requireTrainingAthleteWriteContext(
 
   const { userId, rlsClient } = await requireAuthenticatedTrainingUser(req);
   // Indipendenti tra loro: in parallelo (prima 2 stadi seriali per richiesta).
-  const [, allowed] = await Promise.all([
+  // Il ruolo del caller viaggia insieme al gate (micro-cache 60 s) così le route che
+  // devono distinguere atleta vs coach/admin (enforcement % nutrizione) non ripetono la query.
+  const [, allowed, roleInfo] = await Promise.all([
     assertPlatformEntitlementCached(userId, rlsClient),
     canAccessAthleteDataCached(rlsClient, userId, target),
+    resolveCallerRoleInfoCached(userId, rlsClient),
   ]);
   if (!allowed) {
     throw new TrainingRouteAuthError(403, "forbidden");
@@ -128,7 +165,7 @@ export async function requireTrainingAthleteWriteContext(
 
   const admin = createSupabaseAdminClient();
   const db = admin ?? rlsClient;
-  return { userId, db };
+  return { userId, db, role: roleInfo.role, isPlatformAdmin: roleInfo.isPlatformAdmin };
 }
 
 /** Lettura “forte” dopo auth utente: preferisci service role se disponibile (es. DELETE guard su id). */

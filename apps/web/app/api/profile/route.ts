@@ -4,6 +4,47 @@ import { requireAuthenticatedTrainingUser, supabaseForAthleteTableRead } from "@
 import { athleteIdByNormalizedEmail } from "@/lib/auth/bootstrap-app-user-profile";
 import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver";
 import { writeAthleteMemoryDomainPatch } from "@/lib/memory/athlete-memory-domain-writer";
+import { sanitizeNutritionConfigPercentsForAthlete } from "@/lib/profile/sanitize-nutrition-config-percents";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * ITEM 4 — enforcement server delle % nutrizione: il gate UI (`canEditNutritionPercents`)
+ * è solo client, quindi qui — nel punto di scrittura reale — le % (distribuzione calorica,
+ * macro giornalieri, macro custom per-pasto) vengono ri-forzate ai valori correnti del DB
+ * quando il caller NON è coach né platform admin. Strip silenzioso (la UI onesta è già
+ * read-only), segnalato con `nutritionPercentsEnforced: true` nella risposta.
+ */
+async function enforceNutritionPercentsIfAthlete(input: {
+  db: SupabaseClient;
+  athleteId: string;
+  payload: Record<string, unknown>;
+  callerIsPrivileged: boolean;
+  /** POST su profilo non ancora esistente: niente riga da leggere, sanitizza contro config vuoto. */
+  skipStoredLookup?: boolean;
+}): Promise<{ payload: Record<string, unknown>; enforced: boolean }> {
+  const { db, athleteId, payload, callerIsPrivileged, skipStoredLookup } = input;
+  if (callerIsPrivileged) return { payload, enforced: false };
+  if (!Object.prototype.hasOwnProperty.call(payload, "nutrition_config")) {
+    // Il PUT/POST profilo è un patch per colonna: se nutrition_config non è nel payload
+    // la colonna non viene toccata dal writer, quindi non c'è nulla da sanitizzare.
+    return { payload, enforced: false };
+  }
+  let stored: unknown = {};
+  if (!skipStoredLookup) {
+    const { data: row, error } = await db
+      .from("athlete_profiles")
+      .select("nutrition_config")
+      .eq("id", athleteId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    stored = (row as { nutrition_config?: unknown } | null)?.nutrition_config ?? {};
+  }
+  const sanitized = sanitizeNutritionConfigPercentsForAthlete(payload.nutrition_config, stored);
+  return {
+    payload: { ...payload, nutrition_config: sanitized.config },
+    enforced: sanitized.changed,
+  };
+}
 
 export const runtime = "nodejs";
 
@@ -185,10 +226,12 @@ export async function POST(req: NextRequest) {
     const db = supabaseForAthleteTableRead(rlsClient);
     const { data: appProfile } = await db
       .from("app_user_profiles")
-      .select("role, athlete_id")
+      .select("role, athlete_id, is_platform_admin")
       .eq("user_id", userId)
       .maybeSingle();
     const callerRole = typeof appProfile?.role === "string" ? appProfile.role : null;
+    const callerIsPlatformAdmin =
+      (appProfile as { is_platform_admin?: boolean | null } | null)?.is_platform_admin === true;
     const callerLinkedAthleteId = typeof appProfile?.athlete_id === "string" ? appProfile.athlete_id : null;
     if (callerRole === "coach") {
       // L'upsert matcha per email via service role: un coach potrebbe sovrascrivere l'athlete_profiles di un altro utente.
@@ -199,10 +242,32 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "I coach non creano profili atleta da qui" }, { status: 403 });
       }
     }
+    // Rischio (b) della mappa: anche l'upsert self-service passa dal writer service-role,
+    // quindi senza sanitizzazione un atleta potrebbe scrivere/azzerare le % via POST.
+    let payload = body.payload;
+    let nutritionPercentsEnforced = false;
+    const callerIsPrivileged = callerRole === "coach" || callerIsPlatformAdmin;
+    if (!callerIsPrivileged && Object.prototype.hasOwnProperty.call(payload, "nutrition_config")) {
+      // L'upsert matcha per email: risolviamo lo stesso atleta canonico del writer per
+      // leggere il nutrition_config corrente (profilo nuovo → stored vuoto → % strippate).
+      const payloadEmail = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+      const targetAthleteId =
+        callerLinkedAthleteId ?? (payloadEmail ? await athleteIdByNormalizedEmail(db, payloadEmail) : null);
+      const enforcedResult = await enforceNutritionPercentsIfAthlete({
+        db,
+        athleteId: targetAthleteId ?? "",
+        payload,
+        // Senza atleta esistente non c'è nulla da leggere: sanitizza contro config vuoto.
+        callerIsPrivileged: false,
+        skipStoredLookup: !targetAthleteId,
+      });
+      payload = enforcedResult.payload;
+      nutritionPercentsEnforced = enforcedResult.enforced;
+    }
     const result = await writeAthleteMemoryDomainPatch({
       domain: "profile",
       action: "upsert",
-      payload: body.payload,
+      payload,
       callerUserId: userId,
       callerLinkedAthleteId,
     });
@@ -210,6 +275,7 @@ export async function POST(req: NextRequest) {
       id: result.athleteId ?? null,
       status: result.status,
       athleteMemory: result.athleteMemory,
+      ...(nutritionPercentsEnforced ? { nutritionPercentsEnforced: true } : {}),
     });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {
@@ -227,17 +293,26 @@ export async function PUT(req: NextRequest) {
     if (!athleteId || !body.payload) {
       return NextResponse.json({ error: "Missing athleteId or payload" }, { status: 400 });
     }
-    await requireAthleteWriteContext(req, athleteId);
+    const { db, role, isPlatformAdmin } = await requireAthleteWriteContext(req, athleteId);
+    // Enforcement % nutrizione: solo coach/platform admin possono cambiarle (parità col
+    // gate UI `canEditNutritionPercents`); per l'atleta il payload viene sanitizzato.
+    const { payload, enforced } = await enforceNutritionPercentsIfAthlete({
+      db,
+      athleteId,
+      payload: body.payload,
+      callerIsPrivileged: role === "coach" || isPlatformAdmin,
+    });
     const result = await writeAthleteMemoryDomainPatch({
       domain: "profile",
       action: "update",
       athleteId,
-      payload: body.payload,
+      payload,
     });
     return NextResponse.json({
       athleteId,
       status: result.status,
       athleteMemory: result.athleteMemory,
+      ...(enforced ? { nutritionPercentsEnforced: true } : {}),
     });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {
