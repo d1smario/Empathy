@@ -27,6 +27,7 @@ import { ProfileDevicesSection } from "@/modules/profile/views/sections/ProfileD
 import { ProfilePersonalSection } from "@/modules/profile/views/sections/ProfilePersonalSection";
 import { ProfilePhysicalSection } from "@/modules/profile/views/sections/ProfilePhysicalSection";
 import { ProfileRoutineSection } from "@/modules/profile/views/sections/ProfileRoutineSection";
+import { ProfileRacesSection } from "@/modules/profile/views/sections/ProfileRacesSection";
 import { ProfileNutritionSection } from "@/modules/profile/views/sections/ProfileNutritionSection";
 import { ProfileQuestionnairesSection } from "@/modules/profile/views/sections/ProfileQuestionnairesSection";
 import {
@@ -1092,16 +1093,23 @@ export default function ProfilePage({
           {activeSection === "physical" && <ProfilePhysicalSection form={form} setForm={setForm} />}
 
           {activeSection === "routine" && (
-            <ProfileRoutineSection
-              form={form}
-              setForm={setForm}
-              routineWeekPlan={routineWeekPlan}
-              setRoutineWeekPlan={setRoutineWeekPlan}
-              activeRoutineDay={activeRoutineDay}
-              setActiveRoutineDay={setActiveRoutineDay}
-              updateRoutineDay={updateRoutineDay}
-              copyRoutineDayFromPrevious={copyRoutineDayFromPrevious}
-            />
+            <>
+              <ProfileRoutineSection
+                form={form}
+                setForm={setForm}
+                routineWeekPlan={routineWeekPlan}
+                setRoutineWeekPlan={setRoutineWeekPlan}
+                activeRoutineDay={activeRoutineDay}
+                setActiveRoutineDay={setActiveRoutineDay}
+                updateRoutineDay={updateRoutineDay}
+                copyRoutineDayFromPrevious={copyRoutineDayFromPrevious}
+              />
+              {/* Gare e obiettivi (athlete_races, F1): sta nella tab Routine perché è il
+                  terzo vincolo del piano dopo giorni/settimana e durata max — il generatore
+                  risolve goal_event_date dalla prossima gara A futura. Sezione autonoma
+                  DB-first (salva da sola, fuori dal submit del profilo), come Questionari. */}
+              <ProfileRacesSection athleteId={activeAthleteId} />
+            </>
           )}
 
           {activeSection === "nutrition" && (
