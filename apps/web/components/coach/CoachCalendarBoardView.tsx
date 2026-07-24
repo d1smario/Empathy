@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Dumbbell, Sparkles, X } from "lucide-react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { plannedCalendarChipViewModel } from "@/lib/training/planned-workout-display";
-import { formatAthleteLabel, useCoachRoster } from "@/lib/coach/use-coach-roster";
+import { useCoachRoster } from "@/lib/coach/use-coach-roster";
 import {
   CoachCalendarWeekGrid,
   type CoachCalendarDay,
@@ -502,39 +502,8 @@ export function CoachCalendarBoardView() {
           </p>
         ) : null}
 
-        {/* (B) PICKER COPIA SETTIMANA — scelta atleta destinazione dal roster (escluso il sorgente). */}
-        {copyWeekSource ? (
-          <div className="rounded-xl border border-violet-400/30 bg-violet-500/[0.08] px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-violet-100">{t("copyWeekPickTarget")}</p>
-              <button
-                type="button"
-                onClick={cancelCopyWeek}
-                disabled={copyWeekBusy}
-                className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[0.7rem] font-medium text-gray-200 transition enabled:hover:border-white/30 enabled:hover:text-white disabled:opacity-50"
-              >
-                <X className="h-3.5 w-3.5" aria-hidden />
-                {t("cancelCopy")}
-              </button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {athletes
-                .filter((a) => a.id !== copyWeekSource)
-                .map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    disabled={copyWeekBusy}
-                    onClick={() => runCopyWeek(copyWeekSource, a.id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-black/25 px-3 py-1.5 text-xs font-medium text-white transition enabled:hover:border-violet-300/60 enabled:hover:bg-violet-500/15 disabled:cursor-default disabled:opacity-50"
-                  >
-                    {t("copyWeekConfirm")} · {formatAthleteLabel(a)}
-                  </button>
-                ))}
-            </div>
-            {copyWeekBusy ? <p className="mt-2 text-[0.7rem] text-violet-200">{t("assigning")}</p> : null}
-          </div>
-        ) : null}
+        {/* (B) Il picker COPIA SETTIMANA vive nella griglia come POPOVER ancorato al bottone
+            «Copia sett.» (niente fascia in-flow: la board non si sposta all'apertura). */}
 
         {coachActivation === "suspended" ? (
           <p className="rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-3 text-sm text-rose-100" role="status">
@@ -573,6 +542,9 @@ export function CoachCalendarBoardView() {
             onCopyPlanned={onCopyPlanned}
             onPasteInto={onPasteInto}
             onCopyWeek={onCopyWeek}
+            copyWeekSource={copyWeekSource}
+            onRunCopyWeek={runCopyWeek}
+            onCancelCopyWeek={cancelCopyWeek}
             pasteActive={clipboard != null}
             pasteBusy={pasteBusy}
             copyWeekBusy={copyWeekBusy}

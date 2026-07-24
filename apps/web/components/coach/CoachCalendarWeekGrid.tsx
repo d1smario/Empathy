@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { CopyPlus } from "lucide-react";
+import { CopyPlus, X } from "lucide-react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
 import type { CanonicalAthleteRow } from "@/lib/athletes/canonical-profile";
 import { formatAthleteLabel } from "@/lib/coach/use-coach-roster";
@@ -38,6 +39,9 @@ export function CoachCalendarWeekGrid({
   onCopyPlanned,
   onPasteInto,
   onCopyWeek,
+  copyWeekSource,
+  onRunCopyWeek,
+  onCancelCopyWeek,
   pasteActive,
   pasteBusy,
   copyWeekBusy,
@@ -59,6 +63,12 @@ export function CoachCalendarWeekGrid({
   onPasteInto?: (athleteId: string, dateIso: string) => void;
   /** Copia l'intera settimana dell'atleta sorgente su un altro atleta. */
   onCopyWeek?: (sourceAthleteId: string) => void;
+  /** Atleta sorgente col picker «Copia settimana» aperto (null = nessun popover). */
+  copyWeekSource?: string | null;
+  /** Conferma la copia settimana sorgente→destinazione (chiude il popover a fine run). */
+  onRunCopyWeek?: (sourceAthleteId: string, destAthleteId: string) => void;
+  /** Chiude il picker «Copia settimana» senza copiare. */
+  onCancelCopyWeek?: () => void;
   /** True quando la clipboard è piena: abilita i bottoni «Incolla qui». */
   pasteActive?: boolean;
   /** True durante un incolla in corso. */
@@ -98,22 +108,27 @@ export function CoachCalendarWeekGrid({
         {/* Una riga per atleta. */}
         {athletes.map((athlete) => (
           <div key={athlete.id} className="grid border-b border-white/5 last:border-b-0" style={gridTemplate}>
-            <div className="sticky left-0 z-10 flex min-w-0 flex-col justify-center gap-1 border-r border-white/10 bg-zinc-950/95 px-3 py-2">
+            {/* z-30 quando il popover «Copia settimana» è aperto: la cella sticky delle righe
+                successive (z-10, sfondo quasi opaco) altrimenti lo coprirebbe. */}
+            <div
+              className={`sticky left-0 flex min-w-0 flex-col justify-center gap-1 border-r border-white/10 bg-zinc-950/95 px-3 py-2 ${
+                copyWeekSource === athlete.id ? "z-30" : "z-10"
+              }`}
+            >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-white">{formatAthleteLabel(athlete)}</p>
                 {athlete.email ? <p className="truncate text-[0.7rem] text-gray-500">{athlete.email}</p> : null}
               </div>
               {onCopyWeek ? (
-                <button
-                  type="button"
-                  disabled={copyWeekBusy}
-                  onClick={() => onCopyWeek(athlete.id)}
-                  title={t("copyWeekAction")}
-                  className="flex w-fit items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[0.6rem] font-semibold text-gray-300 transition enabled:hover:border-white/25 enabled:hover:text-white disabled:cursor-default disabled:opacity-50"
-                >
-                  <CopyPlus className="h-3 w-3" aria-hidden />
-                  {t("copyWeekAction")}
-                </button>
+                <CopyWeekTrigger
+                  athleteId={athlete.id}
+                  athletes={athletes}
+                  open={copyWeekSource === athlete.id}
+                  busy={copyWeekBusy}
+                  onOpen={onCopyWeek}
+                  onCancel={onCancelCopyWeek}
+                  onPick={onRunCopyWeek}
+                />
               ) : null}
             </div>
             {days.map((day) => (
@@ -146,6 +161,115 @@ export function CoachCalendarWeekGrid({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Trigger «Copia settimana» + popover di scelta atleta destinazione, ancorato al bottone
+ * (absolute in wrapper relative): niente elementi in-flow, la board non si sposta di un pixel.
+ * Si apre verso destra (la colonna atleta è al bordo sinistro del canvas largo 72rem, quindi
+ * non crea mai overflow orizzontale nuovo); stessi controlli della vecchia fascia, nessuna
+ * feature nuova. Chiusura su Escape, pointerdown fuori e a fine copia (source azzerato a monte).
+ */
+function CopyWeekTrigger({
+  athleteId,
+  athletes,
+  open,
+  busy,
+  onOpen,
+  onCancel,
+  onPick,
+}: {
+  athleteId: string;
+  athletes: CanonicalAthleteRow[];
+  open: boolean;
+  busy?: boolean;
+  onOpen: (sourceAthleteId: string) => void;
+  onCancel?: () => void;
+  onPick?: (sourceAthleteId: string, destAthleteId: string) => void;
+}) {
+  const t = useTranslations("CoachCalendarBoard");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Escape + pointerdown fuori dal wrapper (bottone incluso) → chiudi. Mai durante la copia:
+  // il click fuori non deve aggirare il bottone Annulla disabilitato.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (busy) return;
+      if (wrapRef.current && e.target instanceof Node && !wrapRef.current.contains(e.target)) onCancel?.();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onCancel?.();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, busy, onCancel]);
+
+  // Accessibilità dialog: focus sul primo controllo all'apertura.
+  useEffect(() => {
+    if (open) popoverRef.current?.querySelector("button")?.focus();
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative w-fit">
+      <button
+        type="button"
+        disabled={busy}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => (open ? onCancel?.() : onOpen(athleteId))}
+        title={t("copyWeekAction")}
+        className="flex w-fit items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[0.6rem] font-semibold text-gray-300 transition enabled:hover:border-white/25 enabled:hover:text-white disabled:cursor-default disabled:opacity-50"
+      >
+        <CopyPlus className="h-3 w-3" aria-hidden />
+        {t("copyWeekAction")}
+      </button>
+
+      {open ? (
+        <div
+          ref={popoverRef}
+          role="dialog"
+          aria-label={t("copyWeekPickTarget")}
+          className="absolute left-0 top-full z-30 mt-1.5 w-[21rem] rounded-xl border border-violet-400/30 bg-zinc-950/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-violet-100">{t("copyWeekPickTarget")}</p>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[0.7rem] font-medium text-gray-200 transition enabled:hover:border-white/30 enabled:hover:text-white disabled:opacity-50"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              {t("cancelCopy")}
+            </button>
+          </div>
+          {/* Scroll interno con roster lunghi: il popover non deve crescere oltre la board. */}
+          <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
+            {athletes
+              .filter((a) => a.id !== athleteId)
+              .map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onPick?.(athleteId, a.id)}
+                  className="flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-black/25 px-3 py-1.5 text-xs font-medium text-white transition enabled:hover:border-violet-300/60 enabled:hover:bg-violet-500/15 disabled:cursor-default disabled:opacity-50"
+                >
+                  {t("copyWeekConfirm")} · {formatAthleteLabel(a)}
+                </button>
+              ))}
+          </div>
+          {busy ? <p className="mt-2 text-[0.7rem] text-violet-200">{t("assigning")}</p> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
