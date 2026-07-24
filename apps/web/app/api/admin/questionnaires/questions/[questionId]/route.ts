@@ -42,7 +42,23 @@ export async function PATCH(req: Request, { params }: { params: { questionId: st
     const options = Array.isArray(body.options)
       ? body.options.filter((o): o is string => typeof o === "string").map((o) => o.trim()).filter(Boolean)
       : null;
-    const kind = (patch.kind as Kind | undefined) ?? (typeof body.kind === "string" ? (body.kind as Kind) : undefined);
+    let kind = patch.kind as Kind | undefined;
+    if (kind === undefined) {
+      // Perché: options senza kind nel body deve rispettare il kind corrente in DB,
+      // altrimenti una PATCH parziale aggira il vincolo «≥2 opzioni per choice».
+      const { data: current, error: readError } = await admin
+        .from("questionnaire_questions")
+        .select("kind")
+        .eq("id", id)
+        .maybeSingle();
+      if (readError) {
+        return NextResponse.json({ ok: false as const, error: readError.message }, { status: 500, headers: NO_STORE });
+      }
+      if (!current) {
+        return NextResponse.json({ ok: false as const, error: "Domanda non trovata." }, { status: 404, headers: NO_STORE });
+      }
+      if (KINDS.includes(current.kind as Kind)) kind = current.kind as Kind;
+    }
     if (kind === "choice" && (!options || options.length < 2)) {
       return NextResponse.json(
         { ok: false as const, error: "Una domanda a scelta richiede almeno 2 opzioni." },
