@@ -1,8 +1,6 @@
-import {
-  serializePro2BuilderSessionContract,
-  type Pro2BuilderSessionContract,
-} from "@/lib/training/builder/pro2-session-contract";
+import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import type { PlannedWorkoutInsertPayload } from "@/lib/training/planned/clamp-planned-row";
+import { buildPlannedNotesWithSizeGuard } from "@/lib/training/planned/notes-size-guard";
 import { denormalizedFieldsFromContract } from "@/lib/training/library/library-item-from-contract";
 
 const LIBRARY_NOTES_PREFIX = "[PRO2_BUILDER_LIBRARY]";
@@ -18,7 +16,6 @@ export function contractToPlannedWorkoutRow(input: {
     source: "builder",
   };
   const fields = denormalizedFieldsFromContract(contract);
-  const jsonLine = serializePro2BuilderSessionContract(contract);
   const meta = {
     v: 1,
     family: fields.family,
@@ -27,9 +24,29 @@ export function contractToPlannedWorkoutRow(input: {
     libraryItemId: input.libraryItemId?.trim() || null,
   };
   const baseNotes = `${LIBRARY_NOTES_PREFIX}${JSON.stringify(meta)}`;
-  let notes = `${baseNotes}\n${jsonLine}`;
-  if (notes.length > 32000) {
-    notes = notes.slice(0, 32000);
+  // Guard 32k (blueprint F1 sezione C / T6): comprimere-poi-degradare, MAI slice — lo slice
+  // cieco storico tagliava il JSON a metà e il contratto diventava imparsabile in silenzio.
+  // SCELTA documentata: la firma resta infallibile perché i 4 chiamanti (route apply-preset e
+  // clone, CalendarSessionEditModal client-side, applyCoachLibraryTemplate) si aspettano sempre
+  // un payload valido; sul caso estremo (incomprimibile > limite) salviamo la SOLA riga meta —
+  // il calendario rende comunque dai campi denormalizzati — e lo segnaliamo con console.error.
+  // La futura EF L2 usa invece il ramo {ok:false} dell'helper per far fallire la singola seduta.
+  const guarded = buildPlannedNotesWithSizeGuard({ metaLine: baseNotes, contract });
+  let notes: string;
+  if (guarded.ok) {
+    if (guarded.compressed) {
+      console.error(
+        "[contract-to-planned-row] notes oltre il limite: contratto compresso (campi opzionali rimossi)",
+        { sessionName: meta.sessionName, family: meta.family },
+      );
+    }
+    notes = guarded.notes;
+  } else {
+    console.error(
+      "[contract-to-planned-row] contract_too_large anche dopo compressione: ometto il contratto strutturato dalle notes",
+      { sessionName: meta.sessionName, family: meta.family, length: guarded.length },
+    );
+    notes = baseNotes;
   }
   return {
     athlete_id: input.athleteId.trim(),
