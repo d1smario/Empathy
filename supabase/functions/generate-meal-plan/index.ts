@@ -8,6 +8,7 @@ import {
   persistV2PlanToDb,
   attachSolverBasisToAssembled,
   canAccessAthleteData,
+  computeDailyHydrationTargetMl,
 } from "./nutrition-v2-engine.mjs";
 
 // Nutrition V2 meal-plan generator — motore V2 (bundle di apps/web/lib/nutrition/v2)
@@ -82,8 +83,23 @@ Deno.serve(async (req: Request) => {
     //    «Rigenera»): cambi a peso/allenamento/diet aggiornavano il render del Piano ma NON il
     //    DB → Oggi mostrava un piano stantìo diverso dal Piano. La generazione è deterministica
     //    per (atleta, data) e il persist fa REPLACE, quindi ripersistere è idempotente.
+    // Idratazione: si persiste il target della FORMULA CANONICA (max(2200, peso×33) + extra solo
+    // con seduta), la stessa delle superfici Oggi/Nutrizione — prima qui restava il vecchio peso×35.
+    // Peso: weight_kg del profilo (nullable, come le superfici) e NON `weightKg` del prepare che
+    // ha fallback 70 per il solver energetico. Durata: somma delle plannedSessions risolte dal
+    // prepare — è il contesto training del giorno che guida anche il fueling del motore (questo
+    // path non ha l'«effettivo» con gli eseguiti, che esiste solo lato superfici).
+    const profileWeightRaw = Number((profileRow as Record<string, unknown> | null)?.weight_kg);
+    const hydrationWeightKg = Number.isFinite(profileWeightRaw) && profileWeightRaw > 0 ? profileWeightRaw : null;
+    const hydrationSessionMin = plannedSessions.reduce(
+      (sum: number, s: { durationMin: number }) => sum + Math.max(0, s.durationMin),
+      0,
+    );
     const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2, {
-      hydrationMlTarget: weightKg != null ? Math.round(weightKg * 35) : null,
+      hydrationMlTarget: computeDailyHydrationTargetMl({
+        weightKg: hydrationWeightKg,
+        sessionDurationMin: hydrationSessionMin,
+      }).totalMl,
     });
     if (!persisted.ok) return json({ error: persisted.error }, 500);
 

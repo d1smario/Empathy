@@ -5,6 +5,7 @@ import { buildDietMealSlotBudgets, type CaloricDistribution, type MacroSplitPct 
 import { buildIntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-request-builder";
 import { prepareIntelligentMealPlanContext } from "@/lib/nutrition/intelligent-meal-plan-route-prep";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
+import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
 import { mealRotationStaplesFromComposedItems } from "@/lib/nutrition/v2/fdc-staple-registry";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
@@ -189,8 +190,15 @@ export async function generateAndPersistMealPlanV2(
     db,
   );
 
+  // Idratazione: si persiste il target della FORMULA CANONICA (max(2200, peso×33) + extra solo
+  // con seduta), la stessa delle superfici Oggi/Nutrizione — prima qui restava il vecchio peso×35.
+  // Peso: weight_kg del profilo (nullable, come le superfici) e NON prepared.weightKg che ha
+  // fallback 70 per il solver energetico. Durata: somma dei planned_workouts del giorno già letti
+  // sopra — questo path server-side genera in anticipo, quindi il pianificato È il contesto
+  // training del giorno (l'«effettivo» con gli eseguiti esiste solo lato superfici).
+  const hydrationSessionMin = plannedTraining.reduce((sum, s) => sum + Math.max(0, s.durationMinutes), 0);
   const persisted = await persistV2PlanToDb(db, athleteId, planDate, v2, {
-    hydrationMlTarget: prepared.weightKg != null ? Math.round(prepared.weightKg * 35) : null,
+    hydrationMlTarget: computeDailyHydrationTargetMl({ weightKg, sessionDurationMin: hydrationSessionMin }).totalMl,
   });
   if (!persisted.ok) return { ok: false, error: `persist: ${persisted.error}` };
   const staples = mealRotationStaplesFromComposedItems(v2.composedMealPlan.flatMap((s) => s.items));

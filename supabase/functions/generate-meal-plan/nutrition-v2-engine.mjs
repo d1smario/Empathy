@@ -6751,6 +6751,15 @@ function macroPerG(hit) {
     f: hit.fatPer100g / 100
   };
 }
+function effectiveMaxG(line, target) {
+  const role = line.spec.foodRole;
+  if (role !== "protein_primary" && role !== "protein_secondary") return line.spec.maxG;
+  const fatDense = line.hit.fatPer100g > line.hit.proteinPer100g;
+  if (!fatDense || !(line.hit.kcalPer100g > 0) || !(target.kcal > 0)) return line.spec.maxG;
+  const capG = target.kcal * 0.5 * 100 / line.hit.kcalPer100g;
+  const capOnStep = Math.floor(capG / line.spec.stepG) * line.spec.stepG;
+  return Math.min(line.spec.maxG, Math.max(line.spec.minG, capOnStep));
+}
 function solveFdcMealPortions(lines, target) {
   const grams = lines.map((line) => {
     if (line.spec.lever === "fixed") {
@@ -6763,13 +6772,14 @@ function solveFdcMealPortions(lines, target) {
   const proIdx = idxOf("protein");
   const fatIdx = idxOf("fat");
   const sumMacro = (m) => lines.reduce((acc, line, i) => acc + grams[i] * macroPerG(line.hit)[m], 0);
+  const maxGs = lines.map((line) => effectiveMaxG(line, target));
   const adjust = (idx, m, t) => {
     if (idx < 0) return;
     const line = lines[idx];
     const perG = macroPerG(line.hit)[m];
     if (perG <= 0) return;
     const others = sumMacro(m) - grams[idx] * perG;
-    grams[idx] = clampStep2((t - others) / perG, line.spec.minG, line.spec.maxG, line.spec.stepG);
+    grams[idx] = clampStep2((t - others) / perG, line.spec.minG, maxGs[idx], line.spec.stepG);
   };
   for (let it = 0; it < 20; it++) {
     adjust(proIdx, "p", Math.max(0, target.proteinG));
@@ -9608,10 +9618,21 @@ async function canAccessAthleteData(client, userId, athleteId, orgId) {
   if (linkErr) return false;
   return Boolean(links?.length);
 }
+
+// apps/web/lib/nutrition/hydration-target.ts
+function computeDailyHydrationTargetMl(input) {
+  const floorMul = input.floorMultiplier && input.floorMultiplier > 0 ? input.floorMultiplier : 1;
+  const baseMl = Math.round(Math.max(2200, (input.weightKg ?? 0) * 33) * floorMul);
+  const dur = Math.max(0, input.sessionDurationMin ?? 0);
+  const rate = input.fluidMlPerHour && input.fluidMlPerHour > 0 ? input.fluidMlPerHour : 650;
+  const trainingMl = dur > 0 ? Math.max(600, Math.round(dur / 60 * rate)) : 0;
+  return { baseMl, trainingMl, totalMl: baseMl + trainingMl };
+}
 export {
   attachSolverBasisToAssembled,
   buildMealPlanV2Production,
   canAccessAthleteData,
+  computeDailyHydrationTargetMl,
   mapV2PlanToV1Response,
   persistV2PlanToDb,
   prepareIntelligentMealPlanContext

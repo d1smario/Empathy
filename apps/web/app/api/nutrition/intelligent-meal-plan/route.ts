@@ -12,6 +12,7 @@ import type {
 } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { attachSolverBasisToAssembled } from "@/lib/nutrition/meal-plan-solver-basis";
+import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
 import { mapV2PlanToV1Response } from "@/lib/nutrition/v2/map-v2-plan-to-v1-response";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
@@ -334,8 +335,20 @@ export async function POST(req: NextRequest) {
             .limit(1)
             .maybeSingle();
           if (!existingPlan?.id || regenerate) {
+            // Idratazione: formula CANONICA (max(2200, peso×33) + extra solo con seduta),
+            // stessi input della Edge Function e delle superfici — peso = weight_kg del
+            // profilo nullable (NON `weightKg` del prepare che ha fallback 70), durata =
+            // somma plannedSessions. Questo è il fallback vivo quando la Edge non risponde:
+            // deve persistere lo stesso valore che avrebbe scritto lei.
+            const profileWeightRaw = Number((profileRow as Record<string, unknown> | null)?.weight_kg);
+            const hydrationWeightKg =
+              Number.isFinite(profileWeightRaw) && profileWeightRaw > 0 ? profileWeightRaw : null;
+            const hydrationSessionMin = plannedSessions.reduce((sum, s) => sum + Math.max(0, s.durationMin), 0);
             const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2Production, {
-              hydrationMlTarget: weightKg != null ? Math.round(weightKg * 35) : null,
+              hydrationMlTarget: computeDailyHydrationTargetMl({
+                weightKg: hydrationWeightKg,
+                sessionDurationMin: hydrationSessionMin,
+              }).totalMl,
             });
             if (!persisted.ok) console.error("[nutrition v2 persist]", persisted.error);
           }

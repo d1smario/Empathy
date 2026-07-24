@@ -22,6 +22,7 @@ import { mapV2PlanToV1Response } from "@/lib/nutrition/v2/map-v2-plan-to-v1-resp
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import { attachSolverBasisToAssembled } from "@/lib/nutrition/meal-plan-solver-basis";
 import { canAccessAthleteData } from "@/lib/athlete/can-access-athlete-data";
+import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
 export {
   prepareIntelligentMealPlanContext,
   buildMealPlanV2Production,
@@ -29,6 +30,7 @@ export {
   persistV2PlanToDb,
   attachSolverBasisToAssembled,
   canAccessAthleteData,
+  computeDailyHydrationTargetMl,
 };
 TS
 
