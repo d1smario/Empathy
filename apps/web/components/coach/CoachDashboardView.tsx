@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { BellRing, LayoutGrid, RefreshCw } from "lucide-react";
+import { BellRing, CalendarRange, LayoutGrid, RefreshCw } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import type { AlertKind } from "@/lib/alerts/athlete-alerts";
@@ -63,6 +63,11 @@ type AlertLite = {
   athlete_id: string;
   kind: AlertKind;
   created_at: string;
+};
+
+/** Piano in bozza (VIRYA rework F1): riga leggera per il badge «da approvare». */
+type DraftPlanLite = {
+  athlete_id: string;
 };
 
 type CommissionStatus = "accrued" | "requested" | "paid" | "cancelled";
@@ -154,6 +159,7 @@ let coachDashboardCache: {
   planned: WorkoutLite[];
   executed: WorkoutLite[];
   alerts: AlertLite[];
+  draftPlans: DraftPlanLite[];
   commissions: CommissionRow[];
   updatedAt: string | null;
 } | null = null;
@@ -166,12 +172,14 @@ let coachDashboardCache: {
  */
 export function CoachDashboardView() {
   const tAlerts = useTranslations("CoachAlerts");
+  const tDrafts = useTranslations("CoachDraftPlans");
   const locale = useLocale();
   const [firstName, setFirstName] = useState<string | null>(null);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [planned, setPlanned] = useState<WorkoutLite[]>([]);
   const [executed, setExecuted] = useState<WorkoutLite[]>([]);
   const [alerts, setAlerts] = useState<AlertLite[]>([]);
+  const [draftPlans, setDraftPlans] = useState<DraftPlanLite[]>([]);
   const [commissions, setCommissions] = useState<CommissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -210,6 +218,7 @@ export function CoachDashboardView() {
         setPlanned(cached.planned);
         setExecuted(cached.executed);
         setAlerts(cached.alerts);
+        setDraftPlans(cached.draftPlans);
         setCommissions(cached.commissions);
         setUpdatedAt(cached.updatedAt);
         setLoaded(true);
@@ -251,6 +260,7 @@ export function CoachDashboardView() {
       let nextPlanned: WorkoutLite[] = [];
       let nextExecuted: WorkoutLite[] = [];
       let nextAlerts: AlertLite[] = [];
+      let nextDraftPlans: DraftPlanLite[] = [];
       let nextCommissions: CommissionRow[] = [];
 
       if (ids.length === 0) {
@@ -263,9 +273,10 @@ export function CoachDashboardView() {
         nextPlanned = [];
         nextExecuted = [];
         nextAlerts = [];
+        nextDraftPlans = [];
         nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       } else {
-        const [profilesRes, plannedRes, executedRes, alertsRes, commissionsRes] = await Promise.all([
+        const [profilesRes, plannedRes, executedRes, alertsRes, draftPlansRes, commissionsRes] = await Promise.all([
           supabase.from("athlete_profiles").select("id, first_name, last_name, email").in("id", ids),
           supabase
             .from("planned_workouts")
@@ -291,10 +302,24 @@ export function CoachDashboardView() {
             .is("read_at", null)
             .order("created_at", { ascending: false })
             .limit(2000),
+          // Bozze piano in attesa di approvazione (VIRYA rework F1): la policy
+          // training_plan_coach_read consente al coach di vedere i draft dei
+          // propri atleti — badge «da approvare» con deep-link alla tab Piano.
+          supabase
+            .from("training_plan")
+            .select("athlete_id")
+            .in("athlete_id", ids)
+            .eq("status", "draft")
+            .limit(1000),
           commissionsQuery,
         ]);
         const firstError =
-          profilesRes.error ?? plannedRes.error ?? executedRes.error ?? alertsRes.error ?? commissionsRes.error;
+          profilesRes.error ??
+          plannedRes.error ??
+          executedRes.error ??
+          alertsRes.error ??
+          draftPlansRes.error ??
+          commissionsRes.error;
         if (firstError) {
           setErr(`${COPY.errPrefix}: ${firstError.message}`);
           return;
@@ -305,12 +330,14 @@ export function CoachDashboardView() {
         nextAlerts = ((alertsRes.data ?? []) as { athlete_id: string; kind: string; created_at: string }[]).filter(
           (row): row is AlertLite => isAlertKind(row.kind),
         );
+        nextDraftPlans = (draftPlansRes.data ?? []) as DraftPlanLite[];
         nextCommissions = (commissionsRes.data ?? []) as CommissionRow[];
       }
       setAthletes(nextAthletes);
       setPlanned(nextPlanned);
       setExecuted(nextExecuted);
       setAlerts(nextAlerts);
+      setDraftPlans(nextDraftPlans);
       setCommissions(nextCommissions);
       setLoaded(true);
       const nextUpdatedAt = new Intl.DateTimeFormat("it-CH", { timeStyle: "short" }).format(new Date());
@@ -323,6 +350,7 @@ export function CoachDashboardView() {
         planned: nextPlanned,
         executed: nextExecuted,
         alerts: nextAlerts,
+        draftPlans: nextDraftPlans,
         commissions: nextCommissions,
         updatedAt: nextUpdatedAt,
       };
@@ -390,6 +418,14 @@ export function CoachDashboardView() {
     for (const w of executed) m.set(w.athlete_id, (m.get(w.athlete_id) ?? 0) + 1);
     return m;
   }, [executed]);
+
+  // Conteggio bozze piano per atleta: di norma 0/1 (un solo piano non-archived
+  // per atleta), ma il badge mostra il conteggio reale se mai fossero di più.
+  const draftsByAthlete = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of draftPlans) m.set(d.athlete_id, (m.get(d.athlete_id) ?? 0) + 1);
+    return m;
+  }, [draftPlans]);
 
   // Alert non letti (48h) raggruppati per atleta, già in ordine created_at desc dalla query.
   const alertsByAthlete = useMemo(() => {
@@ -506,6 +542,7 @@ export function CoachDashboardView() {
                 {athletes.map((a) => {
                   // Badge alert: count non letti 48h + tooltip (title) con tipi e orari reali.
                   const rowAlerts = alertsByAthlete.get(a.id) ?? [];
+                  const draftCount = draftsByAthlete.get(a.id) ?? 0;
                   const alertsTooltip = rowAlerts
                     .map((al) => `${tAlerts(`kind.${al.kind}`)} · ${formatAlertTime(al.created_at, locale)}`)
                     .join("\n");
@@ -526,6 +563,19 @@ export function CoachDashboardView() {
                               <BellRing className="h-3 w-3" aria-hidden />
                               {rowAlerts.length}
                             </span>
+                          ) : null}
+                          {draftCount > 0 ? (
+                            /* Badge bozza piano (VIRYA rework): deep-link alla scheda
+                               atleta, tab Piano (?tab=piano letto da ScopedTrainingTabs). */
+                            <Link
+                              href={`/athletes/${a.id}/training?tab=piano`}
+                              title={tDrafts("badgeTitle")}
+                              aria-label={tDrafts("badgeAria", { count: draftCount })}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/10 px-2 py-0.5 text-[0.65rem] font-semibold tabular-nums text-violet-200 transition hover:bg-violet-500/20"
+                            >
+                              <CalendarRange className="h-3 w-3" aria-hidden />
+                              {tDrafts("badge", { count: draftCount })}
+                            </Link>
                           ) : null}
                         </p>
                         {a.email ? <p className="truncate text-xs text-gray-500">{a.email}</p> : null}

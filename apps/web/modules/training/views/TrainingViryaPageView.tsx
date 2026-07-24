@@ -13,6 +13,7 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { fetchTrainingPlannerContext, persistTrainingResearchPlans } from "@/modules/training/services/training-virya-api";
+import { PlanSkeletonReviewPanel } from "@/modules/training/components/PlanSkeletonReviewPanel";
 
 // Lazy-load: l'orchestrator (+ libraries.ts ~48KB + 20 sezioni + kit) è il chunk
 // più pesante della route; differirlo alleggerisce il bundle iniziale della pagina.
@@ -180,6 +181,10 @@ export default function TrainingViryaPageView() {
           {err}
         </p>
       ) : null}
+
+      {/* Revisione L1 SOPRA il wizard (blueprint D5): il coach vede e corregge la
+          bozza del motore prima di approvarla; il wizard legacy resta sotto. */}
+      {athleteId ? <PlanSkeletonReviewPanel athleteId={athleteId} /> : null}
 
       {athleteId ? (
         <ViryaAnnualPlanOrchestrator

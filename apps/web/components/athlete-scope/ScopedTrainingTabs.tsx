@@ -45,8 +45,19 @@ const TABS: { key: ScopedTrainingTab; label: string; Icon: typeof CalendarDays }
  * già autorizzata da `canAccessAthleteData`). Le viste nascondono la propria
  * TrainingSubnav quando `adminScoped`, per non duplicare la navigazione.
  */
+/** Tab valida dal query param `?tab=` (deep-link, es. badge bozze piano del coach). */
+function initialTabFromQuery(): ScopedTrainingTab {
+  // Lettura da window (non useSearchParams): il tab è stato locale e serve solo
+  // alla prima render — così si evita il vincolo Suspense del prerender Next.
+  if (typeof window !== "undefined") {
+    const q = new URLSearchParams(window.location.search).get("tab");
+    if (q === "calendar" || q === "builder" || q === "piano" || q === "analyzer") return q;
+  }
+  return "calendar";
+}
+
 export function ScopedTrainingTabs() {
-  const [tab, setTab] = useState<ScopedTrainingTab>("calendar");
+  const [tab, setTab] = useState<ScopedTrainingTab>(initialTabFromQuery);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-2">
