@@ -2,7 +2,7 @@ name: Device pull (scheduled)
 
 # Trigger periodico dei pull device OLTRE il cron giornaliero di Vercel.
 # Vercel piano Hobby accetta 1 cron/giorno: questa Action chiama gli endpoint di pull
-# (Garmin + Whoop) ogni 15 minuti così i dati compaiono quasi in tempo reale.
+# (Garmin + Whoop + Polar) ogni 15 minuti così i dati compaiono quasi in tempo reale.
 # Chiama SOLO i pull device (NON /api/cron/daily, che lancerebbe anche le email onboarding).
 # Richiede il secret repo CRON_SECRET (stesso valore impostato su Vercel).
 
@@ -30,7 +30,8 @@ jobs:
           fi
           for path in \
             /api/integrations/garmin/pull/cron \
-            /api/integrations/whoop/pull/cron ; do
+            /api/integrations/whoop/pull/cron \
+            /api/integrations/polar/pull/cron ; do
             code=$(curl -sS -m 60 -o /tmp/resp.json -w "%{http_code}" \
               -H "Authorization: Bearer $CRON_SECRET" \
               "$BASE_URL$path" || echo "000")

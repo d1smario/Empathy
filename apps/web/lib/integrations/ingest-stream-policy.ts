@@ -44,7 +44,11 @@ export async function listLinkedDeviceIngestProviders(athleteId: string): Promis
     linked.add(GARMIN_POLICY_PROVIDER);
   }
 
-  const order: IngestPolicyProvider[] = ["whoop", "wahoo", "garmin"];
+  // Ordine di esposizione nella UI policy. Include tutti i provider con stream configurabili:
+  // senza `polar`/`suunto`/`hammerhead` l'atleta collegato non vedeva alcun toggle e non poteva
+  // accendere gli stream non-default (es. `polar_exercise`). Il filtro sotto scarta comunque i
+  // provider senza chiavi stream (es. strava), quindi elencarli qui è sicuro.
+  const order: IngestPolicyProvider[] = ["whoop", "wahoo", "garmin", "polar", "suunto", "hammerhead"];
   return order.filter((p) => linked.has(p) && allowedIngestStreamKeysForProvider(p).length > 0);
 }
 

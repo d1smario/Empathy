@@ -75,9 +75,14 @@ export const DEFAULT_GARMIN_INGEST_STREAMS: Record<GarminIngestStreamKey, boolea
   garmin_activity_summary: true,
 };
 
-/** Default conservativi Polar: wellness on, exercise off (evita doppione training se primario è altro device). */
+/**
+ * Polar: orologio sportivo PRIMARIO → exercise on di default, come Garmin/Suunto.
+ * (Prima era off "per evitare doppioni": incoerente con gli altri sport-watch e, senza toggle
+ * in UI, gli allenamenti Polar non arrivavano mai in `executed_workouts`. Chi usa Polar solo
+ * come wellness può spegnerlo dai toggle dispositivo.)
+ */
 export const DEFAULT_POLAR_INGEST_STREAMS: Record<PolarIngestStreamKey, boolean> = {
-  polar_exercise: false,
+  polar_exercise: true,
   polar_sleep: true,
   polar_recharge: true,
 };
