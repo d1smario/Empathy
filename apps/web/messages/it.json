@@ -5259,6 +5259,11 @@
       "recovery": "Recupero",
       "skill_transfer": "Trasferimento tecnico",
       "vo2_max_support": "Supporto VO2max"
-    }
+    },
+    "reshapeApply": "Applica durate",
+    "reshapeApplying": "Applico…",
+    "reshapeHint": "Cambiare la durata di una fase sposta le settimane successive; le fasi già iniziate restano bloccate.",
+    "reshapeStarted": "Fase già iniziata: la durata non è più modificabile.",
+    "reshapeError": "Modifica durate non riuscita: {message}"
   }
 }

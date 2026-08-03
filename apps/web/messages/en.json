@@ -5259,6 +5259,11 @@
       "recovery": "Recovery",
       "skill_transfer": "Skill transfer",
       "vo2_max_support": "VO2max support"
-    }
+    },
+    "reshapeApply": "Apply durations",
+    "reshapeApplying": "Applying…",
+    "reshapeHint": "Changing a phase length shifts the following weeks; phases already started stay locked.",
+    "reshapeStarted": "Phase already started: its length can no longer be changed.",
+    "reshapeError": "Could not change durations: {message}"
   }
 }
