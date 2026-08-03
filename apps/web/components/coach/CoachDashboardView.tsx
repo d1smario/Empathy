@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { BellRing, CalendarRange, LayoutGrid, RefreshCw } from "lucide-react";
+import { CoachAlertsPanel } from "@/components/coach/CoachAlertsPanel";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import type { AlertKind } from "@/lib/alerts/athlete-alerts";
@@ -14,7 +15,7 @@ import { cn } from "@/lib/cn";
 const COPY = {
   eyebrow: "Dashboard · Coach",
   title: "Dashboard",
-  descriptionBase: "Athletes, sessions of the week and commissions at a glance.",
+  descriptionBase: "Athletes, alerts to handle and sessions of the week at a glance.",
   loading: "Loading data…",
   noSupabase: "Missing Supabase configuration (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).",
   noSession: "Session not found — sign in again to see your dashboard.",
@@ -600,12 +601,19 @@ export function CoachDashboardView() {
             )}
           </section>
 
-          {/* Commissioni */}
-          <section className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
-              <h2 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                {COPY.commissionsTitle}
-              </h2>
+          {/* Avvisi — al posto delle commissioni: accanto al roster sta ciò su cui il
+              coach AGISCE. Stesso pannello della pagina Atleti (una riga per avviso,
+              segna-letto, link alla scheda): un solo componente, un solo comportamento. */}
+          <CoachAlertsPanel basePath="/athletes" />
+        </div>
+
+        {/* Commissioni — in fondo, a tutta larghezza: è consuntivo amministrativo,
+            non lavoro quotidiano. */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-md">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+            <h2 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+              {COPY.commissionsTitle}
+            </h2>
               {!pending && accrued.length > 1 ? (
                 <button
                   type="button"
@@ -687,9 +695,8 @@ export function CoachDashboardView() {
                     })}
                 </tbody>
               </table>
-            </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </Pro2ModulePageShell>
   );
