@@ -980,6 +980,14 @@ body {
     box-shadow: none;
   }
 
+  /* Il filetto rosa/arancio in cima alla card era il bordo superiore di quella
+     cornice: senza la cornice resta una riga rossa sospesa dentro il riquadro
+     viola della sezione, che legge come un secondo bordo iniziato e mai chiuso.
+     L'identità dello slot resta nel gradiente della banda del titolo. */
+  .empathy-meal-expo-card::before {
+    display: none;
+  }
+
   /* Riepilogo macro in cima alla card: raggruppamento, non cornice — i tile
      CHO/PRO/FAT/IG dentro sono già leggibili come chip di dato. */
   .empathy-meal-expo-general {
@@ -1001,6 +1009,14 @@ body {
   }
   .empathy-meal-expo-detail-head {
     padding: 0 10px 8px;
+  }
+  /* Misurato a 390px: tutto il contenuto della card sta sul binario dei 10px
+     (macro, barra CHO/PRO/FAT, foto, righe alimento) tranne il titolo, spinto
+     a 24px dalla barretta decorativa + gap. Dentro il box del desktop quello
+     scarto era rientranza; qui, senza box, è solo un titolo fuori squadro.
+     Via la barretta: il titolo torna in colonna con tutto il resto. */
+  .empathy-meal-expo-detail-bar {
+    display: none;
   }
 
   /* UN solo inset orizzontale per tutta la lista (prima: lista + card alimento). */
