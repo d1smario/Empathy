@@ -15,6 +15,8 @@ import { formatAthleteLabel, useCoachRoster } from "@/lib/coach/use-coach-roster
  * `basePath` = `/athletes` su desktop, `/m/athletes` nella shell mobile coach.
  */
 export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string }) {
+  // NB: la card sta in una colonna affiancata agli alert; la lista scrolla dentro di sé
+  // (vedi max-h sull'ul) così un roster lungo non allunga la pagina né sfonda la colonna.
   const t = useTranslations("CoachRosterCard");
   const { role, athletes, loading, error, coachActivation } = useCoachRoster();
   const [query, setQuery] = useState("");
@@ -27,13 +29,15 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
+      className="relative min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
       aria-label={t("athletes")}
     >
       <div className="relative">
-        {/* Titolo/sottotitolo rimossi: duplicavano l'intestazione «Atleti» della card
-            a monte. L'aria-label sulla section resta per l'accessibilità. */}
-        {loading ? <div className="h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
+        {/* Il titolo era stato tolto perché duplicava l'header di pagina. Ora la card è UNA
+            delle due colonne (a fianco c'è «Avvisi»): senza etichetta non si capisce quale
+            lista si sta guardando. Sottotitolo no: quello sì resterebbe rumore. */}
+        <h2 className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("athletes")}</h2>
+        {loading ? <div className="mt-4 h-2 w-40 animate-pulse rounded-full bg-white/10" /> : null}
 
         {!loading && coachActivation === "suspended" ? (
           <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/20 px-3 py-2 text-sm text-rose-100" role="status">
@@ -71,7 +75,7 @@ export function CoachRosterCard({ basePath = "/athletes" }: { basePath?: string 
         ) : null}
 
         {!loading && !err && visibleAthletes.length > 0 ? (
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-4 max-h-[26rem] space-y-2 overflow-y-auto pr-1 sm:max-h-[34rem]">
             {visibleAthletes.map((a) => (
               <li
                 key={a.id}

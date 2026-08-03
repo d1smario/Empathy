@@ -2,20 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  BellRing,
-  Check,
-  Moon,
-  MoonStar,
-  RefreshCw,
-  TrendingDown,
-  TrendingUp,
-  UtensilsCrossed,
-  type LucideIcon,
-} from "lucide-react";
+import { BellRing, Check, RefreshCw } from "lucide-react";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import type { AlertKind } from "@/lib/alerts/athlete-alerts";
-import { alertsSinceIso, formatAlertTime, isAlertKind } from "@/lib/alerts/alerts-ui";
+import { ALERT_KIND_META, alertsSinceIso, formatAlertTime, isAlertKind } from "@/lib/alerts/alerts-ui";
 import { formatAlertAthleteName, formatAlertPayloadDetail } from "@/lib/alerts/admin-alerts-format";
 import { cn } from "@/lib/cn";
 
@@ -62,33 +52,15 @@ const MAX_ROWS = 200;
 /**
  * Etichette in TERZA persona: quelle i18n di `AthleteAlerts` sono scritte per l'atleta
  * («Hai dormito meno del dovuto») e in una lista admin sarebbero fuori voce.
+ * Icona e tono NON stanno qui: vengono da `ALERT_KIND_META` (unica fonte per tutte le
+ * superfici), così lo stesso tipo di alert ha lo stesso colore per admin, coach e atleta.
  */
-const KIND_META: Record<AlertKind, { label: string; icon: LucideIcon; tone: string }> = {
-  sleep_low: {
-    label: "Sonno sotto il target",
-    icon: Moon,
-    tone: "border-violet-400/30 bg-violet-500/10 text-violet-200",
-  },
-  training_over: {
-    label: "Allenamento sopra il pianificato",
-    icon: TrendingUp,
-    tone: "border-orange-400/30 bg-orange-500/10 text-orange-200",
-  },
-  training_under: {
-    label: "Allenamento sotto il pianificato",
-    icon: TrendingDown,
-    tone: "border-sky-400/30 bg-sky-500/10 text-sky-200",
-  },
-  plan_adjusted: {
-    label: "Piano nutrizionale adattato",
-    icon: UtensilsCrossed,
-    tone: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
-  },
-  sleep_missing: {
-    label: "Dati del sonno mancanti",
-    icon: MoonStar,
-    tone: "border-amber-400/30 bg-amber-500/10 text-amber-200",
-  },
+const KIND_LABEL: Record<AlertKind, string> = {
+  sleep_low: "Sonno sotto il target",
+  training_over: "Allenamento sopra il pianificato",
+  training_under: "Allenamento sotto il pianificato",
+  plan_adjusted: "Piano nutrizionale adattato",
+  sleep_missing: "Dati del sonno mancanti",
 };
 
 type AlertRow = {
@@ -190,8 +162,14 @@ export function AdminAlertsView() {
     try {
       // Solo `read_at`: è l'unica colonna concessa in update ai client (grant di colonna
       // della migrazione athlete_alerts); la policy admin_update dà la riga.
-      const { error } = await supabase.from("athlete_alerts").update({ read_at: new Date().toISOString() }).eq("id", id);
-      if (error) {
+      // `.select("id")`: senza, un diniego RLS torna error=null con 0 righe toccate e la
+      // riga sparirebbe dalla lista pur non essendo stata segnata letta.
+      const { data, error } = await supabase
+        .from("athlete_alerts")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", id)
+        .select("id");
+      if (error || !data || data.length === 0) {
         setActionErr(COPY.markReadFailed);
         return;
       }
@@ -259,7 +237,8 @@ export function AdminAlertsView() {
         <>
           <ul className="space-y-2">
             {rows.map((row) => {
-              const meta = KIND_META[row.kind];
+              const meta = ALERT_KIND_META[row.kind];
+              const kindLabel = KIND_LABEL[row.kind];
               const Icon = meta.icon;
               const athlete = athleteById.get(row.athlete_id);
               const label = athleteLabel(athlete, row.athlete_id);
@@ -277,7 +256,7 @@ export function AdminAlertsView() {
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" aria-hidden />
-                    {meta.label}
+                    {kindLabel}
                   </span>
 
                   <div className="min-w-0 flex-1">
@@ -309,7 +288,7 @@ export function AdminAlertsView() {
                     onClick={() => void markRead(row.id)}
                     disabled={busyId === row.id}
                     title={COPY.markRead}
-                    aria-label={`${COPY.markRead}: ${meta.label} · ${label}`}
+                    aria-label={`${COPY.markRead}: ${kindLabel} · ${label}`}
                     className="shrink-0 rounded-lg border border-white/15 bg-white/5 p-1.5 text-gray-300 transition hover:border-white/30 hover:bg-white/10 disabled:opacity-50"
                   >
                     <Check className="h-3.5 w-3.5" aria-hidden />

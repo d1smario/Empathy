@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Moon, MoonStar, TrendingDown, TrendingUp, UtensilsCrossed } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Check } from "lucide-react";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import type { AlertKind } from "@/lib/alerts/athlete-alerts";
-import { alertsSinceIso, formatAlertTime, isAlertKind } from "@/lib/alerts/alerts-ui";
+import { ALERT_KIND_META, alertsSinceIso, formatAlertTime, isAlertKind } from "@/lib/alerts/alerts-ui";
 import { cn } from "@/lib/cn";
 
 /**
@@ -21,14 +20,6 @@ type AlertRow = {
   id: string;
   kind: AlertKind;
   created_at: string;
-};
-
-const KIND_META: Record<AlertKind, { icon: LucideIcon; tone: string }> = {
-  sleep_low: { icon: Moon, tone: "border-violet-400/30 bg-violet-500/10 text-violet-200" },
-  training_over: { icon: TrendingUp, tone: "border-orange-400/30 bg-orange-500/10 text-orange-200" },
-  training_under: { icon: TrendingDown, tone: "border-sky-400/30 bg-sky-500/10 text-sky-200" },
-  plan_adjusted: { icon: UtensilsCrossed, tone: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200" },
-  sleep_missing: { icon: MoonStar, tone: "border-amber-400/30 bg-amber-500/10 text-amber-200" },
 };
 
 export function TodayAlertsStrip({ athleteId }: { athleteId: string }) {
@@ -102,7 +93,7 @@ export function TodayAlertsStrip({ athleteId }: { athleteId: string }) {
       ) : null}
       <ul className="flex flex-wrap gap-2">
         {alerts.map((a) => {
-          const meta = KIND_META[a.kind];
+          const meta = ALERT_KIND_META[a.kind];
           const Icon = meta.icon;
           const label = t(`kind.${a.kind}`);
           return (

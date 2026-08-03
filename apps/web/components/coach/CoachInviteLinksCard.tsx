@@ -7,8 +7,12 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 
 /**
  * Link di invito per coach abilitato.
+ *
+ * `bare`: stesso identico flusso (genera → copia → box risultato) ma senza cornice né
+ * titolo, perché su Atleti la card è diventata un bottone piccolo che apre un dialog —
+ * cornice e titolo li mette già il dialog. Nessuna logica duplicata: cambia solo il guscio.
  */
-export function CoachInviteLinksCard() {
+export function CoachInviteLinksCard({ bare = false }: { bare?: boolean } = {}) {
   const t = useTranslations("CoachInviteLinksCard");
   const { role, coachOperationalApproved, loading: ctxLoading } = useActiveAthlete();
   const inviteDisabled =
@@ -64,43 +68,49 @@ export function CoachInviteLinksCard() {
     return null;
   }
 
+  const body = (
+    <div className="relative">
+      {bare ? null : <h2 className="text-lg font-bold text-white">{t("inviteAthlete")}</h2>}
+      <p className={bare ? "text-sm text-gray-400" : "mt-1 text-sm text-gray-500"}>
+        {inviteDisabled && role === "coach"
+          ? t("availableAfterEnablement")
+          : t("generateHint")}
+      </p>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Pro2Button type="button" disabled={busy || inviteDisabled} onClick={() => void createInvite()}>
+          {busy ? t("creating") : t("generateLink")}
+        </Pro2Button>
+        {inviteUrl ? (
+          <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
+            {copied ? t("copied") : t("copyLink")}
+          </Pro2Button>
+        ) : null}
+      </div>
+
+      {err ? (
+        <p className="mt-3 text-sm text-amber-200/90" role="alert">
+          {err}
+        </p>
+      ) : null}
+
+      {inviteUrl ? (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
+          <p className="break-all font-mono text-xs text-gray-300">{inviteUrl}</p>
+          {expiresAt ? <p className="mt-2 text-xs text-gray-500">{t("expires", { date: new Date(expiresAt).toLocaleString() })}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (bare) return body;
+
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
       aria-label={t("inviteAthlete")}
     >
-      <div className="relative">
-        <h2 className="text-lg font-bold text-white">{t("inviteAthlete")}</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          {inviteDisabled && role === "coach"
-            ? t("availableAfterEnablement")
-            : t("generateHint")}
-        </p>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Pro2Button type="button" disabled={busy || inviteDisabled} onClick={() => void createInvite()}>
-            {busy ? t("creating") : t("generateLink")}
-          </Pro2Button>
-          {inviteUrl ? (
-            <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
-              {copied ? t("copied") : t("copyLink")}
-            </Pro2Button>
-          ) : null}
-        </div>
-
-        {err ? (
-          <p className="mt-3 text-sm text-amber-200/90" role="alert">
-            {err}
-          </p>
-        ) : null}
-
-        {inviteUrl ? (
-          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
-            <p className="break-all font-mono text-xs text-gray-300">{inviteUrl}</p>
-            {expiresAt ? <p className="mt-2 text-xs text-gray-500">{t("expires", { date: new Date(expiresAt).toLocaleString() })}</p> : null}
-          </div>
-        ) : null}
-      </div>
+      {body}
     </section>
   );
 }

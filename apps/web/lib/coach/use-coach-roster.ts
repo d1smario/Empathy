@@ -114,6 +114,22 @@ export function formatAthleteLabel(a: CanonicalAthleteRow): string {
 // visibili anche le variazioni del roster dopo un invito.
 let rosterCache: { role: CoachRosterRole; athletes: CanonicalAthleteRow[]; coachActivation: CoachActivation } | null = null;
 
+// Dedupe delle richieste IN VOLO: la pagina Atleti monta due consumer nello stesso tick
+// (`CoachRosterCard` e `CoachAlertsPanel`), e la cache sopra evita lo spinner ma NON la
+// fetch — senza questo, il roster verrebbe interrogato due volte (getUser +
+// app_user_profiles + coach_athletes + athlete_profiles ×2). Si azzera a promessa risolta,
+// così un rimontaggio successivo ricarica davvero.
+let rosterInflight: Promise<RosterOk | RosterErr> | null = null;
+
+function loadRosterShared(): Promise<RosterOk | RosterErr> {
+  if (!rosterInflight) {
+    rosterInflight = loadRoster().finally(() => {
+      rosterInflight = null;
+    });
+  }
+  return rosterInflight;
+}
+
 export type CoachRosterState = {
   role: CoachRosterRole;
   athletes: CanonicalAthleteRow[];
@@ -127,6 +143,8 @@ export type CoachRosterState = {
  * (getUser → app_user_profiles → coach_athletes → athlete_profiles → dedupeAthletesByEmail),
  * stessa cache cross-mount e stesso refetch in background. L'errore torna come codice
  * (`load` / `network`) così il consumer decide la copia tradotta.
+ *
+ * Più consumer montati insieme condividono UNA sola richiesta (vedi `loadRosterShared`).
  */
 export function useCoachRoster(): CoachRosterState {
   const [role, setRole] = useState<CoachRosterRole>("private");
@@ -151,7 +169,7 @@ export function useCoachRoster(): CoachRosterState {
         setCoachActivation(null);
       }
       try {
-        const json = await loadRoster();
+        const json = await loadRosterShared();
         if (cancelled) return;
         if (!json.ok) {
           if (!rosterCache) {

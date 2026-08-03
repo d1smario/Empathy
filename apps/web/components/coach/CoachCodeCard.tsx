@@ -8,8 +8,12 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 /**
  * Card "Il tuo codice": il coach genera/mostra/ruota il proprio codice coach corto.
  * L'atleta lo inserisce a registrazione per essere collegato (ESCLUSIVO) a questo coach.
+ *
+ * `bare`: stesso flusso senza cornice né titolo, perché su Atleti la card è diventata un
+ * bottone piccolo che apre un dialog. Effetto collaterale voluto: montandosi solo a dialog
+ * aperto, la `GET /api/coach/code` non parte più al caricamento della pagina Atleti.
  */
-export function CoachCodeCard() {
+export function CoachCodeCard({ bare = false }: { bare?: boolean } = {}) {
   const t = useTranslations("CoachCodeCard");
   const { role, coachOperationalApproved, loading: ctxLoading } = useActiveAthlete();
   const disabled = ctxLoading || role !== "coach" || (role === "coach" && !coachOperationalApproved);
@@ -80,45 +84,51 @@ export function CoachCodeCard() {
     return null;
   }
 
+  const body = (
+    <div className="relative">
+      {bare ? null : <h2 className="text-lg font-bold text-white">{t("title")}</h2>}
+      <p className={bare ? "text-sm text-gray-400" : "mt-1 text-sm text-gray-500"}>
+        {disabled && role === "coach"
+          ? t("approvalHint")
+          : t("shareHint")}
+      </p>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Pro2Button type="button" disabled={busy || disabled || loadingCode} onClick={() => void generate()}>
+          {busy ? t("generating") : code ? t("regenerate") : t("generate")}
+        </Pro2Button>
+        {code ? (
+          <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
+            {copied ? t("copied") : t("copy")}
+          </Pro2Button>
+        ) : null}
+      </div>
+
+      {err ? (
+        <p className="mt-3 text-sm text-amber-200/90" role="alert">
+          {err}
+        </p>
+      ) : null}
+
+      {code ? (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
+          <p className="font-mono text-lg font-bold uppercase tracking-[0.25em] text-white">{code}</p>
+          <p className="mt-2 text-xs text-gray-500">
+            {t("regenerateNote")}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (bare) return body;
+
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg backdrop-blur-xl sm:p-6"
       aria-label={t("ariaLabel")}
     >
-      <div className="relative">
-        <h2 className="text-lg font-bold text-white">{t("title")}</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          {disabled && role === "coach"
-            ? t("approvalHint")
-            : t("shareHint")}
-        </p>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Pro2Button type="button" disabled={busy || disabled || loadingCode} onClick={() => void generate()}>
-            {busy ? t("generating") : code ? t("regenerate") : t("generate")}
-          </Pro2Button>
-          {code ? (
-            <Pro2Button type="button" variant="secondary" onClick={() => void copy()}>
-              {copied ? t("copied") : t("copy")}
-            </Pro2Button>
-          ) : null}
-        </div>
-
-        {err ? (
-          <p className="mt-3 text-sm text-amber-200/90" role="alert">
-            {err}
-          </p>
-        ) : null}
-
-        {code ? (
-          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-left">
-            <p className="font-mono text-lg font-bold uppercase tracking-[0.25em] text-white">{code}</p>
-            <p className="mt-2 text-xs text-gray-500">
-              {t("regenerateNote")}
-            </p>
-          </div>
-        ) : null}
-      </div>
+      {body}
     </section>
   );
 }
