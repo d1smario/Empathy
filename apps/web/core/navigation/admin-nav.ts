@@ -23,6 +23,7 @@ export type AdminNavIconKey =
   | "events"
   | "questionnaires"
   | "inbox"
+  | "alerts"
   // user-scoped modules (riuso colonne coach)
   | "heart"
   | "activity"
@@ -44,6 +45,9 @@ export type AdminNavItem = {
 export const ADMIN_ACCOUNT_NAV: AdminNavItem[] = [
   { key: "dashboard", href: "/admin/dashboard", label: "Dashboard", icon: "dashboard" },
   { key: "utenti", href: "/admin/utenti", label: "Utenti", icon: "users" },
+  // Alert subito dopo Utenti: è la coda operativa sugli stessi utenti (chi ha un'anomalia
+  // nelle ultime 48h), l'unica superficie dove l'admin vede gli alert di TUTTA la piattaforma.
+  { key: "alert", href: "/admin/alert", label: "Alert", icon: "alerts" },
   { key: "coach", href: "/admin/coach", label: "Coach", icon: "coach" },
   { key: "commissioni", href: "/admin/commissioni", label: "Commissioni", icon: "wallet" },
   { key: "prodotti", href: "/admin/prodotti", label: "Prodotti", icon: "products" },

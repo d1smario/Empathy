@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Award,
+  BellRing,
   Calendar,
   ClipboardList,
   Cpu,
@@ -45,6 +46,7 @@ const ICONS: Record<AdminNavIconKey, LucideIcon> = {
   events: Calendar,
   questionnaires: ClipboardList,
   inbox: Inbox,
+  alerts: BellRing,
   heart: Heart,
   activity: Activity,
   calendar: Calendar,
