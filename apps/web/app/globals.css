@@ -967,8 +967,18 @@ body {
     padding: 0;
   }
 
-  /* Livello 2 = .empathy-meal-expo-card (la card del pasto): unica cornice
-     superstite qui dentro, resta intatta. */
+  /* Livello 2 — la card del pasto: era l'ultima cornice rimasta DENTRO quella
+     della sezione (la rosa dentro la viola). Su schermo stretto due cornici
+     concentriche sono ancora una di troppo: resta solo quella della sezione e
+     il pasto si identifica da titolo e colore dei suoi elementi, non da un
+     bordo. Desktop invariato (la card lì è un elemento di carosello e la
+     cornice serve a separarla dalle vicine). */
+  .empathy-meal-expo-card {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
 
   /* Riepilogo macro in cima alla card: raggruppamento, non cornice — i tile
      CHO/PRO/FAT/IG dentro sono già leggibili come chip di dato. */
