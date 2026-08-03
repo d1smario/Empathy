@@ -932,29 +932,93 @@ body {
   align-items: stretch;
 }
 
+/* B4-bis (mobile): APPIATTIAMO la catena, non limiamo i padding.
+   Il fix precedente (03420ad) stringeva solo gli inset e non bastava: il
+   problema non era quanto padding, era QUANTI livelli. La catena reale era
+     sezione (.viz-card) → .empathy-meal-plan-expo-shell → card pasto
+     → .empathy-meal-expo-detail → lista → card alimento
+   cioè CINQUE cornici concentriche (bordo + sfondo + raggio ciascuna) prima
+   di arrivare al contenuto: a 360px lasciavano 202px di riga utile e appena
+   110px alla colonna testo/numeri dell'alimento (30% dello schermo).
+   Sotto i 520px restano DUE soli livelli percepiti — la sezione di pagina e
+   la card del pasto (che porta identità e colore dello slot). Tutto ciò che
+   sta in mezzo esiste solo per decorazione: perde bordo/sfondo/raggio e
+   diventa raggruppamento puro. Gli alimenti si separano con un filetto
+   leggero invece che con una cornice a testa, così si continua a vedere dove
+   finisce uno e comincia l'altro.
+   Desktop invariato: ogni regola vive dentro la media query. */
 @media (max-width: 520px) {
-  /* B4 (mobile): i box annidati (general → detail → lista → card) sommavano
-     ~38px per lato di inset orizzontale, schiacciando i cibi. Stringiamo SOLO
-     gli inset orizzontali (il respiro verticale resta), recuperando ~30px di
-     larghezza utile per riga senza appiattire la gerarchia visiva. */
-  .empathy-meal-expo-general {
-    margin: 10px 6px 0;
-    padding: 10px;
+  /* Livello 1 — la sezione di pagina resta cornice, con inset ridotto
+     (1.25rem → 12px). Selettori per id: l'appiattimento è nutrizione-only,
+     .viz-card.builder-panel è condiviso con gli altri moduli. */
+  #nutrition-meal-plan > .viz-card.builder-panel,
+  #mod-target-giorno.viz-card.builder-panel {
+    padding-left: 12px;
+    padding-right: 12px;
   }
+
+  /* Livello decorativo intermedio: era una cornice dentro la cornice della
+     sezione, che conteneva a sua volta una cornice per pasto. Sparisce. */
+  .empathy-meal-plan-expo-shell {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* Livello 2 = .empathy-meal-expo-card (la card del pasto): unica cornice
+     superstite qui dentro, resta intatta. */
+
+  /* Riepilogo macro in cima alla card: raggruppamento, non cornice — i tile
+     CHO/PRO/FAT/IG dentro sono già leggibili come chip di dato. */
+  .empathy-meal-expo-general {
+    margin: 10px 0 0;
+    padding: 10px 10px 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  /* Box «ALIMENTI DETTAGLIATI»: sopravvivono intestazione e lista, non la cornice. */
   .empathy-meal-expo-detail {
-    margin: 10px 6px;
+    margin: 10px 0 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    padding-top: 10px;
   }
   .empathy-meal-expo-detail-head {
-    padding: 0 8px 8px;
+    padding: 0 10px 8px;
   }
+
+  /* UN solo inset orizzontale per tutta la lista (prima: lista + card alimento). */
   .empathy-meal-expo-food-list {
-    padding: 0 6px 12px;
-    gap: 12px;
+    padding: 0 10px 12px;
+    gap: 0;
   }
+
+  /* Card alimento → riga: niente cornice propria, il thumb guadagna i px
+     liberati (80 → 96) e il resto va alla colonna testo/numeri. */
   .empathy-meal-expo-food-card {
-    grid-template-columns: 80px minmax(0, 1fr);
+    grid-template-columns: 96px minmax(0, 1fr);
     gap: 12px;
-    padding: 10px;
+    padding: 12px 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  /* Separatore leggero al posto delle cornici annidate: il confine tra un
+     alimento e il successivo resta esplicito. */
+  .empathy-meal-expo-food-card + .empathy-meal-expo-food-card {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .empathy-meal-expo-food-card:first-child {
+    padding-top: 0;
+  }
+  .empathy-meal-expo-food-card:last-child {
+    padding-bottom: 0;
   }
   .empathy-meal-expo-food-body {
     gap: 10px;
