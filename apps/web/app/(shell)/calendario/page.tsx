@@ -7,8 +7,10 @@ import { redirectIfShellRoleNotAllowed } from "@/lib/auth/redirect-role-gate";
 export const metadata: Metadata = { title: "Calendar" };
 
 /**
- * Voce account-fissa del coach. Calendario operativo: board a due colonne — pannello sorgenti
- * (sedute di libreria) a sinistra, griglia settimana × atleti (sola lettura) a destra.
+ * Voce account-fissa del coach. Calendario operativo a TUTTA larghezza: griglia settimana ×
+ * atleti su una colonna sola, con le sorgenti (sedute di libreria + template Empathy) in un
+ * menù a tendina nella barra settimana. L'assegnazione è a selezione («in mano» → «Assegna
+ * qui» sul giorno), col trascinamento mantenuto come scorciatoia per il mouse.
  */
 export default async function CalendarioPage() {
   await redirectIfShellRoleNotAllowed(["coach"]);

@@ -4059,7 +4059,7 @@
   },
   "CoachCalendarBoard": {
     "sourcesTitle": "Sedute libreria",
-    "sourcesHint": "Trascina una seduta su un giorno per assegnarla",
+    "sourcesHint": "Scegli una seduta, poi clicca «Assegna qui» sul giorno dell’atleta.",
     "dropHint": "Rilascia per assegnare",
     "assigning": "Assegno…",
     "assignedToast": "«{title}» assegnata all’atleta",
@@ -4091,7 +4091,7 @@
     "notEditable": "Questa seduta non è modificabile qui.",
     "coachSourcesTab": "Le mie sedute",
     "empathySourcesTab": "Template Empathy",
-    "empathySourcesHint": "Trascina un template su un giorno per assegnarlo",
+    "empathySourcesHint": "Scegli un template, poi clicca «Assegna qui» sul giorno dell’atleta.",
     "empathyLoading": "Carico i template…",
     "empathyError": "Impossibile caricare i template Empathy.",
     "empathyEmpty": "Nessun template Empathy disponibile.",
@@ -4113,7 +4113,19 @@
     "copyWeekPickTarget": "Copia la settimana su…",
     "copyWeekConfirm": "Copia",
     "copyWeekResult": "Settimana copiata: {copied} sedute · {skipped} già presenti · {forbidden} non consentite",
-    "copyError": "Copia non riuscita: riprova."
+    "copyError": "Copia non riuscita: riprova.",
+    "sourcesMenuTrigger": "Sedute",
+    "sourcesMenuTitle": "Scegli una seduta",
+    "sourcesMenuClose": "Chiudi",
+    "sourcesFilter": "Cerca una seduta…",
+    "sourcesFilterEmpty": "Nessun risultato per questa ricerca.",
+    "sourcesDragHint": "Col mouse puoi anche trascinare una seduta direttamente su un giorno.",
+    "assignHere": "Assegna qui",
+    "selectedShort": "In mano: {title}",
+    "cancelSelection": "Annulla selezione",
+    "assignHintIdle": "Apri «Sedute», scegli una seduta e poi clicca il giorno dell’atleta a cui assegnarla.",
+    "assignHintActive": "Ora clicca «Assegna qui» sul giorno dell’atleta. Esc annulla la selezione.",
+    "unplannedBadgeShort": "N.P."
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.",

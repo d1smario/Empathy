@@ -28,10 +28,14 @@ const FAMILY_CHIP_TONE: Record<PlannedWorkoutFamily, string> = {
 };
 
 /**
- * Cella giorno (atleta × data) della griglia calendario coach — SOLA LETTURA. Due bande
- * verticali: «Pianificato» (chip planned, view-model condiviso col calendario atleta) ed
- * «Eseguito» (sedute reali, anche NON programmate → badge). Placeholder neutro se entrambe vuote.
- * Nessun drop-target/scrittura in questo incremento.
+ * Cella giorno (atleta × data) della griglia calendario coach. Due bande verticali:
+ * «Pianificato» (chip planned, view-model condiviso col calendario atleta) ed «Eseguito»
+ * (sedute reali, anche NON programmate → badge). Placeholder neutro se entrambe vuote.
+ *
+ * Due vie di assegnazione, entrambe attive: drop di una card sorgente (mouse) e click sul
+ * bottone di assegnazione quando la board ha una seduta «in mano» (funziona anche da tablet,
+ * dove il drag HTML5 non parte). Le metriche sono compattate perché con la settimana intera a
+ * vista la colonna giorno scende a ~108px: il testo esteso finirebbe a capo.
  */
 export function CoachCalendarDayCell({
   rows,
@@ -41,19 +45,20 @@ export function CoachCalendarDayCell({
   onOpenExecuted,
   onEditPlanned,
   onCopyPlanned,
-  onPasteInto,
-  pasteActive,
-  pasteBusy,
+  onAssignInto,
+  assignActive,
+  assignBusy,
   onDropSession,
   editActionLabel,
   copyActionLabel,
-  pasteHereLabel,
+  assignHereLabel,
   emptyHint,
   dropHint,
   moreLabel,
   plannedBandLabel,
   executedBandLabel,
   unplannedBadge,
+  unplannedBadgeShort,
   athleteFtpWatts,
 }: {
   rows: CoachCalendarPlannedRow[];
@@ -65,22 +70,22 @@ export function CoachCalendarDayCell({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
-  /** Copia una riga planned nella clipboard in-memory della board. */
+  /** Mette una riga planned «in mano» alla board (poi si assegna cliccando un giorno). */
   onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
-  /** Incolla la seduta in clipboard su questa cella (atleta × giorno). */
-  onPasteInto?: (athleteId: string, dateIso: string) => void;
-  /** True quando la clipboard è piena: mostra il bottone «Incolla qui». */
-  pasteActive?: boolean;
-  /** True durante un'operazione di incolla in corso (disabilita i bottoni). */
-  pasteBusy?: boolean;
+  /** Assegna la seduta «in mano» della board a questa cella (atleta × giorno). */
+  onAssignInto?: (athleteId: string, dateIso: string) => void;
+  /** True quando la board ha una seduta «in mano»: mostra il bottone di assegnazione. */
+  assignActive?: boolean;
+  /** True durante un'assegnazione in corso (disabilita i bottoni). */
+  assignBusy?: boolean;
   /** Drop di una card libreria/preset sulla cella → assegna la seduta all'atleta in quella data. */
   onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   /** aria-label «Modifica seduta» (già tradotto). */
   editActionLabel?: string;
   /** aria-label «Copia seduta» (già tradotto). */
   copyActionLabel?: string;
-  /** Etichetta bottone «Incolla qui» (già tradotto). */
-  pasteHereLabel?: string;
+  /** Etichetta bottone assegnazione: «Incolla qui» o «Assegna qui» (già tradotto). */
+  assignHereLabel?: string;
   /** Testo screen-reader/placeholder per la cella vuota (già tradotto). */
   emptyHint: string;
   /** Suggerimento drop «Rilascia per assegnare» (già tradotto). */
@@ -91,8 +96,10 @@ export function CoachCalendarDayCell({
   plannedBandLabel: string;
   /** Etichetta banda «Eseguito» (già tradotta). */
   executedBandLabel: string;
-  /** Badge «non programmato» (già tradotto). */
+  /** Badge «non programmato» esteso, usato nel `title` (già tradotto). */
   unplannedBadge: string;
+  /** Badge «non programmato» compatto mostrato nel chip (già tradotto). */
+  unplannedBadgeShort?: string;
   athleteFtpWatts?: number | null;
 }) {
   const executedRows = executed ?? [];
@@ -101,17 +108,17 @@ export function CoachCalendarDayCell({
 
   const [dragOver, setDragOver] = useState(false);
   const canDrop = Boolean(onDropSession && athleteId && dayIso);
-  const canPaste = Boolean(pasteActive && onPasteInto && athleteId && dayIso);
+  const canAssign = Boolean(assignActive && onAssignInto && athleteId && dayIso);
 
-  const pasteButton = canPaste ? (
+  const assignButton = canAssign ? (
     <button
       type="button"
-      disabled={pasteBusy}
-      onClick={() => onPasteInto!(athleteId as string, dayIso as string)}
-      className="flex items-center justify-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-500/10 px-2 py-1 text-[0.6rem] font-semibold text-cyan-100 transition enabled:hover:border-cyan-300/60 enabled:hover:bg-cyan-500/20 disabled:cursor-default disabled:opacity-50"
+      disabled={assignBusy}
+      onClick={() => onAssignInto!(athleteId as string, dayIso as string)}
+      className="flex w-full items-center justify-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-500/10 px-1.5 py-1 text-[0.6rem] font-semibold text-cyan-100 transition enabled:hover:border-cyan-300/60 enabled:hover:bg-cyan-500/20 disabled:cursor-default disabled:opacity-50"
     >
-      <ClipboardPaste className="h-3 w-3" aria-hidden />
-      {pasteHereLabel}
+      <ClipboardPaste className="h-3 w-3 shrink-0" aria-hidden />
+      <span className="truncate">{assignHereLabel}</span>
     </button>
   ) : null;
 
@@ -142,13 +149,15 @@ export function CoachCalendarDayCell({
         className={`flex min-h-[132px] items-center justify-center rounded-lg border border-dashed p-1 transition ${
           dragOver
             ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40"
-            : "border-white/8 bg-white/[0.015]"
+            : canAssign
+              ? "border-cyan-400/30 bg-cyan-500/[0.04]"
+              : "border-white/8 bg-white/[0.015]"
         }`}
       >
         {dragOver && dropHint ? (
           <span className="text-center text-[0.6rem] font-semibold text-cyan-200">{dropHint}</span>
-        ) : canPaste ? (
-          pasteButton
+        ) : canAssign ? (
+          assignButton
         ) : (
           <span className="text-[0.7rem] text-gray-700" aria-label={emptyHint}>
             ·
@@ -168,11 +177,15 @@ export function CoachCalendarDayCell({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex min-h-[132px] flex-col gap-1.5 rounded-lg border p-1.5 transition ${
-        dragOver ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40" : "border-white/10 bg-black/25"
+      className={`flex min-h-[132px] min-w-0 flex-col gap-1.5 rounded-lg border p-1.5 transition ${
+        dragOver
+          ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40"
+          : canAssign
+            ? "border-cyan-400/30 bg-black/25"
+            : "border-white/10 bg-black/25"
       }`}
     >
-      {canPaste ? pasteButton : null}
+      {canAssign ? assignButton : null}
 
       {/* Banda PIANIFICATO */}
       <div className="flex flex-col gap-1">
@@ -188,10 +201,12 @@ export function CoachCalendarDayCell({
               return (
                 <div
                   key={row.id ?? `${row.date}-${idx}`}
-                  className={`flex flex-col gap-0.5 rounded-md border px-1.5 py-1 ${FAMILY_CHIP_TONE[chip.family]}`}
-                  title={chip.detailLine}
+                  className={`flex min-w-0 flex-col gap-0.5 rounded-md border px-1.5 py-1 ${FAMILY_CHIP_TONE[chip.family]}`}
+                  /* Il carico esteso vive QUI: nella riga metrica «Carico» è tagliato per
+                     stare nei ~86px utili della colonna giorno stretta. */
+                  title={`${chip.detailLine} · ${chip.minutes}m · ${LOAD_CHIP_LABEL} ${chip.load}`}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex min-w-0 items-center gap-1">
                     {chip.glyph ? <SportDisciplineGlyph glyph={chip.glyph} className="h-3.5 w-3.5 shrink-0" /> : null}
                     <span className="truncate text-[0.65rem] font-bold uppercase tracking-wide">{chip.sportLabel}</span>
                     {canCopy || canEdit ? (
@@ -221,8 +236,8 @@ export function CoachCalendarDayCell({
                       </div>
                     ) : null}
                   </div>
-                  <div className="text-[0.65rem] font-medium tabular-nums opacity-90">
-                    {chip.minutes}m · {LOAD_CHIP_LABEL} {chip.load}
+                  <div className="min-w-0 truncate text-[0.65rem] font-medium tabular-nums opacity-90">
+                    {chip.minutes}m · {chip.load}
                   </div>
                 </div>
               );
@@ -256,15 +271,25 @@ export function CoachCalendarDayCell({
                   onClick={
                     clickable ? () => onOpenExecuted!(exec, athleteId as string, dayIso as string) : undefined
                   }
-                  className="flex w-full flex-col gap-0.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-1 text-left text-emerald-100 transition enabled:hover:border-emerald-300/50 enabled:hover:bg-emerald-500/20 disabled:cursor-default"
+                  className="flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-1 text-left text-emerald-100 transition enabled:hover:border-emerald-300/50 enabled:hover:bg-emerald-500/20 disabled:cursor-default"
+                  title={`${Math.round(exec.durationMinutes)}m · ${LOAD_CHIP_LABEL} ${Math.round(exec.tss)}${
+                    unplanned ? ` · ${unplannedBadge}` : ""
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[0.65rem] font-medium tabular-nums">
-                      {Math.round(exec.durationMinutes)}m · {LOAD_CHIP_LABEL} {Math.round(exec.tss)}
+                  {/* gap-0.5 e badge px-0.5: nei ~74px interni del chip a 1280px, con gap-1 e
+                      px-1 la riga metrica veniva tagliata di 2-3px (il carico spariva). */}
+                  <div className="flex min-w-0 items-center justify-between gap-0.5">
+                    <span className="min-w-0 truncate text-[0.65rem] font-medium tabular-nums">
+                      {Math.round(exec.durationMinutes)}m · {Math.round(exec.tss)}
                     </span>
                     {unplanned ? (
-                      <span className="shrink-0 rounded-sm border border-amber-400/50 bg-amber-500/30 px-1 py-px text-[0.5rem] font-bold uppercase tracking-wide text-amber-100">
-                        {unplannedBadge}
+                      /* Badge COMPATTO: «non programmato» per esteso occupa da solo più della
+                         colonna. Il testo intero resta nel `title` del chip. */
+                      <span
+                        aria-label={unplannedBadge}
+                        className="shrink-0 rounded-sm border border-amber-400/50 bg-amber-500/30 px-0.5 py-px text-[0.5rem] font-bold uppercase tracking-wide text-amber-100"
+                      >
+                        {unplannedBadgeShort ?? unplannedBadge}
                       </span>
                     ) : null}
                   </div>

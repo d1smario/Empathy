@@ -4059,7 +4059,7 @@
   },
   "CoachCalendarBoard": {
     "sourcesTitle": "Library sessions",
-    "sourcesHint": "Drag a session onto a day to assign it",
+    "sourcesHint": "Pick a session, then click “Assign here” on the athlete’s day.",
     "dropHint": "Drop to assign",
     "assigning": "Assigning…",
     "assignedToast": "“{title}” assigned to the athlete",
@@ -4091,7 +4091,7 @@
     "notEditable": "This session can't be edited here.",
     "coachSourcesTab": "My sessions",
     "empathySourcesTab": "Empathy templates",
-    "empathySourcesHint": "Drag a template onto a day to assign it",
+    "empathySourcesHint": "Pick a template, then click “Assign here” on the athlete’s day.",
     "empathyLoading": "Loading templates…",
     "empathyError": "Couldn’t load Empathy templates.",
     "empathyEmpty": "No Empathy templates available.",
@@ -4113,7 +4113,19 @@
     "copyWeekPickTarget": "Copy the week to…",
     "copyWeekConfirm": "Copy",
     "copyWeekResult": "Week copied: {copied} sessions · {skipped} already present · {forbidden} not allowed",
-    "copyError": "Copy failed: please try again."
+    "copyError": "Copy failed: please try again.",
+    "sourcesMenuTrigger": "Sessions",
+    "sourcesMenuTitle": "Pick a session",
+    "sourcesMenuClose": "Close",
+    "sourcesFilter": "Search a session…",
+    "sourcesFilterEmpty": "No results for this search.",
+    "sourcesDragHint": "With a mouse you can also drag a session straight onto a day.",
+    "assignHere": "Assign here",
+    "selectedShort": "Selected: {title}",
+    "cancelSelection": "Clear selection",
+    "assignHintIdle": "Open “Sessions”, pick one, then click the day of the athlete you want it assigned to.",
+    "assignHintActive": "Now click “Assign here” on the athlete’s day. Esc clears the selection.",
+    "unplannedBadgeShort": "N/P"
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "You can't accept your own invite: this link should be sent to your coach.",

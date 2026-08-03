@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight, Dumbbell, Sparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
-import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { plannedCalendarChipViewModel } from "@/lib/training/planned-workout-display";
 import { useCoachRoster } from "@/lib/coach/use-coach-roster";
 import {
   CoachCalendarWeekGrid,
   type CoachCalendarDay,
 } from "@/components/coach/CoachCalendarWeekGrid";
+import {
+  CoachCalendarSourcesMenu,
+  type CoachCalendarSourceTab,
+} from "@/components/coach/CoachCalendarSourcesMenu";
 import { CoachSessionAnalysisModal } from "@/components/coach/CoachSessionAnalysisModal";
 import {
   CalendarSessionEditModal,
@@ -38,7 +41,15 @@ import {
   type CoachCalendarDragPayload,
 } from "@/lib/training/library/coach-calendar-drag-payload";
 
-type SourceTab = "coach" | "empathy";
+/**
+ * La «mano» della board: UNA sola seduta selezionata alla volta, qualunque sia la sorgente.
+ * Una sola mano = un solo bottone per cella (mai «Incolla qui» e «Assegna qui» insieme).
+ * - `clone`  → seduta già a calendario copiata con l'icona copia (ex clipboard);
+ * - `source` → voce scelta dal menù a tendina (libreria coach o template Empathy).
+ */
+type PendingAssign =
+  | { kind: "clone"; sourceId: string; title: string }
+  | { kind: "source"; payload: CoachCalendarDragPayload; title: string };
 
 type SessionModalState = {
   open: boolean;
@@ -133,39 +144,57 @@ export function CoachCalendarBoardView() {
   const [dropBusy, setDropBusy] = useState(false);
   const [dropFeedback, setDropFeedback] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
-  // (A) COPIA/INCOLLA SEDUTA — clipboard in-memory (NIENTE persistenza).
-  const [clipboard, setClipboard] = useState<{ sourceId: string; title: string } | null>(null);
-  const [pasteBusy, setPasteBusy] = useState(false);
+  // (A) SELEZIONE → ASSEGNAZIONE — una sola «mano» in-memory (NIENTE persistenza).
+  // Si riempie in due modi: copia di una seduta già a calendario, oppure scelta dal menù
+  // sorgenti. Si svuota solo con la X sul chip o con Escape: dopo un'assegnazione RESTA piena,
+  // così la stessa seduta va su più atleti con più click senza riaprire il menù.
+  const [pending, setPending] = useState<PendingAssign | null>(null);
+  const [assignBusy, setAssignBusy] = useState(false);
   const onCopyPlanned = useCallback((row: CoachCalendarPlannedRow, _athleteId: string) => {
     if (!row.id) return;
     const chip = plannedCalendarChipViewModel(coachCalendarRowToPlannedWorkout(row));
-    setClipboard({ sourceId: row.id, title: chip.sportLabel });
+    setPending({ kind: "clone", sourceId: row.id, title: chip.sportLabel });
   }, []);
-  const cancelCopy = useCallback(() => setClipboard(null), []);
+  const cancelPending = useCallback(() => setPending(null), []);
 
-  const onPasteInto = useCallback(
+  const onPickSource = useCallback((payload: CoachCalendarDragPayload, title: string) => {
+    setPending({ kind: "source", payload, title });
+  }, []);
+
+  const onAssignInto = useCallback(
     async (athleteId: string, dateIso: string) => {
-      if (!clipboard || pasteBusy) return;
-      setPasteBusy(true);
+      if (!pending || assignBusy) return;
+      setAssignBusy(true);
       setDropFeedback(null);
+      // Un solo punto di smistamento verso le tre API già esistenti.
+      const genericError = pending.kind === "clone" ? t("copyError") : t("assignError");
       try {
-        const res = await clonePlannedWorkout({ sourceId: clipboard.sourceId, athleteId, date: dateIso });
+        const res =
+          pending.kind === "clone"
+            ? await clonePlannedWorkout({ sourceId: pending.sourceId, athleteId, date: dateIso })
+            : pending.payload.kind === "coach-item"
+              ? await applyCoachLibraryItem({
+                  itemId: pending.payload.itemId,
+                  athleteId,
+                  date: dateIso,
+                  applyScaling: false,
+                })
+              : await applyEmpathyPreset({ presetId: pending.payload.presetId, athleteId, date: dateIso });
         if (res.ok) {
-          setDropFeedback({ tone: "ok", text: t("assignedToast", { title: clipboard.title }) });
+          setDropFeedback({ tone: "ok", text: t("assignedToast", { title: pending.title }) });
           refetchWeek();
-          // Clipboard MANTENUTA: si può incollare più volte finché non si annulla.
         } else if (res.error === "forbidden" || res.error === "forbidden_source") {
           setDropFeedback({ tone: "error", text: t("assignForbidden") });
         } else {
-          setDropFeedback({ tone: "error", text: t("copyError") });
+          setDropFeedback({ tone: "error", text: genericError });
         }
       } catch {
-        setDropFeedback({ tone: "error", text: t("copyError") });
+        setDropFeedback({ tone: "error", text: genericError });
       } finally {
-        setPasteBusy(false);
+        setAssignBusy(false);
       }
     },
-    [clipboard, pasteBusy, refetchWeek, t],
+    [pending, assignBusy, refetchWeek, t],
   );
 
   // (B) COPIA SETTIMANA — su un altro atleta, stesse date.
@@ -269,8 +298,23 @@ export function CoachCalendarBoardView() {
     return () => clearTimeout(timer);
   }, [dropFeedback]);
 
-  // Pannello sorgenti (sinistra) a DUE sorgenti — SOLA LETTURA (nessun drag/applicazione).
-  const [sourceTab, setSourceTab] = useState<SourceTab>("coach");
+  // Menù a tendina delle sorgenti (ex aside a sinistra): `open` sollevato qui perché anche
+  // l'Escape «svuota la mano» vive a questo livello e i due non devono accavallarsi.
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourceTab, setSourceTab] = useState<CoachCalendarSourceTab>("coach");
+
+  // Escape svuota la mano. NIENTE Escape quando è aperto un popover/modale che lo usa già
+  // per sé (menù sorgenti, editor seduta, analisi): lì Escape deve solo chiudere quello.
+  useEffect(() => {
+    if (!pending) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (sourcesOpen || editOpen || sessionModal.open || copyWeekSource) return;
+      setPending(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [pending, sourcesOpen, editOpen, sessionModal.open, copyWeekSource]);
 
   // (1) SEDUTE COACH — libreria del coach.
   const [libraryItems, setLibraryItems] = useState<CoachWorkoutLibraryItemView[]>([]);
@@ -329,229 +373,157 @@ export function CoachCalendarBoardView() {
     : null;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-      {/* SINISTRA — pannello sorgenti a DUE tab (coach + Empathy), SOLA LETTURA (nessun drag). */}
-      <aside className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-        <div className="flex rounded-lg border border-white/10 bg-black/20 p-0.5">
+    /* UNA colonna: il calendario prende TUTTA la larghezza. Le sorgenti sono passate
+       dall'aside di 18rem a un menù a tendina nella barra qui sotto — vedi
+       CoachCalendarSourcesMenu per il perché. */
+    <div className="min-w-0 space-y-4">
+      {/* Barra settimana: navigazione a sinistra, «mano» + menù sorgenti a destra. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setSourceTab("coach")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[0.7rem] font-semibold transition ${
-              sourceTab === "coach" ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            onClick={() => setWeekOffset((n) => n - 1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
+            aria-label={t("prevWeek")}
           >
-            <Dumbbell className="h-3.5 w-3.5" aria-hidden />
-            {t("coachSourcesTab")}
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
+          <span className="min-w-[7rem] text-center text-sm font-semibold text-white tabular-nums">{rangeLabel}</span>
           <button
             type="button"
-            onClick={() => setSourceTab("empathy")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[0.7rem] font-semibold transition ${
-              sourceTab === "empathy" ? "bg-white/10 text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            onClick={() => setWeekOffset((n) => n + 1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
+            aria-label={t("nextWeek")}
           >
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            {t("empathySourcesTab")}
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
+          {weekOffset !== 0 ? (
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[0.7rem] font-medium text-gray-300 transition hover:border-white/25 hover:text-white"
+            >
+              {t("today")}
+            </button>
+          ) : null}
         </div>
-
-        {sourceTab === "coach" ? (
-          <div>
-            <p className="mt-3 text-[0.7rem] text-gray-500">{t("sourcesHint")}</p>
-            {libraryLoading ? (
-              <p className="mt-4 text-xs text-gray-500">{t("sourcesLoading")}</p>
-            ) : libraryError ? (
-              <p className="mt-4 text-xs text-amber-200" role="alert">
-                {t("sourcesError")}
-              </p>
-            ) : libraryItems.length === 0 ? (
-              <p className="mt-4 text-xs text-gray-500">{t("sourcesEmpty")}</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {libraryItems.map((item) => (
-                  <li
-                    key={item.id}
-                    draggable
-                    onDragStart={(e) =>
-                      handleCardDragStart(e, { kind: "coach-item", itemId: item.id, title: item.title })
-                    }
-                    className="cursor-grab select-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 transition hover:border-white/25 active:cursor-grabbing"
-                  >
-                    <p className="truncate text-sm font-medium text-white">{item.title}</p>
-                    <p className="mt-0.5 text-[0.7rem] text-gray-500">
-                      <span className="uppercase tracking-wide">{t(`family.${item.family}`)}</span>
-                      {" · "}
-                      {item.durationMinutes}m
-                      {" · "}
-                      {LOAD_CHIP_LABEL} {item.tssTarget}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : (
-          <div>
-            <p className="mt-3 text-[0.7rem] text-gray-500">{t("empathySourcesHint")}</p>
-            {empathyLoading ? (
-              <p className="mt-4 text-xs text-gray-500">{t("empathyLoading")}</p>
-            ) : empathyError ? (
-              <p className="mt-4 text-xs text-amber-200" role="alert">
-                {t("empathyError")}
-              </p>
-            ) : empathyPresets.length === 0 ? (
-              <p className="mt-4 text-xs text-gray-500">{t("empathyEmpty")}</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {empathyPresets.map((preset) => (
-                  <li
-                    key={preset.presetId}
-                    draggable
-                    onDragStart={(e) =>
-                      handleCardDragStart(e, {
-                        kind: "empathy-preset",
-                        presetId: preset.presetId,
-                        title: preset.title,
-                        discipline: preset.discipline,
-                      })
-                    }
-                    className="cursor-grab select-none rounded-xl border border-violet-400/20 bg-violet-500/[0.06] px-3 py-2.5 transition hover:border-violet-400/40 active:cursor-grabbing"
-                  >
-                    <p className="truncate text-sm font-medium text-white">{preset.title}</p>
-                    <p className="mt-0.5 text-[0.7rem] text-gray-500">
-                      <span className="uppercase tracking-wide">{preset.discipline}</span>
-                      {" · "}
-                      {preset.plannedMinutes}m
-                      {" · "}
-                      {LOAD_CHIP_LABEL} {preset.tss}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </aside>
-
-      {/* DESTRA — griglia settimana × atleti (sola lettura). */}
-      <section className="min-w-0 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setWeekOffset((n) => n - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
-              aria-label={t("prevWeek")}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* Chip «in mano»: la seduta selezionata è SEMPRE visibile, con la X per annullare
+              (Escape fa lo stesso). Compatto e in linea con la data: niente banda full-width. */}
+          {pending ? (
+            <span
+              role="status"
+              className="flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[0.72rem] font-medium text-cyan-100"
             >
-              <ChevronLeft className="h-4 w-4" aria-hidden />
-            </button>
-            <span className="min-w-[7rem] text-center text-sm font-semibold text-white tabular-nums">{rangeLabel}</span>
-            <button
-              type="button"
-              onClick={() => setWeekOffset((n) => n + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-300 transition hover:border-white/25 hover:text-white"
-              aria-label={t("nextWeek")}
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-            {weekOffset !== 0 ? (
+              {/* min-w-0 + max-w piccolo su schermo stretto: il chip si accorcia invece di
+                  spingere fuori il trigger (la sidebar da 16.5rem lascia poco spazio). */}
+              <span className="min-w-0 max-w-[8rem] truncate sm:max-w-[14rem]">
+                {pending.kind === "clone"
+                  ? t("clipboardShort", { title: pending.title })
+                  : t("selectedShort", { title: pending.title })}
+              </span>
               <button
                 type="button"
-                onClick={() => setWeekOffset(0)}
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[0.7rem] font-medium text-gray-300 transition hover:border-white/25 hover:text-white"
+                onClick={cancelPending}
+                aria-label={t("cancelSelection")}
+                title={t("cancelSelection")}
+                className="flex shrink-0 items-center justify-center rounded text-cyan-50/80 transition hover:text-white"
               >
-                {t("today")}
+                <X className="h-3.5 w-3.5" aria-hidden />
               </button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {/* (A) Indicatore CLIPBOARD compatto, in linea con la data (niente banda full-width → nessuno scroll verticale). «Incolla qui» resta visibile nelle celle. */}
-            {clipboard ? (
-              <span
-                role="status"
-                className="flex items-center gap-1.5 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[0.72rem] font-medium text-cyan-100"
-              >
-                <span className="max-w-[14rem] truncate">{t("clipboardShort", { title: clipboard.title })}</span>
-                <button
-                  type="button"
-                  onClick={cancelCopy}
-                  aria-label={t("cancelCopy")}
-                  className="flex shrink-0 items-center justify-center rounded text-cyan-50/80 transition hover:text-white"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              </span>
-            ) : null}
-            {dropBusy ? <span className="text-[0.7rem] text-cyan-300">{t("assigning")}</span> : null}
-            {weekLoading && athleteIds.length > 0 ? (
-              <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
-            ) : null}
-          </div>
-        </div>
-
-        {dropFeedback ? (
-          <p
-            role="status"
-            className={`rounded-xl border px-4 py-2.5 text-sm ${
-              dropFeedback.tone === "ok"
-                ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-100"
-                : "border-amber-400/30 bg-amber-500/10 text-amber-200"
-            }`}
-          >
-            {dropFeedback.text}
-          </p>
-        ) : null}
-
-        {/* (B) Il picker COPIA SETTIMANA vive nella griglia come POPOVER ancorato al bottone
-            «Copia sett.» (niente fascia in-flow: la board non si sposta all'apertura). */}
-
-        {coachActivation === "suspended" ? (
-          <p className="rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-3 text-sm text-rose-100" role="status">
-            {t("coachSuspended")}
-          </p>
-        ) : null}
-
-        {rosterErrText ? (
-          <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert">
-            {rosterErrText}
-          </p>
-        ) : null}
-
-        {weekError ? (
-          <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" role="alert">
-            {t("weekError")}
-          </p>
-        ) : null}
-
-        {rosterLoading && athletes.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
-            {t("rosterLoading")}
-          </div>
-        ) : !rosterLoading && athletes.length === 0 && !rosterErrText ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
-            {t("noAthletes")}
-          </div>
-        ) : athletes.length > 0 ? (
-          <CoachCalendarWeekGrid
-            athletes={athletes}
-            days={days}
-            cells={cells}
-            executedCells={executedCells}
-            onOpenExecuted={openExecuted}
-            onEditPlanned={onEditPlanned}
-            onCopyPlanned={onCopyPlanned}
-            onPasteInto={onPasteInto}
-            onCopyWeek={onCopyWeek}
-            copyWeekSource={copyWeekSource}
-            onRunCopyWeek={runCopyWeek}
-            onCancelCopyWeek={cancelCopyWeek}
-            pasteActive={clipboard != null}
-            pasteBusy={pasteBusy}
-            copyWeekBusy={copyWeekBusy}
-            onDropSession={onDropSession}
+            </span>
+          ) : null}
+          {dropBusy || assignBusy ? <span className="text-[0.7rem] text-cyan-300">{t("assigning")}</span> : null}
+          {weekLoading && athleteIds.length > 0 ? (
+            <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
+          ) : null}
+          {/* Trigger per ULTIMO (più a destra): con justify-end non si sposta quando il chip
+              compare o sparisce. Ancorato a destra, il pannello non copre la colonna atleti. */}
+          <CoachCalendarSourcesMenu
+            open={sourcesOpen}
+            onOpenChange={setSourcesOpen}
+            tab={sourceTab}
+            onTabChange={setSourceTab}
+            libraryItems={libraryItems}
+            libraryLoading={libraryLoading}
+            libraryError={libraryError}
+            empathyPresets={empathyPresets}
+            empathyLoading={empathyLoading}
+            empathyError={empathyError}
+            onDragStartSource={handleCardDragStart}
+            onPickSource={onPickSource}
           />
-        ) : null}
-      </section>
+        </div>
+      </div>
+
+      {/* Riga guida: dice quello che si fa DAVVERO (scegli → clicca il giorno). */}
+      <p className="text-[0.72rem] text-gray-500">
+        {pending ? t("assignHintActive") : t("assignHintIdle")}
+      </p>
+
+      {dropFeedback ? (
+        <p
+          role="status"
+          className={`rounded-xl border px-4 py-2.5 text-sm ${
+            dropFeedback.tone === "ok"
+              ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-100"
+              : "border-amber-400/30 bg-amber-500/10 text-amber-200"
+          }`}
+        >
+          {dropFeedback.text}
+        </p>
+      ) : null}
+
+      {/* (B) Il picker COPIA SETTIMANA vive nella griglia come POPOVER ancorato al bottone
+          «Copia sett.» (niente fascia in-flow: la board non si sposta all'apertura). */}
+
+      {coachActivation === "suspended" ? (
+        <p className="rounded-xl border border-rose-500/30 bg-rose-950/20 px-4 py-3 text-sm text-rose-100" role="status">
+          {t("coachSuspended")}
+        </p>
+      ) : null}
+
+      {rosterErrText ? (
+        <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert">
+          {rosterErrText}
+        </p>
+      ) : null}
+
+      {weekError ? (
+        <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200" role="alert">
+          {t("weekError")}
+        </p>
+      ) : null}
+
+      {rosterLoading && athletes.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
+          {t("rosterLoading")}
+        </div>
+      ) : !rosterLoading && athletes.length === 0 && !rosterErrText ? (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-gray-500">
+          {t("noAthletes")}
+        </div>
+      ) : athletes.length > 0 ? (
+        <CoachCalendarWeekGrid
+          athletes={athletes}
+          days={days}
+          cells={cells}
+          executedCells={executedCells}
+          onOpenExecuted={openExecuted}
+          onEditPlanned={onEditPlanned}
+          onCopyPlanned={onCopyPlanned}
+          onAssignInto={onAssignInto}
+          onCopyWeek={onCopyWeek}
+          copyWeekSource={copyWeekSource}
+          onRunCopyWeek={runCopyWeek}
+          onCancelCopyWeek={cancelCopyWeek}
+          assignActive={pending != null}
+          assignBusy={assignBusy}
+          assignHereLabel={pending?.kind === "source" ? t("assignHere") : t("pasteHere")}
+          copyWeekBusy={copyWeekBusy}
+          onDropSession={onDropSession}
+        />
+      ) : null}
 
       <CoachSessionAnalysisModal
         open={sessionModal.open}

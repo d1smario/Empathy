@@ -25,9 +25,10 @@ export type CoachCalendarDay = {
 };
 
 /**
- * Griglia settimana × atleti (sola lettura): header 7 giorni, prima colonna sticky col nome
- * atleta, una riga per atleta con 7 celle giorno. I giorni scorrono orizzontalmente, gli atleti
- * verticalmente — UNA vista responsive (stessa struttura desktop/mobile, cambia solo il viewport).
+ * Griglia settimana × atleti: header 7 giorni, prima colonna sticky col nome atleta, una riga
+ * per atleta con 7 celle giorno. Con le tracce strette la settimana intera entra senza scroll
+ * orizzontale da 1280px in su; sotto (tablet/telefono) si scorre — UNA vista responsive
+ * (stessa struttura desktop/mobile, cambia solo il viewport).
  */
 export function CoachCalendarWeekGrid({
   athletes,
@@ -37,13 +38,14 @@ export function CoachCalendarWeekGrid({
   onOpenExecuted,
   onEditPlanned,
   onCopyPlanned,
-  onPasteInto,
+  onAssignInto,
   onCopyWeek,
   copyWeekSource,
   onRunCopyWeek,
   onCancelCopyWeek,
-  pasteActive,
-  pasteBusy,
+  assignActive,
+  assignBusy,
+  assignHereLabel,
   copyWeekBusy,
   onDropSession,
   athleteFtpWatts,
@@ -57,10 +59,10 @@ export function CoachCalendarWeekGrid({
   onOpenExecuted?: (exec: ExecutedWorkout, athleteId: string, dayIso: string) => void;
   /** Apre il popup «Modifica seduta pianificata» su una riga planned. */
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
-  /** Copia una riga planned nella clipboard in-memory della board. */
+  /** Mette una riga planned «in mano» alla board (poi si assegna cliccando un giorno). */
   onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
-  /** Incolla la seduta in clipboard su una cella (atleta × giorno). */
-  onPasteInto?: (athleteId: string, dateIso: string) => void;
+  /** Assegna la seduta «in mano» (copia o sorgente) a una cella (atleta × giorno). */
+  onAssignInto?: (athleteId: string, dateIso: string) => void;
   /** Copia l'intera settimana dell'atleta sorgente su un altro atleta. */
   onCopyWeek?: (sourceAthleteId: string) => void;
   /** Atleta sorgente col picker «Copia settimana» aperto (null = nessun popover). */
@@ -69,10 +71,12 @@ export function CoachCalendarWeekGrid({
   onRunCopyWeek?: (sourceAthleteId: string, destAthleteId: string) => void;
   /** Chiude il picker «Copia settimana» senza copiare. */
   onCancelCopyWeek?: () => void;
-  /** True quando la clipboard è piena: abilita i bottoni «Incolla qui». */
-  pasteActive?: boolean;
-  /** True durante un incolla in corso. */
-  pasteBusy?: boolean;
+  /** True quando la «mano» è piena: abilita il bottone di assegnazione in ogni cella. */
+  assignActive?: boolean;
+  /** True durante un'assegnazione in corso. */
+  assignBusy?: boolean;
+  /** Etichetta del bottone cella: «Incolla qui» (copia) o «Assegna qui» (sorgente). */
+  assignHereLabel?: string;
   /** True durante una copia settimana in corso (disabilita i trigger). */
   copyWeekBusy?: boolean;
   /** Drop di una card libreria/preset su una cella → assegna la seduta all'atleta in quella data. */
@@ -80,11 +84,13 @@ export function CoachCalendarWeekGrid({
   athleteFtpWatts?: number | null;
 }) {
   const t = useTranslations("CoachCalendarBoard");
-  const gridTemplate = { gridTemplateColumns: `minmax(9rem, 12rem) repeat(${days.length}, minmax(12rem, 1fr))` };
+  // Tracce STRETTE: senza l'aside di 18rem i 7 giorni entrano tutti da 1280px in su e lo
+  // scroll orizzontale sparisce. I minimi (7rem + 7×6.5rem) sono il pavimento per tablet.
+  const gridTemplate = { gridTemplateColumns: `minmax(7rem, 11rem) repeat(${days.length}, minmax(6.5rem, 1fr))` };
 
   return (
     <div className="max-h-[70vh] overflow-auto rounded-2xl border border-white/10 bg-white/[0.02]">
-      <div className="min-w-[72rem]">
+      <div className="min-w-[53rem]">
         {/* Header giorni: sticky in alto; prima colonna sticky a sinistra (angolo). */}
         <div className="sticky top-0 z-20 grid border-b border-white/10 bg-zinc-950/95 backdrop-blur" style={gridTemplate}>
           <div className="sticky left-0 z-10 flex items-center border-r border-white/10 bg-zinc-950/95 px-3 py-2 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-gray-500">
@@ -141,19 +147,20 @@ export function CoachCalendarWeekGrid({
                   onOpenExecuted={onOpenExecuted}
                   onEditPlanned={onEditPlanned}
                   onCopyPlanned={onCopyPlanned}
-                  onPasteInto={onPasteInto}
-                  pasteActive={pasteActive}
-                  pasteBusy={pasteBusy}
+                  onAssignInto={onAssignInto}
+                  assignActive={assignActive}
+                  assignBusy={assignBusy}
                   onDropSession={onDropSession}
                   editActionLabel={t("editAction")}
                   copyActionLabel={t("copyAction")}
-                  pasteHereLabel={t("pasteHere")}
+                  assignHereLabel={assignHereLabel ?? t("pasteHere")}
                   emptyHint={t("cellEmpty")}
                   dropHint={t("dropHint")}
                   moreLabel={(count) => t("moreInCell", { count })}
                   plannedBandLabel={t("plannedBand")}
                   executedBandLabel={t("executedBand")}
                   unplannedBadge={t("unplannedBadge")}
+                  unplannedBadgeShort={t("unplannedBadgeShort")}
                   athleteFtpWatts={athleteFtpWatts}
                 />
               </div>
