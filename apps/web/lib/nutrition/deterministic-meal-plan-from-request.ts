@@ -68,14 +68,22 @@ function normalizeDietTypeForComposer(raw: string | null | undefined): Mediterra
   return "omnivore";
 }
 
-/** Allinea `approxKcal` alla stima canonica da nome + porzione (grammi/ml dove parsabili), non a ripartizioni uguali sulle voci. */
+/**
+ * Allinea `approxKcal` alla stima canonica da nome + porzione (grammi/ml dove parsabili), non a
+ * ripartizioni uguali sulle voci.
+ *
+ * Se l'inferenza canonica non risolve l'alimento, `nutrients.kcal` e' 0 e il vecchio
+ * `Math.max(8, ...)` schiacciava la voce a 8 kcal: si tiene invece l'`approxKcal` del composer,
+ * unico numero sensato rimasto per la stima a valle.
+ */
 function syncItemsApproxKcalFromCanonical(items: IntelligentMealPlanItemOut[]): IntelligentMealPlanItemOut[] {
   return items.map((it) => {
-    const { nutrients } = nutrientsForMealPlanItem({
+    const { compositionStatus, nutrients } = nutrientsForMealPlanItem({
       name: it.name,
       portionHint: it.portionHint,
       approxKcal: it.approxKcal,
     });
+    if (compositionStatus === "unresolved" || nutrients.kcal <= 0) return it;
     return { ...it, approxKcal: Math.max(8, Math.round(nutrients.kcal)) };
   });
 }

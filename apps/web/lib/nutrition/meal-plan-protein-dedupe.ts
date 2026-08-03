@@ -122,12 +122,19 @@ export function dedupeLunchDinnerMainProteins(slots: IntelligentMealPlanSlotOut[
     changed = true;
     const alt = pickReplacementFamily(lunchFamilies, fam);
     const t = templateFor(alt, Math.max(40, it.approxKcal));
-    return {
+    const replaced: IntelligentMealPlanItemOut = {
       ...it,
       name: t.name,
       portionHint: t.portionHint.slice(0, 160),
       functionalBridge: `${it.functionalBridge} ${t.functionalBridge}`.slice(0, 500),
     };
+    // La voce e' stata SOSTITUITA con un altro alimento: la composizione ereditata
+    // (compositionKey `fdc:NNN` del piatto originale + nutrienti gia' scalati) descrive
+    // il cibo sbagliato. Va azzerata, cosi' il finalize la risolve sul nuovo nome.
+    delete replaced.compositionKey;
+    delete replaced.compositionStatus;
+    delete replaced.nutrients;
+    return replaced;
   });
 
   if (!changed) return slots;

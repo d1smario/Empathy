@@ -8339,11 +8339,13 @@ function selectValidBoostTargets(targets) {
 }
 function syncItemsApproxKcalFromCanonical(items) {
   return items.map((it) => {
-    const { nutrients } = nutrientsForMealPlanItem({
+    if (it.compositionKey?.startsWith("fdc:")) return it;
+    const { compositionStatus, nutrients } = nutrientsForMealPlanItem({
       name: it.name,
       portionHint: it.portionHint,
       approxKcal: it.approxKcal
     });
+    if (compositionStatus === "unresolved" || nutrients.kcal <= 0) return it;
     return { ...it, approxKcal: Math.max(8, Math.round(nutrients.kcal)) };
   });
 }
@@ -8824,6 +8826,8 @@ var LIQUIDS_AS_GRAMS_KEYS2 = /* @__PURE__ */ new Set([
   "plant_drink_oat",
   "plant_drink_generic"
 ]);
+var OIL_TEXT_RE = /\boli[oe]\b|\bevo\b|olive\s+oil/i;
+var LIQUID_DAIRY_TEXT_RE = /\blatte\b|\byogurt\b|bevanda\s+vegetale|\bmilk\b|plant\s+drink/i;
 function parseGramsFromHint(hint, compositionKey) {
   const text = hint.trim();
   if (!text) return void 0;
@@ -8837,8 +8841,10 @@ function parseGramsFromHint(hint, compositionKey) {
   if (ml) {
     const v = parseFloat(ml[1].replace(",", "."));
     if (Number.isFinite(v) && v > 0) {
-      if (compositionKey === "olive_oil") return v * OLIVE_OIL_G_PER_ML2;
-      if (LIQUIDS_AS_GRAMS_KEYS2.has(compositionKey)) return v * LIQUID_DAIRY_G_PER_ML2;
+      if (compositionKey === "olive_oil" || OIL_TEXT_RE.test(text)) return v * OLIVE_OIL_G_PER_ML2;
+      if (LIQUIDS_AS_GRAMS_KEYS2.has(compositionKey) || LIQUID_DAIRY_TEXT_RE.test(text)) {
+        return v * LIQUID_DAIRY_G_PER_ML2;
+      }
     }
   }
   return void 0;
@@ -8887,21 +8893,13 @@ function nutrientsForMealPlanItemFromCache(item2, snapshot) {
   }
   const compositionKey = inferCanonicalFoodKeyPreferName(item2.name, item2.portionHint);
   if (compositionKey === "generic_mixed") {
-    return {
-      compositionKey: "unresolved",
-      compositionStatus: "unresolved",
-      nutrients: zeroScaled()
-    };
+    return { compositionKey: "unresolved", compositionStatus: "unresolved" };
   }
   const fdc = snapshot[compositionKey];
   const tsRow = CANONICAL_FOOD_TABLE[compositionKey];
   const canonical = fdc?.canonical ?? tsRow;
   if (!canonical || !canonical.kcalPer100g) {
-    return {
-      compositionKey: "unresolved",
-      compositionStatus: "unresolved",
-      nutrients: zeroScaled()
-    };
+    return { compositionKey: "unresolved", compositionStatus: "unresolved" };
   }
   const scaled = scaleFromCanonical(
     canonical,
@@ -8913,50 +8911,6 @@ function nutrientsForMealPlanItemFromCache(item2, snapshot) {
     return { compositionKey, compositionStatus: "fdc_cache", nutrients: scaled };
   }
   return { compositionKey, compositionStatus: "canonical_estimate", nutrients: scaled };
-}
-function zeroScaled() {
-  return {
-    kcal: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-    fiberG: 0,
-    saturatedFatG: 0,
-    monoFatG: 0,
-    polyFatG: 0,
-    omega3G: 0,
-    vitA_mcg_RAE: 0,
-    vitC_mg: 0,
-    vitD_mcg: 0,
-    vitE_mg: 0,
-    vitK_mcg: 0,
-    thiamineB1_mg: 0,
-    riboflavinB2_mg: 0,
-    niacinB3_mg: 0,
-    vitB6_mg: 0,
-    folate_mcg: 0,
-    vitB12_mcg: 0,
-    ca_mg: 0,
-    fe_mg: 0,
-    mg_mg: 0,
-    p_mg: 0,
-    k_mg: 0,
-    na_mg: 0,
-    zn_mg: 0,
-    se_mcg: 0,
-    eaa_leu: 0,
-    eaa_lys: 0,
-    eaa_met: 0,
-    eaa_phe: 0,
-    eaa_thr: 0,
-    eaa_trp: 0,
-    eaa_ile: 0,
-    eaa_val: 0,
-    eaa_his: 0,
-    glycemicIndex: 0,
-    insulinIndex: 0,
-    glycemicLoad: 0
-  };
 }
 
 // apps/web/lib/nutrition/meal-plan-hydration-routine.ts
@@ -9184,12 +9138,16 @@ function dedupeLunchDinnerMainProteins(slots) {
     changed = true;
     const alt = pickReplacementFamily(lunchFamilies, fam);
     const t = templateFor(alt, Math.max(40, it.approxKcal));
-    return {
+    const replaced = {
       ...it,
       name: t.name,
       portionHint: t.portionHint.slice(0, 160),
       functionalBridge: `${it.functionalBridge} ${t.functionalBridge}`.slice(0, 500)
     };
+    delete replaced.compositionKey;
+    delete replaced.compositionStatus;
+    delete replaced.nutrients;
+    return replaced;
   });
   if (!changed) return slots;
   return slots.map((s) => s.slot === "dinner" ? { ...s, items: newItems } : s);
@@ -9274,12 +9232,14 @@ function enrichSlot(slot, snapshot) {
       },
       snapshot
     );
-    return {
+    const next = {
       ...it,
       compositionKey: it.compositionKey ?? compositionKey,
-      compositionStatus,
-      nutrients
+      compositionStatus
     };
+    if (nutrients) next.nutrients = nutrients;
+    else delete next.nutrients;
+    return next;
   });
   return { ...slot, items };
 }
@@ -9292,7 +9252,9 @@ async function finalizeIntelligentMealPlanCore(core, req, snapshot) {
   const byReq = new Map(req.slots.map((s) => [s.slot, s]));
   const perSlot = slots.map((s) => {
     const meta = byReq.get(s.slot);
-    const totals = sumScaledNutrients(s.items.map((i) => i.nutrients));
+    const totals = sumScaledNutrients(
+      s.items.map((i) => i.nutrients).filter((n) => Boolean(n))
+    );
     return {
       slot: s.slot,
       labelIt: meta?.labelIt ?? s.slot,
@@ -9348,7 +9310,7 @@ function mapItem(item2, slotKey, itemIndex) {
     stepG: 5
   };
   const canonicalKey = item2.canonicalKey;
-  const compositionKey = item2.fdcId > 0 && item2.servingBasis ? `fdc:${item2.fdcId}` : canonicalKey && fdcIdForCanonicalKey(canonicalKey) ? `fdc:${fdcIdForCanonicalKey(canonicalKey)}` : canonicalKey ?? `fdc:${item2.fdcId}`;
+  const compositionKey = item2.fdcId > 0 ? `fdc:${item2.fdcId}` : canonicalKey && fdcIdForCanonicalKey(canonicalKey) ? `fdc:${fdcIdForCanonicalKey(canonicalKey)}` : canonicalKey || void 0;
   return {
     name: label,
     portionHint: portionHintIt(label, item2.grams, spec, item2.servingBasis),
@@ -9356,7 +9318,7 @@ function mapItem(item2, slotKey, itemIndex) {
     approxKcal: Math.round(item2.kcal),
     macroRole: macroRoleFromItem(item2.choG, item2.proG, item2.fatG),
     compositionKey,
-    compositionStatus: compositionKey.startsWith("fdc:") ? "fdc_cache" : "canonical_estimate"
+    compositionStatus: compositionKey?.startsWith("fdc:") ? "fdc_cache" : "canonical_estimate"
   };
 }
 function slotCoherenceFor(slot, suppressed) {
@@ -9372,13 +9334,7 @@ function composedMealForSlot(production, slotReq) {
   }
   const items = composed.items.map((it, idx) => mapItem(it, slotReq.slot, idx));
   return {
-    items: items.map((it) => ({
-      name: it.name,
-      portionHint: it.portionHint,
-      functionalBridge: it.functionalBridge ?? "",
-      approxKcal: it.approxKcal,
-      macroRole: it.macroRole
-    })),
+    items,
     lines: items.map((i) => i.portionHint),
     totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0)
   };

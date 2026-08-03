@@ -63,13 +63,25 @@ function selectValidBoostTargets(
     .map((t) => ({ nutrientId: t.nutrientId as NutrientTargetId, labelIt: t.labelIt }));
 }
 
+/**
+ * Allinea `approxKcal` alla stima canonica da nome + porzione.
+ *
+ * Due guardie, entrambe contro la stessa perdita di dato:
+ *  - item V2 con `compositionKey = "fdc:NNN"`: le kcal arrivano gia' dalla riga USDA scelta dal
+ *    compositore (le stesse che finiscono in `meal_item`). Ri-dedurle dal nome italiano puo' solo
+ *    peggiorarle, quindi si lasciano stare;
+ *  - inferenza `unresolved`: `nutrients.kcal` vale 0 e il vecchio `Math.max(8, ...)` schiacciava
+ *    l'item a 8 kcal, distruggendo anche il fallback a valle. Si tiene l'`approxKcal` originale.
+ */
 function syncItemsApproxKcalFromCanonical(items: IntelligentMealPlanItemOut[]): IntelligentMealPlanItemOut[] {
   return items.map((it) => {
-    const { nutrients } = nutrientsForMealPlanItem({
+    if (it.compositionKey?.startsWith("fdc:")) return it;
+    const { compositionStatus, nutrients } = nutrientsForMealPlanItem({
       name: it.name,
       portionHint: it.portionHint,
       approxKcal: it.approxKcal,
     });
+    if (compositionStatus === "unresolved" || nutrients.kcal <= 0) return it;
     return { ...it, approxKcal: Math.max(8, Math.round(nutrients.kcal)) };
   });
 }

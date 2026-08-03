@@ -49,12 +49,16 @@ function mapItem(
     stepG: 5,
   };
   const canonicalKey = item.canonicalKey;
-  const compositionKey =
-    item.fdcId > 0 && item.servingBasis
+  // `servingBasis` dice solo COME esprimere la porzione (crudo/cotto/ml): non ha nulla a che
+  // vedere con l'usabilita' della riga USDA. Gli alimenti del catalogo DB privi di entry nella
+  // staple registry arrivano senza servingBasis e con la vecchia condizione perdevano il
+  // `fdc:NNN`, finendo per essere ri-dedotti per regex dal nome italiano (→ macro a zero).
+  const compositionKey: string | undefined =
+    item.fdcId > 0
       ? `fdc:${item.fdcId}`
       : canonicalKey && fdcIdForCanonicalKey(canonicalKey)
         ? `fdc:${fdcIdForCanonicalKey(canonicalKey)}`
-        : canonicalKey ?? `fdc:${item.fdcId}`;
+        : canonicalKey || undefined;
 
   return {
     name: label,
@@ -63,7 +67,7 @@ function mapItem(
     approxKcal: Math.round(item.kcal),
     macroRole: macroRoleFromItem(item.choG, item.proG, item.fatG),
     compositionKey,
-    compositionStatus: compositionKey.startsWith("fdc:") ? "fdc_cache" : "canonical_estimate",
+    compositionStatus: compositionKey?.startsWith("fdc:") ? "fdc_cache" : "canonical_estimate",
   };
 }
 
@@ -83,14 +87,11 @@ function composedMealForSlot(
     return { items: [], lines: [], totalApproxKcal: 0 };
   }
   const items = composed.items.map((it, idx) => mapItem(it, slotReq.slot as MealSlotKey, idx));
+  // Gli item passano interi (compositionKey/compositionStatus inclusi): l'enricher adotta
+  // QUESTI item, non i `preEnrichSlots`. Ri-mapparli su un literal ridotto buttava via il
+  // `fdc:NNN` e obbligava tutto il ramo V2 a ri-dedurre l'alimento dal nome italiano.
   return {
-    items: items.map((it) => ({
-      name: it.name,
-      portionHint: it.portionHint,
-      functionalBridge: it.functionalBridge ?? "",
-      approxKcal: it.approxKcal,
-      macroRole: it.macroRole,
-    })),
+    items,
     lines: items.map((i) => i.portionHint),
     totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0),
   };

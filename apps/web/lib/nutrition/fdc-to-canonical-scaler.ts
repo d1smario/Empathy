@@ -74,6 +74,14 @@ const LIQUIDS_AS_GRAMS_KEYS = new Set([
   "plant_drink_generic",
 ]);
 
+/**
+ * Le porzioni del motore V2 viaggiano con `compositionKey = "fdc:NNN"`, quindi la chiave
+ * non dice piu' se l'alimento e' un olio o un liquido-latte: senza queste due regex un
+ * "12 ml olio EVO" perderebbe la conversione ml→g e cadrebbe sullo scaling per kcal.
+ */
+const OIL_TEXT_RE = /\boli[oe]\b|\bevo\b|olive\s+oil/i;
+const LIQUID_DAIRY_TEXT_RE = /\blatte\b|\byogurt\b|bevanda\s+vegetale|\bmilk\b|plant\s+drink/i;
+
 function parseGramsFromHint(hint: string, compositionKey: string): number | undefined {
   const text = hint.trim();
   if (!text) return undefined;
@@ -87,8 +95,10 @@ function parseGramsFromHint(hint: string, compositionKey: string): number | unde
   if (ml) {
     const v = parseFloat(ml[1].replace(",", "."));
     if (Number.isFinite(v) && v > 0) {
-      if (compositionKey === "olive_oil") return v * OLIVE_OIL_G_PER_ML;
-      if (LIQUIDS_AS_GRAMS_KEYS.has(compositionKey)) return v * LIQUID_DAIRY_G_PER_ML;
+      if (compositionKey === "olive_oil" || OIL_TEXT_RE.test(text)) return v * OLIVE_OIL_G_PER_ML;
+      if (LIQUIDS_AS_GRAMS_KEYS.has(compositionKey) || LIQUID_DAIRY_TEXT_RE.test(text)) {
+        return v * LIQUID_DAIRY_G_PER_ML;
+      }
     }
   }
   return undefined;
@@ -160,7 +170,15 @@ export function nutrientsForMealPlanItemFromCache(
 ): {
   compositionKey: string;
   compositionStatus: "fdc_cache" | "canonical_estimate" | "unresolved";
-  nutrients: ScaledMealItemNutrients;
+  /**
+   * ASSENTE quando `compositionStatus === "unresolved"`.
+   *
+   * Prima qui usciva un oggetto con tutti i campi a 0: il consumatore non aveva modo di
+   * distinguere «alimento davvero a zero kcal» da «lookup fallito», e in UI l'alimento
+   * compariva come `0 kcal · CHO 0 · PRO 0 · FAT 0` (difetto Pistacchi). «Dato assente»
+   * e' l'unico valore onesto: chi legge decide se stimare (kcal + macroRole) o omettere.
+   */
+  nutrients?: ScaledMealItemNutrients;
 } {
   const fdcKey = item.compositionKey?.startsWith("fdc:") ? item.compositionKey : null;
   if (fdcKey && snapshot[fdcKey]) {
@@ -176,11 +194,7 @@ export function nutrientsForMealPlanItemFromCache(
   const compositionKey = inferCanonicalFoodKeyPreferName(item.name, item.portionHint);
 
   if (compositionKey === "generic_mixed") {
-    return {
-      compositionKey: "unresolved",
-      compositionStatus: "unresolved",
-      nutrients: zeroScaled(),
-    };
+    return { compositionKey: "unresolved", compositionStatus: "unresolved" };
   }
 
   const fdc = snapshot[compositionKey];
@@ -188,11 +202,7 @@ export function nutrientsForMealPlanItemFromCache(
 
   const canonical: CanonicalFoodNutrients | undefined = fdc?.canonical ?? tsRow;
   if (!canonical || !canonical.kcalPer100g) {
-    return {
-      compositionKey: "unresolved",
-      compositionStatus: "unresolved",
-      nutrients: zeroScaled(),
-    };
+    return { compositionKey: "unresolved", compositionStatus: "unresolved" };
   }
 
   const scaled = scaleFromCanonical(
@@ -207,49 +217,4 @@ export function nutrientsForMealPlanItemFromCache(
   }
 
   return { compositionKey, compositionStatus: "canonical_estimate", nutrients: scaled };
-}
-
-function zeroScaled(): ScaledMealItemNutrients {
-  return {
-    kcal: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-    fiberG: 0,
-    saturatedFatG: 0,
-    monoFatG: 0,
-    polyFatG: 0,
-    omega3G: 0,
-    vitA_mcg_RAE: 0,
-    vitC_mg: 0,
-    vitD_mcg: 0,
-    vitE_mg: 0,
-    vitK_mcg: 0,
-    thiamineB1_mg: 0,
-    riboflavinB2_mg: 0,
-    niacinB3_mg: 0,
-    vitB6_mg: 0,
-    folate_mcg: 0,
-    vitB12_mcg: 0,
-    ca_mg: 0,
-    fe_mg: 0,
-    mg_mg: 0,
-    p_mg: 0,
-    k_mg: 0,
-    na_mg: 0,
-    zn_mg: 0,
-    se_mcg: 0,
-    eaa_leu: 0,
-    eaa_lys: 0,
-    eaa_met: 0,
-    eaa_phe: 0,
-    eaa_thr: 0,
-    eaa_trp: 0,
-    eaa_ile: 0,
-    eaa_val: 0,
-    eaa_his: 0,
-    glycemicIndex: 0,
-    insulinIndex: 0,
-    glycemicLoad: 0,
-  };
 }

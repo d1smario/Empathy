@@ -1,13 +1,41 @@
 import type { IntelligentMealPlanItemOut, IntelligentMealPlanSlotOut } from "@/lib/nutrition/intelligent-meal-plan-types";
 
+/** Ripartizione energetica di ripiego per ruolo macro (quando il dettaglio CHO/PRO/FAT manca). */
+function macroSplitForRole(role: IntelligentMealPlanItemOut["macroRole"] | undefined): {
+  carbsPct: number;
+  proteinPct: number;
+  fatPct: number;
+} {
+  switch (role ?? "mixed") {
+    case "cho_heavy":
+      return { carbsPct: 0.72, proteinPct: 0.14, fatPct: 0.14 };
+    case "protein":
+      return { carbsPct: 0.25, proteinPct: 0.45, fatPct: 0.3 };
+    case "fat":
+      return { carbsPct: 0.18, proteinPct: 0.18, fatPct: 0.64 };
+    case "veg":
+      return { carbsPct: 0.45, proteinPct: 0.2, fatPct: 0.35 };
+    default:
+      return { carbsPct: 0.5, proteinPct: 0.2, fatPct: 0.3 };
+  }
+}
+
 /**
  * Macro per voce.
  *
- * Preferenza: `item.nutrients` server (post-finalize), che ora arriva da cache USDA `nutrition_fdc_foods`
- * con fallback automatico al `CANONICAL_FOOD_TABLE` TS. È l'unica sorgente di verità lato client.
+ * Preferenza: `item.nutrients` server (post-finalize), che arriva da cache USDA `nutrition_fdc_foods`
+ * con fallback automatico al `CANONICAL_FOOD_TABLE` TS.
  *
- * Fallback sync: ricalcolo dalla banca canonica TS via `nutrientsForMealPlanItem`. Si attiva solo
- * quando `item.nutrients` non è presente (path dry / item non strutturati / payload pre-finalize).
+ * DIFESA IN PROFONDITÀ (difetto «Pistacchi 6 g · 0 kcal · CHO 0 · PRO 0 · FAT 0»): la sola PRESENZA
+ * di `item.nutrients` non basta più a fidarsi. Un payload con tutti i macro a zero è, per un alimento
+ * con una porzione reale, un lookup fallito a monte travestito da dato — non un alimento a zero macro.
+ * Quindi:
+ *  - macro tutti a zero (con o senza kcal) → si stima da kcal + `macroRole`, mai 0/0/0;
+ *  - kcal > 0 ma macro tutti a zero (payload PARZIALE) → le kcal reali si TENGONO (sono il dato buono,
+ *    tipicamente USDA) e si ripartiscono per ruolo: buttarle e ricadere su `approxKcal` perderebbe
+ *    l'informazione migliore che abbiamo;
+ *  - `nutrients` assente → comportamento invariato (stima da `approxKcal` + ruolo).
+ * Il minimo di 1 kcal garantisce che nessuna voce del piano possa mai mostrarsi a 0 kcal / 0 macro.
  */
 export function approxMacrosForPlanItem(item: IntelligentMealPlanItemOut): {
   kcal: number;
@@ -15,27 +43,20 @@ export function approxMacrosForPlanItem(item: IntelligentMealPlanItemOut): {
   proteinG: number;
   fatG: number;
 } {
-  if (item.nutrients) {
-    const n = item.nutrients;
+  const n = item.nutrients;
+  const hasMacroDetail = !!n && n.carbsG + n.proteinG + n.fatG > 0;
+  if (n && hasMacroDetail) {
+    // kcal mancanti ma macro presenti: le ricostruiamo con Atwater invece di stampare 0.
+    const kcal = n.kcal > 0 ? n.kcal : n.carbsG * 4 + n.proteinG * 4 + n.fatG * 9;
     return {
-      kcal: Math.round(n.kcal),
+      kcal: Math.round(kcal),
       carbsG: round1(n.carbsG),
       proteinG: round1(n.proteinG),
       fatG: round1(n.fatG),
     };
   }
-  const kcal = Math.max(1, Math.round(item.approxKcal ?? 0));
-  const role = item.macroRole ?? "mixed";
-  const macroSplit =
-    role === "cho_heavy"
-      ? { carbsPct: 0.72, proteinPct: 0.14, fatPct: 0.14 }
-      : role === "protein"
-        ? { carbsPct: 0.25, proteinPct: 0.45, fatPct: 0.3 }
-        : role === "fat"
-          ? { carbsPct: 0.18, proteinPct: 0.18, fatPct: 0.64 }
-          : role === "veg"
-            ? { carbsPct: 0.45, proteinPct: 0.2, fatPct: 0.35 }
-            : { carbsPct: 0.5, proteinPct: 0.2, fatPct: 0.3 };
+  const kcal = Math.max(1, Math.round(n && n.kcal > 0 ? n.kcal : item.approxKcal ?? 0));
+  const macroSplit = macroSplitForRole(item.macroRole);
   const carbsG = (kcal * macroSplit.carbsPct) / 4;
   const proteinG = (kcal * macroSplit.proteinPct) / 4;
   const fatG = (kcal * macroSplit.fatPct) / 9;

@@ -1,5 +1,6 @@
 import type {
   IntelligentMealPlanAssembledCore,
+  IntelligentMealPlanItemOut,
   IntelligentMealPlanRequest,
   IntelligentMealPlanSlotOut,
   MealSlotKey,
@@ -31,12 +32,17 @@ function enrichSlot(slot: IntelligentMealPlanSlotOut, snapshot: FdcCanonicalSnap
       },
       snapshot,
     );
-    return {
+    const next: IntelligentMealPlanItemOut = {
       ...it,
       compositionKey: it.compositionKey ?? compositionKey,
       compositionStatus,
-      nutrients,
     };
+    // Lookup fallito (`unresolved`): NON scriviamo `nutrients`. Scrivere un oggetto tutto-zero
+    // faceva credere al client di avere il dato e l'alimento usciva a 0 kcal / CHO-PRO-FAT 0.
+    // Senza il campo, `approxMacrosForPlanItem` stima da kcal + macroRole.
+    if (nutrients) next.nutrients = nutrients;
+    else delete next.nutrients;
+    return next;
   });
   return { ...slot, items };
 }
@@ -75,7 +81,11 @@ export async function finalizeIntelligentMealPlanCore(
     totals: ScaledMealItemNutrients;
   }> = slots.map((s) => {
     const meta = byReq.get(s.slot);
-    const totals = sumScaledNutrients(s.items.map((i) => i.nutrients!));
+    // Gli item senza `nutrients` (lookup non risolto) non contribuiscono al rollup micro:
+    // meglio un rollup piu' povero che micronutrienti inventati.
+    const totals = sumScaledNutrients(
+      s.items.map((i) => i.nutrients).filter((n): n is ScaledMealItemNutrients => Boolean(n)),
+    );
     return {
       slot: s.slot,
       labelIt: meta?.labelIt ?? s.slot,
