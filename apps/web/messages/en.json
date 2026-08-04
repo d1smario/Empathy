@@ -2694,7 +2694,8 @@
     "legendMedium": "MEDIUM",
     "legendHigh": "HIGH",
     "legendVeryHigh": "VERY HIGH",
-    "legendNote": "The GI values shown are educational estimates from estimated macro composition, not laboratory values or an official per-food GI table."
+    "legendNote": "The GI values shown are educational estimates from estimated macro composition, not laboratory values or an official per-food GI table.",
+    "dataSources": "Nutrient values: USDA FoodData Central (public domain) and ANSES — Table Ciqual 2025 (Licence Ouverte / Etalab 2.0)."
   },
   "FoodDiaryPanel": {
     "title": "Food diary",

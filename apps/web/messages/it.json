@@ -2694,7 +2694,8 @@
     "legendMedium": "MEDIO",
     "legendHigh": "ALTO",
     "legendVeryHigh": "MOLTO ALTO",
-    "legendNote": "IG mostrati sono stime educative da composizione macro stimata, non valori di laboratorio o tabella IG ufficiale per alimento."
+    "legendNote": "IG mostrati sono stime educative da composizione macro stimata, non valori di laboratorio o tabella IG ufficiale per alimento.",
+    "dataSources": "Valori nutrizionali: USDA FoodData Central (pubblico dominio) e ANSES — Table Ciqual 2025 (Licence Ouverte / Etalab 2.0)."
   },
   "FoodDiaryPanel": {
     "title": "Diario alimentare",

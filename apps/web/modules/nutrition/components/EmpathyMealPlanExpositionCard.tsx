@@ -573,6 +573,12 @@ export function EmpathyMealPlanGlycemicLegend() {
       <p className="empathy-meal-expo-legend-note muted-copy text-[11px] leading-snug">
         {t("legendNote")}
       </p>
+      {/* Attribuzione delle fonti dati. Per CIQUAL non e' cortesia: la Licence
+          Ouverte / Etalab 2.0 sotto cui ANSES pubblica la tabella impone di
+          citare la paternita' e la data di aggiornamento del dato riusato. */}
+      <p className="empathy-meal-expo-legend-note muted-copy text-[11px] leading-snug">
+        {t("dataSources")}
+      </p>
     </section>
   );
 }
