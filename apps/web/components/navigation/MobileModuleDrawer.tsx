@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { SidebarSessionActions } from "@/components/navigation/SidebarSessionActions";
 import { getMobileMenuSections, type MobileMenuItem } from "@/core/navigation/mobile-module-registry";
 import type { ProductNavIconKey } from "@/core/navigation/module-registry";
 import type { AppRole } from "@/lib/app-session";
@@ -115,11 +116,14 @@ export function MobileModuleDrawer({ role = "private", open, onClose }: MobileMo
           ))}
         </div>
 
-        <div className="shrink-0 border-t border-white/10 px-4 py-3 sm:px-5">
+        {/* Footer: nota desktop + uscita. Su mobile il menù moduli è l'unico punto in cui
+            si arriva al logout (la sidebar con SidebarSessionActions è solo desktop). */}
+        <div className="shrink-0 space-y-3 border-t border-white/10 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 sm:px-5">
           <p className="flex items-center gap-2 text-[0.65rem] text-gray-500">
             <Grid3X3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {t("desktopOnlyNote")}
           </p>
+          <SidebarSessionActions />
         </div>
       </div>
     </div>
