@@ -35,6 +35,8 @@ Queste non sono più in discussione e vanno trattate come vincoli.
 | **Confini delle classi** | Recupero `< 1,55` · Leggero `1,55–2,15` · Pesante `≥ 2,15` | chiude le due fasce scoperte, che sui dati veri lasciavano **144 giornate su 909 senza piano** |
 | **Quote su massa magra** | sì, non sul peso corporeo | il BMR lo fa già; le quote macro no |
 | **Dente di sega dei grassi** | **voluto**, non è una svista | serve ad alternare giornate a spinta glucidica e giornate a prevalenza lipidica per la risposta ormonale |
+| **Tetto della classe Pesante** | **4,0** — deciso da Mario il 6 ago | l'interpolazione Pesante corre su `2,15 → 4,0`. Assunzione da esplicitare in codice: sopra 4,0 le quote restano al massimo (clamp), non si estrapolano |
+| **Salto al confine 1,55** | **voluto**, nessun margine di stabilità | il confine coincide col passaggio riposo → allenamento: il cambio dei pasti (3 → 4-5) è il comportamento desiderato, non un artefatto da smussare |
 | **Validazione** | il coach valida tutto | i protocolli restrittivi passano da lui |
 
 ### La tabella di Mario, verificata
@@ -167,8 +169,6 @@ Togliere quella riga è il passo che trasforma il motore da «esegue le percentu
 
 | punto | perché serve una risposta |
 |---|---|
-| **Tetto della classe Pesante: 4 o 5?** | è il denominatore dell'interpolazione. Sulla stessa giornata a 3,5 × cambiano **24 g di proteine** |
-| **Stabilità della classe al confine** | fra 1,54 e 1,56 cambiano 30 g di grassi, 72 g di carboidrati e il numero dei pasti — e lì sta **un quarto delle giornate**. Proposta: si cambia classe solo superando il confine di un margine (0,05), altrimenti si resta in quella del giorno prima |
 | **Massa grassa mancante** | serve alle quote g/kg. Sui 29 atleti attivi, **15 ce l'hanno**; 8 hanno il peso ma non la composizione. Va resa obbligatoria in onboarding, o si definisce il ripiego |
 | **Confine fueling / pasti** | nel modello di Mario una fetta dei carboidrati va nel fueling (430 g su 778 nel suo esempio). Oggi il fueling si calcola dai substrati bruciati: sono due strade allo stesso numero, da riconciliare per non contarlo due volte |
 | **Riduzione di 0,1-0,2 g/kg** | proposta di Mario, perché il fueling fa anche recovery. Da quantificare |
