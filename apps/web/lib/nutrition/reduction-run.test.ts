@@ -23,16 +23,19 @@ function makeDb(data: Record<string, unknown>) {
   return { from: (t: string) => chain(t) } as never;
 }
 
+// Schema reale: athlete_profiles NON ha ftp_watts/lifestyle_activity_class —
+// l'FTP vive in physiological_profiles e il lifestyle in routine_config.
 const PROFILE = {
   birth_date: "1990-05-01", sex: "male", height_cm: 180, weight_kg: 74, body_fat_pct: 12,
-  ftp_watts: 280, lifestyle_activity_class: "moderate", timezone: "Europe/Rome",
-  routine_config: { training_1: { start_time: "06:00" }, meal_times: { dinner: "20:00", snack_evening: "22:30" } },
+  timezone: "Europe/Rome",
+  routine_config: { lifestyle_activity_class: "moderate", training_1: { start_time: "06:00" }, meal_times: { dinner: "20:00", snack_evening: "22:30" } },
 };
+const PHYSIO = { ftp_watts: 280 };
 const PLANNED = [{ id: "w1", date: "2026-07-12", type: "cycling", duration_minutes: 90, tss_target: 120, kcal_target: 900, notes: null }];
 const PLAN = { id: "p1", meal: [{ slot: "dinner", kcal_target: 900 }, { slot: "snack_evening", kcal_target: 200 }] };
 
 test("skip rilevato: riduzione capata sui pasti rimanenti", async () => {
-  const db = makeDb({ athlete_profiles: PROFILE, planned_workouts: PLANNED, executed_workouts: [], nutrition_plan: PLAN });
+  const db = makeDb({ athlete_profiles: PROFILE, physiological_profiles: PHYSIO, planned_workouts: PLANNED, executed_workouts: [], nutrition_plan: PLAN });
   const r = await runDailyReduction(db, "a1", "2026-07-12", { nowLocalMin: 600 }); // 10:00
   assert.equal(r.ok, true);
   if (r.ok) {
@@ -43,7 +46,7 @@ test("skip rilevato: riduzione capata sui pasti rimanenti", async () => {
 });
 
 test("executed collegato: nessuno skip (reversibile)", async () => {
-  const db = makeDb({ athlete_profiles: PROFILE, planned_workouts: PLANNED, executed_workouts: [{ planned_workout_id: "w1" }], nutrition_plan: PLAN });
+  const db = makeDb({ athlete_profiles: PROFILE, physiological_profiles: PHYSIO, planned_workouts: PLANNED, executed_workouts: [{ planned_workout_id: "w1" }], nutrition_plan: PLAN });
   const r = await runDailyReduction(db, "a1", "2026-07-12", { nowLocalMin: 600 });
   assert.equal(r.ok, true);
   if (r.ok) {
@@ -53,7 +56,7 @@ test("executed collegato: nessuno skip (reversibile)", async () => {
 });
 
 test("troppo tardi: skip ma nessun pasto rimane → niente", async () => {
-  const db = makeDb({ athlete_profiles: PROFILE, planned_workouts: PLANNED, executed_workouts: [], nutrition_plan: PLAN });
+  const db = makeDb({ athlete_profiles: PROFILE, physiological_profiles: PHYSIO, planned_workouts: PLANNED, executed_workouts: [], nutrition_plan: PLAN });
   const r = await runDailyReduction(db, "a1", "2026-07-12", { nowLocalMin: 23 * 60 + 30 }); // 23:30
   assert.equal(r.ok, true);
   if (r.ok) {

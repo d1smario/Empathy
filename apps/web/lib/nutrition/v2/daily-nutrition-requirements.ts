@@ -14,13 +14,13 @@ import { dietProfileFromAthleteDietType } from "@/lib/nutrition/v2/fdc-food-taxo
 import { computeSubstrateFuelingPlan } from "@/lib/nutrition/v2/fueling-from-substrates";
 import { substrateTotalsForSession } from "@/lib/nutrition/v2/substrate-rates";
 
-/** PAL moltiplicatore su BMR (modello utente: sedentario → superattivo). */
-export const PAL_BY_LIFESTYLE: Record<string, number> = {
-  sedentary: 1.25,
-  moderate: 1.4,
-  active: 1.55,
-  very_active: 1.75,
-};
+/**
+ * Lifestyle: UNA sola fonte, il solver V1 (`LIFESTYLE_PCT` dentro
+ * `computeNutritionDailyEnergyModel`, moderate = +20% BMR). Il vecchio modello
+ * PAL parallelo (PAL_BY_LIFESTYLE, moderate = 1.40 → +40% BMR) è stato rimosso:
+ * sui giorni reali le due scale divergevano (fino a 2× sul lifestyle) e il
+ * browser usa già il solver V1 — qui si allinea senza cambi visibili.
+ */
 
 export const STRATEGY_TEMPLATES: Record<EmpathyNutritionStrategyKind, MacroGPerKgTemplate> = {
   maintenance: { choMinGPerKg: 3, choMaxGPerKg: 5, proGPerKg: 1.4, fatGPerKg: 0.9 },
@@ -78,7 +78,6 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   const dietProfileActive: FdcDietProfileTag = dietProfileFromAthleteDietType(request.dietType);
 
   const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass ?? "moderate");
-  const pal = PAL_BY_LIFESTYLE[lifestyleClass] ?? 1.4;
 
   const sessions =
     input.plannedSessions?.length
@@ -100,7 +99,8 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
     })),
   });
 
-  const lifestyleKcalPal = Math.round(energyModel.bmrKcal * (pal - 1));
+  // Lifestyle dal solver V1 (unica fonte): bmr × LIFESTYLE_PCT[classe].
+  const lifestyleKcal = energyModel.lifestyle.kcal;
 
   let trainingCho = 0;
   let trainingFat = 0;
@@ -144,7 +144,7 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   const trainingKcal =
     energyModel.training.kcal > 0 ? energyModel.training.kcal : substrateTrainingKcal;
 
-  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcalPal + trainingKcal) * dietScale);
+  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcal + trainingKcal) * dietScale);
 
   const substrateFueling =
     sessions.length > 0
@@ -165,7 +165,7 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   const provenance = [
     `Strategia V2 preview: ${strategyKind} (CHO ${template.choMinGPerKg}–${template.choMaxGPerKg} g/kg, PRO ${template.proGPerKg} g/kg, FAT ${template.fatGPerKg} g/kg).`,
     `Profilo dieta attivo (asse 4): ${dietProfileActive}.`,
-    `PAL ${pal} × BMR ${energyModel.bmrKcal} kcal → lifestyle stimato ${lifestyleKcalPal} kcal (V1 solver lifestyle: ${energyModel.lifestyle.kcal} kcal).`,
+    `Lifestyle ${lifestyleClass} (+${Math.round(energyModel.lifestyle.pct * 100)}% × BMR ${energyModel.bmrKcal} kcal) → ${lifestyleKcal} kcal (solver V1, fonte unica).`,
     `Training: ${trainingKcal} kcal · ${sessions.length} seduta/e · substrati CHO/FAT/PRO da potenza media.`,
     substrateFueling
       ? `Fueling V2: ${fuelingKcal} kcal oral (pre+intra+post CHO da consumo substrati); pasti ${mealsKcal} kcal = fabbisogno − fueling.`
@@ -189,12 +189,14 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
     },
     energy: {
       bmrKcal: energyModel.bmrKcal,
-      lifestyleKcal: lifestyleKcalPal,
+      lifestyleKcal,
       trainingKcal,
       dailyKcal,
       mealsKcal,
       fuelingKcal,
-      palMultiplier: pal,
+      // Campo di contratto: moltiplicatore EFFETTIVO del lifestyle V1 (1 + pct),
+      // non più la scala PAL parallela rimossa.
+      palMultiplier: Number((1 + energyModel.lifestyle.pct).toFixed(2)),
       endogenousTrainingKcal: substrateFueling?.totals.endogenousFatKcal,
     },
     substrateFueling: substrateFueling

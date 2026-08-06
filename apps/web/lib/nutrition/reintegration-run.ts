@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-solver";
 import { loadObservedActiveKcal } from "@/lib/nutrition/load-observed-active-kcal";
 import { computeReintegration, type Reintegration } from "@/lib/nutrition/reintegration-engine";
+import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 
 export type ReintegrationRunResult =
@@ -27,12 +28,10 @@ export async function runPostWorkoutReintegration(
   athleteId: string,
   date: string,
 ): Promise<ReintegrationRunResult> {
-  const [{ data: profile }, { data: plannedRows }, observedActiveKcal] = await Promise.all([
-    db
-      .from("athlete_profiles")
-      .select("birth_date, sex, height_cm, weight_kg, body_fat_pct, ftp_watts, lifestyle_activity_class")
-      .eq("id", athleteId)
-      .maybeSingle(),
+  const [nutritionProfile, { data: plannedRows }, observedActiveKcal] = await Promise.all([
+    // Fonte unica profilo nutrizione: ftp_watts da physiological_profiles e lifestyle
+    // da routine_config (su athlete_profiles quelle colonne non esistono).
+    loadNutritionAthleteProfile(db, athleteId),
     db
       .from("planned_workouts")
       .select("duration_minutes, tss_target, kcal_target, notes")
@@ -46,7 +45,12 @@ export async function runPostWorkoutReintegration(
     return { ok: true, reintegration: { triggered: false, extraKcal: 0, extraCarbsG: 0, extraWaterMl: 0, supplements: [], reason: null }, observedActiveKcal: null, persisted: "noop" };
   }
 
-  const p = (profile ?? {}) as Record<string, unknown>;
+  // Stesse chiavi snake_case di prima; profilo assente → ftp/lifestyle null, come oggi.
+  const p: Record<string, unknown> = {
+    ...((nutritionProfile.profile ?? {}) as Record<string, unknown>),
+    ftp_watts: nutritionProfile.ftpWatts,
+    lifestyle_activity_class: nutritionProfile.lifestyleActivityClass,
+  };
   const plannedTraining = (Array.isArray(plannedRows) ? plannedRows : []).map((r) => {
     const rr = r as Record<string, unknown>;
     const bs = parsePro2BuilderSessionFromNotes(typeof rr.notes === "string" ? rr.notes : null);

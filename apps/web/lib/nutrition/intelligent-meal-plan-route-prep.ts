@@ -19,6 +19,7 @@ import {
   mergeWeeklyStapleCounts,
 } from "@/lib/nutrition/meal-rotation-week-db";
 import { loadMenuFoodPools, menuRotationKeyResolver } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { reconcileMealPlanSlotsWithDiet } from "@/lib/nutrition/reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
@@ -64,14 +65,12 @@ export async function prepareIntelligentMealPlanContext(
     String((body.plan as Record<string, unknown> | undefined)?.planDate ?? "")
       .slice(0, 10) || new Date().toISOString().slice(0, 10);
 
-  const [{ data: profileRow }, { data: plannedRows }, weeklyFromDb] = await Promise.all([
-    db
-      .from("athlete_profiles")
-      .select(
-        "nutrition_config, routine_config, preferred_meal_count, weight_kg, diet_type, lifestyle_activity_class, ftp_watts, supplement_config",
-      )
-      .eq("id", athleteId)
-      .maybeSingle(),
+  const [nutritionProfile, { data: plannedRows }, weeklyFromDb] = await Promise.all([
+    // Fonte unica profilo nutrizione: colonne REALI di athlete_profiles + FTP da
+    // physiological_profiles + lifestyle da routine_config (le colonne ftp_watts e
+    // lifestyle_activity_class NON esistono su athlete_profiles: chiederle lì
+    // faceva fallire l'intera select → profilo vuoto → ftp 250 / peso 70 sempre).
+    loadNutritionAthleteProfile(db, athleteId),
     db
       .from("planned_workouts")
       .select("duration_minutes, type, notes, tss_target, kcal_target")
@@ -105,7 +104,17 @@ export async function prepareIntelligentMealPlanContext(
       ? planMerged.mealPlanSolverMeta.dailyMealsKcalTotal
       : clientSlots.reduce((s, sl) => s + (Number.isFinite(sl.targetKcal) ? sl.targetKcal : 0), 0);
 
-  const row = (profileRow ?? null) as Record<string, unknown> | null;
+  // Forma di `row` INVARIATA per i lettori a valle (route V1/V2, headless leggono
+  // ancora row.ftp_watts / row.lifestyle_activity_class oltre a dietDay, diet_type,
+  // supplement_config, nutrition_config...): riga athlete_profiles + le due chiavi
+  // risolte dalle fonti vere. Profilo inesistente → null, identico a prima.
+  const row: Record<string, unknown> | null = nutritionProfile.profile
+    ? {
+        ...nutritionProfile.profile,
+        ftp_watts: nutritionProfile.ftpWatts,
+        lifestyle_activity_class: nutritionProfile.lifestyleActivityClass,
+      }
+    : null;
 
   const reconciled = reconcileMealPlanSlotsWithDiet({
     planDate,

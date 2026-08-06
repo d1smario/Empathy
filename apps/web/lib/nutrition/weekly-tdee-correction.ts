@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-solver";
 import { loadObservedActiveKcal } from "@/lib/nutrition/load-observed-active-kcal";
+import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 
 /**
@@ -35,12 +36,15 @@ export async function computeWeeklyTdeeCorrection(
   athleteId: string,
   referenceDate: string,
 ): Promise<WeeklyTdeeCorrection> {
-  const { data: profile } = await db
-    .from("athlete_profiles")
-    .select("birth_date, sex, height_cm, weight_kg, body_fat_pct, ftp_watts, lifestyle_activity_class")
-    .eq("id", athleteId)
-    .maybeSingle();
-  const p = (profile ?? {}) as Record<string, unknown>;
+  // Fonte unica profilo nutrizione: ftp_watts da physiological_profiles e lifestyle
+  // da routine_config (su athlete_profiles quelle colonne non esistono). Stesse
+  // chiavi snake_case di prima; profilo assente → ftp/lifestyle null, come oggi.
+  const nutritionProfile = await loadNutritionAthleteProfile(db, athleteId);
+  const p: Record<string, unknown> = {
+    ...((nutritionProfile.profile ?? {}) as Record<string, unknown>),
+    ftp_watts: nutritionProfile.ftpWatts,
+    lifestyle_activity_class: nutritionProfile.lifestyleActivityClass,
+  };
 
   const dates = Array.from({ length: LOOKBACK_DAYS }, (_, i) => addDaysUTC(referenceDate, -(i + 1)));
   const ratios: number[] = [];

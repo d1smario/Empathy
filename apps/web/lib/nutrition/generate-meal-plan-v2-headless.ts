@@ -4,6 +4,7 @@ import { loadObservedActiveKcal } from "@/lib/nutrition/load-observed-active-kca
 import { buildDietMealSlotBudgets, type CaloricDistribution, type MacroSplitPct } from "@/lib/nutrition/diet-meal-slot-budgets";
 import { buildIntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-request-builder";
 import { prepareIntelligentMealPlanContext } from "@/lib/nutrition/intelligent-meal-plan-route-prep";
+import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
 import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
@@ -57,16 +58,10 @@ export async function generateAndPersistMealPlanV2(
 ): Promise<
   { ok: true; planId: string; slots: number; staples: string[] } | { ok: false; error: string }
 > {
-  const [{ data: profile }, { data: plannedRows }, observedActiveKcal] = await Promise.all([
-    db
-      .from("athlete_profiles")
-      .select(
-        "birth_date, sex, height_cm, weight_kg, body_fat_pct, ftp_watts, lifestyle_activity_class, " +
-          "nutrition_config, routine_config, preferred_meal_count, diet_type, intolerances, allergies, " +
-          "food_exclusions, food_preferences, supplements",
-      )
-      .eq("id", athleteId)
-      .maybeSingle(),
+  const [nutritionProfile, { data: plannedRows }, observedActiveKcal] = await Promise.all([
+    // Fonte unica profilo nutrizione: ftp_watts da physiological_profiles e lifestyle
+    // da routine_config (su athlete_profiles quelle colonne non esistono).
+    loadNutritionAthleteProfile(db, athleteId),
     db
       .from("planned_workouts")
       .select("duration_minutes, tss_target, kcal_target, notes")
@@ -76,7 +71,13 @@ export async function generateAndPersistMealPlanV2(
     loadObservedActiveKcal(db, athleteId, planDate),
   ]);
 
-  const p = (profile ?? {}) as Record<string, unknown>;
+  // Stesse chiavi snake_case di prima per il codice a valle; profilo assente →
+  // ftp/lifestyle null, identico a oggi (num(null)=null, typeof null ≠ "string").
+  const p: Record<string, unknown> = {
+    ...((nutritionProfile.profile ?? {}) as Record<string, unknown>),
+    ftp_watts: nutritionProfile.ftpWatts,
+    lifestyle_activity_class: nutritionProfile.lifestyleActivityClass,
+  };
   const ftp = num(p.ftp_watts);
   const weightKg = num(p.weight_kg);
   const preferredMealCount = num(p.preferred_meal_count);

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlannedWorkoutDbRow } from "@empathy/domain-training";
 import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-solver";
 import { computeReduction, type Reduction } from "@/lib/nutrition/reduction-engine";
+import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { getScheduledTimeFromPlannedRow, parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 
 export type ReductionRunResult =
@@ -77,12 +78,11 @@ export async function runDailyReduction(
   date: string,
   opts?: { nowLocalMin?: number },
 ): Promise<ReductionRunResult> {
-  const [{ data: profile }, { data: plannedRows }, { data: executedRows }, { data: planRow }] = await Promise.all([
-    db
-      .from("athlete_profiles")
-      .select("birth_date, sex, height_cm, weight_kg, body_fat_pct, ftp_watts, lifestyle_activity_class, timezone, routine_config")
-      .eq("id", athleteId)
-      .maybeSingle(),
+  const [nutritionProfile, { data: plannedRows }, { data: executedRows }, { data: planRow }] = await Promise.all([
+    // Fonte unica profilo nutrizione (timezone e routine_config inclusi): ftp_watts da
+    // physiological_profiles e lifestyle da routine_config (su athlete_profiles quelle
+    // colonne non esistono).
+    loadNutritionAthleteProfile(db, athleteId),
     db
       .from("planned_workouts")
       .select("id, date, type, duration_minutes, tss_target, kcal_target, notes")
@@ -108,7 +108,12 @@ export async function runDailyReduction(
     return { ok: true, reduction: { triggered: false, reductionKcal: 0, reason: null }, skippedCount: 0, persisted: "noop" };
   }
 
-  const p = (profile ?? {}) as Record<string, unknown>;
+  // Stesse chiavi snake_case di prima; profilo assente → ftp/lifestyle null, come oggi.
+  const p: Record<string, unknown> = {
+    ...((nutritionProfile.profile ?? {}) as Record<string, unknown>),
+    ftp_watts: nutritionProfile.ftpWatts,
+    lifestyle_activity_class: nutritionProfile.lifestyleActivityClass,
+  };
   const routineConfig = p.routine_config && typeof p.routine_config === "object" && !Array.isArray(p.routine_config) ? (p.routine_config as Record<string, unknown>) : null;
   const tz = typeof p.timezone === "string" ? p.timezone : null;
   const nowMin = opts?.nowLocalMin ?? nowLocalMinutes(tz);
