@@ -4950,6 +4950,37 @@ function menuRotationKeyResolver(pools) {
   return (canonicalKey) => byCanonical.get(canonicalKey);
 }
 
+// apps/web/lib/nutrition/load-nutrition-athlete-profile.ts
+var NUTRITION_ATHLETE_PROFILE_SELECT = "birth_date, sex, height_cm, weight_kg, body_fat_pct, timezone, routine_config, nutrition_config, preferred_meal_count, diet_type, supplement_config, intolerances, allergies, food_exclusions, food_preferences, supplements";
+async function loadNutritionAthleteProfile(db, athleteId) {
+  const [profileRes, physRes] = await Promise.all([
+    db.from("athlete_profiles").select(NUTRITION_ATHLETE_PROFILE_SELECT).eq("id", athleteId).maybeSingle(),
+    db.from("physiological_profiles").select("ftp_watts").eq("athlete_id", athleteId).order("updated_at", { ascending: false }).limit(1).maybeSingle()
+  ]);
+  let profile = null;
+  if (profileRes.error) {
+    console.error(
+      `[nutrition] athlete_profiles select fallita (athleteId=${athleteId}): ${profileRes.error.message}`
+    );
+  } else {
+    profile = profileRes.data ?? null;
+  }
+  let ftpWatts = null;
+  if (physRes.error) {
+    console.error(
+      `[nutrition] physiological_profiles select fallita (athleteId=${athleteId}): ${physRes.error.message}`
+    );
+  } else {
+    const raw = physRes.data?.ftp_watts;
+    const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+    if (Number.isFinite(n) && n > 0) ftpWatts = n;
+  }
+  const routine = profile?.routine_config && typeof profile.routine_config === "object" && !Array.isArray(profile.routine_config) ? profile.routine_config : null;
+  const rawLifestyle = routine?.lifestyle_activity_class;
+  const lifestyleActivityClass = typeof rawLifestyle === "string" && rawLifestyle.trim() !== "" ? rawLifestyle : null;
+  return { profile, ftpWatts, lifestyleActivityClass };
+}
+
 // apps/web/lib/nutrition/diet-meal-slot-budgets.ts
 function resolveSixMealSnackPercentages(dist) {
   const am = dist.snack_am;
@@ -5944,12 +5975,6 @@ function computeSubstrateFuelingPlan(input) {
 }
 
 // apps/web/lib/nutrition/v2/daily-nutrition-requirements.ts
-var PAL_BY_LIFESTYLE = {
-  sedentary: 1.25,
-  moderate: 1.4,
-  active: 1.55,
-  very_active: 1.75
-};
 var STRATEGY_TEMPLATES = {
   maintenance: { choMinGPerKg: 3, choMaxGPerKg: 5, proGPerKg: 1.4, fatGPerKg: 0.9 },
   load: { choMinGPerKg: 8, choMaxGPerKg: 12, proGPerKg: 1.5, fatGPerKg: 0.5 },
@@ -5990,7 +6015,6 @@ function buildDailyNutritionRequirementsV2(input) {
   const template = STRATEGY_TEMPLATES[strategyKind];
   const dietProfileActive = dietProfileFromAthleteDietType(request.dietType);
   const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass ?? "moderate");
-  const pal = PAL_BY_LIFESTYLE[lifestyleClass] ?? 1.4;
   const sessions = input.plannedSessions?.length ? input.plannedSessions : extractPlannedSessionsFromRequest(request, input.ftpWatts ?? 250);
   const energyModel = computeNutritionDailyEnergyModel({
     athleteId: request.athleteId,
@@ -6006,7 +6030,7 @@ function buildDailyNutritionRequirementsV2(input) {
       tssTarget: null
     }))
   });
-  const lifestyleKcalPal = Math.round(energyModel.bmrKcal * (pal - 1));
+  const lifestyleKcal = energyModel.lifestyle.kcal;
   let trainingCho = 0;
   let trainingFat = 0;
   let trainingPro = 0;
@@ -6040,7 +6064,7 @@ function buildDailyNutritionRequirementsV2(input) {
     }, 0)
   );
   const trainingKcal = energyModel.training.kcal > 0 ? energyModel.training.kcal : substrateTrainingKcal;
-  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcalPal + trainingKcal) * dietScale);
+  const dailyKcal = Math.round((energyModel.bmrKcal + lifestyleKcal + trainingKcal) * dietScale);
   const substrateFueling = sessions.length > 0 ? computeSubstrateFuelingPlan({
     sessions: sessions.map((s) => ({
       label: s.label,
@@ -6055,7 +6079,7 @@ function buildDailyNutritionRequirementsV2(input) {
   const provenance = [
     `Strategia V2 preview: ${strategyKind} (CHO ${template.choMinGPerKg}\u2013${template.choMaxGPerKg} g/kg, PRO ${template.proGPerKg} g/kg, FAT ${template.fatGPerKg} g/kg).`,
     `Profilo dieta attivo (asse 4): ${dietProfileActive}.`,
-    `PAL ${pal} \xD7 BMR ${energyModel.bmrKcal} kcal \u2192 lifestyle stimato ${lifestyleKcalPal} kcal (V1 solver lifestyle: ${energyModel.lifestyle.kcal} kcal).`,
+    `Lifestyle ${lifestyleClass} (+${Math.round(energyModel.lifestyle.pct * 100)}% \xD7 BMR ${energyModel.bmrKcal} kcal) \u2192 ${lifestyleKcal} kcal (solver V1, fonte unica).`,
     `Training: ${trainingKcal} kcal \xB7 ${sessions.length} seduta/e \xB7 substrati CHO/FAT/PRO da potenza media.`,
     substrateFueling ? `Fueling V2: ${fuelingKcal} kcal oral (pre+intra+post CHO da consumo substrati); pasti ${mealsKcal} kcal = fabbisogno \u2212 fueling.` : "Nessuna seduta: fueling V1 solver legacy.",
     "Ripartizione % tra pasti: Profile Diet (`buildDietMealSlotBudgets`), non preset composer.",
@@ -6076,12 +6100,14 @@ function buildDailyNutritionRequirementsV2(input) {
     },
     energy: {
       bmrKcal: energyModel.bmrKcal,
-      lifestyleKcal: lifestyleKcalPal,
+      lifestyleKcal,
       trainingKcal,
       dailyKcal,
       mealsKcal,
       fuelingKcal,
-      palMultiplier: pal,
+      // Campo di contratto: moltiplicatore EFFETTIVO del lifestyle V1 (1 + pct),
+      // non più la scala PAL parallela rimossa.
+      palMultiplier: Number((1 + energyModel.lifestyle.pct).toFixed(2)),
       endogenousTrainingKcal: substrateFueling?.totals.endogenousFatKcal
     },
     substrateFueling: substrateFueling ? {
@@ -6159,10 +6185,12 @@ async function prepareIntelligentMealPlanContext(db, body) {
   const athleteId = String(body.athleteId ?? "").trim();
   if (!athleteId) return { error: "Missing athleteId", status: 400 };
   const planDate = String(body.plan?.planDate ?? "").slice(0, 10) || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const [{ data: profileRow }, { data: plannedRows }, weeklyFromDb] = await Promise.all([
-    db.from("athlete_profiles").select(
-      "nutrition_config, routine_config, preferred_meal_count, weight_kg, diet_type, lifestyle_activity_class, ftp_watts, supplement_config"
-    ).eq("id", athleteId).maybeSingle(),
+  const [nutritionProfile, { data: plannedRows }, weeklyFromDb] = await Promise.all([
+    // Fonte unica profilo nutrizione: colonne REALI di athlete_profiles + FTP da
+    // physiological_profiles + lifestyle da routine_config (le colonne ftp_watts e
+    // lifestyle_activity_class NON esistono su athlete_profiles: chiederle lì
+    // faceva fallire l'intera select → profilo vuoto → ftp 250 / peso 70 sempre).
+    loadNutritionAthleteProfile(db, athleteId),
     db.from("planned_workouts").select("duration_minutes, type, notes, tss_target, kcal_target").eq("athlete_id", athleteId).eq("date", planDate),
     // Memoria settimanale server-autorevole: conteggi staple dei giorni GIÀ persistiti
     // nella settimana ISO di planDate (escluso il giorno in rigenerazione). Il catalogo
@@ -6184,7 +6212,11 @@ async function prepareIntelligentMealPlanContext(db, body) {
   };
   const clientSlots = Array.isArray(planMerged.slots) ? planMerged.slots : [];
   const dailyMealsKcalTotal = typeof planMerged.mealPlanSolverMeta?.dailyMealsKcalTotal === "number" ? planMerged.mealPlanSolverMeta.dailyMealsKcalTotal : clientSlots.reduce((s, sl) => s + (Number.isFinite(sl.targetKcal) ? sl.targetKcal : 0), 0);
-  const row2 = profileRow ?? null;
+  const row2 = nutritionProfile.profile ? {
+    ...nutritionProfile.profile,
+    ftp_watts: nutritionProfile.ftpWatts,
+    lifestyle_activity_class: nutritionProfile.lifestyleActivityClass
+  } : null;
   const reconciled = reconcileMealPlanSlotsWithDiet({
     planDate,
     nutritionConfig: row2?.nutrition_config ?? null,
