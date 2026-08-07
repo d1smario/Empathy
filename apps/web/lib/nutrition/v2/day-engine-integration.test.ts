@@ -122,10 +122,18 @@ function makeRequirements(trainingKcal: number, intraChoG = 0): DailyNutritionRe
 
 // ── a. resolver modalità ─────────────────────────────────────────────────────────────
 
-test("resolver (a): default shadow senza env, valori sconosciuti → shadow", () => {
-  assert.equal(resolveDayEngineMode({}, "ath-1"), "shadow");
-  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: "banana" }, "ath-1"), "shadow");
-  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: "" }, null), "shadow");
+// Default "on" (decisione proprietario 8 ago): il generativo è il comportamento
+// normale, vale su tutti i percorsi senza dipendere dall'env di due ambienti.
+// "shadow" resta disponibile ma va chiesta esplicitamente.
+test("resolver (a): default ON senza env, valori sconosciuti → on", () => {
+  assert.equal(resolveDayEngineMode({}, "ath-1"), "on");
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: "banana" }, "ath-1"), "on");
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: "" }, null), "on");
+});
+
+test("resolver (a): shadow va chiesta esplicitamente", () => {
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: "shadow" }, "ath-1"), "shadow");
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_MODE: " SHADOW " }, null), "shadow");
 });
 
 test("resolver (a): off è kill switch globale, vince anche sull'allowlist", () => {
@@ -153,10 +161,9 @@ test("resolver (a): allowlist csv con spazi forza on solo per gli id elencati", 
   assert.equal(resolveDayEngineMode(env, "b0082091"), "on");
   assert.equal(resolveDayEngineMode(env, "altro"), "shadow");
   assert.equal(resolveDayEngineMode(env, null), "shadow");
-  assert.equal(
-    resolveDayEngineMode({ NUTRITION_DAY_ENGINE_ATHLETES: "" }, "ath-1"),
-    "shadow",
-  );
+  // Allowlist senza MODE: irrilevante, il default è "on" per tutti.
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_ATHLETES: "" }, "ath-1"), "on");
+  assert.equal(resolveDayEngineMode({ NUTRITION_DAY_ENGINE_ATHLETES: "ath-1" }, "altro"), "on");
 });
 
 // ── b. fedeltà caso Mario ────────────────────────────────────────────────────────────

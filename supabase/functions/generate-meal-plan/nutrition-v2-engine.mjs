@@ -8042,7 +8042,7 @@ function classifyNutritionDay(input) {
 // apps/web/lib/nutrition/v2/day-engine-integration.ts
 function resolveDayEngineMode(env, athleteId) {
   const raw = (env.NUTRITION_DAY_ENGINE_MODE ?? "").trim().toLowerCase();
-  const globalMode = raw === "off" ? "off" : raw === "on" ? "on" : "shadow";
+  const globalMode = raw === "off" ? "off" : raw === "shadow" ? "shadow" : "on";
   if (globalMode !== "shadow") return globalMode;
   const allow = (env.NUTRITION_DAY_ENGINE_ATHLETES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const id = (athleteId ?? "").trim();

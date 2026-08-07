@@ -54,9 +54,14 @@ export type NutritionDayEngineMode = "off" | "shadow" | "on";
 
 /**
  * Risolve la modalità day-engine da env + athleteId.
- * - NUTRITION_DAY_ENGINE_MODE assente o non riconosciuta → "shadow" (default nel codice).
- * - "off" → off per tutti (kill switch, vince anche sull'allowlist).
- * - "on" → on per tutti.
+ *
+ * DEFAULT "on" (decisione proprietario 8 ago: «ON per tutti, non per utentetest»):
+ * il generativo è il comportamento normale della piattaforma, non un esperimento —
+ * così vale su TUTTI i percorsi (Edge, route Next, cron headless) senza dipendere
+ * dalla configurazione env di due ambienti diversi.
+ * - "off" → kill switch per tutti (vince anche sull'allowlist).
+ * - "shadow" → calcola e registra in provenance, serve il vecchio: resta disponibile
+ *   per diagnosi, ma va chiesta esplicitamente.
  * - "shadow" + athleteId nell'allowlist csv NUTRITION_DAY_ENGINE_ATHLETES → "on" per lui.
  */
 export function resolveDayEngineMode(
@@ -64,7 +69,8 @@ export function resolveDayEngineMode(
   athleteId: string | null | undefined,
 ): NutritionDayEngineMode {
   const raw = (env.NUTRITION_DAY_ENGINE_MODE ?? "").trim().toLowerCase();
-  const globalMode: NutritionDayEngineMode = raw === "off" ? "off" : raw === "on" ? "on" : "shadow";
+  const globalMode: NutritionDayEngineMode =
+    raw === "off" ? "off" : raw === "shadow" ? "shadow" : "on";
   if (globalMode !== "shadow") return globalMode;
   const allow = (env.NUTRITION_DAY_ENGINE_ATHLETES ?? "")
     .split(",")
