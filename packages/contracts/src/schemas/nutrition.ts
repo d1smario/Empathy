@@ -5,7 +5,7 @@
 import type { IsoDate, IsoDateTime, ConstraintLevel } from "./common";
 
 export type LifestyleActivityClass = "sedentary" | "moderate" | "active" | "very_active";
-export type NutritionBmrMethod = "cunningham_ffm" | "mifflin_st_jeor" | "weight_proxy";
+export type NutritionBmrMethod = "katch_mcardle_ffm" | "mifflin_st_jeor" | "weight_proxy";
 
 export type NutritionConstraints = {
   athleteId: string;

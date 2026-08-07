@@ -47,6 +47,23 @@ function protectiveIntegration() {
   };
 }
 
+test("daily-energy-solver: BMR massa magra = Katch-McArdle 370 + 21.6 × FFM (decisione Mario 6 ago, sostituisce Cunningham)", () => {
+  const model = computeNutritionDailyEnergyModel(ATHLETE_INPUT);
+  assert.equal(model.bmrMethod, "katch_mcardle_ffm");
+  assert.equal(model.leanMassKg, 63.7); // 70 kg × (1 − 9%)
+  assert.equal(model.bmrKcal, 1746); // round(370 + 21.6 × 63.7)
+
+  // Caso di riferimento di Mario: 62 kg di massa magra → 1709 kcal
+  // (Cunningham dava 1864: −8,3%, cambio VOLUTO — le soglie del modello sono tarate qui).
+  const mario = computeNutritionDailyEnergyModel({
+    ...ATHLETE_INPUT,
+    weightKg: 77.5,
+    bodyFatPct: 20,
+  });
+  assert.equal(mario.leanMassKg, 62);
+  assert.equal(mario.bmrKcal, 1709);
+});
+
 test("daily-energy-solver: dailyKcal = BMR + lifestyle + training pianificato (no scaling con trainingEnergyScale)", () => {
   const noIntegration = computeNutritionDailyEnergyModel(ATHLETE_INPUT);
   const withIntegration = computeNutritionDailyEnergyModel({
@@ -117,5 +134,6 @@ test("daily-energy-solver: TSS fallback when kcal_target null (builder row senza
     plannedTraining: [{ durationMinutes: 100, kcalTarget: 0, tssTarget: 106 }],
   });
   assert.ok(model.training.kcal >= 800, `training kcal from TSS, got ${model.training.kcal}`);
-  assert.ok(model.totals.mealsKcal > 2500, `meals budget should include training, got ${model.totals.mealsKcal}`);
+  /** Soglia ricalibrata su BMR Katch-McArdle (1746 + 349 lifestyle + ~40% training ≈ 2455; era >2500 con Cunningham). */
+  assert.ok(model.totals.mealsKcal > 2400, `meals budget should include training, got ${model.totals.mealsKcal}`);
 });

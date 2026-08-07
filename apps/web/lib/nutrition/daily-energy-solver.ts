@@ -158,10 +158,13 @@ function deriveBmr(input: NutritionDailyEnergySolverInput): {
       : null;
 
   if (leanMassKg != null) {
-    notes.push("BMR anchored to Cunningham using fat-free mass.");
+    // Decisione Mario (6 ago 2026): Katch-McArdle sostituisce Cunningham. Su 62 kg di
+    // massa magra: 1864 → 1709 kcal (−8,3%). Tutte le soglie del suo modello (classi
+    // giorno, quote) sono tarate su QUESTO BMR: non ripristinare Cunningham.
+    notes.push("BMR anchored to Katch-McArdle using fat-free mass.");
     return {
-      bmrKcal: round(500 + 22 * leanMassKg),
-      bmrMethod: "cunningham_ffm",
+      bmrKcal: round(370 + 21.6 * leanMassKg),
+      bmrMethod: "katch_mcardle_ffm",
       leanMassKg,
       ageYears,
       ftpWKg,
