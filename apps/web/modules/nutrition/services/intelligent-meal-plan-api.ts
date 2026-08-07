@@ -1,6 +1,7 @@
 import type { IntelligentMealPlanRequest, IntelligentMealPlanResponseBody } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
 import { fetchWithTimeout } from "@/lib/http/fetch-with-timeout";
+import { isRenderableMealPlanPayload } from "@/modules/nutrition/services/persisted-meal-plan";
 
 type MealPlanResult =
   | { ok: true; body: IntelligentMealPlanResponseBody }
@@ -10,15 +11,11 @@ function parseMealPlanResponse(res: Response, j: { error?: string } & Partial<In
   if (!res.ok) {
     return { ok: false, error: j.error ?? `HTTP ${res.status}`, status: res.status };
   }
-  if (
-    (j.layer !== "deterministic_meal_assembly_v1" && j.layer !== "db_engine_v1") ||
-    !Array.isArray(j.slots) ||
-    !j.solverBasis ||
-    j.solverBasis.source !== "nutrition_meal_plan_solver"
-  ) {
+  // Stessa guardia del payload persistito (read-first): una sola definizione di "renderizzabile".
+  if (!isRenderableMealPlanPayload(j)) {
     return { ok: false, error: "Risposta API non valida", status: 502 };
   }
-  return { ok: true, body: j as IntelligentMealPlanResponseBody };
+  return { ok: true, body: j };
 }
 
 /**

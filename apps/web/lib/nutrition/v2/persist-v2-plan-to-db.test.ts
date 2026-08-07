@@ -14,10 +14,15 @@ import type { MealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2
 import type { DayEngineProvenance } from "@/lib/nutrition/v2/day-engine-integration";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 
-type Captured = { planInsert?: Record<string, unknown> };
+type Captured = { planInsert?: Record<string, unknown>; planInserts: Record<string, unknown>[] };
 
-/** Client finto: cattura l'insert su nutrition_plan, risponde ok su tutto il resto. */
-function makeFakeAdmin(captured: Captured): SupabaseClient {
+/** Client finto: cattura l'insert su nutrition_plan, risponde ok su tutto il resto.
+ *  `failInsertsWithResponsePayloadColumn`: simula un ambiente PRE-migration (42703,
+ *  colonna response_payload assente) → l'insert col payload fallisce, quello senza passa. */
+function makeFakeAdmin(
+  captured: Captured,
+  opts?: { failInsertsWithResponsePayloadColumn?: boolean },
+): SupabaseClient {
   const fake = {
     from(table: string) {
       if (table === "nutrition_plan") {
@@ -31,9 +36,18 @@ function makeFakeAdmin(captured: Captured): SupabaseClient {
           },
           insert(payload: Record<string, unknown>) {
             captured.planInsert = payload;
+            captured.planInserts.push(payload);
+            const columnMissing =
+              opts?.failInsertsWithResponsePayloadColumn === true && "response_payload" in payload;
             return {
               select: () => ({
-                single: async () => ({ data: { id: "plan-1" }, error: null }),
+                single: async () =>
+                  columnMissing
+                    ? {
+                        data: null,
+                        error: { message: 'column "response_payload" of relation "nutrition_plan" does not exist' },
+                      }
+                    : { data: { id: "plan-1" }, error: null },
               }),
             };
           },
@@ -87,7 +101,7 @@ function makeProduction(dayEngine?: DayEngineProvenance): MealPlanV2Production {
 }
 
 test("persist: day-engine ASSENTE (mode off / catch) → inputs_provenance {} e mai null", async () => {
-  const captured: Captured = {};
+  const captured: Captured = { planInserts: [] };
   const res = await persistV2PlanToDb(makeFakeAdmin(captured), "ath-1", "2026-08-10", makeProduction());
   assert.deepEqual(res, { ok: true, planId: "plan-1" });
   assert.ok(captured.planInsert, "insert nutrition_plan atteso");
@@ -107,7 +121,7 @@ test("persist: day-engine presente → inputs_provenance.day_engine = report QA"
     flags: [],
     slots: [],
   };
-  const captured: Captured = {};
+  const captured: Captured = { planInserts: [] };
   const res = await persistV2PlanToDb(
     makeFakeAdmin(captured),
     "ath-1",
@@ -116,4 +130,40 @@ test("persist: day-engine presente → inputs_provenance.day_engine = report QA"
   );
   assert.deepEqual(res, { ok: true, planId: "plan-1" });
   assert.deepEqual(captured.planInsert!.inputs_provenance, { day_engine: dayEngine });
+});
+
+/* ── Read-first (8 ago): response_payload persistito insieme al piano ─────────── */
+
+test("persist: responsePayload passato → scritto in response_payload nella STESSA insert (mai update a due tempi)", async () => {
+  const captured: Captured = { planInserts: [] };
+  const payload = { layer: "deterministic_meal_assembly_v1", slots: [], solverBasis: { source: "nutrition_meal_plan_solver" } };
+  const res = await persistV2PlanToDb(makeFakeAdmin(captured), "ath-1", "2026-08-10", makeProduction(), {
+    responsePayload: payload,
+  });
+  assert.deepEqual(res, { ok: true, planId: "plan-1" });
+  assert.equal(captured.planInserts.length, 1, "una sola scrittura del piano");
+  assert.deepEqual(captured.planInsert!.response_payload, payload);
+  // Regressione: il canale inputs_provenance resta intatto ({} senza day-engine).
+  assert.deepEqual(captured.planInsert!.inputs_provenance, {});
+});
+
+test("persist: responsePayload assente (chiamante legacy) → response_payload NULL, insert ok", async () => {
+  const captured: Captured = { planInserts: [] };
+  const res = await persistV2PlanToDb(makeFakeAdmin(captured), "ath-1", "2026-08-10", makeProduction());
+  assert.deepEqual(res, { ok: true, planId: "plan-1" });
+  assert.equal(captured.planInsert!.response_payload, null);
+});
+
+test("persist: ambiente pre-migration (colonna assente, 42703) → retry senza payload, piano persistito comunque", async () => {
+  const captured: Captured = { planInserts: [] };
+  const res = await persistV2PlanToDb(
+    makeFakeAdmin(captured, { failInsertsWithResponsePayloadColumn: true }),
+    "ath-1",
+    "2026-08-10",
+    makeProduction(),
+    { responsePayload: { layer: "deterministic_meal_assembly_v1" } },
+  );
+  assert.deepEqual(res, { ok: true, planId: "plan-1" });
+  assert.equal(captured.planInserts.length, 2, "primo insert col payload fallisce, il retry senza payload passa");
+  assert.ok(!("response_payload" in captured.planInserts[1]!), "il retry non deve contenere la colonna mancante");
 });

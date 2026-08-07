@@ -7,8 +7,10 @@ import { prepareIntelligentMealPlanContext } from "@/lib/nutrition/intelligent-m
 import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
 import { computeDailyHydrationTargetMl } from "@/lib/nutrition/hydration-target";
+import { attachSolverBasisToAssembled } from "@/lib/nutrition/meal-plan-solver-basis";
 import { buildMealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
 import { mealRotationStaplesFromComposedItems } from "@/lib/nutrition/v2/fdc-staple-registry";
+import { mapV2PlanToV1Response } from "@/lib/nutrition/v2/map-v2-plan-to-v1-response";
 import { persistV2PlanToDb } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import { mealTimesFromRoutineWeekPlanForDate, type FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
@@ -194,6 +196,23 @@ export async function generateAndPersistMealPlanV2(
     db,
   );
 
+  // Risposta V1-mappata COMPLETA per nutrition_plan.response_payload (pagina read-first):
+  // STESSA pipeline dell'Edge Function (mapV2PlanToV1Response + attachSolverBasis + lever
+  // line V2), così un piano generato dal cron settimanale / trigger D3 si apre in pagina
+  // identico a uno generato dall'Edge — la pagina rilegge questo payload senza rigenerare.
+  const responseCore = await mapV2PlanToV1Response(v2, prepared.request);
+  const solverMeta = prepared.request.mealPlanSolverMeta ?? { integrationLeverLines: [] };
+  const responsePayload = attachSolverBasisToAssembled(responseCore, {
+    ...prepared.request,
+    mealPlanSolverMeta: {
+      ...solverMeta,
+      integrationLeverLines: [
+        ...(solverMeta.integrationLeverLines ?? []),
+        "Motore Nutrition V2 (USDA FDC taggato + fueling substrati).",
+      ].slice(0, 16),
+    },
+  });
+
   // Idratazione: si persiste il target della FORMULA CANONICA (max(2200, peso×33) + extra solo
   // con seduta), la stessa delle superfici Oggi/Nutrizione — prima qui restava il vecchio peso×35.
   // Peso: weight_kg del profilo (nullable, come le superfici) e NON prepared.weightKg che ha
@@ -203,6 +222,7 @@ export async function generateAndPersistMealPlanV2(
   const hydrationSessionMin = plannedTraining.reduce((sum, s) => sum + Math.max(0, s.durationMinutes), 0);
   const persisted = await persistV2PlanToDb(db, athleteId, planDate, v2, {
     hydrationMlTarget: computeDailyHydrationTargetMl({ weightKg, sessionDurationMin: hydrationSessionMin }).totalMl,
+    responsePayload,
   });
   if (!persisted.ok) return { ok: false, error: `persist: ${persisted.error}` };
   const staples = mealRotationStaplesFromComposedItems(v2.composedMealPlan.flatMap((s) => s.items));

@@ -26,7 +26,21 @@ export async function persistV2PlanToDb(
   athleteId: string,
   planDate: string,
   production: MealPlanV2Production,
-  opts?: { hydrationMlTarget?: number | null; goal?: string | null },
+  opts?: {
+    hydrationMlTarget?: number | null;
+    goal?: string | null;
+    /**
+     * Risposta V1-mappata COMPLETA (la stessa `result.body` che la pagina Nutrizione
+     * renderizza: slots + solverBasis + nutrientRollup + mealRotationStaples…).
+     * Persistita in `nutrition_plan.response_payload` per la pagina READ-FIRST
+     * (decisione 8 ago): all'apertura si rilegge QUESTO payload dal DB, la
+     * generazione è un evento. Va passata da TUTTI i percorsi di generazione
+     * (Edge Function, route Next, headless/cron) — payload GIÀ mappato, una sola
+     * scrittura insieme al piano (niente update a due tempi). Assente → NULL
+     * (piani legacy): la pagina degrada a una generazione e si auto-ripara.
+     */
+    responsePayload?: unknown;
+  },
 ): Promise<PersistV2PlanResult> {
   const slots = production.composedMealPlan.filter((s) => s.items.length > 0);
   if (slots.length === 0) return { ok: false, error: "Piano V2 senza pasti da persistere" };
@@ -50,28 +64,44 @@ export async function persistV2PlanToDb(
     { kcal: 0, cho: 0, pro: 0, fat: 0 },
   );
 
-  const { data: planRow, error: planErr } = await admin
+  const planInsertBase = {
+    athlete_id: athleteId,
+    plan_date: planDate,
+    algorithm_version: production.algorithmVersion,
+    goal: opts?.goal ?? null,
+    meal_count: slots.length,
+    kcal_target: Math.round(planTotals.kcal),
+    carbs_g_target: Math.round(planTotals.cho),
+    protein_g_target: Math.round(planTotals.pro),
+    fat_g_target: Math.round(planTotals.fat),
+    hydration_ml_target: opts?.hydrationMlTarget ?? null,
+    // Canale QA day-engine (shadow/on): report compatto vecchio-vs-nuovo interrogabile
+    // con `select inputs_provenance->'day_engine' from nutrition_plan ...`.
+    // ⚠️ La colonna prod è `jsonb NOT NULL DEFAULT '{}'`: MAI null qui (23502 → il
+    // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
+    // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
+    inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {},
+  };
+  let { data: planRow, error: planErr } = await admin
     .from("nutrition_plan")
     .insert({
-      athlete_id: athleteId,
-      plan_date: planDate,
-      algorithm_version: production.algorithmVersion,
-      goal: opts?.goal ?? null,
-      meal_count: slots.length,
-      kcal_target: Math.round(planTotals.kcal),
-      carbs_g_target: Math.round(planTotals.cho),
-      protein_g_target: Math.round(planTotals.pro),
-      fat_g_target: Math.round(planTotals.fat),
-      hydration_ml_target: opts?.hydrationMlTarget ?? null,
-      // Canale QA day-engine (shadow/on): report compatto vecchio-vs-nuovo interrogabile
-      // con `select inputs_provenance->'day_engine' from nutrition_plan ...`.
-      // ⚠️ La colonna prod è `jsonb NOT NULL DEFAULT '{}'`: MAI null qui (23502 → il
-      // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
-      // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
-      inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {},
+      ...planInsertBase,
+      // Pagina Nutrizione read-first: la risposta renderizzabile completa si salva
+      // INSIEME al piano (una sola scrittura). NULL su chiamanti legacy senza payload.
+      response_payload: opts?.responsePayload ?? null,
     })
     .select("id")
     .single();
+  if (planErr && /response_payload/i.test(planErr.message ?? "")) {
+    // Cintura rollout: colonna `response_payload` non ancora migrata in questo ambiente
+    // (42703). Degrada all'insert senza payload — il piano resta persistito e la pagina
+    // read-first, non trovando payload, degrada a generazione (comportamento pre-feature).
+    ({ data: planRow, error: planErr } = await admin
+      .from("nutrition_plan")
+      .insert(planInsertBase)
+      .select("id")
+      .single());
+  }
   if (planErr || !planRow?.id) return { ok: false, error: `insert piano: ${planErr?.message ?? "no id"}` };
   const planId = String(planRow.id);
 

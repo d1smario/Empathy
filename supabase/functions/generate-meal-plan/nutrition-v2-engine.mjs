@@ -9867,7 +9867,7 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     },
     { kcal: 0, cho: 0, pro: 0, fat: 0 }
   );
-  const { data: planRow, error: planErr } = await admin.from("nutrition_plan").insert({
+  const planInsertBase = {
     athlete_id: athleteId,
     plan_date: planDate,
     algorithm_version: production.algorithmVersion,
@@ -9884,7 +9884,16 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
     // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
     inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {}
+  };
+  let { data: planRow, error: planErr } = await admin.from("nutrition_plan").insert({
+    ...planInsertBase,
+    // Pagina Nutrizione read-first: la risposta renderizzabile completa si salva
+    // INSIEME al piano (una sola scrittura). NULL su chiamanti legacy senza payload.
+    response_payload: opts?.responsePayload ?? null
   }).select("id").single();
+  if (planErr && /response_payload/i.test(planErr.message ?? "")) {
+    ({ data: planRow, error: planErr } = await admin.from("nutrition_plan").insert(planInsertBase).select("id").single());
+  }
   if (planErr || !planRow?.id) return { ok: false, error: `insert piano: ${planErr?.message ?? "no id"}` };
   const planId = String(planRow.id);
   const mealPayload = slots.map((s, idx) => ({

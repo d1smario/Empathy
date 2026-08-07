@@ -81,7 +81,21 @@ Deno.serve(async (req: Request) => {
     );
     const responseCore = await mapV2PlanToV1Response(v2, request);
 
-    // 3) Persiste SEMPRE (replace per data) → il DB riflette SEMPRE l'ultima generazione del
+    // 3) Risposta piena renderizzabile PRIMA del persist — identica alla route Next
+    //    (attachSolverBasis + lever line V2). È QUESTO il payload che la pagina renderizza
+    //    e che si persiste in nutrition_plan.response_payload (pagina read-first, 8 ago):
+    //    una sola scrittura col payload già mappato, niente update a due tempi.
+    const engineLeverLines = ["Motore Nutrition V2 (USDA FDC taggato + fueling substrati)."];
+    const solverMeta = request.mealPlanSolverMeta ?? { integrationLeverLines: [] };
+    const full = attachSolverBasisToAssembled(responseCore, {
+      ...request,
+      mealPlanSolverMeta: {
+        ...solverMeta,
+        integrationLeverLines: [...(solverMeta.integrationLeverLines ?? []), ...engineLeverLines].slice(0, 16),
+      },
+    });
+
+    // 4) Persiste SEMPRE (replace per data) → il DB riflette SEMPRE l'ultima generazione del
     //    Piano ed è la fonte unica letta da Oggi. Prima persisteva solo alla prima volta (o su
     //    «Rigenera»): cambi a peso/allenamento/diet aggiornavano il render del Piano ma NON il
     //    DB → Oggi mostrava un piano stantìo diverso dal Piano. La generazione è deterministica
@@ -103,19 +117,10 @@ Deno.serve(async (req: Request) => {
         weightKg: hydrationWeightKg,
         sessionDurationMin: hydrationSessionMin,
       }).totalMl,
+      responsePayload: full,
     });
     if (!persisted.ok) return json({ error: persisted.error }, 500);
 
-    // 4) Risposta piena renderizzabile — identica alla route Next (attachSolverBasis + lever line V2).
-    const engineLeverLines = ["Motore Nutrition V2 (USDA FDC taggato + fueling substrati)."];
-    const solverMeta = request.mealPlanSolverMeta ?? { integrationLeverLines: [] };
-    const full = attachSolverBasisToAssembled(responseCore, {
-      ...request,
-      mealPlanSolverMeta: {
-        ...solverMeta,
-        integrationLeverLines: [...(solverMeta.integrationLeverLines ?? []), ...engineLeverLines].slice(0, 16),
-      },
-    });
     return json(full);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

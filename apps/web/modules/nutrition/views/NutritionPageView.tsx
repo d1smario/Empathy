@@ -188,6 +188,12 @@ import {
 } from "@/modules/nutrition/views/NutritionMealPlanView";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import { fetchIntelligentMealPlan } from "@/modules/nutrition/services/intelligent-meal-plan-api";
+import {
+  loadPersistedMealPlanPayload,
+  mealPlanProbeKey,
+  shouldAutoGenerateMealPlan,
+  type MealPlanPersistedProbe,
+} from "@/modules/nutrition/services/persisted-meal-plan";
 import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intelligent-meal-plan-v2-api";
 import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
@@ -496,6 +502,21 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [intelligentMealPlan, setIntelligentMealPlan] = useState<IntelligentMealPlanResponseBody | null>(null);
   const [intelligentMealLoading, setIntelligentMealLoading] = useState(false);
   const [intelligentMealError, setIntelligentMealError] = useState<string | null>(null);
+  /**
+   * READ-FIRST (decisione 8 ago): il piano persistito è la verità, la generazione è un
+   * EVENTO. Il probe registra l'esito della lettura di nutrition_plan.response_payload
+   * per (atleta, giorno): null = lettura non ancora risposta (auto-generazione BLOCCATA),
+   * {found:true} = payload idratato dal DB, {found:false} = miss → si genera UNA volta.
+   */
+  const [persistedPlanProbe, setPersistedPlanProbe] = useState<MealPlanPersistedProbe>(null);
+  /** Bump → il probe rilegge il DB (refresh modulo con input solver cambiati). */
+  const [persistedProbeVersion, setPersistedProbeVersion] = useState(0);
+  /** Specchio del piano in memoria per il callback async del probe: se una generazione
+   *  esplicita è atterrata nel frattempo, il payload (potenzialmente stantìo) NON la sovrascrive. */
+  const intelligentMealPlanRef = useRef<IntelligentMealPlanResponseBody | null>(null);
+  useEffect(() => {
+    intelligentMealPlanRef.current = intelligentMealPlan;
+  }, [intelligentMealPlan]);
   /** Indici voce originali nascosti nel piano corrente (non persistono nel DB). */
   const [coachMealRemovalKeys, setCoachMealRemovalKeys] = useState<Set<string>>(() => new Set());
   /** Etichette aggiunte per la prossima rigenerazione (vincolo deterministico sul request). */
@@ -587,6 +608,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   useEffect(() => {
     setIntelligentMealPlan(null);
     setIntelligentMealError(null);
+    /** Cambio data → il probe read-first riparte da zero: la lettura del persistito per il
+     *  nuovo giorno (effect dedicato, dep selectedPlanDate) deve rispondere PRIMA che
+     *  l'auto-generazione possa scattare. */
+    setPersistedPlanProbe(null);
     setCoachMealRemovalKeys(new Set());
     setCoachSessionFoodExclusions([]);
     setServerDailyEnergyModel(null);
@@ -914,6 +939,12 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           /** Dopo refresh modulo (profilo/fisiologia): evita che il rollup USDA del piano precedente copra i nuovi target kcal solver. */
           setIntelligentMealPlan(null);
           setIntelligentMealError(null);
+          /** READ-FIRST: input solver cambiati NON è un evento di generazione — si RILEGGE
+           *  il persistito (probe azzerato + bump versione → l'effect di lettura riparte).
+           *  Il piano nel DB resta la verità finché un EVENTO esplicito (bottone Genera /
+           *  Rigenera, ripianificazione settimanale) non lo sostituisce. */
+          setPersistedPlanProbe(null);
+          setPersistedProbeVersion((v) => v + 1);
           setCoachMealRemovalKeys(new Set());
           setCoachSessionFoodExclusions([]);
           setFunctionalMealSelector(null);
@@ -2120,6 +2151,25 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [athleteId, profile],
   );
 
+  /**
+   * Idrata la pagina da un corpo-piano completo (result.body della generazione O
+   * response_payload persistito): STESSO post-processing nei due percorsi — piano in
+   * stato, reset degli hide di sessione, staple del giorno nella cache di rotazione
+   * settimanale (idempotente per data: byDate[planDate] viene sovrascritto).
+   */
+  const hydrateFromPlanBody = useCallback(
+    (body: IntelligentMealPlanResponseBody) => {
+      setIntelligentMealPlan(body);
+      setCoachMealRemovalKeys(new Set());
+      const rot = body.mealRotationStaples;
+      const planD = body.solverBasis?.planDate;
+      if (athleteId && rot?.length && planD) {
+        recordPlanDayStaples(athleteId, isoWeekBucketId(planD), planD, rot);
+      }
+    },
+    [athleteId],
+  );
+
   const handleGenerateIntelligentMealPlan = useCallback(async () => {
     if (!athleteId || !intelligentMealPlanRequest) return;
     setIntelligentMealLoading(true);
@@ -2130,35 +2180,67 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       setIntelligentMealError(result.error);
       return;
     }
-    setIntelligentMealPlan(result.body);
-    setCoachMealRemovalKeys(new Set());
-    const rot = result.body.mealRotationStaples;
-    const planD = result.body.solverBasis?.planDate;
-    if (rot?.length && planD) {
-      recordPlanDayStaples(athleteId, isoWeekBucketId(planD), planD, rot);
-    }
-  }, [athleteId, intelligentMealPlanRequest]);
+    hydrateFromPlanBody(result.body);
+  }, [athleteId, intelligentMealPlanRequest, hydrateFromPlanBody]);
 
   /**
-   * Auto-genera il piano allineato al profilo (deterministico, USDA-backed)
-   * appena i prerequisiti sono pronti. Evita la doppia interazione "piano base
-   * placeholder -> click Genera": niente "piano base" con kcal distribuite
-   * uniformemente fra righe (che produceva numeri non realistici tipo
-   * 1 banana = target/n_righe kcal).
+   * READ-FIRST (decisione 8 ago): all'apertura e A OGNI CAMBIO DATA prima si legge il
+   * piano PERSISTITO (nutrition_plan.response_payload, browser→Supabase con RLS
+   * select_own/coach). Payload presente → idratazione immediata, ZERO generazione:
+   * la pagina si apre in una frazione del tempo. Payload assente (mai generato, o piano
+   * pre-migration con response_payload NULL) → probe {found:false} e l'effect sotto
+   * genera UNA volta: il persist scrive il payload e dalle aperture dopo si legge
+   * (self-healing). Errori di lettura → null → degrada a generazione (mai bloccante).
+   */
+  useEffect(() => {
+    if (!athleteId) return;
+    const key = mealPlanProbeKey(athleteId, selectedPlanDate);
+    let cancelled = false;
+    void (async () => {
+      const supabase = createEmpathyBrowserSupabase();
+      const payload = supabase ? await loadPersistedMealPlanPayload(supabase, athleteId, selectedPlanDate) : null;
+      if (cancelled) return;
+      // Non sovrascrivere un piano già in memoria (es. generazione esplicita atterrata
+      // mentre la lettura era in volo): il più recente vince.
+      if (payload && !intelligentMealPlanRef.current) {
+        hydrateFromPlanBody(payload);
+      }
+      setPersistedPlanProbe({ key, found: payload != null });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId, selectedPlanDate, persistedProbeVersion, hydrateFromPlanBody]);
+
+  /**
+   * Generazione come EVENTO, non effetto collaterale dell'apertura (decisione 8 ago).
+   * L'auto-generazione scatta SOLO dopo che la lettura read-first ha risposto (probe
+   * della coppia atleta/giorno corrente) E non ha trovato payload: prima volta per il
+   * giorno o self-healing dei piani pre-migration. MAI con payload presente, MAI in
+   * race con la lettura (gate puro `shouldAutoGenerateMealPlan`, testato a parte).
    *
    * Non riprova in loop se la generazione fallisce: l'utente puo' usare il
    * bottone "Genera il mio piano pasti" per ritentare.
    */
   useEffect(() => {
     if (!athleteId) return;
-    if (!intelligentMealPlanRequest) return;
-    if (!mealPlanGenerationReady) return;
-    if (intelligentMealPlan) return;
-    if (intelligentMealLoading) return;
-    if (intelligentMealError) return;
+    if (
+      !shouldAutoGenerateMealPlan({
+        requestReady: Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady,
+        probe: persistedPlanProbe,
+        expectedProbeKey: mealPlanProbeKey(athleteId, selectedPlanDate),
+        hasPlanInMemory: intelligentMealPlan != null,
+        generationLoading: intelligentMealLoading,
+        generationErrored: intelligentMealError != null,
+      })
+    ) {
+      return;
+    }
     void handleGenerateIntelligentMealPlan();
   }, [
     athleteId,
+    selectedPlanDate,
+    persistedPlanProbe,
     intelligentMealPlanRequest,
     mealPlanGenerationReady,
     intelligentMealPlan,
@@ -2166,6 +2248,22 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     intelligentMealError,
     handleGenerateIntelligentMealPlan,
   ]);
+
+  /**
+   * Setter passato a MealPlanSection: il bottone «Rigenera» azzera il piano in memoria
+   * contando sull'auto-generazione. Sotto read-first quello è un EVENTO esplicito di
+   * rigenerazione → marca il probe come miss per la coppia (atleta, giorno) corrente,
+   * altrimenti il gate (payload presente nel DB) non farebbe ripartire nulla.
+   */
+  const setIntelligentMealPlanFromSection = useCallback<typeof setIntelligentMealPlan>(
+    (value) => {
+      if (value === null && athleteId) {
+        setPersistedPlanProbe({ key: mealPlanProbeKey(athleteId, selectedPlanDate), found: false });
+      }
+      setIntelligentMealPlan(value);
+    },
+    [athleteId, selectedPlanDate],
+  );
 
   const mealPlanEnergyLedger = useMemo((): NutritionMealPlanEnergyLedger | null => {
     let assembled: number | null = null;
@@ -3206,7 +3304,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               intelligentMealLoading={intelligentMealLoading}
               intelligentMealError={intelligentMealError}
               intelligentMealPlan={intelligentMealPlan}
-              setIntelligentMealPlan={setIntelligentMealPlan}
+              setIntelligentMealPlan={setIntelligentMealPlanFromSection}
               intelligentMealPlanRequest={intelligentMealPlanRequest}
               mealPlanGenerationReady={mealPlanGenerationReady}
               handleGenerateIntelligentMealPlan={handleGenerateIntelligentMealPlan}

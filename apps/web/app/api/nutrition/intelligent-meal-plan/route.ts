@@ -249,6 +249,10 @@ export async function POST(req: NextRequest) {
 
     let responseCore;
     let dbPlanReused = false;
+    /** Produzione V2 del ramo engine=v2: persistita DOPO l'assemblaggio finale, così
+     *  nutrition_plan.response_payload riceve la STESSA risposta V1-mappata completa
+     *  che questa route restituisce (pagina read-first, una sola scrittura). */
+    let v2ProductionForPersist: Awaited<ReturnType<typeof buildMealPlanV2Production>> | null = null;
     const regenerate = body.regenerate === true || (isRecord(body.plan) && body.plan.regenerate === true);
 
     if (engine === "db") {
@@ -322,43 +326,7 @@ export async function POST(req: NextRequest) {
         db,
       );
       responseCore = await mapV2PlanToV1Response(v2Production, request);
-
-      // Unica fonte di verità: persiste il piano V2 (deterministico per data) nelle
-      // tabelle canoniche, così la vista Oggi legge ESATTAMENTE quello che mostra
-      // Nutrizione. Scrive alla generazione (piano assente) o su «Rigenera».
-      // Best-effort: un errore di persistenza non deve rompere la risposta.
-      const admin = createSupabaseAdminClient();
-      if (admin) {
-        try {
-          const { data: existingPlan } = await admin
-            .from("nutrition_plan")
-            .select("id")
-            .eq("athlete_id", athleteId)
-            .eq("plan_date", request.planDate)
-            .limit(1)
-            .maybeSingle();
-          if (!existingPlan?.id || regenerate) {
-            // Idratazione: formula CANONICA (max(2200, peso×33) + extra solo con seduta),
-            // stessi input della Edge Function e delle superfici — peso = weight_kg del
-            // profilo nullable (NON `weightKg` del prepare che ha fallback 70), durata =
-            // somma plannedSessions. Questo è il fallback vivo quando la Edge non risponde:
-            // deve persistere lo stesso valore che avrebbe scritto lei.
-            const profileWeightRaw = Number((profileRow as Record<string, unknown> | null)?.weight_kg);
-            const hydrationWeightKg =
-              Number.isFinite(profileWeightRaw) && profileWeightRaw > 0 ? profileWeightRaw : null;
-            const hydrationSessionMin = plannedSessions.reduce((sum, s) => sum + Math.max(0, s.durationMin), 0);
-            const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2Production, {
-              hydrationMlTarget: computeDailyHydrationTargetMl({
-                weightKg: hydrationWeightKg,
-                sessionDurationMin: hydrationSessionMin,
-              }).totalMl,
-            });
-            if (!persisted.ok) console.error("[nutrition v2 persist]", persisted.error);
-          }
-        } catch (persistErr) {
-          console.error("[nutrition v2 persist]", persistErr);
-        }
-      }
+      v2ProductionForPersist = v2Production;
     } else if (engine === "shadow") {
       const [v1Core, v2Production] = await Promise.all([
         buildDeterministicMealPlanFromRequest(request),
@@ -409,18 +377,63 @@ export async function POST(req: NextRequest) {
                 : "Motore Nutrition V1 (Mediterranean composer).",
           ];
 
-    const res = NextResponse.json(
-      attachSolverBasisToAssembled(responseCore, {
-        ...request,
-        mealPlanSolverMeta: {
-          ...request.mealPlanSolverMeta,
-          integrationLeverLines: [
-            ...request.mealPlanSolverMeta.integrationLeverLines,
-            ...engineLeverLines,
-          ].slice(0, 16),
-        },
-      }),
-    );
+    const assembledFull = attachSolverBasisToAssembled(responseCore, {
+      ...request,
+      mealPlanSolverMeta: {
+        ...request.mealPlanSolverMeta,
+        integrationLeverLines: [
+          ...request.mealPlanSolverMeta.integrationLeverLines,
+          ...engineLeverLines,
+        ].slice(0, 16),
+      },
+    });
+
+    // Unica fonte di verità (solo engine=v2): persiste il piano V2 (deterministico per
+    // data) nelle tabelle canoniche, così la vista Oggi legge ESATTAMENTE quello che
+    // mostra Nutrizione. Il persist avviene QUI, dopo l'assemblaggio, perché
+    // nutrition_plan.response_payload deve contenere la risposta V1-mappata COMPLETA
+    // (assembledFull), la stessa che la pagina read-first rilegge dal DB — una sola
+    // scrittura, payload già mappato. Scrive alla generazione (piano assente), su
+    // «Rigenera», o se il piano esiste ma è pre-migration senza payload (self-healing).
+    // Best-effort: un errore di persistenza non deve rompere la risposta.
+    if (engine === "v2" && v2ProductionForPersist) {
+      const admin = createSupabaseAdminClient();
+      if (admin) {
+        try {
+          const { data: existingPlan } = await admin
+            .from("nutrition_plan")
+            .select("id, response_payload")
+            .eq("athlete_id", athleteId)
+            .eq("plan_date", request.planDate)
+            .limit(1)
+            .maybeSingle();
+          const existingRow = existingPlan as { id?: string; response_payload?: unknown } | null;
+          if (!existingRow?.id || regenerate || existingRow.response_payload == null) {
+            // Idratazione: formula CANONICA (max(2200, peso×33) + extra solo con seduta),
+            // stessi input della Edge Function e delle superfici — peso = weight_kg del
+            // profilo nullable (NON `weightKg` del prepare che ha fallback 70), durata =
+            // somma plannedSessions. Questo è il fallback vivo quando la Edge non risponde:
+            // deve persistere lo stesso valore che avrebbe scritto lei.
+            const profileWeightRaw = Number((profileRow as Record<string, unknown> | null)?.weight_kg);
+            const hydrationWeightKg =
+              Number.isFinite(profileWeightRaw) && profileWeightRaw > 0 ? profileWeightRaw : null;
+            const hydrationSessionMin = plannedSessions.reduce((sum, s) => sum + Math.max(0, s.durationMin), 0);
+            const persisted = await persistV2PlanToDb(admin, athleteId, request.planDate, v2ProductionForPersist, {
+              hydrationMlTarget: computeDailyHydrationTargetMl({
+                weightKg: hydrationWeightKg,
+                sessionDurationMin: hydrationSessionMin,
+              }).totalMl,
+              responsePayload: assembledFull,
+            });
+            if (!persisted.ok) console.error("[nutrition v2 persist]", persisted.error);
+          }
+        } catch (persistErr) {
+          console.error("[nutrition v2 persist]", persistErr);
+        }
+      }
+    }
+
+    const res = NextResponse.json(assembledFull);
     res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
     return res;
   } catch (err) {
