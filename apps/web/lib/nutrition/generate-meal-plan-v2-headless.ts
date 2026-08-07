@@ -187,6 +187,9 @@ export async function generateAndPersistMealPlanV2(
       // ma passarli anche qui evita il fallback sul default hardcoded del builder.
       mealTimes,
       performanceIntegration: prepared.performanceIntegration ?? null,
+      // Solo day-engine (shadow di default): massa magra→Katch + orario prima seduta.
+      bodyFatPct: (prepared.profileRow?.body_fat_pct ?? null) as number | string | null,
+      routineConfig,
     },
     db,
   );

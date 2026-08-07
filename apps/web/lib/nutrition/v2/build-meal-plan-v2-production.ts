@@ -19,6 +19,14 @@ import type { FdcFoodBrowseFilter } from "@/lib/nutrition/v2/fdc-food-taxonomy";
 import { CLASSIFIER_VERSION } from "@/lib/nutrition/v2/fdc-food-taxonomy";
 import type { BuildDailyRequirementsInput } from "@/lib/nutrition/v2/daily-nutrition-requirements";
 import { bridgeSubstrateFuelingToProtocolMeta } from "@/lib/nutrition/v2/bridge-substrate-fueling-to-protocol";
+import {
+  buildDayEngineProvenance,
+  computeDayEngineDay,
+  dayEngineSlotsToDietBudgets,
+  resolveDayEngineMode,
+  resolveFirstSessionStartMinutes,
+  type DayEngineProvenance,
+} from "@/lib/nutrition/v2/day-engine-integration";
 
 const DEFAULT_MEAL_TIMES: FlatMealTimes & { snack_evening?: string } = {
   breakfast: "07:30",
@@ -39,6 +47,13 @@ export type MealPlanV2Production = {
   dietMealSlotBudgets: MealPlanV2DietSlotBudget[];
   composedMealPlan: MealPlanV2ComposedSlot[];
   fuelingProtocolMeta?: ReturnType<typeof bridgeSubstrateFuelingToProtocolMeta>;
+  /**
+   * Report day-engine (classi/quote Mario) — presente quando la modalità non è "off".
+   * In shadow è SOLO registrazione (gli slot serviti non cambiano); in on documenta
+   * gli slot applicati. Persistito da persist-v2-plan-to-db in
+   * nutrition_plan.inputs_provenance.day_engine (canale QA interrogabile via SQL).
+   */
+  dayEngine?: DayEngineProvenance;
 };
 
 export type BuildMealPlanV2ProductionInput = BuildDailyRequirementsInput & {
@@ -47,6 +62,14 @@ export type BuildMealPlanV2ProductionInput = BuildDailyRequirementsInput & {
   mealTimes?: FlatMealTimes & { snack_evening?: string };
   performanceIntegration?: NutritionPerformanceIntegrationDials | null;
   preferredFuelingBrands?: string[];
+  /**
+   * SOLO per il day-engine (massa magra → Katch-McArdle): NON entra nel fabbisogno V2
+   * esistente (requirements resta identico). Assente → day-engine "non applicabile".
+   * Accetta string perché le colonne numeric PostgREST possono arrivare come stringa.
+   */
+  bodyFatPct?: number | string | null;
+  /** SOLO per il day-engine: orario prima seduta (tabella §5 mattino/pomeriggio). */
+  routineConfig?: Record<string, unknown> | null;
 };
 
 /**
@@ -172,6 +195,53 @@ export async function buildMealPlanV2Production(
 
   const mealTimes = mealTimesFromRequest(input.request, input.mealTimes ?? DEFAULT_MEAL_TIMES);
   const dietMealSlotBudgets = resolveDietSlots(requirements, input.request, input.dietDay, mealTimes);
+
+  // ── Day-engine (classi/quote giornaliere di Mario) — SHADOW-first ──────────────────
+  // Il collegamento avviene QUI, a monte del composer: in "on" gli slot passati al
+  // composer diventano quelli del day-engine (stessa forma di sempre); in "shadow" si
+  // calcola e si registra soltanto (slot serviti INVARIATI); "off" → nulla di nuovo.
+  // QUALSIASI errore nel ramo nuovo → log + comportamento attuale: il day-engine non
+  // deve MAI far fallire una generazione.
+  let dayEngine: DayEngineProvenance | undefined;
+  let composerSlots = dietMealSlotBudgets;
+  const dayEngineMode = resolveDayEngineMode(
+    process.env as Record<string, string | undefined>,
+    input.request.athleteId,
+  );
+  if (dayEngineMode !== "off") {
+    try {
+      const computed = computeDayEngineDay({
+        mode: dayEngineMode,
+        requirements,
+        request: input.request,
+        dietDay: input.dietDay ?? null,
+        weightKg: input.weightKg,
+        bodyFatPct: input.bodyFatPct ?? null,
+        lifestyleActivityClass: input.lifestyleActivityClass ?? null,
+        firstSessionStartMinutes: resolveFirstSessionStartMinutes({
+          routineConfig: input.routineConfig ?? null,
+          planDate: input.request.planDate,
+          plannedDurationsMin: (input.plannedSessions ?? []).map((s) => s.durationMin),
+        }),
+      });
+      // Guardrail v1: nei giorni gara gli slot restano quelli attuali (pre/post-race
+      // hanno override dedicati che il day-engine v1 non modella) — shadow registra.
+      const isRaceDay = Boolean(input.request.racePreLunch || input.request.racePostRecovery);
+      if (isRaceDay) computed.flags.push("race_day_not_applied");
+      const applied =
+        dayEngineMode === "on" && computed.applicable && !isRaceDay && computed.slots.length >= 3;
+      if (applied) composerSlots = dayEngineSlotsToDietBudgets(computed.slots);
+      dayEngine = buildDayEngineProvenance(computed, dietMealSlotBudgets, applied);
+    } catch (err) {
+      console.error(
+        "[nutrition-v2 day-engine] errore non bloccante, servo il piano attuale:",
+        err instanceof Error ? err.message : err,
+      );
+      dayEngine = undefined;
+      composerSlots = dietMealSlotBudgets;
+    }
+  }
+
   // Catalogo curato DB in parallelo ai pool taggati: fonte primaria dei pool staple;
   // null (tabella vuota/irraggiungibile) → il compose ricade sull'allowlist hardcoded.
   const [pools, menuFoodPools] = await Promise.all([
@@ -180,7 +250,7 @@ export async function buildMealPlanV2Production(
   ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
 
-  const composedMealPlan = composeMealPlanV2(requirements, dietMealSlotBudgets, pools, {
+  const composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
@@ -203,8 +273,11 @@ export async function buildMealPlanV2Production(
     algorithmVersion: "nutrition_meal_plan_v2_production",
     taxonomyVersion: CLASSIFIER_VERSION,
     requirements,
-    dietMealSlotBudgets,
+    // Slot EFFETTIVAMENTE passati al composer: identici a prima in off/shadow,
+    // quelli del day-engine solo quando applied=true (mode on).
+    dietMealSlotBudgets: composerSlots,
     composedMealPlan,
     fuelingProtocolMeta,
+    dayEngine,
   };
 }

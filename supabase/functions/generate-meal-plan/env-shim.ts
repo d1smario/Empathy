@@ -9,6 +9,9 @@ if (!g.process) {
       SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
       // opzionale: senza, coachOrgIdForDb usa il default seed (EMPATHY_DEFAULT_ORG_ID)
       EMPATHY_COACH_ATHLETES_ORG_ID: Deno.env.get("EMPATHY_COACH_ATHLETES_ORG_ID"),
+      // Day-engine (classi/quote Mario): assenti → default "shadow" nel codice (zero impatto).
+      NUTRITION_DAY_ENGINE_MODE: Deno.env.get("NUTRITION_DAY_ENGINE_MODE"),
+      NUTRITION_DAY_ENGINE_ATHLETES: Deno.env.get("NUTRITION_DAY_ENGINE_ATHLETES"),
     },
   };
 }

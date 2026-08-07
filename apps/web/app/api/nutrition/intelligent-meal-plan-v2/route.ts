@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
         dietDayMealsScalePct: dietDay.dayTypePct,
         plannedSessions,
         dietDay,
+        // Solo day-engine (shadow di default): massa magra→Katch + orario prima seduta.
+        bodyFatPct: (prepared.profileRow?.body_fat_pct ?? null) as number | string | null,
+        routineConfig: (prepared.profileRow?.routine_config ?? null) as Record<string, unknown> | null,
       },
       db,
     );

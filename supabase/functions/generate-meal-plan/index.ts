@@ -73,6 +73,9 @@ Deno.serve(async (req: Request) => {
         plannedSessions,
         dietDay,
         performanceIntegration: performanceIntegration ?? null,
+        // Solo day-engine (shadow di default): massa magra→Katch + orario prima seduta.
+        bodyFatPct: (profileRow?.body_fat_pct ?? null) as number | string | null,
+        routineConfig: (profileRow?.routine_config ?? null) as Record<string, unknown> | null,
       },
       admin,
     );

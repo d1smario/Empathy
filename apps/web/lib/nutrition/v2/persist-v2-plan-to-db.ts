@@ -63,6 +63,12 @@ export async function persistV2PlanToDb(
       protein_g_target: Math.round(planTotals.pro),
       fat_g_target: Math.round(planTotals.fat),
       hydration_ml_target: opts?.hydrationMlTarget ?? null,
+      // Canale QA day-engine (shadow/on): report compatto vecchio-vs-nuovo interrogabile
+      // con `select inputs_provenance->'day_engine' from nutrition_plan ...`.
+      // ⚠️ La colonna prod è `jsonb NOT NULL DEFAULT '{}'`: MAI null qui (23502 → il
+      // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
+      // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
+      inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {},
     })
     .select("id")
     .single();

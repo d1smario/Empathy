@@ -7933,6 +7933,361 @@ function bridgeSubstrateFuelingToProtocolMeta(input) {
   };
 }
 
+// apps/web/lib/nutrition/v2/day-classification-engine.ts
+var MARIO_KCAL_PER_G = {
+  pro: 4.1,
+  cho: 4.1,
+  fat: 9
+};
+var DAY_CLASS_BANDS = [
+  {
+    dayClass: "recupero",
+    ratioMin: 1,
+    ratioMax: 1.55,
+    proMin: 1.2,
+    proMax: 1.8,
+    fatMin: 1.2,
+    fatMax: 1.8,
+    mealCountRange: [3, 3]
+  },
+  {
+    dayClass: "leggero",
+    ratioMin: 1.55,
+    ratioMax: 2.15,
+    proMin: 1.8,
+    proMax: 2.4,
+    fatMin: 1.3,
+    fatMax: 2,
+    mealCountRange: [4, 5]
+  },
+  {
+    dayClass: "pesante",
+    ratioMin: 2.15,
+    ratioMax: 4,
+    proMin: 2.5,
+    proMax: 4,
+    fatMin: 1.8,
+    fatMax: 3,
+    mealCountRange: [5, 6]
+  }
+];
+var MEAL_DISTRIBUTION_RECUPERO = {
+  colazione: 35,
+  pranzo: 35,
+  cena: 30
+};
+var MEAL_DISTRIBUTION_TRAINING_MATTINO = {
+  leggero: { colazione: 25, spuntino: 12, pranzo: 30, merenda: 13, cena: 20, spuntino_serale: 0 },
+  pesante: { colazione: 27, spuntino: 12, pranzo: 25, merenda: 10, cena: 20, spuntino_serale: 6 }
+};
+var MEAL_DISTRIBUTION_TRAINING_POMERIGGIO = {
+  leggero: { colazione: 20, spuntino: 12, pranzo: 35, merenda: 13, cena: 20, spuntino_serale: 0 },
+  pesante: { colazione: 22, spuntino: 12, pranzo: 30, merenda: 10, cena: 20, spuntino_serale: 6 }
+};
+function lookupMealDistribution(dayClass, trainingTime) {
+  if (dayClass === "recupero") return MEAL_DISTRIBUTION_RECUPERO;
+  const table = trainingTime === "mattino" ? MEAL_DISTRIBUTION_TRAINING_MATTINO : MEAL_DISTRIBUTION_TRAINING_POMERIGGIO;
+  return table[dayClass];
+}
+function isPositiveFinite(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+function round13(value) {
+  return Math.round(value * 10) / 10;
+}
+function pickBand(ratio) {
+  if (ratio < 1.55) return DAY_CLASS_BANDS[0];
+  if (ratio < 2.15) return DAY_CLASS_BANDS[1];
+  return DAY_CLASS_BANDS[2];
+}
+function classifyNutritionDay(input) {
+  if (!isPositiveFinite(input.bmrKcal) || !isPositiveFinite(input.leanMassKg)) return null;
+  const consumoKcal = input.consumoKcal;
+  if (typeof consumoKcal !== "number" || !Number.isFinite(consumoKcal) || consumoKcal < 0) {
+    return null;
+  }
+  const strategiaPct = isPositiveFinite(input.strategiaPct ?? null) ? input.strategiaPct : 100;
+  const bmrKcal = input.bmrKcal;
+  const leanMassKg = input.leanMassKg;
+  const ratio = consumoKcal / bmrKcal;
+  const band = pickBand(ratio);
+  const t = clamp01((ratio - band.ratioMin) / (band.ratioMax - band.ratioMin));
+  const proteinGPerKgLean = band.proMin + t * (band.proMax - band.proMin);
+  const fatGPerKgLean = band.fatMin + t * (band.fatMax - band.fatMin);
+  const proteinG = round13(proteinGPerKgLean * leanMassKg);
+  const fatG = round13(fatGPerKgLean * leanMassKg);
+  const kcalTarget = Math.round(consumoKcal * (strategiaPct / 100));
+  const choKcalResidual = kcalTarget - proteinG * MARIO_KCAL_PER_G.pro - fatG * MARIO_KCAL_PER_G.fat;
+  const choDeficit = choKcalResidual < 0;
+  const choG = choDeficit ? 0 : round13(choKcalResidual / MARIO_KCAL_PER_G.cho);
+  return {
+    ratio,
+    dayClass: band.dayClass,
+    t,
+    kcalTarget,
+    strategiaPct,
+    proteinGPerKgLean,
+    fatGPerKgLean,
+    proteinG,
+    fatG,
+    choG,
+    choDeficit,
+    mealCountRange: [band.mealCountRange[0], band.mealCountRange[1]]
+  };
+}
+
+// apps/web/lib/nutrition/v2/day-engine-integration.ts
+function resolveDayEngineMode(env, athleteId) {
+  const raw = (env.NUTRITION_DAY_ENGINE_MODE ?? "").trim().toLowerCase();
+  const globalMode = raw === "off" ? "off" : raw === "on" ? "on" : "shadow";
+  if (globalMode !== "shadow") return globalMode;
+  const allow = (env.NUTRITION_DAY_ENGINE_ATHLETES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const id = (athleteId ?? "").trim();
+  if (id && allow.includes(id)) return "on";
+  return "shadow";
+}
+var DISTRIBUTION_SLOT_TO_MEAL_KEY = {
+  colazione: "breakfast",
+  spuntino: "snack_am",
+  pranzo: "lunch",
+  merenda: "snack_pm",
+  cena: "dinner",
+  spuntino_serale: "snack_evening"
+};
+var DISTRIBUTION_SLOT_ORDER = [
+  "colazione",
+  "spuntino",
+  "pranzo",
+  "merenda",
+  "cena",
+  "spuntino_serale"
+];
+var DAY_ENGINE_DEFAULT_SLOT_TIMES = {
+  breakfast: "07:00",
+  snack_am: "10:00",
+  lunch: "13:00",
+  snack_pm: "16:30",
+  dinner: "20:00",
+  snack_evening: "22:00"
+};
+var DEFAULT_SLOT_LABELS = {
+  breakfast: "Colazione",
+  snack_am: "Spuntino",
+  lunch: "Pranzo",
+  snack_pm: "Merenda",
+  dinner: "Cena",
+  snack_evening: "Spuntino serale"
+};
+function coerceFinite(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+function round14(n) {
+  return Math.round(n * 10) / 10;
+}
+function kcalFromMacros(choG, proG, fatG) {
+  return Math.round(choG * MARIO_KCAL_PER_G.cho + proG * MARIO_KCAL_PER_G.pro + fatG * MARIO_KCAL_PER_G.fat);
+}
+function nonEmptyTime4(v) {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+function resolveFirstSessionStartMinutes(args) {
+  const rc = args.routineConfig;
+  if (!rc || typeof rc !== "object" || Array.isArray(rc)) return null;
+  const root = rc;
+  const weekPlanRaw = root.week_plan;
+  const weekPlan = weekPlanRaw && typeof weekPlanRaw === "object" && !Array.isArray(weekPlanRaw) ? weekPlanRaw : {};
+  const dayRaw = weekPlan[profileWeekDayKeyFromIsoLocal(args.planDate)];
+  const day = dayRaw && typeof dayRaw === "object" && !Array.isArray(dayRaw) ? dayRaw : {};
+  const sumPlanned = args.plannedDurationsMin.reduce(
+    (s, n) => s + (Number.isFinite(n) && n > 0 ? n : 0),
+    0
+  );
+  const hr = day.has_training;
+  const hasTraining = sumPlanned >= 25 || hr === true || hr === 1 || String(hr).toLowerCase() === "true" || String(hr) === "1";
+  if (!hasTraining) return null;
+  const explicit = nonEmptyTime4(day.training1_start_time) ?? nonEmptyTime4(root.training1_start_time);
+  if (!explicit) return null;
+  return parseLocalTimeToMinutes(explicit);
+}
+function pickStrategiaPct(dayTypePct) {
+  return typeof dayTypePct === "number" && Number.isFinite(dayTypePct) && dayTypePct > 0 ? dayTypePct : 100;
+}
+function intraFuelingChoG(requirements) {
+  const g = requirements.substrateFueling?.totals.intraChoG;
+  return typeof g === "number" && Number.isFinite(g) && g > 0 ? round14(g) : 0;
+}
+function computeDayEngineDay(input) {
+  const flags = [];
+  const strategiaPct = pickStrategiaPct(input.dietDay?.dayTypePct);
+  const fuelingChoG = intraFuelingChoG(input.requirements);
+  const model = computeNutritionDailyEnergyModel({
+    athleteId: input.request.athleteId,
+    date: input.request.planDate,
+    weightKg: input.weightKg,
+    bodyFatPct: coerceFinite(input.bodyFatPct),
+    lifestyleActivityClass: input.lifestyleActivityClass ?? "moderate",
+    plannedTraining: []
+  });
+  const trainingKcalRaw = input.requirements.energy.trainingKcal;
+  const trainingKcal = typeof trainingKcalRaw === "number" && Number.isFinite(trainingKcalRaw) && trainingKcalRaw > 0 ? trainingKcalRaw : 0;
+  const consumoKcal = model.bmrKcal + model.lifestyle.kcal + trainingKcal;
+  const cls = classifyNutritionDay({
+    bmrKcal: model.bmrKcal,
+    leanMassKg: model.leanMassKg,
+    consumoKcal,
+    strategiaPct
+  });
+  if (!cls) {
+    return {
+      mode: input.mode,
+      applicable: false,
+      reason: model.leanMassKg == null || model.leanMassKg <= 0 ? "lean_mass_missing" : "classification_null",
+      strategiaPct,
+      fuelingChoG,
+      slots: [],
+      flags
+    };
+  }
+  if (cls.choDeficit) flags.push("cho_deficit");
+  const choMealsRaw = cls.choG - fuelingChoG;
+  const fuelingClamped = choMealsRaw < 0;
+  if (fuelingClamped) flags.push("fueling_cho_exceeds_day_cho_clamped_0");
+  const mealChoG = fuelingClamped ? 0 : round14(choMealsRaw);
+  const mealProteinG = cls.proteinG;
+  const mealFatG = cls.fatG;
+  let table;
+  if (cls.dayClass === "recupero") {
+    table = "recupero";
+  } else if (input.firstSessionStartMinutes == null) {
+    table = "pomeriggio";
+    flags.push("training_time_unknown_default_pomeriggio");
+  } else {
+    table = input.firstSessionStartMinutes < 12 * 60 ? "mattino" : "pomeriggio";
+  }
+  const distribution = lookupMealDistribution(
+    cls.dayClass,
+    table === "mattino" ? "mattino" : "pomeriggio"
+  );
+  const clientSlotByKey = new Map(input.request.slots.map((s) => [s.slot, s]));
+  const slots = [];
+  for (const distKey of DISTRIBUTION_SLOT_ORDER) {
+    const pct = distribution[distKey];
+    if (pct == null || pct <= 0) continue;
+    const key = DISTRIBUTION_SLOT_TO_MEAL_KEY[distKey];
+    const choG = round14(mealChoG * pct / 100);
+    const proteinG = round14(mealProteinG * pct / 100);
+    const fatG = round14(mealFatG * pct / 100);
+    const client = clientSlotByKey.get(key);
+    const clientTime = client?.scheduledTimeLocal?.trim();
+    slots.push({
+      key,
+      label: client?.labelIt?.trim() || DEFAULT_SLOT_LABELS[key],
+      time: clientTime || DAY_ENGINE_DEFAULT_SLOT_TIMES[key],
+      pct,
+      kcal: kcalFromMacros(choG, proteinG, fatG),
+      choG,
+      proteinG,
+      fatG
+    });
+  }
+  return {
+    mode: input.mode,
+    applicable: true,
+    dayClass: cls.dayClass,
+    ratio: cls.ratio,
+    strategiaPct: cls.strategiaPct,
+    bmrKcal: model.bmrKcal,
+    leanMassKg: model.leanMassKg ?? void 0,
+    consumoKcal: Math.round(consumoKcal),
+    kcalTarget: cls.kcalTarget,
+    quotas: { proteinGPerKgLean: cls.proteinGPerKgLean, fatGPerKgLean: cls.fatGPerKgLean },
+    dayTotals: { proteinG: cls.proteinG, fatG: cls.fatG, choG: cls.choG, choDeficit: cls.choDeficit },
+    fuelingChoG,
+    mealTotals: {
+      choG: mealChoG,
+      proteinG: mealProteinG,
+      fatG: mealFatG,
+      kcal: kcalFromMacros(mealChoG, mealProteinG, mealFatG)
+    },
+    table,
+    slots,
+    flags
+  };
+}
+function dayEngineSlotsToDietBudgets(slots) {
+  return slots.map((s) => ({
+    key: s.key,
+    label: s.label,
+    pct: s.pct,
+    kcal: s.kcal,
+    carbs: s.choG,
+    protein: s.proteinG,
+    fat: s.fatG
+  }));
+}
+function budgetTuple(b) {
+  return {
+    kcal: Math.round(b.kcal),
+    choG: round14(b.carbs),
+    proG: round14(b.protein),
+    fatG: round14(b.fat)
+  };
+}
+function slotTuple(s) {
+  return { kcal: s.kcal, choG: s.choG, proG: s.proteinG, fatG: s.fatG };
+}
+function buildDayEngineProvenance(result, currentSlots, applied) {
+  const order = ["breakfast", "snack_am", "lunch", "snack_pm", "dinner", "snack_evening"];
+  const beforeByKey = new Map(currentSlots.map((b) => [String(b.key), budgetTuple(b)]));
+  const afterByKey = new Map(result.slots.map((s) => [String(s.key), slotTuple(s)]));
+  const keys = [
+    ...order.filter((k) => beforeByKey.has(k) || afterByKey.has(k)),
+    ...[...beforeByKey.keys()].filter((k) => !order.includes(k))
+  ];
+  const slots = keys.map((key) => {
+    const before = beforeByKey.get(key) ?? null;
+    const after = afterByKey.get(key) ?? null;
+    return {
+      key,
+      before,
+      after,
+      deltaKcal: Math.round((after?.kcal ?? 0) - (before?.kcal ?? 0)),
+      deltaChoG: round14((after?.choG ?? 0) - (before?.choG ?? 0)),
+      deltaProG: round14((after?.proG ?? 0) - (before?.proG ?? 0)),
+      deltaFatG: round14((after?.fatG ?? 0) - (before?.fatG ?? 0))
+    };
+  });
+  return {
+    engine: "day_classification_v1",
+    mode: result.mode,
+    applied,
+    applicable: result.applicable,
+    ...result.reason ? { reason: result.reason } : {},
+    ...result.dayClass ? { dayClass: result.dayClass } : {},
+    ...result.ratio != null ? { ratio: Math.round(result.ratio * 1e3) / 1e3 } : {},
+    strategiaPct: result.strategiaPct,
+    ...result.bmrKcal != null ? { bmrKcal: result.bmrKcal } : {},
+    ...result.leanMassKg != null ? { leanMassKg: result.leanMassKg } : {},
+    ...result.consumoKcal != null ? { consumoKcal: result.consumoKcal } : {},
+    ...result.kcalTarget != null ? { kcalTarget: result.kcalTarget } : {},
+    ...result.quotas ? { quotas: result.quotas } : {},
+    ...result.dayTotals ? { dayTotals: result.dayTotals } : {},
+    fuelingChoG: result.fuelingChoG,
+    ...result.mealTotals ? { mealTotals: result.mealTotals } : {},
+    ...result.table ? { table: result.table } : {},
+    flags: [...result.flags],
+    slots
+  };
+}
+
 // apps/web/lib/nutrition/v2/build-meal-plan-v2-production.ts
 var DEFAULT_MEAL_TIMES = {
   breakfast: "07:30",
@@ -8036,12 +8391,48 @@ async function buildMealPlanV2Production(input, admin) {
   });
   const mealTimes = mealTimesFromRequest(input.request, input.mealTimes ?? DEFAULT_MEAL_TIMES);
   const dietMealSlotBudgets = resolveDietSlots(requirements, input.request, input.dietDay, mealTimes);
+  let dayEngine;
+  let composerSlots = dietMealSlotBudgets;
+  const dayEngineMode = resolveDayEngineMode(
+    process.env,
+    input.request.athleteId
+  );
+  if (dayEngineMode !== "off") {
+    try {
+      const computed = computeDayEngineDay({
+        mode: dayEngineMode,
+        requirements,
+        request: input.request,
+        dietDay: input.dietDay ?? null,
+        weightKg: input.weightKg,
+        bodyFatPct: input.bodyFatPct ?? null,
+        lifestyleActivityClass: input.lifestyleActivityClass ?? null,
+        firstSessionStartMinutes: resolveFirstSessionStartMinutes({
+          routineConfig: input.routineConfig ?? null,
+          planDate: input.request.planDate,
+          plannedDurationsMin: (input.plannedSessions ?? []).map((s) => s.durationMin)
+        })
+      });
+      const isRaceDay = Boolean(input.request.racePreLunch || input.request.racePostRecovery);
+      if (isRaceDay) computed.flags.push("race_day_not_applied");
+      const applied = dayEngineMode === "on" && computed.applicable && !isRaceDay && computed.slots.length >= 3;
+      if (applied) composerSlots = dayEngineSlotsToDietBudgets(computed.slots);
+      dayEngine = buildDayEngineProvenance(computed, dietMealSlotBudgets, applied);
+    } catch (err) {
+      console.error(
+        "[nutrition-v2 day-engine] errore non bloccante, servo il piano attuale:",
+        err instanceof Error ? err.message : err
+      );
+      dayEngine = void 0;
+      composerSlots = dietMealSlotBudgets;
+    }
+  }
   const [pools, menuFoodPools] = await Promise.all([
     loadFdcPools(admin, requirements.dietProfileActive),
     loadMenuFoodPools(admin)
   ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
-  const composedMealPlan = composeMealPlanV2(requirements, dietMealSlotBudgets, pools, {
+  const composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
@@ -8059,9 +8450,12 @@ async function buildMealPlanV2Production(input, admin) {
     algorithmVersion: "nutrition_meal_plan_v2_production",
     taxonomyVersion: CLASSIFIER_VERSION,
     requirements,
-    dietMealSlotBudgets,
+    // Slot EFFETTIVAMENTE passati al composer: identici a prima in off/shadow,
+    // quelli del day-engine solo quando applied=true (mode on).
+    dietMealSlotBudgets: composerSlots,
     composedMealPlan,
-    fuelingProtocolMeta
+    fuelingProtocolMeta,
+    dayEngine
   };
 }
 
@@ -9483,7 +9877,13 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     carbs_g_target: Math.round(planTotals.cho),
     protein_g_target: Math.round(planTotals.pro),
     fat_g_target: Math.round(planTotals.fat),
-    hydration_ml_target: opts?.hydrationMlTarget ?? null
+    hydration_ml_target: opts?.hydrationMlTarget ?? null,
+    // Canale QA day-engine (shadow/on): report compatto vecchio-vs-nuovo interrogabile
+    // con `select inputs_provenance->'day_engine' from nutrition_plan ...`.
+    // ⚠️ La colonna prod è `jsonb NOT NULL DEFAULT '{}'`: MAI null qui (23502 → il
+    // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
+    // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
+    inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {}
   }).select("id").single();
   if (planErr || !planRow?.id) return { ok: false, error: `insert piano: ${planErr?.message ?? "no id"}` };
   const planId = String(planRow.id);
