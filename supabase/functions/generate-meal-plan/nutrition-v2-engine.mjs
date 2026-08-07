@@ -5553,10 +5553,10 @@ function deriveBmr(input) {
   });
   const ftpWKg = input.ftpWatts != null && weightKg != null && weightKg > 0 ? round(input.ftpWatts / weightKg, 2) : null;
   if (leanMassKg != null) {
-    notes.push("BMR anchored to Cunningham using fat-free mass.");
+    notes.push("BMR anchored to Katch-McArdle using fat-free mass.");
     return {
-      bmrKcal: round(500 + 22 * leanMassKg),
-      bmrMethod: "cunningham_ffm",
+      bmrKcal: round(370 + 21.6 * leanMassKg),
+      bmrMethod: "katch_mcardle_ffm",
       leanMassKg,
       ageYears,
       ftpWKg,
