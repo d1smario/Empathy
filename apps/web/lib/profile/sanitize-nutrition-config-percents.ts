@@ -9,9 +9,9 @@
  * Questo helper è PURO (nessun import server-only) così è testabile con `tsx --test`:
  * riceve il `nutrition_config` in ingresso dal client e quello ATTUALE dal DB, e
  * restituisce una copia dell'ingresso in cui i campi protetti sono forzati ai valori
- * correnti (o rimossi se oggi non esistono). Tutto il resto (meal_count_mode, day_type,
- * day_type_pct, excluded_fdc_foods, excluded_food_classes, prep_time, meal_strategy, …)
- * resta scrivibile dall'atleta: il layer reintegro/riduzione non passa di qui e non è toccato.
+ * correnti (o rimossi se oggi non esistono). Tutto il resto (meal_count_mode,
+ * excluded_fdc_foods, excluded_food_classes, prep_time, meal_strategy, …) resta
+ * scrivibile dall'atleta: il layer reintegro/riduzione non passa di qui e non è toccato.
  *
  * NOTA ARCHITETTURALE (rischio futuro): oggi TUTTI i write di `nutrition_config` passano
  * dalle API route Next (PUT/POST /api/profile, PATCH /api/nutrition/profile-config) con
@@ -28,8 +28,21 @@ type JsonRecord = Record<string, unknown>;
  * Campi protetti PER GIORNO dentro `week_plan[Mon…Sun]`.
  * `caloric_split` a livello giorno è incluso perché `resolve-nutrition-diet-day.ts`
  * lo legge come alias della distribuzione calorica (readCaloricDistribution).
+ *
+ * `day_type_pct` è LA LEVA DELLA STRATEGIA (ipo | normo | iper): scala il fabbisogno
+ * del giorno in `daily-energy-solver` (dietScale). Nel modello nuovo la sceglie SOLO il
+ * coach, quindi va protetta come le altre percentuali. `day_type` (preset testuale) è
+ * inerte ma è l'etichetta della stessa scelta: si protegge insieme, altrimenti l'atleta
+ * potrebbe lasciarla incoerente con la percentuale.
  */
-const DAY_PROTECTED_KEYS = ["caloric_distribution", "daily_macros", "meal_macro_custom", "caloric_split"] as const;
+const DAY_PROTECTED_KEYS = [
+  "caloric_distribution",
+  "daily_macros",
+  "meal_macro_custom",
+  "caloric_split",
+  "day_type_pct",
+  "day_type",
+] as const;
 
 /** Chiavi legacy alla RADICE del config, lette da `readFromLegacyRoot` (resolve-nutrition-diet-day.ts). */
 const ROOT_PROTECTED_KEYS = ["caloric_split", "macro_split"] as const;

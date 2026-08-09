@@ -10,7 +10,6 @@ import {
   dietOptions,
   weekDays,
   toggleCsvToken,
-  defaultPctForDayType,
 } from "@/lib/profile/profile-page-kit";
 import { ALLERGEN_CLASS_CATALOG } from "@/lib/nutrition/allergen-class-catalog";
 import {
@@ -19,33 +18,41 @@ import {
   SUPPLEMENT_BRANDS,
   SUPPLEMENT_CATEGORIES,
 } from "@/lib/profile/supplement-category-catalog";
-import { resolveSixMealSnackPercentages } from "@/lib/nutrition/diet-meal-slot-budgets";
+import {
+  NUTRITION_STRATEGY_INTENSITIES,
+  resolveWeekStrategy,
+  strategyToDayTypePct,
+  strategyToDayTypePreset,
+  type NutritionStrategy,
+  type NutritionStrategyKind,
+} from "@/lib/profile/nutrition-strategy";
 import type { ProfileFormState } from "@/modules/profile/views/sections/profile-form-state";
 
 /**
  * Sezione "Alimentazione" dell'editor profilo (decomposizione del God-component).
  * Render-only: stato (form + piano settimanale dieta + tab nutrition/categoria
- * integratori) nel padre, passato via props; gli handler centralizzati
- * (updateDietDay, save) restano nel padre.
+ * integratori) nel padre, passato via props; gli handler centralizzati restano nel padre.
+ *
+ * MODELLO (generativo attivo per tutti): l'atleta dichiara la sua ROUTINE (tab Routine)
+ * e COSA NON MANGIA (tab Intolleranze); il coach dichiara SOLO la strategia calorica di
+ * fase. Numero pasti, macro e grammature li ricalcola il motore ogni giorno dal consumo
+ * reale, quindi qui non ci sono più manopole per distribuzione calorica, macro
+ * giornalieri, macro per pasto, numero pasti o tipologia giorno.
  */
 export type ProfileNutritionSectionProps = {
   form: ProfileFormState;
   setForm: Dispatch<SetStateAction<ProfileFormState>>;
   dietWeekPlan: Record<WeekDay, DietDayConfig>;
   setDietWeekPlan: Dispatch<SetStateAction<Record<WeekDay, DietDayConfig>>>;
-  activeDietDay: WeekDay;
-  setActiveDietDay: Dispatch<SetStateAction<WeekDay>>;
   activeNutritionTab: "diet" | "intolerances" | "supplements";
   setActiveNutritionTab: Dispatch<SetStateAction<"diet" | "intolerances" | "supplements">>;
   activeSupplementCategory: string;
   setActiveSupplementCategory: Dispatch<SetStateAction<string>>;
-  updateDietDay: (day: WeekDay, patch: Partial<DietDayConfig>) => void;
-  /** «Copia dal giorno precedente»: clona nel padre la config del giorno prima (con wrap lun←dom). */
-  copyDietDayFromPrevious: (day: WeekDay) => void;
   /**
-   * Le % nutrizionali (distribuzione calorica, macro giornalieri, macro per pasto)
-   * sono editabili solo da coach/admin: per l'atleta gli input restano visibili e
-   * bindati (vede i valori aggiornati dal sistema) ma disabled.
+   * Stesso gate delle % nutrizionali (coach o platform admin): è la sola cosa che il
+   * coach decide nel modello nuovo — la strategia calorica. Per l'atleta la sezione è
+   * in sola lettura (vede quale fase è attiva, non la cambia); il server rifà lo stesso
+   * controllo in `sanitize-nutrition-config-percents`.
    */
   canEditNutritionPercents?: boolean;
   /** Esclusioni-cibo strutturate dal DB (globali): nutrition_config.excluded_fdc_foods */
@@ -69,14 +76,10 @@ export function ProfileNutritionSection({
   setForm,
   dietWeekPlan,
   setDietWeekPlan,
-  activeDietDay,
-  setActiveDietDay,
   activeNutritionTab,
   setActiveNutritionTab,
   activeSupplementCategory,
   setActiveSupplementCategory,
-  updateDietDay,
-  copyDietDayFromPrevious,
   canEditNutritionPercents = true,
   excludedFdcFoods,
   setExcludedFdcFoods,
@@ -85,11 +88,38 @@ export function ProfileNutritionSection({
 }: ProfileNutritionSectionProps) {
   const t = useTranslations("ProfileNutritionSection");
   const locale = useLocale();
-  void setDietWeekPlan;
-  const previousDietDay = weekDays[(weekDays.indexOf(activeDietDay) + 6) % 7];
-  // Stile input % read-only: gli input non hanno uno stato :disabled in CSS, quindi
-  // aggiungiamo opacity/cursor via utility Tailwind quando disabled.
-  const pctInputClass = "form-input disabled:opacity-50 disabled:cursor-not-allowed";
+
+  // STRATEGIA: la fase calorica è una scelta di settimana, non di giorno, ma il dato
+  // resta per-giorno (`week_plan[gg].day_type_pct`, forma invariata → zero migrazioni).
+  // In lettura si risolve la strategia dei sette giorni; in scrittura si applica a tutti.
+  const strategy = resolveWeekStrategy(weekDays.map((day) => dietWeekPlan[day].day_type_pct));
+  const strategyPct = strategyToDayTypePct(strategy);
+
+  function applyStrategy(next: NutritionStrategy) {
+    const day_type_pct = strategyToDayTypePct(next);
+    const day_type = strategyToDayTypePreset(next);
+    setDietWeekPlan((prev) => {
+      const out = { ...prev };
+      for (const day of weekDays) out[day] = { ...prev[day], day_type_pct, day_type };
+      return out;
+    });
+  }
+
+  function selectStrategyKind(kind: NutritionStrategyKind) {
+    if (kind === "normocaloric") {
+      applyStrategy({ kind, intensityPct: null });
+      return;
+    }
+    // Passando da ipo a iper (o viceversa) si conserva l'intensità già scelta.
+    applyStrategy({ kind, intensityPct: strategy.intensityPct ?? 5 });
+  }
+
+  // `t` con chiave calcolata non è tipizzabile: switch esplicito.
+  function strategyKindLabel(kind: NutritionStrategyKind): string {
+    if (kind === "hypocaloric") return t("strategyHypocaloric");
+    if (kind === "hypercaloric") return t("strategyHypercaloric");
+    return t("strategyNormocaloric");
+  }
 
   // «Alimenti da evitare (dal database)»: ricerca nel nostro DB via
   // /api/nutrition/food-lookup, stessa logica del picker pasti (debounce →
@@ -159,13 +189,69 @@ export function ProfileNutritionSection({
   return (
     <div>
       <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "24px" }}>
-        <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>{t("tabDiet")}</button>
+        <button type="button" className={`page-tab ${activeNutritionTab === "diet" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("diet")}>{t("tabStrategy")}</button>
         <button type="button" className={`page-tab ${activeNutritionTab === "intolerances" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("intolerances")}>{t("tabIntolerances")}</button>
         <button type="button" className={`page-tab ${activeNutritionTab === "supplements" ? "page-tab-active" : ""}`} onClick={() => setActiveNutritionTab("supplements")}>{t("tabSupplements")}</button>
       </div>
 
       {activeNutritionTab === "diet" && (
         <div>
+          <div className="profile-subpanel tone-amber" style={{ marginBottom: "16px" }}>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("strategyTitle")}</h4>
+
+            {canEditNutritionPercents ? (
+              <>
+                <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("strategyCoachHint")}</p>
+                <div className="profile-chip-grid">
+                  {(["hypocaloric", "normocaloric", "hypercaloric"] as const).map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      className={`profile-black-chip ${strategy.kind === kind ? "active" : ""}`}
+                      aria-pressed={strategy.kind === kind}
+                      onClick={() => selectStrategyKind(kind)}
+                    >
+                      {strategyKindLabel(kind)}
+                    </button>
+                  ))}
+                </div>
+
+                {strategy.kind !== "normocaloric" ? (
+                  <div style={{ marginTop: "12px" }}>
+                    {/* Gruppo di chip, non un input: `div` con lo stile label (un <label> senza controllo associato). */}
+                    <div className="form-label">{t("strategyIntensityLabel")}</div>
+                    <div className="profile-chip-grid" role="group" aria-label={t("strategyIntensityLabel")}>
+                      {NUTRITION_STRATEGY_INTENSITIES.map((intensityPct) => (
+                        <button
+                          key={intensityPct}
+                          type="button"
+                          className={`profile-black-chip ${strategy.intensityPct === intensityPct ? "active" : ""}`}
+                          aria-pressed={strategy.intensityPct === intensityPct}
+                          onClick={() => applyStrategy({ kind: strategy.kind, intensityPct })}
+                        >
+                          {strategy.kind === "hypocaloric" ? `−${intensityPct}%` : `+${intensityPct}%`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="text-[11px] text-slate-400" style={{ marginTop: "12px" }}>
+                  {t("strategyCurrentPct", { pct: strategyPct })}
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ marginBottom: "8px" }}>
+                  <strong>{strategyKindLabel(strategy.kind)}</strong>
+                  {" · "}
+                  {t("strategyCurrentPct", { pct: strategyPct })}
+                </p>
+                <p className="text-[11px] text-slate-400">{t("strategyAthleteExplainer")}</p>
+              </>
+            )}
+          </div>
+
           <div className="form-group"><label className="form-label">{t("dietType")}</label><select className="form-select profile-dark-select" value={form.diet_type} onChange={(e) => setForm((f) => ({ ...f, diet_type: e.target.value }))}>{dietOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></div>
           <div className="form-group"><label className="form-label">{t("preferredCuisines")}</label></div>
           <div className="profile-chip-grid">
@@ -177,102 +263,6 @@ export function ProfileNutritionSection({
                 </button>
               );
             })}
-          </div>
-
-          <div className="profile-day-strip" style={{ marginTop: "12px" }}>
-            {weekDays.map((day) => (
-              <button key={day} type="button" className={`profile-day-chip ${activeDietDay === day ? "active" : ""}`} onClick={() => setActiveDietDay(day)}>{day}</button>
-            ))}
-            <button
-              type="button"
-              className="profile-black-chip"
-              onClick={() => copyDietDayFromPrevious(activeDietDay)}
-            >
-              {t("copyFromPreviousDay", { day: previousDietDay })}
-            </button>
-          </div>
-
-          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-            <div className="profile-editor-grid">
-              <div className="form-group"><label className="form-label">{t("mealCountFasting")}</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].meal_count_mode} onChange={(e) => {
-                const meal_count_mode = e.target.value as DietDayConfig["meal_count_mode"];
-                if (meal_count_mode === "6") {
-                  const c = dietWeekPlan[activeDietDay].caloric_distribution;
-                  const r = resolveSixMealSnackPercentages(c);
-                  updateDietDay(activeDietDay, {
-                    meal_count_mode,
-                    caloric_distribution: {
-                      ...c,
-                      snack_am: r.snack_am,
-                      snack_pm: r.snack_pm,
-                      snack_evening: r.snack_evening,
-                      snacks: r.snacksTotal,
-                    },
-                  });
-                } else {
-                  updateDietDay(activeDietDay, { meal_count_mode });
-                }
-              }}><option value="1">{t("oneMeal")}</option><option value="2">{t("twoMeals")}</option><option value="3">{t("threeMeals")}</option><option value="4">{t("fourMeals")}</option><option value="5">{t("fiveMeals")}</option><option value="6">{t("sixMeals")}</option><option value="fasting">{t("fasting")}</option><option value="semi-8-16">{t("semiFasting816")}</option><option value="semi-6-18">{t("semiFasting618")}</option><option value="semi-4-20">{t("semiFasting420")}</option></select></div>
-              <div className="form-group"><label className="form-label">{t("dayType")}</label><select className="form-select profile-dark-select" value={dietWeekPlan[activeDietDay].day_type} onChange={(e) => { const day_type = e.target.value as DietDayConfig["day_type"]; updateDietDay(activeDietDay, { day_type, day_type_pct: defaultPctForDayType(day_type) }); }}><option value="fasting-0">{t("dayTypeFasting")}</option><option value="severe-15-30">{t("dayTypeSevere")}</option><option value="catabolic-50-99">{t("dayTypeCatabolic")}</option><option value="normocaloric-100">{t("dayTypeNormocaloric")}</option><option value="anabolic-101-130">{t("dayTypeAnabolic")}</option></select></div>
-              <div className="form-group"><label className="form-label">{t("pctCaloriesVsRequirement")}</label><input className="form-input" type="number" min={0} max={130} value={dietWeekPlan[activeDietDay].day_type_pct} onChange={(e) => updateDietDay(activeDietDay, { day_type_pct: Number(e.target.value || 0) })} /></div>
-            </div>
-          </div>
-
-          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("mealCaloricDistribution")}</h4>
-            <div className="profile-editor-grid profile-editor-grid-compact">
-              <div className="form-group"><label className="form-label">{t("breakfast")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.breakfast} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, breakfast: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">{t("lunch")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.lunch} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, lunch: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">{t("dinner")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.dinner} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, dinner: Number(e.target.value || 0) } })} /></div>
-              {dietWeekPlan[activeDietDay].meal_count_mode === "6" ? (
-                <>
-                  <div className="form-group"><label className="form-label">{t("snackMorning")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10} onChange={(e) => {
-                    const snack_am = Number(e.target.value || 0);
-                    const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
-                    const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
-                    updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                  }} /></div>
-                  <div className="form-group"><label className="form-label">{t("snackAfternoon")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10} onChange={(e) => {
-                    const snack_pm = Number(e.target.value || 0);
-                    const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
-                    const snack_evening = dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10;
-                    updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                  }} /></div>
-                  <div className="form-group"><label className="form-label">{t("snackEvening")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snack_evening ?? 10} onChange={(e) => {
-                    const snack_evening = Number(e.target.value || 0);
-                    const snack_am = dietWeekPlan[activeDietDay].caloric_distribution.snack_am ?? 10;
-                    const snack_pm = dietWeekPlan[activeDietDay].caloric_distribution.snack_pm ?? 10;
-                    updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snack_am, snack_pm, snack_evening, snacks: snack_am + snack_pm + snack_evening } });
-                  }} /></div>
-                  <p className="col-span-full text-[11px] text-slate-400">{t("sixMealsSnackNote", { dayTotal: Math.round(dietWeekPlan[activeDietDay].caloric_distribution.breakfast + dietWeekPlan[activeDietDay].caloric_distribution.lunch + dietWeekPlan[activeDietDay].caloric_distribution.dinner + dietWeekPlan[activeDietDay].caloric_distribution.snacks) })}</p>
-                </>
-              ) : (
-                <div className="form-group"><label className="form-label">{t("snacks")}</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].caloric_distribution.snacks} onChange={(e) => updateDietDay(activeDietDay, { caloric_distribution: { ...dietWeekPlan[activeDietDay].caloric_distribution, snacks: Number(e.target.value || 0) } })} /></div>
-              )}
-            </div>
-          </div>
-
-          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("dailyMacronutrients")}</h4>
-            <div className="profile-editor-grid profile-editor-grid-compact">
-              <div className="form-group"><label className="form-label">CHO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.cho_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, cho_pct: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">PRO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.pro_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, pro_pct: Number(e.target.value || 0) } })} /></div>
-              <div className="form-group"><label className="form-label">FAT</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].daily_macros.fat_pct} onChange={(e) => updateDietDay(activeDietDay, { daily_macros: { ...dietWeekPlan[activeDietDay].daily_macros, fat_pct: Number(e.target.value || 0) } })} /></div>
-            </div>
-          </div>
-
-          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
-            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("customPerMealMacros")}</h4>
-            <div className="profile-meal-macro-grid">
-              {(["breakfast", "lunch", "dinner", "snacks"] as const).map((meal) => (
-                <div key={meal} className="profile-meal-macro-card">
-                  <strong>{meal}</strong>
-                  <div className="form-group"><label className="form-label">CHO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].cho_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], cho_pct: Number(e.target.value || 0) } } })} /></div>
-                  <div className="form-group"><label className="form-label">PRO</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].pro_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], pro_pct: Number(e.target.value || 0) } } })} /></div>
-                  <div className="form-group"><label className="form-label">FAT</label><input className={pctInputClass} disabled={!canEditNutritionPercents} type="number" min={0} max={100} value={dietWeekPlan[activeDietDay].meal_macro_custom[meal].fat_pct} onChange={(e) => updateDietDay(activeDietDay, { meal_macro_custom: { ...dietWeekPlan[activeDietDay].meal_macro_custom, [meal]: { ...dietWeekPlan[activeDietDay].meal_macro_custom[meal], fat_pct: Number(e.target.value || 0) } } })} /></div>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="form-group"><label className="form-label">{t("foodPreferencesCsv")}</label><input className="form-input" type="text" value={form.food_preferences} onChange={(e) => setForm((f) => ({ ...f, food_preferences: e.target.value }))} /></div>

@@ -118,7 +118,6 @@ export default function ProfilePage({
   const [activeSupplementCategory, setActiveSupplementCategory] = useState("carboidrati");
   const [daysActive, setDaysActive] = useState(0);
   const [activeRoutineDay, setActiveRoutineDay] = useState<WeekDay>("Mon");
-  const [activeDietDay, setActiveDietDay] = useState<WeekDay>("Mon");
   const [routineWeekPlan, setRoutineWeekPlan] = useState<Record<WeekDay, RoutineDayConfig>>(defaultRoutineWeek());
   const [dietWeekPlan, setDietWeekPlan] = useState<Record<WeekDay, DietDayConfig>>(defaultDietWeek());
   /** Esclusioni-cibo strutturate dal DB (globali, non per-giorno): nutrition_config.excluded_fdc_foods */
@@ -438,24 +437,12 @@ export default function ProfilePage({
     }));
   }
 
-  function updateDietDay(day: WeekDay, patch: Partial<DietDayConfig>) {
-    setDietWeekPlan((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], ...patch },
-    }));
-  }
-
   // «Copia dal giorno precedente»: clona la config del giorno prima (lunedì copia
   // da domenica, wrap). structuredClone obbligatorio: le config hanno oggetti
   // annidati e uno spread shallow condividerebbe i riferimenti tra i due giorni.
   function copyRoutineDayFromPrevious(day: WeekDay) {
     const prevDay = weekDays[(weekDays.indexOf(day) + 6) % 7];
     setRoutineWeekPlan((prev) => ({ ...prev, [day]: structuredClone(prev[prevDay]) }));
-  }
-
-  function copyDietDayFromPrevious(day: WeekDay) {
-    const prevDay = weekDays[(weekDays.indexOf(day) + 6) % 7];
-    setDietWeekPlan((prev) => ({ ...prev, [day]: structuredClone(prev[prevDay]) }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -1118,14 +1105,10 @@ export default function ProfilePage({
               setForm={setForm}
               dietWeekPlan={dietWeekPlan}
               setDietWeekPlan={setDietWeekPlan}
-              activeDietDay={activeDietDay}
-              setActiveDietDay={setActiveDietDay}
               activeNutritionTab={activeNutritionTab}
               setActiveNutritionTab={setActiveNutritionTab}
               activeSupplementCategory={activeSupplementCategory}
               setActiveSupplementCategory={setActiveSupplementCategory}
-              updateDietDay={updateDietDay}
-              copyDietDayFromPrevious={copyDietDayFromPrevious}
               canEditNutritionPercents={canEditNutritionPercents}
               excludedFdcFoods={excludedFdcFoods}
               setExcludedFdcFoods={setExcludedFdcFoods}
