@@ -9,7 +9,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-solver";
+import {
+  AROUND_TRAINING_TOTAL,
+  computeNutritionDailyEnergyModel,
+  fuelingAroundTrainingSplit,
+  MEAL_TRAINING_FRACTION_DEFAULT,
+} from "@/lib/nutrition/daily-energy-solver";
 
 const ATHLETE_INPUT = {
   athleteId: "test-athlete-id",
@@ -126,6 +131,120 @@ test("daily-energy-solver: dietDayMealsScalePct è l'unico moltiplicatore consen
   );
   /** fuelingKcal non è scalato da day_type_pct (è composizione pre/intra/post, non quota giornaliera). */
   assert.equal(deficit.totals.fuelingKcal, normo.totals.fuelingKcal);
+});
+
+/* ── Confine fueling↔pasti: regola Mario 8 ago (50 intra / 40 pasti / 10 pre+post) ───────── */
+
+const RECOVERY_TIERS = ["good", "moderate", "poor", "unknown", null] as const;
+
+test("fueling split: pasti 40% + attorno alla seduta 60% (regola Mario 8 ago)", () => {
+  assert.equal(MEAL_TRAINING_FRACTION_DEFAULT, 0.4);
+  assert.equal(AROUND_TRAINING_TOTAL, 0.6);
+  assert.equal(MEAL_TRAINING_FRACTION_DEFAULT + AROUND_TRAINING_TOTAL, 1);
+  // Recupero buono = regola di Mario alla lettera: intra 50% del training, pre+post 10%.
+  const good = fuelingAroundTrainingSplit("good");
+  assert.equal(good.intra, 0.5);
+  assert.ok(Math.abs(good.pre + good.post - 0.1) < 1e-12, `pre+post ${good.pre + good.post} ≠ 0.10`);
+});
+
+test("fueling split: in OGNI tier la somma è 0.60 e il post è il doppio del pre (invariante)", () => {
+  for (const tier of RECOVERY_TIERS) {
+    const split = fuelingAroundTrainingSplit(tier);
+    assert.ok(
+      Math.abs(split.pre + split.intra + split.post - AROUND_TRAINING_TOTAL) < 1e-12,
+      `tier ${tier}: somma ${split.pre + split.intra + split.post} ≠ ${AROUND_TRAINING_TOTAL}`,
+    );
+    assert.ok(
+      Math.abs(split.post - 2 * split.pre) < 1e-12,
+      `tier ${tier}: post ${split.post} dovrebbe essere 2 × pre ${split.pre}`,
+    );
+  }
+});
+
+test("fueling split: la modulazione da recupero conserva direzione e ampiezza (good→poor: 5 punti intra→pre/post)", () => {
+  const good = fuelingAroundTrainingSplit("good");
+  const moderate = fuelingAroundTrainingSplit("moderate");
+  const poor = fuelingAroundTrainingSplit("poor");
+  assert.ok(good.intra > moderate.intra && moderate.intra > poor.intra);
+  assert.ok(good.pre < moderate.pre && moderate.pre < poor.pre);
+  assert.ok(Math.abs(good.intra - poor.intra - 0.05) < 1e-12);
+  // I NUOVI valori del tier "poor" (5/45/10) coincidono con i VECCHI valori del tier
+  // good/unknown, non con il vecchio "poor" (che era 8/40/12): tutta la banda si è alzata
+  // di ~5 punti di intra. Nessun tier resta fermo — vedi la tabella nel solver.
+  assert.ok(Math.abs(poor.pre - 0.05) < 1e-12, `poor.pre ${poor.pre} ≠ 0.05`);
+  assert.equal(poor.intra, 0.45);
+  assert.ok(Math.abs(poor.post - 0.1) < 1e-12, `poor.post ${poor.post} ≠ 0.10`);
+  // Recupero ignoto/assente → baseline Mario (come "good"), non la taratura protettiva.
+  assert.deepEqual(fuelingAroundTrainingSplit("unknown"), good);
+  assert.deepEqual(fuelingAroundTrainingSplit(null), good);
+});
+
+test("daily-energy-solver: anche il recupero 'poor' cambia (1000 kcal: era 80/400/120, ora 50/450/100)", () => {
+  const poor = computeNutritionDailyEnergyModel({
+    ...ATHLETE_INPUT,
+    recoveryStatus: "poor",
+    plannedTraining: [{ durationMinutes: 120, kcalTarget: 1000, tssTarget: 100, avgPowerW: 200 }],
+  });
+  // Nessun atleta resta sui valori di prima: il tier più protettivo perde 30 kcal di pre e
+  // 20 di post a favore dell'intra (+50). Test di consapevolezza, non solo di somma.
+  assert.equal(poor.fueling.preKcal, 50);
+  assert.equal(poor.fueling.intraKcal, 450);
+  assert.equal(poor.fueling.postKcal, 100);
+  assert.equal(poor.totals.fuelingKcal, 600);
+});
+
+test("daily-energy-solver: caso base 1000 kcal training → intra 500, pre 33, post 67, pasti 400", () => {
+  const model = computeNutritionDailyEnergyModel({
+    ...ATHLETE_INPUT,
+    recoveryStatus: "good",
+    plannedTraining: [{ durationMinutes: 120, kcalTarget: 1000, tssTarget: 100, avgPowerW: 200 }],
+  });
+  assert.equal(model.training.kcal, 1000);
+  assert.equal(model.fueling.intraKcal, 500); // 50% del training (regola Mario)
+  assert.equal(model.fueling.preKcal, 33); // 1/3 del 10% pre+post → 33,3 kcal
+  assert.equal(model.fueling.postKcal, 67); // 2/3 del 10% pre+post → 66,7 kcal
+  assert.equal(model.totals.fuelingKcal, 600); // 60% attorno alla seduta
+  // Ai pasti va il 40% del training (sopra BMR + lifestyle).
+  assert.equal(model.totals.dailyKcal - model.totals.fuelingKcal, model.totals.mealsKcal);
+  assert.equal(
+    model.totals.mealsKcal - model.bmrKcal - model.lifestyle.kcal,
+    400,
+  );
+});
+
+test("daily-energy-solver: pre+intra+post esauriscono il bucket fueling anche con mealTrainingFraction ≠ 0.40", () => {
+  for (const mealTrainingFraction of [0.4, 0.44, 0.48]) {
+    for (const recoveryStatus of RECOVERY_TIERS) {
+      const model = computeNutritionDailyEnergyModel({
+        ...ATHLETE_INPUT,
+        recoveryStatus,
+        plannedTraining: [{ durationMinutes: 120, kcalTarget: 1000, tssTarget: 100, avgPowerW: 200 }],
+        performanceIntegration: { ...protectiveIntegration(), mealTrainingFraction },
+      });
+      const { preKcal, intraKcal, postKcal } = model.fueling;
+      const sum = preKcal + intraKcal + postKcal;
+      // ±2 kcal = solo arrotondamento a kcal intere delle quattro grandezze.
+      assert.ok(
+        Math.abs(sum - model.totals.fuelingKcal) <= 2,
+        `quota pasti ${mealTrainingFraction} / recupero ${recoveryStatus}: pre+intra+post ${sum} ≠ bucket ${model.totals.fuelingKcal}`,
+      );
+      assert.ok(
+        Math.abs(postKcal - 2 * preKcal) <= 1,
+        `quota pasti ${mealTrainingFraction} / recupero ${recoveryStatus}: post ${postKcal} ≠ 2 × pre ${preKcal}`,
+      );
+    }
+  }
+  // Caso citato dall'integrazione performance: quota pasti 0.48 → bucket 520 kcal su 1000.
+  const protective = computeNutritionDailyEnergyModel({
+    ...ATHLETE_INPUT,
+    recoveryStatus: "good",
+    plannedTraining: [{ durationMinutes: 120, kcalTarget: 1000, tssTarget: 100, avgPowerW: 200 }],
+    performanceIntegration: { ...protectiveIntegration(), mealTrainingFraction: 0.48 },
+  });
+  assert.equal(protective.totals.fuelingKcal, 520);
+  assert.equal(protective.fueling.intraKcal, 433); // 520 × (0.50/0.60)
+  assert.equal(protective.fueling.preKcal, 29);
+  assert.equal(protective.fueling.postKcal, 58);
 });
 
 test("daily-energy-solver: TSS fallback when kcal_target null (builder row senza kcal in DB)", () => {

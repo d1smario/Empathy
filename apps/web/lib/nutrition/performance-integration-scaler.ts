@@ -4,6 +4,7 @@ import type { BioenergeticModulation } from "@/lib/training/bioenergetic-modulat
 import type { DiaryAdaptiveSignals } from "@/lib/nutrition/diary-adaptive-signals";
 import type { AcuteMealMetabolicEstimate } from "@/lib/empathy/schemas/nutrition";
 import type { BioDaySignalsLite } from "@/lib/nutrition/derive-bio-day-signals-from-memory";
+import { MEAL_TRAINING_FRACTION_DEFAULT } from "@/lib/nutrition/daily-energy-solver";
 
 type LoopPick = {
   status: "aligned" | "watch" | "regenerate";
@@ -19,6 +20,20 @@ function round(value: number, digits = 2) {
   return Math.round(value * f) / f;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * QUOTA PASTI SUL TRAINING — la regola di Mario (8 ago 2026: 40% ai pasti, 60%
+ * attorno alla seduta) vive in UN SOLO POSTO: `MEAL_TRAINING_FRACTION_DEFAULT`
+ * nel solver. Qui NON va riscritta a mano: il solver applica il proprio default
+ * solo quando `performanceIntegration` è null, quindi per ogni atleta con
+ * integrazione attiva la quota pasti arriva DA QUI — un 40% duplicato renderebbe
+ * silenziosamente inefficace un futuro ritocco della costante.
+ * Le due modalità prudenti spostano punti dal fueling ai pasti PARTENDO dal
+ * baseline: cauta +4 punti (0.44 col baseline attuale), protettiva +8 (0.48).
+ * `round(..., 2)` serve solo a togliere il rumore binario di 0.4 + 0.08.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const MEAL_TRAINING_FRACTION_CAUTIOUS_SHIFT = 0.04;
+const MEAL_TRAINING_FRACTION_PROTECTIVE_SHIFT = 0.08;
+
 /**
  * Deterministic dials that connect physiology/twin/bioenergetic signals to nutrition and fueling
  * targets. Does not replace engines; amplifies or tempers planned training energy and CHO delivery.
@@ -26,7 +41,8 @@ function round(value: number, digits = 2) {
 export type NutritionPerformanceIntegrationDials = {
   /** Scales planned training kcal in fabbisogno giornaliero: bioenergetica × carico operativo (recovery+adattamento), tipicamente 0.35–1.02. */
   trainingEnergyScale: number;
-  /** Share of training kcal allocated to meals vs fueling window (base 0.4 → meals get BMR+lifestyle+this*trainingKcal). */
+  /** Share of training kcal allocated to meals vs fueling window (base = `MEAL_TRAINING_FRACTION_DEFAULT`,
+   *  regola Mario → meals get BMR+lifestyle+this*trainingKcal; le modalità prudenti la alzano). */
   mealTrainingFraction: number;
   /** Multiplier on intra CHO/h after evidence clamp (0.82–1.12). */
   fuelingChoScale: number;
@@ -136,12 +152,12 @@ export function buildNutritionPerformanceIntegration(input: {
     rationale.push("Segnali allineati: scala energetica training vicina al neutro.");
   }
 
-  let mealTrainingFraction = 0.4;
+  let mealTrainingFraction = MEAL_TRAINING_FRACTION_DEFAULT;
   if (bio?.state === "protective" || mito < 50 || fuel < 42 || opMode === "protective") {
-    mealTrainingFraction = 0.48;
+    mealTrainingFraction = round(MEAL_TRAINING_FRACTION_DEFAULT + MEAL_TRAINING_FRACTION_PROTECTIVE_SHIFT, 2);
     rationale.push("Maggiore quota pasti rispetto al fueling intra: stabilità glicemica e carico intestinale.");
   } else if (bio?.state === "watch" || opMode === "cautious") {
-    mealTrainingFraction = 0.44;
+    mealTrainingFraction = round(MEAL_TRAINING_FRACTION_DEFAULT + MEAL_TRAINING_FRACTION_CAUTIOUS_SHIFT, 2);
     rationale.push("Modalità cauta: più energia ancorata ai pasti rispetto alla finestra intra per coerenza col carico ridotto.");
   }
 

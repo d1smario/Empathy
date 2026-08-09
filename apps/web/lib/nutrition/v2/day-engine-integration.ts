@@ -19,12 +19,29 @@
  * quando c'è body fat → leanMassKg esposto) e trainingKcal da requirements.energy.trainingKcal
  * (già "modello se >0, altrimenti stima substrati"; requirements non usa mai l'osservato).
  *
- * PONTE FUELING↔PASTI (riconciliazione decisa, in attesa di conferma di Mario):
- * il fueling intra-seduta resta ESATTAMENTE quello attuale (substrati, già in produzione —
- * qui NON viene toccato). Ai pasti va:
+ * CONFINE FUELING↔PASTI — DECISIONE CONFERMATA DA MARIO (8 ago 2026), non più un ponte
+ * provvisorio. Confermato per iscritto:
+ *   1. i GRAMMI di CHO del fueling li decide il CONSUMO: «il sistema di calcolo del fueling
+ *      così come impostato è già corretto» — vince il modello a substrati (%FTP + capacità
+ *      dell'atleta, `fueling-from-substrates`). I pasti prendono il RESIDUO, mai il contrario.
+ *   2. ripartizione dell'energia del training: 50% fueling intra, 40% pasti, 10% pre+post
+ *      (vedi `daily-energy-solver`: AROUND_TRAINING_TOTAL / MEAL_TRAINING_FRACTION_DEFAULT).
+ *   3. atleti performanti arrivano a 120–130 g/h di CHO, i triathleti fino a 160.
+ *      COPERTURA REALE OGGI, da non sopravvalutare: il tier "elite" del solver si ferma a
+ *      130 g/h (`daily-energy-solver.deriveEvidenceChoRange`) e il ramo che decide DAVVERO i
+ *      grammi in V2 — `fueling-from-substrates.evidenceMaxChoGPerHour` — si ferma a 120 g/h.
+ *      La fascia 120–130 è quindi coperta solo nel solver; i 160 g/h dei triathleti NON sono
+ *      raggiungibili da nessuno dei due rami. Punto aperto, non risolto qui.
+ * Operativamente, ai pasti va:
  *   CHO_pasti = max(0, CHO_giorno − CHO_fueling_intra_grammi)  [flag se scatta il clamp]
  *   PRO_pasti = PRO_giorno; FAT_pasti = FAT_giorno (il fueling intra è essenzialmente solo CHO).
  * I CHO pre/post seduta NON vengono sottratti: restano dentro i pasti/spuntini.
+ * DOVE GIRA COSA (evitare di leggere più di quel che c'è): qui `computeNutritionDailyEnergyModel`
+ * è chiamato con `plannedTraining: []` (serve solo BMR/lifestyle/leanMass per la classificazione),
+ * quindi in questo percorso trainingKcal=0 e lo split pre/intra/post del solver vale 0 — è
+ * INERTE. I grammi che usa questo file arrivano da `intraFuelingChoG(requirements)`, cioè dal
+ * modello a substrati. Lo split ricentrato raggiunge l'atleta via `resolveNutritionDayModel`
+ * (NutritionPageView) e via la route legacy `app/api/nutrition/route.ts`.
  *
  * TABELLA §5 (distribuzione slot): Recupero → 3 pasti 35/35/30. Leggero/Pesante → tabella
  * MATTINO se la prima seduta pianificata inizia prima delle 12:00; POMERIGGIO altrimenti
@@ -304,7 +321,8 @@ export function computeDayEngineDay(input: DayEngineComputeInput): DayEngineDayR
   }
   if (cls.choDeficit) flags.push("cho_deficit");
 
-  // Confine fueling/pasti (PONTE, vedi header): dal giorno si sottrae SOLO il CHO intra.
+  // Confine fueling/pasti (decisione confermata da Mario 8 ago, vedi header): dal giorno si
+  // sottrae SOLO il CHO intra — i grammi li ha decisi il consumo, i pasti prendono il residuo.
   const choMealsRaw = cls.choG - fuelingChoG;
   const fuelingClamped = choMealsRaw < 0;
   if (fuelingClamped) flags.push("fueling_cho_exceeds_day_cho_clamped_0");

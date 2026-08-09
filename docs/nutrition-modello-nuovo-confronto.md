@@ -38,6 +38,7 @@ Queste non sono più in discussione e vanno trattate come vincoli.
 | **Tetto della classe Pesante** | **4,0** — deciso da Mario il 6 ago | l'interpolazione Pesante corre su `2,15 → 4,0`. Assunzione da esplicitare in codice: sopra 4,0 le quote restano al massimo (clamp), non si estrapolano |
 | **Salto al confine 1,55** | **voluto**, nessun margine di stabilità | il confine coincide col passaggio riposo → allenamento: il cambio dei pasti (3 → 4-5) è il comportamento desiderato, non un artefatto da smussare |
 | **Validazione** | il coach valida tutto | i protocolli restrittivi passano da lui |
+| **Piano = lettura, non ricalcolo** | deciso dal proprietario l'8 ago | la pagina Nutrizione legge SEMPRE il piano persistito dal DB; la generazione è un evento (prima volta, ripianificazione settimanale, azioni esplicite), mai un effetto collaterale dell'apertura. Stessa pagina al mattino e alla sera, e apertura più veloce |
 
 ### La tabella di Mario, verificata
 

@@ -5477,6 +5477,20 @@ var LIFESTYLE_PCT = {
   active: 0.3,
   very_active: 0.4
 };
+var MEAL_TRAINING_FRACTION_DEFAULT = 0.4;
+var AROUND_TRAINING_TOTAL = 0.6;
+var PRE_SHARE = 1 / 3;
+var POST_SHARE = 2 / 3;
+var INTRA_FRACTION_BY_RECOVERY = {
+  good: 0.5,
+  moderate: 0.48,
+  poor: 0.45
+};
+function fuelingAroundTrainingSplit(recoveryStatus) {
+  const intra = recoveryStatus === "poor" ? INTRA_FRACTION_BY_RECOVERY.poor : recoveryStatus === "moderate" ? INTRA_FRACTION_BY_RECOVERY.moderate : INTRA_FRACTION_BY_RECOVERY.good;
+  const prePost = AROUND_TRAINING_TOTAL - intra;
+  return { pre: prePost * PRE_SHARE, intra, post: prePost * POST_SHARE };
+}
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -5671,7 +5685,7 @@ function computeNutritionDailyEnergyModel(input) {
   const training = deriveTrainingSummary(input.plannedTraining);
   const integration = input.performanceIntegration ?? null;
   const trainingEnergyScale = integration?.trainingEnergyScale ?? 1;
-  const mealTrainingFraction = integration?.mealTrainingFraction ?? 0.4;
+  const mealTrainingFraction = integration?.mealTrainingFraction ?? MEAL_TRAINING_FRACTION_DEFAULT;
   const fuelingChoScale = integration?.fuelingChoScale ?? 1;
   const trainingKcal = training.kcal;
   const estimatedAvgPowerW = training.avgPowerW != null ? training.avgPowerW : input.ftpWatts != null && training.avgIntensityPctFtp != null ? round(input.ftpWatts * (training.avgIntensityPctFtp / 100)) : null;
@@ -5687,10 +5701,11 @@ function computeNutritionDailyEnergyModel(input) {
     (usesObserved ? Math.max(0, observedTotalKcal - fuelingKcal) : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale
   );
   const recoveryStatus = input.recoveryStatus ?? "unknown";
-  const split = recoveryStatus === "poor" ? { pre: 0.08, intra: 0.4, post: 0.12 } : recoveryStatus === "moderate" ? { pre: 0.06, intra: 0.44, post: 0.1 } : { pre: 0.05, intra: 0.45, post: 0.1 };
-  const preKcal = round(trainingKcal * split.pre);
-  const intraKcal = round(trainingKcal * split.intra);
-  const postKcal = round(trainingKcal * split.post);
+  const split = fuelingAroundTrainingSplit(recoveryStatus);
+  const bucketScale = (1 - mealTrainingFraction) / AROUND_TRAINING_TOTAL;
+  const preKcal = round(trainingKcal * split.pre * bucketScale);
+  const intraKcal = round(trainingKcal * split.intra * bucketScale);
+  const postKcal = round(trainingKcal * split.post * bucketScale);
   const preChoG = round(preKcal / 4, 1);
   const intraChoG = round(intraKcal / 4, 1);
   const postChoG = round(postKcal / 4, 1);
@@ -5713,11 +5728,13 @@ function computeNutritionDailyEnergyModel(input) {
       1
     );
   }
+  const pctOfTraining = (fraction) => round(fraction * bucketScale * 100, 1);
   const notes = [...bmr.notes];
   notes.push(
     "Daily total = BMR + lifestyle load + planned training cost (kcal del consumo programmato; sostituito dall'eseguito quando importato).",
-    "Meals cover BMR + lifestyle load + 40% of planned training energy.",
-    "Fueling covers the remaining 60% of planned training energy split as 5% pre, 45% intra, 10% post.",
+    `Meals cover BMR + lifestyle load + ${Math.round(mealTrainingFraction * 100)}% of planned training energy.`,
+    `Fueling covers the remaining ${Math.round((1 - mealTrainingFraction) * 100)}% of planned training energy: ${pctOfTraining(split.pre)}% pre, ${pctOfTraining(split.intra)}% intra, ${pctOfTraining(split.post)}% post.`,
+    "Baseline = regola Mario (8 ago 2026) su recupero buono e quota pasti 40%: fueling 50% del consumo del training, 40% nei pasti, 10% pre+post workout. Il post pesa il doppio del pre (decisione proprietario 8 ago); il recupero peggiore sposta punti dall'intra al pre/post, e una quota pasti diversa dal 40% riscala le tre quote sul bucket fueling effettivo \u2014 le percentuali della riga precedente sono quelle applicate DAVVERO oggi.",
     "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
     "Integrazione performance (recovery/bio): agisce su distribuzione pasti\u2194fueling, CHO/h, proteine, idratazione \u2014 NON riduce il fabbisogno energetico totale."
   );

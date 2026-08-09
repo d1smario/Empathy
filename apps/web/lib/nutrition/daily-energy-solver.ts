@@ -46,6 +46,77 @@ const LIFESTYLE_PCT: Record<LifestyleActivityClass, number> = {
   very_active: 0.4,
 };
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * CONFINE FUELING ↔ PASTI — regola di Mario, confermata per iscritto l'8 ago 2026:
+ *   «fueling integra il 50% del consumo del training e un altro 40% è distribuito
+ *    nei pasti. Il 10% che manca è la quota dedicata al pre e post workout.»
+ * Quindi, sull'energia del training pianificato: 40% pasti, 50% intra, 10% pre+post. È il
+ * BASELINE (recupero buono, quota pasti 40%): il tier di recupero e l'integrazione
+ * performance lo modulano, vedi sotto.
+ * I GRAMMI di CHO intra li decide il consumo (modello a substrati, `fueling-from-substrates`):
+ * queste quote sono la ripartizione ENERGETICA del budget, non un tetto sui grammi.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Quota dell'energia training che va ai PASTI (regola Mario: 40%). */
+export const MEAL_TRAINING_FRACTION_DEFAULT = 0.4;
+/** Quota dell'energia training gestita ATTORNO alla seduta: 60% = intra + pre/post. */
+export const AROUND_TRAINING_TOTAL = 0.6;
+/**
+ * Dentro la quota pre+post, il POST pesa il DOPPIO del PRE — decisione proprietario 8 ago.
+ * Non dividere 1/2 e 1/2. È il rapporto che il vecchio tier good/unknown aveva già (5:10);
+ * i vecchi moderate (6:10) e poor (8:12) stavano sotto il 2:1, ora il rapporto è 2:1 in
+ * TUTTI i tier per decisione esplicita.
+ */
+const PRE_SHARE = 1 / 3;
+const POST_SHARE = 2 / 3;
+
+/**
+ * Quota INTRA per tier di recupero; pre e post derivano (`AROUND_TRAINING_TOTAL − intra`,
+ * poi 1/3 e 2/3). Baseline = regola Mario alla lettera sul recupero buono (intra 0.50 →
+ * pre+post 0.10). Il recupero peggiore sposta punti dall'intra al pre/post: è una
+ * raffinatezza di Empathy che va conservata, qui solo RICENTRATA su Mario.
+ *
+ * COSA CAMBIA rispetto alla taratura precedente (nessun tier resta fermo):
+ *   vecchi valori → nuovi valori (pre / intra / post)
+ *     good+unknown  5 / 45 / 10  →  3,33 / 50 / 6,67
+ *     moderate      6 / 44 / 10  →  4,00 / 48 / 8,00
+ *     poor          8 / 40 / 12  →  5,00 / 45 / 10,00
+ * Tutta la banda si alza di ~5 punti di intra: i NUOVI valori del tier "poor" coincidono
+ * numericamente con i VECCHI valori del tier good/unknown (il meno protettivo dei tre) —
+ * non è un tier "invariato", è il vecchio trattamento del recupero buono diventato il
+ * pavimento del recupero peggiore. In kcal, su 1000 kcal di training il tier poor si sposta
+ * di (pre −30, intra +50, post −20). Direzione e ampiezza della modulazione restano invece
+ * quelle di prima: good→poor sposta 5 punti dall'intra al pre/post (era 0.45→0.40, ora
+ * 0.50→0.45).
+ */
+const INTRA_FRACTION_BY_RECOVERY = {
+  good: 0.5,
+  moderate: 0.48,
+  poor: 0.45,
+} as const;
+
+export type FuelingAroundTrainingSplit = { pre: number; intra: number; post: number };
+
+/**
+ * Ripartizione della quota attorno alla seduta. Somma SEMPRE `AROUND_TRAINING_TOTAL`
+ * per costruzione (pre e post sono il residuo dell'intra), e `post === 2 × pre` in ogni tier.
+ *   good     → pre 0.0333 · intra 0.50 · post 0.0667
+ *   moderate → pre 0.0400 · intra 0.48 · post 0.0800
+ *   poor     → pre 0.0500 · intra 0.45 · post 0.1000
+ */
+export function fuelingAroundTrainingSplit(
+  recoveryStatus?: "good" | "moderate" | "poor" | "unknown" | null,
+): FuelingAroundTrainingSplit {
+  const intra =
+    recoveryStatus === "poor"
+      ? INTRA_FRACTION_BY_RECOVERY.poor
+      : recoveryStatus === "moderate"
+        ? INTRA_FRACTION_BY_RECOVERY.moderate
+        : INTRA_FRACTION_BY_RECOVERY.good;
+  const prePost = AROUND_TRAINING_TOTAL - intra;
+  return { pre: prePost * PRE_SHARE, intra, post: prePost * POST_SHARE };
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -310,7 +381,7 @@ export function computeNutritionDailyEnergyModel(
    * `docs/NUTRITION_DIET_MEAL_PLAN_RULES.md` e `empathy_nutrition_diet_meal_plan_generative.mdc`.
    */
   const trainingEnergyScale = integration?.trainingEnergyScale ?? 1;
-  const mealTrainingFraction = integration?.mealTrainingFraction ?? 0.4;
+  const mealTrainingFraction = integration?.mealTrainingFraction ?? MEAL_TRAINING_FRACTION_DEFAULT;
   const fuelingChoScale = integration?.fuelingChoScale ?? 1;
   const trainingKcal = training.kcal;
   const estimatedAvgPowerW = training.avgPowerW != null
@@ -344,15 +415,21 @@ export function computeNutritionDailyEnergyModel(
       : bmr.bmrKcal + lifestyleKcal + trainingKcal * mealTrainingFraction) * dietScale,
   );
   const recoveryStatus = input.recoveryStatus ?? "unknown";
-  const split =
-    recoveryStatus === "poor"
-      ? { pre: 0.08, intra: 0.4, post: 0.12 }
-      : recoveryStatus === "moderate"
-        ? { pre: 0.06, intra: 0.44, post: 0.1 }
-        : { pre: 0.05, intra: 0.45, post: 0.1 };
-  const preKcal = round(trainingKcal * split.pre);
-  const intraKcal = round(trainingKcal * split.intra);
-  const postKcal = round(trainingKcal * split.post);
+  const split = fuelingAroundTrainingSplit(recoveryStatus);
+  /**
+   * Le tre quote sono PROPORZIONI del bucket fueling, non percentuali assolute del training.
+   * Perché: `fuelingKcal = trainingKcal × (1 − mealTrainingFraction)` è VARIABILE (l'integrazione
+   * performance porta `mealTrainingFraction` a 0.44 o 0.48 → bucket 56% o 52%), mentre pre/intra/post
+   * sommano per costruzione a `AROUND_TRAINING_TOTAL` (0.60). Applicandole a `trainingKcal` — come
+   * facevano prima — con quota pasti 0.48 il bucket valeva 52% del training ma pre+intra+post ne
+   * assegnavano comunque 60%: 8 punti di training kcal contati DUE volte (una nei pasti, una nel
+   * fueling). Normalizzando sul bucket effettivo la regola di Mario vale sempre e
+   * pre+intra+post = fuelingKcal per costruzione (a meno degli arrotondamenti a kcal intere).
+   */
+  const bucketScale = (1 - mealTrainingFraction) / AROUND_TRAINING_TOTAL;
+  const preKcal = round(trainingKcal * split.pre * bucketScale);
+  const intraKcal = round(trainingKcal * split.intra * bucketScale);
+  const postKcal = round(trainingKcal * split.post * bucketScale);
   const preChoG = round(preKcal / 4, 1);
   const intraChoG = round(intraKcal / 4, 1);
   const postChoG = round(postKcal / 4, 1);
@@ -383,11 +460,14 @@ export function computeNutritionDailyEnergyModel(
     );
   }
 
+  /** Quote effettive in punti di training kcal (coincidono con la regola di Mario quando la quota pasti è 40%). */
+  const pctOfTraining = (fraction: number) => round(fraction * bucketScale * 100, 1);
   const notes = [...bmr.notes];
   notes.push(
     "Daily total = BMR + lifestyle load + planned training cost (kcal del consumo programmato; sostituito dall'eseguito quando importato).",
-    "Meals cover BMR + lifestyle load + 40% of planned training energy.",
-    "Fueling covers the remaining 60% of planned training energy split as 5% pre, 45% intra, 10% post.",
+    `Meals cover BMR + lifestyle load + ${Math.round(mealTrainingFraction * 100)}% of planned training energy.`,
+    `Fueling covers the remaining ${Math.round((1 - mealTrainingFraction) * 100)}% of planned training energy: ${pctOfTraining(split.pre)}% pre, ${pctOfTraining(split.intra)}% intra, ${pctOfTraining(split.post)}% post.`,
+    "Baseline = regola Mario (8 ago 2026) su recupero buono e quota pasti 40%: fueling 50% del consumo del training, 40% nei pasti, 10% pre+post workout. Il post pesa il doppio del pre (decisione proprietario 8 ago); il recupero peggiore sposta punti dall'intra al pre/post, e una quota pasti diversa dal 40% riscala le tre quote sul bucket fueling effettivo — le percentuali della riga precedente sono quelle applicate DAVVERO oggi.",
     "Evidence layer constrains intra-workout CHO/h independently from raw calorie math.",
     "Integrazione performance (recovery/bio): agisce su distribuzione pasti↔fueling, CHO/h, proteine, idratazione — NON riduce il fabbisogno energetico totale.",
   );
