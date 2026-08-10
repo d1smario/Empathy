@@ -5661,7 +5661,7 @@ function deriveEvidenceChoRange(input) {
   const ftpWKg = asFinite(input.ftpWKg) ?? 0;
   const vo2max = asFinite(input.vo2maxMlMinKg) ?? 0;
   if (duration >= 60 && avgPower >= 300 && (ftpWKg >= 4.8 || vo2max >= 68)) {
-    return { tier: "elite", min: 100, target: 120, max: 130 };
+    return { tier: "elite", min: 100, target: 160, max: 200 };
   }
   if (duration >= 75 && (avgPower >= 250 || ftpWKg >= 4.2 || vo2max >= 60)) {
     return { tier: "high", min: 90, target: 100, max: 110 };

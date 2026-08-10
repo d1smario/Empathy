@@ -340,8 +340,25 @@ function deriveEvidenceChoRange(input: {
   const ftpWKg = asFinite(input.ftpWKg) ?? 0;
   const vo2max = asFinite(input.vo2maxMlMinKg) ?? 0;
 
+  /**
+   * FASCIA ELITE — tetto alzato a 200 g/h (decisione Mario, 8 ago 2026: «120/130 era un
+   * esempio, alza quel limite fino a 200 e stiamo tranquilli»). Il principio: il tetto è
+   * una GUARDIA di sicurezza, non l'obiettivo — a decidere i grammi è il consumo (modello
+   * a substrati), e il sistema non deve essere il vincolo che lima un atleta capace di
+   * assorbire di più.
+   *
+   * Alzato anche `target` da 120 a 160 — i triathleti che Mario cita come realtà di oggi.
+   * NON è un di più: `target` è il tetto effettivo quando il recupero NON è buono
+   * (poor → target, moderate → target+5). Lasciandolo a 120, lo stesso atleta sarebbe
+   * passato da 200 g/h con recupero buono a 120 con recupero scarso: un gradino, non una
+   * modulazione. Così la protezione da recupero resta proporzionata alla fascia.
+   *
+   * Chi ci entra è una porta stretta e resta invariata: ≥60 min E ≥300 W medi E
+   * (≥4,8 W/kg OPPURE VO2max ≥68). In produzione oggi 4 atleti su 13 con dati
+   * fisiologici la superano.
+   */
   if (duration >= 60 && avgPower >= 300 && (ftpWKg >= 4.8 || vo2max >= 68)) {
-    return { tier: "elite" as const, min: 100, target: 120, max: 130 };
+    return { tier: "elite" as const, min: 100, target: 160, max: 200 };
   }
   if (duration >= 75 && (avgPower >= 250 || ftpWKg >= 4.2 || vo2max >= 60)) {
     return { tier: "high" as const, min: 90, target: 100, max: 110 };

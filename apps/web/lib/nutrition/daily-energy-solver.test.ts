@@ -256,3 +256,42 @@ test("daily-energy-solver: TSS fallback when kcal_target null (builder row senza
   /** Soglia ricalibrata su BMR Katch-McArdle (1746 + 349 lifestyle + ~40% training ≈ 2455; era >2500 con Cunningham). */
   assert.ok(model.totals.mealsKcal > 2400, `meals budget should include training, got ${model.totals.mealsKcal}`);
 });
+
+/**
+ * Tetto CHO/h della fascia ELITE — decisione Mario 8 ago 2026: «120/130 era un esempio,
+ * alza quel limite fino a 200 e stiamo tranquilli». Il tetto è una GUARDIA, non un
+ * obiettivo: a decidere i grammi è il consumo. Il test fissa il tetto EFFETTIVO nei tre
+ * stati di recupero (poor→target, moderate→target+5, good→max), non la sola costante:
+ * è lì che il freno morde davvero.
+ */
+test("fascia elite: il tetto CHO/h arriva a 200 e la modulazione da recupero resta proporzionata", () => {
+  // Seduta lunga e intensa di un atleta elite: 4h a 320 W medi (≈5,3 W/kg su 60 kg),
+  // kcal alte quanto basta perché la domanda di CHO sfondi qualunque tetto.
+  const base = {
+    weightKg: 60,
+    heightCm: 178,
+    birthDate: "1995-01-01",
+    sex: "male" as const,
+    bodyFatPct: 8,
+    ftpWatts: 320,
+    vo2maxMlMinKg: 70,
+    plannedTraining: [{ durationMinutes: 240, avgPowerW: 320, kcalTarget: 4000, tssTarget: null }],
+  };
+
+  const good = computeNutritionDailyEnergyModel({ ...base, recoveryStatus: "good" });
+  const moderate = computeNutritionDailyEnergyModel({ ...base, recoveryStatus: "moderate" });
+  const poor = computeNutritionDailyEnergyModel({ ...base, recoveryStatus: "poor" });
+
+  assert.equal(good.fueling.evidenceMaxChoGPerHour, 200, "il tetto della fascia elite deve essere 200");
+  assert.equal(good.fueling.evidenceTargetChoGPerHour, 160, "il target elite deve essere 160 (i triathleti citati da Mario)");
+  assert.equal(good.fueling.capabilityTier, "elite");
+
+  // Con domanda che sfonda, ogni stato di recupero si ferma al PROPRIO tetto.
+  assert.ok(good.fueling.adjustedChoGPerHour <= 200, "recupero buono non supera il tetto");
+  assert.ok(moderate.fueling.adjustedChoGPerHour <= 165, "recupero moderato si ferma a target+5");
+  assert.ok(poor.fueling.adjustedChoGPerHour <= 160, "recupero scarso si ferma al target");
+
+  // La protezione da recupero resta un ORDINE, non un gradino: buono >= moderato >= scarso.
+  assert.ok(good.fueling.adjustedChoGPerHour >= moderate.fueling.adjustedChoGPerHour);
+  assert.ok(moderate.fueling.adjustedChoGPerHour >= poor.fueling.adjustedChoGPerHour);
+});
