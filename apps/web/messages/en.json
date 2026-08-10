@@ -2519,6 +2519,7 @@
     "importedLactateAnalysisSnapshot": "Lactate analysis snapshot imported into inputs.",
     "importedOxidativeCapacitySnapshot": "Oxidative capacity snapshot imported into inputs.",
     "autoDecodeActive": "Auto-decode active: {sessionsAnalyzed} sessions analyzed.",
+    "autoDecodeActiveWindow": "Auto-decode active: latest {sessionsAnalyzed} of {sessionsTotal} sessions analyzed.",
     "errorLoadingHistory": "Error loading physiology history",
     "snapshotSaved": "Snapshot saved: Metabolic Lab + physiology profile (Supabase) updated.",
     "errorSavingSnapshot": "Error saving physiology snapshot",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAthleteContext } from "@/core";
 import { computeLactateEngine, computeMaxOxidateEngine } from "@/engines";
@@ -10,6 +10,7 @@ import {
   METABOLIC_CP_ENGINE_REVISION,
   powerComponentRowNearestSec,
 } from "@/lib/engines/critical-power-engine";
+import { resolveAutoDecodeLabel } from "@/lib/physiology/auto-decode-sessions";
 import { parseGasExchangeExport } from "@/lib/physiology/gas-exchange-file-parser";
 import type { GasExchangeParseResult } from "@/lib/physiology/gas-exchange-file-parser";
 import { substrateOxidationRatesFromGasExchange } from "@/lib/physiology/substrate-from-gas-exchange";
@@ -103,6 +104,12 @@ export default function MetabolicLabPage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Ultimo messaggio d'errore messo da `loadHistory`: solo quello può essere tolto da
+   * una rilettura riuscita. Serve a non cancellare l'errore di un salvataggio fallito
+   * mentre una loadHistory partita prima (useEffect di mount) si risolve dopo.
+   */
+  const lastHistoryErrorRef = useRef<string | null>(null);
   const [history, setHistory] = useState<LabRun[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
@@ -138,6 +145,13 @@ export default function MetabolicLabPage() {
   const [healthBioCoreTempCBaseline, setHealthBioCoreTempCBaseline] = useState<number | null>(null);
   const [profileVo2maxLMin, setProfileVo2maxLMin] = useState<number | null>(null);
   const [profileVo2maxMlMinKg, setProfileVo2maxMlMinKg] = useState<number | null>(null);
+  /**
+   * VO₂max canonico del resolver: NON si mostra (la card espone la colonna scritta dai
+   * suoi bottoni), serve solo alla traccia di audit dei run max_oxidate, che da sempre
+   * registra questo valore.
+   */
+  const [canonicalVo2maxLMin, setCanonicalVo2maxLMin] = useState<number | null>(null);
+  const [canonicalVo2maxMlMinKg, setCanonicalVo2maxMlMinKg] = useState<number | null>(null);
   /** Peso profilo da API (allinea motore CP / L·min quando i campi lab massa sono vuoti). */
   const [athleteProfileWeightKg, setAthleteProfileWeightKg] = useState<number | null>(null);
   /** ISO `created_at` ultimo snapshot salvato per sezione (da `metabolic_lab_runs`). */
@@ -653,10 +667,26 @@ export default function MetabolicLabPage() {
       } else {
         setSelectedWorkoutId("");
       }
-      if (payload.autoInputs?.sessionsAnalyzed && payload.autoInputs.sessionsAnalyzed > 0) {
-        setAutoInfo(t("autoDecodeActive", { sessionsAnalyzed: payload.autoInputs.sessionsAnalyzed }));
-      } else {
+      /**
+       * I valori auto vengono da una FINESTRA MOBILE (ultime N sedute), non da tutto lo
+       * storico: quando la finestra è satura l'etichetta lo dice ("ultime 24 su 373"),
+       * altrimenti resterebbe fissa su 24 per ogni atleta reale.
+       */
+      const autoLabel = resolveAutoDecodeLabel({
+        analyzed: payload.autoInputs?.sessionsAnalyzed ?? 0,
+        total: payload.autoInputs?.sessionsTotal ?? null,
+      });
+      if (!autoLabel) {
         setAutoInfo(null);
+      } else if (autoLabel.key === "autoDecodeActiveWindow") {
+        setAutoInfo(
+          t("autoDecodeActiveWindow", {
+            sessionsAnalyzed: autoLabel.sessionsAnalyzed,
+            sessionsTotal: autoLabel.sessionsTotal,
+          }),
+        );
+      } else {
+        setAutoInfo(t("autoDecodeActive", { sessionsAnalyzed: autoLabel.sessionsAnalyzed }));
       }
       const pVo2L =
         payload.profileVo2maxLMin != null && Number.isFinite(payload.profileVo2maxLMin)
@@ -668,6 +698,16 @@ export default function MetabolicLabPage() {
           : null;
       setProfileVo2maxLMin(pVo2L);
       setProfileVo2maxMlMinKg(pVo2Ml);
+      setCanonicalVo2maxLMin(
+        payload.canonicalVo2maxLMin != null && Number.isFinite(payload.canonicalVo2maxLMin)
+          ? payload.canonicalVo2maxLMin
+          : null,
+      );
+      setCanonicalVo2maxMlMinKg(
+        payload.canonicalVo2maxMlMinKg != null && Number.isFinite(payload.canonicalVo2maxMlMinKg)
+          ? payload.canonicalVo2maxMlMinKg
+          : null,
+      );
 
       const aw =
         payload.athleteWeightKg != null && Number.isFinite(payload.athleteWeightKg) && payload.athleteWeightKg > 30
@@ -815,11 +855,28 @@ export default function MetabolicLabPage() {
     try {
       const payload = await fetchPhysiologyHistoryAndFtp(activeAthleteId);
       applyHistoryPayload(payload);
+      /**
+       * Rilettura riuscita: il banner va tolto SOLO se è quello che una loadHistory
+       * precedente aveva messo. `loadHistory` parte anche dall'useEffect di mount, e
+       * nel frattempo un salvataggio può fallire e scrivere il proprio errore: un
+       * `setError(null)` secco lo cancellerebbe a metà. Confronto sul messaggio con
+       * update funzionale, così si legge lo stato più recente e non la closure.
+       */
+      const clearedMessage = lastHistoryErrorRef.current;
+      if (clearedMessage != null) {
+        setError((prev) => (prev === clearedMessage ? null : prev));
+        lastHistoryErrorRef.current = null;
+      }
       physiologyHistoryCache = payload;
       physiologyHistoryCacheId = activeAthleteId;
     } catch (err) {
+      // L'errore si mostra SEMPRE: se stiamo servendo la cache cross-mount, i numeri
+      // a schermo sono quelli vecchi e senza avviso sembravano freschi. Lo stato si
+      // azzera solo quando non c'è nulla di già mostrato.
+      const message = err instanceof Error ? err.message : t("errorLoadingHistory");
+      lastHistoryErrorRef.current = message;
+      setError(message);
       if (!cached) {
-        setError(err instanceof Error ? err.message : t("errorLoadingHistory"));
         setHistory([]);
         setAthleteProfileWeightKg(null);
         setLastLabSavedAt({ metabolic: null, lactate: null, maxox: null });
@@ -828,6 +885,8 @@ export default function MetabolicLabPage() {
         setSelectedWorkoutId("");
         setProfileVo2maxLMin(null);
         setProfileVo2maxMlMinKg(null);
+        setCanonicalVo2maxLMin(null);
+        setCanonicalVo2maxMlMinKg(null);
         setAutoLactateBaseline(null);
         setAutoMaxOxBaseline(null);
         setHealthBioGlucoseMeta(null);
@@ -977,8 +1036,11 @@ export default function MetabolicLabPage() {
         cp_mechanical_aerobic_ceiling_w: maxOxModel.cpMechanicalAerobicCeilingW,
         cp_power_component_label: maxOxCpPowerSplitRow?.label ?? null,
         metabolic_cp_engine_revision: METABOLIC_CP_ENGINE_REVISION,
-        profile_vo2max_ml_min_kg: profileVo2maxMlMinKg,
-        profile_vo2max_l_min: profileVo2maxLMin,
+        // Traccia di audit: resta sul valore CANONICO, come in tutti i run già salvati.
+        // (La card "VO₂max da laboratorio" mostra invece la colonna: valori diversi,
+        // significati diversi, e i run storici restano confrontabili tra loro.)
+        profile_vo2max_ml_min_kg: canonicalVo2maxMlMinKg,
+        profile_vo2max_l_min: canonicalVo2maxLMin,
         input_precedence_policy: "measured>manual>preset>default",
         input_uncertainty_pct: maxOxResolved.uncertaintyPct,
         input_sources: maxOxResolved.sources,

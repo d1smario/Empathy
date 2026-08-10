@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
 import { estimateVo2FromDevice } from "@/lib/engines/vo2-estimator";
+import { AUTO_DECODE_SESSION_WINDOW } from "@/lib/physiology/auto-decode-sessions";
 import { resolveCanonicalPhysiologyState } from "@/lib/physiology/profile-resolver";
 
 export const runtime = "nodejs";
+/** Storico + profilo devono essere sempre freschi dopo un ricalcolo: nessuna cache (come le altre route physiology). */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function asNum(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -81,6 +85,8 @@ export async function GET(req: NextRequest) {
       latestMetabolicRes,
       latestLactateRes,
       latestMaxOxRes,
+      storedPhysiologyRes,
+      executedCountRes,
     ] = await Promise.all([
       db
         .from("metabolic_lab_runs")
@@ -89,12 +95,13 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(80),
       resolveCanonicalPhysiologyState(athleteId),
+      /** Finestra MOBILE per i valori auto: le ultime N sedute, non tutto lo storico. */
       db
         .from("executed_workouts")
         .select("id, date, duration_minutes, tss, trace_summary, lactate_mmoll, glucose_mmol, smo2")
         .eq("athlete_id", athleteId)
         .order("date", { ascending: false })
-        .limit(24),
+        .limit(AUTO_DECODE_SESSION_WINDOW),
       db
         .from("athlete_profiles")
         .select("weight_kg, resting_hr_bpm, max_hr_bpm")
@@ -141,6 +148,26 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      /**
+       * VO₂max COME È SCRITTO sulla riga di `physiological_profiles` dell'atleta.
+       * La card "VO₂max da laboratorio → Profilo attuale" deve mostrare esattamente
+       * la colonna che i suoi bottoni Salva/Rimuovi scrivono (`/api/physiology/vo2max-lab`):
+       * il valore canonico del resolver NON va bene lì, perché dà precedenza al
+       * `vo2max_ml_min_kg` dell'ultimo run `metabolic_profile` (stima da curva CP) e
+       * quindi ricopriva il valore di laboratorio appena salvato o appena rimosso.
+       *
+       * Niente order+limit: la tabella ha `physiological_profiles_athlete_id_key
+       * UNIQUE (athlete_id)` (verificato su pg_constraint in prod, 13 righe / 13
+       * athlete_id distinti), quindi per un atleta esiste AL PIÙ una riga e ogni
+       * criterio di ordinamento sarebbe decorativo.
+       */
+      db.from("physiological_profiles").select("vo2max_ml_min_kg").eq("athlete_id", athleteId).maybeSingle(),
+      /**
+       * Sedute TOTALI dell'atleta: serve solo all'etichetta "Auto-decode attivo",
+       * per dire che la finestra analizzata è le ultime N su M e non tutto lo storico.
+       * `head: true` → nessuna riga trasferita, solo il count.
+       */
+      db.from("executed_workouts").select("id", { count: "exact", head: true }).eq("athlete_id", athleteId),
     ]);
 
     if (historyRes.error) return NextResponse.json({ error: historyRes.error.message }, { status: 500 });
@@ -148,6 +175,17 @@ export async function GET(req: NextRequest) {
     if (profileRes.error) return NextResponse.json({ error: profileRes.error.message }, { status: 500 });
     if (microbiotaPanelRes.error) return NextResponse.json({ error: microbiotaPanelRes.error.message }, { status: 500 });
     if (bloodPanelRes.error) return NextResponse.json({ error: bloodPanelRes.error.message }, { status: 500 });
+    // Una lettura fallita NON deve diventare "nessun VO₂max da lab sul profilo": sarebbe
+    // un'affermazione falsa sul DB. Stesso trattamento delle altre query obbligatorie.
+    if (storedPhysiologyRes.error)
+      return NextResponse.json({ error: storedPhysiologyRes.error.message }, { status: 500 });
+    /**
+     * Totale sedute: è SOLO il denominatore dell'etichetta auto-decode, quindi un
+     * conteggio fallito degrada a `null` (etichetta senza "su M") e non fa 500 su
+     * una pagina che senza di esso funziona identica.
+     */
+    const executedTotalCount =
+      executedCountRes.error || typeof executedCountRes.count !== "number" ? null : executedCountRes.count;
     const latestMetabolicProfileRun =
       latestMetabolicRes.error || !latestMetabolicRes.data ? null : latestMetabolicRes.data;
     const latestLactateRun =
@@ -156,6 +194,10 @@ export async function GET(req: NextRequest) {
 
     const ftp = Number(physiologyState.physiologicalProfile.ftpWatts ?? 0);
     const vo2maxMlMinKgCanon = physiologyState.physiologicalProfile.vo2maxMlMinKg ?? null;
+    /** Valore di profilo esposto alla pagina: la colonna, non il canonico (vedi commento nella query). */
+    const vo2maxMlMinKgStored = asNum(
+      (storedPhysiologyRes.data as { vo2max_ml_min_kg?: unknown } | null)?.vo2max_ml_min_kg,
+    );
     const executed =
       ((executedRes.data ?? []) as Array<{
         id: string | null;
@@ -226,13 +268,14 @@ export async function GET(req: NextRequest) {
       efficiency: 0.24,
       powerW: inferredPower,
     }).vo2LMin;
-    const vo2FromProfileLMin =
-      vo2maxMlMinKgCanon != null &&
-      Number.isFinite(vo2maxMlMinKgCanon) &&
-      vo2maxMlMinKgCanon >= 20 &&
-      bodyMassKg > 0
-        ? Number(((vo2maxMlMinKgCanon * bodyMassKg) / 1000).toFixed(3))
+    const vo2AbsFromRelative = (mlMinKg: number | null): number | null =>
+      mlMinKg != null && Number.isFinite(mlMinKg) && mlMinKg >= 20 && bodyMassKg > 0
+        ? Number(((mlMinKg * bodyMassKg) / 1000).toFixed(3))
         : null;
+    /** Baseline auto (lattato/maxox): resta sul valore canonico, invariata. */
+    const vo2FromProfileLMin = vo2AbsFromRelative(vo2maxMlMinKgCanon);
+    /** Card "VO₂max da laboratorio": deriva dalla colonna esposta, non dal canonico. */
+    const vo2StoredLMin = vo2AbsFromRelative(vo2maxMlMinKgStored);
     const vo2ForAuto = vo2FromProfileLMin ?? vo2Proxy;
     const smo2RestProxy = Math.max(58, Math.min(78, avgSmo2 + 22));
     const smo2WorkProxy = Math.max(12, Math.min(65, avgSmo2));
@@ -265,7 +308,12 @@ export async function GET(req: NextRequest) {
 
     const autoInputs = {
       source: "executed_workouts_rolling",
+      /** Sedute davvero passate al decoder: le righe lette, cioè al più `sessionsWindow`. */
       sessionsAnalyzed: executed.length,
+      /** Ampiezza della finestra mobile: rende esplicito perché `sessionsAnalyzed` si ferma lì. */
+      sessionsWindow: AUTO_DECODE_SESSION_WINDOW,
+      /** Sedute totali dell'atleta (null se il conteggio non è disponibile). */
+      sessionsTotal: executedTotalCount,
       lactate: lactateAuto,
       maxox: {
         vo2_l_min: Number(vo2ForAuto.toFixed(2)),
@@ -441,21 +489,30 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      history: historyRes.data ?? [],
-      latestMetabolicProfileRun,
-      latestLactateRun,
-      latestMaxOxRun,
-      ftpW: Number.isFinite(ftp) && ftp > 0 ? ftp : null,
-      athleteWeightKg,
-      profileVo2maxMlMinKg: vo2maxMlMinKgCanon,
-      profileVo2maxLMin: vo2FromProfileLMin,
-      autoInputs,
-      microbiotaProfile,
-      healthBioGlucose,
-      healthBioCoreTempC,
-      workouts,
-    });
+    return NextResponse.json(
+      {
+        history: historyRes.data ?? [],
+        latestMetabolicProfileRun,
+        latestLactateRun,
+        latestMaxOxRun,
+        ftpW: Number.isFinite(ftp) && ftp > 0 ? ftp : null,
+        athleteWeightKg,
+        profileVo2maxMlMinKg: vo2maxMlMinKgStored,
+        profileVo2maxLMin: vo2StoredLMin,
+        // Valore CANONICO del resolver (run metabolic_profile > colonna). Serve alla
+        // traccia di audit di `metabolic_lab_runs.input_payload`, che ha sempre
+        // registrato questo: separarlo dal valore mostrato in card evita che i run
+        // salvati da oggi in poi diventino non confrontabili con quelli precedenti.
+        canonicalVo2maxMlMinKg: vo2maxMlMinKgCanon,
+        canonicalVo2maxLMin: vo2FromProfileLMin,
+        autoInputs,
+        microbiotaProfile,
+        healthBioGlucose,
+        healthBioCoreTempC,
+        workouts,
+      },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" } },
+    );
   } catch (err) {
     if (err instanceof AthleteReadContextError) {
       return NextResponse.json({ error: err.message }, { status: err.status });

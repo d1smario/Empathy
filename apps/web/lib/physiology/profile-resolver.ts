@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { resolveVo2maxFromEvents, type Vo2maxEvent } from "@/lib/physiology/canonical-vo2max";
 import type {
   BioenergeticProfile,
   LactateProfile,
@@ -53,6 +54,38 @@ function pickStringFromRecords(records: Array<Record<string, unknown>>, keys: st
   for (const record of records) {
     const value = pickString(record, keys);
     if (value != null) return value;
+  }
+  return null;
+}
+
+const VO2MAX_KEYS = ["vo2max_ml_min_kg", "vo2max", "vo2RelMlKgMin"];
+
+/**
+ * Ultimo evento VO₂max di una sezione di run (già ordinati per `created_at` desc).
+ *
+ * `includeCleared` distingue i due scrittori: per i run `metabolic_profile` serve
+ * l'ultimo run che PORTA un numero (i run senza VO₂max non dicono nulla sul dato); per i
+ * run `vo2max_lab` serve l'ultimo run e basta, perché un run di sezione lab senza numero
+ * è la CANCELLAZIONE del valore di laboratorio e va rispettata come tale.
+ */
+function vo2maxEventFromRuns(
+  runs: Array<Record<string, unknown>>,
+  keys: string[],
+  options?: { includeCleared?: boolean },
+): Vo2maxEvent | null {
+  if (options?.includeCleared) {
+    const latest = runs[0];
+    if (!latest) return null;
+    return {
+      createdAt: typeof latest.created_at === "string" ? latest.created_at : null,
+      value: pickNumber(recordOf(latest.output_payload), keys),
+    };
+  }
+  for (const run of runs) {
+    const value = pickNumber(recordOf(run.output_payload), keys);
+    if (value != null) {
+      return { createdAt: typeof run.created_at === "string" ? run.created_at : null, value };
+    }
   }
   return null;
 }
@@ -112,6 +145,16 @@ function buildZones(ftpWatts: number | undefined) {
 export async function resolveCanonicalPhysiologyState(athleteId: string): Promise<CanonicalPhysiologyState> {
   const supabase = createServerSupabaseClient();
   const [profileRes, runsRes, athleteRes, biomarkerRes] = await Promise.all([
+    /**
+     * `physiological_profiles` NON è versionata, malgrado le colonne `valid_from` /
+     * `valid_to`: `physiological_profiles_athlete_id_key UNIQUE (athlete_id)`
+     * (pg_constraint) impedisce più righe per atleta, e in prod sono 13 righe su 13
+     * athlete_id distinti, con `valid_to` non valorizzata su nessuna. Quindi qui
+     * `maybeSingle()` senza order è già "la riga corrente", ed è la stessa riga che
+     * leggono nutrizione, dashboard, training L2 e garmin-activity-materialize
+     * (i loro `order by updated_at` / `order by valid_from` sono decorativi: con una
+     * riga sola ogni criterio dà lo stesso risultato).
+     */
     supabase
       .from("physiological_profiles")
       .select(
@@ -152,6 +195,8 @@ export async function resolveCanonicalPhysiologyState(athleteId: string): Promis
   const metabolicRuns = runs.filter((run) => String(run.section ?? "") === "metabolic_profile");
   const lactateRuns = runs.filter((run) => String(run.section ?? "") === "lactate_analysis");
   const performanceRuns = runs.filter((run) => String(run.section ?? "") === "max_oxidate");
+  /** Secondo scrittore del VO₂max: `/api/physiology/vo2max-lab` (POST salva, DELETE cancella). */
+  const vo2maxLabRuns = runs.filter((run) => String(run.section ?? "") === "vo2max_lab");
   const metabolicRun = (metabolicRuns[0] as Record<string, unknown> | undefined) ?? null;
   const lactateRun = lactateRuns[0] ?? null;
   const performanceRun = performanceRuns[0] ?? null;
@@ -169,6 +214,24 @@ export async function resolveCanonicalPhysiologyState(athleteId: string): Promis
   const lactateValues = mergeRecordsByRecency(lactateRunRecords);
   const performanceValues = mergeRecordsByRecency(performanceRunRecords);
 
+  /**
+   * PRECEDENZA: **run-first**, non colonna-first. FTP/LT1/LT2/VO₂max canonici vengono
+   * PRIMA dall'ultimo run `metabolic_profile` (il cui `output_payload` contiene le
+   * chiavi `ftp`/`lt1`/`lt2`/`vo2max_ml_min_kg`) e solo dopo dalla colonna omonima di
+   * `physiological_profiles`.
+   *
+   * Per `ftp_watts`/`lt1_watts`/`lt2_watts`/`v_lamax`/`cp_watts` run e colonna
+   * coincidono perché `/api/physiology/snapshot` ne è lo scrittore ESCLUSIVO e li scrive
+   * nella stessa richiesta, ora tutto-o-niente (vedi `save-metabolic-snapshot.ts`): in
+   * prod |colonna − run| ≤ 0,005 W su 11/11 atleti con run. Chi legge la sola colonna
+   * (`load-nutrition-athlete-profile.ts`) ottiene quindi lo stesso numero.
+   *
+   * `vo2max_ml_min_kg` NO: ha un secondo scrittore, `/api/physiology/vo2max-lab`, che
+   * scrive la colonna e un run di sezione `vo2max_lab`. Per quella sola metrica la
+   * precedenza è per RECENZA fra i due eventi (`canonical-vo2max.ts`), altrimenti un
+   * valore di laboratorio salvato dopo un run metabolico non entrerebbe mai nel canonico
+   * e la card mostrerebbe un numero diverso dal resto della piattaforma.
+   */
   const ftpWatts =
     pickNumberFromRecords(metabolicRunRecords, ["ftp_watts", "ftp_w", "ftp", "ftpWatts"]) ??
     asNum(profileRow.ftp_watts) ??
@@ -187,7 +250,10 @@ export async function resolveCanonicalPhysiologyState(athleteId: string): Promis
     pickNumberFromRecords(lactateRunRecords, ["lt2_w", "lt2", "lt2Watts"]) ??
     undefined;
   const vo2maxMlMinKg =
-    pickNumberFromRecords(metabolicRunRecords, ["vo2max_ml_min_kg", "vo2max", "vo2RelMlKgMin"]) ??
+    resolveVo2maxFromEvents({
+      metabolic: vo2maxEventFromRuns(metabolicRuns, VO2MAX_KEYS),
+      lab: vo2maxEventFromRuns(vo2maxLabRuns, VO2MAX_KEYS, { includeCleared: true }),
+    }) ??
     asNum(profileRow.vo2max_ml_min_kg) ??
     pickNumberFromRecords(performanceRunRecords, ["vo2max_ml_min_kg", "vo2RelMlKgMin", "vo2max"]) ??
     undefined;

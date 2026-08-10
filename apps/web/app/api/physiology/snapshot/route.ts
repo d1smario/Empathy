@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AthleteReadContextError, requireAthleteWriteContext } from "@/lib/auth/athlete-read-context";
+import { type PhysiologyProfileUpdate } from "@/lib/physiology/physiology-profile-upsert";
+import {
+  saveMetabolicSnapshot,
+  type MetabolicSnapshotDb,
+} from "@/lib/physiology/save-metabolic-snapshot";
 
 export const runtime = "nodejs";
 
@@ -12,14 +17,7 @@ export async function POST(req: NextRequest) {
       inputPayload?: Record<string, unknown>;
       outputPayload?: Record<string, unknown>;
       createdBy?: string | null;
-      profileUpdate?: {
-        ftp_watts: number;
-        lt1_watts: number;
-        lt2_watts: number;
-        v_lamax: number;
-        vo2max_ml_min_kg: number;
-        cp_watts?: number;
-      } | null;
+      profileUpdate?: PhysiologyProfileUpdate | null;
     };
     const athleteId = (body.athleteId ?? "").trim();
     if (!athleteId || !body.runSection || !body.outputPayload || !body.inputPayload) {
@@ -28,33 +26,22 @@ export async function POST(req: NextRequest) {
 
     const { db } = await requireAthleteWriteContext(req, athleteId);
 
-    const { error: insertErr } = await db.from("metabolic_lab_runs").insert({
-      athlete_id: athleteId,
-      section: body.runSection,
-      model_version: body.modelVersion ?? "v0.2",
-      input_payload: body.inputPayload,
-      output_payload: body.outputPayload,
-      created_by: body.createdBy ?? null,
+    // Run di audit + riga di profilo: sequenza tutto-o-niente (il run viene rimosso se
+    // l'upsert del profilo fallisce), altrimenti pagina Physiology e fueling restano
+    // permanentemente su due FTP diversi. Logica + rollback sono in `save-metabolic-snapshot`,
+    // coperti da test.
+    const result = await saveMetabolicSnapshot(db as unknown as MetabolicSnapshotDb, {
+      athleteId,
+      runSection: body.runSection,
+      modelVersion: body.modelVersion ?? "v0.2",
+      inputPayload: body.inputPayload,
+      outputPayload: body.outputPayload,
+      createdBy: body.createdBy ?? null,
+      profileUpdate: body.profileUpdate ?? null,
+      nowIso: new Date().toISOString(),
     });
-    if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
-
-    if (body.runSection === "metabolic_profile" && body.profileUpdate) {
-      const { error: upsertErr } = await db
-        .from("physiological_profiles")
-        .upsert(
-          {
-            athlete_id: athleteId,
-            ftp_watts: body.profileUpdate.ftp_watts,
-            lt1_watts: body.profileUpdate.lt1_watts,
-            lt2_watts: body.profileUpdate.lt2_watts,
-            v_lamax: body.profileUpdate.v_lamax,
-            vo2max_ml_min_kg: body.profileUpdate.vo2max_ml_min_kg,
-            cp_watts: body.profileUpdate.cp_watts ?? null,
-            baseline_hrv_ms: null,
-          },
-          { onConflict: "athlete_id" },
-        );
-      if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error, rolledBack: result.rolledBack }, { status: 500 });
     }
 
     return NextResponse.json({ status: "ok" });

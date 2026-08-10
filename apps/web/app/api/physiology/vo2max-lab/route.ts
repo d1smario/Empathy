@@ -98,6 +98,23 @@ export async function DELETE(req: NextRequest) {
       .eq("athlete_id", athleteId);
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
+    /**
+     * La cancellazione va scritta come EVENTO, non solo azzerando la colonna: il canonico
+     * è run-first (`lib/physiology/profile-resolver.ts`), quindi senza questo run il
+     * VO₂max di laboratorio appena rimosso continuerebbe a vincere se fosse il più
+     * recente. Un run `vo2max_lab` senza valore = «il laboratorio non dice più nulla»
+     * (vedi `canonical-vo2max.ts`), e si ricade sul run metabolico, se c'è.
+     */
+    const { error: runErr } = await db.from("metabolic_lab_runs").insert({
+      athlete_id: athleteId,
+      section: "vo2max_lab",
+      model_version: "vo2max-lab-v1",
+      input_payload: { action: "clear" },
+      output_payload: { vo2max_ml_min_kg: null, cleared_at: new Date().toISOString() },
+      created_by: null,
+    });
+    if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
+
     return NextResponse.json({ status: "ok" });
   } catch (err) {
     if (err instanceof AthleteReadContextError) {

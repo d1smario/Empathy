@@ -6,6 +6,8 @@ type LabSection = "metabolic_profile" | "lactate_analysis" | "max_oxidate";
 export async function fetchPhysiologyHistoryAndFtp(athleteId: string) {
   const response = await fetchWithTimeout(`/api/physiology/history?athleteId=${encodeURIComponent(athleteId)}`, {
     method: "GET",
+    // Dopo un ricalcolo/salvataggio la pagina deve rileggere dal DB, mai dalla cache HTTP del browser.
+    cache: "no-store",
     headers: await buildSupabaseAuthHeaders({ "Content-Type": "application/json" }),
   });
   if (!response.ok) {
@@ -21,11 +23,20 @@ export async function fetchPhysiologyHistoryAndFtp(athleteId: string) {
     ftpW: number | null;
     /** Peso atleta da `athlete_profiles.weight_kg` (null se assente / fuori range). */
     athleteWeightKg?: number | null;
+    /** VO₂max come scritto sulla riga corrente di `physiological_profiles` (colonna, non valore canonico). */
     profileVo2maxMlMinKg?: number | null;
     profileVo2maxLMin?: number | null;
+    /** VO₂max canonico del resolver (ultimo run `metabolic_profile` con precedenza sulla colonna): traccia di audit. */
+    canonicalVo2maxMlMinKg?: number | null;
+    canonicalVo2maxLMin?: number | null;
     autoInputs?: {
       source: string;
+      /** Sedute davvero passate al decoder: al più `sessionsWindow` (finestra mobile). */
       sessionsAnalyzed: number;
+      /** Ampiezza della finestra mobile letta da `executed_workouts`. */
+      sessionsWindow?: number;
+      /** Sedute totali dell'atleta; null/assente se il conteggio non è disponibile. */
+      sessionsTotal?: number | null;
       lactate?: Record<string, number>;
       maxox?: Record<string, number>;
     };
