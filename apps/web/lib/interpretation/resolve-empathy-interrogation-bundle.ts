@@ -10,6 +10,10 @@ export type ResolveEmpathyInterrogationBundleInput = BuildEmpathyInterrogationMa
   Pick<
     BuildEmpathyApplicationPlaybookInput,
     "nutritionPerformanceIntegration" | "dailyEnergyModel"
+  > &
+  Pick<
+    BuildEmpathyApplicationPlaybookInput,
+    "prescribedIntraChoGPerHour" | "prescribedGutCapacityTier"
   >;
 
 export function resolveEmpathyInterrogationBundle(
@@ -26,6 +30,8 @@ export function resolveEmpathyInterrogationBundle(
     recoverySummary: input.recoverySummary,
     nutritionPerformanceIntegration: input.nutritionPerformanceIntegration,
     dailyEnergyModel: input.dailyEnergyModel,
+    prescribedIntraChoGPerHour: input.prescribedIntraChoGPerHour ?? null,
+    prescribedGutCapacityTier: input.prescribedGutCapacityTier ?? null,
   });
   return { interrogationMap, applicationPlaybook };
 }

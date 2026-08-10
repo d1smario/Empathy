@@ -102,8 +102,10 @@ Deno.serve(async (req: Request) => {
     //    per (atleta, data) e il persist fa REPLACE, quindi ripersistere è idempotente.
     // Idratazione: si persiste il target della FORMULA CANONICA (max(2200, peso×33) + extra solo
     // con seduta), la stessa delle superfici Oggi/Nutrizione — prima qui restava il vecchio peso×35.
-    // Peso: weight_kg del profilo (nullable, come le superfici) e NON `weightKg` del prepare che
-    // ha fallback 70 per il solver energetico. Durata: somma delle plannedSessions risolte dal
+    // Peso: weight_kg del profilo (nullable, come le superfici). `weightKg` del prepare è ora
+    // anch'esso il valore MISURATO (null se assente): i default 250 W / 70 kg li mette il motore
+    // V2, così la fascia di capacità intestinale non si alza su un FTP mai misurato.
+    // Durata: somma delle plannedSessions risolte dal
     // prepare — è il contesto training del giorno che guida anche il fueling del motore (questo
     // path non ha l'«effettivo» con gli eseguiti, che esiste solo lato superfici).
     const profileWeightRaw = Number((profileRow as Record<string, unknown> | null)?.weight_kg);

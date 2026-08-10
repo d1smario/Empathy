@@ -215,7 +215,10 @@ export async function buildMealPlanV2Production(
         requirements,
         request: input.request,
         dietDay: input.dietDay ?? null,
-        weightKg: input.weightKg,
+        /* Il peso su cui il fabbisogno È STATO costruito (default+pavimento del motore già
+           applicati): il day-engine deve classificare sullo stesso numero, non su un input
+           grezzo che ora può essere null quando il profilo non ha il peso. */
+        weightKg: requirements.weightKg,
         bodyFatPct: input.bodyFatPct ?? null,
         lifestyleActivityClass: input.lifestyleActivityClass ?? null,
         firstSessionStartMinutes: resolveFirstSessionStartMinutes({

@@ -32,6 +32,8 @@ import {
 import { buildNutritionModuleDailyEnergyModel } from "@/lib/nutrition/nutrition-module-daily-energy";
 import { firstWindowQueryError, queryPlannedExecutedWindow } from "@/lib/training/planned-executed-window-query";
 import { resolveEmpathyInterrogationBundle } from "@/lib/interpretation/resolve-empathy-interrogation-bundle";
+import { resolvePlannedSessionMetrics } from "@/lib/training/physiology/planned-session-metrics";
+import { resolvePrescribedIntraFueling } from "@/lib/nutrition/v2/fueling-from-substrates";
 import type { EmpathyInterrogationBundle } from "@empathy/contracts";
 import { ServerTiming, serverTimingNow } from "@/lib/http/server-timing";
 
@@ -358,10 +360,41 @@ export async function GET(req: NextRequest) {
             adaptationTarget: bs?.adaptationTarget ?? null,
           };
         });
+        /**
+         * g/h che l'atleta mangia DAVVERO: dal modello a substrati, non dal solver V1.
+         * Sedute ricostruite come nel percorso di generazione (`resolvePlannedSessionMetrics`
+         * + fallback 75% FTP), così playbook e piano citano lo stesso numero.
+         */
+        const ftpForFueling = physiologyState?.physiologicalProfile.ftpWatts ?? null;
+        const prescribedFueling = resolvePrescribedIntraFueling({
+          sessions: rowsForDay.map((row, idx) => {
+            const bs = parsePro2BuilderSessionFromNotes(row.notes ?? null);
+            const m = resolvePlannedSessionMetrics({
+              contract: bs,
+              durationMinutesDb: Number(row.duration_minutes) || 0,
+              tssTargetDb: Number(row.tss_target) || 0,
+              kcalTargetDb: Number(row.kcal_target) || 0,
+              athleteFtpWatts: ftpForFueling,
+            });
+            return {
+              label: String(bs?.sessionName ?? bs?.discipline ?? row.type ?? `Sessione ${idx + 1}`),
+              avgPowerW: m.avgPowerW ?? (ftpForFueling != null && ftpForFueling > 0 ? Math.round(ftpForFueling * 0.75) : 0),
+              durationMin: m.durationMinutes,
+            };
+          }),
+          ftpW: ftpForFueling,
+          weightKg: profile?.weight_kg ?? null,
+          fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? null,
+        });
         empathyInterrogationBundle = resolveEmpathyInterrogationBundle({
           athleteId,
           anchorDate: pathwayDateParam,
           plannedSessions: plannedSessionsForInterrogation,
+          prescribedIntraChoGPerHour:
+            prescribedFueling != null && prescribedFueling.intraChoGPerH > 0
+              ? prescribedFueling.intraChoGPerH
+              : null,
+          prescribedGutCapacityTier: prescribedFueling?.gutCapacityTier ?? null,
           pathwayModulation,
           multiscaleBridge,
           healthLabBridge,

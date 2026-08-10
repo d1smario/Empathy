@@ -11,7 +11,11 @@ import {
 } from "@/lib/nutrition/daily-energy-solver";
 import type { IntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { dietProfileFromAthleteDietType } from "@/lib/nutrition/v2/fdc-food-taxonomy";
-import { computeSubstrateFuelingPlan } from "@/lib/nutrition/v2/fueling-from-substrates";
+import {
+  computeSubstrateFuelingPlan,
+  normalizeFtpW,
+  normalizeWeightKg,
+} from "@/lib/nutrition/v2/fueling-from-substrates";
 import { substrateTotalsForSession } from "@/lib/nutrition/v2/substrate-rates";
 
 /**
@@ -54,7 +58,13 @@ function sumMacros(a: DailyMacroGrams, b: DailyMacroGrams): DailyMacroGrams {
 
 export type BuildDailyRequirementsInput = {
   request: IntelligentMealPlanRequest;
-  weightKg: number;
+  /**
+   * Peso MISURATO dell'atleta. `null`/`0` = mai misurato: il motore mette il suo default
+   * (70 kg) per l'energetica, ma la fascia di capacità intestinale resta "base" — non si
+   * promuove nessuno su un dato che non esiste (vedi `resolveGutCapacityTier`).
+   */
+  weightKg: number | null;
+  /** FTP MISURATO dell'atleta. `null`/`0` = mai misurato (stessa regola del peso). */
   ftpWatts?: number | null;
   lifestyleActivityClass?: string | null;
   dietDayMealsScalePct?: number | null;
@@ -71,8 +81,16 @@ export function inferStrategyKindFromRequest(req: IntelligentMealPlanRequest): E
 }
 
 export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsInput): DailyNutritionRequirementsV2 {
-  const { request, weightKg } = input;
-  const w = Math.max(45, weightKg);
+  const { request } = input;
+  /**
+   * Valori per l'ENERGETICA: default + pavimenti del motore, calcolati UNA volta qui
+   * (`normalizeWeightKg` = max(45, peso) con default 70; `normalizeFtpW` = max(120, FTP) con
+   * default 250 — gli stessi numeri di prima, ora da una sola funzione). Ai calcoli di
+   * CAPACITÀ intestinale vanno invece i valori GREZZI: solo `resolveGutCapacityTier` sa
+   * distinguere «misurato» da «default», ed è lì che si decide se alzare la banda.
+   */
+  const w = normalizeWeightKg(input.weightKg);
+  const ftpForEnergetics = normalizeFtpW(input.ftpWatts);
   const strategyKind = input.strategyKind ?? inferStrategyKindFromRequest(request);
   const template = STRATEGY_TEMPLATES[strategyKind];
   const dietProfileActive: FdcDietProfileTag = dietProfileFromAthleteDietType(request.dietType);
@@ -82,13 +100,16 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   const sessions =
     input.plannedSessions?.length
       ? input.plannedSessions
-      : extractPlannedSessionsFromRequest(request, input.ftpWatts ?? 250);
+      : extractPlannedSessionsFromRequest(request, ftpForEnergetics);
 
   const energyModel = computeNutritionDailyEnergyModel({
     athleteId: request.athleteId,
     date: request.planDate,
     weightKg: w,
-    ftpWatts: input.ftpWatts ?? null,
+    /* Il solver V1 continua a ricevere il default motore quando l'FTP manca, com'era prima
+       che i chiamanti passassero il grezzo: cambiarlo sposterebbe le kcal di chi non ha FTP
+       (calibrazione atleta), che è fuori dallo scopo della banda di assorbimento. */
+    ftpWatts: ftpForEnergetics,
     lifestyleActivityClass: lifestyleClass,
     dietDayMealsScalePct: input.dietDayMealsScalePct ?? 100,
     plannedTraining: sessions.map((s) => ({
@@ -108,7 +129,7 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   const substrateRates: DailyNutritionRequirementsV2["substrateRates"] = [];
 
   for (const s of sessions) {
-    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftpForEnergetics });
     trainingCho += totals.choG;
     trainingFat += totals.fatG;
     trainingPro += totals.proG;
@@ -137,7 +158,7 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
 
   const substrateTrainingKcal = roundG(
     sessions.reduce((sum, s) => {
-      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftpForEnergetics });
       return sum + t.kcalPerH * t.durationH;
     }, 0),
   );
@@ -154,8 +175,12 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
             avgPowerW: s.avgPowerW,
             durationMin: s.durationMin,
           })),
-          ftpW: input.ftpWatts ?? 250,
-          weightKg: w,
+          /* GREZZI di proposito: il motore applica da sé default e pavimenti per l'energetica,
+             ma la fascia di capacità deve poter vedere che FTP o peso non sono mai stati
+             misurati (passando `w` = 45 di default un atleta senza peso sarebbe diventato
+             "elite" con l'FTP di un altro campo). */
+          ftpW: input.ftpWatts,
+          weightKg: input.weightKg,
         })
       : undefined;
 

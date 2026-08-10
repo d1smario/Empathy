@@ -4,6 +4,7 @@ import {
   resolvePostRecoveryProduct,
   resolvePreWorkoutCarbProduct,
 } from "@/lib/nutrition/fueling-intra-protocol";
+import { capChoGPerHour } from "@/lib/nutrition/v2/fueling-from-substrates";
 
 export type FuelingProtocolSlot = {
   phase: string;
@@ -180,7 +181,13 @@ export function computeGlycogenDepletionForFueling(input: {
     80,
     250,
   );
-  const intakeRate = clamp(input.resolvedFuelingChoGPerHour, 0, 150);
+  /**
+   * Ingestione oraria per la curva glicogeno: si applica SOLO la guardia assoluta
+   * (`ABSOLUTE_MAX_CHO_G_PER_HOUR` = 200 g/h). Il vecchio tetto fisso a 150 tagliava la curva
+   * proprio degli atleti che la banda di assorbimento porta fino a 160 g/h, facendo disegnare
+   * un esaurimento più rapido di quello che il piano prescrive davvero.
+   */
+  const intakeRate = capChoGPerHour(input.resolvedFuelingChoGPerHour);
   const absorbedRate = intakeRate * (fp.gutDeliveryPct / 100);
   const coriRate = fp.coriReturnG > 0 ? fp.coriReturnG / durationHours : 0;
   const dt = 1 / 6;

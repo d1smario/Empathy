@@ -26,6 +26,7 @@ import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import { resolvePlannedSessionMetrics } from "@/lib/training/physiology/planned-session-metrics";
 import { extractPlannedSessionsFromRequest } from "@/lib/nutrition/v2/daily-nutrition-requirements";
+import { measuredPositive } from "@/lib/nutrition/v2/fueling-from-substrates";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === "object" && !Array.isArray(v);
@@ -49,8 +50,10 @@ export type PreparedIntelligentMealPlanContext = {
   profileRow: Record<string, unknown> | null;
   dietDay: ReturnType<typeof resolveNutritionDietDay>;
   plannedSessions: Array<{ label: string; avgPowerW: number; durationMin: number }>;
-  ftp: number;
-  weightKg: number;
+  /** FTP MISURATO in W (`null` = mai misurato: i default li mette il motore V2). */
+  ftp: number | null;
+  /** Peso MISURATO in kg (`null` = mai misurato: i default li mette il motore V2). */
+  weightKg: number | null;
   performanceIntegration?: import("@/lib/nutrition/performance-integration-scaler").NutritionPerformanceIntegrationDials | null;
 };
 
@@ -222,8 +225,17 @@ export async function prepareIntelligentMealPlanContext(
     preferredMealCount: row?.preferred_meal_count as number | null,
   });
 
-  const ftp = Number(row?.ftp_watts) || 250;
-  const weightKg = Number(row?.weight_kg) || 70;
+  /**
+   * FTP e peso MISURATI (null = mai misurati). Il default del motore lo mette il motore:
+   * qui si sostituiva 250 W / 70 kg PRIMA di passarli a valle, e la fascia di capacità
+   * intestinale finiva calcolata su un FTP inventato — un atleta senza FTP ma leggero
+   * (250/53 = 4,72 W/kg) veniva promosso a «ventre allenato» e riceveva più CHO in seduta
+   * senza averlo mai dimostrato. Il default resta solo dove serve un numero per stimare la
+   * potenza delle sedute (sotto), dove non decide nulla sulla capacità.
+   */
+  const ftpMeasuredW = measuredPositive(Number(row?.ftp_watts));
+  const weightMeasuredKg = measuredPositive(Number(row?.weight_kg));
+  const ftp = ftpMeasuredW ?? 250;
 
   const plannedSessions = (Array.isArray(plannedRows) ? plannedRows : []).map((pr, idx) => {
     const notes = String((pr as Record<string, unknown>).notes ?? "");
@@ -260,8 +272,9 @@ export async function prepareIntelligentMealPlanContext(
     profileRow: row,
     dietDay,
     plannedSessions: sessions,
-    ftp,
-    weightKg,
+    /** MISURATI, `null` se il profilo non li ha: i default li mette il motore V2. */
+    ftp: ftpMeasuredW,
+    weightKg: weightMeasuredKg,
     performanceIntegration,
   };
 }

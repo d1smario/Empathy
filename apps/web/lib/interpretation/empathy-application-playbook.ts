@@ -28,6 +28,19 @@ export type BuildEmpathyApplicationPlaybookInput = {
   recoverySummary: RecoverySummary | null;
   nutritionPerformanceIntegration: NutritionPerformanceIntegrationDials | null;
   dailyEnergyModel: NutritionDailyEnergyModel | null;
+  /**
+   * g/h di CHO intra EFFETTIVAMENTE prescritti dal modello a substrati
+   * (`fueling-from-substrates`, la funzione che decide i grammi del piano). Quando c'è,
+   * vince su `dailyEnergyModel.fueling.adjustedChoGPerHour` — che è un numero di display
+   * del solver V1 e può divergere da quello che l'atleta mangia davvero.
+   */
+  prescribedIntraChoGPerHour?: number | null;
+  /**
+   * Fascia di capacità intestinale con cui quei g/h sono stati calcolati (W/kg MISURATI).
+   * Va citata solo insieme a `prescribedIntraChoGPerHour`: è l'unica «fascia» coerente con
+   * i grammi del piano.
+   */
+  prescribedGutCapacityTier?: "base" | "high" | "elite" | null;
 };
 
 function uniqId(prefix: string, n: number) {
@@ -220,16 +233,34 @@ function buildFuelingAdvice(
 ): EmpathyFuelingAdvice | null {
   if (!input.plannedSessions.length) return null;
   const dem = input.dailyEnergyModel;
-  const cho = dem?.fueling?.adjustedChoGPerHour;
-  const tier = dem?.fueling?.capabilityTier;
+  const prescribed = input.prescribedIntraChoGPerHour;
+  const usesSubstrateModel = typeof prescribed === "number" && Number.isFinite(prescribed) && prescribed > 0;
+  const cho = usesSubstrateModel ? prescribed : dem?.fueling?.adjustedChoGPerHour;
+  /**
+   * UNA sola semantica di «fascia» accanto ai g/h: quando i grammi vengono dal modello a
+   * substrati, la fascia citata è quella di ASSORBIMENTO con cui sono stati calcolati
+   * (W/kg misurati), non il `capabilityTier` del solver V1 — affiancarli faceva leggere
+   * «tier base» accanto a una prescrizione da fascia elite.
+   */
+  const tier = usesSubstrateModel
+    ? (input.prescribedGutCapacityTier ?? null)
+    : (dem?.fueling?.capabilityTier ?? null);
   const hints: EmpathyFuelingAdvice["integrationFavoring"] = [];
   const notes: string[] = [];
 
   if (cho != null && cho > 0) {
-    notes.push(`CHO intra target dal solver: ~${Math.round(cho)} g/h (non modificato dal playbook).`);
+    notes.push(
+      usesSubstrateModel
+        ? `CHO intra prescritti dal modello a substrati: ~${Math.round(cho)} g/h (banda di assorbimento per capacità; non modificato dal playbook).`
+        : `CHO intra target dal solver: ~${Math.round(cho)} g/h (non modificato dal playbook).`,
+    );
   }
   if (tier) {
-    notes.push(`Tier capability: ${tier}.`);
+    notes.push(
+      usesSubstrateModel
+        ? `Fascia capacità intestinale (W/kg misurati): ${tier}.`
+        : `Tier capability: ${tier}.`,
+    );
   }
 
   const scale = input.nutritionPerformanceIntegration?.fuelingChoScale;
@@ -250,8 +281,17 @@ function buildFuelingAdvice(
 
   return {
     sessionLabel,
-    choPerHourRef: cho != null ? `dailyEnergyModel.fueling.adjustedChoGPerHour=${Math.round(cho)}` : undefined,
-    tierBandRef: tier ? `dailyEnergyModel.fueling.capabilityTier=${tier}` : undefined,
+    choPerHourRef:
+      cho != null
+        ? usesSubstrateModel
+          ? `substrateFueling.intraChoGPerH=${Math.round(cho)}`
+          : `dailyEnergyModel.fueling.adjustedChoGPerHour=${Math.round(cho)}`
+        : undefined,
+    tierBandRef: tier
+      ? usesSubstrateModel
+        ? `substrateFueling.gutCapacityTier=${tier}`
+        : `dailyEnergyModel.fueling.capabilityTier=${tier}`
+      : undefined,
     hydrationRef: input.nutritionPerformanceIntegration
       ? `hydrationFloorMultiplier=${input.nutritionPerformanceIntegration.hydrationFloorMultiplier}`
       : undefined,

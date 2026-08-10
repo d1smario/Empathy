@@ -142,6 +142,13 @@ import {
   effectivePlannedWorkoutNutritionMetrics,
   resolveBuilderSessionForPlannedRow,
 } from "@/lib/training/builder/pro2-session-notes";
+import { resolvePlannedSessionMetrics } from "@/lib/training/physiology/planned-session-metrics";
+import {
+  capChoGPerHour,
+  evidenceChoBandLabel,
+  resolveGutCapacityTier,
+  resolvePrescribedIntraFueling,
+} from "@/lib/nutrition/v2/fueling-from-substrates";
 import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
 import { analyzePlannedSessionsForFueling } from "@/lib/nutrition/fueling-planned-session-analysis";
 import {
@@ -1316,23 +1323,133 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const mealPlanGenerationReady = true;
 
   const resolvedMealDailyEnergyKcal = nutritionDayModel?.totals.mealsKcal ?? dailyEnergyKcal;
-  const resolvedFuelingChoGPerHour =
-    (nutritionDayModel?.fueling.adjustedChoGPerHour ?? 0) > 0
-      ? (nutritionDayModel?.fueling.adjustedChoGPerHour ?? fuelingChoGPerHour)
-      : fuelingChoGPerHour;
+
   const effectiveSessionDurationMin =
     effectiveDayContext.mode === "none" ? sessionDurationMin : effectiveDayContext.summary.totalDurationMin;
   const effectiveSessionIntensityPctFtp =
     effectiveDayContext.mode === "none"
       ? sessionIntensityPctFtp
       : effectiveDayContext.summary.estimatedIntensityPctFtp;
-  const resolvedFuelingTier = nutritionDayModel?.fueling.capabilityTier ?? "base";
-  const resolvedFuelingTierBand =
-    resolvedFuelingTier === "elite"
-      ? "120-130 g/h"
-      : resolvedFuelingTier === "high"
-        ? "90-110 g/h"
-        : "60-90 g/h";
+
+  /**
+   * QUELLO CHE SI LEGGE = QUELLO CHE SI MANGIA. I grammi del piano li decide il modello a
+   * substrati (`fueling-from-substrates`, banda di assorbimento per capacità dell'atleta),
+   * non `adjustedChoGPerHour` del solver V1 — che resta solo come fallback quando il modello
+   * non è calcolabile (nessuna seduta con durata/potenza).
+   *
+   * BASE DI CALCOLO = le sedute PIANIFICATE del giorno (più la gara sintetica da routine),
+   * cioè ESATTAMENTE le righe che questo pannello disegna (`fuelingTrainingContext`) e le
+   * stesse su cui è generato il piano che l'atleta mangia:
+   *   - `/api/nutrition/module` (playbook) le ricostruisce da `planned_workouts`;
+   *   - `intelligent-meal-plan-route-prep` → Edge Function `generate-meal-plan` legge SOLO
+   *     `planned_workouts` e su quelle persiste il piano.
+   * Usare qui l'«effettivo» (eseguito quando c'è) farebbe divergere di nuovo il numero letto
+   * dal numero con cui il piano è stato generato, e mescolerebbe basi diverse dentro il
+   * pannello (g/h dall'eseguito × ore dal pianificato).
+   *
+   * Potenza per seduta: contratto builder quando c'è, altrimenti lo STESSO fallback 75% FTP
+   * del percorso server. La prescrizione è PER SEDUTA (`sessions`) più il totale del giorno:
+   * chi mostra grammi moltiplica per `totalDurationH` di QUESTO oggetto, mai per una durata
+   * di un'altra base.
+   */
+  const prescribedIntraFueling = useMemo(() => {
+    const ftp = n(physio?.ftp_watts, 0);
+    const fallbackPowerW = ftp > 0 ? Math.round(ftp * 0.75) : 0;
+    const plannedRows = selectedPlanSessions.map((session) => {
+      const builder = resolveBuilderSessionForPlannedRow({
+        builderSession: session.builderSession as Pro2BuilderSessionContract | null | undefined,
+        notes: typeof session.notes === "string" ? session.notes : null,
+      });
+      const m = resolvePlannedSessionMetrics({
+        contract: builder,
+        durationMinutesDb: session.duration_minutes as number | null | undefined,
+        tssTargetDb: session.tss_target as number | null | undefined,
+        kcalTargetDb: session.kcal_target as number | null | undefined,
+        athleteFtpWatts: physio?.ftp_watts ?? null,
+      });
+      return {
+        id: String(session.id),
+        label: String(
+          session.plannedSessionName ?? builder?.sessionName ?? session.plannedDiscipline ?? session.type ?? "Session",
+        ),
+        avgPowerW: m.avgPowerW != null && m.avgPowerW > 0 ? m.avgPowerW : fallbackPowerW,
+        durationMin: m.durationMinutes,
+      };
+    });
+    /* Giorno gara da routine senza righe in calendario: è la stessa sostituzione che fa
+       `fuelingTrainingContext` (sedute pianificate, altrimenti la gara sintetica). */
+    const routineSynthetic = plannedRows.length
+      ? null
+      : buildRoutineSyntheticFuelingSessionInput({
+          routineConfig: profile?.routine_config ?? null,
+          planDate: selectedPlanDate,
+        });
+    const sessions = plannedRows.length
+      ? plannedRows
+      : routineSynthetic
+        ? [
+            {
+              id: routineSynthetic.id,
+              label: routineSynthetic.title,
+              avgPowerW: fallbackPowerW,
+              durationMin: routineSynthetic.durationMinutesDb,
+            },
+          ]
+        : [];
+    if (!sessions.length) return null;
+    return resolvePrescribedIntraFueling({
+      sessions,
+      ftpW: physio?.ftp_watts ?? null,
+      weightKg: profile?.weight_kg ?? null,
+      fuelingChoScale: nutritionPerformanceIntegration?.fuelingChoScale ?? null,
+    });
+  }, [
+    selectedPlanSessions,
+    physio?.ftp_watts,
+    profile?.weight_kg,
+    profile?.routine_config,
+    selectedPlanDate,
+    nutritionPerformanceIntegration,
+  ]);
+
+  const prescribedIntraChoGPerHour =
+    prescribedIntraFueling != null && prescribedIntraFueling.intraChoGPerH > 0
+      ? prescribedIntraFueling.intraChoGPerH
+      : null;
+
+  const resolvedFuelingChoGPerHour =
+    prescribedIntraChoGPerHour != null
+      ? prescribedIntraChoGPerHour
+      : (nutritionDayModel?.fueling.adjustedChoGPerHour ?? 0) > 0
+        ? (nutritionDayModel?.fueling.adjustedChoGPerHour ?? fuelingChoGPerHour)
+        : fuelingChoGPerHour;
+  /**
+   * FASCIA DI CAPACITÀ: quella con cui sono stati calcolati i grammi (W/kg MISURATI, banda di
+   * assorbimento), non più `nutritionDayModel.fueling.capabilityTier` del solver V1 — due
+   * semantiche di «fascia» affiancate nello stesso payload erano una trappola per chi legge
+   * il contratto (`fueling_tier: "base"` accanto a `fueling_band: "120-160 g/h"`).
+   */
+  const resolvedFuelingTier = useMemo(
+    () => resolveGutCapacityTier(physio?.ftp_watts ?? null, profile?.weight_kg ?? null),
+    [physio?.ftp_watts, profile?.weight_kg],
+  );
+  /**
+   * La fascia MOSTRATA esce dalla stessa tabella che decide i grammi (banda di assorbimento
+   * per durata × capacità): prima erano stringhe fisse ("120-130 g/h") che non corrispondevano
+   * più a ciò che il piano prescrive. Durata = quella della prescrizione (stessa base delle
+   * sedute), così l'etichetta non può parlare della banda «≥3 h» mentre i grammi escono dalla
+   * banda «<2 h».
+   */
+  const resolvedFuelingTierBand = useMemo(
+    () =>
+      evidenceChoBandLabel(
+        prescribedIntraFueling != null && prescribedIntraFueling.totalDurationH > 0
+          ? prescribedIntraFueling.totalDurationH * 60
+          : sessionDurationMin,
+        resolvedFuelingTier,
+      ),
+    [prescribedIntraFueling, resolvedFuelingTier, sessionDurationMin],
+  );
   const routineRaceDay = useMemo(
     () =>
       detectRoutineRaceDay({
@@ -1611,6 +1728,24 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     const weights = rows.map((s) => Math.max(0.01, n(s.choEnergyWeight, s.tss || 1)));
     const sumW = weights.reduce((a, b) => a + b, 0);
     if (sumW <= 0) return null;
+    /**
+     * Quando il modello a substrati è calcolabile i grammi di OGNI seduta sono i SUOI: la
+     * banda di assorbimento è per-seduta (durata × intensità × capacità), quindi ripartire un
+     * totale di giornata col peso glicolitico può mettere una seduta sopra la sua banda.
+     * Lo split per peso resta solo nel fallback (modello non calcolabile).
+     */
+    const prescribedById = new Map(
+      (prescribedIntraFueling?.sessions ?? []).map((s) => [String(s.id), s.intraChoG]),
+    );
+    /* Solo se il modello copre TUTTE le righe mostrate: coprirne una sola e azzerare le altre
+       sarebbe peggio dello split per peso (una seduta a 0 g in pagina). */
+    if (rows.every((s) => prescribedById.has(String(s.id)))) {
+      return rows.map((s) => ({
+        id: s.id,
+        label: String(s.title),
+        choG: round(prescribedById.get(String(s.id))!, 1),
+      }));
+    }
     const h = Math.max(0.5, fuelingPlannedSummary.totalDurationMin / 60);
     const intraTotal = Math.max(
       round(nutritionDayModel?.fueling.intraChoG ?? 0, 1),
@@ -1621,7 +1756,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       label: String(s.title),
       choG: round(intraTotal * (weights[i] / sumW), 1),
     }));
-  }, [fuelingTrainingContext, fuelingPlannedSummary.totalDurationMin, nutritionDayModel, resolvedFuelingChoGPerHour]);
+  }, [
+    fuelingTrainingContext,
+    fuelingPlannedSummary.totalDurationMin,
+    nutritionDayModel,
+    prescribedIntraFueling,
+    resolvedFuelingChoGPerHour,
+  ]);
 
   const knowledgeFuelingHints = useMemo(() => {
     const supports = Array.from(
@@ -2566,13 +2707,26 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       return [...byPhase.pre, ...byPhase.intra, ...byPhase.post];
     }
 
-    const dayHours = Math.max(0.5, fuelingPlannedSummary.totalDurationMin / 60);
+    /**
+     * UNA fonte sola per i grammi intra, NUMERATORE E DENOMINATORE COMPRESI: quando il modello
+     * a substrati è calcolabile i grammi sono i suoi (`totalIntraChoG`) e le ore sono le SUE
+     * (`totalDurationH`) — non il g/h di una base moltiplicato per le ore di un'altra, che
+     * produceva pacchetti fuori banda per la durata mostrata. Il `Math.max` col solver V1 resta
+     * solo nel fallback, cioè quando il modello non è calcolabile (giorno senza sedute utili).
+     */
+    const dayHours =
+      prescribedIntraFueling != null && prescribedIntraFueling.totalDurationH > 0
+        ? prescribedIntraFueling.totalDurationH
+        : Math.max(0.5, fuelingPlannedSummary.totalDurationMin / 60);
     const dayPre = Math.max(15, round(nutritionDayModel?.fueling.preChoG ?? 20));
     const dayPost = Math.max(25, round(nutritionDayModel?.fueling.postChoG ?? 30));
-    const dayIntraTotal = Math.max(
-      round(nutritionDayModel?.fueling.intraChoG ?? 0, 1),
-      round(resolvedFuelingChoGPerHour * dayHours, 1),
-    );
+    const dayIntraTotal =
+      prescribedIntraFueling != null && prescribedIntraFueling.totalIntraChoG > 0
+        ? round(prescribedIntraFueling.totalIntraChoG, 1)
+        : Math.max(
+            round(nutritionDayModel?.fueling.intraChoG ?? 0, 1),
+            round(resolvedFuelingChoGPerHour * dayHours, 1),
+          );
     const engineSuffixDay =
       fuelingEngineDaySummary != null
         ? ` · engine: lact ~${round(fuelingEngineDaySummary.lactateG, 1)} g · Cori ~${round(fuelingEngineDaySummary.coriG, 1)} g · CHOexo ~${round(fuelingEngineDaySummary.exoG, 1)} g`
@@ -2614,7 +2768,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       const steps = enrichSlots(slots);
       const timelineSteps = timelineFromSteps(steps);
       const durationH = Math.max(0.25, args.durationMin / 60);
-      const choPerHourSession = Math.min(150, args.intraTotalCho / durationH);
+      /**
+       * Il g/h MOSTRATO all'atleta («CHO/h seduta ~N g/h») è quello PRESCRITTO: qui si applica
+       * solo la guardia assoluta (200 g/h), non più un clamp fisso a 150 che tagliava proprio
+       * gli elite per cui esiste la banda a 160 g/h — e che contraddiceva la timeline lì sotto
+       * (480 g su 3 h = 160 g/h, ma l'etichetta diceva 150).
+       */
+      const choPerHourSession = capChoGPerHour(args.intraTotalCho / durationH);
       const glyc = computeGlycogenDepletionForFueling({
         weightKg: n(profile?.weight_kg, 0),
         muscleMassKg: profile?.muscle_mass_kg,
@@ -2645,7 +2805,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
 
     if (sessions.length <= 1) {
       const s0 = sessions[0];
-      const duration = s0?.durationMin ?? fuelingPlannedSummary.totalDurationMin;
+      /* Senza righe in tabella la durata del pacchetto è quella della PRESCRIZIONE, non una
+         durata di un'altra base: `dayIntraTotal` viene da lì e i due devono dividersi. */
+      const duration =
+        s0?.durationMin ??
+        (prescribedIntraFueling != null && prescribedIntraFueling.totalDurationH > 0
+          ? Math.round(prescribedIntraFueling.totalDurationH * 60)
+          : fuelingPlannedSummary.totalDurationMin);
       const intensity = s0?.substrate?.estimatedIntensityPctFtp ?? fuelingPlannedSummary.estimatedIntensityPctFtp;
       const engineOne =
         s0?.substrate != null
@@ -2700,6 +2866,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     fuelingPlannedSummary,
     effectiveFluidMlPerHour,
     nutritionDayModel,
+    prescribedIntraFueling,
     resolvedFuelingChoGPerHour,
     resolvedFuelingTierBand,
     fuelingEngineDaySummary,
@@ -2796,7 +2963,14 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     return Array.from(keys);
   }, [fuelingSessionPackages]);
 
-  /** Proiezione glicogeno aggregata sulla giornata (predictor e riepilogo). */
+  /**
+   * Proiezione glicogeno aggregata sulla giornata (predictor e riepilogo).
+   * Durata/intensità EFFETTIVE di proposito (eseguito quando c'è): non è una prescrizione ma
+   * una proiezione — «se mi alimento al ritmo prescritto sulla seduta VERA, dove finisce il
+   * glicogeno». Il protocollo che dice quanti grammi mangiare
+   * (`fuelingPlanGlycogenDepletion`, pacchetti) resta invece sulla base pianificata, la stessa
+   * del piano generato.
+   */
   const glycogenDepletion = useMemo(
     () =>
       computeGlycogenDepletionForFueling({

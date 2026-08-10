@@ -5909,21 +5909,91 @@ function intraChoReplaceFractionFromEnergyShare(choEnergyShare) {
   if (s >= 0.52) return 0.55;
   return 0.45;
 }
-function evidenceMaxChoGPerHour(durationMin, choEnergyShare) {
-  const h = durationMin / 60;
-  if (h < 0.75) return 30;
-  if (h < 2) return choEnergyShare >= 0.85 ? 90 : 60;
-  if (h < 3) return choEnergyShare >= 0.85 ? 110 : 75;
-  return choEnergyShare >= 0.85 ? 120 : 90;
+var ABSOLUTE_MAX_CHO_G_PER_HOUR = 200;
+function capChoGPerHour(gPerHour) {
+  if (!Number.isFinite(gPerHour) || gPerHour <= 0) return 0;
+  return Math.min(gPerHour, ABSOLUTE_MAX_CHO_G_PER_HOUR);
+}
+function capChoGramsForDuration(choG, durationH) {
+  if (!Number.isFinite(choG) || choG <= 0) return 0;
+  const hours = Number.isFinite(durationH) && durationH > 0 ? durationH : 0;
+  if (hours <= 0) return choG;
+  return Math.min(choG, ABSOLUTE_MAX_CHO_G_PER_HOUR * hours);
+}
+var GUT_CAPACITY_FTP_W_KG_THRESHOLDS = { elite: 4.8, high: 4.2 };
+function gutCapacityTierFromFtpWKg(ftpWKg) {
+  const v = typeof ftpWKg === "number" && Number.isFinite(ftpWKg) ? ftpWKg : 0;
+  if (v >= GUT_CAPACITY_FTP_W_KG_THRESHOLDS.elite) return "elite";
+  if (v >= GUT_CAPACITY_FTP_W_KG_THRESHOLDS.high) return "high";
+  return "base";
+}
+var GUT_CAPACITY_INPUT_FLOORS = { ftpW: 120, weightKg: 45 };
+var GUT_CAPACITY_INPUT_DEFAULTS = { ftpW: 250, weightKg: 70 };
+function measuredPositive(v) {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+}
+function normalizeFtpW(ftpW) {
+  const measured = measuredPositive(ftpW);
+  return measured == null ? GUT_CAPACITY_INPUT_DEFAULTS.ftpW : Math.max(GUT_CAPACITY_INPUT_FLOORS.ftpW, measured);
+}
+function normalizeWeightKg(weightKg) {
+  const measured = measuredPositive(weightKg);
+  return measured == null ? GUT_CAPACITY_INPUT_DEFAULTS.weightKg : Math.max(GUT_CAPACITY_INPUT_FLOORS.weightKg, measured);
+}
+function resolveGutCapacityTier(ftpW, weightKg) {
+  const measuredFtpW = measuredPositive(ftpW);
+  const measuredWeightKg = measuredPositive(weightKg);
+  if (measuredFtpW == null || measuredWeightKg == null) return "base";
+  return gutCapacityTierFromFtpWKg(
+    Math.max(GUT_CAPACITY_INPUT_FLOORS.ftpW, measuredFtpW) / Math.max(GUT_CAPACITY_INPUT_FLOORS.weightKg, measuredWeightKg)
+  );
+}
+var CHO_DOMINANT_ENERGY_SHARE = 0.85;
+var EVIDENCE_MAX_CHO_G_PER_HOUR_TABLE = [
+  //                                       │ base │ alta │ elite
+  {
+    durationBelowH: 0.75,
+    label: "<45 min",
+    mixed: { base: 30, high: 30, elite: 30 },
+    choDominant: { base: 30, high: 30, elite: 30 }
+  },
+  {
+    durationBelowH: 2,
+    label: "<2 h",
+    mixed: { base: 60, high: 70, elite: 80 },
+    choDominant: { base: 90, high: 105, elite: 120 }
+  },
+  {
+    durationBelowH: 3,
+    label: "<3 h",
+    mixed: { base: 75, high: 90, elite: 100 },
+    choDominant: { base: 110, high: 130, elite: 150 }
+  },
+  {
+    durationBelowH: Number.POSITIVE_INFINITY,
+    label: "\u22653 h",
+    mixed: { base: 90, high: 110, elite: 120 },
+    choDominant: { base: 120, high: 140, elite: 160 }
+  }
+];
+function evidenceMaxChoGPerHour(durationMin, choEnergyShare, capacityTier = "base") {
+  const h = Math.max(0, durationMin) / 60;
+  const row2 = EVIDENCE_MAX_CHO_G_PER_HOUR_TABLE.find((r) => h < r.durationBelowH) ?? EVIDENCE_MAX_CHO_G_PER_HOUR_TABLE[EVIDENCE_MAX_CHO_G_PER_HOUR_TABLE.length - 1];
+  const triplet = choEnergyShare >= CHO_DOMINANT_ENERGY_SHARE ? row2.choDominant : row2.mixed;
+  return capChoGPerHour(triplet[capacityTier]);
 }
 function computeSubstrateFuelingPlan(input) {
-  const ftp = Math.max(120, input.ftpW ?? 250);
-  const weightKg = Math.max(45, input.weightKg ?? 70);
+  const ftp = normalizeFtpW(input.ftpW);
+  const weightKg = normalizeWeightKg(input.weightKg);
+  const capacityTier = resolveGutCapacityTier(input.ftpW, input.weightKg);
+  const capacityMeasured = measuredPositive(input.ftpW) != null && measuredPositive(input.weightKg) != null;
   const sessions = [];
   const provenance = [
     "Fueling intra: frazione del CHO bruciato in seduta (substrati), non % kcal training.",
     "Alta intensit\xE0 (CHO \u2248 energia) \u2192 replace fino ~85%; Z1/Z2 (CHO 50\u201365%) \u2192 replace ~45\u201355%.",
-    "Cap intra g/h da durata + intensit\xE0 (evidence band). Pre/post = CHO mirato, non split % kcal training."
+    "Cap intra g/h da durata + intensit\xE0 + CAPACIT\xC0 dell'atleta (banda di assorbimento). Pre/post = CHO mirato, non split % kcal training.",
+    capacityMeasured ? `Capacit\xE0 intestinale: ${capacityTier} (${round3(ftp / weightKg, 2)} W/kg misurati; soglie \u2265${GUT_CAPACITY_FTP_W_KG_THRESHOLDS.high} alta, \u2265${GUT_CAPACITY_FTP_W_KG_THRESHOLDS.elite} elite \u2014 stesse del solver V1).` : "Capacit\xE0 intestinale: base \u2014 FTP o peso non misurati, la fascia si alza solo su misura (l'energetica usa i default motore).",
+    `Guardia assoluta: nessuna prescrizione oltre ${ABSOLUTE_MAX_CHO_G_PER_HOUR} g/h di CHO.`
   ];
   for (const s of input.sessions) {
     const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftp });
@@ -5933,15 +6003,16 @@ function computeSubstrateFuelingPlan(input) {
     const substrateKcal = choKcal + fatKcal + proKcal;
     const choEnergyShare = substrateKcal > 0 ? choKcal / substrateKcal : 0.5;
     const replaceFrac = intraChoReplaceFractionFromEnergyShare(choEnergyShare);
-    const maxPerH = evidenceMaxChoGPerHour(s.durationMin, choEnergyShare);
+    const maxPerH = evidenceMaxChoGPerHour(s.durationMin, choEnergyShare, capacityTier);
     let intraChoG2 = round3(totals.choG * replaceFrac);
     const intraCap = round3(maxPerH * totals.durationH);
     if (intraChoG2 > intraCap) {
       intraChoG2 = intraCap;
       provenance.push(
-        `Sessione ${s.label.slice(0, 40)}: intra CHO capped a ${maxPerH} g/h \xD7 ${totals.durationH} h.`
+        `Sessione ${s.label.slice(0, 40)}: intra CHO capped a ${maxPerH} g/h \xD7 ${totals.durationH} h (capacit\xE0 ${capacityTier}).`
       );
     }
+    intraChoG2 = round3(capChoGramsForDuration(intraChoG2, totals.durationH));
     const preChoG2 = s.durationMin >= 45 ? round3(clamp3(weightKg * 0.35, 20, 70)) : round3(clamp3(weightKg * 0.2, 10, 40));
     const postChoG2 = round3(totals.choG * clamp3(0.22 + choEnergyShare * 0.12, 0.2, 0.38));
     const preKcal = round3(preChoG2 * 4, 0);
@@ -5963,7 +6034,8 @@ function computeSubstrateFuelingPlan(input) {
       intraKcal,
       postKcal,
       evidenceMaxChoGPerH: maxPerH,
-      intraChoGPerH: totals.durationH > 0 ? round3(intraChoG2 / totals.durationH) : 0
+      intraChoGPerH: totals.durationH > 0 ? round3(capChoGPerHour(intraChoG2 / totals.durationH)) : 0,
+      gutCapacityTier: capacityTier
     });
   }
   const preChoG = round3(sessions.reduce((sum, x) => sum + x.preChoG, 0));
@@ -6026,18 +6098,22 @@ function inferStrategyKindFromRequest(req) {
   return "maintenance";
 }
 function buildDailyNutritionRequirementsV2(input) {
-  const { request, weightKg } = input;
-  const w = Math.max(45, weightKg);
+  const { request } = input;
+  const w = normalizeWeightKg(input.weightKg);
+  const ftpForEnergetics = normalizeFtpW(input.ftpWatts);
   const strategyKind = input.strategyKind ?? inferStrategyKindFromRequest(request);
   const template = STRATEGY_TEMPLATES[strategyKind];
   const dietProfileActive = dietProfileFromAthleteDietType(request.dietType);
   const lifestyleClass = normalizeLifestyleActivityClass(input.lifestyleActivityClass ?? "moderate");
-  const sessions = input.plannedSessions?.length ? input.plannedSessions : extractPlannedSessionsFromRequest(request, input.ftpWatts ?? 250);
+  const sessions = input.plannedSessions?.length ? input.plannedSessions : extractPlannedSessionsFromRequest(request, ftpForEnergetics);
   const energyModel = computeNutritionDailyEnergyModel({
     athleteId: request.athleteId,
     date: request.planDate,
     weightKg: w,
-    ftpWatts: input.ftpWatts ?? null,
+    /* Il solver V1 continua a ricevere il default motore quando l'FTP manca, com'era prima
+       che i chiamanti passassero il grezzo: cambiarlo sposterebbe le kcal di chi non ha FTP
+       (calibrazione atleta), che è fuori dallo scopo della banda di assorbimento. */
+    ftpWatts: ftpForEnergetics,
     lifestyleActivityClass: lifestyleClass,
     dietDayMealsScalePct: input.dietDayMealsScalePct ?? 100,
     plannedTraining: sessions.map((s) => ({
@@ -6053,7 +6129,7 @@ function buildDailyNutritionRequirementsV2(input) {
   let trainingPro = 0;
   const substrateRates = [];
   for (const s of sessions) {
-    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+    const totals = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftpForEnergetics });
     trainingCho += totals.choG;
     trainingFat += totals.fatG;
     trainingPro += totals.proG;
@@ -6076,7 +6152,7 @@ function buildDailyNutritionRequirementsV2(input) {
   const dietScale = input.dietDayMealsScalePct != null && Number.isFinite(input.dietDayMealsScalePct) ? Math.max(0, Math.min(200, input.dietDayMealsScalePct)) / 100 : 1;
   const substrateTrainingKcal = roundG(
     sessions.reduce((sum, s) => {
-      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: input.ftpWatts ?? 250 });
+      const t = substrateTotalsForSession(s.avgPowerW, s.durationMin, { ftpW: ftpForEnergetics });
       return sum + t.kcalPerH * t.durationH;
     }, 0)
   );
@@ -6088,8 +6164,12 @@ function buildDailyNutritionRequirementsV2(input) {
       avgPowerW: s.avgPowerW,
       durationMin: s.durationMin
     })),
-    ftpW: input.ftpWatts ?? 250,
-    weightKg: w
+    /* GREZZI di proposito: il motore applica da sé default e pavimenti per l'energetica,
+       ma la fascia di capacità deve poter vedere che FTP o peso non sono mai stati
+       misurati (passando `w` = 45 di default un atleta senza peso sarebbe diventato
+       "elite" con l'FTP di un altro campo). */
+    ftpW: input.ftpWatts,
+    weightKg: input.weightKg
   }) : void 0;
   const fuelingKcal = substrateFueling?.totals.fuelingKcal ?? energyModel.totals.fuelingKcal;
   const mealsKcal = Math.max(800, Math.round(dailyKcal - fuelingKcal));
@@ -6304,8 +6384,9 @@ async function prepareIntelligentMealPlanContext(db, body) {
   const dietDay = resolveNutritionDietDay(row2?.nutrition_config ?? null, planDate, {
     preferredMealCount: row2?.preferred_meal_count
   });
-  const ftp = Number(row2?.ftp_watts) || 250;
-  const weightKg = Number(row2?.weight_kg) || 70;
+  const ftpMeasuredW = measuredPositive(Number(row2?.ftp_watts));
+  const weightMeasuredKg = measuredPositive(Number(row2?.weight_kg));
+  const ftp = ftpMeasuredW ?? 250;
   const plannedSessions = (Array.isArray(plannedRows) ? plannedRows : []).map((pr, idx) => {
     const notes = String(pr.notes ?? "");
     const bs = parsePro2BuilderSessionFromNotes(notes || null);
@@ -6332,8 +6413,9 @@ async function prepareIntelligentMealPlanContext(db, body) {
     profileRow: row2,
     dietDay,
     plannedSessions: sessions,
-    ftp,
-    weightKg,
+    /** MISURATI, `null` se il profilo non li ha: i default li mette il motore V2. */
+    ftp: ftpMeasuredW,
+    weightKg: weightMeasuredKg,
     performanceIntegration
   };
 }
@@ -6358,8 +6440,8 @@ function applyPerformanceIntegrationToSubstrateFueling(requirements, integration
     };
   }
   const sessions = sf.sessions.map((s) => {
-    const intraChoG2 = round4(s.intraChoG * scale);
-    const intraChoGPerH = s.durationH > 0 ? round4(intraChoG2 / s.durationH) : 0;
+    const intraChoG2 = round4(capChoGramsForDuration(s.intraChoG * scale, s.durationH));
+    const intraChoGPerH = s.durationH > 0 ? round4(capChoGPerHour(intraChoG2 / s.durationH)) : 0;
     return {
       ...s,
       intraChoG: intraChoG2,
@@ -6387,7 +6469,7 @@ function applyPerformanceIntegrationToSubstrateFueling(requirements, integration
     },
     provenance: [
       ...requirements.provenance,
-      `Integrazione performance: intra CHO scalato \xD7${scale} (cap evidence in composer fueling).`,
+      `Integrazione performance: intra CHO scalato \xD7${scale} (cap evidence in composer fueling, guardia assoluta ${ABSOLUTE_MAX_CHO_G_PER_HOUR} g/h).`,
       ...integration.rationale.slice(0, 3)
     ]
   };
@@ -8421,7 +8503,10 @@ async function buildMealPlanV2Production(input, admin) {
         requirements,
         request: input.request,
         dietDay: input.dietDay ?? null,
-        weightKg: input.weightKg,
+        /* Il peso su cui il fabbisogno È STATO costruito (default+pavimento del motore già
+           applicati): il day-engine deve classificare sullo stesso numero, non su un input
+           grezzo che ora può essere null quando il profilo non ha il peso. */
+        weightKg: requirements.weightKg,
         bodyFatPct: input.bodyFatPct ?? null,
         lifestyleActivityClass: input.lifestyleActivityClass ?? null,
         firstSessionStartMinutes: resolveFirstSessionStartMinutes({

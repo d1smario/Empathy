@@ -1,5 +1,10 @@
 import type { DailyNutritionRequirementsV2 } from "@empathy/contracts";
 import type { NutritionPerformanceIntegrationDials } from "@/lib/nutrition/performance-integration-scaler";
+import {
+  ABSOLUTE_MAX_CHO_G_PER_HOUR,
+  capChoGPerHour,
+  capChoGramsForDuration,
+} from "@/lib/nutrition/v2/fueling-from-substrates";
 
 function round(n: number, d = 1): number {
   const f = 10 ** d;
@@ -32,9 +37,15 @@ export function applyPerformanceIntegrationToSubstrateFueling(
     };
   }
 
+  /**
+   * GUARDIA ASSOLUTA anche qui: la scala performance moltiplica i grammi DOPO la banda
+   * di assorbimento, quindi è l'ultimo punto in cui un valore potrebbe sfondare il tetto.
+   * Oggi la banda arriva a 160 g/h e la scala max è 1,12 → 179 g/h: la rete non morde,
+   * ed è voluto (vedi `ABSOLUTE_MAX_CHO_G_PER_HOUR`).
+   */
   const sessions = sf.sessions.map((s) => {
-    const intraChoG = round(s.intraChoG * scale);
-    const intraChoGPerH = s.durationH > 0 ? round(intraChoG / s.durationH) : 0;
+    const intraChoG = round(capChoGramsForDuration(s.intraChoG * scale, s.durationH));
+    const intraChoGPerH = s.durationH > 0 ? round(capChoGPerHour(intraChoG / s.durationH)) : 0;
     return {
       ...s,
       intraChoG,
@@ -64,7 +75,7 @@ export function applyPerformanceIntegrationToSubstrateFueling(
     },
     provenance: [
       ...requirements.provenance,
-      `Integrazione performance: intra CHO scalato ×${scale} (cap evidence in composer fueling).`,
+      `Integrazione performance: intra CHO scalato ×${scale} (cap evidence in composer fueling, guardia assoluta ${ABSOLUTE_MAX_CHO_G_PER_HOUR} g/h).`,
       ...integration.rationale.slice(0, 3),
     ],
   };

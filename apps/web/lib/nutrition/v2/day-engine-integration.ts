@@ -27,11 +27,12 @@
  *   2. ripartizione dell'energia del training: 50% fueling intra, 40% pasti, 10% pre+post
  *      (vedi `daily-energy-solver`: AROUND_TRAINING_TOTAL / MEAL_TRAINING_FRACTION_DEFAULT).
  *   3. atleti performanti arrivano a 120–130 g/h di CHO, i triathleti fino a 160.
- *      COPERTURA REALE OGGI, da non sopravvalutare: il tier "elite" del solver si ferma a
- *      130 g/h (`daily-energy-solver.deriveEvidenceChoRange`) e il ramo che decide DAVVERO i
- *      grammi in V2 — `fueling-from-substrates.evidenceMaxChoGPerHour` — si ferma a 120 g/h.
- *      La fascia 120–130 è quindi coperta solo nel solver; i 160 g/h dei triathleti NON sono
- *      raggiungibili da nessuno dei due rami. Punto aperto, non risolto qui.
+ *      COPERTO (10 ago 2026): la banda che decide DAVVERO i grammi
+ *      (`fueling-from-substrates.evidenceMaxChoGPerHour`) non è più uguale per tutti — è una
+ *      tabella durata × intensità × CAPACITÀ dell'atleta (W/kg, stesse soglie del solver:
+ *      ≥4,2 alta, ≥4,8 elite) che arriva a 160 g/h su lunghe ad alta intensità per gli elite.
+ *      Le righe "base" sono invariate: chi non è allenato non cambia di un grammo.
+ *      Guardia assoluta a 200 g/h (`ABSOLUTE_MAX_CHO_G_PER_HOUR`), oggi inerte per costruzione.
  * Operativamente, ai pasti va:
  *   CHO_pasti = max(0, CHO_giorno − CHO_fueling_intra_grammi)  [flag se scatta il clamp]
  *   PRO_pasti = PRO_giorno; FAT_pasti = FAT_giorno (il fueling intra è essenzialmente solo CHO).
