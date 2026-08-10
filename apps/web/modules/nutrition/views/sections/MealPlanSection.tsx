@@ -22,6 +22,7 @@ import type { FoodDiaryEntryViewModel } from "@/api/nutrition/contracts";
 import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { RacePreLunchDayContext } from "@/lib/nutrition/race-day-pre-race-lunch";
+import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
 
 /**
  * Sezione "Meal plan" di NutritionPageView (decomposizione del God-component).
@@ -43,7 +44,12 @@ export type MealPlanSectionProps = {
   selectedPlanDate: string;
   setSelectedPlanDate: Dispatch<SetStateAction<string>>;
   platformAdminView: boolean;
+  /** True SOLO durante la generazione (evento). */
   intelligentMealLoading: boolean;
+  /** True mentre si LEGGE dal DB (piano persistito / requisiti profilo): stato distinto. */
+  planReadLoading: boolean;
+  /** Requisiti obbligatori mancanti: se non è vuoto la pagina dice cosa manca e NON genera. */
+  missingRequirements: OnboardingItemResult[];
   intelligentMealError: string | null;
   intelligentMealPlan: IntelligentMealPlanResponseBody | null;
   setIntelligentMealPlan: Dispatch<SetStateAction<IntelligentMealPlanResponseBody | null>>;
@@ -103,6 +109,8 @@ export function MealPlanSection({
   setSelectedPlanDate,
   platformAdminView,
   intelligentMealLoading,
+  planReadLoading,
+  missingRequirements,
   intelligentMealError,
   intelligentMealPlan,
   setIntelligentMealPlan,
@@ -187,6 +195,9 @@ export function MealPlanSection({
                     className="btn-nutrition-cta"
                     disabled={
                       intelligentMealLoading ||
+                      // Con requisiti obbligatori mancanti il generativo non parte: niente
+                      // piano degradato scritto nel DB e poi riletto per sempre.
+                      missingRequirements.length > 0 ||
                       !(mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady)
                     }
                     onClick={() => void handleGenerateIntelligentMealPlan()}
@@ -265,9 +276,14 @@ export function MealPlanSection({
           functionalMealSelectorNotes={effectiveFunctionalMealSelector?.notes ?? null}
           intelligentMealPlan={intelligentMealPlan}
           intelligentMealLoading={intelligentMealLoading}
+          planReadLoading={planReadLoading}
+          missingRequirements={missingRequirements}
           intelligentMealError={intelligentMealError}
           canRequestIntelligentPlan={
-            mealRows.length > 0 && Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady
+            missingRequirements.length === 0 &&
+            mealRows.length > 0 &&
+            Boolean(intelligentMealPlanRequest) &&
+            mealPlanGenerationReady
           }
           mealPathwayCatalogPending={
             Boolean(intelligentMealPlanRequest) && !mealPlanGenerationReady

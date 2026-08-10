@@ -78,10 +78,17 @@ export function mealPlanProbeKey(athleteId: string, planDate: string): string {
  * presente e della coppia atleta/giorno corrente) E non ha trovato payload.
  * MAI generazione con payload presente; MAI race lettura/generazione (probe assente
  * o di un altro giorno → si aspetta).
+ *
+ * REQUISITI DI PROFILO (decisione proprietario, 10 ago): con requisiti obbligatori
+ * mancanti non si genera NIENTE — la pagina dice all'atleta cosa manca. La rete di
+ * sicurezza (genera una volta) resta solo quando i requisiti ci sono TUTTI e il piano
+ * manca comunque: lì è un'anomalia, il cron non ha girato.
  */
 export function shouldAutoGenerateMealPlan(args: {
   /** Richiesta pronta (athleteId+profilo+request costruita). */
   requestReady: boolean;
+  /** Requisiti obbligatori ancora mancanti; `null` = non ancora letti → si aspetta. */
+  missingRequirementsCount: number | null;
   /** Esito lettura persistito; null = lettura non ancora risposta. */
   probe: MealPlanPersistedProbe;
   /** Chiave attesa per (atleta, giorno) correnti. */
@@ -94,6 +101,7 @@ export function shouldAutoGenerateMealPlan(args: {
   generationErrored: boolean;
 }): boolean {
   if (!args.requestReady) return false;
+  if (args.missingRequirementsCount === null || args.missingRequirementsCount > 0) return false;
   if (args.hasPlanInMemory || args.generationLoading || args.generationErrored) return false;
   return args.probe != null && args.probe.key === args.expectedProbeKey && !args.probe.found;
 }

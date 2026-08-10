@@ -31,6 +31,7 @@ import {
 } from "@/modules/nutrition/components/MealDayCarousel";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { PathwayMealSlotKey } from "@/lib/nutrition/pathway-meal-usda-slots";
+import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
 
 export type MealPlanDisplayRow = {
   key: string;
@@ -204,7 +205,20 @@ export type NutritionMealPlanWorkspaceProps = {
   /** Note complete del selettore (incl. direttiva / patch / integrazione). */
   functionalMealSelectorNotes: string[] | null;
   intelligentMealPlan: IntelligentMealPlanResponseBody | null;
+  /** True SOLO mentre il piano si sta generando (evento). Non usarlo per la lettura. */
   intelligentMealLoading: boolean;
+  /**
+   * True mentre si LEGGE il piano persistito dal DB (o i requisiti di profilo): stato
+   * DISTINTO dalla generazione — leggere non è generare, e dirlo confonde chi apre la
+   * pagina («sto generando» durante una semplice query è il bug che questo prop chiude).
+   */
+  planReadLoading?: boolean;
+  /**
+   * Requisiti di profilo OBBLIGATORI ancora mancanti (fonte unica:
+   * computeOnboardingCompleteness). Se non è vuoto NON si genera nulla: si dice
+   * all'atleta quali voci mancano e dove completarle.
+   */
+  missingRequirements?: OnboardingItemResult[];
   intelligentMealError: string | null;
   canRequestIntelligentPlan: boolean;
   /** True mentre i fetch USDA per i 5 slot non sono completati (il pulsante resta disabilitato). */
@@ -253,6 +267,8 @@ export function NutritionMealPlanWorkspace({
   functionalMealSelectorNotes,
   intelligentMealPlan,
   intelligentMealLoading,
+  planReadLoading = false,
+  missingRequirements = [],
   intelligentMealError,
   canRequestIntelligentPlan,
   mealPathwayCatalogPending = false,
@@ -282,8 +298,19 @@ export function NutritionMealPlanWorkspace({
   hydrationIntakeBusy,
 }: NutritionMealPlanWorkspaceProps) {
   const t = useTranslations("NutritionMealPlanView");
+  /** Etichette dei requisiti: STESSO dizionario della sala d'attesa onboarding (nessun secondo elenco). */
+  const tOnboarding = useTranslations("Onboarding");
   const router = useRouter();
   const { role: viewerRole, adminScoped } = useActiveAthlete();
+  const requirementLabel = (item: OnboardingItemResult) => {
+    const key = `items.${item.key}.label`;
+    return tOnboarding.has(key) ? tOnboarding(key) : item.label;
+  };
+  const requirementUnlocks = (item: OnboardingItemResult) => {
+    const key = `items.${item.key}.unlocks`;
+    return tOnboarding.has(key) ? tOnboarding(key) : item.unlocks;
+  };
+  const requirementsBlocking = missingRequirements.length > 0;
 
   /** Slot diario per slot piano: gli snack del piano collassano su "snack" (contratto POST diary). */
   const diaryEntriesForSlot = (slotKey: string) => {
@@ -489,75 +516,62 @@ export function NutritionMealPlanWorkspace({
               {/* «Avviso legale e note aggiuntive» rimosso (feedback utente 2026-07):
                   il disclaimer piattaforma vive in /termini, il rimando a Integratori
                   sta già in «Adattamento del giorno». */}
-              {showTech ? (
-              <details className="collapsible-card" style={{ marginBottom: 12 }}>
-                <summary style={{ fontSize: 13, cursor: "pointer" }}>
-                  {t("technicalNumbersSummary")}
-                </summary>
-                <div className="muted-copy" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
-                  <p style={{ marginBottom: 8 }}>
-                    {t.rich("planCombinesNote", {
-                      b: (chunks) => <strong>{chunks}</strong>,
-                      total: intelligentMealPlan.solverBasis.dailyMealsKcalTotal,
-                      date: intelligentMealPlan.solverBasis.planDate,
-                    })}
-                  </p>
-                  {intelligentMealPlan.solverBasis.profileConstraintLines.length ? (
-                    <ul style={{ margin: "0 0 8px 18px" }}>
-                      {intelligentMealPlan.solverBasis.profileConstraintLines.map((l) => (
-                        <li key={l}>{l}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {intelligentMealPlan.solverBasis.pathwayModulationActiveLabels?.trim() ? (
-                    <p style={{ marginBottom: 8 }}>
-                      <strong>{t("activePathwayModulation")}</strong>:{" "}
-                      {intelligentMealPlan.solverBasis.pathwayModulationActiveLabels.trim()}
-                      {" · "}
-                      <span className="text-gray-400">
-                        {t("micronutrientBoostsNote")}
-                      </span>
-                    </p>
-                  ) : null}
-                  {intelligentMealPlan.solverBasis.integrationLeverLines.length ? (
-                    <p style={{ marginBottom: 8 }}>
-                      <strong>{t("operationalIntegration")}</strong>: {intelligentMealPlan.solverBasis.integrationLeverLines.join(" · ")}
-                    </p>
-                  ) : null}
-                  {intelligentMealPlan.solverBasis.routineDigest ? (
-                    <p style={{ marginBottom: 8 }}>
-                      <strong>Routine</strong>: {intelligentMealPlan.solverBasis.routineDigest}
-                    </p>
-                  ) : null}
-                  {intelligentMealPlan.solverBasis.trainingDayLines.length ? (
-                    <p style={{ marginBottom: 8 }}>
-                      <strong>{t("trainingForTheDay")}</strong>: {intelligentMealPlan.solverBasis.trainingDayLines.join(" | ")}
-                    </p>
-                  ) : null}
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 10 }}>
-                    {intelligentMealPlan.solverBasis.slots.map((s) => (
-                      <li key={s.slot}>
-                        {s.labelIt} {s.scheduledTimeLocal ? `@ ${s.scheduledTimeLocal}` : ""}: {s.targetKcal} kcal · {s.targetCarbsG} CHO ·{" "}
-                        {s.targetProteinG} PRO · {s.targetFatG} {t("fatUnit")}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </details>
-              ) : null}
+              {/* «Numeri tecnici del giorno» RIMOSSO (decisione proprietario, 10 ago):
+                  il pannello coach/admin con Σ kcal solver, pathway modulation, righe
+                  training e target per slot non serve più — i numeri che contano vivono
+                  nel «Bilancio kcal» del target giornaliero e nelle card pasto. */}
             </>
           ) : null}
           {!intelligentMealPlan ? (
             <div className="empathy-meal-plan-expo-shell">
-              <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
-                {intelligentMealLoading
-                  ? t("generatingMealPlan")
-                  : canRequestIntelligentPlan
-                    ? t("readyToGenerate")
-                    : mealPathwayCatalogPending
-                      ? t("loadingUsdaCatalog")
-                      : t("profileDietRequired")}
-              </p>
+              {/* Piano assente: PRIMA si dice cosa manca. Il generativo senza i dati
+                  obbligatori non parte, quindi non si genera e non si mente all'atleta. */}
+              {requirementsBlocking ? (
+                <div
+                  className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-left"
+                  role="status"
+                >
+                  <p className="mb-2 text-[13px] font-semibold leading-snug text-amber-100">
+                    {t("missingRequirementsTitle")}
+                  </p>
+                  <ul className="m-0 grid list-none gap-2 p-0">
+                    {missingRequirements.map((item) => (
+                      <li key={item.key} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0">
+                          <span className="block text-[12px] font-semibold text-amber-50">{requirementLabel(item)}</span>
+                          <span className="block text-[11px] leading-snug text-amber-100/70">{requirementUnlocks(item)}</span>
+                        </span>
+                        {/* Nelle schede admin il deep-link porterebbe lo staff sul PROPRIO
+                            profilo, non su quello dell'atleta guardato: lì il bottone non si
+                            rende affatto, invece di renderlo inerte al click. */}
+                        {adminScoped ? null : (
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-100 transition-colors hover:border-amber-300/60 hover:bg-amber-500/20"
+                            onClick={() => router.push(item.href)}
+                          >
+                            {tOnboarding("complete")}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mb-0 mt-2.5 text-[11px] leading-snug text-amber-100/70">
+                    {t("missingRequirementsHint")}
+                  </p>
+                </div>
+              ) : (
+                <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
+                  {/* LETTURA ≠ GENERAZIONE: mentre la query è in volo si dice «carico», mai «genero». */}
+                  {planReadLoading
+                    ? t("loadingPersistedPlan")
+                    : intelligentMealLoading || canRequestIntelligentPlan
+                      ? t("preparingTodayPlan")
+                      : mealPathwayCatalogPending
+                        ? t("loadingUsdaCatalog")
+                        : t("profileDietRequired")}
+                </p>
+              )}
               {/* Scheletro card con solo i target del solver. Nessun item farlocco
                   (in passato il piano base distribuiva kcal_target/n_righe a ciascun
                   alimento, producendo numeri irrealistici tipo 1 banana = 320 kcal).

@@ -103,6 +103,7 @@ test("guardia: accetta entrambi i layer noti, rifiuta il resto", () => {
 const KEY = mealPlanProbeKey("ath-1", "2026-08-10");
 const baseGate = {
   requestReady: true,
+  missingRequirementsCount: 0,
   probe: { key: KEY, found: false },
   expectedProbeKey: KEY,
   hasPlanInMemory: false,
@@ -140,4 +141,17 @@ test("gate: generazione in corso o fallita → niente retry-loop", () => {
 
 test("gate: request non pronta → attesa", () => {
   assert.equal(shouldAutoGenerateMealPlan({ ...baseGate, requestReady: false }), false);
+});
+
+test("gate: requisiti di profilo mancanti → MAI generazione (si dice cosa manca)", () => {
+  assert.equal(shouldAutoGenerateMealPlan({ ...baseGate, missingRequirementsCount: 1 }), false);
+  assert.equal(shouldAutoGenerateMealPlan({ ...baseGate, missingRequirementsCount: 5 }), false);
+});
+
+test("gate: requisiti non ancora letti → attesa, nessuna generazione al buio", () => {
+  assert.equal(shouldAutoGenerateMealPlan({ ...baseGate, missingRequirementsCount: null }), false);
+});
+
+test("gate: requisiti completi + piano assente → rete di sicurezza, genera UNA volta", () => {
+  assert.equal(shouldAutoGenerateMealPlan({ ...baseGate, missingRequirementsCount: 0 }), true);
 });

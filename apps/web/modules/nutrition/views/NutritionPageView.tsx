@@ -201,6 +201,8 @@ import {
   shouldAutoGenerateMealPlan,
   type MealPlanPersistedProbe,
 } from "@/modules/nutrition/services/persisted-meal-plan";
+import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
+import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
 import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intelligent-meal-plan-v2-api";
 import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
@@ -516,6 +518,14 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
    * {found:true} = payload idratato dal DB, {found:false} = miss → si genera UNA volta.
    */
   const [persistedPlanProbe, setPersistedPlanProbe] = useState<MealPlanPersistedProbe>(null);
+  /**
+   * Requisiti di profilo OBBLIGATORI ancora mancanti (fonte unica: il motore di
+   * completezza onboarding, lo stesso della sala d'attesa e della mail). `null` = non
+   * ancora letto. Quando NON è vuoto la pagina dice cosa manca e NON genera nulla:
+   * senza questi dati il generativo non parte e l'atleta ricadrebbe sul comportamento
+   * vecchio senza capire perché.
+   */
+  const [missingRequiredOnboarding, setMissingRequiredOnboarding] = useState<OnboardingItemResult[] | null>(null);
   /** Bump → il probe rilegge il DB (refresh modulo con input solver cambiati). */
   const [persistedProbeVersion, setPersistedProbeVersion] = useState(0);
   /** Specchio del piano in memoria per il callback async del probe: se una generazione
@@ -2354,6 +2364,52 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [athleteId, selectedPlanDate, persistedProbeVersion, hydrateFromPlanBody]);
 
   /**
+   * Requisiti di profilo: lettura browser→Supabase (RLS scoped) con lo STESSO motore
+   * dell'onboarding — nessun secondo elenco di requisiti in giro per il codice.
+   * In caso di client assente o errore si degrada a «nessun requisito mancante»: un
+   * problema di lettura non deve mai trasformarsi in un blocco fantasma del piano.
+   */
+  useEffect(() => {
+    if (!athleteId) {
+      setMissingRequiredOnboarding(null);
+      return;
+    }
+    let cancelled = false;
+    setMissingRequiredOnboarding(null);
+    void (async () => {
+      let missing: OnboardingItemResult[] = [];
+      try {
+        const supabase = createEmpathyBrowserSupabase();
+        if (supabase) {
+          missing = (await loadOnboardingCompleteness(supabase, athleteId)).required.missing;
+        }
+      } catch (e) {
+        console.error("[nutrition] lettura requisiti onboarding fallita:", e);
+      }
+      if (!cancelled) setMissingRequiredOnboarding(missing);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [athleteId]);
+
+  /** Requisiti mancanti → si mostra COSA manca, non si genera (decisione proprietario). */
+  const mealPlanMissingRequirements = useMemo(
+    () => missingRequiredOnboarding ?? [],
+    [missingRequiredOnboarding],
+  );
+  /**
+   * LETTURA in volo (piano persistito o requisiti): stato DISTINTO dalla generazione.
+   * Il probe risponde per la coppia (atleta, giorno) corrente: finché la chiave non
+   * combacia si sta ancora leggendo, e la pagina non deve dire «sto generando».
+   */
+  const mealPlanReadLoading =
+    Boolean(athleteId) &&
+    (missingRequiredOnboarding === null ||
+      persistedPlanProbe == null ||
+      persistedPlanProbe.key !== mealPlanProbeKey(athleteId ?? "", selectedPlanDate));
+
+  /**
    * Generazione come EVENTO, non effetto collaterale dell'apertura (decisione 8 ago).
    * L'auto-generazione scatta SOLO dopo che la lettura read-first ha risposto (probe
    * della coppia atleta/giorno corrente) E non ha trovato payload: prima volta per il
@@ -2368,6 +2424,10 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     if (
       !shouldAutoGenerateMealPlan({
         requestReady: Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady,
+        // Requisiti non ancora letti, o mancanti: NON si genera. La vista mostra
+        // l'elenco delle voci da completare; la rete di sicurezza vale solo quando i
+        // requisiti ci sono tutti e il piano manca comunque (cron non girato).
+        missingRequirementsCount: missingRequiredOnboarding?.length ?? null,
         probe: persistedPlanProbe,
         expectedProbeKey: mealPlanProbeKey(athleteId, selectedPlanDate),
         hasPlanInMemory: intelligentMealPlan != null,
@@ -2381,6 +2441,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [
     athleteId,
     selectedPlanDate,
+    missingRequiredOnboarding,
     persistedPlanProbe,
     intelligentMealPlanRequest,
     mealPlanGenerationReady,
@@ -3476,6 +3537,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               setSelectedPlanDate={setSelectedPlanDate}
               platformAdminView={platformAdminView}
               intelligentMealLoading={intelligentMealLoading}
+              planReadLoading={mealPlanReadLoading}
+              missingRequirements={mealPlanMissingRequirements}
               intelligentMealError={intelligentMealError}
               intelligentMealPlan={intelligentMealPlan}
               setIntelligentMealPlan={setIntelligentMealPlanFromSection}

@@ -2930,14 +2930,6 @@
     "coachExclusionsForRegen": " · {count} exclusions for regeneration",
     "showAllItems": "Show all items",
     "clearSessionExclusions": "Clear session exclusions",
-    "technicalNumbersSummary": "Technical numbers for the day (training, routine, target per meal)",
-    "planCombinesNote": "This plan <b>combines</b> the grid targets (kcal/macros per meal from the daily model with the selected session) with the assembly of food items. Σ meals kcal: <b>{total}</b> · date {date}",
-    "activePathwayModulation": "Active pathway modulation",
-    "micronutrientBoostsNote": "The micronutrient boosts in the notes follow the cofactors of these pathways, not the composer's food list.",
-    "operationalIntegration": "Operational integration (solver)",
-    "trainingForTheDay": "Training for the day",
-    "generatingMealPlan": "Generating the meal plan aligned to your profile (deterministic calculation + USDA)…",
-    "readyToGenerate": "Ready to generate the plan. Auto-generation in progress…",
     "loadingUsdaCatalog": "Loading USDA catalog for the selected day…",
     "profileDietRequired": "Profile → Diet requires a % split per meal. Save the profile and reload.",
     "sublineLoadingPathways": "{time} · loading metabolic pathways",
@@ -2949,7 +2941,10 @@
     "saving": "Saving...",
     "saveNutritionConfig": "Save nutrition configuration",
     "saveNutritionHint": "Saves meal split, refueling and forecast to the profile (does not regenerate the plan).",
-    "fatUnit": "fat"
+    "loadingPersistedPlan": "Loading your plan…",
+    "preparingTodayPlan": "Preparing today's plan…",
+    "missingRequirementsTitle": "To build your plan we still need…",
+    "missingRequirementsHint": "Complete these details in your profile: as soon as they are there, Empathy prepares the plan."
   },
   "NutritionMicronutrientGrid": {
     "vitamins": "Vitamins",

@@ -2930,14 +2930,6 @@
     "coachExclusionsForRegen": " · {count} esclusioni per rigenerazione",
     "showAllItems": "Mostra tutte le voci",
     "clearSessionExclusions": "Azzera esclusioni sessione",
-    "technicalNumbersSummary": "Numeri tecnici del giorno (allenamento, routine, target per pasto)",
-    "planCombinesNote": "Questo piano <b>combina</b> i target della griglia (kcal/macro per pasto da modello giornaliero con seduta selezionata) con l'assemblaggio delle voci alimentari. Σ kcal pasti: <b>{total}</b> · data {date}",
-    "activePathwayModulation": "Pathway modulation attivi",
-    "micronutrientBoostsNote": "I boost micronutrienti nelle note seguono i cofactors di questi pathway, non la lista alimenti del composer.",
-    "operationalIntegration": "Integrazione operativa (solver)",
-    "trainingForTheDay": "Training sul giorno",
-    "generatingMealPlan": "Sto generando il piano pasti allineato al tuo profilo (calcolo deterministico + USDA)…",
-    "readyToGenerate": "Pronto a generare il piano. Auto-generazione in corso…",
     "loadingUsdaCatalog": "Caricamento catalogo USDA per il giorno selezionato…",
     "profileDietRequired": "Profile → Diet richiede ripartizione % per pasto. Salva il profilo e ricarica.",
     "sublineLoadingPathways": "{time} · caricamento vie metaboliche",
@@ -2949,7 +2941,10 @@
     "saving": "Salvataggio...",
     "saveNutritionConfig": "Salva configurazione nutrizione",
     "saveNutritionHint": "Salva nel profilo ripartizione pasti, rifornimento e previsione (non rigenera il piano).",
-    "fatUnit": "grassi"
+    "loadingPersistedPlan": "Carico il tuo piano…",
+    "preparingTodayPlan": "Preparo il piano di oggi…",
+    "missingRequirementsTitle": "Per costruire il tuo piano manca ancora…",
+    "missingRequirementsHint": "Completa questi dati nel profilo: appena ci sono, Empathy prepara il piano."
   },
   "NutritionMicronutrientGrid": {
     "vitamins": "Vitamine",
