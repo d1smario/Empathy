@@ -32,6 +32,7 @@ import {
   clonePlannedWorkout,
   fetchCoachLibraryItems,
 } from "@/modules/training/services/training-library-api";
+import { deletePlannedWorkout } from "@/modules/training/services/training-planned-api";
 import { loadAerobicStarterPresetsClient } from "@/lib/training/library/aerobic-starter-presets-client";
 import type { AerobicStarterPreset } from "@/lib/training/library/starter-pack-aerobic";
 import type { CoachWorkoutLibraryItemView } from "@/lib/training/library/coach-workout-library-types";
@@ -160,6 +161,31 @@ export function CoachCalendarBoardView() {
   const onPickSource = useCallback((payload: CoachCalendarDragPayload, title: string) => {
     setPending({ kind: "source", payload, title });
   }, []);
+
+  // ELIMINA seduta pianificata — riusa `deletePlannedWorkout` (DELETE /api/training/planned),
+  // la stessa API del calendario atleta. Distruttiva e non annullabile → conferma esplicita
+  // PRIMA della chiamata (stesso pattern di TrainingCalendarAnalyzer). A esito, `refetchWeek`
+  // come fanno copia/modifica: la griglia si riallinea al DB, niente stato locale ottimistico.
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const onDeletePlanned = useCallback(
+    async (row: CoachCalendarPlannedRow, athleteId: string) => {
+      const id = row.id;
+      if (!id || deleteBusy) return;
+      if (!window.confirm(t("confirmDeletePlanned"))) return;
+      setDeleteBusy(true);
+      setDropFeedback(null);
+      try {
+        await deletePlannedWorkout({ id, athleteId });
+        setDropFeedback({ tone: "ok", text: t("deletedToast") });
+        refetchWeek();
+      } catch {
+        setDropFeedback({ tone: "error", text: t("deleteError") });
+      } finally {
+        setDeleteBusy(false);
+      }
+    },
+    [deleteBusy, refetchWeek, t],
+  );
 
   const onAssignInto = useCallback(
     async (athleteId: string, dateIso: string) => {
@@ -434,6 +460,7 @@ export function CoachCalendarBoardView() {
             </span>
           ) : null}
           {dropBusy || assignBusy ? <span className="text-[0.7rem] text-cyan-300">{t("assigning")}</span> : null}
+          {deleteBusy ? <span className="text-[0.7rem] text-rose-300">{t("deleting")}</span> : null}
           {weekLoading && athleteIds.length > 0 ? (
             <span className="text-[0.7rem] text-gray-500">{t("weekLoading")}</span>
           ) : null}
@@ -512,6 +539,7 @@ export function CoachCalendarBoardView() {
           onOpenExecuted={openExecuted}
           onEditPlanned={onEditPlanned}
           onCopyPlanned={onCopyPlanned}
+          onDeletePlanned={onDeletePlanned}
           onAssignInto={onAssignInto}
           onCopyWeek={onCopyWeek}
           copyWeekSource={copyWeekSource}
@@ -519,6 +547,7 @@ export function CoachCalendarBoardView() {
           onCancelCopyWeek={cancelCopyWeek}
           assignActive={pending != null}
           assignBusy={assignBusy}
+          deleteBusy={deleteBusy}
           assignHereLabel={pending?.kind === "source" ? t("assignHere") : t("pasteHere")}
           copyWeekBusy={copyWeekBusy}
           onDropSession={onDropSession}

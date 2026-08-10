@@ -38,6 +38,7 @@ export function CoachCalendarWeekGrid({
   onOpenExecuted,
   onEditPlanned,
   onCopyPlanned,
+  onDeletePlanned,
   onAssignInto,
   onCopyWeek,
   copyWeekSource,
@@ -45,6 +46,7 @@ export function CoachCalendarWeekGrid({
   onCancelCopyWeek,
   assignActive,
   assignBusy,
+  deleteBusy,
   assignHereLabel,
   copyWeekBusy,
   onDropSession,
@@ -61,6 +63,8 @@ export function CoachCalendarWeekGrid({
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
   /** Mette una riga planned «in mano» alla board (poi si assegna cliccando un giorno). */
   onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Elimina una seduta pianificata (conferma + chiamata API a monte, nella board). */
+  onDeletePlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
   /** Assegna la seduta «in mano» (copia o sorgente) a una cella (atleta × giorno). */
   onAssignInto?: (athleteId: string, dateIso: string) => void;
   /** Copia l'intera settimana dell'atleta sorgente su un altro atleta. */
@@ -75,6 +79,8 @@ export function CoachCalendarWeekGrid({
   assignActive?: boolean;
   /** True durante un'assegnazione in corso. */
   assignBusy?: boolean;
+  /** True durante un'eliminazione in corso (disabilita i cestini). */
+  deleteBusy?: boolean;
   /** Etichetta del bottone cella: «Incolla qui» (copia) o «Assegna qui» (sorgente). */
   assignHereLabel?: string;
   /** True durante una copia settimana in corso (disabilita i trigger). */
@@ -121,9 +127,10 @@ export function CoachCalendarWeekGrid({
                 copyWeekSource === athlete.id ? "z-30" : "z-10"
               }`}
             >
+              {/* Solo nome e cognome: l'email sotto il nome è rumore in una colonna da 7-11rem
+                  (e `formatAthleteLabel` ricade già sull'email quando il nome manca). */}
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-white">{formatAthleteLabel(athlete)}</p>
-                {athlete.email ? <p className="truncate text-[0.7rem] text-gray-500">{athlete.email}</p> : null}
               </div>
               {onCopyWeek ? (
                 <CopyWeekTrigger
@@ -147,12 +154,15 @@ export function CoachCalendarWeekGrid({
                   onOpenExecuted={onOpenExecuted}
                   onEditPlanned={onEditPlanned}
                   onCopyPlanned={onCopyPlanned}
+                  onDeletePlanned={onDeletePlanned}
                   onAssignInto={onAssignInto}
                   assignActive={assignActive}
                   assignBusy={assignBusy}
+                  deleteBusy={deleteBusy}
                   onDropSession={onDropSession}
                   editActionLabel={t("editAction")}
                   copyActionLabel={t("copyAction")}
+                  deleteActionLabel={t("deleteAction")}
                   assignHereLabel={assignHereLabel ?? t("pasteHere")}
                   emptyHint={t("cellEmpty")}
                   dropHint={t("dropHint")}

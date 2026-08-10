@@ -491,10 +491,18 @@ export function BuilderManualComposer({
     setActiveIndex((i) => (i > index ? i + 1 : i));
   };
 
+  /** Elimina il blocco `index`. L'indice attivo NON deve mai «risvegliarsi» qui: il popup
+   *  editor è pilotato da `activeIndex >= 0`, quindi il vecchio `Math.max(0, …)` alzava a 0
+   *  anche un -1 (nessuna selezione) e la «x» sulla barra CANCELLAVA e APRIVA l'editor nello
+   *  stesso clic. Regole: nessuna selezione → resta nessuna selezione; elimino il blocco
+   *  aperto → chiudo il popup (-1); blocco attivo dopo quello eliminato → shifta di uno. */
   const removeBlockAt = (index: number) => {
     if (manualPlanBlocks.length <= 1) return;
     setManualPlanBlocks((p) => p.filter((_, i) => i !== index));
-    setActiveIndex((i) => Math.max(0, Math.min(i > index ? i - 1 : i, manualPlanBlocks.length - 2)));
+    setActiveIndex((i) => {
+      if (i < 0 || i === index) return -1;
+      return i > index ? i - 1 : i;
+    });
   };
 
   // ——— Azioni MASSIVE sui blocchi marcati (selezione multipla) ———

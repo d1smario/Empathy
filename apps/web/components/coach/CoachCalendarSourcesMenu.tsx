@@ -22,8 +22,12 @@ export type CoachCalendarSourceTab = "coach" | "empathy";
  * (nessun polyfill touch) e `/calendario` non ha una rotta mobile dedicata, quindi da iPad il
  * coach riceve questa stessa board e trascinare è impossibile. Cliccare una voce riempie la
  * «mano» della board e il pannello si chiude subito: le celle restano libere per il click.
- * Il trascinamento resta come scorciatoia per il mouse — per questo il pannello NON si chiude
- * su `dragstart`/`drop` e ignora il pointerdown-fuori mentre un drag partito da qui è in volo.
+ * Il trascinamento resta come scorciatoia per il mouse. Il pannello NON si chiude su
+ * `dragstart` (smontare il nodo trascinato annullerebbe il drag HTML5) e ignora il
+ * pointerdown-fuori mentre un drag partito da qui è in volo: si chiude su `dragend`, cioè
+ * appena il coach molla la seduta — a gesto CONCLUSO, riuscito o annullato (`drop` sulla
+ * cella precede sempre `dragend` sulla sorgente, quindi il payload è già stato letto). Così
+ * il pannello non copre più le celle sotto dopo il rilascio.
  */
 export function CoachCalendarSourcesMenu({
   open,
@@ -117,8 +121,11 @@ export function CoachCalendarSourcesMenu({
     draggingRef.current = true;
     onDragStartSource(e, payload);
   };
+  /** Fine gesto (drop andato a segno o drag annullato): il pannello si chiude. Sicuro qui e
+   *  NON su `dragstart` — a `dragend` il browser ha già consegnato il payload al bersaglio. */
   const endDrag = () => {
     draggingRef.current = false;
+    onOpenChange(false);
   };
 
   return (

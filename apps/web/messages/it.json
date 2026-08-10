@@ -4127,7 +4127,12 @@
     "cancelSelection": "Annulla selezione",
     "assignHintIdle": "Apri «Sedute», scegli una seduta e poi clicca il giorno dell’atleta a cui assegnarla.",
     "assignHintActive": "Ora clicca «Assegna qui» sul giorno dell’atleta. Esc annulla la selezione.",
-    "unplannedBadgeShort": "N.P."
+    "unplannedBadgeShort": "N.P.",
+    "deleteAction": "Elimina seduta",
+    "confirmDeletePlanned": "Eliminare questa seduta pianificata? L’operazione non si può annullare.",
+    "deletedToast": "Seduta eliminata",
+    "deleteError": "Eliminazione non riuscita: riprova.",
+    "deleting": "Elimino…"
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "Non puoi accettare il tuo stesso invito: questo link va inviato al tuo coach.",

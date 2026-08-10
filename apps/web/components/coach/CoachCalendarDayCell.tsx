@@ -2,7 +2,7 @@
 
 import { useState, type DragEvent } from "react";
 import type { ExecutedWorkout } from "@empathy/domain-training";
-import { ClipboardPaste, Copy, Pencil } from "lucide-react";
+import { ClipboardPaste, Copy, Pencil, Trash2 } from "lucide-react";
 import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import { plannedCalendarChipViewModel, type PlannedWorkoutFamily } from "@/lib/training/planned-workout-display";
@@ -45,12 +45,15 @@ export function CoachCalendarDayCell({
   onOpenExecuted,
   onEditPlanned,
   onCopyPlanned,
+  onDeletePlanned,
   onAssignInto,
   assignActive,
   assignBusy,
+  deleteBusy,
   onDropSession,
   editActionLabel,
   copyActionLabel,
+  deleteActionLabel,
   assignHereLabel,
   emptyHint,
   dropHint,
@@ -72,18 +75,24 @@ export function CoachCalendarDayCell({
   onEditPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
   /** Mette una riga planned «in mano» alla board (poi si assegna cliccando un giorno). */
   onCopyPlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
+  /** Elimina la seduta pianificata. La CONFERMA vive a monte (board): è distruttiva. */
+  onDeletePlanned?: (row: CoachCalendarPlannedRow, athleteId: string) => void;
   /** Assegna la seduta «in mano» della board a questa cella (atleta × giorno). */
   onAssignInto?: (athleteId: string, dateIso: string) => void;
   /** True quando la board ha una seduta «in mano»: mostra il bottone di assegnazione. */
   assignActive?: boolean;
   /** True durante un'assegnazione in corso (disabilita i bottoni). */
   assignBusy?: boolean;
+  /** True durante un'eliminazione in corso (disabilita i cestini della griglia). */
+  deleteBusy?: boolean;
   /** Drop di una card libreria/preset sulla cella → assegna la seduta all'atleta in quella data. */
   onDropSession?: (input: { payload: CoachCalendarDragPayload; athleteId: string; dateIso: string }) => void;
   /** aria-label «Modifica seduta» (già tradotto). */
   editActionLabel?: string;
   /** aria-label «Copia seduta» (già tradotto). */
   copyActionLabel?: string;
+  /** aria-label «Elimina seduta» (già tradotto). */
+  deleteActionLabel?: string;
   /** Etichetta bottone assegnazione: «Incolla qui» o «Assegna qui» (già tradotto). */
   assignHereLabel?: string;
   /** Testo screen-reader/placeholder per la cella vuota (già tradotto). */
@@ -198,6 +207,7 @@ export function CoachCalendarDayCell({
               const chip = plannedCalendarChipViewModel(coachCalendarRowToPlannedWorkout(row), { athleteFtpWatts });
               const canEdit = Boolean(onEditPlanned && athleteId && row.id);
               const canCopy = Boolean(onCopyPlanned && athleteId && row.id);
+              const canDelete = Boolean(onDeletePlanned && athleteId && row.id);
               return (
                 <div
                   key={row.id ?? `${row.date}-${idx}`}
@@ -209,7 +219,7 @@ export function CoachCalendarDayCell({
                   <div className="flex min-w-0 items-center gap-1">
                     {chip.glyph ? <SportDisciplineGlyph glyph={chip.glyph} className="h-3.5 w-3.5 shrink-0" /> : null}
                     <span className="truncate text-[0.65rem] font-bold uppercase tracking-wide">{chip.sportLabel}</span>
-                    {canCopy || canEdit ? (
+                    {canCopy || canEdit || canDelete ? (
                       <div className="ml-auto flex shrink-0 items-center gap-0.5">
                         {canCopy ? (
                           <button
@@ -231,6 +241,20 @@ export function CoachCalendarDayCell({
                             className="flex h-4 w-4 items-center justify-center rounded text-current opacity-60 transition hover:opacity-100"
                           >
                             <Pencil className="h-3 w-3" aria-hidden />
+                          </button>
+                        ) : null}
+                        {/* ELIMINA per ultimo (dopo copia/modifica): l'azione distruttiva sta
+                            lontano da quelle innocue. La conferma è a monte, nella board. */}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            disabled={deleteBusy}
+                            onClick={() => onDeletePlanned!(row, athleteId as string)}
+                            aria-label={deleteActionLabel}
+                            title={deleteActionLabel}
+                            className="flex h-4 w-4 items-center justify-center rounded text-current opacity-60 transition enabled:hover:text-rose-200 enabled:hover:opacity-100 disabled:cursor-default disabled:opacity-30"
+                          >
+                            <Trash2 className="h-3 w-3" aria-hidden />
                           </button>
                         ) : null}
                       </div>

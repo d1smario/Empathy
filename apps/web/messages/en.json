@@ -4127,7 +4127,12 @@
     "cancelSelection": "Clear selection",
     "assignHintIdle": "Open “Sessions”, pick one, then click the day of the athlete you want it assigned to.",
     "assignHintActive": "Now click “Assign here” on the athlete’s day. Esc clears the selection.",
-    "unplannedBadgeShort": "N/P"
+    "unplannedBadgeShort": "N/P",
+    "deleteAction": "Delete session",
+    "confirmDeletePlanned": "Delete this planned session? This can’t be undone.",
+    "deletedToast": "Session deleted",
+    "deleteError": "Deletion failed: please try again.",
+    "deleting": "Deleting…"
   },
   "CoachInviteTokenClient": {
     "errorCannotSelf": "You can't accept your own invite: this link should be sent to your coach.",
