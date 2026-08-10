@@ -100,7 +100,8 @@ export async function loadAthleteRenderProfile(
   athleteId: string,
 ): Promise<AthleteRenderContext> {
   const [physRes, athleteRes] = await Promise.all([
-    // physiological_profiles è versionata (valid_from/valid_to): si prende la più recente.
+    // physiological_profiles NON è versionata: UNIQUE (athlete_id) garantisce una riga
+    // sola per atleta, quindi l'order-by qui sotto è ridondante (vedi profile-resolver.ts).
     client
       .from("physiological_profiles")
       .select("ftp_watts, lt1_watts, lt1_heart_rate, lt2_watts, lt2_heart_rate, updated_at")

@@ -157,6 +157,45 @@ export const dietOptions = [
   "gluten-free",
 ];
 
+/**
+ * Cucine proposte come chip nel tab Alimentazione. Vivono nella STESSA colonna DB delle
+ * preferenze alimentari libere (`athlete_profiles.food_preferences`), quindi la lista deve
+ * essere condivisa fra chi disegna i chip e chi idrata il form: senza, l'idratazione non
+ * saprebbe quali token del DB appartengono a un chip e quali no.
+ */
+export const preferredCuisines = ["mediterranea", "asiatica", "thai", "messicana", "nordic"] as const;
+
+/**
+ * Divide `athlete_profiles.food_preferences` nelle due leve che scrivono su quella colonna:
+ * i token che corrispondono a un chip cucina (→ `cuisines`, così il chip risulta SELEZIONATO
+ * al reload e ri-cliccarlo lo toglie davvero) e tutto il resto (→ `food_preferences`, che il
+ * salvataggio riscrive identico).
+ *
+ * Serve a evitare un cricchetto a senso unico: se `cuisines` ripartisse vuoto e il salvataggio
+ * facesse l'unione con la colonna, un token già in DB non potrebbe più essere rimosso da
+ * nessuna superficie. Il confronto è case-insensitive ma il token canonico (quello del chip)
+ * vince, così il valore riscritto in DB resta stabile.
+ */
+export function splitFoodPreferences(values: readonly string[] | null | undefined): {
+  cuisines: string[];
+  rest: string[];
+} {
+  const canonicalByLower = new Map(preferredCuisines.map((c) => [c.toLowerCase(), c as string]));
+  const cuisines: string[] = [];
+  const rest: string[] = [];
+  for (const raw of values ?? []) {
+    const token = String(raw ?? "").trim();
+    if (!token) continue;
+    const canonical = canonicalByLower.get(token.toLowerCase());
+    if (canonical) {
+      if (!cuisines.includes(canonical)) cuisines.push(canonical);
+    } else if (!rest.includes(token)) {
+      rest.push(token);
+    }
+  }
+  return { cuisines, rest };
+}
+
 export const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 export type WeekDay = (typeof weekDays)[number];
 

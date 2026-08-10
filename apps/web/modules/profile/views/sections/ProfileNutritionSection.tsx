@@ -8,6 +8,7 @@ import {
   DietDayConfig,
   ExcludedFdcFood,
   dietOptions,
+  preferredCuisines,
   weekDays,
   toggleCsvToken,
 } from "@/lib/profile/profile-page-kit";
@@ -26,7 +27,13 @@ import {
   type NutritionStrategy,
   type NutritionStrategyKind,
 } from "@/lib/profile/nutrition-strategy";
-import type { ProfileFormState } from "@/modules/profile/views/sections/profile-form-state";
+import {
+  csvTokens,
+  toggleLegacyRemoval,
+  type LegacyExclusionField,
+  type LegacyExclusionRemovals,
+  type ProfileFormState,
+} from "@/modules/profile/views/sections/profile-form-state";
 
 /**
  * Sezione "Alimentazione" dell'editor profilo (decomposizione del God-component).
@@ -61,6 +68,12 @@ export type ProfileNutritionSectionProps = {
   /** Classi allergeniche/intolleranze escluse (globali): nutrition_config.excluded_food_classes */
   excludedFoodClasses: string[];
   setExcludedFoodClasses: Dispatch<SetStateAction<string[]>>;
+  /**
+   * Voci storiche marcate per la rimozione, applicate SOLO dal salvataggio del padre.
+   * Tenerle fuori da `form` è ciò che rende la × annullabile (vedi profile-form-state).
+   */
+  legacyExclusionRemovals: LegacyExclusionRemovals;
+  setLegacyExclusionRemovals: Dispatch<SetStateAction<LegacyExclusionRemovals>>;
 };
 
 /** Item della risposta /api/nutrition/food-lookup (solo i campi usati qui). */
@@ -85,6 +98,8 @@ export function ProfileNutritionSection({
   setExcludedFdcFoods,
   excludedFoodClasses,
   setExcludedFoodClasses,
+  legacyExclusionRemovals,
+  setLegacyExclusionRemovals,
 }: ProfileNutritionSectionProps) {
   const t = useTranslations("ProfileNutritionSection");
   const locale = useLocale();
@@ -186,6 +201,35 @@ export function ProfileNutritionSection({
     );
   }
 
+  // ESCLUSIONI STORICHE (`athlete_profiles.intolerances` / `food_exclusions`): non si
+  // scrivono più da qui — classi e picker le fanno meglio — ma restano LEGGIBILI e
+  // TOGLIBILI, per due motivi:
+  //  1. i profili vecchi hanno valori che il motore applica ancora
+  //     (`buildMealPlanFoodDenyFragments` li espande in frammenti di deny) e che l'atleta
+  //     rivede stampati nel modulo Nutrizione («Intolleranze dichiarate: …»);
+  //  2. `food_exclusions` ha ancora uno scrittore vivo — il bottone staff «escludi dal
+  //     profilo» nella scheda pasto (NutritionPageView → persistFoodExclusionToProfile)
+  //     ci APPENDE l'etichetta del cibo tolto dal piano.
+  // Senza questo pannello quella lista sarebbe un cricchetto a senso unico: cresce e non
+  // si può più svuotare da nessuna superficie. Il pannello compare solo se c'è qualcosa.
+  //
+  // La × NON tocca `form`: marca il token in `legacyExclusionRemovals` (stato del padre) e
+  // il chip diventa barrato con un bottone «ripristina». Il dato sparisce dal DB solo al
+  // Salva — che sull'ultimo token scrive NULL sulla colonna e non è più recuperabile da
+  // nessuna UI: per questo la rimozione dev'essere annullabile fino a lì.
+  const legacyIntolerances = csvTokens(form.intolerances);
+  const legacyFoodExclusions = csvTokens(form.food_exclusions);
+  const legacyExclusionChips: { field: LegacyExclusionField; token: string }[] = [
+    ...legacyIntolerances.map((token) => ({ field: "intolerances" as const, token })),
+    ...legacyFoodExclusions.map((token) => ({ field: "food_exclusions" as const, token })),
+  ];
+  const pendingLegacyRemovalCount =
+    legacyExclusionRemovals.intolerances.length + legacyExclusionRemovals.food_exclusions.length;
+
+  function toggleLegacyToken(field: LegacyExclusionField, token: string) {
+    setLegacyExclusionRemovals((prev) => toggleLegacyRemoval(prev, field, token));
+  }
+
   return (
     <div>
       <div className="page-tabs theme-multi profile-editor-subtabs" style={{ marginBottom: "24px" }}>
@@ -255,7 +299,7 @@ export function ProfileNutritionSection({
           <div className="form-group"><label className="form-label">{t("dietType")}</label><select className="form-select profile-dark-select" value={form.diet_type} onChange={(e) => setForm((f) => ({ ...f, diet_type: e.target.value }))}>{dietOptions.map((d) => <option key={d} value={d}>{d}</option>)}</select></div>
           <div className="form-group"><label className="form-label">{t("preferredCuisines")}</label></div>
           <div className="profile-chip-grid">
-            {["mediterranea", "asiatica", "thai", "messicana", "nordic"].map((c) => {
+            {preferredCuisines.map((c) => {
               const selected = form.cuisines.split(",").map((s) => s.trim()).filter(Boolean).includes(c);
               return (
                 <button key={c} type="button" className={`profile-black-chip ${selected ? "active" : ""}`} onClick={() => setForm((f) => ({ ...f, cuisines: toggleCsvToken(f.cuisines, c) }))}>
@@ -264,17 +308,11 @@ export function ProfileNutritionSection({
               );
             })}
           </div>
-
-          <div className="form-group"><label className="form-label">{t("foodPreferencesCsv")}</label><input className="form-input" type="text" value={form.food_preferences} onChange={(e) => setForm((f) => ({ ...f, food_preferences: e.target.value }))} /></div>
         </div>
       )}
 
       {activeNutritionTab === "intolerances" && (
         <div>
-          <div className="form-group"><label className="form-label">{t("intolerancesCsv")}</label><input className="form-input" type="text" value={form.intolerances} onChange={(e) => setForm((f) => ({ ...f, intolerances: e.target.value }))} /></div>
-          <div className="form-group"><label className="form-label">{t("allergiesCsv")}</label><input className="form-input" type="text" value={form.allergies} onChange={(e) => setForm((f) => ({ ...f, allergies: e.target.value }))} /></div>
-          <div className="form-group"><label className="form-label">{t("excludedFoodsCsv")}</label><input className="form-input" type="text" value={form.food_exclusions} onChange={(e) => setForm((f) => ({ ...f, food_exclusions: e.target.value }))} /></div>
-
           <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
             <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("excludedFoodClassesLabel")}</h4>
             <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("excludedFoodClassesHint")}</p>
@@ -328,20 +366,20 @@ export function ProfileNutritionSection({
               <p className="text-[11px] text-slate-400">{t("excludedFdcFoodsNoResults")}</p>
             ) : null}
 
+            {/* Chip rimovibili: NON `.profile-black-chip` (è una griglia a colonne fisse con
+                `white-space: nowrap` sotto i 480px → con le etichette del catalogo, che
+                arrivano a 30 caratteri, la × finiva tagliata fuori dal box) e non un <span>
+                con `cursor: pointer` addosso, che fa sembrare cliccabile tutto il chip. */}
             {excludedFdcFoods.length > 0 ? (
-              <div className="profile-chip-grid" style={{ marginTop: "16px" }}>
+              <div className="profile-removable-chip-row" style={{ marginTop: "16px" }}>
                 {excludedFdcFoods.map((food) => (
-                  <span
-                    key={food.fdcId}
-                    className="profile-black-chip active"
-                    style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
-                  >
-                    {food.label}
+                  <span key={food.fdcId} className="profile-removable-chip active">
+                    <span className="profile-removable-chip-label">{food.label}</span>
                     <button
                       type="button"
+                      className="profile-removable-chip-btn"
                       onClick={() => removeExcludedFood(food.fdcId)}
                       aria-label={t("excludedFdcFoodsRemoveAria", { label: food.label })}
-                      style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", fontSize: "14px", lineHeight: 1, padding: 0 }}
                     >
                       ×
                     </button>
@@ -350,6 +388,80 @@ export function ProfileNutritionSection({
               </div>
             ) : null}
           </div>
+
+          {/* Solo REAZIONI (allergie e intolleranze), di proposito — mai i gusti. Il testo
+              scritto qui finisce in `athlete_profiles.allergies`, che il modulo Nutrizione
+              ripete VERBATIM all'atleta come pillola «Allergie e intolleranze: …»
+              (lib/nutrition/nutrition-adaptation-sector-strip.ts): invitare a scriverci
+              «cipolla perché non mi piace» produrrebbe la bugia «Allergie e intolleranze:
+              cipolla». Un cibo semplicemente sgradito si toglie col picker qui sopra, che
+              non alimenta quella pillola. Il campo resta perché le 8 classi di
+              ALLERGEN_CLASS_CATALOG non coprono tutte le famiglie che il motore sa
+              espandere (crostacei, sesamo, senape, sedano, mais non hanno una classe) né
+              le intolleranze fuori catalogo (fruttosio, sorbitolo, nichel): il motore le
+              tratta comunque tutte allo stesso modo, `buildMealPlanFoodDenyFragments`
+              unisce allergies + intolerances + food_exclusions in un unico deny. */}
+          <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
+            <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("otherAllergensLabel")}</h4>
+            <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("otherAllergensHint")}</p>
+            <div className="form-group">
+              <input
+                className="form-input"
+                type="text"
+                value={form.allergies}
+                onChange={(e) => setForm((f) => ({ ...f, allergies: e.target.value }))}
+                placeholder={t("otherAllergensPlaceholder")}
+                aria-label={t("otherAllergensLabel")}
+              />
+            </div>
+          </div>
+
+          {legacyExclusionChips.length > 0 ? (
+            <div className="profile-subpanel tone-amber" style={{ marginBottom: "12px" }}>
+              <h4 className="profile-editor-subtitle"><span className="profile-kpi-dot" />{t("legacyExclusionsLabel")}</h4>
+              <p className="text-[11px] text-slate-400" style={{ marginBottom: "10px" }}>{t("legacyExclusionsHint")}</p>
+              <div className="profile-removable-chip-row">
+                {legacyExclusionChips.map(({ field, token }) => {
+                  const marked = legacyExclusionRemovals[field].includes(token);
+                  return (
+                    <span
+                      key={`${field}:${token}`}
+                      className={`profile-removable-chip ${marked ? "removed" : "active"}`}
+                    >
+                      <span className="profile-removable-chip-label">{token}</span>
+                      <button
+                        type="button"
+                        className="profile-removable-chip-btn"
+                        onClick={() => toggleLegacyToken(field, token)}
+                        aria-pressed={marked}
+                        aria-label={
+                          marked
+                            ? t("legacyExclusionsRestoreAria", { label: token })
+                            : t("legacyExclusionsRemoveAria", { label: token })
+                        }
+                      >
+                        {marked ? "↩" : "×"}
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              {pendingLegacyRemovalCount > 0 ? (
+                <p className="text-[11px] text-amber-300" style={{ marginTop: "10px" }}>
+                  {t("legacyExclusionsPendingHint", { count: pendingLegacyRemovalCount })}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* QUANDO fa effetto, detto una volta per tutti e quattro i pannelli del tab.
+              Sotto read-first (NutritionPageView: input solver cambiati → si RILEGGE il
+              persistito, non si rigenera) il piano già salvato resta com'è; l'atleta non ha
+              nemmeno il bottone «Rigenera piano», che è gated su platformAdminView
+              (MealPlanSection). A rifare i piani sono l'auto-generazione dei giorni ancora
+              privi di piano e il cron di ripianificazione settimanale, che riscrive la
+              settimana SUCCESSIVA (runWeeklyReplan). Promettere altro sarebbe una bugia. */}
+          <p className="text-[11px] text-slate-400" style={{ marginBottom: "12px" }}>{t("exclusionsTimingNote")}</p>
 
           <div className="alert-warning">{t("intolerancesWarning")}</div>
         </div>

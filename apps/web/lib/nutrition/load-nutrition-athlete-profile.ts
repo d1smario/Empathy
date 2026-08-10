@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * select (42703) e i chiamanti, destrutturando solo `{ data }`, giravano con
  * profilo vuoto (bmrKcal 0, ftp 250, peso 70 — loop adattivo inerte). Qui:
  *   - solo colonne REALI di athlete_profiles (superset dei 5 call site);
- *   - FTP dalla riga corrente di `physiological_profiles` (versionata);
+ *   - FTP dalla riga corrente di `physiological_profiles` (UNA riga per atleta);
  *   - lifestyle da `routine_config.lifestyle_activity_class` (scritto dal Profilo).
  *
  * VINCOLO DURO: questo file finisce nel bundle esbuild→Deno della Edge Function
@@ -51,10 +51,13 @@ export type NutritionAthleteProfile = {
   /** Riga athlete_profiles; null se il profilo non esiste O la query è fallita. */
   profile: NutritionAthleteProfileRow | null;
   /**
-   * FTP dalla riga CORRENTE di physiological_profiles (tabella versionata
-   * valid_from/valid_to): più recente per updated_at, stesso criterio del
-   * training L2 (`lib/training/l2/athlete-render-profile.ts`). Null se
-   * assente, non positiva o query fallita.
+   * FTP da physiological_profiles. La tabella NON è versionata malgrado le colonne
+   * valid_from/valid_to: `physiological_profiles_athlete_id_key UNIQUE (athlete_id)`
+   * (dichiarata in supabase/migrations/001_pro2_v1_canonical_prereq_read_spine.sql)
+   * impedisce più righe per atleta, quindi l'`order by updated_at desc limit 1` qui è
+   * ridondante e conservato solo per non cambiare una query che gira. Fonte del criterio
+   * unico: `lib/physiology/profile-resolver.ts`. Null se assente, non positiva o query
+   * fallita.
    */
   ftpWatts: number | null;
   /** `routine_config.lifestyle_activity_class` (stringa nel JSON); null se assente. */

@@ -22,7 +22,12 @@ import type { AthleteMemory, PhysiologyState, TwinState } from "@/lib/empathy/sc
 import { cn } from "@/lib/cn";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { createProfilePayload, fetchProfileViewModel, updateProfilePayload } from "@/modules/profile/services/profile-api";
-import { PROFILE_GOAL_OPTIONS } from "@/modules/profile/views/sections/profile-form-state";
+import {
+  PROFILE_GOAL_OPTIONS,
+  EMPTY_LEGACY_REMOVALS,
+  applyLegacyRemovals,
+  type LegacyExclusionRemovals,
+} from "@/modules/profile/views/sections/profile-form-state";
 import { ProfileDevicesSection } from "@/modules/profile/views/sections/ProfileDevicesSection";
 import { ProfilePersonalSection } from "@/modules/profile/views/sections/ProfilePersonalSection";
 import { ProfilePhysicalSection } from "@/modules/profile/views/sections/ProfilePhysicalSection";
@@ -62,6 +67,7 @@ import {
   editorTabClass,
   profileToneForEditorSection,
   estimateVo2maxMlMinKg,
+  splitFoodPreferences,
 } from "@/lib/profile/profile-page-kit";
 
 // Cache cross-mount del view-model profilo: ri-atterrando sulla pagina i dati
@@ -124,6 +130,13 @@ export default function ProfilePage({
   const [excludedFdcFoods, setExcludedFdcFoods] = useState<ExcludedFdcFood[]>([]);
   /** Classi allergeniche/intolleranze escluse (globali): nutrition_config.excluded_food_classes (key catalogo) */
   const [excludedFoodClasses, setExcludedFoodClasses] = useState<string[]>([]);
+  /**
+   * Voci storiche di `intolerances`/`food_exclusions` che l'atleta ha marcato per la
+   * rimozione. Intenzione PENDENTE, non ancora applicata a `form`: finché non si salva la
+   * × si annulla, e il dato in DB non si tocca (vedi LegacyExclusionRemovals).
+   */
+  const [legacyExclusionRemovals, setLegacyExclusionRemovals] =
+    useState<LegacyExclusionRemovals>(EMPTY_LEGACY_REMOVALS);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -358,6 +371,12 @@ export default function ProfilePage({
     setDietWeekPlan(parsedDietWeek);
     setExcludedFdcFoods(parseExcludedFdcFoods(nutrition.excluded_fdc_foods));
     setExcludedFoodClasses(parseExcludedFoodClassKeys(nutrition.excluded_food_classes));
+    /** Le rimozioni delle esclusioni storiche sono un'intenzione della sessione di editing:
+     *  riaprire l'editor riparte sempre da quello che c'è in DB. */
+    setLegacyExclusionRemovals(EMPTY_LEGACY_REMOVALS);
+    /** `food_preferences` in DB contiene sia i chip cucina sia il testo libero storico:
+     *  separarli è ciò che rende i chip DESELEZIONABILI (vedi splitFoodPreferences). */
+    const splitPrefs = splitFoodPreferences(p.food_preferences);
     setForm((f) => ({
       ...f,
       first_name: p.first_name ?? "",
@@ -402,12 +421,12 @@ export default function ProfilePage({
       routine_summary: p.routine_summary ?? "",
       lifestyle_activity_class: p.lifestyle_activity_class ?? String(routine.lifestyle_activity_class ?? "moderate"),
       diet_type: p.diet_type ?? "omnivore",
-      cuisines: "",
+      cuisines: splitPrefs.cuisines.join(", "),
       preferred_meal_count: p.preferred_meal_count != null ? String(p.preferred_meal_count) : "4",
       prep_time_minutes: nutrition.prep_time_minutes != null ? String(nutrition.prep_time_minutes) : "45",
       cooking_skill: String(nutrition.cooking_skill ?? "intermediate"),
       home_cooked_preference: String(nutrition.home_cooked_preference ?? true) === "false" ? "false" : "true",
-      food_preferences: (p.food_preferences ?? []).join(", "),
+      food_preferences: splitPrefs.rest.join(", "),
       food_exclusions: (p.food_exclusions ?? []).join(", "),
       intolerances: (p.intolerances ?? []).join(", "),
       allergies: (p.allergies ?? []).join(", "),
@@ -531,12 +550,25 @@ export default function ProfilePage({
       supplement_config: supplementConfig,
       diet_type: form.diet_type || null,
       preferred_meal_count: form.preferred_meal_count ? parseInt(form.preferred_meal_count, 10) : null,
+      // Le tre liste non hanno più un input CSV nel tab Alimentazione (li fanno meglio i
+      // chip cucine, il picker DB e le classi allergeniche), ma restano nel payload:
+      // `form.*` è stato idratato dal profilo, così il salvataggio le riscrive identiche
+      // invece di azzerarle.
+      //
+      // food_preferences = residuo (token non-chip, riscritti identici) + chip cucine
+      // selezionati. Entrambe le parti vengono dalla stessa colonna e `startEditProfile`
+      // le ha separate: l'unione qui non è più un cricchetto, deselezionare un chip toglie
+      // davvero il token.
       food_preferences: joinUnique([
         ...(parseCsvList(form.food_preferences) ?? []),
         ...(parseCsvList(form.cuisines) ?? []),
       ]),
-      food_exclusions: parseCsvList(form.food_exclusions),
-      intolerances: parseCsvList(form.intolerances),
+      // Unico punto in cui le esclusioni storiche possono ACCORCIARSI: qui si applicano le
+      // × marcate nel pannello «Esclusioni salvate in precedenza». Serve perché
+      // `food_exclusions` ha ancora uno scrittore vivo (bottone staff nella scheda pasto):
+      // senza una via di uscita sarebbe una lista che cresce e non si svuota più.
+      food_exclusions: parseCsvList(applyLegacyRemovals(form.food_exclusions, legacyExclusionRemovals.food_exclusions)),
+      intolerances: parseCsvList(applyLegacyRemovals(form.intolerances, legacyExclusionRemovals.intolerances)),
       allergies: parseCsvList(form.allergies),
       supplements: joinUnique([
         ...(parseCsvList(normalizeSupplementTokensCsv(form.supplements)) ?? []).map(normalizeSupplementToken),
@@ -554,6 +586,8 @@ export default function ProfilePage({
       }
       setShowForm(false);
       setEditingProfileId(null);
+      /** Intenzione consumata: le × marcate sono ora nel DB, ripartire da zero. */
+      setLegacyExclusionRemovals(EMPTY_LEGACY_REMOVALS);
       profileVmCache = null; // forza il refetch dei dati appena salvati
       await load();
     } catch (err) {
@@ -1114,6 +1148,8 @@ export default function ProfilePage({
               setExcludedFdcFoods={setExcludedFdcFoods}
               excludedFoodClasses={excludedFoodClasses}
               setExcludedFoodClasses={setExcludedFoodClasses}
+              legacyExclusionRemovals={legacyExclusionRemovals}
+              setLegacyExclusionRemovals={setLegacyExclusionRemovals}
             />
           )}
 

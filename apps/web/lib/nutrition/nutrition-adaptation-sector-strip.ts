@@ -207,7 +207,13 @@ function reversePillsForLevel(
         out,
         {
           id: "nut_rev_micro_all",
-          text: clip(`Allergie: ${allerg.slice(0, 2).join(", ")}`, 58),
+          /**
+           * «Allergie E INTOLLERANZE», non «Allergie»: il campo libero del Profilo che
+           * alimenta `athlete_profiles.allergies` accetta di proposito entrambe (le 8
+           * classi di ALLERGEN_CLASS_CATALOG non coprono fruttosio, sorbitolo, nichel…).
+           * Ripetere «Allergie: fruttosio» sarebbe una bugia sul dato dell'atleta.
+           */
+          text: clip(`Allergie e intolleranze: ${allerg.slice(0, 2).join(", ")}`, 58),
           direction: "reverse",
         },
         2,
