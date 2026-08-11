@@ -9949,14 +9949,117 @@ async function mapV2PlanToV1Response(production, request) {
   return finalizeIntelligentMealPlanCore(core, request, snapshot);
 }
 
+// apps/web/lib/nutrition/v2/meal-item-fdc-guard.ts
+function positiveFdcId(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+function candidateFdcIdsForFkCheck(items) {
+  const ids = /* @__PURE__ */ new Set();
+  for (const item2 of items) {
+    const id = positiveFdcId(item2.fdcId);
+    if (id !== null) ids.add(id);
+  }
+  return [...ids];
+}
+function clearUnknownFdcIds(items, knownFdcIds) {
+  const rows = [];
+  const cleared = [];
+  for (const item2 of items) {
+    const id = positiveFdcId(item2.fdcId);
+    if (id === null || knownFdcIds.has(id)) {
+      rows.push(item2);
+      continue;
+    }
+    rows.push({ ...item2, fdcId: null });
+    cleared.push({ slot: item2.slot, fdcId: id, label: item2.label, canonicalKey: item2.canonicalKey });
+  }
+  return { rows, cleared };
+}
+var CLEARED_TRACE_LIMIT = 24;
+function mealItemFdcClearedTrace(cleared) {
+  if (cleared.length === 0) return null;
+  return {
+    reason: "fdc_id_missing_in_fdc_food",
+    cleared_count: cleared.length,
+    cleared: cleared.slice(0, CLEARED_TRACE_LIMIT).map((c) => ({
+      slot: c.slot,
+      fdc_id: c.fdcId,
+      label: c.label,
+      canonical_key: c.canonicalKey
+    }))
+  };
+}
+
 // apps/web/lib/nutrition/v2/persist-v2-plan-to-db.ts
 function num3(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+function mealItemInsertRow(row2, mealId) {
+  return {
+    meal_id: mealId,
+    fdc_id: row2.fdcId,
+    label: row2.label,
+    canonical_key: row2.canonicalKey,
+    food_role: row2.foodRole,
+    grams: row2.grams,
+    kcal: row2.kcal,
+    carbs_g: row2.carbsG,
+    protein_g: row2.proteinG,
+    fat_g: row2.fatG
+  };
+}
+async function loadFdcIdsPresentInFkTarget(admin, ids) {
+  if (ids.length === 0) return /* @__PURE__ */ new Set();
+  const { data, error } = await admin.from("fdc_food").select("fdc_id").in("fdc_id", ids);
+  if (error) {
+    console.warn("[nutrition v2 persist] guardia FK non disponibile", { error: error.message, ids: ids.length });
+    return null;
+  }
+  const known = /* @__PURE__ */ new Set();
+  for (const row2 of data ?? []) {
+    const n = Number(row2.fdc_id);
+    if (Number.isFinite(n)) known.add(n);
+  }
+  if (known.size === 0) {
+    console.warn("[nutrition v2 persist] guardia FK: probe a zero righe, verdetto ignorato", { ids: ids.length });
+    return null;
+  }
+  return known;
+}
 async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
   const slots = production.composedMealPlan.filter((s) => s.items.length > 0);
   if (slots.length === 0) return { ok: false, error: "Piano V2 senza pasti da persistere" };
+  const pendingItems = [];
+  for (const s of slots) {
+    const roles = MEAL_SLOT_ASSEMBLY[s.slot] ?? [];
+    s.items.forEach((it, i) => {
+      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
+      pendingItems.push({
+        slot: s.slot,
+        fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
+        label: it.description ?? null,
+        canonicalKey: it.canonicalKey ?? null,
+        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
+        grams: Math.round(num3(it.grams)),
+        kcal: Math.round(num3(it.kcal)),
+        carbsG: num3(it.choG),
+        proteinG: num3(it.proG),
+        fatG: num3(it.fatG)
+      });
+    });
+  }
+  const candidateIds = candidateFdcIdsForFkCheck(pendingItems);
+  const knownFdcIds = await loadFdcIdsPresentInFkTarget(admin, candidateIds) ?? new Set(candidateIds);
+  const { rows: writableItems, cleared: clearedFdc } = clearUnknownFdcIds(pendingItems, knownFdcIds);
+  const clearedTrace = mealItemFdcClearedTrace(clearedFdc);
+  if (clearedTrace) {
+    console.warn("[nutrition v2 persist] fdc_id azzerato dalla guardia FK", {
+      athleteId,
+      planDate,
+      ...clearedTrace
+    });
+  }
   const { error: delErr } = await admin.from("nutrition_plan").delete().eq("athlete_id", athleteId).eq("plan_date", planDate);
   if (delErr) return { ok: false, error: `delete piano: ${delErr.message}` };
   const planTotals = slots.reduce(
@@ -9985,7 +10088,12 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
     // ⚠️ La colonna prod è `jsonb NOT NULL DEFAULT '{}'`: MAI null qui (23502 → il
     // persist fallirebbe proprio con mode=off, il kill switch). Assente (mode off /
     // ramo day-engine caduto in catch) → `{}`, identico al default della colonna.
-    inputs_provenance: production.dayEngine ? { day_engine: production.dayEngine } : {}
+    // `meal_item_fdc_cleared` è l'altro canale (guardia FK): si AFFIANCA a day_engine, non lo
+    // sostituisce, ed è assente quando non si è azzerato niente.
+    inputs_provenance: {
+      ...production.dayEngine ? { day_engine: production.dayEngine } : {},
+      ...clearedTrace ? { meal_item_fdc_cleared: clearedTrace } : {}
+    }
   };
   let { data: planRow, error: planErr } = await admin.from("nutrition_plan").insert({
     ...planInsertBase,
@@ -10012,32 +10120,69 @@ async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
   const mealIdBySlot = /* @__PURE__ */ new Map();
   for (const row2 of mealRows) mealIdBySlot.set(row2.slot, String(row2.id));
   const itemPayload = [];
-  for (const s of slots) {
-    const mealId = mealIdBySlot.get(s.slot);
+  for (const row2 of writableItems) {
+    const mealId = mealIdBySlot.get(row2.slot);
     if (!mealId) continue;
-    const roles = MEAL_SLOT_ASSEMBLY[s.slot] ?? [];
-    s.items.forEach((it, i) => {
-      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
-      const foodRole = roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple";
-      itemPayload.push({
-        meal_id: mealId,
-        fdc_id: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
-        label: it.description ?? null,
-        canonical_key: it.canonicalKey ?? null,
-        food_role: foodRole,
-        grams: Math.round(num3(it.grams)),
-        kcal: Math.round(num3(it.kcal)),
-        carbs_g: num3(it.choG),
-        protein_g: num3(it.proG),
-        fat_g: num3(it.fatG)
-      });
-    });
+    itemPayload.push(mealItemInsertRow(row2, mealId));
   }
+  if (itemPayload.length === 0 && pendingItems.length > 0) {
+    return { ok: false, error: `insert voci: nessuna riga scrivibile per ${pendingItems.length} voci del piano` };
+  }
+  let itemsWritten = itemPayload.length;
+  let droppedOnInsert = 0;
+  let clearedOnRetry = 0;
   if (itemPayload.length > 0) {
     const { error: itemErr } = await admin.from("meal_item").insert(itemPayload);
-    if (itemErr) return { ok: false, error: `insert voci: ${itemErr.message}` };
+    if (itemErr) {
+      const mealIds = [...new Set(itemPayload.map((r) => r.meal_id))];
+      const { error: cleanErr } = await admin.from("meal_item").delete().in("meal_id", mealIds);
+      if (cleanErr) console.warn("[nutrition v2 persist] pulizia pre-retry fallita", { error: cleanErr.message });
+      const failures = [];
+      for (const row2 of itemPayload) {
+        const { error } = await admin.from("meal_item").insert(row2);
+        if (!error) continue;
+        if (row2.fdc_id != null) {
+          const { error: retryErr } = await admin.from("meal_item").insert({ ...row2, fdc_id: null });
+          if (!retryErr) {
+            clearedOnRetry += 1;
+            continue;
+          }
+        }
+        failures.push({ fdcId: row2.fdc_id, label: row2.label, error: error.message });
+      }
+      droppedOnInsert = failures.length;
+      itemsWritten = itemPayload.length - failures.length;
+      if (itemsWritten === 0) return { ok: false, error: `insert voci: ${itemErr.message}` };
+      console.warn("[nutrition v2 persist] insert in blocco caduto, recupero riga per riga", {
+        athleteId,
+        planDate,
+        planId,
+        bulk_error: itemErr.message,
+        cleared_on_retry: clearedOnRetry,
+        dropped_count: failures.length,
+        failures: failures.slice(0, 24)
+      });
+      const { error: provErr } = await admin.from("nutrition_plan").update({
+        inputs_provenance: {
+          ...planInsertBase.inputs_provenance,
+          meal_item_insert_recovery: {
+            bulk_error: itemErr.message,
+            cleared_on_retry: clearedOnRetry,
+            dropped_count: failures.length,
+            failures: failures.slice(0, 24)
+          }
+        }
+      }).eq("id", planId);
+      if (provErr) console.warn("[nutrition v2 persist] traccia rifiuti non salvata", { error: provErr.message });
+    }
   }
-  return { ok: true, planId };
+  return {
+    ok: true,
+    planId,
+    itemsWritten,
+    fdcCleared: clearedFdc.length + clearedOnRetry,
+    droppedItems: droppedOnInsert
+  };
 }
 
 // apps/web/lib/nutrition/meal-plan-solver-basis.ts
