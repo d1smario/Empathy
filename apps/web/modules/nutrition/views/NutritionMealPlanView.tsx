@@ -214,9 +214,11 @@ export type NutritionMealPlanWorkspaceProps = {
    */
   planReadLoading?: boolean;
   /**
-   * Requisiti di profilo OBBLIGATORI ancora mancanti (fonte unica:
-   * computeOnboardingCompleteness). Se non è vuoto NON si genera nulla: si dice
-   * all'atleta quali voci mancano e dove completarle.
+   * Requisiti di profilo OBBLIGATORI ancora mancanti CHE VINCOLANO LA NUTRIZIONE
+   * (fonte unica: computeOnboardingCompleteness + itemsBlockingPlan(..., "nutrition")).
+   * I requisiti del solo training non arrivano qui: non impediscono un piano alimentare.
+   * Se non è vuoto NON si genera nulla: si dice all'atleta quali voci mancano e dove
+   * completarle.
    */
   missingRequirements?: OnboardingItemResult[];
   intelligentMealError: string | null;

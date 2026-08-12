@@ -12,9 +12,18 @@
  *  - optional     → arricchisce l'analisi (FTP, sangue), fuori dal denominatore di progresso
  *
  * La spec dei campi è un ARRAY unico (ONBOARDING_ITEMS): UI ed email disegnano da qui.
+ *
+ * DUE ASSI, non uno. `category` dice QUANTO pesa la voce nell'onboarding (è il gate di
+ * `planReady`, cioè della sala d'attesa e del cron D3, e resta invariato); `blocks` dice
+ * QUALE motore la consuma davvero. Servono entrambi perché una singola pagina di dominio
+ * (Nutrizione) non deve bloccarsi su un dato che solo l'altro dominio (Training) legge:
+ * era il bug per cui «Giorni di allenamento/settimana» impediva il piano ALIMENTARE pur
+ * non essendo letto da una sola riga di `lib/nutrition`.
  */
 
 export type OnboardingCategory = "required" | "recommended" | "optional";
+/** Il piano che una voce mancante impedisce davvero di generare. */
+export type OnboardingPlanKind = "training" | "nutrition";
 export type OnboardingGroup = "identity" | "body" | "physiology" | "device" | "routine" | "nutrition";
 
 /** Sottoinsieme di athlete_profiles rilevante per l'onboarding (nomi colonna DB). */
@@ -56,6 +65,14 @@ export type OnboardingItemSpec = {
   label: string;
   group: OnboardingGroup;
   category: OnboardingCategory;
+  /**
+   * Motori che leggono DAVVERO questo dato — verificato campo per campo con grep su
+   * `lib/nutrition` e `lib/training`, non dedotto dall'etichetta. Array VUOTO = nessuno
+   * dei due motori lo esige (resta un dato di onboarding, non un gate di dominio).
+   * Usato da `itemsBlockingPlan` per il blocco di una singola pagina; NON entra in
+   * `planReady`, che continua a pretendere tutti i `required` come prima.
+   */
+  blocks: readonly OnboardingPlanKind[];
   /** Cosa sblocca o migliora — mostrato come «perché serve». */
   unlocks: string;
   /** Deep-link relativo alla superficie dove si completa (per la UI). */
@@ -84,67 +101,104 @@ function p(s: OnboardingSnapshot): OnboardingProfileFields {
  */
 export const ONBOARDING_ITEMS: readonly OnboardingItemSpec[] = [
   // Identità
-  { key: "sex", label: "Sesso", group: "identity", category: "required",
+  // `sex` → SOLO nutrizione: offset di Mifflin in lib/nutrition/daily-energy-solver.ts:186
+  // (BMR di ripiego quando manca la massa grassa). Nessun file di lib/training lo legge.
+  { key: "sex", label: "Sesso", group: "identity", category: "required", blocks: ["nutrition"],
     unlocks: "Metabolismo basale e frequenze cardiache di riferimento", href: "/profile#anagrafica",
     present: (s) => str(p(s).sex) },
-  { key: "birth_date", label: "Data di nascita", group: "identity", category: "required",
+  // `birth_date` → SOLO nutrizione: deriveAgeYears (daily-energy-solver.ts:141) → Mifflin
+  // (riga 249). Nessun file di lib/training lo legge.
+  { key: "birth_date", label: "Data di nascita", group: "identity", category: "required", blocks: ["nutrition"],
     unlocks: "Età → BMR e FC max teorica", href: "/profile#anagrafica",
     present: (s) => str(p(s).birth_date) },
-  { key: "timezone", label: "Fuso orario", group: "identity", category: "required",
+  // `timezone` → SOLO nutrizione fra i due motori: confini del giorno nel loop adattivo
+  // (lib/nutrition/reduction-run.ts:118, nowLocalMinutes). lib/training non lo legge.
+  { key: "timezone", label: "Fuso orario", group: "identity", category: "required", blocks: ["nutrition"],
     unlocks: "Confini del giorno, orario della mail, sblocco del piano", href: "/profile#anagrafica",
     present: (s) => str(p(s).timezone) },
   // Corpo
-  { key: "weight_kg", label: "Peso", group: "body", category: "required",
+  // `weight_kg` → SOLO nutrizione: ancora del BMR (daily-energy-solver.ts:169) e minimo
+  // idrico peso×33 (lib/nutrition/hydration-target.ts:18). In lib/training i soli `weightKg`
+  // sono i carichi in sala del Builder, non il peso corporeo.
+  { key: "weight_kg", label: "Peso", group: "body", category: "required", blocks: ["nutrition"],
     unlocks: "BMR, fabbisogno energetico e idrico, porzioni", href: "/profile#corpo",
     present: (s) => num(p(s).weight_kg) },
-  { key: "height_cm", label: "Altezza", group: "body", category: "required",
+  // `height_cm` → SOLO nutrizione: unico consumatore è Mifflin (daily-energy-solver.ts:182).
+  { key: "height_cm", label: "Altezza", group: "body", category: "required", blocks: ["nutrition"],
     unlocks: "BMR (equazione di Mifflin)", href: "/profile#corpo",
     present: (s) => num(p(s).height_cm) },
-  { key: "body_fat_pct", label: "Massa grassa %", group: "body", category: "recommended",
+  // `body_fat_pct` → nutrizione: massa magra per Katch-McArdle (daily-energy-solver.ts:171).
+  { key: "body_fat_pct", label: "Massa grassa %", group: "body", category: "recommended", blocks: ["nutrition"],
     unlocks: "Affina il BMR (Katch-McArdle) e la composizione", href: "/profile#corpo",
     present: (s) => num(p(s).body_fat_pct) },
-  { key: "muscle_mass_kg", label: "Massa muscolare", group: "body", category: "recommended",
+  // `muscle_mass_kg` → nutrizione: lib/nutrition/nutrition-module-daily-energy.ts:57.
+  { key: "muscle_mass_kg", label: "Massa muscolare", group: "body", category: "recommended", blocks: ["nutrition"],
     unlocks: "Composizione corporea e ripartizione proteica", href: "/profile#corpo",
     present: (s) => num(p(s).muscle_mass_kg) },
   // Fisiologia (soglie FC — l'FTP vive nei lab, resta opzionale)
-  { key: "resting_hr_bpm", label: "FC a riposo", group: "physiology", category: "required",
+  // `resting_hr_bpm` → training: zone e recovery profile (lib/physiology/profile-resolver.ts:399
+  // e :409). In lib/nutrition l'unico `restingHrBpm` è un campo del view-model della pagina
+  // (nutrition-view-types.ts:26), alimentato dal device, non dal profilo: il motore non lo usa.
+  { key: "resting_hr_bpm", label: "FC a riposo", group: "physiology", category: "required", blocks: ["training"],
     unlocks: "Zone di allenamento e baseline HRV", href: "/profile#fisiologia",
     present: (s) => num(p(s).resting_hr_bpm) },
-  { key: "max_hr_bpm", label: "FC massima", group: "physiology", category: "required",
+  // `max_hr_bpm` → training: hrMax del render profile L2 (lib/training/l2/athlete-render-profile.ts:113,126).
+  { key: "max_hr_bpm", label: "FC massima", group: "physiology", category: "required", blocks: ["training"],
     unlocks: "Zone di intensità del training", href: "/profile#fisiologia",
     present: (s) => num(p(s).max_hr_bpm) },
-  { key: "threshold_hr_bpm", label: "FC soglia", group: "physiology", category: "recommended",
+  // `threshold_hr_bpm` → training: header FC soglia dell'export seduta Wahoo
+  // (lib/integrations/wahoo-plan-from-generated-session.ts:132). Zero letture in lib/nutrition.
+  { key: "threshold_hr_bpm", label: "FC soglia", group: "physiology", category: "recommended", blocks: ["training"],
     unlocks: "Zone più precise attorno alla soglia", href: "/profile#fisiologia",
     present: (s) => num(p(s).threshold_hr_bpm) },
   // Device
-  { key: "device", label: "Dispositivo collegato e attivo", group: "device", category: "required",
+  // `device` → NESSUN motore lo esige. Il piano alimentare DEGRADA senza: loadObservedActiveKcal
+  // (lib/nutrition/load-observed-active-kcal.ts:22) torna null e il solver ricade sulla stima
+  // pianificata (daily-energy-solver.ts:415). Resta `required` per l'onboarding (i consumi reali
+  // sono la promessa del prodotto), ma non blocca la generazione di nessuno dei due piani.
+  { key: "device", label: "Dispositivo collegato e attivo", group: "device", category: "required", blocks: [],
     unlocks: "Wellness reale (sonno, HRV, FC, kcal attive) e consumi effettivi", href: "/profile#devices",
     present: (s) => s.deviceFed },
   // Routine / obiettivo
-  { key: "goals", label: "Obiettivo", group: "routine", category: "required",
+  // `goals` → training: goalText della settimana (lib/training/generate-training-week-headless.ts:158),
+  // materialize-training-macro.ts:265, propose-training-macro.ts:227. Zero letture in lib/nutrition.
+  { key: "goals", label: "Obiettivo", group: "routine", category: "required", blocks: ["training"],
     unlocks: "Struttura e finalità del piano di allenamento", href: "/profile#routine",
     present: (s) => arr(p(s).goals) || str(p(s).goals) },
-  { key: "training_days_per_week", label: "Giorni di allenamento/settimana", group: "routine", category: "required",
+  // `training_days_per_week` → SOLO training: sessioni della settimana
+  // (generate-training-week-headless.ts:156) e propose-training-macro.ts:227.
+  { key: "training_days_per_week", label: "Giorni di allenamento/settimana", group: "routine", category: "required", blocks: ["training"],
     unlocks: "Volume settimanale del piano", href: "/profile#routine",
     present: (s) => num(p(s).training_days_per_week) },
-  { key: "training_max_session_minutes", label: "Durata max seduta", group: "routine", category: "required",
+  // `training_max_session_minutes` → SOLO training: hoursTarget
+  // (generate-training-week-headless.ts:157) e cap durata L2 (l2/athlete-render-profile.ts:128).
+  { key: "training_max_session_minutes", label: "Durata max seduta", group: "routine", category: "required", blocks: ["training"],
     unlocks: "Durata e struttura delle sedute", href: "/profile#routine",
     present: (s) => num(p(s).training_max_session_minutes) },
   // Nutrizione
-  { key: "diet_type", label: "Tipo di dieta", group: "nutrition", category: "required",
+  // `diet_type` → SOLO nutrizione: vincoli MANDATORY del composer
+  // (lib/nutrition/deterministic-meal-plan-from-request.ts:144) e deny-fragments
+  // (meal-plan-profile-food-filter.ts:99).
+  { key: "diet_type", label: "Tipo di dieta", group: "nutrition", category: "required", blocks: ["nutrition"],
     unlocks: "Selezione degli alimenti del motore nutrizione", href: "/profile#nutrizione",
     present: (s) => str(p(s).diet_type) },
-  { key: "preferred_meal_count", label: "Numero di pasti", group: "nutrition", category: "recommended",
+  // `preferred_meal_count` → nutrizione: lib/nutrition/nutrition-module-profile-merge.ts:126.
+  { key: "preferred_meal_count", label: "Numero di pasti", group: "nutrition", category: "recommended", blocks: ["nutrition"],
     unlocks: "Ripartizione del piano nei pasti", href: "/profile#nutrizione",
     present: (s) => num(p(s).preferred_meal_count) },
-  { key: "food_constraints", label: "Intolleranze / allergie / esclusioni", group: "nutrition", category: "recommended",
+  // `intolerances/allergies/food_exclusions/food_preferences` → nutrizione:
+  // meal-plan-profile-food-filter.ts (denyFragments del composer).
+  { key: "food_constraints", label: "Intolleranze / allergie / esclusioni", group: "nutrition", category: "recommended", blocks: ["nutrition"],
     unlocks: "Esclusioni e preferenze applicate al piano", href: "/profile#nutrizione",
     present: (s) => arr(p(s).intolerances) || arr(p(s).allergies) || arr(p(s).food_exclusions) || arr(p(s).food_preferences) },
   // Opzionali (arricchiscono l'analisi, non il piano generato — fuori dal progresso)
-  { key: "ftp", label: "FTP / soglia metabolica", group: "physiology", category: "optional",
+  // `ftp` → ENTRAMBI: nutrizione via loadNutritionAthleteProfile.ftpWatts nel solver
+  // (daily-energy-solver.ts:203,406) e training via l2/athlete-render-profile.ts:125.
+  { key: "ftp", label: "FTP / soglia metabolica", group: "physiology", category: "optional", blocks: ["training", "nutrition"],
     unlocks: "Qualità reale del training (oggi dai lab Physiology)", href: "/physiology",
     present: (s) => s.hasFtp },
-  { key: "blood_panel", label: "Analisi del sangue", group: "body", category: "optional",
+  // `blood_panel` → nutrizione: ponte micronutrienti (lib/nutrition/health-lab-pathway-bridge.ts:131).
+  { key: "blood_panel", label: "Analisi del sangue", group: "body", category: "optional", blocks: ["nutrition"],
     unlocks: "Arricchisce l'analisi biologica (non cambia il piano)", href: "/health",
     present: (s) => s.hasBloodPanel },
 ] as const;
@@ -154,6 +208,8 @@ export type OnboardingItemResult = {
   label: string;
   group: OnboardingGroup;
   category: OnboardingCategory;
+  /** Copia di `OnboardingItemSpec.blocks`: serve a filtrare i mancanti per dominio. */
+  blocks: readonly OnboardingPlanKind[];
   unlocks: string;
   href: string;
   done: boolean;
@@ -177,6 +233,7 @@ export function computeOnboardingCompleteness(snapshot: OnboardingSnapshot): Onb
     label: spec.label,
     group: spec.group,
     category: spec.category,
+    blocks: spec.blocks,
     unlocks: spec.unlocks,
     href: spec.href,
     done: spec.present(snapshot),
@@ -198,4 +255,20 @@ export function computeOnboardingCompleteness(snapshot: OnboardingSnapshot): Onb
     progressPct,
     planReady: reqDone === req.length,
   };
+}
+
+/**
+ * Filtra un elenco di voci tenendo SOLO quelle che vincolano il piano indicato.
+ *
+ * Perché non è dentro `computeOnboardingCompleteness`: il risultato del motore è lo stesso
+ * di prima per tutti (sala d'attesa, mail, cron D3 — che continuano a leggere `required`
+ * per intero e `planReady`). Chi blocca UNA superficie di dominio, invece, passa di qui:
+ *   itemsBlockingPlan(completeness.required.missing, "nutrition")
+ * Puro e generico sull'elemento: si testa anche su voci sintetiche.
+ */
+export function itemsBlockingPlan<T extends { blocks: readonly OnboardingPlanKind[] }>(
+  items: readonly T[],
+  plan: OnboardingPlanKind,
+): T[] {
+  return items.filter((i) => i.blocks.includes(plan));
 }

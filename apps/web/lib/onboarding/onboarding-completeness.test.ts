@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   ONBOARDING_ITEMS,
   computeOnboardingCompleteness,
+  itemsBlockingPlan,
+  type OnboardingPlanKind,
   type OnboardingSnapshot,
 } from "./onboarding-completeness";
 
@@ -108,4 +110,106 @@ test("valori zero/negativi non contano come presenti", () => {
 
 test("purezza: stesso input → stesso output", () => {
   assert.deepEqual(computeOnboardingCompleteness(FULL), computeOnboardingCompleteness(FULL));
+});
+
+/* ──────────────────────────────────────────────────────────────────────────────
+ * `blocks`: quale piano vincola davvero una voce.
+ * Il bug che chiudono: la pagina Nutrizione bloccava il piano ALIMENTARE su
+ * «Giorni di allenamento/settimana» e «Durata max seduta», che nessuna riga di
+ * lib/nutrition legge (li usa solo lib/training).
+ * ────────────────────────────────────────────────────────────────────────────── */
+
+/** FULL meno le chiavi indicate (per costruire mancanze mirate). */
+function withoutKeys(keys: string[]): OnboardingSnapshot {
+  const profile = { ...(FULL.profile ?? {}) } as Record<string, unknown>;
+  for (const k of keys) profile[k] = null;
+  return { ...FULL, profile };
+}
+
+test("voce che vincola SOLO il training non blocca la nutrizione", () => {
+  const snap = withoutKeys(["training_days_per_week", "training_max_session_minutes"]);
+  const r = computeOnboardingCompleteness(snap);
+
+  // Onboarding invariato: restano obbligatori mancanti (sala d'attesa e cron D3 li vedono).
+  assert.equal(r.planReady, false);
+  assert.deepEqual(
+    r.required.missing.map((i) => i.key).sort(),
+    ["training_days_per_week", "training_max_session_minutes"],
+  );
+
+  // Nutrizione: nessun blocco. Training: entrambi.
+  assert.deepEqual(itemsBlockingPlan(r.required.missing, "nutrition"), []);
+  assert.equal(itemsBlockingPlan(r.required.missing, "training").length, 2);
+});
+
+test("voce che vincola la nutrizione blocca la nutrizione, e non l'altro dominio", () => {
+  const snap = withoutKeys(["diet_type", "weight_kg", "training_days_per_week"]);
+  const r = computeOnboardingCompleteness(snap);
+
+  assert.deepEqual(
+    itemsBlockingPlan(r.required.missing, "nutrition").map((i) => i.key).sort(),
+    ["diet_type", "weight_kg"],
+  );
+  assert.deepEqual(
+    itemsBlockingPlan(r.required.missing, "training").map((i) => i.key),
+    ["training_days_per_week"],
+  );
+});
+
+test("voce che vincola ENTRAMBI blocca in tutti e due i domini", () => {
+  const both = [{ key: "ftp", blocks: ["training", "nutrition"] as readonly OnboardingPlanKind[] }];
+  assert.equal(itemsBlockingPlan(both, "nutrition").length, 1);
+  assert.equal(itemsBlockingPlan(both, "training").length, 1);
+  // …e una voce che non vincola nulla non blocca mai (es. il device: il solver degrada a stima).
+  const none = [{ key: "device", blocks: [] as readonly OnboardingPlanKind[] }];
+  assert.equal(itemsBlockingPlan(none, "nutrition").length, 0);
+  assert.equal(itemsBlockingPlan(none, "training").length, 0);
+});
+
+test("il caso reale dell'atleta: mancano SOLO i due campi training → nutrizione sbloccata", () => {
+  // Fotografia dell'atleta 04968274 letta su prod: profilo pieno, device alimentato,
+  // solo `training_days_per_week` e `training_max_session_minutes` a null.
+  const snap: OnboardingSnapshot = {
+    profile: {
+      sex: "male", birth_date: "2006-10-03", timezone: "Europe/Rome",
+      height_cm: 186, weight_kg: 73, body_fat_pct: 8,
+      resting_hr_bpm: 40, max_hr_bpm: 204, goals: ["performance"], diet_type: "omnivore",
+    },
+    deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false,
+  };
+  const r = computeOnboardingCompleteness(snap);
+  assert.equal(r.planReady, false); // onboarding NON completo: nulla è cambiato lì
+  assert.deepEqual(itemsBlockingPlan(r.required.missing, "nutrition"), []); // …ma il piano alimentare parte
+});
+
+test("la sala d'attesa vede l'insieme COMPLETO: nessuna voce persa né spostata di categoria", () => {
+  // Guardia anti-deriva: `blocks` è additivo, non deve toccare l'elenco dell'onboarding.
+  assert.deepEqual(
+    ONBOARDING_ITEMS.map((i) => `${i.key}:${i.category}`),
+    [
+      "sex:required",
+      "birth_date:required",
+      "timezone:required",
+      "weight_kg:required",
+      "height_cm:required",
+      "body_fat_pct:recommended",
+      "muscle_mass_kg:recommended",
+      "resting_hr_bpm:required",
+      "max_hr_bpm:required",
+      "threshold_hr_bpm:recommended",
+      "device:required",
+      "goals:required",
+      "training_days_per_week:required",
+      "training_max_session_minutes:required",
+      "diet_type:required",
+      "preferred_meal_count:recommended",
+      "food_constraints:recommended",
+      "ftp:optional",
+      "blood_panel:optional",
+    ],
+  );
+  // Uno snapshot vuoto continua a mostrare TUTTI gli obbligatori, non i soli di un dominio.
+  const empty = computeOnboardingCompleteness(EMPTY);
+  assert.equal(empty.required.missing.length, REQUIRED_COUNT);
+  assert.equal(REQUIRED_COUNT, 12);
 });

@@ -202,6 +202,7 @@ import {
   type MealPlanPersistedProbe,
 } from "@/modules/nutrition/services/persisted-meal-plan";
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
+import { itemsBlockingPlan } from "@/lib/onboarding/onboarding-completeness";
 import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
 import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intelligent-meal-plan-v2-api";
 import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
@@ -2368,6 +2369,13 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
    * dell'onboarding — nessun secondo elenco di requisiti in giro per il codice.
    * In caso di client assente o errore si degrada a «nessun requisito mancante»: un
    * problema di lettura non deve mai trasformarsi in un blocco fantasma del piano.
+   *
+   * FILTRO PER DOMINIO: qui blocca solo ciò che il motore NUTRIZIONE legge davvero
+   * (`blocks` in ONBOARDING_ITEMS, verificato campo per campo). Prima si usava
+   * `required.missing` intero, cioè l'unione training+nutrizione: un atleta senza
+   * «Giorni di allenamento/settimana» o «Durata max seduta» — dati che nessuna riga di
+   * lib/nutrition legge — si vedeva negare il piano ALIMENTARE. La sala d'attesa
+   * dell'onboarding continua a chiederli tutti: lì il filtro non si applica.
    */
   useEffect(() => {
     if (!athleteId) {
@@ -2381,7 +2389,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       try {
         const supabase = createEmpathyBrowserSupabase();
         if (supabase) {
-          missing = (await loadOnboardingCompleteness(supabase, athleteId)).required.missing;
+          const completeness = await loadOnboardingCompleteness(supabase, athleteId);
+          missing = itemsBlockingPlan(completeness.required.missing, "nutrition");
         }
       } catch (e) {
         console.error("[nutrition] lettura requisiti onboarding fallita:", e);
