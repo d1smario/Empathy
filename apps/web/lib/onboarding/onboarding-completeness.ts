@@ -21,6 +21,8 @@
  * non essendo letto da una sola riga di `lib/nutrition`.
  */
 
+import type { CalendarTrainingVolume } from "@/lib/training/calendar-training-volume";
+
 export type OnboardingCategory = "required" | "recommended" | "optional";
 /** Il piano che una voce mancante impedisce davvero di generare. */
 export type OnboardingPlanKind = "training" | "nutrition";
@@ -57,6 +59,17 @@ export type OnboardingSnapshot = {
   deviceFed: boolean;
   hasFtp: boolean;
   hasBloodPanel: boolean;
+  /**
+   * Volume osservato nel CALENDARIO del coach (`planned_workouts`) — vedi
+   * `lib/training/calendar-training-volume.ts` per finestra e conteggi. `null` = il
+   * calendario non dice nulla nella finestra.
+   *
+   * Perché sta qui: un requisito è soddisfatto quando il sistema CONOSCE il dato, non
+   * quando l'atleta l'ha digitato. Se il coach gli ha già scritto le sedute, chiedergli
+   * «quanti giorni ti alleni?» è chiedere una cosa che sappiamo già — ed è ciò che teneva
+   * l'atleta parcheggiato in `/onboarding`.
+   */
+  calendarVolume: CalendarTrainingVolume | null;
 };
 
 export type OnboardingItemSpec = {
@@ -166,15 +179,44 @@ export const ONBOARDING_ITEMS: readonly OnboardingItemSpec[] = [
     unlocks: "Struttura e finalità del piano di allenamento", href: "/profile#routine",
     present: (s) => arr(p(s).goals) || str(p(s).goals) },
   // `training_days_per_week` → SOLO training: sessioni della settimana
-  // (generate-training-week-headless.ts:156) e propose-training-macro.ts:227.
+  // (deriveTrainingWeekParams) e propose-training-macro.ts.
+  // SODDISFATTO ANCHE DAL CALENDARIO: se il coach ha già messo sedute nella finestra
+  // osservata, il numero di giorni allenabili è un FATTO, e chiedere all'atleta di
+  // digitarlo significa chiedergli un dato che il sistema HA GIÀ (era la ragione per cui
+  // restava parcheggiato in /onboarding). Affiancare, non sostituire: il campo di profilo
+  // continua a soddisfare il requisito da solo, per l'atleta senza coach.
+  //
+  // Qui il calendario ha un ruolo DELIBERATAMENTE più debole che nel generatore: là la
+  // domanda è «quale valore uso» (e la risposta è un `max`, vedi deriveTrainingWeekParams),
+  // qui è solo «il sistema conosce il dato?» → OR puro. Essendo un OR, nessun atleta può
+  // PERDERE la prontezza per questa modifica. E una soglia qui non serve: anche una sola
+  // seduta in calendario sblocca la sala d'attesa, ma il piano che ne esce è dimensionato
+  // sul pavimento dichiarato (il `max` del generatore), quindi non peggiore di quello di un
+  // qualunque atleta senza questi campi. Sbloccare presto costa poco; tenere l'atleta
+  // parcheggiato a chiedergli un dato già noto costava molto.
   { key: "training_days_per_week", label: "Giorni di allenamento/settimana", group: "routine", category: "required", blocks: ["training"],
     unlocks: "Volume settimanale del piano", href: "/profile#routine",
-    present: (s) => num(p(s).training_days_per_week) },
-  // `training_max_session_minutes` → SOLO training: hoursTarget
-  // (generate-training-week-headless.ts:157) e cap durata L2 (l2/athlete-render-profile.ts:128).
+    present: (s) => num(p(s).training_days_per_week) || (s.calendarVolume?.daysPerWeek ?? 0) >= 1 },
+  // `training_max_session_minutes` → SOLO training: hoursTarget (deriveTrainingWeekParams)
+  // e cap durata L2 (l2/athlete-render-profile.ts:128).
+  // SODDISFATTO ANCHE DAL CALENDARIO: la durata delle sedute pianificate dice quanto dura
+  // una seduta di questo atleta. Attenzione alla differenza di RUOLO fra i due punti: qui
+  // il calendario serve solo a dire «il dato esiste»; nel generatore il campo dichiarato
+  // resta un TETTO e vince se è più restrittivo di quanto c'è in calendario.
+  //
+  // ⚠️ PORTATA ESATTA, per non promettere più del vero: dei due consumatori citati sopra,
+  // il calendario raggiunge SOLO `deriveTrainingWeekParams`. Il cap L2
+  // (`l2/athlete-render-profile.ts:128`) legge esclusivamente la colonna di profilo, quindi
+  // per un atleta sbloccato dal solo calendario resta `null`, cioè «nessun cap esplicito».
+  // È voluto e non è una svista: un cap è una RESTRIZIONE, e la legge di questa fonte è che
+  // il calendario può solo AGGIUNGERE prova, mai toglierne — dedurre un tetto dalle sedute
+  // osservate impedirebbe a L2 di proporre un lungo a chi finora ha fatto solo sedute brevi.
+  // Quell'atleta resta quindi nello stesso stato della maggioranza (campo mai compilato),
+  // che è esattamente ciò che il gate promette: il sistema sa abbastanza per costruire, non
+  // che l'atleta abbia dichiarato un limite.
   { key: "training_max_session_minutes", label: "Durata max seduta", group: "routine", category: "required", blocks: ["training"],
     unlocks: "Durata e struttura delle sedute", href: "/profile#routine",
-    present: (s) => num(p(s).training_max_session_minutes) },
+    present: (s) => num(p(s).training_max_session_minutes) || num(s.calendarVolume?.maxSessionMinutes) },
   // Nutrizione
   // `diet_type` → SOLO nutrizione: vincoli MANDATORY del composer
   // (lib/nutrition/deterministic-meal-plan-from-request.ts:144) e deny-fragments

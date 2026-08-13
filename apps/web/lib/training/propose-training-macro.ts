@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildMacroPhases, macroTotalWeeks, type MacroPhase } from "@/lib/training/build-macro-phases";
 import { deriveTrainingWeekParams } from "@/lib/training/generate-training-week-headless";
+import { loadCalendarTrainingVolume } from "@/lib/training/load-calendar-training-volume";
 import { PHASE_DEFAULT_STIMULUS } from "@/lib/training/plan/plan-skeleton-mappers";
 import type { PlanPhase } from "@/lib/training/plan/plan-skeleton-types";
 
@@ -197,6 +198,11 @@ export type ProposeTrainingMacroArgs = {
   goalEventDate?: string | null;
   /** Se assente: default 'cycling' finché non esiste athlete_sports (F4). */
   discipline?: string | null;
+  /**
+   * Giorno «oggi» per osservare il calendario del coach (FONTE 3 del volume).
+   * Iniettabile solo per i test; in produzione si usa la data corrente UTC.
+   */
+  todayIso?: string;
 };
 
 export type ProposeTrainingMacroResult =
@@ -222,16 +228,35 @@ export async function proposeTrainingMacro(
 
   // 1) Profilo routine → parametri settimana (deriveTrainingWeekParams resuscitata:
   //    sessions da week_plan/training_days_per_week, ore da training_max_session_minutes).
+  //    …più la FONTE 3, il calendario già scritto dal coach.
+  //
+  //    ANCORA = OGGI, non `startDate`. Sembra controintuitivo — si sta dimensionando la
+  //    settimana che parte da `startDate` — ma questi parametri sono il seed dell'INTERO
+  //    macrociclo (8-24 settimane, vedi buildPlanWeekSeeds sotto), quindi la domanda non è
+  //    «cosa c'è in quella settimana» ma «che volume programma davvero il coach di questo
+  //    atleta». E la risposta vive nel presente programmato, non in una settimana futura
+  //    che per definizione non è ancora stata scritta: nel ramo CONTINUITÀ
+  //    (`ensure-training-continuity.ts`) `startDate` è il lunedì DOPO l'ultima seduta
+  //    pianificata, quindi la finestra ancorata lì sarebbe vuota per costruzione e la
+  //    fonte 3 sarebbe nata morta proprio dove il calendario è più ricco.
+  //    Ancorata a oggi invece la copre tutta, e si può dimostrare: la continuità propone
+  //    solo quando la runway è più corta di MIN_FUTURE_WEEKS = 3 settimane, quindi ogni
+  //    seduta pianificata cade dentro le 4 settimane osservate da oggi.
+  //    Effetto collaterale utile: il gate di onboarding osserva la stessa finestra
+  //    ancorata a oggi, quindi «sono pronto» e «quanto è grande il mio piano» rispondono
+  //    alla stessa domanda invece di divergere.
   const { data: profile, error: profileErr } = await db
     .from("athlete_profiles")
     .select("training_days_per_week, training_max_session_minutes, goals, routine_config")
     .eq("id", athleteId)
     .maybeSingle();
   if (profileErr) return { ok: false, error: `lettura profilo: ${profileErr.message}` };
+  const todayIso = args.todayIso?.trim().slice(0, 10) || isoUTC(new Date());
+  const calendar = await loadCalendarTrainingVolume(db, athleteId, todayIso);
   const derived = deriveTrainingWeekParams(
     (profile ?? null) as Parameters<typeof deriveTrainingWeekParams>[0],
     startDate,
-    { discipline: args.discipline?.trim() || undefined },
+    { discipline: args.discipline?.trim() || undefined, calendar },
   );
 
   // 2) Gara A → ancora del taper. La query resta larga (tutte le gare dell'atleta,

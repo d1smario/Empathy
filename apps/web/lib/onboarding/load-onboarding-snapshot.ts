@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadCalendarTrainingVolume } from "@/lib/training/load-calendar-training-volume";
 import {
   computeOnboardingCompleteness,
   type OnboardingCompleteness,
@@ -8,6 +9,23 @@ import {
 
 /** Finestra entro cui il device è considerato «alimentato» (righe recenti in device_sync_exports). */
 const DEVICE_FED_WINDOW_DAYS = 7;
+
+/**
+ * Giorno corrente `YYYY-MM-DD` in UTC. UTC e non fuso locale per una ragione precisa:
+ * `proposeTrainingMacro` osserva la STESSA finestra di calendario con la stessa ancora,
+ * e le due devono coincidere — altrimenti «sono pronto?» e «quanto è grande il mio piano»
+ * risponderebbero su settimane diverse su una macchina non-UTC. Su Vercel girano
+ * entrambe in UTC; questo rende la coincidenza una proprietà del codice, non della
+ * configurazione. Uno scarto di poche ore sposta comunque la finestra solo a cavallo
+ * della mezzanotte fra domenica e lunedì, perché si osservano settimane ISO intere.
+ */
+function todayIsoDay(): string {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 const PROFILE_COLUMNS =
   "sex, birth_date, timezone, height_cm, weight_kg, body_fat_pct, muscle_mass_kg, " +
@@ -28,7 +46,7 @@ export async function loadOnboardingSnapshot(
 ): Promise<OnboardingSnapshot> {
   const sinceIso = new Date(Date.now() - DEVICE_FED_WINDOW_DAYS * 86_400_000).toISOString();
 
-  const [profileRes, linkRes, fedRes, ftpRes, bloodRes] = await Promise.all([
+  const [profileRes, linkRes, fedRes, ftpRes, bloodRes, calendarVolume] = await Promise.all([
     db.from("athlete_profiles").select(PROFILE_COLUMNS).eq("id", athleteId).maybeSingle(),
     db.from("vendor_oauth_links").select("id", { count: "exact", head: true }).eq("athlete_id", athleteId),
     db
@@ -42,6 +60,10 @@ export async function loadOnboardingSnapshot(
       .eq("athlete_id", athleteId)
       .not("ftp_watts", "is", null),
     db.from("biomarker_panels").select("id", { count: "exact", head: true }).eq("athlete_id", athleteId),
+    // FONTE 3 del volume: le sedute che il coach ha già messo in calendario. Ancorata a
+    // OGGI (qui non si sta dimensionando una settimana specifica, si sta guardando se il
+    // sistema conosce già il volume dell'atleta).
+    loadCalendarTrainingVolume(db, athleteId, todayIsoDay()),
   ]);
 
   return {
@@ -50,6 +72,7 @@ export async function loadOnboardingSnapshot(
     deviceFed: (fedRes.count ?? 0) > 0,
     hasFtp: (ftpRes.count ?? 0) > 0,
     hasBloodPanel: (bloodRes.count ?? 0) > 0,
+    calendarVolume,
   };
 }
 

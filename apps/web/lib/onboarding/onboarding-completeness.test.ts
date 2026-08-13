@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { CalendarTrainingVolume } from "@/lib/training/calendar-training-volume";
 import {
   ONBOARDING_ITEMS,
   computeOnboardingCompleteness,
@@ -14,6 +15,7 @@ const EMPTY: OnboardingSnapshot = {
   deviceFed: false,
   hasFtp: false,
   hasBloodPanel: false,
+  calendarVolume: null,
 };
 
 const FULL: OnboardingSnapshot = {
@@ -39,6 +41,7 @@ const FULL: OnboardingSnapshot = {
   deviceFed: true,
   hasFtp: true,
   hasBloodPanel: true,
+  calendarVolume: null,
 };
 
 const REQUIRED_COUNT = ONBOARDING_ITEMS.filter((i) => i.category === "required").length;
@@ -72,7 +75,7 @@ test("solo obbligatori presenti: piano pronto anche senza consigliati/opzionali"
       goals: ["salute"], training_days_per_week: 3, training_max_session_minutes: 60,
       diet_type: "vegetariana",
     },
-    deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false,
+    deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false, calendarVolume: null,
   };
   const r = computeOnboardingCompleteness(snap);
   assert.equal(r.planReady, true);
@@ -91,7 +94,7 @@ test("device collegato ma NON alimentato non conta come completo", () => {
 test("progresso parziale: metà obbligatori → planReady false, pct tra 0 e 100", () => {
   const snap: OnboardingSnapshot = {
     profile: { sex: "male", birth_date: "1988-03-03", timezone: "Europe/Zurich", height_cm: 175, weight_kg: 70 },
-    deviceConnected: false, deviceFed: false, hasFtp: false, hasBloodPanel: false,
+    deviceConnected: false, deviceFed: false, hasFtp: false, hasBloodPanel: false, calendarVolume: null,
   };
   const r = computeOnboardingCompleteness(snap);
   assert.equal(r.planReady, false);
@@ -102,7 +105,7 @@ test("progresso parziale: metà obbligatori → planReady false, pct tra 0 e 100
 test("valori zero/negativi non contano come presenti", () => {
   const snap: OnboardingSnapshot = {
     profile: { weight_kg: 0, height_cm: -5, resting_hr_bpm: 0, training_days_per_week: 0 },
-    deviceConnected: false, deviceFed: false, hasFtp: false, hasBloodPanel: false,
+    deviceConnected: false, deviceFed: false, hasFtp: false, hasBloodPanel: false, calendarVolume: null,
   };
   const r = computeOnboardingCompleteness(snap);
   assert.equal(r.required.done, 0);
@@ -175,7 +178,7 @@ test("il caso reale dell'atleta: mancano SOLO i due campi training → nutrizion
       height_cm: 186, weight_kg: 73, body_fat_pct: 8,
       resting_hr_bpm: 40, max_hr_bpm: 204, goals: ["performance"], diet_type: "omnivore",
     },
-    deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false,
+    deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false, calendarVolume: null,
   };
   const r = computeOnboardingCompleteness(snap);
   assert.equal(r.planReady, false); // onboarding NON completo: nulla è cambiato lì
@@ -212,4 +215,96 @@ test("la sala d'attesa vede l'insieme COMPLETO: nessuna voce persa né spostata 
   const empty = computeOnboardingCompleteness(EMPTY);
   assert.equal(empty.required.missing.length, REQUIRED_COUNT);
   assert.equal(REQUIRED_COUNT, 12);
+});
+
+/* ──────────────────────────────────────────────────────────────────────────────
+ * FONTE 3: il calendario del coach soddisfa i due requisiti di volume.
+ * Il problema che chiudono: un atleta con il profilo pieno TRANNE
+ * `training_days_per_week` / `training_max_session_minutes`, ma con le sedute già
+ * scritte in `planned_workouts`, restava «non pronto» e parcheggiato in /onboarding
+ * mentre la mail continuava a chiedergli dati che il sistema HA GIÀ.
+ * ────────────────────────────────────────────────────────────────────────────── */
+
+/** Volume di calendario sintetico: qui conta solo cosa vede il predicato. */
+function calendar(daysPerWeek: number, maxSessionMinutes: number | null): CalendarTrainingVolume {
+  return {
+    windowStart: "2026-08-10",
+    windowEndExclusive: "2026-09-07",
+    sessionCount: daysPerWeek,
+    weeksWithSessions: 1,
+    daysPerWeek,
+    maxSessionMinutes,
+    // Il gate non guarda la media (serve al monte-ore del generatore): la si tiene
+    // coerente col picco solo per non lasciare una fixture a metà.
+    avgDayMinutes: maxSessionMinutes,
+  };
+}
+
+test("il calendario del coach soddisfa i due requisiti di volume anche a campi vuoti", () => {
+  const snap: OnboardingSnapshot = {
+    ...withoutKeys(["training_days_per_week", "training_max_session_minutes"]),
+    calendarVolume: calendar(4, 150),
+  };
+  const r = computeOnboardingCompleteness(snap);
+  assert.equal(r.planReady, true);
+  assert.equal(r.required.missing.length, 0);
+});
+
+test("l'atleta reale 04968274 diventa pronto senza compilare nulla", () => {
+  // Fotografia letta su prod: profilo pieno, device alimentato, i due campi volume a null,
+  // e 4 sedute già in calendario messe dal coach.
+  const profile = {
+    sex: "male", birth_date: "2006-10-03", timezone: "Europe/Rome",
+    height_cm: 186, weight_kg: 73, body_fat_pct: 8,
+    resting_hr_bpm: 40, max_hr_bpm: 204, goals: ["performance"], diet_type: "omnivore",
+  };
+  const senzaCalendario: OnboardingSnapshot = {
+    profile, deviceConnected: true, deviceFed: true, hasFtp: false, hasBloodPanel: false,
+    calendarVolume: null,
+  };
+  // Prima: parcheggiato in sala d'attesa per due campi che nessuno gli aveva chiesto bene.
+  assert.equal(computeOnboardingCompleteness(senzaCalendario).planReady, false);
+  // Dopo: il calendario è la prova, e vale.
+  const conCalendario: OnboardingSnapshot = { ...senzaCalendario, calendarVolume: calendar(3, 213) };
+  const r = computeOnboardingCompleteness(conCalendario);
+  assert.equal(r.planReady, true);
+  assert.equal(r.progressPct, 100);
+});
+
+test("calendario senza durate utili: sblocca i giorni, NON il tetto durata", () => {
+  const snap: OnboardingSnapshot = {
+    ...withoutKeys(["training_days_per_week", "training_max_session_minutes"]),
+    calendarVolume: calendar(3, null),
+  };
+  const r = computeOnboardingCompleteness(snap);
+  assert.equal(r.planReady, false);
+  assert.deepEqual(
+    r.required.missing.map((i) => i.key),
+    ["training_max_session_minutes"],
+  );
+});
+
+test("una sola seduta sblocca la sala d'attesa, e il piano che ne esce non ne risente", () => {
+  // Il gate è un OR: basta che il dato ESISTA. La protezione contro il calendario rado
+  // sta nel generatore (`deriveTrainingWeekParams` fa `max` col dichiarato), non qui —
+  // vedi lib/training/calendar-training-volume.test.ts, test «REGRESSIONE: una singola
+  // seduta sparsa non fa collassare il regime dell'atleta».
+  const snap: OnboardingSnapshot = {
+    ...withoutKeys(["training_days_per_week", "training_max_session_minutes"]),
+    calendarVolume: calendar(1, 65),
+  };
+  assert.equal(computeOnboardingCompleteness(snap).planReady, true);
+});
+
+test("calendario muto: nulla cambia rispetto a prima (il profilo resta l'unica fonte)", () => {
+  const senza = computeOnboardingCompleteness(
+    withoutKeys(["training_days_per_week", "training_max_session_minutes"]),
+  );
+  assert.equal(senza.planReady, false);
+  assert.deepEqual(
+    senza.required.missing.map((i) => i.key).sort(),
+    ["training_days_per_week", "training_max_session_minutes"],
+  );
+  // …e con i campi compilati il calendario non serve: la fonte dichiarata basta da sola.
+  assert.equal(computeOnboardingCompleteness(FULL).planReady, true);
 });

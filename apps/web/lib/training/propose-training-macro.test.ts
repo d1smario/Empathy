@@ -31,7 +31,10 @@ function makeDb(canned: Record<string, unknown[]>) {
         call.filters.push([name, ...args]);
         return c;
       };
-    for (const m of ["select", "eq", "neq", "in", "is", "gte", "lte", "ilike", "order", "limit"]) {
+    // `lt`/`gt` servono da quando proposeTrainingMacro legge anche il calendario del
+    // coach (`loadCalendarTrainingVolume` filtra la finestra con .gte().lt()): senza,
+    // la catena finta si spezzava con «.lt is not a function».
+    for (const m of ["select", "eq", "neq", "in", "is", "gt", "gte", "lt", "lte", "ilike", "order", "limit"]) {
       c[m] = record(m);
     }
     c.insert = (payload: unknown) => {
@@ -176,6 +179,86 @@ test("senza gara: open-ended (niente peak), settimane deload a budget ridotto", 
   assert.equal(base!.budget_tss, 380);
   assert.equal((base!.objectives as Record<string, unknown>).primary, "mitochondrial_density");
   assert.equal(base!.workout_count, 0, "le settimane nascono non-materializzate");
+});
+
+/* ── FONTE 3: il calendario del coach arriva davvero fino ai seed delle settimane ── */
+
+/** Sedute finte in `planned_workouts`, tutte nella settimana del 2026-07-27. */
+function sedute(giorni: readonly string[], minuti: number) {
+  return giorni.map((date) => ({ date, duration_minutes: minuti }));
+}
+
+test("il calendario del coach allarga i seed di TUTTE le settimane del macro", async () => {
+  const { db, calls } = makeDb({
+    coach_athletes: [],
+    // 6 giorni da 120′ nella settimana di partenza: profilo assente (default 4 × 75′).
+    planned_workouts: sedute(
+      ["2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-01"],
+      120,
+    ),
+  });
+  const res = await proposeTrainingMacro(db, {
+    athleteId: ATHLETE,
+    startDate: MONDAY,
+    source: "onboarding_d3",
+    todayIso: MONDAY,
+  });
+  assert.equal(res.ok, true);
+
+  const weeks = calls.find((c) => c.table === "training_plan_week" && c.op === "insert")!
+    .payload as Array<Record<string, unknown>>;
+  const base = weeks.find((w) => w.phase === "base")!;
+  // 6 giorni osservati > 4 di default → 6 sedute, 570 TSS (contro 4 e 380 senza calendario).
+  assert.equal(base.workout_count, 0);
+  assert.equal(base.budget_tss, 570);
+  // Monte-ore dal calendario VERO: 6 × 120′ = 12,0 h. Con `sessions × picco` sarebbero
+  // state le stesse ore qui, ma su durate disomogenee il picco gonfia (vedi il test puro).
+  assert.equal(base.hours_target, 12);
+});
+
+test("una seduta sparsa NON detta il macrociclo: restano i default dichiarati", async () => {
+  // Il caso reale che faceva collassare il piano: un solo giorno programmato in 4 settimane.
+  const { db, calls } = makeDb({
+    coach_athletes: [],
+    planned_workouts: sedute(["2026-08-10"], 65),
+  });
+  const res = await proposeTrainingMacro(db, {
+    athleteId: ATHLETE,
+    startDate: MONDAY,
+    source: "onboarding_d3",
+    todayIso: MONDAY,
+  });
+  assert.equal(res.ok, true);
+
+  const weeks = calls.find((c) => c.table === "training_plan_week" && c.op === "insert")!
+    .payload as Array<Record<string, unknown>>;
+  const base = weeks.find((w) => w.phase === "base")!;
+  assert.equal(base.budget_tss, 380, "4 sedute di default, non 1");
+  assert.equal(base.hours_target, 5, "4 × 75′, non 1 × 65′");
+});
+
+test("il calendario si osserva da OGGI, non dalla settimana di partenza del macro", async () => {
+  // Ramo continuità: startDate è il lunedì DOPO l'ultima seduta pianificata, quindi una
+  // finestra ancorata lì sarebbe vuota per costruzione e la fonte 3 morirebbe sul nascere.
+  const { db, calls } = makeDb({
+    coach_athletes: [],
+    planned_workouts: sedute(["2026-07-27", "2026-07-29", "2026-07-31", "2026-08-02", "2026-08-04"], 100),
+  });
+  const res = await proposeTrainingMacro(db, {
+    athleteId: ATHLETE,
+    startDate: "2026-09-28", // ben oltre le 4 settimane osservate da oggi
+    source: "continuity",
+    todayIso: MONDAY,
+  });
+  assert.equal(res.ok, true);
+
+  const finestra = calls.find((c) => c.table === "planned_workouts" && c.op === "select")!;
+  assert.deepEqual(finestra.filters.find((f) => f[0] === "gte"), ["gte", "date", "2026-07-27"]);
+  assert.deepEqual(finestra.filters.find((f) => f[0] === "lt"), ["lt", "date", "2026-08-24"]);
+
+  const weeks = calls.find((c) => c.table === "training_plan_week" && c.op === "insert")!
+    .payload as Array<Record<string, unknown>>;
+  assert.equal(weeks.find((w) => w.phase === "base")!.budget_tss, 4 * 95);
 });
 
 /* ── supersessione ── */
