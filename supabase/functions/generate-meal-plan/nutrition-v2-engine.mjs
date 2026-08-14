@@ -651,25 +651,6 @@ var init_pro2_session_notes = __esm({
 var MEAL_SLOT_ORDER = ["breakfast", "lunch", "dinner", "snack_am", "snack_pm"];
 var MEAL_SLOT_KEYS = [...MEAL_SLOT_ORDER, "snack_evening"];
 var SLOT_KEYS = [...MEAL_SLOT_KEYS];
-function rescaleSlotKcalToTarget(slot, targetKcal) {
-  const sum = slot.items.reduce((a, i) => a + i.approxKcal, 0);
-  if (sum <= 0 || targetKcal <= 0) return slot;
-  const f = targetKcal / sum;
-  const items = slot.items.map((i) => ({
-    ...i,
-    approxKcal: Math.max(15, Math.round(i.approxKcal * f))
-  }));
-  let newSum = items.reduce((a, i) => a + i.approxKcal, 0);
-  const drift = Math.round(targetKcal - newSum);
-  if (items.length && drift !== 0) {
-    const last = items.length - 1;
-    items[last] = {
-      ...items[last],
-      approxKcal: Math.max(15, items[last].approxKcal + drift)
-    };
-  }
-  return { ...slot, items };
-}
 
 // apps/web/lib/nutrition/routine-week-plan-meal-times.ts
 function asRecord(v) {
@@ -3801,49 +3782,12 @@ function scaleCanonicalNutrientsToKcal(row2, targetKcal) {
     glycemicLoad: 0
   };
 }
-var OLIVE_OIL_G_PER_ML = 0.92;
-function parseExplicitGramsFromPortionHint(hint) {
-  const m = hint.match(/(\d+(?:[.,]\d+)?)\s*g(?:rammi?)?\b/i);
-  if (!m) return void 0;
-  const v = parseFloat(m[1].replace(",", "."));
-  if (!Number.isFinite(v) || v <= 0) return void 0;
-  return v;
-}
-function parseMlFromPortionHint(hint) {
-  const m = hint.match(/(\d+(?:[.,]\d+)?)\s*ml\b/i);
-  if (!m) return void 0;
-  const v = parseFloat(m[1].replace(",", "."));
-  if (!Number.isFinite(v) || v <= 0) return void 0;
-  return v;
-}
 function looksLikeMultiIngredientPortionHint(portionHint) {
   const hint = portionHint.trim();
   if (!hint) return false;
   if (hint.includes(" + ")) return true;
   const quantityMatches = hint.match(/\b\d+(?:[.,]\d+)?\s*(g(?:rammi?)?|ml)\b/gi) ?? [];
   return quantityMatches.length >= 2;
-}
-var LIQUID_DAIRY_G_PER_ML = 1.03;
-var LIQUIDS_AS_GRAMS_KEYS = /* @__PURE__ */ new Set([
-  "milk_2pct",
-  "milk_goat",
-  "yogurt_plain",
-  "plant_drink_almond",
-  "plant_drink_rice",
-  "plant_drink_oat",
-  "plant_drink_generic"
-]);
-function resolveServingGramsFromPortionHint(portionHint, compositionKey) {
-  const hint = portionHint.trim();
-  if (!hint) return void 0;
-  if (looksLikeMultiIngredientPortionHint(hint)) return void 0;
-  const g = parseExplicitGramsFromPortionHint(hint);
-  if (g != null) return g;
-  const ml = parseMlFromPortionHint(hint);
-  if (ml == null) return void 0;
-  if (compositionKey === "olive_oil") return ml * OLIVE_OIL_G_PER_ML;
-  if (LIQUIDS_AS_GRAMS_KEYS.has(compositionKey)) return ml * LIQUID_DAIRY_G_PER_ML;
-  return void 0;
 }
 function scaleCanonicalNutrientsToGrams(row2, gramsEdible) {
   const g = Math.max(0.1, gramsEdible);
@@ -3893,17 +3837,6 @@ function scaleCanonicalNutrientsToGrams(row2, gramsEdible) {
     insulinIndex: 0,
     glycemicLoad: 0
   };
-}
-function nutrientsForMealPlanItem(item2) {
-  const compositionKey = inferCanonicalFoodKeyPreferName(item2.name, item2.portionHint);
-  const row2 = CANONICAL_FOOD_TABLE[compositionKey];
-  if (!row2 || compositionKey === "generic_mixed") {
-    return { compositionKey: "unresolved", compositionStatus: "unresolved", nutrients: { ...ZERO_SCALED } };
-  }
-  const hintForServing = `${item2.portionHint} ${item2.name}`.trim();
-  const gramsFromHint = resolveServingGramsFromPortionHint(hintForServing, compositionKey);
-  const nutrients = gramsFromHint != null ? scaleCanonicalNutrientsToGrams(row2, gramsFromHint) : scaleCanonicalNutrientsToKcal(row2, item2.approxKcal);
-  return { compositionKey, compositionStatus: "canonical_estimate", nutrients };
 }
 var NON_ADDITIVE_KEYS = /* @__PURE__ */ new Set(["glycemicIndex", "insulinIndex"]);
 var ZERO_SCALED = {
@@ -6235,6 +6168,12 @@ function buildDailyNutritionRequirementsV2(input) {
     provenance
   };
 }
+var MAX_PLAUSIBLE_AVG_POWER_FTP_FACTOR = 2;
+function sanitizeAvgPowerW(avgPowerW, ftpW) {
+  if (typeof avgPowerW !== "number" || !Number.isFinite(avgPowerW) || avgPowerW <= 0) return null;
+  if (avgPowerW > ftpW * MAX_PLAUSIBLE_AVG_POWER_FTP_FACTOR) return null;
+  return Math.round(avgPowerW);
+}
 function extractPlannedSessionsFromRequest(req, defaultFtp) {
   const out = [];
   for (const line of req.trainingDayLines ?? []) {
@@ -6244,16 +6183,13 @@ function extractPlannedSessionsFromRequest(req, defaultFtp) {
       out.push({ label: line.slice(0, 80), avgPowerW: power, durationMin: dur });
     }
   }
-  if (out.length === 0 && (req.suppressedSlots?.length || req.trainingDayLines?.length)) {
-    out.push({ label: "Allenamento pianificato (stima preview)", avgPowerW: Math.round(defaultFtp * 0.86), durationMin: 240 });
-  }
   return out;
 }
 function parsePowerFromLine(line, ftp) {
   const w = line.match(/(\d{2,4})\s*w\b/i);
-  if (w) return Number(w[1]);
+  if (w) return sanitizeAvgPowerW(Number(w[1]), ftp) ?? 0;
   const pct = line.match(/(\d{2,3})\s*%\s*ftp/i);
-  if (pct) return Math.round(Number(pct[1]) / 100 * ftp);
+  if (pct) return sanitizeAvgPowerW(Math.round(Number(pct[1]) / 100 * ftp), ftp) ?? 0;
   return 0;
 }
 function parseDurationFromLine(line) {
@@ -6397,9 +6333,10 @@ async function prepareIntelligentMealPlanContext(db, body) {
       kcalTargetDb: Number(pr.kcal_target) || 0,
       athleteFtpWatts: ftp
     });
+    const avgPowerPlausibleW = sanitizeAvgPowerW(m.avgPowerW, ftp);
     return {
-      label: `${String(pr.type ?? "session")} #${idx + 1} \xB7 ${m.avgPowerW ?? "?"}W \xB7 ${m.durationMinutes}min`,
-      avgPowerW: m.avgPowerW ?? Math.round(ftp * 0.75),
+      label: `${String(pr.type ?? "session")} #${idx + 1} \xB7 ${avgPowerPlausibleW ?? "?"}W \xB7 ${m.durationMinutes}min`,
+      avgPowerW: avgPowerPlausibleW ?? Math.round(ftp * 0.75),
       durationMin: m.durationMinutes
     };
   });
@@ -8865,18 +8802,6 @@ function normalizeDietType2(raw) {
 function selectValidBoostTargets(targets) {
   return targets.filter((t) => VALID_NUTRIENT_TARGET_IDS.has(t.nutrientId)).map((t) => ({ nutrientId: t.nutrientId, labelIt: t.labelIt }));
 }
-function syncItemsApproxKcalFromCanonical(items) {
-  return items.map((it) => {
-    if (it.compositionKey?.startsWith("fdc:")) return it;
-    const { compositionStatus, nutrients } = nutrientsForMealPlanItem({
-      name: it.name,
-      portionHint: it.portionHint,
-      approxKcal: it.approxKcal
-    });
-    if (compositionStatus === "unresolved" || nutrients.kcal <= 0) return it;
-    return { ...it, approxKcal: Math.max(8, Math.round(nutrients.kcal)) };
-  });
-}
 function buildMediterraneanDayContextFromRequest(req) {
   return createMediterraneanDayContext(
     req.planDate,
@@ -8889,63 +8814,50 @@ function buildMediterraneanDayContextFromRequest(req) {
     req.racePostRecovery ?? void 0
   );
 }
-function enrichMealSlotsAfterCompose(input) {
+function decorateComposedMealSlots(input) {
   const { request } = input;
   const dayCtx = input.dayCtx ?? buildMediterraneanDayContextFromRequest(request);
-  const suppressed = request.suppressedSlots ?? [];
+  const suppressed = new Set(request.suppressedSlots ?? []);
   const validBoostTargets = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
   const dailyIntegrationPlan = buildDailySupplementIntegrationPlan({
     boostTargets: validBoostTargets,
     slots: request.slots,
-    suppressedSlots: suppressed,
+    suppressedSlots: request.suppressedSlots ?? [],
     pathwayModulation: request.pathwayModulation,
     dietType: normalizeDietType2(request.dietType)
   });
-  const slotMeta = new Map(input.slots.map((s) => [s.slot, s]));
-  return request.slots.map((slotReq) => {
-    const existing = slotMeta.get(slotReq.slot);
-    const isSuppressed = suppressed.includes(slotReq.slot);
-    const isRacePreLunch = isRacePreRaceMealSlot(slotReq.slot, request.racePreLunch ?? null);
-    if (isSuppressed) {
-      return existing ?? {
-        slot: slotReq.slot,
-        targetKcalEcho: slotReq.targetKcal,
-        items: [],
-        slotCoherence: "",
-        slotTimingRationale: ""
-      };
+  const reqBySlot = new Map(request.slots.map((s) => [s.slot, s]));
+  return input.slots.map((slot) => {
+    if (suppressed.has(slot.slot)) return slot;
+    const slotReq = reqBySlot.get(slot.slot);
+    const isRacePreLunch = isRacePreRaceMealSlot(slot.slot, request.racePreLunch ?? null);
+    const baseMeal = input.getBaseMealForSlot(slot.slot);
+    const slotBoostIds = validBoostTargets.filter((t) => nutrientBoostAppliesToSlot(t.nutrientId, slot.slot, request.pathwayModulation)).map((t) => t.nutrientId);
+    const pathway = isRacePreLunch ? { meal: baseMeal, adviceNotes: [] } : applyPathwayAdvice(baseMeal, slot.slot, slotBoostIds, dayCtx);
+    const adviceNotes = [...pathway.adviceNotes];
+    if (pathway.meal.items.length > baseMeal.items.length) {
+      for (const add of pathway.meal.items.slice(baseMeal.items.length)) {
+        adviceNotes.push(`Aggiunta suggerita: ${add.name} (${add.portionHint})`);
+      }
     }
-    const baseMeal = input.getBaseMealForSlot(slotReq);
-    const slotBoostIds = validBoostTargets.filter((t) => nutrientBoostAppliesToSlot(t.nutrientId, slotReq.slot, request.pathwayModulation)).map((t) => t.nutrientId);
-    const pathway = isRacePreLunch ? { meal: baseMeal, adviceNotes: [] } : applyPathwayAdvice(baseMeal, slotReq.slot, slotBoostIds, dayCtx);
-    registerMealCanonicalKeys(dayCtx, pathway.meal);
-    const integrationItems = isRacePreLunch ? [] : dailyIntegrationPlan[slotReq.slot] ?? [];
-    const groupTitles = slotReq.functionalFoodGroups.map((g) => g.displayNameIt).join(" \xB7 ");
+    registerMealCanonicalKeys(dayCtx, baseMeal);
+    const integrationItems = isRacePreLunch ? [] : dailyIntegrationPlan[slot.slot] ?? [];
+    if (integrationItems.length > 0) {
+      adviceNotes.push(
+        `Integrazione: ${integrationItems.map((it) => `${it.name} (${it.portionHint})`).join(", ")}`
+      );
+    }
+    const groupTitles = (slotReq?.functionalFoodGroups ?? []).map((g) => g.displayNameIt).join(" \xB7 ");
     const bridgePrefix = groupTitles ? `Target funzionali (solver): ${groupTitles.slice(0, 180)}${groupTitles.length > 180 ? "\u2026" : ""}. ` : "";
-    let items = syncItemsApproxKcalFromCanonical(
-      [...pathway.meal.items, ...integrationItems].map((it) => ({
-        ...it,
-        functionalBridge: `${bridgePrefix}Composizione mediterranea: ${it.functionalBridge}`.slice(0, 500)
-      }))
-    );
-    if (slotReq.targetKcal > 0) {
-      items = rescaleSlotKcalToTarget(
-        {
-          slot: slotReq.slot,
-          targetKcalEcho: slotReq.targetKcal,
-          items,
-          slotCoherence: "",
-          slotTimingRationale: ""
-        },
-        slotReq.targetKcal
-      ).items;
-    }
-    const timing = slotReq.functionalFoodGroups.find((g) => g.timingHalfLifeHint.trim())?.timingHalfLifeHint ?? request.pathwayTimingLines[0] ?? `Orario pasto ${slotReq.scheduledTimeLocal || "\u2014"}; allinea al carico del giorno.`;
-    const baseCoherence = isRacePreLunch ? racePreLunchContextLine(request.racePreLunch) : groupTitles ? `Combinazione solver + funzionale: target ${slotReq.targetKcal} kcal con priorit\xE0 a ${groupTitles.slice(0, 260)}` : `Pasto strutturato su target Diet: ${slotReq.targetKcal} kcal; porzioni da staple sportivi.`;
-    const slotBoostNote = pathway.adviceNotes.length > 0 ? `Suggerimenti pathway: ${pathway.adviceNotes.slice(0, 3).join(" | ")}` : void 0;
+    const items = slot.items.map((it) => ({
+      ...it,
+      functionalBridge: `${bridgePrefix}${it.functionalBridge}`.slice(0, 500)
+    }));
+    const timing = (slotReq?.functionalFoodGroups ?? []).find((g) => g.timingHalfLifeHint.trim())?.timingHalfLifeHint ?? request.pathwayTimingLines[0] ?? (slot.slotTimingRationale || `Orario pasto ${slotReq?.scheduledTimeLocal || "\u2014"}; allinea al carico del giorno.`);
+    const baseCoherence = isRacePreLunch ? racePreLunchContextLine(request.racePreLunch) : groupTitles ? `Combinazione solver + funzionale: target ${slot.targetKcalEcho} kcal con priorit\xE0 a ${groupTitles.slice(0, 260)}` : `Pasto strutturato su target Diet: ${slot.targetKcalEcho} kcal; porzioni da staple sportivi.`;
+    const slotBoostNote = adviceNotes.length > 0 ? `Suggerimenti pathway: ${adviceNotes.slice(0, 3).join(" | ")}` : void 0;
     return {
-      slot: slotReq.slot,
-      targetKcalEcho: slotReq.targetKcal,
+      ...slot,
       items,
       slotCoherence: `${baseCoherence}${slotBoostNote ? ` \xB7 ${slotBoostNote}` : ""}`.slice(0, 480),
       slotTimingRationale: timing.slice(0, 400),
@@ -8957,11 +8869,12 @@ function pathwayBoostStatusFromRequest(request) {
   const valid = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
   return valid.length > 0 ? "applied" : void 0;
 }
-function dayInteractionSummaryExtras(request, engineNote) {
+function dayInteractionSummaryExtras(request, engineNote, servedMealsKcalTotal) {
   const validBoostTargets = request.nutrientBoostTargets ? selectValidBoostTargets(request.nutrientBoostTargets) : [];
+  const mealsKcalTotal = servedMealsKcalTotal != null && Number.isFinite(servedMealsKcalTotal) ? Math.round(servedMealsKcalTotal) : request.mealPlanSolverMeta.dailyMealsKcalTotal;
   const bits = [
     engineNote,
-    `\u03A3 pasti solver: ${request.mealPlanSolverMeta.dailyMealsKcalTotal} kcal/giorno`,
+    `\u03A3 pasti solver: ${mealsKcalTotal} kcal/giorno`,
     validBoostTargets.length > 0 ? `Cofactors attivi: ${validBoostTargets.map((t) => t.labelIt).join(", ")}` : null,
     request.routineDigest
   ].filter((s) => Boolean(s?.trim()));
@@ -9343,9 +9256,9 @@ async function buildFdcCanonicalSnapshot(canonicalKeys) {
   const foodsByFdcId = await loadFdcFoodsByIds(fdcIds);
   return buildFdcCanonicalSnapshotFromFoods(uniqueKeys, foodsByFdcId);
 }
-var OLIVE_OIL_G_PER_ML2 = 0.92;
-var LIQUID_DAIRY_G_PER_ML2 = 1.03;
-var LIQUIDS_AS_GRAMS_KEYS2 = /* @__PURE__ */ new Set([
+var OLIVE_OIL_G_PER_ML = 0.92;
+var LIQUID_DAIRY_G_PER_ML = 1.03;
+var LIQUIDS_AS_GRAMS_KEYS = /* @__PURE__ */ new Set([
   "milk_2pct",
   "milk_goat",
   "yogurt_plain",
@@ -9369,9 +9282,9 @@ function parseGramsFromHint(hint, compositionKey) {
   if (ml) {
     const v = parseFloat(ml[1].replace(",", "."));
     if (Number.isFinite(v) && v > 0) {
-      if (compositionKey === "olive_oil" || OIL_TEXT_RE.test(text)) return v * OLIVE_OIL_G_PER_ML2;
-      if (LIQUIDS_AS_GRAMS_KEYS2.has(compositionKey) || LIQUID_DAIRY_TEXT_RE.test(text)) {
-        return v * LIQUID_DAIRY_G_PER_ML2;
+      if (compositionKey === "olive_oil" || OIL_TEXT_RE.test(text)) return v * OLIVE_OIL_G_PER_ML;
+      if (LIQUIDS_AS_GRAMS_KEYS.has(compositionKey) || LIQUID_DAIRY_TEXT_RE.test(text)) {
+        return v * LIQUID_DAIRY_G_PER_ML;
       }
     }
   }
@@ -9771,8 +9684,8 @@ function enrichSlot(slot, snapshot) {
   });
   return { ...slot, items };
 }
-async function finalizeIntelligentMealPlanCore(core, req, snapshot) {
-  const slotsDeduped = dedupeLunchDinnerMainProteins(core.slots);
+async function finalizeIntelligentMealPlanCore(core, req, snapshot, opts) {
+  const slotsDeduped = opts?.lunchDinnerProteinDedupe === false ? core.slots : dedupeLunchDinnerMainProteins(core.slots);
   const fdcSnapshot = snapshot ?? await buildFdcCanonicalSnapshot(
     slotsDeduped.flatMap((s) => s.items.map((it) => inferCanonicalFoodKeyPreferName(it.name, it.portionHint)))
   );
@@ -9855,22 +9768,25 @@ function slotCoherenceFor(slot, suppressed) {
   }
   return "Composizione mediterranea sportiva: primo + secondo + contorno (V2 staple).";
 }
-function composedMealForSlot(production, slotReq) {
-  const composed = production.composedMealPlan.find((s) => s.slot === slotReq.slot);
+function composedMealForSlot(production, slotKey) {
+  const composed = production.composedMealPlan.find((s) => s.slot === slotKey);
   if (!composed || composed.items.length === 0) {
     return { items: [], lines: [], totalApproxKcal: 0 };
   }
-  const items = composed.items.map((it, idx) => mapItem(it, slotReq.slot, idx));
+  const items = composed.items.map((it, idx) => mapItem(it, slotKey, idx));
   return {
     items,
     lines: items.map((i) => i.portionHint),
     totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0)
   };
 }
+function round15(n) {
+  return Math.round(n * 10) / 10;
+}
 function mapV2PlanToV1AssembledCore(production, request) {
   const suppressed = new Set(request.suppressedSlots ?? []);
   const slotMeta = new Map(request.slots.map((s) => [s.slot, s]));
-  const preEnrichSlots = production.composedMealPlan.map((composed) => {
+  const preEnrichSlots = production.composedMealPlan.filter((composed) => suppressed.has(composed.slot) || composed.items.length > 0).map((composed) => {
     const slotKey = composed.slot;
     const meta = slotMeta.get(slotKey);
     const isSuppressed = suppressed.has(slotKey);
@@ -9899,11 +9815,27 @@ function mapV2PlanToV1AssembledCore(production, request) {
       slotTimingRationale: meta?.scheduledTimeLocal ? `Pasto ${meta.labelIt} alle ${meta.scheduledTimeLocal} \xB7 target Diet ${composed.targetKcal} kcal.` : `Target Diet ${composed.targetKcal} kcal.`
     };
   });
-  const enrichedSlots = enrichMealSlotsAfterCompose({
+  const enrichedSlots = decorateComposedMealSlots({
     request,
     slots: preEnrichSlots,
-    getBaseMealForSlot: (slotReq) => composedMealForSlot(production, slotReq)
+    getBaseMealForSlot: (slotKey) => composedMealForSlot(production, slotKey)
   });
+  const servedSlotBasis = production.dietMealSlotBudgets.map((b) => {
+    const key = b.key;
+    const meta = slotMeta.get(key);
+    return {
+      slot: key,
+      labelIt: b.label || meta?.labelIt || key,
+      // Orario: dallo slot omologo del client se presente, altrimenti default day-engine
+      // (stessa scelta di DayEngineSlot.time) — i budget non trasportano orari.
+      scheduledTimeLocal: meta?.scheduledTimeLocal?.trim() || DAY_ENGINE_DEFAULT_SLOT_TIMES[key] || "",
+      targetKcal: Math.round(b.kcal),
+      targetCarbsG: round15(b.carbs),
+      targetProteinG: round15(b.protein),
+      targetFatG: round15(b.fat)
+    };
+  });
+  const servedMealsKcalTotal = production.dietMealSlotBudgets.reduce((sum, b) => sum + b.kcal, 0);
   const fuelNote = production.requirements.substrateFueling ? `Fueling V2: ${production.requirements.energy.fuelingKcal} kcal oral (CHO substrati).` : "";
   return {
     layer: "deterministic_meal_assembly_v1",
@@ -9911,10 +9843,12 @@ function mapV2PlanToV1AssembledCore(production, request) {
     slots: enrichedSlots,
     dayInteractionSummary: dayInteractionSummaryExtras(
       request,
-      [`Strategia ${production.requirements.strategyKind}`, fuelNote].filter(Boolean).join(" \xB7 ")
+      [`Strategia ${production.requirements.strategyKind}`, fuelNote].filter(Boolean).join(" \xB7 "),
+      servedMealsKcalTotal
     ),
     mealRotationStaples: composedStaples(production),
-    pathwayBoostStatus: pathwayBoostStatusFromRequest(request)
+    pathwayBoostStatus: pathwayBoostStatusFromRequest(request),
+    servedSlotBasis
   };
 }
 function composedStaples(production) {
@@ -9946,7 +9880,7 @@ async function mapV2PlanToV1Response(production, request) {
   const snapFdc = buildFdcCanonicalSnapshotFromFdcIds([...fdcIds], foodsByFdcId);
   const snapCanon = buildFdcCanonicalSnapshotFromFoods([...new Set(canonicalKeys)], foodsByFdcId);
   const snapshot = { ...snapCanon, ...snapFdc };
-  return finalizeIntelligentMealPlanCore(core, request, snapshot);
+  return finalizeIntelligentMealPlanCore(core, request, snapshot, { lunchDinnerProteinDedupe: false });
 }
 
 // apps/web/lib/nutrition/v2/meal-item-fdc-guard.ts
@@ -9995,6 +9929,31 @@ function num3(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
+function persistableComposedSlots(production) {
+  return production.composedMealPlan.filter((s) => s.items.length > 0);
+}
+function pendingMealItemRowsFromProduction(production) {
+  const rows = [];
+  for (const s of persistableComposedSlots(production)) {
+    const roles = MEAL_SLOT_ASSEMBLY[s.slot] ?? [];
+    s.items.forEach((it, i) => {
+      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
+      rows.push({
+        slot: s.slot,
+        fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
+        label: it.description ?? null,
+        canonicalKey: it.canonicalKey ?? null,
+        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
+        grams: Math.round(num3(it.grams)),
+        kcal: Math.round(num3(it.kcal)),
+        carbsG: num3(it.choG),
+        proteinG: num3(it.proG),
+        fatG: num3(it.fatG)
+      });
+    });
+  }
+  return rows;
+}
 function mealItemInsertRow(row2, mealId) {
   return {
     meal_id: mealId,
@@ -10028,27 +9987,9 @@ async function loadFdcIdsPresentInFkTarget(admin, ids) {
   return known;
 }
 async function persistV2PlanToDb(admin, athleteId, planDate, production, opts) {
-  const slots = production.composedMealPlan.filter((s) => s.items.length > 0);
+  const slots = persistableComposedSlots(production);
   if (slots.length === 0) return { ok: false, error: "Piano V2 senza pasti da persistere" };
-  const pendingItems = [];
-  for (const s of slots) {
-    const roles = MEAL_SLOT_ASSEMBLY[s.slot] ?? [];
-    s.items.forEach((it, i) => {
-      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
-      pendingItems.push({
-        slot: s.slot,
-        fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
-        label: it.description ?? null,
-        canonicalKey: it.canonicalKey ?? null,
-        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
-        grams: Math.round(num3(it.grams)),
-        kcal: Math.round(num3(it.kcal)),
-        carbsG: num3(it.choG),
-        proteinG: num3(it.proG),
-        fatG: num3(it.fatG)
-      });
-    });
-  }
+  const pendingItems = pendingMealItemRowsFromProduction(production);
   const candidateIds = candidateFdcIdsForFkCheck(pendingItems);
   const knownFdcIds = await loadFdcIdsPresentInFkTarget(admin, candidateIds) ?? new Set(candidateIds);
   const { rows: writableItems, cleared: clearedFdc } = clearUnknownFdcIds(pendingItems, knownFdcIds);
@@ -10228,9 +10169,15 @@ function buildSolverBasisFromRequest(req) {
   };
 }
 function attachSolverBasisToAssembled(core, req) {
+  const basis = buildSolverBasisFromRequest(req);
+  const { servedSlotBasis, ...coreRest } = core;
+  if (servedSlotBasis && servedSlotBasis.length > 0) {
+    basis.slots = servedSlotBasis.map((s) => ({ ...s }));
+    basis.dailyMealsKcalTotal = Math.round(servedSlotBasis.reduce((sum, s) => sum + s.targetKcal, 0));
+  }
   return {
-    ...core,
-    solverBasis: buildSolverBasisFromRequest(req)
+    ...coreRest,
+    solverBasis: basis
   };
 }
 

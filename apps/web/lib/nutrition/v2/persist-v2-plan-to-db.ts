@@ -44,7 +44,7 @@ function num(v: unknown): number {
 }
 
 /** Riga di `meal_item` prima di conoscere il meal_id: i campi FK-rilevanti più il resto. */
-type PendingMealItemRow = PendingMealItem & {
+export type PendingMealItemRow = PendingMealItem & {
   foodRole: string;
   grams: number;
   kcal: number;
@@ -52,6 +52,42 @@ type PendingMealItemRow = PendingMealItem & {
   proteinG: number;
   fatG: number;
 };
+
+/** Slot della produzione V2 che diventano righe `meal` (uno slot senza item non si persiste). */
+export function persistableComposedSlots(
+  production: MealPlanV2Production,
+): MealPlanV2Production["composedMealPlan"] {
+  return production.composedMealPlan.filter((s) => s.items.length > 0);
+}
+
+/**
+ * Voci `meal_item` (pure, senza meal_id) derivate dalla produzione V2. È l'UNICA
+ * definizione di «cosa viene persistito»: la usa il persist qui sotto e la usa il test
+ * dell'invariante payload≡persistito (map-v2-plan-to-v1-response.test.ts) — se questa
+ * selezione cambia, l'invariante viene ri-verificato sugli stessi numeri.
+ */
+export function pendingMealItemRowsFromProduction(production: MealPlanV2Production): PendingMealItemRow[] {
+  const rows: PendingMealItemRow[] = [];
+  for (const s of persistableComposedSlots(production)) {
+    const roles = MEAL_SLOT_ASSEMBLY[s.slot as MealSlotKey] ?? [];
+    s.items.forEach((it, i) => {
+      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
+      rows.push({
+        slot: s.slot,
+        fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
+        label: it.description ?? null,
+        canonicalKey: it.canonicalKey ?? null,
+        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
+        grams: Math.round(num(it.grams)),
+        kcal: Math.round(num(it.kcal)),
+        carbsG: num(it.choG),
+        proteinG: num(it.proG),
+        fatG: num(it.fatG),
+      });
+    });
+  }
+  return rows;
+}
 
 function mealItemInsertRow(row: PendingMealItemRow, mealId: string): Record<string, unknown> {
   return {
@@ -126,32 +162,14 @@ export async function persistV2PlanToDb(
     responsePayload?: unknown;
   },
 ): Promise<PersistV2PlanResult> {
-  const slots = production.composedMealPlan.filter((s) => s.items.length > 0);
+  const slots = persistableComposedSlots(production);
   if (slots.length === 0) return { ok: false, error: "Piano V2 senza pasti da persistere" };
 
   // Voci FEDELI: TUTTI gli item, non solo quelli con fdc_id. Un item con alias FDC va con
   // fdc_id (nome/immagine da fdc_food); un item CANONICO (staple senza alias) va con fdc_id
   // NULL + label + canonical_key → non viene scartato, così il DB contiene la lista-cibi
   // COMPLETA e Oggi mostra gli stessi cibi del Piano (stessa produzione V2).
-  const pendingItems: PendingMealItemRow[] = [];
-  for (const s of slots) {
-    const roles = MEAL_SLOT_ASSEMBLY[s.slot as MealSlotKey] ?? [];
-    s.items.forEach((it, i) => {
-      const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
-      pendingItems.push({
-        slot: s.slot,
-        fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
-        label: it.description ?? null,
-        canonicalKey: it.canonicalKey ?? null,
-        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
-        grams: Math.round(num(it.grams)),
-        kcal: Math.round(num(it.kcal)),
-        carbsG: num(it.choG),
-        proteinG: num(it.proG),
-        fatG: num(it.fatG),
-      });
-    });
-  }
+  const pendingItems = pendingMealItemRowsFromProduction(production);
 
   // Guardia FK PRIMA di scrivere (una query sola): gli alimenti del catalogo che vivono solo
   // in `nutrition_fdc_foods` (righe CIQUAL con fdc_id sintetico) non esistono in `fdc_food` e

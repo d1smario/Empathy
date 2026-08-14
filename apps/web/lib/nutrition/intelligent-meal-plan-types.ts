@@ -236,6 +236,15 @@ export type IntelligentMealPlanAssembledCore = {
   /** Presente dopo `finalizeIntelligentMealPlanCore` (API). */
   nutrientRollup?: MealPlanNutrientRollup;
   hydrationRoutine?: MealPlanHydrationRoutine;
+  /**
+   * Slot-target EFFETTIVAMENTE serviti dal composer V2 (day-engine quando applied,
+   * legacy altrimenti). Quando presente, `attachSolverBasisToAssembled` li usa al posto
+   * dell'eco di `request.slots`: senza, la pagina Nutrizione mostrava i target del solver
+   * legacy anche quando il piatto persistito seguiva il day-engine (uplift perso in pagina)
+   * e con un SET di slot diverso da quello dei `meal` persistiti. Campo di transito:
+   * viene rimosso dal body finale (la verità in pagina è `solverBasis.slots`).
+   */
+  servedSlotBasis?: IntelligentMealPlanSolverBasis["slots"];
 };
 
 export type IntelligentMealPlanResponseBody = IntelligentMealPlanAssembledCore & {

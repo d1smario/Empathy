@@ -64,8 +64,18 @@ export async function finalizeIntelligentMealPlanCore(
   core: IntelligentMealPlanAssembledCore,
   req: IntelligentMealPlanRequest,
   snapshot?: FdcCanonicalSnapshot,
+  opts?: {
+    /**
+     * false = niente sostituzione del segnaposto proteico pranzo/cena. Il ramo V2 lo
+     * disattiva: i suoi item sono GIÀ persistiti in meal_item e il dedupe qui riscriveva
+     * solo il payload (pagina Nutrizione col segnaposto, Oggi col cibo concreto).
+     * Default true: il ramo V1 (composer mediterraneo) resta com'era.
+     */
+    lunchDinnerProteinDedupe?: boolean;
+  },
 ): Promise<IntelligentMealPlanAssembledCore> {
-  const slotsDeduped = dedupeLunchDinnerMainProteins(core.slots);
+  const slotsDeduped =
+    opts?.lunchDinnerProteinDedupe === false ? core.slots : dedupeLunchDinnerMainProteins(core.slots);
   const fdcSnapshot =
     snapshot ??
     (await buildFdcCanonicalSnapshot(

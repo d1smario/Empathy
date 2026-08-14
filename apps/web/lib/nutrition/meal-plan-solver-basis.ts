@@ -60,8 +60,18 @@ export function attachSolverBasisToAssembled(
   core: IntelligentMealPlanAssembledCore,
   req: IntelligentMealPlanRequest,
 ): IntelligentMealPlanResponseBody {
+  const basis = buildSolverBasisFromRequest(req);
+  // Il ramo V2 dichiara gli slot-target SERVITI dal composer (day-engine quando applied):
+  // sono quelli la pagina deve mostrare, perché sono gli stessi su cui sono nati i
+  // meal/meal_item persistiti. L'eco di request.slots resta solo per i percorsi che non
+  // dichiarano nulla (V1/db): lì il request È la base servita.
+  const { servedSlotBasis, ...coreRest } = core;
+  if (servedSlotBasis && servedSlotBasis.length > 0) {
+    basis.slots = servedSlotBasis.map((s) => ({ ...s }));
+    basis.dailyMealsKcalTotal = Math.round(servedSlotBasis.reduce((sum, s) => sum + s.targetKcal, 0));
+  }
   return {
-    ...core,
-    solverBasis: buildSolverBasisFromRequest(req),
+    ...coreRest,
+    solverBasis: basis,
   };
 }

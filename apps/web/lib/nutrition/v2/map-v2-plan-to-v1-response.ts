@@ -2,15 +2,15 @@ import type {
   IntelligentMealPlanAssembledCore,
   IntelligentMealPlanItemOut,
   IntelligentMealPlanRequest,
-  IntelligentMealPlanRequestSlot,
   IntelligentMealPlanSlotOut,
   MealSlotKey,
 } from "@/lib/nutrition/intelligent-meal-plan-types";
 import {
   dayInteractionSummaryExtras,
-  enrichMealSlotsAfterCompose,
+  decorateComposedMealSlots,
   pathwayBoostStatusFromRequest,
 } from "@/lib/nutrition/enrich-meal-slots-after-compose";
+import { DAY_ENGINE_DEFAULT_SLOT_TIMES } from "@/lib/nutrition/v2/day-engine-integration";
 import { finalizeIntelligentMealPlanCore } from "@/lib/nutrition/meal-plan-response-finalize";
 import { fdcIdForCanonicalKey } from "@/lib/nutrition/canonical-food-fdc-aliases";
 import { buildFdcCanonicalSnapshotFromFdcIds, buildFdcCanonicalSnapshotFromFoods } from "@/lib/nutrition/fdc-to-canonical-scaler";
@@ -80,21 +80,25 @@ function slotCoherenceFor(slot: MealSlotKey, suppressed: boolean): string {
 
 function composedMealForSlot(
   production: MealPlanV2Production,
-  slotReq: IntelligentMealPlanRequestSlot,
+  slotKey: MealSlotKey,
 ): ReturnType<typeof v2ComposedSlotToMediterraneanMeal> {
-  const composed = production.composedMealPlan.find((s) => s.slot === slotReq.slot);
+  const composed = production.composedMealPlan.find((s) => s.slot === slotKey);
   if (!composed || composed.items.length === 0) {
     return { items: [], lines: [], totalApproxKcal: 0 };
   }
-  const items = composed.items.map((it, idx) => mapItem(it, slotReq.slot as MealSlotKey, idx));
-  // Gli item passano interi (compositionKey/compositionStatus inclusi): l'enricher adotta
-  // QUESTI item, non i `preEnrichSlots`. Ri-mapparli su un literal ridotto buttava via il
-  // `fdc:NNN` e obbligava tutto il ramo V2 a ri-dedurre l'alimento dal nome italiano.
+  const items = composed.items.map((it, idx) => mapItem(it, slotKey, idx));
+  // Gli item passano interi (compositionKey/compositionStatus inclusi): il decoratore usa
+  // questo pasto SOLO per le note pathway/rotazione — gli item serviti restano quelli
+  // dei `preEnrichSlots` (identici a questi per costruzione, stessa `composedMealPlan`).
   return {
     items,
     lines: items.map((i) => i.portionHint),
     totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0),
   };
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 export function mapV2PlanToV1AssembledCore(
@@ -104,7 +108,15 @@ export function mapV2PlanToV1AssembledCore(
   const suppressed = new Set(request.suppressedSlots ?? []);
   const slotMeta = new Map(request.slots.map((s) => [s.slot, s]));
 
-  const preEnrichSlots: IntelligentMealPlanSlotOut[] = production.composedMealPlan.map((composed) => {
+  // UNA sola giornata alimentare (audit 12 ago): gli slot del payload sono ESATTAMENTE
+  // quelli di `composedMealPlan` — la stessa produzione che persistV2PlanToDb scrive in
+  // meal/meal_item — cioè day-engine quando applied, legacy altrimenti. Prima il payload
+  // seguiva `request.slots` (solver legacy): con day-engine applied perdeva pasti interi
+  // (snack del day-engine visibili in Oggi ma non in Nutrizione) e trascinava slot vuoti.
+  // Uno slot NON soppresso rimasto senza item non viene persistito → nemmeno servito qui.
+  const preEnrichSlots: IntelligentMealPlanSlotOut[] = production.composedMealPlan
+    .filter((composed) => suppressed.has(composed.slot as MealSlotKey) || composed.items.length > 0)
+    .map((composed) => {
     const slotKey = composed.slot as MealSlotKey;
     const meta = slotMeta.get(slotKey);
     const isSuppressed = suppressed.has(slotKey);
@@ -140,11 +152,33 @@ export function mapV2PlanToV1AssembledCore(
     };
   });
 
-  const enrichedSlots = enrichMealSlotsAfterCompose({
+  // Decorazione (note pathway/integrazione/coerenza): NON tocca item, grammi né kcal.
+  const enrichedSlots = decorateComposedMealSlots({
     request,
     slots: preEnrichSlots,
-    getBaseMealForSlot: (slotReq) => composedMealForSlot(production, slotReq),
+    getBaseMealForSlot: (slotKey) => composedMealForSlot(production, slotKey),
   });
+
+  // Slot-target SERVITI dal composer (production.dietMealSlotBudgets = day-engine quando
+  // applied, legacy altrimenti): finiscono in solverBasis.slots via attachSolverBasis…,
+  // così i target in pagina Nutrizione sono gli stessi dei meal persistiti (letti da Oggi).
+  const servedSlotBasis: NonNullable<IntelligentMealPlanAssembledCore["servedSlotBasis"]> =
+    production.dietMealSlotBudgets.map((b) => {
+      const key = b.key as MealSlotKey;
+      const meta = slotMeta.get(key);
+      return {
+        slot: key,
+        labelIt: b.label || meta?.labelIt || key,
+        // Orario: dallo slot omologo del client se presente, altrimenti default day-engine
+        // (stessa scelta di DayEngineSlot.time) — i budget non trasportano orari.
+        scheduledTimeLocal: meta?.scheduledTimeLocal?.trim() || DAY_ENGINE_DEFAULT_SLOT_TIMES[key] || "",
+        targetKcal: Math.round(b.kcal),
+        targetCarbsG: round1(b.carbs),
+        targetProteinG: round1(b.protein),
+        targetFatG: round1(b.fat),
+      };
+    });
+  const servedMealsKcalTotal = production.dietMealSlotBudgets.reduce((sum, b) => sum + b.kcal, 0);
 
   const fuelNote = production.requirements.substrateFueling
     ? `Fueling V2: ${production.requirements.energy.fuelingKcal} kcal oral (CHO substrati).`
@@ -158,9 +192,11 @@ export function mapV2PlanToV1AssembledCore(
     dayInteractionSummary: dayInteractionSummaryExtras(
       request,
       [`Strategia ${production.requirements.strategyKind}`, fuelNote].filter(Boolean).join(" · "),
+      servedMealsKcalTotal,
     ),
     mealRotationStaples: composedStaples(production),
     pathwayBoostStatus: pathwayBoostStatusFromRequest(request),
+    servedSlotBasis,
   };
 }
 
@@ -201,5 +237,8 @@ export async function mapV2PlanToV1Response(
   const snapCanon = buildFdcCanonicalSnapshotFromFoods([...new Set(canonicalKeys)], foodsByFdcId);
   const snapshot = { ...snapCanon, ...snapFdc };
 
-  return finalizeIntelligentMealPlanCore(core, request, snapshot);
+  // Niente dedupe proteine pranzo/cena qui: sostituirebbe nel payload un segnaposto di
+  // famiglia («Proteina: pollo/tacchino») al posto del cibo CONCRETO già persistito in
+  // meal_item — le due pagine mostrerebbero alimenti diversi per lo stesso pasto.
+  return finalizeIntelligentMealPlanCore(core, request, snapshot, { lunchDinnerProteinDedupe: false });
 }
