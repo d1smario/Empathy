@@ -7,11 +7,8 @@ import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { NutritionPlanDatePicker } from "@/components/nutrition/NutritionPlanDatePicker";
-import { AdaptationSectorStrip } from "@/components/nutrition/AdaptationSectorStrip";
-import { ResearchTraceStatusSummary } from "@/components/nutrition/ResearchTraceStatusSummary";
 import { SessionKnowledgeSummary } from "@/components/nutrition/SessionKnowledgeSummary";
 import { Pro2Accordion } from "@/components/ui/empathy";
-import type { KnowledgeResearchTraceSummary } from "@/api/knowledge/contracts";
 import type {
   AdaptationGuidance,
   NutritionDailyEnergyModel,
@@ -186,10 +183,6 @@ import {
   detectRoutineRaceDay,
 } from "@/lib/nutrition/routine-race-day-context";
 import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
-import {
-  buildNutritionAdaptationSectorBoxes,
-  type NutritionAdaptationSectorPillContext,
-} from "@/lib/nutrition/nutrition-adaptation-sector-strip";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import { fetchIntelligentMealPlan } from "@/modules/nutrition/services/intelligent-meal-plan-api";
 import {
@@ -201,8 +194,6 @@ import {
 import { loadOnboardingCompleteness } from "@/lib/onboarding/load-onboarding-snapshot";
 import { itemsBlockingPlan } from "@/lib/onboarding/onboarding-completeness";
 import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
-import { isMealPlanV2PreviewUiEnabled } from "@/modules/nutrition/services/intelligent-meal-plan-v2-api";
-import { MealPlanV2PreviewPanel } from "@/modules/nutrition/components/MealPlanV2PreviewPanel";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { updateProfilePayload } from "@/modules/profile/services/profile-api";
 import {
@@ -369,7 +360,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   const [operationalContext, setOperationalContext] = useState<TrainingDayOperationalContext | null>(null);
   const [adaptationLoop, setAdaptationLoop] = useState<TrainingAdaptationLoopViewModel | null>(null);
   const [bioenergeticModulation, setBioenergeticModulation] = useState<TrainingBioenergeticModulationViewModel | null>(null);
-  const [researchTraceSummaries, setResearchTraceSummaries] = useState<KnowledgeResearchTraceSummary[]>([]);
   const [metabolicEfficiencyGenerativeModel, setMetabolicEfficiencyGenerativeModel] =
     useState<NutritionMetabolicEfficiencyGenerativeViewModel | null>(null);
   const [crossDomainInterpretationRoadmap, setCrossDomainInterpretationRoadmap] =
@@ -746,7 +736,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     // Integratori e Previsione vivono nel Piano (2026-07): l'enrichment pesante
     // parte dopo il first paint della pagina unica.
     enabled: subRoute === "meal-plan",
-    onResearchTraces: setResearchTraceSummaries,
     onMetabolicModel: setMetabolicEfficiencyGenerativeModel,
     onCrossDomainRoadmap: setCrossDomainInterpretationRoadmap,
     onNutrientInterrogation: setNutrientInterrogation,
@@ -856,7 +845,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         setOperationalContext(null);
         setAdaptationLoop(null);
         setBioenergeticModulation(null);
-        setResearchTraceSummaries([]);
         setMetabolicEfficiencyGenerativeModel(null);
         setFunctionalMealSelector(null);
         setPathwayModulation(null);
@@ -911,7 +899,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         setOperationalContext(operational);
         setAdaptationLoop(loop);
         setBioenergeticModulation(bio);
-        setResearchTraceSummaries(data.researchTraceSummaries ?? []);
         setMetabolicEfficiencyGenerativeModel(data.metabolicEfficiencyGenerativeModel ?? null);
         setNutritionApplicationDirective(data.nutritionApplicationDirective ?? null);
         setNutritionApprovedPatches(data.nutritionApprovedPatches ?? []);
@@ -1004,7 +991,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
         // silenzioso); senza cache puliamo e segnaliamo l'errore come prima.
         if (!cached || cached.error) {
           setError(moduleData.error || "Loading error");
-          setResearchTraceSummaries([]);
           setMetabolicEfficiencyGenerativeModel(null);
           setFunctionalMealSelector(null);
           setPathwayModulation(null);
@@ -1132,41 +1118,9 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   }, [nutritionDayModel]);
 
 
-  const nutritionStimulusLine = useMemo(() => {
-    if (!selectedPlanSessions.length) return null;
-    return selectedPlanSessions
-      .map((s) => {
-        const name = String(s.plannedSessionName ?? s.plannedDiscipline ?? s.type ?? "Session");
-        const tgt = s.plannedAdaptationTarget ? ` · ${s.plannedAdaptationTarget}` : "";
-        return `${name}${tgt}`;
-      })
-      .join(" + ");
-  }, [selectedPlanSessions]);
-
-  const nutritionSectorPillContext = useMemo((): NutritionAdaptationSectorPillContext | null => {
-    if (!athleteId) return null;
-    return {
-      physiology: physiologyState,
-      twin: twinState,
-      recoverySummary,
-      intolerances: profile?.intolerances ?? null,
-      allergies: profile?.allergies ?? null,
-      researchTraceSummaries,
-    };
-  }, [
-    athleteId,
-    physiologyState,
-    twinState,
-    recoverySummary,
-    profile?.intolerances,
-    profile?.allergies,
-    researchTraceSummaries,
-  ]);
-
-  const nutritionSectorBoxes = useMemo(
-    () => buildNutritionAdaptationSectorBoxes(pathwayModulation, nutritionStimulusLine, nutritionSectorPillContext),
-    [pathwayModulation, nutritionStimulusLine, nutritionSectorPillContext],
-  );
+  /* nutritionStimulusLine / nutritionSectorPillContext / nutritionSectorBoxes
+     rimossi con la diagnostica: alimentavano solo l'AdaptationSectorStrip di
+     «Diagnostica e motore», nessun altro lettore. */
 
   /** Tab Integrazione: KPI da pathway + leve operative (allineati ai blocchi condivisi). */
 
@@ -1726,8 +1680,8 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
           : sessionIntensityPctFtp,
     };
   }, [fuelingTrainingContext, sessionDurationMin, sessionIntensityPctFtp]);
-  const fuelingPlannedEstimatedAvgPowerW =
-    physio?.ftp_watts != null ? round(physio.ftp_watts * (fuelingPlannedSummary.estimatedIntensityPctFtp / 100)) : null;
+  /* fuelingPlannedEstimatedAvgPowerW rimosso: serviva solo alla riga «W stimati»
+     della diagnostica fueling. */
 
   /** Con due o più sessioni pianificate, stima ripartizione g CHO intra in base al peso glicolitico (cho kcal) per sessione. */
   const fuelingIntraChoSplitBySession = useMemo(() => {
@@ -3656,122 +3610,35 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
             </section>
           ) : null}
 
-          {/* In fondo: accordion diagnostica SOLO staff (2026-07: per l'atleta
-              conteneva solo il toggle aderenza, che però si salva col bottone
-              del predictor — visibile solo allo staff: era un controllo morto.
-              Il toggle vive qui con la diagnostica; niente accordion atleta. */}
-          {showTech ? (
-          <section id="mod-dettagli-motore" className="scroll-mt-28" style={{ marginTop: "4px" }}>
-            <Pro2Accordion
-              accent="amber"
-              title={t("engineDiagnosticsTitle")}
-              subtitle={t("engineDiagnosticsSubtitle")}
-            >
-              <div className="space-y-5 text-sm text-gray-300">
-                {subRoute === "meal-plan" ? (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
-                    <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-                      {t("adherenceAdaptationTitle")}
-                    </p>
-                    <label className="inline-flex items-center gap-2 text-sm text-gray-200">
-                      <input
-                        type="checkbox"
-                        checked={adherenceOptIn}
-                        disabled={saving || adherenceConfigLoading}
-                        onChange={(event) => setAdherenceOptIn(event.target.checked)}
-                      />
-                      {t("adherenceAdaptationToggle")}
-                    </label>
-                    <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
-                      {t("adherenceAdaptationHint")}
-                    </p>
-                  </div>
-                ) : null}
-
-                {showTech && subRoute === "meal-plan" ? (
-                  <details className="collapsible-card" style={{ marginBottom: 0 }}>
-                    <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
-                      {t("brandsCatalogTokens", {
-                        count: profileSupplements.length
-                          ? t("entriesCount", { n: profileSupplements.length })
-                          : t("defaultSet"),
-                      })}
-                    </summary>
-                    <p className="nutrition-muted" style={{ fontSize: "0.75rem", marginTop: "8px", marginBottom: "8px", lineHeight: 1.45 }}>
-                      {t("supplementsMatchingNote")}
-                    </p>
-                    {profileSupplements.length ? (
-                      <ul
-                        className="nutrition-muted m-0 flex max-h-48 list-none flex-wrap gap-1.5 overflow-y-auto p-0"
-                        style={{ fontSize: "0.68rem", lineHeight: 1.35 }}
-                      >
-                        {profileSupplements.map((token) => (
-                          <li
-                            key={token}
-                            className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-[0.65rem] font-semibold text-gray-300"
-                          >
-                            {token}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="nutrition-muted m-0" style={{ fontSize: "0.75rem" }}>
-                        {t("noProfileTokens")}
-                      </p>
-                    )}
-                  </details>
-                ) : null}
-
-                {showTech && subRoute === "meal-plan" ? (
-                  <div className="space-y-4 border-t border-white/10 pt-4">
-                    <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                      {t("technicalDiagnostics")}
-                    </p>
-                    {/* Sector strip multi-livello (ex «Adattamento del giorno»):
-                        contenuto unico, spostato qui per coach/admin (2026-07). */}
-                    <AdaptationSectorStrip title={t("sectorsAdaptationDay")} boxes={nutritionSectorBoxes} />
-                    {researchTraceSummaries.length ? (
-                      <ResearchTraceStatusSummary traces={researchTraceSummaries} label={t("nutritionResearchStatus")} />
-                    ) : null}
-                    {athleteId && isMealPlanV2PreviewUiEnabled() ? (
-                      <MealPlanV2PreviewPanel athleteId={athleteId} planRequest={intelligentMealPlanRequest} />
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {showTech && subRoute === "meal-plan" && fuelingReadiness.ready ? (
-                  <div className="space-y-3 border-t border-white/10 pt-4">
-                    <p className="font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-amber-400">
-                      {t("technicalDiagnosticsFueling")}
-                    </p>
-                    <div className="nutrition-detail-rail" style={{ marginBottom: 0 }}>
-                      <span><strong>{t("diagDay")}</strong> {selectedPlanDateShort}</span>
-                      <span><strong>{t("diagPlannedDuration")}</strong> {round(fuelingPlannedSummary.totalDurationMin)} min</span>
-                      <span><strong>{t("diagPlannedIntensity")}</strong> {round(fuelingPlannedSummary.estimatedIntensityPctFtp)}% FTP</span>
-                      <span><strong>{t("diagFuelingTier")}</strong> {resolvedFuelingTierBand}</span>
-                      {fuelingPlannedEstimatedAvgPowerW != null && (
-                        <span><strong>{t("diagEstimatedAvgPower")}</strong> {round(fuelingPlannedEstimatedAvgPowerW)} W</span>
-                      )}
-                      <span><strong>{t("diagChoDelivery")}</strong> {round(fuelingPhysiology.gutDeliveryPct)}%</span>
-                      <span><strong>{t("diagCoriReturn")}</strong> {round(fuelingPhysiology.coriReturnG)} g</span>
-                      <span><strong>{t("diagRedox")}</strong> {round(fuelingPhysiology.redoxPct)}/100</span>
-                      {fuelingTrainingContext.length ? (
-                        <span>
-                          <strong>{t("diagSessionTss")}</strong> {round(fuelingPlannedSummary.totalTss)}
-                        </span>
-                      ) : null}
-                      {fuelingIntraChoSplitBySession?.length ? (
-                        <span>
-                          <strong>{t("diagIntraChoSplit")}</strong>{" "}
-                          {fuelingIntraChoSplitBySession.map((x) => `${x.label}: ${x.choG}g`).join(" · ")}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
+          {/* Accordion «Diagnostica e motore» rimosso (mandato 2026-08: troppe
+              informazioni). Sopravvive SOLO il toggle aderenza, perché è un
+              controllo vivo e non diagnostica: scrive
+              nutrition_constraints.adaptation_adherence_opt_in (upsert in
+              handleSaveNutrition, salvato dal bottone del pannello Previsione qui
+              sopra) e quel campo è letto da athlete-memory-resolver →
+              resolve-operational-signals-bundle → performance-integration-scaler.
+              Questa è l'unica UI che lo comanda: cancellarlo avrebbe spento una
+              leva del motore di nascosto. Resta staff-only, come prima. */}
+          {showTech && subRoute === "meal-plan" ? (
+            <section className="scroll-mt-28" style={{ marginTop: "4px" }}>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-gray-300">
+                <p className="mb-1 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+                  {t("adherenceAdaptationTitle")}
+                </p>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-200">
+                  <input
+                    type="checkbox"
+                    checked={adherenceOptIn}
+                    disabled={saving || adherenceConfigLoading}
+                    onChange={(event) => setAdherenceOptIn(event.target.checked)}
+                  />
+                  {t("adherenceAdaptationToggle")}
+                </label>
+                <p className="m-0 mt-1 text-[0.75rem] leading-relaxed text-gray-400">
+                  {t("adherenceAdaptationHint")}
+                </p>
               </div>
-            </Pro2Accordion>
-          </section>
+            </section>
           ) : null}
         </>
       )}

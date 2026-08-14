@@ -18,7 +18,8 @@ export function useNutritionHeavyModuleEnrichment(input: {
   nutritionModuleWindow: WindowRef;
   nutritionContextVersion: number;
   enabled?: boolean;
-  onResearchTraces: (rows: KnowledgeResearchTraceSummary[]) => void;
+  /** Opzionale: la vista Nutrizione non disegna più lo stato approfondimenti (diagnostica rimossa). */
+  onResearchTraces?: (rows: KnowledgeResearchTraceSummary[]) => void;
   onMetabolicModel: (model: NutritionMetabolicEfficiencyGenerativeViewModel | null) => void;
   onCrossDomainRoadmap?: (roadmap: CrossDomainInterpretationRoadmap | null) => void;
   onNutrientInterrogation?: (vm: NutrientInterrogationViewModel | null) => void;
@@ -45,7 +46,7 @@ export function useNutritionHeavyModuleEnrichment(input: {
           includeHeavy: true,
         });
         if (cancelled || snap.error) return;
-        input.onResearchTraces(snap.researchTraceSummaries ?? []);
+        input.onResearchTraces?.(snap.researchTraceSummaries ?? []);
         input.onMetabolicModel(snap.metabolicEfficiencyGenerativeModel ?? null);
         input.onCrossDomainRoadmap?.(snap.crossDomainInterpretationRoadmap ?? null);
         input.onNutrientInterrogation?.(snap.nutrientInterrogation ?? null);
