@@ -25,7 +25,10 @@ import type { IntelligentMealPlanRequest, IntelligentMealPlanRequestSlot } from 
 import { resolveNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
 import { parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
 import { resolvePlannedSessionMetrics } from "@/lib/training/physiology/planned-session-metrics";
-import { extractPlannedSessionsFromRequest } from "@/lib/nutrition/v2/daily-nutrition-requirements";
+import {
+  extractPlannedSessionsFromRequest,
+  sanitizeAvgPowerW,
+} from "@/lib/nutrition/v2/daily-nutrition-requirements";
 import { measuredPositive } from "@/lib/nutrition/v2/fueling-from-substrates";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -247,9 +250,15 @@ export async function prepareIntelligentMealPlanContext(
       kcalTargetDb: Number((pr as Record<string, unknown>).kcal_target) || 0,
       athleteFtpWatts: ftp,
     });
+    /* Igiene input sulle potenze del Builder: le notes portano a volte medie impossibili
+       (746–1.095 W su un atleta senza FTP) che gonfiavano il fueling fino al 308% delle
+       kcal della seduta. Oltre la soglia di plausibilità (2×FTP, vedi sanitizeAvgPowerW)
+       il dato è marcio e si comporta come una potenza MAI misurata: la seduta resta
+       (esiste davvero, la durata è vera), la potenza torna alla stima 0,75×FTP di sempre. */
+    const avgPowerPlausibleW = sanitizeAvgPowerW(m.avgPowerW, ftp);
     return {
-      label: `${String((pr as Record<string, unknown>).type ?? "session")} #${idx + 1} · ${m.avgPowerW ?? "?"}W · ${m.durationMinutes}min`,
-      avgPowerW: m.avgPowerW ?? Math.round(ftp * 0.75),
+      label: `${String((pr as Record<string, unknown>).type ?? "session")} #${idx + 1} · ${avgPowerPlausibleW ?? "?"}W · ${m.durationMinutes}min`,
+      avgPowerW: avgPowerPlausibleW ?? Math.round(ftp * 0.75),
       durationMin: m.durationMinutes,
     };
   });

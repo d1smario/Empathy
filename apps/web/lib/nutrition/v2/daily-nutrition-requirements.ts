@@ -255,6 +255,25 @@ export function buildDailyNutritionRequirementsV2(input: BuildDailyRequirementsI
   };
 }
 
+/**
+ * Igiene input: tetto di PLAUSIBILITÀ sulla potenza media di seduta, non un tetto di
+ * modello. Una media oltre 2×FTP è fisicamente impossibile su una seduta intera (una
+ * crono di un'ora vale ~1×FTP, i lavori intermittenti hanno medie SOTTO l'FTP; il 2×
+ * lascia margine alle sedute brevissime anaerobiche). Quando l'FTP non è misurato i
+ * chiamanti passano il default motore 250 W → il tetto diventa 500 W assoluti, sopra
+ * il record dell'ora (~440 W medi): nessuna seduta reale può superarlo. Un dato oltre
+ * soglia è marcio (es. 746–1.095 W nelle notes del Builder per un atleta senza FTP)
+ * e va trattato come NON parsato, mai come verità: alimentava fueling da 2.982 kcal
+ * su sedute da 969.
+ */
+export const MAX_PLAUSIBLE_AVG_POWER_FTP_FACTOR = 2;
+
+export function sanitizeAvgPowerW(avgPowerW: number | null | undefined, ftpW: number): number | null {
+  if (typeof avgPowerW !== "number" || !Number.isFinite(avgPowerW) || avgPowerW <= 0) return null;
+  if (avgPowerW > ftpW * MAX_PLAUSIBLE_AVG_POWER_FTP_FACTOR) return null;
+  return Math.round(avgPowerW);
+}
+
 export function extractPlannedSessionsFromRequest(
   req: IntelligentMealPlanRequest,
   defaultFtp: number,
@@ -267,17 +286,22 @@ export function extractPlannedSessionsFromRequest(
       out.push({ label: line.slice(0, 80), avgPowerW: power, durationMin: dur });
     }
   }
-  if (out.length === 0 && (req.suppressedSlots?.length || req.trainingDayLines?.length)) {
-    out.push({ label: "Allenamento pianificato (stima preview)", avgPowerW: Math.round(defaultFtp * 0.86), durationMin: 240 });
-  }
+  /* Nessuna riga parsabile → giorno SENZA training per il fueling. La vecchia seduta
+     sintetica («stima preview», 240 min a 0,86×FTP quando esistevano suppressedSlots o
+     trainingDayLines) trattava la finestra allenamento della routine come prova di una
+     seduta da 4 ore: sul corpus 13–23 ago produceva 447–640 g di CHO intra su 18/108
+     giorni di RIPOSO. Tutti i chiamanti reali (route V2, edge function, headless)
+     passano da prepareIntelligentMealPlanContext, che legge planned_workouts: se lì
+     non c'è nulla e le righe non parlano, la seduta non esiste — anche in anteprima. */
   return out;
 }
 
 function parsePowerFromLine(line: string, ftp: number): number {
   const w = line.match(/(\d{2,4})\s*w\b/i);
-  if (w) return Number(w[1]);
+  // Potenza implausibile = dato marcio: la riga si comporta come se il numero non ci fosse.
+  if (w) return sanitizeAvgPowerW(Number(w[1]), ftp) ?? 0;
   const pct = line.match(/(\d{2,3})\s*%\s*ftp/i);
-  if (pct) return Math.round((Number(pct[1]) / 100) * ftp);
+  if (pct) return sanitizeAvgPowerW(Math.round((Number(pct[1]) / 100) * ftp), ftp) ?? 0;
   return 0;
 }
 
