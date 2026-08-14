@@ -234,9 +234,19 @@ async function runWorker(
   const startedAt = Date.now();
   let payload: Record<string, unknown>;
   try {
-    const r = await runWeeklyReplan(db, athleteId, weekStart, referenceDate);
+    // ORDINE VOLUTO: PRIMA la continuità training, POI la nutrizione. Il motore dei piani
+    // legge `planned_workouts` per il fueling: con l'ordine inverso (com'era) le sedute
+    // scritte dalla continuità nascevano 4-10 secondi DOPO i piani che avrebbero dovuto
+    // vederle → fueling 0 su giorni con seduta reale (misurato: 8/24 piani del run 12 ago).
+    // La continuità non dipende da nulla che runWeeklyReplan produca (legge solo
+    // planned_workouts / training_plan* / athlete_*), quindi l'inversione non ha controparti.
+    // Il `.catch` isola il guasto: un crash della continuità non deve impedire i 7 piani
+    // (prima girava dopo, quindi non poteva; l'inversione non deve introdurre questo rischio).
     // Continuità training: estende il macro se la pista futura è corta (non far seccare il piano).
-    const tc = await ensureTrainingContinuity(db, athleteId, { todayIso: referenceDate });
+    const tc = await ensureTrainingContinuity(db, athleteId, { todayIso: referenceDate }).catch(
+      (e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }),
+    );
+    const r = await runWeeklyReplan(db, athleteId, weekStart, referenceDate);
     payload = {
       athleteId,
       weekStart,
