@@ -44,27 +44,12 @@ export type MealPlanDisplayRow = {
   portionHint?: string;
 };
 
-export type NutritionMealPlanEnergyLedger = {
-  /** BMR + lifestyle + quota training destinata ai pasti (solver). */
-  mealsKcalSolver: number | null;
-  /** BMR + lifestyle + costo training completo (include parte gestita come fueling). */
-  dailyKcalSolver: number | null;
-  /** Parte del costo training allocata a pre/intra/post (non nei cinque slot pasto). */
-  fuelingKcalSolver: number | null;
-  /** Costo training pianificato del giorno (allineato al calendario/Builder; sostituito dall'eseguito quando importato). */
-  trainingKcalSolver: number | null;
-  /** Somma kcal voci USDA del piano generato (esclude voci coach nascoste). */
-  assembledUsdaKcalSum: number | null;
-};
-
 export type NutritionMealPlanDailyTargetsProps = {
   complianceTargets: { kcal: number; carbs: number; protein: number; fat: number };
   dateLabel: string;
   /** Assunto del giorno dal registro diario (Diario eliminato 2026-07: vive sul Piano). */
   dayConsumed?: { kcal: number; carbs: number; protein: number; fat: number; count: number } | null;
   round: (v: number, digits?: number) => number;
-  /** Chiarimento 3954 vs 3555: pasti vs giornata vs fueling vs assemblaggio USDA. */
-  energyLedger?: NutritionMealPlanEnergyLedger | null;
 };
 
 /** Blocco KPI giornaliero: UNICO posto dei macro/kcal del giorno (sezione `mod-target-giorno`, dopo il selettore giorno). */
@@ -73,21 +58,11 @@ export function NutritionMealPlanDailyTargets({
   dateLabel,
   dayConsumed,
   round,
-  energyLedger,
 }: NutritionMealPlanDailyTargetsProps) {
   const t = useTranslations("NutritionMealPlanView");
-  const { role: viewerRole, adminScoped } = useActiveAthlete();
-  /** Bilancio kcal (solver / Σ USDA / BMR): dettaglio motore, solo coach/admin. */
-  const showTech = viewerRole === "coach" || adminScoped;
-  const slotSumKcal = round(complianceTargets.kcal);
-  const ledger = energyLedger ?? null;
-  const showLedger =
-    showTech &&
-    ledger &&
-    (ledger.mealsKcalSolver != null ||
-      ledger.dailyKcalSolver != null ||
-      ledger.fuelingKcalSolver != null ||
-      ledger.assembledUsdaKcalSum != null);
+  // Il pannello «Bilancio kcal · cosa stai sommando» (energy ledger, gated coach/admin)
+  // è stato RIMOSSO per tutti su richiesta del proprietario (2026-08): dettaglio motore
+  // che non deve stare in grafica. Qui restano solo KPI del giorno e assunto/rimanente.
 
   return (
     <div>
@@ -101,62 +76,6 @@ export function NutritionMealPlanDailyTargets({
         }}
         dateLabel={dateLabel}
       />
-      {showLedger ? (
-        <div
-          className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-gray-400"
-          role="region"
-          aria-label={t("dailyEnergyBalanceAria")}
-        >
-          <p className="mb-1.5 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kcalBalanceHeading")}</p>
-          <ul className="m-0 list-none space-y-1 p-0 font-mono">
-            <li>
-              <span className="text-gray-500">{t("mealSlotsSum")}</span>{" "}
-              <span className="font-semibold tabular-nums text-white">{slotSumKcal} kcal</span>
-            </li>
-            {ledger.mealsKcalSolver != null ? (
-              <li>
-                <span className="text-gray-500">{t("solverMealsTarget")}</span>{" "}
-                <span className="font-semibold tabular-nums text-white">{round(ledger.mealsKcalSolver)} kcal</span>
-              </li>
-            ) : null}
-            {ledger.fuelingKcalSolver != null ? (
-              <li>
-                <span className="text-gray-500">{t("fuelingShare")}</span>{" "}
-                <span className="font-semibold tabular-nums text-white">{round(ledger.fuelingKcalSolver)} kcal</span>
-              </li>
-            ) : null}
-            {ledger.dailyKcalSolver != null ? (
-              <li>
-                <span className="text-gray-500">{t("dailyMetabolicTotal")}</span>{" "}
-                <span className="font-semibold tabular-nums text-white">{round(ledger.dailyKcalSolver)} kcal</span>
-              </li>
-            ) : null}
-            {ledger.trainingKcalSolver != null && ledger.trainingKcalSolver > 0 ? (
-              <li>
-                <span className="text-gray-500">{t("plannedTrainingCost")}</span>{" "}
-                <span className="tabular-nums text-gray-300">{round(ledger.trainingKcalSolver)} kcal</span>
-              </li>
-            ) : null}
-            {ledger.assembledUsdaKcalSum != null ? (
-              <li>
-                <span className="text-gray-500">{t("assembledUsdaSum")}</span>{" "}
-                <span className="font-semibold tabular-nums text-white">{round(ledger.assembledUsdaKcalSum)} kcal</span>
-                {ledger.mealsKcalSolver != null && ledger.mealsKcalSolver > 0 ? (
-                  ledger.assembledUsdaKcalSum < ledger.mealsKcalSolver - 60 ? (
-                    <span className="block pt-1 text-[10px] text-amber-300/90">
-                      {t("belowSolverTarget")}
-                    </span>
-                  ) : ledger.assembledUsdaKcalSum > ledger.mealsKcalSolver + 120 ? (
-                    <span className="block pt-1 text-[10px] text-gray-500">
-                      {t("aboveSolverTarget")}
-                    </span>
-                  ) : null
-                ) : null}
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      ) : null}
       {/* Assunto vs rimanente del giorno (portato dal Diario, 2026-07): quello
           che registri dal carosello si riflette QUI, non su un'altra pagina.
           L'idratazione minima è migrata nella card «Quanto bere oggi». */}

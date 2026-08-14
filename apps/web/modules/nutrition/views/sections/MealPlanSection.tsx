@@ -11,7 +11,6 @@ import {
   NutritionMealPlanDailyTargets,
   NutritionMealPlanWorkspace,
   type MealPlanDisplayRow,
-  type NutritionMealPlanEnergyLedger,
 } from "@/modules/nutrition/views/NutritionMealPlanView";
 import type {
   NutritionApplicationDirectiveViewModel,
@@ -71,7 +70,6 @@ export type MealPlanSectionProps = {
   hydrationTotalTargetMl: number;
   /** Quota reintegro (extra_water_ml) inclusa nel totale — per la caption della card acqua. */
   hydrationReintegrationMl: number;
-  mealPlanEnergyLedger: NutritionMealPlanEnergyLedger | null;
   mealPlanWorkspaceRows: MealPlanDisplayRow[];
   mealDisplayByKey: Map<MealSlotKey, MealPlanDisplayRow>;
   mealPathwayBySlot: Partial<Record<string, MealPathwaySlotBundle>>;
@@ -129,7 +127,6 @@ export function MealPlanSection({
   dayAdjustments,
   hydrationTotalTargetMl,
   hydrationReintegrationMl,
-  mealPlanEnergyLedger,
   mealPlanWorkspaceRows,
   mealDisplayByKey,
   mealPathwayBySlot,
@@ -251,7 +248,6 @@ export function MealPlanSection({
           dateLabel={selectedPlanDateLabel}
           dayConsumed={dayConsumedTotals}
           round={round}
-          energyLedger={mealPlanEnergyLedger}
         />
       </section>
 

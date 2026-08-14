@@ -190,9 +190,6 @@ import {
   buildNutritionAdaptationSectorBoxes,
   type NutritionAdaptationSectorPillContext,
 } from "@/lib/nutrition/nutrition-adaptation-sector-strip";
-import {
-  type NutritionMealPlanEnergyLedger,
-} from "@/modules/nutrition/views/NutritionMealPlanView";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import { fetchIntelligentMealPlan } from "@/modules/nutrition/services/intelligent-meal-plan-api";
 import {
@@ -2476,29 +2473,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [athleteId, selectedPlanDate],
   );
 
-  const mealPlanEnergyLedger = useMemo((): NutritionMealPlanEnergyLedger | null => {
-    let assembled: number | null = null;
-    if (intelligentMealPlan?.slots?.length) {
-      let t = 0;
-      for (const sl of intelligentMealPlan.slots) {
-        const sk = sl.slot as MealSlotKey;
-        for (let ii = 0; ii < sl.items.length; ii++) {
-          if (coachMealRemovalKeys.has(`${sk}:${ii}`)) continue;
-          t += sl.items[ii]?.approxKcal ?? 0;
-        }
-      }
-      assembled = Math.round(t);
-    }
-    if (!nutritionDayModel && assembled == null) return null;
-    return {
-      mealsKcalSolver: nutritionDayModel?.totals.mealsKcal ?? null,
-      dailyKcalSolver: nutritionDayModel?.totals.dailyKcal ?? null,
-      fuelingKcalSolver: nutritionDayModel?.totals.fuelingKcal ?? null,
-      trainingKcalSolver: nutritionDayModel?.training.kcal ?? null,
-      assembledUsdaKcalSum: assembled,
-    };
-  }, [nutritionDayModel, intelligentMealPlan, coachMealRemovalKeys]);
-
   const complianceOverview = useMemo(() => {
     const targetKcal = mealRows.reduce((s, m) => s + m.kcal, 0);
     const targetCarbs = mealRows.reduce((s, m) => s + m.carbs, 0);
@@ -3566,7 +3540,6 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               dayAdjustments={dayAdjustments}
               hydrationTotalTargetMl={hydrationPlan.totalMl + dayReintegrationWaterMl}
               hydrationReintegrationMl={dayReintegrationWaterMl}
-              mealPlanEnergyLedger={mealPlanEnergyLedger}
               mealPlanWorkspaceRows={mealPlanWorkspaceRows}
               mealDisplayByKey={mealDisplayByKey}
               mealPathwayBySlot={mealPathwayBySlot}
