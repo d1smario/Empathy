@@ -28,14 +28,35 @@ function macroPerG(hit: FdcFoodBrowseHit): { c: number; p: number; f: number } {
  * come per qualunque altro cap al maxG — nessuna compensazione inventata. minG resta il
  * pavimento (porzione sensata). Deterministico, nessun nuovo input.
  */
-function effectiveMaxG(line: FdcAssemblyLine, target: SlotMacroTargets): number {
+function isFatDenseProteinLine(line: FdcAssemblyLine): boolean {
   const role = line.spec.foodRole;
-  if (role !== "protein_primary" && role !== "protein_secondary") return line.spec.maxG;
-  const fatDense = line.hit.fatPer100g > line.hit.proteinPer100g;
-  if (!fatDense || !(line.hit.kcalPer100g > 0) || !(target.kcal > 0)) return line.spec.maxG;
+  if (role !== "protein_primary" && role !== "protein_secondary") return false;
+  return line.hit.fatPer100g > line.hit.proteinPer100g && line.hit.kcalPer100g > 0;
+}
+
+/** Pavimento assoluto per un alimento fat-dense sotto il quale la porzione non è più sensata (20 g di noci lo sono, 10 no). */
+const FAT_DENSE_ABSOLUTE_MIN_G = 20;
+
+/**
+ * Pavimento effettivo: il minG della spec è pensato per la proteina «magra» tipica del
+ * ruolo (40 g di bresaola = 77 kcal). Sull'alimento fat-dense lo stesso 40 g vale 230-260
+ * kcal e da solo SFORA uno spuntino da 220: il pavimento va letto in ENERGIA, non in
+ * grammi — i grammi che portano l'item a ~50% del target, mai sotto 20 g (porzione
+ * minima sensata). Misurato in shadow sui piani reali: gli spuntini con noci/semi al
+ * posto dei salumi uscivano +87 kcal medi (fino a +185) per questo solo motivo.
+ */
+function effectiveMinG(line: FdcAssemblyLine, target: SlotMacroTargets): number {
+  if (!isFatDenseProteinLine(line) || !(target.kcal > 0)) return line.spec.minG;
+  const halfSlotG = (target.kcal * 0.5 * 100) / line.hit.kcalPer100g;
+  const onStep = Math.floor(halfSlotG / line.spec.stepG) * line.spec.stepG;
+  return Math.min(line.spec.minG, Math.max(FAT_DENSE_ABSOLUTE_MIN_G, onStep));
+}
+
+function effectiveMaxG(line: FdcAssemblyLine, target: SlotMacroTargets): number {
+  if (!isFatDenseProteinLine(line) || !(target.kcal > 0)) return line.spec.maxG;
   const capG = (target.kcal * 0.5 * 100) / line.hit.kcalPer100g;
   const capOnStep = Math.floor(capG / line.spec.stepG) * line.spec.stepG;
-  return Math.min(line.spec.maxG, Math.max(line.spec.minG, capOnStep));
+  return Math.min(line.spec.maxG, Math.max(effectiveMinG(line, target), capOnStep));
 }
 
 /**
@@ -47,7 +68,7 @@ export function solveFdcMealPortions(lines: FdcAssemblyLine[], target: SlotMacro
     if (line.spec.lever === "fixed") {
       return clampStep(line.spec.fixedG ?? line.spec.minG, line.spec.minG, line.spec.maxG, line.spec.stepG);
     }
-    return line.spec.minG;
+    return effectiveMinG(line, target);
   });
 
   const idxOf = (lever: "cho" | "protein" | "fat") => lines.findIndex((l) => l.spec.lever === lever);
@@ -61,6 +82,7 @@ export function solveFdcMealPortions(lines: FdcAssemblyLine[], target: SlotMacro
 
   // Tetto per linea calcolato una volta: solo la leva proteica fat-dense scende sotto maxG.
   const maxGs = lines.map((line) => effectiveMaxG(line, target));
+  const minGs = lines.map((line) => effectiveMinG(line, target));
 
   const adjust = (idx: number, m: "c" | "p" | "f", t: number): void => {
     if (idx < 0) return;
@@ -68,7 +90,7 @@ export function solveFdcMealPortions(lines: FdcAssemblyLine[], target: SlotMacro
     const perG = macroPerG(line.hit)[m];
     if (perG <= 0) return;
     const others = sumMacro(m) - grams[idx]! * perG;
-    grams[idx] = clampStep((t - others) / perG, line.spec.minG, maxGs[idx]!, line.spec.stepG);
+    grams[idx] = clampStep((t - others) / perG, minGs[idx]!, maxGs[idx]!, line.spec.stepG);
   };
 
   for (let it = 0; it < 20; it++) {

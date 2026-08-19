@@ -55,7 +55,9 @@ test("cap fat-dense: mandorle protein_secondary non esplodono le kcal dello slot
   const target = { kcal: 250, carbsG: 30, proteinG: 15, fatG: 8 };
   const grams = solveFdcMealPortions(lines, target);
   // Cap 50% kcal (21.6 g) sotto il minG 40 → vince il pavimento dello spec: 40 g di mandorle.
-  assert.equal(grams[1], 40);
+  // Il pavimento del fat-dense è ENERGETICO: ~50% del target (125 kcal → 20 g di mandorle),
+  // non i 40 g pensati per gli affettati. Mai sotto i 20 g (porzione minima sensata).
+  assert.equal(grams[1], 20);
   const kcal = lines.reduce((a, l, i) => a + (grams[i]! / 100) * l.hit.kcalPer100g, 0);
   assert.ok(kcal <= target.kcal * 1.3, `kcal slot ${kcal} > 1.3× target ${target.kcal}`);
 });
@@ -82,7 +84,7 @@ test("cap fat-dense: pollo e yogurt (pro > fat) restano INVARIATI", () => {
   assert.deepEqual(solveFdcMealPortions(yogLines, { kcal: 250, carbsG: 30, proteinG: 15, fatG: 4 }), [110, 140]);
 });
 
-test("cap fat-dense: formaggio protein_primary limitato ma mai sotto il minG dello spec", () => {
+test("cap fat-dense: formaggio protein_primary limitato dal pavimento ENERGETICO (≈50% slot), mai sotto 20 g", () => {
   // Formaggio (380 kcal/100g, fat 33 > pro 25) come proteina di colazione da 400 kcal:
   // cap 50% = 52 g < minG 80 → il pavimento dello spec vince (porzione sensata garantita).
   const roles = MEAL_SLOT_ASSEMBLY.breakfast;
@@ -92,5 +94,36 @@ test("cap fat-dense: formaggio protein_primary limitato ma mai sotto il minG del
     { spec: roles[2]!, hit: hitKcal(884, 0, 0, 100) }, // olio
   ];
   const grams = solveFdcMealPortions(lines, { kcal: 400, carbsG: 45, proteinG: 25, fatG: 12 });
-  assert.equal(grams[1], roles[1]!.minG);
+  // Prima il formaggio restava a minG 80 g (304 kcal su una colazione): ora il pavimento è
+  // energetico e scende a 50 g (~190 kcal, metà slot), il resto lo coprono pane e olio.
+  assert.ok(grams[1]! < roles[1]!.minG, `formaggio ${grams[1]} g: il minG in grammi non è più il pavimento sul fat-dense`);
+  assert.ok(grams[1]! >= 20);
+});
+
+const hitK = (kcal: number, cho: number, pro: number, fat: number): FdcFoodBrowseHit => ({ ...hit(cho, pro, fat), kcalPer100g: kcal });
+
+test("spuntino: l'alimento fat-dense (nocciole) non sfora più lo slot per colpa del minimo in grammi", () => {
+  // Caso misurato in shadow sui piani reali: fichi secchi 30 g + NOCCIOLE 40 g su un target da 220 kcal
+  // usciva a ~405 kcal (+185), perché minG 40 del ruolo vale 77 kcal di bresaola ma 258 di nocciole.
+  const roles = MEAL_SLOT_ASSEMBLY.snack_am;
+  const lines = [
+    { spec: roles[0]!, hit: hitK(249, 64, 3.3, 0.9) },   // fichi secchi
+    { spec: roles[1]!, hit: hitK(646, 17, 15, 62) },     // nocciole tostate (fat-dense)
+  ];
+  const target = { kcal: 220, carbsG: 30, proteinG: 8, fatG: 8 };
+  const grams = solveFdcMealPortions(lines, target);
+  const kcal = lines.reduce((a, l, i) => a + (grams[i]! / 100) * l.hit.kcalPer100g, 0);
+  assert.ok(grams[1]! < 40, `nocciole ${grams[1]} g: il pavimento in grammi non è più 40 sul fat-dense`);
+  assert.ok(grams[1]! >= 20, `nocciole ${grams[1]} g: mai sotto la porzione minima sensata`);
+  assert.ok(kcal <= target.kcal * 1.25, `spuntino ${kcal.toFixed(0)} kcal su target 220: lo sforamento da +85% è rientrato`);
+});
+
+test("spuntino: la proteina magra (bresaola) tiene il suo minimo di 40 g — il pavimento energetico vale solo per il fat-dense", () => {
+  const roles = MEAL_SLOT_ASSEMBLY.snack_am;
+  const lines = [
+    { spec: roles[0]!, hit: hitK(249, 64, 3.3, 0.9) },
+    { spec: roles[1]!, hit: hitK(151, 0, 32, 2.6) },      // bresaola: proteina > grasso
+  ];
+  const grams = solveFdcMealPortions(lines, { kcal: 220, carbsG: 30, proteinG: 8, fatG: 8 });
+  assert.ok(grams[1]! >= 40, `bresaola ${grams[1]} g: il minimo storico resta`);
 });

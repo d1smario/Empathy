@@ -7274,21 +7274,30 @@ function macroPerG(hit) {
     f: hit.fatPer100g / 100
   };
 }
-function effectiveMaxG(line, target) {
+function isFatDenseProteinLine(line) {
   const role = line.spec.foodRole;
-  if (role !== "protein_primary" && role !== "protein_secondary") return line.spec.maxG;
-  const fatDense = line.hit.fatPer100g > line.hit.proteinPer100g;
-  if (!fatDense || !(line.hit.kcalPer100g > 0) || !(target.kcal > 0)) return line.spec.maxG;
+  if (role !== "protein_primary" && role !== "protein_secondary") return false;
+  return line.hit.fatPer100g > line.hit.proteinPer100g && line.hit.kcalPer100g > 0;
+}
+var FAT_DENSE_ABSOLUTE_MIN_G = 20;
+function effectiveMinG(line, target) {
+  if (!isFatDenseProteinLine(line) || !(target.kcal > 0)) return line.spec.minG;
+  const halfSlotG = target.kcal * 0.5 * 100 / line.hit.kcalPer100g;
+  const onStep = Math.floor(halfSlotG / line.spec.stepG) * line.spec.stepG;
+  return Math.min(line.spec.minG, Math.max(FAT_DENSE_ABSOLUTE_MIN_G, onStep));
+}
+function effectiveMaxG(line, target) {
+  if (!isFatDenseProteinLine(line) || !(target.kcal > 0)) return line.spec.maxG;
   const capG = target.kcal * 0.5 * 100 / line.hit.kcalPer100g;
   const capOnStep = Math.floor(capG / line.spec.stepG) * line.spec.stepG;
-  return Math.min(line.spec.maxG, Math.max(line.spec.minG, capOnStep));
+  return Math.min(line.spec.maxG, Math.max(effectiveMinG(line, target), capOnStep));
 }
 function solveFdcMealPortions(lines, target) {
   const grams = lines.map((line) => {
     if (line.spec.lever === "fixed") {
       return clampStep2(line.spec.fixedG ?? line.spec.minG, line.spec.minG, line.spec.maxG, line.spec.stepG);
     }
-    return line.spec.minG;
+    return effectiveMinG(line, target);
   });
   const idxOf = (lever) => lines.findIndex((l) => l.spec.lever === lever);
   const choIdx = idxOf("cho");
@@ -7296,13 +7305,14 @@ function solveFdcMealPortions(lines, target) {
   const fatIdx = idxOf("fat");
   const sumMacro = (m) => lines.reduce((acc, line, i) => acc + grams[i] * macroPerG(line.hit)[m], 0);
   const maxGs = lines.map((line) => effectiveMaxG(line, target));
+  const minGs = lines.map((line) => effectiveMinG(line, target));
   const adjust = (idx, m, t) => {
     if (idx < 0) return;
     const line = lines[idx];
     const perG = macroPerG(line.hit)[m];
     if (perG <= 0) return;
     const others = sumMacro(m) - grams[idx] * perG;
-    grams[idx] = clampStep2((t - others) / perG, line.spec.minG, maxGs[idx], line.spec.stepG);
+    grams[idx] = clampStep2((t - others) / perG, minGs[idx], maxGs[idx], line.spec.stepG);
   };
   for (let it = 0; it < 20; it++) {
     adjust(proIdx, "p", Math.max(0, target.proteinG));
