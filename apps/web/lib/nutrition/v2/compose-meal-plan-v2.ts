@@ -28,7 +28,28 @@ import {
   servingBasisForCanonical,
   type StapleRegistryEntry,
 } from "@/lib/nutrition/v2/fdc-staple-registry";
-import type { MenuFoodPoolMap } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import type { MenuFoodEntry, MenuFoodMealRole, MenuFoodPoolMap } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
+import {
+  GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE,
+  GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+  GRAMMAR_RECIPE_MIN_G,
+  GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G,
+  GRAMMAR_RECIPE_STEP_G,
+  GRAMMAR_RECIPE_VEG_SHARE_MIN,
+  GRAMMAR_ROLES_BY_POOL,
+  GRAMMAR_SNACK_PREP_SPEED_MIN,
+  breakfastSecondaryMenuEntries,
+  chooseRecipeForSlot,
+  mealForSlot,
+  menuFoodEntryIndex,
+  recipeCandidateToHit,
+  recipeCandidatesForMeal,
+  recipeLever,
+  scaleRecipe,
+  type GrammarPickFilter,
+  type RecipeCandidate,
+} from "@/lib/nutrition/v2/meal-grammar";
 import { mediterraneanMealToV2Items } from "@/lib/nutrition/v2/v2-mediterranean-meal-adapter";
 import {
   MEAL_SLOT_ASSEMBLY,
@@ -112,23 +133,60 @@ export function portionHintIt(
   return `${g} g ${label}`;
 }
 
-type PickLine = FdcAssemblyLine & { staple?: StapleRegistryEntry };
+type PickLine = FdcAssemblyLine & { staple?: StapleRegistryEntry; recipe?: RecipeCandidate };
+
+/**
+ * Filtro grammatica per un pick dentro `slotKey`: pasto dello slot + ruoli ammessi nel pool
+ * (o quelli passati) + prep_speed minimo agli spuntini (S01). Solo con grammatica attiva.
+ */
+function grammarFilterFor(
+  ctx: ComposeContext,
+  slotKey: MealSlotKey,
+  poolKey: string,
+  rolesOverride?: readonly MenuFoodMealRole[],
+  relaxWeekCaps?: boolean,
+): GrammarPickFilter | undefined {
+  if (!ctx.grammar) return undefined;
+  const roles = rolesOverride ?? GRAMMAR_ROLES_BY_POOL[poolKey]?.primary;
+  const meal = mealForSlot(slotKey);
+  return {
+    meal,
+    ...(roles ? { allowedRoles: new Set(roles) } : {}),
+    ...(meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {}),
+    ...(relaxWeekCaps ? { relaxWeekCaps: true } : {}),
+  };
+}
+
+type PickLineOptions = {
+  /** Ruoli ammessi al posto dei primari del pool (es. B02: CHO_SECONDARY). */
+  rolesOverride?: readonly MenuFoodMealRole[];
+  /** Entry del catalogo da usare al posto di `menuPools.get(spec.poolKey)` (es. B02: pool virtuale). */
+  menuEntriesOverride?: MenuFoodEntry[];
+  /**
+   * Linea facoltativa: se la grammatica non trova nulla la linea SALTA senza ripiego
+   * «relaxWeekCaps» (B02: la quota secondaria «può» coprire il residuo, non deve).
+   */
+  optional?: boolean;
+};
 
 function pickLineForRole(
   spec: MealSlotAssemblyRole,
   slotKey: MealSlotKey,
   pools: FdcPoolMap,
   ctx: ComposeContext,
+  opts?: PickLineOptions,
 ): PickLine | null {
   const roleCtx: RolePickContext = { slot: slotKey, poolKey: spec.poolKey, spec };
   const seed = ctx.seed + spec.poolKey.length;
+  const rolesOverride = opts?.rolesOverride;
 
   // Catalogo DB prima: se il pool del menù esiste ed è non-vuoto, pickStapleForPool usa
   // SOLO quello (il catalogo contiene già tutti gli alimenti pescabili: se il pick torna
   // null per penalità NON ritentiamo l'allowlist — il fallback resta il rawPool taggato).
-  const menuEntries = ctx.menuPools?.get(spec.poolKey);
+  const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
+  const hasMenuPool = !!menuEntries && menuEntries.length > 0;
 
-  const staplePick = pickStapleForPool({
+  const pickArgs = {
     poolKey: spec.poolKey,
     seed,
     dietType: ctx.dietType,
@@ -136,8 +194,37 @@ function pickLineForRole(
     dayCtx: ctx.dayCtx,
     usedCarbFamilies: ctx.usedCarbFamilies,
     usedFdcIds: ctx.usedFdcIds,
-    menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : undefined,
-  });
+    menuEntries: hasMenuPool ? menuEntries : undefined,
+  };
+  let staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride) });
+  // Grammatica: se nessun ruolo primario è disponibile (es. dieta vegana a pranzo), i ruoli
+  // di ripiego del pool (PRO_SECONDARY/MIXED, regola L02) possono diventare la fonte.
+  const fallbackRoles = GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.fallback;
+  if (!staplePick && ctx.grammar && !rolesOverride && fallbackRoles) {
+    staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, fallbackRoles) });
+  }
+  if (!staplePick && ctx.grammar && hasMenuPool) {
+    // La grammatica ha SVUOTATO il pool del catalogo (rotazione settimanale/max_week esauriti).
+    // Il rawPool USDA (inglese, senza canonical_key, senza score) non è mai una risposta
+    // sotto grammatica: prima si ritenta ignorando il solo tetto di rotazione di famiglia
+    // (ontologia e max_week di Mario intatti), e se non basta la linea salta e lo si
+    // registra in provenienza.
+    if (!opts?.optional) {
+      const roles = rolesOverride ?? [
+        ...(GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? []),
+        ...(fallbackRoles ?? []),
+      ];
+      staplePick = pickStapleForPool({
+        ...pickArgs,
+        grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, roles.length > 0 ? roles : undefined, true),
+      });
+      if (staplePick) ctx.grammar.flags.push(`week_caps_relaxed:${slotKey}:${spec.poolKey}`);
+    }
+    if (!staplePick) {
+      ctx.grammar.flags.push(`${opts?.optional ? "optional_line_skipped" : "pool_exhausted"}:${slotKey}:${spec.poolKey}`);
+      return null;
+    }
+  }
 
   if (staplePick) {
     if (staplePick.entry.rotationKey) {
@@ -169,7 +256,119 @@ type ComposeContext = {
   request?: IntelligentMealPlanRequest;
   /** Pool dal catalogo DB nutrition_menu_foods (null/assente → allowlist hardcoded). */
   menuPools?: MenuFoodPoolMap | null;
+  /** Grammatica dei pasti attiva (mode shadow/on): assente → composizione storica. */
+  grammar?: GrammarComposeState;
 };
+
+type GrammarComposeState = {
+  recipes: readonly MenuRecipe[];
+  /** canonical_key → entry del catalogo, per risolvere gli ingredienti delle ricette. */
+  entryIndex: Map<string, MenuFoodEntry>;
+  /** Al massimo una ricetta al giorno. */
+  recipeUsedToday: boolean;
+  /**
+   * Diagnostica della composizione (pool svuotati, tetti allentati, linee saltate): il
+   * chiamante la passa in `mealGrammar.diagnostics` e la scrive nei flag di provenienza,
+   * così in shadow si VEDE quando la grammatica ha dovuto ripiegare.
+   */
+  flags: string[];
+};
+
+/**
+ * Regola L04/V02: a pranzo e cena il compositore può scegliere una ricetta come matrice
+ * mista PRIMA di comporre per ruoli. Ritorna la linea-ricetta (hit = macro per 100 g di
+ * piatto cotto calcolate dagli ingredienti) e registra gli ingredienti come «usati oggi».
+ * `null` = niente ricetta in questo slot (nessuna candidata, roll del seed, tetti).
+ */
+function pickRecipeLine(
+  slotKey: MealSlotKey,
+  target: { kcal: number },
+  ctx: ComposeContext,
+): PickLine | null {
+  const g = ctx.grammar;
+  if (!g || !isMainMealSlot(slotKey) || g.recipeUsedToday) return null;
+  const candidates = recipeCandidatesForMeal({
+    recipes: g.recipes,
+    entryIndex: g.entryIndex,
+    meal: mealForSlot(slotKey),
+    dietType: ctx.dietType,
+    denyFragments: ctx.denyFragments,
+    weekStapleCounts: ctx.dayCtx.weekStapleCounts,
+  }).filter((c) => !c.ingredients.some(({ entry }) => ctx.usedFdcIds.has(entry.fdcId)));
+  const cand = chooseRecipeForSlot({
+    candidates,
+    seed: ctx.seed,
+    slotKey,
+    weekStapleCounts: ctx.dayCtx.weekStapleCounts,
+    recipeAlreadyToday: g.recipeUsedToday,
+  });
+  if (!cand) return null;
+
+  // Tetto: la ricetta copre AL MASSIMO l'intero slot (kcal) — sotto la porzione minima
+  // sensata non ha senso servirla.
+  const kcalCapG = Math.floor(((target.kcal * 100) / cand.per100.kcal) / GRAMMAR_RECIPE_STEP_G) * GRAMMAR_RECIPE_STEP_G;
+  if (kcalCapG < GRAMMAR_RECIPE_MIN_G) return null;
+
+  g.recipeUsedToday = true;
+  for (const { entry } of cand.ingredients) {
+    if (entry.fdcId > 0) ctx.usedFdcIds.add(entry.fdcId);
+    ctx.dayCtx.dayUsedCanonicalKeys?.add(entry.canonicalKey);
+    if (entry.rotationKey) {
+      ctx.usedCarbFamilies.add(entry.rotationKey);
+      ctx.dayCtx.usedStaples.add(entry.rotationKey);
+    } else if (entry.carbFamily) {
+      ctx.usedCarbFamilies.add(entry.carbFamily);
+    }
+  }
+  return {
+    spec: {
+      foodRole: "composite_dish",
+      // Matrice a base CHO → è il primo (leva cho); piatto proteico (cotoletta) → è il
+      // secondo (leva protein) e il primo resta.
+      lever: recipeLever(cand.per100),
+      poolKey: "recipe",
+      minG: GRAMMAR_RECIPE_MIN_G,
+      maxG: kcalCapG,
+      stepG: GRAMMAR_RECIPE_STEP_G,
+    },
+    hit: recipeCandidateToHit(cand),
+    recipe: cand,
+  };
+}
+
+/**
+ * B01/B02: a colazione la CHO secondaria (frutta/miele/marmellata) copre ~15% dei CHO
+ * dello slot come porzione fissa; la primaria (leva del solver) chiude il resto → 80-90%.
+ */
+function pickBreakfastSecondaryChoLine(
+  target: { carbsG: number },
+  pools: FdcPoolMap,
+  ctx: ComposeContext,
+): PickLine | null {
+  const spec: MealSlotAssemblyRole = {
+    foodRole: "cho_simple",
+    lever: "fixed",
+    poolKey: "breakfast_cho",
+    minG: 20,
+    maxG: 150,
+    stepG: 5,
+    fixedG: 20,
+  };
+  // Pool virtuale B02: breakfast_cho ∪ frutta di snack_cho (ruolo colazione CHO_SECONDARY).
+  // Linea facoltativa: senza candidata la colazione resta B01 + PRO + FAT (mai USDA grezzo).
+  const secondaryEntries = breakfastSecondaryMenuEntries(ctx.menuPools);
+  if (secondaryEntries.length === 0) return null;
+  const line = pickLineForRole(spec, "breakfast", pools, ctx, {
+    rolesOverride: GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+    menuEntriesOverride: secondaryEntries,
+    optional: true,
+  });
+  if (!line || !(line.hit.carbsPer100g > 0)) return null;
+  const wantedChoG = target.carbsG * GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE;
+  const grams = (wantedChoG * 100) / line.hit.carbsPer100g;
+  const fixedG = Math.max(spec.minG, Math.min(spec.maxG, Math.round(grams / spec.stepG) * spec.stepG));
+  return { ...line, spec: { ...spec, fixedG } };
+}
 
 function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolMap, ctx: ComposeContext): MealPlanV2ComposedSlot {
   const slotKey = slot.key as MealSlotKey;
@@ -177,9 +376,40 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
   const target = slotMacroTargetsFromDiet(slot);
 
   const lines: PickLine[] = [];
+  // Grammatica, L04: la ricetta (se scelta) occupa una leva del pasto principale — il primo
+  // se è una matrice CHO (pasta, pizza, lasagne), il secondo se è un piatto proteico
+  // (cotoletta). Nel primo caso la proteina si decide DOPO aver sottratto quella della
+  // ricetta (V02); il contorno si aggiunge solo se la ricetta non ha già la sua verdura (L03).
+  const recipeLine = ctx.grammar ? pickRecipeLine(slotKey, target, ctx) : null;
+  const recipeIsCho = recipeLine?.spec.lever === "cho";
+  let proteinSpec: MealSlotAssemblyRole | null = null;
+  if (recipeLine) lines.push(recipeLine);
   for (const spec of roles) {
+    if (recipeLine) {
+      // La ricetta occupa la SUA leva: primo (cho) o secondo (protein).
+      if (spec.lever === recipeLine.spec.lever) continue;
+      if (recipeIsCho && spec.lever === "protein") {
+        proteinSpec = spec;
+        continue;
+      }
+      if (spec.foodRole === "veg_condiment" && recipeLine.recipe!.vegShare >= GRAMMAR_RECIPE_VEG_SHARE_MIN) continue;
+    }
     const line = pickLineForRole(spec, slotKey, pools, ctx);
     if (line) lines.push(line);
+    // B02: subito dopo la CHO primaria di colazione, la quota secondaria (fissa, ~15%).
+    if (ctx.grammar && slotKey === "breakfast" && spec.lever === "cho" && line) {
+      const secondary = pickBreakfastSecondaryChoLine(target, pools, ctx);
+      if (secondary) lines.push(secondary);
+    }
+  }
+  if (recipeLine && recipeIsCho && proteinSpec) {
+    // V02: prima si risolve la ricetta, poi si guarda quanta proteina manca davvero.
+    const firstPass = solveFdcMealPortions(lines, target);
+    const recipeProG = ((firstPass[0] ?? 0) * recipeLine.hit.proteinPer100g) / 100;
+    if (target.proteinG - recipeProG >= GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G) {
+      const proLine = pickLineForRole(proteinSpec, slotKey, pools, ctx);
+      if (proLine) lines.splice(1, 0, proLine);
+    }
   }
 
   if (lines.length === 0) {
@@ -192,7 +422,9 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
     };
   }
 
-  applyRegola7Cho(lines, target, slotKey, ctx);
+  // Regola 7 (pane) ragiona sulla linea CHO staple: con una ricetta come primo
+  // (pizza/piadina hanno già il loro pane) non si applica.
+  if (!recipeIsCho) applyRegola7Cho(lines, target, slotKey, ctx);
 
   const grams = solveFdcMealPortions(lines, target);
   const items: MealPlanV2ComposedItem[] = [];
@@ -201,6 +433,24 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
     const g = grams[i] ?? 0;
     const minG = line.spec.lever === "fat" ? 4 : 8;
     if (g < minG) return;
+    if (line.recipe) {
+      const scaled = scaleRecipe(line.recipe, g);
+      items.push({
+        fdcId: 0,
+        description: line.recipe.recipe.labelIt,
+        grams: g,
+        servingBasis: "cooked_grams",
+        rotationKey: line.recipe.rotationKey,
+        foodRole: line.spec.foodRole,
+        recipe: {
+          recipeKey: line.recipe.recipe.recipeKey,
+          labelIt: line.recipe.recipe.labelIt,
+          components: scaled.components,
+        },
+        ...scaled.totals,
+      });
+      return;
+    }
     const canonicalKey = line.staple?.canonicalKey;
     const servingBasis = line.staple?.servingBasis ?? (canonicalKey ? servingBasisForCanonical(canonicalKey) : undefined);
     const label = line.staple?.labelIt ?? line.hit.description;
@@ -213,6 +463,9 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
       // La rotation key viaggia sull'item: la memoria settimanale conta la famiglia
       // anche per i cibi del catalogo DB ignoti alla costante hardcoded.
       rotationKey: line.staple?.rotationKey,
+      // Con la grammatica l'ordine delle voci non è più quello di MEAL_SLOT_ASSEMBLY:
+      // il ruolo viaggia sull'item (assente → i lettori ricadono sulla posizione).
+      ...(ctx.grammar ? { foodRole: line.spec.foodRole } : {}),
       ...macrosFromHit(line.hit, g),
     });
   });
@@ -253,6 +506,8 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
       usedCarbFamilies: ctx.usedCarbFamilies,
       usedFdcIds: ctx.usedFdcIds,
       menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : undefined,
+      // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
+      grammar: grammarFilterFor(ctx, slotKey, choLine.spec.poolKey),
     });
     if (alt && alt.entry.canonicalKey !== "bread_white") {
       lines[choIdx] = { spec: choLine.spec, hit: alt.hit, staple: alt.entry };
@@ -269,6 +524,9 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
       usedCarbFamilies: ctx.usedCarbFamilies,
       usedFdcIds: ctx.usedFdcIds,
       menuEntries: breadMenuEntries && breadMenuEntries.length > 0 ? breadMenuEntries : undefined,
+      // Sotto grammatica il pane secondario deve avere score > 0 nel pasto dello slot (V01):
+      // nei dati v5 il pane è NONE/0 a pranzo e cena, quindi la regola 7 non aggiunge pane.
+      grammar: grammarFilterFor(ctx, slotKey, "breakfast_cho"),
     });
     if (breadHit?.entry.canonicalKey === "bread_white") {
       lines.push({
@@ -373,6 +631,17 @@ export function composeMealPlanV2(
     request?: IntelligentMealPlanRequest;
     /** Pool dal catalogo DB nutrition_menu_foods — fonte primaria; null/assente → allowlist. */
     menuFoodPools?: MenuFoodPoolMap | null;
+    /**
+     * Grammatica dei pasti di Mario (score/ruoli per pasto + ricette). Assente/false →
+     * composizione storica, BIT-IDENTICA. Il chiamante la passa solo in mode shadow/on
+     * (in shadow per la composizione «ombra», mai per quella servita).
+     */
+    mealGrammar?: {
+      enabled: boolean;
+      recipes?: readonly MenuRecipe[] | null;
+      /** Sink dei flag di composizione (pool svuotati, tetti allentati, linee saltate). */
+      diagnostics?: string[];
+    };
   },
 ): MealPlanV2ComposedSlot[] {
   void requirements;
@@ -410,6 +679,16 @@ export function composeMealPlanV2(
     staplePenalty,
     request,
     menuPools: options?.menuFoodPools ?? null,
+    ...(options?.mealGrammar?.enabled
+      ? {
+          grammar: {
+            recipes: options.mealGrammar.recipes ?? [],
+            entryIndex: menuFoodEntryIndex(options?.menuFoodPools),
+            recipeUsedToday: false,
+            flags: options.mealGrammar.diagnostics ?? [],
+          },
+        }
+      : {}),
   };
 
   return dietSlots.map((slot) => {

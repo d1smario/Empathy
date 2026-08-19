@@ -18,6 +18,7 @@ import {
 import type { MediterraneanDayContext, MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
 import { isCanonicalKeyUsedToday } from "@/lib/nutrition/meal-rotation-guard";
 import type { MenuFoodEntry } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import { grammarPenaltyForEntry, type GrammarPickFilter } from "@/lib/nutrition/v2/meal-grammar";
 
 export type StapleRegistryEntry = {
   canonicalKey: string;
@@ -468,6 +469,12 @@ export type StaplePickContext = {
    * ma filtro dieta sui flag espliciti e macro dal DB. Assente → comportamento storico.
    */
   menuEntries?: MenuFoodEntry[];
+  /**
+   * Grammatica dei pasti (Mario): filtro secco per pasto (score 0 / EXCLUDE / ruolo non
+   * ammesso / max_week) + penalità di frequenza, applicati SOLO alle entry del catalogo DB
+   * (l'allowlist hardcoded non ha score). Assente → identico a prima, byte per byte.
+   */
+  grammar?: GrammarPickFilter;
 };
 
 /**
@@ -541,7 +548,17 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
     .map((e, idx) => {
       if (denyHit(e.labelIt, deny) || denyHit(e.canonicalKey, deny)) return { e, score: -10_000, idx };
       const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
-      if (weekCount >= ROTATION_MAX_WEEK_USES) return { e, score: -5000, idx };
+      // Il tetto settimanale di famiglia salta SOLO nel ripiego «relaxWeekCaps» della
+      // grammatica (pool del catalogo svuotato dai tetti): senza grammatica è identico a prima.
+      if (weekCount >= ROTATION_MAX_WEEK_USES && !(menuEntries && ctx.grammar?.relaxWeekCaps)) {
+        return { e, score: -5000, idx };
+      }
+      // Grammatica (V01: prima l'ontologia, poi le grammature): il verdetto arriva PRIMA di
+      // qualunque punteggio — un cibo vietato in questo pasto non è «penalizzato», non esiste.
+      // `weekCount` qui è il conteggio di FAMIGLIA (vedi grammarPenaltyForEntry sul perché).
+      const grammarPenalty =
+        menuEntries && ctx.grammar ? grammarPenaltyForEntry(e as MenuFoodEntry, ctx.grammar, weekCount) : 0;
+      if (grammarPenalty == null) return { e, score: -6000, idx };
       if (ctx.dayCtx && isCanonicalKeyUsedToday(ctx.dayCtx as MediterraneanDayContext, e.canonicalKey)) {
         return { e, score: -5000, idx };
       }
@@ -555,6 +572,8 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       let score = 1000 - ((idx + poolSize - dayOffset) % poolSize) * 10;
       if (weekCount >= ROTATION_TARGET_WEEK_USES) score -= 120;
       else if (weekCount > 0) score -= weekCount * 80;
+      // La frequenza abbassa la priorità ma NON esclude: mai sotto il filtro `score > 0`.
+      if (grammarPenalty > 0) score = Math.max(1, score - grammarPenalty);
       return { e, score, idx, hit };
     })
     .filter((x) => x.score > 0 && "hit" in x && x.hit)
@@ -593,15 +612,38 @@ export function weekStapleCountForEntry(
  * 4. fallback canonical_key (accettabile, ma la famiglia deve vincere quando c'è).
  */
 export function mealRotationStaplesFromComposedItems(
-  items: Array<{ canonicalKey?: string | null; rotationKey?: string | null }>,
+  items: Array<{
+    canonicalKey?: string | null;
+    rotationKey?: string | null;
+    components?: Array<{ canonicalKey?: string | null; rotationKey?: string | null }> | null;
+  }>,
   resolveRotationKey?: (canonicalKey: string) => string | undefined,
 ): string[] {
   const keys = new Set<string>();
+  const addFood = (ck: string, rotationKey?: string | null) => {
+    const rk = rotationKey?.trim() || resolveRotationKey?.(ck) || rotationKeyForCanonical(ck);
+    keys.add(rk ?? ck);
+  };
   for (const item of items) {
     const ck = item.canonicalKey?.trim();
-    if (!ck) continue;
-    const rk = item.rotationKey?.trim() || resolveRotationKey?.(ck) || rotationKeyForCanonical(ck);
-    keys.add(rk ?? ck);
+    if (!ck) {
+      // Item senza canonical_key ma con rotation key: è una RICETTA (grammatica dei pasti,
+      // `recipe:<key>`) — conta come famiglia settimanale a sé, altrimenti la stessa
+      // carbonara tornerebbe ogni giorno.
+      const rkOnly = item.rotationKey?.trim();
+      if (rkOnly) keys.add(rkOnly);
+      // E contano ANCHE i suoi ingredienti: la carbonara del lunedì è pasta e pancetta anche
+      // per il martedì. Senza questo il percorso in-memory (cron settimanale, che accumula
+      // `staples` giorno per giorno) divergeva da quello che rilegge il DB
+      // (meal-rotation-week-db conta le righe meal_item degli ingredienti): la stessa
+      // settimana avrebbe due memorie diverse a seconda di chi la guarda.
+      for (const c of item.components ?? []) {
+        const cck = c.canonicalKey?.trim();
+        if (cck) addFood(cck, c.rotationKey);
+      }
+      continue;
+    }
+    addFood(ck, item.rotationKey);
   }
   return [...keys].slice(0, 24);
 }

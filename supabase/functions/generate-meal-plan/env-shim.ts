@@ -12,6 +12,9 @@ if (!g.process) {
       // Day-engine (classi/quote Mario): assenti → default "shadow" nel codice (zero impatto).
       NUTRITION_DAY_ENGINE_MODE: Deno.env.get("NUTRITION_DAY_ENGINE_MODE"),
       NUTRITION_DAY_ENGINE_ATHLETES: Deno.env.get("NUTRITION_DAY_ENGINE_ATHLETES"),
+      // Grammatica dei pasti (score/ruoli/ricette Mario): assenti → default "shadow" nel codice.
+      NUTRITION_MEAL_GRAMMAR_MODE: Deno.env.get("NUTRITION_MEAL_GRAMMAR_MODE"),
+      NUTRITION_MEAL_GRAMMAR_ATHLETES: Deno.env.get("NUTRITION_MEAL_GRAMMAR_ATHLETES"),
     },
   };
 }

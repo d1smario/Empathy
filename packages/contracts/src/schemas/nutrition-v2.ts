@@ -254,6 +254,41 @@ export type MealPlanV2ComposedItem = {
    * catalogo DB che la costante hardcoded non conosce.
    */
   rotationKey?: string;
+  /**
+   * Ruolo di assemblaggio dell'item (cho_complex, protein_primary, veg_condiment…):
+   * viaggia sull'item perché con la grammatica dei pasti (linea CHO secondaria a colazione,
+   * ricette) l'ordine delle voci non coincide più con MEAL_SLOT_ASSEMBLY[slot][i].
+   * Assente sui piani storici → i lettori ricadono sulla posizione, come prima.
+   */
+  foodRole?: string;
+  /**
+   * Presente SOLO quando l'item è una ricetta (grammatica dei pasti, regola L04/V02):
+   * `grams`/macro dell'item sono il piatto intero; i componenti sono gli ingredienti del
+   * catalogo con i grammi già scalati e le macro calcolate da fdc — il persist scrive
+   * QUESTI, uno per riga. Il componente neutro (acqua) non compare.
+   */
+  recipe?: MealPlanV2RecipeRef;
+};
+
+export type MealPlanV2RecipeComponent = {
+  canonicalKey: string;
+  fdcId: number;
+  labelIt: string;
+  grams: number;
+  kcal: number;
+  choG: number;
+  proG: number;
+  fatG: number;
+  /** Chiave rotazione settimanale dell'ingrediente (es. carb:pasta), se il catalogo la ha. */
+  rotationKey?: string;
+  /** Ruolo dell'ingrediente (cho_complex, protein_primary, fat, veg_condiment…) per meal_item.food_role. */
+  foodRole?: string;
+};
+
+export type MealPlanV2RecipeRef = {
+  recipeKey: string;
+  labelIt: string;
+  components: MealPlanV2RecipeComponent[];
 };
 
 export type MealPlanV2ComposedSlot = {

@@ -13,6 +13,12 @@ import type { FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times
 import { buildNutritionDayModelV2 } from "@/lib/nutrition/v2/nutrition-day-model-v2";
 import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
 import { loadMenuFoodPools } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import { loadMenuRecipes } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
+import {
+  buildMealGrammarProvenance,
+  resolveMealGrammarMode,
+  type MealGrammarProvenance,
+} from "@/lib/nutrition/v2/meal-grammar";
 import { FDC_BRANCH_POOL_SPECS } from "@/lib/nutrition/v2/fdc-pool-specs";
 import { queryFdcBranchPool } from "@/lib/nutrition/v2/fdc-branch-query";
 import type { FdcFoodBrowseFilter } from "@/lib/nutrition/v2/fdc-food-taxonomy";
@@ -54,6 +60,13 @@ export type MealPlanV2Production = {
    * nutrition_plan.inputs_provenance.day_engine (canale QA interrogabile via SQL).
    */
   dayEngine?: DayEngineProvenance;
+  /**
+   * Report grammatica dei pasti (score/ruoli/ricette di Mario) — presente quando la
+   * modalità non è "off". In shadow: confronto vecchia-vs-nuova composizione, servita la
+   * vecchia; in on: servita la nuova (applied=true). Persistito da persist-v2-plan-to-db
+   * in nutrition_plan.inputs_provenance.meal_grammar, accanto a day_engine.
+   */
+  mealGrammar?: MealGrammarProvenance;
 };
 
 export type BuildMealPlanV2ProductionInput = BuildDailyRequirementsInput & {
@@ -247,19 +260,65 @@ export async function buildMealPlanV2Production(
 
   // Catalogo curato DB in parallelo ai pool taggati: fonte primaria dei pool staple;
   // null (tabella vuota/irraggiungibile) → il compose ricade sull'allowlist hardcoded.
-  const [pools, menuFoodPools] = await Promise.all([
+  // Grammatica dei pasti (Mario): il gate si legge PRIMA dei caricamenti così in "off" non
+  // si toccano nemmeno le tabelle delle ricette (piani bit-identici a prima).
+  const grammarMode = resolveMealGrammarMode(
+    process.env as Record<string, string | undefined>,
+    input.request.athleteId,
+  );
+  const [pools, menuFoodPools, menuRecipes] = await Promise.all([
     loadFdcPools(admin, requirements.dietProfileActive),
     loadMenuFoodPools(admin),
+    grammarMode !== "off" ? loadMenuRecipes(admin) : Promise.resolve(null),
   ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
 
-  const composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, {
+  const composeOptions = {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
     request: input.request,
     menuFoodPools,
-  });
+  };
+  // Composizione storica: è quella servita in off e in shadow.
+  let composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, composeOptions);
+
+  // ── Grammatica dei pasti — SHADOW-first, stesso patto del day-engine ────────────────
+  // In shadow si compone ANCHE con la grammatica e si registra il confronto (servita la
+  // storica); in on si serve la nuova. Qualsiasi errore nel ramo nuovo → log + piano
+  // storico: la grammatica non deve MAI far fallire una generazione.
+  let mealGrammar: MealGrammarProvenance | undefined;
+  if (grammarMode !== "off") {
+    try {
+      const diagnostics: string[] = [];
+      const withGrammar = composeMealPlanV2(requirements, composerSlots, pools, {
+        ...composeOptions,
+        mealGrammar: { enabled: true, recipes: menuRecipes, diagnostics },
+      });
+      const applied = grammarMode === "on";
+      mealGrammar = buildMealGrammarProvenance({
+        mode: grammarMode,
+        applied,
+        before: composedMealPlan,
+        after: withGrammar,
+        recipesAvailable: menuRecipes?.length ?? 0,
+        flags: [
+          ...(menuFoodPools ? [] : ["menu_catalog_missing_grammar_inert"]),
+          ...(menuRecipes ? [] : ["recipes_missing"]),
+          // Ripieghi della composizione (pool svuotato dai tetti, linea B02 saltata…): in
+          // shadow è il segnale per capire dove il catalogo è troppo stretto per «on».
+          ...diagnostics,
+        ],
+      });
+      if (applied) composedMealPlan = withGrammar;
+    } catch (err) {
+      console.error(
+        "[nutrition-v2 meal-grammar] errore non bloccante, servo la composizione storica:",
+        err instanceof Error ? err.message : err,
+      );
+      mealGrammar = undefined;
+    }
+  }
 
   const sessions = requirements.substrateFueling?.sessions ?? [];
   const fuelingProtocolMeta =
@@ -282,5 +341,6 @@ export async function buildMealPlanV2Production(
     composedMealPlan,
     fuelingProtocolMeta,
     dayEngine,
+    mealGrammar,
   };
 }

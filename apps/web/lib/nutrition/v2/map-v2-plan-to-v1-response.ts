@@ -40,7 +40,7 @@ function mapItem(
 ): IntelligentMealPlanItemOut {
   const label = item.description;
   const roles = MEAL_SLOT_ASSEMBLY[slotKey] ?? [];
-  const spec = roles[itemIndex] ?? roles[roles.length - 1] ?? {
+  const positional = roles[itemIndex] ?? roles[roles.length - 1] ?? {
     foodRole: "cho_simple" as const,
     lever: "cho" as const,
     poolKey: "snack_cho",
@@ -48,6 +48,25 @@ function mapItem(
     maxG: 180,
     stepG: 5,
   };
+  // Il ruolo sull'item (grammatica dei pasti) vince sulla posizione: con la linea CHO
+  // secondaria a colazione o una ricetta l'indice non coincide più con MEAL_SLOT_ASSEMBLY.
+  const spec =
+    item.foodRole && item.foodRole !== positional.foodRole
+      ? { ...positional, foodRole: item.foodRole as typeof positional.foodRole }
+      : positional;
+  if (item.recipe && item.recipe.components.length > 0) {
+    // Ricetta: UN item col piatto intero e gli ingredienti nel portionHint. Nessuna
+    // compositionKey: non è un alimento FDC, i macro sono già la somma degli ingredienti.
+    const g = Math.round(item.grams);
+    const parts = item.recipe.components.map((c) => `${c.labelIt} ${Math.round(c.grams)} g`).join(", ");
+    return {
+      name: label,
+      portionHint: `${g} g ${label} (piatto cotto) · ${parts}`,
+      functionalBridge: "Alimentazione sportiva · ricetta del nutrizionista (ingredienti del catalogo)",
+      approxKcal: Math.round(item.kcal),
+      macroRole: macroRoleFromItem(item.choG, item.proG, item.fatG),
+    };
+  }
   const canonicalKey = item.canonicalKey;
   // `servingBasis` dice solo COME esprimere la porzione (crudo/cotto/ml): non ha nulla a che
   // vedere con l'usabilita' della riga USDA. Gli alimenti del catalogo DB privi di entry nella

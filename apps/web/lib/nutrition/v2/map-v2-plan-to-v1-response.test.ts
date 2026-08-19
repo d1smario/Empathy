@@ -378,3 +378,65 @@ test("finalize V2: la cena mostra il cibo concreto persistito, non «Proteina: �
     "senza opt-out il dedupe V1 continua a sostituire (comportamento storico invariato)",
   );
 });
+
+// ── Caso 5: ricetta (grammatica dei pasti) — UN item in pagina, N ingredienti nel DB ──
+// L'invariante «una sola giornata alimentare» qui vale sulle kcal, non sul numero di righe:
+// il payload mostra «Pasta alla carbonara» come un piatto, meal_item conserva gli
+// ingredienti (fdc_id veri, la FK regge) con recipe_key — Σ kcal identiche, stesso ordine.
+test("ricetta: payload = un item col piatto, persistito = ingredienti con Σ kcal identiche", async () => {
+  const request = makeRequest([reqSlot("lunch", "Pranzo", 900)]);
+  const budgets = [budget("lunch", "Pranzo", 900)];
+  const recipeItem: MealPlanV2ComposedSlot["items"][number] = {
+    fdcId: 0,
+    description: "Pasta alla carbonara",
+    grams: 300,
+    kcal: 706.7,
+    choG: 76.4,
+    proG: 31.1,
+    fatG: 32.9,
+    servingBasis: "cooked_grams",
+    rotationKey: "recipe:pasta_alla_carbonara",
+    foodRole: "composite_dish",
+    recipe: {
+      recipeKey: "pasta_alla_carbonara",
+      labelIt: "Pasta alla carbonara",
+      components: [
+        { canonicalKey: "pasta_dry", fdcId: 501, labelIt: "Pasta di semola", grams: 105, kcal: 367.5, choG: 74.6, proG: 12.6, fatG: 1.6, foodRole: "cho_complex" },
+        { canonicalKey: "egg_whole", fdcId: 502, labelIt: "Uova", grams: 42, kcal: 60.1, choG: 0.3, proG: 5.3, fatG: 4, foodRole: "protein_primary" },
+        { canonicalKey: "pecorino_romano", fdcId: 503, labelIt: "Pecorino", grams: 24, kcal: 92.9, choG: 0.9, proG: 7.7, fatG: 6.5, foodRole: "protein_secondary" },
+        { canonicalKey: "pork_belly_cured", fdcId: 504, labelIt: "Guanciale", grams: 39, kcal: 255.5, choG: 0, proG: 4.7, fatG: 26.9, foodRole: "fat" },
+      ],
+    },
+  };
+  const production = makeProduction(budgets, [
+    composedSlot("lunch", "Pranzo", 900, [
+      recipeItem,
+      { ...composedItem(505, "Zucchine", 120, 20.4, { cho: 3.6, pro: 1.4, fat: 0.4 }), canonicalKey: "zucchini_raw", foodRole: "veg_condiment" },
+    ]),
+  ]);
+
+  const core = mapV2PlanToV1AssembledCore(production, request);
+  const items = realFoodItems(core, "lunch");
+  assert.equal(items.length, 2, "un item per la ricetta + il contorno");
+  assert.equal(items[0]!.name, "Pasta alla carbonara");
+  assert.equal(items[0]!.approxKcal, 707);
+  assert.ok(items[0]!.portionHint.includes("Guanciale 39 g"), "gli ingredienti sono nel portionHint");
+  assert.equal(items[0]!.compositionKey, undefined, "un piatto non ha una compositionKey FDC");
+
+  const rows = pendingMealItemRowsFromProduction(production);
+  assert.equal(rows.length, 5, "4 ingredienti + contorno");
+  const recipeRows = rows.filter((r) => r.recipeKey === "pasta_alla_carbonara");
+  assert.equal(recipeRows.length, 4);
+  assert.deepEqual(recipeRows.map((r) => r.fdcId), [501, 502, 503, 504]);
+  assert.equal(recipeRows.reduce((s, r) => s + r.kcal, 0), 707, "Σ kcal ingredienti = kcal del piatto in pagina");
+  assert.equal(rows[4]!.foodRole, "veg_condiment", "il ruolo sull'item vince sulla posizione");
+  assert.equal(rows[4]!.recipeKey, undefined);
+  const payloadKcal = items.reduce((s, it) => s + it.approxKcal, 0);
+  const persistedKcal = rows.reduce((s, r) => s + r.kcal, 0);
+  assert.equal(payloadKcal, persistedKcal, "Σ kcal payload = Σ kcal meal_item");
+
+  // Regge anche dopo il finalize (nessun rescale, nessun segnaposto).
+  const finalized = await finalizeIntelligentMealPlanCore(core, request, {}, { lunchDinnerProteinDedupe: false });
+  const fItems = realFoodItems(finalized, "lunch");
+  assert.equal(fItems.reduce((s, it) => s + it.approxKcal, 0), persistedKcal);
+});

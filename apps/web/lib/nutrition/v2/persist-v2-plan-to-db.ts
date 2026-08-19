@@ -51,7 +51,27 @@ export type PendingMealItemRow = PendingMealItem & {
   carbsG: number;
   proteinG: number;
   fatG: number;
+  /** Ingrediente di una ricetta (grammatica dei pasti): recipe_key della ricetta madre. */
+  recipeKey?: string;
 };
+
+/**
+ * kcal intere degli ingredienti di una ricetta che sommano ESATTAMENTE alle kcal intere del
+ * piatto (Σ meal_item = item del payload): l'arrotondamento per riga può sbagliare di ±1-2
+ * kcal, il resto va sull'ingrediente più pesante.
+ */
+function roundedRecipeKcal(componentKcal: number[], itemKcal: number): number[] {
+  const rounded = componentKcal.map((k) => Math.round(num(k)));
+  const diff = Math.round(num(itemKcal)) - rounded.reduce((a, b) => a + b, 0);
+  if (diff !== 0 && rounded.length > 0) {
+    let iMax = 0;
+    rounded.forEach((k, i) => {
+      if (k > rounded[iMax]!) iMax = i;
+    });
+    rounded[iMax] = rounded[iMax]! + diff;
+  }
+  return rounded;
+}
 
 /** Slot della produzione V2 che diventano righe `meal` (uno slot senza item non si persiste). */
 export function persistableComposedSlots(
@@ -71,13 +91,36 @@ export function pendingMealItemRowsFromProduction(production: MealPlanV2Producti
   for (const s of persistableComposedSlots(production)) {
     const roles = MEAL_SLOT_ASSEMBLY[s.slot as MealSlotKey] ?? [];
     s.items.forEach((it, i) => {
+      if (it.recipe && it.recipe.components.length > 0) {
+        // Ricetta (grammatica dei pasti): in meal_item vanno gli INGREDIENTI, uno per riga,
+        // ciascuno col proprio fdc_id del catalogo (la FK regge: sono alimenti veri) e il
+        // riferimento alla ricetta madre. Il piatto «chiuso» non esiste come riga.
+        const kcals = roundedRecipeKcal(it.recipe.components.map((c) => c.kcal), it.kcal);
+        it.recipe.components.forEach((c, j) => {
+          rows.push({
+            slot: s.slot,
+            fdcId: c.fdcId > 0 ? c.fdcId : null,
+            label: c.labelIt,
+            canonicalKey: c.canonicalKey,
+            foodRole: c.foodRole ?? it.foodRole ?? "composite_dish",
+            grams: Math.round(num(c.grams)),
+            kcal: kcals[j] ?? Math.round(num(c.kcal)),
+            carbsG: num(c.choG),
+            proteinG: num(c.proG),
+            fatG: num(c.fatG),
+            recipeKey: it.recipe!.recipeKey,
+          });
+        });
+        return;
+      }
       const resolvedFdc = it.fdcId > 0 ? it.fdcId : it.canonicalKey ? fdcIdForCanonicalKey(it.canonicalKey) : null;
       rows.push({
         slot: s.slot,
         fdcId: resolvedFdc && resolvedFdc > 0 ? resolvedFdc : null,
         label: it.description ?? null,
         canonicalKey: it.canonicalKey ?? null,
-        foodRole: roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
+        // Il ruolo sull'item vince (grammatica: ordine ≠ MEAL_SLOT_ASSEMBLY); altrimenti posizione.
+        foodRole: it.foodRole ?? roles[i]?.foodRole ?? roles[roles.length - 1]?.foodRole ?? "cho_simple",
         grams: Math.round(num(it.grams)),
         kcal: Math.round(num(it.kcal)),
         carbsG: num(it.choG),
@@ -101,7 +144,18 @@ function mealItemInsertRow(row: PendingMealItemRow, mealId: string): Record<stri
     carbs_g: row.carbsG,
     protein_g: row.proteinG,
     fat_g: row.fatG,
+    ...(row.recipeKey ? { recipe_key: row.recipeKey } : {}),
   };
+}
+
+/** Le stesse righe senza `recipe_key` (cintura rollout: colonna non ancora migrata). */
+function stripRecipeKey(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return rows.map((r) => {
+    if (!("recipe_key" in r)) return r;
+    const { recipe_key: _omit, ...rest } = r;
+    void _omit;
+    return rest;
+  });
 }
 
 /**
@@ -228,6 +282,8 @@ export async function persistV2PlanToDb(
     // sostituisce, ed è assente quando non si è azzerato niente.
     inputs_provenance: {
       ...(production.dayEngine ? { day_engine: production.dayEngine } : {}),
+      // Grammatica dei pasti (shadow/on): confronto vecchia-vs-nuova, stesso canale QA.
+      ...(production.mealGrammar ? { meal_grammar: production.mealGrammar } : {}),
       ...(clearedTrace ? { meal_item_fdc_cleared: clearedTrace } : {}),
     },
   };
@@ -288,7 +344,13 @@ export async function persistV2PlanToDb(
   let droppedOnInsert = 0;
   let clearedOnRetry = 0;
   if (itemPayload.length > 0) {
-    const { error: itemErr } = await admin.from("meal_item").insert(itemPayload);
+    let { error: itemErr } = await admin.from("meal_item").insert(itemPayload);
+    if (itemErr && /recipe_key/i.test(itemErr.message ?? "") && itemPayload.some((r) => "recipe_key" in r)) {
+      // Cintura rollout: colonna `meal_item.recipe_key` non ancora migrata (42703). Le righe
+      // restano (gli ingredienti sono alimenti veri), perdono solo il riferimento alla ricetta.
+      console.warn("[nutrition v2 persist] meal_item.recipe_key assente, scrivo senza riferimento ricetta");
+      ({ error: itemErr } = await admin.from("meal_item").insert(stripRecipeKey(itemPayload)));
+    }
     if (itemErr) {
       // Rete di sicurezza (non la strada principale): l'insert in blocco è caduto per una
       // riga che la guardia non aveva previsto (probe non attendibile, vincolo nuovo, dato
