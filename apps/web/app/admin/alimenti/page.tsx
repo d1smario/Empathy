@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AdminEngineConfigSection } from "@/components/admin/foods/AdminEngineConfigSection";
 import { AdminFoodsManager } from "@/components/admin/foods/AdminFoodsManager";
 import { AdminMenuCatalogSection } from "@/components/admin/foods/AdminMenuCatalogSection";
+import { AdminMenuRecipesSection } from "@/components/admin/foods/AdminMenuRecipesSection";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 
 export const dynamic = "force-dynamic";
@@ -28,13 +29,14 @@ export default function AdminAlimentiPage() {
         <span className="text-sm text-gray-400">
           Il database alimenti del motore menù: <span className="font-mono text-amber-300">8.000+</span> cibi
           USDA con macro per 100 g, categoria e immagine. Sotto, il <span className="text-amber-300">Catalogo menù</span>{" "}
-          (~300 cibi approvati che il motore usa davvero) e i parametri di tuning della generazione menù.
+          (~300 cibi approvati che il motore usa davvero), le <span className="text-amber-300">Ricette</span> (combinazioni di alimenti del catalogo) e i parametri di tuning della generazione menù.
           Dopo ogni modifica ai valori nutrizionali, ricalcola i tag derivati.
         </span>
       }
     >
       <AdminFoodsManager />
       <AdminMenuCatalogSection />
+      <AdminMenuRecipesSection />
       <AdminEngineConfigSection />
     </Pro2ModulePageShell>
   );
