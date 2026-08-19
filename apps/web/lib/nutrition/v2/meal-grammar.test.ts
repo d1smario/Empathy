@@ -19,6 +19,7 @@ import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
   breakfastSecondaryMenuEntries,
   buildMealGrammarProvenance,
+  chooseRecipeForSlot,
   GRAMMAR_D02_FISH_DINNER_BONUS,
   grammarD02FishBonus,
   grammarPenaltyForEntry,
@@ -120,6 +121,8 @@ const carbonara: MenuRecipe = {
   recipeKey: "pasta_alla_carbonara",
   labelIt: "Pasta alla carbonara",
   note: null,
+  frequency: "COMMON",
+  maxWeek: null,
   components: [
     { position: 1, canonicalKey: "pasta_dry", fdcId: pasta.fdcId, labelIt: "Pasta di semola", gramsPer100g: 35, isNeutral: false },
     { position: 2, canonicalKey: "egg_whole", fdcId: egg.fdcId, labelIt: "Uova", gramsPer100g: 14, isNeutral: false },
@@ -133,6 +136,8 @@ const risoPomodoro: MenuRecipe = {
   recipeKey: "riso_al_pomodoro",
   labelIt: "Riso al pomodoro",
   note: null,
+  frequency: "COMMON",
+  maxWeek: null,
   components: [
     { position: 1, canonicalKey: "rice_dry", fdcId: rice.fdcId, labelIt: "Riso", gramsPer100g: 30, isNeutral: false },
     { position: 2, canonicalKey: "tomatoes_canned", fdcId: tomatoes.fdcId, labelIt: "Pomodori pelati", gramsPer100g: 30, isNeutral: false },
@@ -763,4 +768,40 @@ test("D02 nel pick: cena a settimana vuota → il merluzzo batte il pollo; con p
   // Il bonus NON scavalca i verdetti: merluzzo con dieta vegetariana resta fuori.
   const veg = pickStapleForPool({ poolKey: "dinner_pro", seed: 3, menuEntries: entries, grammar: { meal: "dinner" }, dayCtx: { weekStapleCounts: {} }, dietType: "vegetarian" });
   assert.notEqual(veg?.entry.canonicalKey, "cod_raw", "vegetariano: il pesce non entra nemmeno con D02");
+});
+
+
+// ── frequency / max_week della RICETTA (pannello admin): verdetto e preferenza ─────────
+
+test("max_week della ricetta è un verdetto: a 1 uso settimanale con max_week 1 la ricetta non è più candidata", () => {
+  const idx = menuFoodEntryIndex(pools());
+  const pizzaLike: MenuRecipe = { ...risoPomodoro, id: "r9", recipeKey: "riso_raro", labelIt: "Riso raro", maxWeek: 1 };
+  const fresh = recipeCandidatesForMeal({ recipes: [pizzaLike], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
+  assert.equal(fresh.length, 1);
+  const used = recipeCandidatesForMeal({ recipes: [pizzaLike], entryIndex: idx, meal: "lunch", weekStapleCounts: { "recipe:riso_raro": 1 } });
+  assert.equal(used.length, 0, "già servita una volta, max_week 1 → fuori");
+});
+
+test("frequency della ricetta: a parità di conteggio la COMMON precede la ROTATION che precede la OCCASIONAL, e il tier del sorteggio non le mescola", () => {
+  const idx = menuFoodEntryIndex(pools());
+  const common: MenuRecipe = { ...risoPomodoro, id: "c1", recipeKey: "riso_comune", labelIt: "Riso comune", frequency: "COMMON" };
+  const rot: MenuRecipe = { ...risoPomodoro, id: "c2", recipeKey: "riso_rotazione", labelIt: "Riso rotazione", frequency: "ROTATION" };
+  const occ: MenuRecipe = { ...risoPomodoro, id: "c3", recipeKey: "riso_occasionale", labelIt: "Riso occasionale", frequency: "OCCASIONAL" };
+  const cands = recipeCandidatesForMeal({ recipes: [occ, rot, common], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
+  assert.deepEqual(cands.map((c) => c.recipe.recipeKey), ["riso_comune", "riso_rotazione", "riso_occasionale"]);
+  // Su molti seed, con tutte a zero, esce SEMPRE la COMMON: le altre non sono nel tier.
+  let picked = new Set<string>();
+  for (let seed = 0; seed < 60; seed += 1) {
+    const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false });
+    if (c) picked.add(c.recipe.recipeKey);
+  }
+  assert.deepEqual([...picked], ["riso_comune"], `tier mescolato: ${[...picked].join(",")}`);
+  // Quando la COMMON è già stata servita, il tier passa alla ROTATION (weekCount 0 < 1).
+  picked = new Set();
+  for (let seed = 0; seed < 60; seed += 1) {
+    const c2 = recipeCandidatesForMeal({ recipes: [occ, rot, common], entryIndex: idx, meal: "lunch", weekStapleCounts: { "recipe:riso_comune": 1 } });
+    const c = chooseRecipeForSlot({ candidates: c2, seed, slotKey: "lunch", weekStapleCounts: { "recipe:riso_comune": 1 }, recipeAlreadyToday: false });
+    if (c) picked.add(c.recipe.recipeKey);
+  }
+  assert.deepEqual([...picked], ["riso_rotazione"]);
 });

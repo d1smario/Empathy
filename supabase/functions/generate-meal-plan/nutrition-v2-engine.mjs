@@ -4301,6 +4301,7 @@ function grammarPenaltyForEntry(entry2, filter, weekCount) {
   if (filter.prepSpeedMin != null && mr.prepSpeed != null && mr.prepSpeed < filter.prepSpeedMin) return null;
   return GRAMMAR_FREQUENCY_PENALTY[mr.frequency] ?? 0;
 }
+var RECIPE_FREQUENCY_RANK = { COMMON: 0, ROTATION: 1, OCCASIONAL: 2 };
 var RECIPE_ROTATION_PREFIX = "recipe:";
 function recipeRotationKey(recipeKey) {
   return `${RECIPE_ROTATION_PREFIX}${recipeKey}`;
@@ -4424,10 +4425,11 @@ function recipeCandidatesForMeal(input) {
     };
     if (!recipeEligibleForMeal(cand, input.meal)) continue;
     if (cand.weekCount >= ROTATION_MAX_WEEK_USES) continue;
+    if (recipe.maxWeek != null && cand.weekCount >= recipe.maxWeek) continue;
     out.push(cand);
   }
   out.sort(
-    (a, b) => a.weekCount !== b.weekCount ? a.weekCount - b.weekCount : a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0
+    (a, b) => a.weekCount !== b.weekCount ? a.weekCount - b.weekCount : RECIPE_FREQUENCY_RANK[a.recipe.frequency] !== RECIPE_FREQUENCY_RANK[b.recipe.frequency] ? RECIPE_FREQUENCY_RANK[a.recipe.frequency] - RECIPE_FREQUENCY_RANK[b.recipe.frequency] : a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0
   );
   return out;
 }
@@ -4452,8 +4454,10 @@ function chooseRecipeForSlot(input) {
   if (weekRecipeCount(input.weekStapleCounts) >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
   const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
   if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
-  const minCount = input.candidates[0].weekCount;
-  const tier = input.candidates.filter((c) => c.weekCount === minCount);
+  const first = input.candidates[0];
+  const tier = input.candidates.filter(
+    (c) => c.weekCount === first.weekCount && RECIPE_FREQUENCY_RANK[c.recipe.frequency] === RECIPE_FREQUENCY_RANK[first.recipe.frequency]
+  );
   const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
   return tier[offset] ?? null;
 }
@@ -7964,6 +7968,17 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
 }
 
 // apps/web/lib/nutrition/v2/menu-recipe-catalog-db.ts
+var RECIPE_FREQUENCIES = /* @__PURE__ */ new Set(["COMMON", "ROTATION", "OCCASIONAL"]);
+function parseRecipeFrequency(raw) {
+  const v = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  return RECIPE_FREQUENCIES.has(v) ? v : "COMMON";
+}
+function parseRecipeMaxWeek(raw) {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  return i >= 1 && i <= 7 ? i : null;
+}
 var RECIPE_GRAMS_TOLERANCE = { min: 99, max: 101 };
 function str2(v) {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -8024,6 +8039,8 @@ function mapMenuRecipeRows(recipeRows, componentRows, log = defaultLogger) {
       recipeKey,
       labelIt: str2(r?.label_it) ?? recipeKey.replace(/_/g, " "),
       note: str2(r?.note),
+      frequency: parseRecipeFrequency(r?.frequency),
+      maxWeek: parseRecipeMaxWeek(r?.max_week),
       components
     });
   }
@@ -8037,7 +8054,9 @@ async function loadMenuRecipes(admin) {
     return menuRecipesCache.recipes;
   }
   try {
-    const { data: recipeRows, error } = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true);
+    const full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week").eq("is_active", true);
+    const missingColumns = full.error != null && (full.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(full.error.message ?? ""));
+    const { data: recipeRows, error } = missingColumns ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true) : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;

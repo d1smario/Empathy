@@ -245,6 +245,9 @@ export function grammarPenaltyForEntry(
 
 // ── Ricette (L04/V02) ────────────────────────────────────────────────────────────────
 
+/** Ordine di preferenza per frequenza della ricetta (più basso = preferito). */
+const RECIPE_FREQUENCY_RANK: Readonly<Record<string, number>> = { COMMON: 0, ROTATION: 1, OCCASIONAL: 2 };
+
 /** Prefisso della chiave di rotazione settimanale di una ricetta (una ricetta È un rotation_key). */
 export const RECIPE_ROTATION_PREFIX = "recipe:";
 
@@ -456,16 +459,24 @@ export function recipeCandidatesForMeal(input: {
     };
     if (!recipeEligibleForMeal(cand, input.meal)) continue;
     if (cand.weekCount >= ROTATION_MAX_WEEK_USES) continue;
+    // max_week della RICETTA (pannello admin / Mario): un tetto esplicito, più stretto di
+    // quello di famiglia quando c'è. È un verdetto, come max_week sugli alimenti.
+    if (recipe.maxWeek != null && cand.weekCount >= recipe.maxWeek) continue;
     out.push(cand);
   }
+  // Ordine: chi è stato servito meno in settimana viene prima; a parità, la FREQUENZA della
+  // ricetta (stessa semantica degli alimenti: COMMON prima di ROTATION prima di OCCASIONAL
+  // — abbassa la priorità, non esclude); a parità ancora, la chiave per determinismo.
   out.sort((a, b) =>
     a.weekCount !== b.weekCount
       ? a.weekCount - b.weekCount
-      : a.recipe.recipeKey < b.recipe.recipeKey
-        ? -1
-        : a.recipe.recipeKey > b.recipe.recipeKey
-          ? 1
-          : 0,
+      : RECIPE_FREQUENCY_RANK[a.recipe.frequency] !== RECIPE_FREQUENCY_RANK[b.recipe.frequency]
+        ? RECIPE_FREQUENCY_RANK[a.recipe.frequency] - RECIPE_FREQUENCY_RANK[b.recipe.frequency]
+        : a.recipe.recipeKey < b.recipe.recipeKey
+          ? -1
+          : a.recipe.recipeKey > b.recipe.recipeKey
+            ? 1
+            : 0,
   );
   return out;
 }
@@ -506,8 +517,14 @@ export function chooseRecipeForSlot(input: {
   if (weekRecipeCount(input.weekStapleCounts) >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
   const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
   if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
-  const minCount = input.candidates[0]!.weekCount;
-  const tier = input.candidates.filter((c) => c.weekCount === minCount);
+  // Il «tier» fra cui si ruota col seed è: conteggio settimanale minimo E frequenza migliore
+  // fra quelle a quel conteggio. Così una pizza OCCASIONAL non entra in sorteggio contro
+  // una pasta al pomodoro COMMON finché entrambe sono a zero — esce solo quando le COMMON
+  // sono già state usate (o non ce ne sono). I candidati arrivano già ordinati.
+  const first = input.candidates[0]!;
+  const tier = input.candidates.filter(
+    (c) => c.weekCount === first.weekCount && RECIPE_FREQUENCY_RANK[c.recipe.frequency] === RECIPE_FREQUENCY_RANK[first.recipe.frequency],
+  );
   const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
   return tier[offset] ?? null;
 }

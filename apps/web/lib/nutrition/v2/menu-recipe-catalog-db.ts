@@ -25,13 +25,37 @@ export type MenuRecipeComponent = {
   isNeutral: boolean;
 };
 
+export type MenuRecipeFrequency = "COMMON" | "ROTATION" | "OCCASIONAL";
+
 export type MenuRecipe = {
   id: string;
   recipeKey: string;
   labelIt: string;
   note: string | null;
+  /**
+   * Quanto spesso la ricetta può comparire — stessa semantica di
+   * nutrition_menu_food_meal_roles.frequency sugli alimenti: non esclude, abbassa la
+   * priorità. Default COMMON quando la colonna manca o il valore è ignoto.
+   */
+  frequency: MenuRecipeFrequency;
+  /** Tetto di comparse a settimana (1-7), null = nessun tetto esplicito (resta quello di famiglia). */
+  maxWeek: number | null;
   components: MenuRecipeComponent[];
 };
+
+const RECIPE_FREQUENCIES: ReadonlySet<string> = new Set<MenuRecipeFrequency>(["COMMON", "ROTATION", "OCCASIONAL"]);
+
+function parseRecipeFrequency(raw: unknown): MenuRecipeFrequency {
+  const v = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  return RECIPE_FREQUENCIES.has(v) ? (v as MenuRecipeFrequency) : "COMMON";
+}
+
+function parseRecipeMaxWeek(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  return i >= 1 && i <= 7 ? i : null;
+}
 
 /** Tolleranza sulla somma dei grammi per ricetta (stessa della funzione SQL nutrition_recipe_grams_ok). */
 export const RECIPE_GRAMS_TOLERANCE = { min: 99, max: 101 } as const;
@@ -116,6 +140,8 @@ export function mapMenuRecipeRows(
       recipeKey,
       labelIt: str(r?.label_it) ?? recipeKey.replace(/_/g, " "),
       note: str(r?.note),
+      frequency: parseRecipeFrequency(r?.frequency),
+      maxWeek: parseRecipeMaxWeek(r?.max_week),
       components,
     });
   }
@@ -140,10 +166,21 @@ export async function loadMenuRecipes(admin: SupabaseClient): Promise<MenuRecipe
     return menuRecipesCache.recipes;
   }
   try {
-    const { data: recipeRows, error } = await admin
+    // frequency/max_week: colonne della migration 20260819110000 (applicata). Se mancassero
+    // (ambiente non allineato) PostgREST torna 42703 e si ricade sulla select minima: la
+    // ricetta resta COMMON senza tetto, cioè il comportamento di prima — MAI «nessuna ricetta»
+    // per una colonna in meno.
+    const full = await admin
       .from("nutrition_recipes")
-      .select("id, recipe_key, label_it, note")
+      .select("id, recipe_key, label_it, note, frequency, max_week")
       .eq("is_active", true);
+    const missingColumns =
+      full.error != null &&
+      (full.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(full.error.message ?? ""));
+    const { data: recipeRows, error }: { data: unknown[] | null; error: { code?: string; message?: string } | null } =
+      missingColumns
+        ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true)
+        : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;
