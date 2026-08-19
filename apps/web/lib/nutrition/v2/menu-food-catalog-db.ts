@@ -29,6 +29,57 @@ export type MenuFoodEntry = {
   isMeat: boolean;
   isFish: boolean;
   isAnimalProduct: boolean;
+  /**
+   * Grammatica di Mario (tabella 1:1 `nutrition_menu_food_meal_roles`): score e ruoli per
+   * pasto. `undefined` = alimento senza riga di score (es. inserito da admin dopo l'import):
+   * il compositore decide il fallback, il loader NON inventa valori.
+   */
+  mealRoles?: MenuFoodMealRoles;
+};
+
+/** Ruolo dell'alimento DENTRO un pasto (quota che copre). EXCLUDE = vietato in quel pasto. */
+export type MenuFoodMealRole =
+  | "CHO_PRIMARY"
+  | "CHO_SECONDARY"
+  | "PRO_PRIMARY"
+  | "PRO_SECONDARY"
+  | "FAT_COMPLEMENT"
+  | "FIBER_VEG"
+  | "FIBER_MICRO_PRIMARY"
+  | "MIXED"
+  | "COMPOSITE_MAIN"
+  | "EXCLUDE"
+  | "NONE";
+
+/** Ruolo macro dominante dell'alimento, indipendente dal pasto. */
+export type MenuFoodMacroRole =
+  | "CHO_PRIMARY"
+  | "CHO_SECONDARY"
+  | "PRO_PRIMARY"
+  | "PRO_SECONDARY"
+  | "FAT_PRIMARY"
+  | "FIBER_MICRO"
+  | "MIXED"
+  | "PRO_FAT_MIXED";
+
+export type MenuFoodFrequency = "COMMON" | "ROTATION" | "OCCASIONAL";
+
+/** Momenti della giornata con uno score di idoneità (0-10). */
+export type MenuFoodScoreSlot = "breakfast" | "snack" | "lunch" | "dinner" | "preWorkout" | "postWorkout";
+/** Pasti con un ruolo di composizione (pre/post workout hanno solo lo score). */
+export type MenuFoodRoleMeal = "breakfast" | "snack" | "lunch" | "dinner";
+
+export type MenuFoodMealRoles = {
+  /** Idoneità 0-10 per momento; score mancante nel DB → 0 (nessuna idoneità), mai NaN. */
+  scores: Record<MenuFoodScoreSlot, number>;
+  /** Ruolo per pasto; valore sconosciuto/mancante nel DB → NONE (non lo si propone lì). */
+  roles: Record<MenuFoodRoleMeal, MenuFoodMealRole>;
+  macroRole: MenuFoodMacroRole | null;
+  frequency: MenuFoodFrequency;
+  /** Tetto settimanale di apparizioni; null = nessun tetto esplicito. */
+  maxWeek: number | null;
+  /** Velocità di preparazione 0-10; null se non valorizzata. */
+  prepSpeed: number | null;
 };
 
 export type MenuFoodPoolMap = Map<string, MenuFoodEntry[]>;
@@ -46,6 +97,83 @@ function num(v: unknown): number | null {
 
 type MacroRow = { kcal: number; carbs: number; protein: number; fat: number };
 
+const MEAL_ROLES: ReadonlySet<string> = new Set<MenuFoodMealRole>([
+  "CHO_PRIMARY",
+  "CHO_SECONDARY",
+  "PRO_PRIMARY",
+  "PRO_SECONDARY",
+  "FAT_COMPLEMENT",
+  "FIBER_VEG",
+  "FIBER_MICRO_PRIMARY",
+  "MIXED",
+  "COMPOSITE_MAIN",
+  "EXCLUDE",
+  "NONE",
+]);
+const MACRO_ROLES: ReadonlySet<string> = new Set<MenuFoodMacroRole>([
+  "CHO_PRIMARY",
+  "CHO_SECONDARY",
+  "PRO_PRIMARY",
+  "PRO_SECONDARY",
+  "FAT_PRIMARY",
+  "FIBER_MICRO",
+  "MIXED",
+  "PRO_FAT_MIXED",
+]);
+const FREQUENCIES: ReadonlySet<string> = new Set<MenuFoodFrequency>(["COMMON", "ROTATION", "OCCASIONAL"]);
+
+/** Score 0-10: null/NaN/fuori range → clamp, mancante → 0. Numeric PostgREST arriva come stringa. */
+function score(v: unknown): number {
+  const n = num(v);
+  if (n == null) return 0;
+  return Math.min(10, Math.max(0, n));
+}
+
+function mealRole(v: unknown): MenuFoodMealRole {
+  const s = str(v)?.toUpperCase();
+  return s && MEAL_ROLES.has(s) ? (s as MenuFoodMealRole) : "NONE";
+}
+
+/**
+ * Parsing puro di una riga `nutrition_menu_food_meal_roles`. Esportato per i test.
+ * Ritorna null solo senza canonical_key (riga inutilizzabile); per il resto è tollerante:
+ * score null → 0, ruolo ignoto → NONE, frequenza ignota → COMMON, macro_role ignoto → null.
+ * PERCHÉ tollerante: un refresh parziale di Mario non deve far cadere il catalogo intero,
+ * e la CHECK del DB rende comunque impossibili i valori fuori enum in produzione.
+ */
+export function parseMenuFoodMealRoleRow(raw: unknown): { canonicalKey: string; mealRoles: MenuFoodMealRoles } | null {
+  const r = raw as Record<string, unknown>;
+  const canonicalKey = str(r?.canonical_key);
+  if (!canonicalKey) return null;
+  const macroRaw = str(r?.macro_role)?.toUpperCase();
+  const freqRaw = str(r?.frequency)?.toUpperCase();
+  const maxWeek = num(r?.max_week);
+  const prepSpeed = num(r?.prep_speed);
+  return {
+    canonicalKey,
+    mealRoles: {
+      scores: {
+        breakfast: score(r?.score_breakfast),
+        snack: score(r?.score_snack),
+        lunch: score(r?.score_lunch),
+        dinner: score(r?.score_dinner),
+        preWorkout: score(r?.score_pre_workout),
+        postWorkout: score(r?.score_post_workout),
+      },
+      roles: {
+        breakfast: mealRole(r?.role_breakfast),
+        snack: mealRole(r?.role_snack),
+        lunch: mealRole(r?.role_lunch),
+        dinner: mealRole(r?.role_dinner),
+      },
+      macroRole: macroRaw && MACRO_ROLES.has(macroRaw) ? (macroRaw as MenuFoodMacroRole) : null,
+      frequency: freqRaw && FREQUENCIES.has(freqRaw) ? (freqRaw as MenuFoodFrequency) : "COMMON",
+      maxWeek: maxWeek != null && maxWeek >= 1 ? Math.trunc(maxWeek) : null,
+      prepSpeed: prepSpeed != null && prepSpeed >= 0 ? Math.min(10, Math.trunc(prepSpeed)) : null,
+    },
+  };
+}
+
 /**
  * Mapping puro righe DB → pool ordinati. Esportato per i test (mock righe, niente client).
  * Ordinamento DETERMINISTICO: sort_priority ASC poi canonical_key ASC (confronto byte-wise,
@@ -53,7 +181,19 @@ type MacroRow = { kcal: number; carbs: number; protein: number; fat: number };
  * Righe senza macro utilizzabili sono escluse: senza macro il pick non potrebbe mai
  * costruire l'hit, tenerle nel pool sprecherebbe solo slot di rotazione.
  */
-export function mapMenuFoodRows(menuRows: unknown[], macroRows: unknown[]): MenuFoodPoolMap | null {
+export function mapMenuFoodRows(
+  menuRows: unknown[],
+  macroRows: unknown[],
+  mealRoleRows: unknown[] = [],
+): MenuFoodPoolMap | null {
+  // Score/ruoli di Mario per canonical_key: opzionali, l'alimento entra nel pool anche
+  // senza (è il compositore a decidere come trattare l'assenza).
+  const mealRolesByKey = new Map<string, MenuFoodMealRoles>();
+  for (const raw of mealRoleRows) {
+    const parsed = parseMenuFoodMealRoleRow(raw);
+    if (parsed) mealRolesByKey.set(parsed.canonicalKey, parsed.mealRoles);
+  }
+
   const macroByFdc = new Map<number, MacroRow>();
   for (const raw of macroRows) {
     const r = raw as Record<string, unknown>;
@@ -96,6 +236,7 @@ export function mapMenuFoodRows(menuRows: unknown[], macroRows: unknown[]): Menu
         isMeat: r?.is_meat === true,
         isFish: r?.is_fish === true,
         isAnimalProduct: r?.is_animal_product === true,
+        mealRoles: mealRolesByKey.get(canonicalKey),
       },
       poolKeys,
       sortPriority: num(r?.sort_priority) ?? 999,
@@ -169,7 +310,16 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
       if (Array.isArray(data)) macroRows.push(...data);
     }
 
-    const pools = mapMenuFoodRows(menuRows, macroRows);
+    // Score/ruoli di Mario: tabella 1:1 separata (nessun embed PostgREST: una query in
+    // più è più semplice del join dichiarato e non cambia se la tabella manca). Un errore
+    // qui NON annulla il catalogo: si prosegue senza mealRoles, come prima dell'import.
+    const { data: mealRoleRows, error: mealRoleError } = await admin
+      .from("nutrition_menu_food_meal_roles")
+      .select(
+        "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed",
+      );
+
+    const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
     menuFoodPoolsCache = { at: Date.now(), pools };
     return pools;
   } catch {

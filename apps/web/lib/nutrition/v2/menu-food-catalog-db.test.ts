@@ -5,6 +5,7 @@ import {
   loadMenuFoodPools,
   mapMenuFoodRows,
   menuRotationKeyResolver,
+  parseMenuFoodMealRoleRow,
   resetMenuFoodPoolsCacheForTests,
 } from "@/lib/nutrition/v2/menu-food-catalog-db";
 
@@ -105,11 +106,16 @@ test("mapMenuFoodRows: serving_basis fuori contratto → default dry_grams", () 
 type FakeResult = { data: unknown; error: unknown };
 
 /** Client finto: menu e macro rispondono con i risultati dati; conta le chiamate per tabella. */
-function fakeAdmin(menu: FakeResult, fdc: FakeResult, calls?: string[]): SupabaseClient {
+function fakeAdmin(menu: FakeResult, fdc: FakeResult, calls?: string[], roles?: FakeResult): SupabaseClient {
   return {
     from(table: string) {
       calls?.push(table);
-      const result = table === "nutrition_menu_foods" ? menu : fdc;
+      const result =
+        table === "nutrition_menu_foods"
+          ? menu
+          : table === "nutrition_menu_food_meal_roles"
+            ? (roles ?? { data: [], error: null })
+            : fdc;
       const builder: Record<string, unknown> = {};
       builder.select = () => builder;
       builder.eq = () => builder;
@@ -156,4 +162,92 @@ test("menuRotationKeyResolver: canonical → rotation key, undefined per chiavi 
   assert.equal(resolve("rice_black"), "carb:riso");
   assert.equal(resolve("no_family"), undefined);
   assert.equal(resolve("unknown_key"), undefined);
+});
+
+// ---- Grammatica di Mario: score/ruoli per pasto (nutrition_menu_food_meal_roles) ----
+
+function roleRow(overrides: Record<string, unknown>): Record<string, unknown> {
+  return {
+    canonical_key: "rice_dry",
+    // numeric PostgREST → stringhe: il parser deve accettarle.
+    score_breakfast: "0",
+    score_snack: "0",
+    score_lunch: "10",
+    score_dinner: "9",
+    score_pre_workout: "8",
+    score_post_workout: "9",
+    role_breakfast: "NONE",
+    role_snack: "EXCLUDE",
+    role_lunch: "CHO_PRIMARY",
+    role_dinner: "CHO_PRIMARY",
+    macro_role: "CHO_PRIMARY",
+    frequency: "COMMON",
+    max_week: 7,
+    prep_speed: 6,
+    ...overrides,
+  };
+}
+
+test("parseMenuFoodMealRoleRow: riga completa → score numerici, ruoli (EXCLUDE conservato), frequenza, tetti", () => {
+  const parsed = parseMenuFoodMealRoleRow(roleRow({}));
+  assert.ok(parsed);
+  assert.equal(parsed!.canonicalKey, "rice_dry");
+  assert.deepEqual(parsed!.mealRoles.scores, { breakfast: 0, snack: 0, lunch: 10, dinner: 9, preWorkout: 8, postWorkout: 9 });
+  assert.deepEqual(parsed!.mealRoles.roles, { breakfast: "NONE", snack: "EXCLUDE", lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" });
+  assert.equal(parsed!.mealRoles.macroRole, "CHO_PRIMARY");
+  assert.equal(parsed!.mealRoles.frequency, "COMMON");
+  assert.equal(parsed!.mealRoles.maxWeek, 7);
+  assert.equal(parsed!.mealRoles.prepSpeed, 6);
+});
+
+test("parseMenuFoodMealRoleRow: score null → 0, fuori range → clamp, ruolo ignoto → NONE, frequenza ignota → COMMON, max_week null", () => {
+  const parsed = parseMenuFoodMealRoleRow(
+    roleRow({ score_lunch: null, score_dinner: 12, score_snack: -1, role_lunch: "BOH", role_dinner: null, frequency: "weird", macro_role: "nope", max_week: null, prep_speed: null }),
+  );
+  assert.ok(parsed);
+  assert.equal(parsed!.mealRoles.scores.lunch, 0);
+  assert.equal(parsed!.mealRoles.scores.dinner, 10);
+  assert.equal(parsed!.mealRoles.scores.snack, 0);
+  assert.equal(parsed!.mealRoles.roles.lunch, "NONE");
+  assert.equal(parsed!.mealRoles.roles.dinner, "NONE");
+  assert.equal(parsed!.mealRoles.frequency, "COMMON");
+  assert.equal(parsed!.mealRoles.macroRole, null);
+  assert.equal(parsed!.mealRoles.maxWeek, null);
+  assert.equal(parsed!.mealRoles.prepSpeed, null);
+  // Senza canonical_key la riga è inutilizzabile.
+  assert.equal(parseMenuFoodMealRoleRow(roleRow({ canonical_key: null })), null);
+  assert.equal(parseMenuFoodMealRoleRow(null), null);
+});
+
+test("mapMenuFoodRows: mealRoles agganciati per canonical_key; alimento senza riga di score → mealRoles undefined", () => {
+  const pools = mapMenuFoodRows(
+    [menuRow({ canonical_key: "rice_dry", fdc_id: 1 }), menuRow({ canonical_key: "new_admin_food", fdc_id: 2 })],
+    [macroRow(1), macroRow(2)],
+    [roleRow({ canonical_key: "rice_dry" }), roleRow({ canonical_key: "orphan_key" })],
+  );
+  assert.ok(pools);
+  const byKey = new Map(pools!.get("lunch_carb")!.map((e) => [e.canonicalKey, e]));
+  assert.equal(byKey.get("rice_dry")!.mealRoles?.roles.lunch, "CHO_PRIMARY");
+  assert.equal(byKey.get("rice_dry")!.mealRoles?.scores.lunch, 10);
+  assert.equal(byKey.get("new_admin_food")!.mealRoles, undefined);
+  // Firma a due argomenti (chiamanti esistenti) → nessun mealRoles, nessun errore.
+  const legacy = mapMenuFoodRows([menuRow({})], [macroRow(169756)]);
+  assert.equal(legacy!.get("lunch_carb")![0]!.mealRoles, undefined);
+});
+
+test("loadMenuFoodPools: legge nutrition_menu_food_meal_roles e aggancia; errore sulla tabella score → catalogo comunque caricato", async () => {
+  resetMenuFoodPoolsCacheForTests();
+  const calls: string[] = [];
+  const pools = await loadMenuFoodPools(
+    fakeAdmin({ data: [menuRow({})], error: null }, { data: [macroRow(169756)], error: null }, calls, { data: [roleRow({})], error: null }),
+  );
+  assert.ok(calls.includes("nutrition_menu_food_meal_roles"));
+  assert.equal(pools!.get("lunch_carb")![0]!.mealRoles?.roles.snack, "EXCLUDE");
+  resetMenuFoodPoolsCacheForTests();
+  const withoutRoles = await loadMenuFoodPools(
+    fakeAdmin({ data: [menuRow({})], error: null }, { data: [macroRow(169756)], error: null }, undefined, { data: null, error: { message: "relation missing" } }),
+  );
+  assert.ok(withoutRoles);
+  assert.equal(withoutRoles!.get("lunch_carb")![0]!.mealRoles, undefined);
+  resetMenuFoodPoolsCacheForTests();
 });
