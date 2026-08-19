@@ -4277,6 +4277,19 @@ var GRAMMAR_FREQUENCY_PENALTY = {
   ROTATION: 200,
   OCCASIONAL: 400
 };
+var GRAMMAR_D02_FISH_DINNER_BONUS = 450;
+var FISH_FAMILY_PREFIX = "prot:pesce";
+function weekHasFish(week) {
+  if (!week) return false;
+  for (const [k, v] of Object.entries(week)) {
+    if (v > 0 && k.startsWith(FISH_FAMILY_PREFIX)) return true;
+  }
+  return false;
+}
+function grammarD02FishBonus(entry2, filter, week) {
+  if (filter.meal !== "dinner" || !entry2.isFish) return 0;
+  return weekHasFish(week) ? 0 : GRAMMAR_D02_FISH_DINNER_BONUS;
+}
 function grammarPenaltyForEntry(entry2, filter, weekCount) {
   const mr = entry2.mealRoles;
   if (!mr) return 0;
@@ -4297,6 +4310,7 @@ var GRAMMAR_RECIPE_SLOT_SHARE_PCT = 34;
 var GRAMMAR_RECIPE_VEG_SHARE_MIN = 15;
 var GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G = 15;
 var GRAMMAR_RECIPE_MIN_G = 150;
+var GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT = 0.68;
 var GRAMMAR_RECIPE_CHO_LED_MIN_SHARE = 0.3;
 function recipeLever(per100) {
   const total = per100.cho * 4 + per100.pro * 4 + per100.fat * 9;
@@ -5019,6 +5033,9 @@ function pickStapleForPool(ctx) {
     if (weekCount >= ROTATION_TARGET_WEEK_USES) score2 -= 120;
     else if (weekCount > 0) score2 -= weekCount * 80;
     if (grammarPenalty > 0) score2 = Math.max(1, score2 - grammarPenalty);
+    if (menuEntries && ctx.grammar) {
+      score2 += grammarD02FishBonus(e, ctx.grammar, ctx.dayCtx?.weekStapleCounts);
+    }
     return { e, score: score2, idx, hit };
   }).filter((x) => x.score > 0 && "hit" in x && x.hit).sort((a, b) => b.score - a.score);
   const best = scored[0];
@@ -7696,7 +7713,17 @@ function composeSlotFromAssembly(slot, pools, ctx) {
     const recipeProG = (firstPass[0] ?? 0) * recipeLine.hit.proteinPer100g / 100;
     if (target.proteinG - recipeProG >= GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G) {
       const proLine = pickLineForRole(proteinSpec, slotKey, pools, ctx);
-      if (proLine) lines.splice(1, 0, proLine);
+      if (proLine) {
+        const kcalPer100 = recipeLine.hit.kcalPer100g;
+        if (kcalPer100 > 0) {
+          const shareCapG = Math.floor(target.kcal * GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT * 100 / kcalPer100 / GRAMMAR_RECIPE_STEP_G) * GRAMMAR_RECIPE_STEP_G;
+          recipeLine.spec = {
+            ...recipeLine.spec,
+            maxG: Math.max(GRAMMAR_RECIPE_MIN_G, Math.min(recipeLine.spec.maxG, shareCapG))
+          };
+        }
+        lines.splice(1, 0, proLine);
+      }
     }
   }
   if (lines.length === 0) {

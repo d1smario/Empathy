@@ -157,6 +157,45 @@ export const GRAMMAR_FREQUENCY_PENALTY: Readonly<Record<string, number>> = {
   OCCASIONAL: 400,
 };
 
+/**
+ * D02 (SOFT): «privilegiare grassi insaturi e fonti ittiche/oleose nel bilancio
+ * settimanale». Non è un vincolo, è una spinta: a CENA, se nella settimana non è ancora
+ * comparso pesce, il pesce riceve un bonus di priorità che vince l'offset di rotazione per
+ * seed (max 390 nei pool ≤40) ma perde contro le esclusioni e i tetti (che sono già
+ * verdetti, non punteggi). Appena una famiglia ittica è nella memoria settimanale, il bonus
+ * si spegne: due pesci in settimana non sono un obiettivo, uno sì. Non si tocca il
+ * «quanto» (i grassi restano quelli del modello), solo QUALE proteina viene scelta.
+ * Perché solo a cena: è dove Mario la colloca (D02 sta sotto CENA), e a pranzo la scelta
+ * è già occupata dalle matrici L04. Perché non l'olio: le linee grasso hanno un ruolo
+ * FAT_COMPLEMENT proprio, e «non aggiungere olio se il pasto è già ricco» (nota di D02) è
+ * già la regola B04 (grasso come delta).
+ */
+export const GRAMMAR_D02_FISH_DINNER_BONUS = 450;
+/** Prefisso delle famiglie ittiche in rotation_key (es. `prot:pesce`, `prot:pesce_azzurro`). */
+const FISH_FAMILY_PREFIX = "prot:pesce";
+
+/** True se la memoria settimanale contiene già una famiglia ittica. */
+export function weekHasFish(week?: Record<string, number>): boolean {
+  if (!week) return false;
+  for (const [k, v] of Object.entries(week)) {
+    if (v > 0 && k.startsWith(FISH_FAMILY_PREFIX)) return true;
+  }
+  return false;
+}
+
+/**
+ * D02 come bonus di priorità (positivo) o 0. Vale solo per pick a cena su un alimento
+ * ittico, e solo finché la settimana è senza pesce.
+ */
+export function grammarD02FishBonus(
+  entry: Pick<MenuFoodEntry, "isFish">,
+  filter: Pick<GrammarPickFilter, "meal">,
+  week?: Record<string, number>,
+): number {
+  if (filter.meal !== "dinner" || !entry.isFish) return 0;
+  return weekHasFish(week) ? 0 : GRAMMAR_D02_FISH_DINNER_BONUS;
+}
+
 export type GrammarPickFilter = {
   meal: MenuFoodRoleMeal;
   /** Ruoli ammessi nel pool per questo pick; assente = solo il filtro score/EXCLUDE. */
@@ -226,6 +265,15 @@ export const GRAMMAR_RECIPE_VEG_SHARE_MIN = 15;
 export const GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G = 15;
 /** Porzione minima sensata di piatto cotto (g). */
 export const GRAMMAR_RECIPE_MIN_G = 150;
+/**
+ * Quando la ricetta a leva CHO avrà un complemento proteico (V02), il suo tetto in kcal
+ * non è più l'intero slot ma questa quota: il resto è lo spazio del secondo. Senza questo
+ * il risotto veniva risolto a tutto lo slot e la trota si AGGIUNGEVA sopra: pasto a +20-38%
+ * sul target (misurato in verifica: risotto 520 g + trota 120 g → 1120/930 kcal). Il valore
+ * riflette la proporzione di un primo+secondo italiano (il primo è ~2/3 dell'energia); il
+ * solver poi riequilibra dentro il tetto, quindi la ricetta può comunque scendere.
+ */
+export const GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT = 0.68;
 /**
  * Sotto questa quota di kcal da CHO la ricetta NON è una matrice a base di carboidrati
  * (es. cotoletta di pollo: 14%) → nel pasto prende il posto della FONTE PROTEICA e il primo

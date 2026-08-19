@@ -19,12 +19,15 @@ import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
   breakfastSecondaryMenuEntries,
   buildMealGrammarProvenance,
+  GRAMMAR_D02_FISH_DINNER_BONUS,
+  grammarD02FishBonus,
   grammarPenaltyForEntry,
   menuFoodEntryIndex,
   recipeCandidatesForMeal,
   recipeLever,
   resolveMealGrammarMode,
   scaleRecipe,
+  weekHasFish,
 } from "@/lib/nutrition/v2/meal-grammar";
 import { pendingMealItemRowsFromProduction } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
 import type { MealPlanV2Production } from "@/lib/nutrition/v2/build-meal-plan-v2-production";
@@ -712,4 +715,52 @@ test("rilievo B: la memoria in-memory conta ANCHE gli ingredienti della ricetta 
   const keys = mealRotationStaplesFromComposedItems(items).sort();
   assert.deepEqual(keys, ["carb:pasta", "prot:pancetta", "recipe:pasta_alla_carbonara"],
     "la carbonara del lunedì è pasta e pancetta anche per il martedì");
+});
+
+// ── Riparazione giro 2 (osservazione del verificatore): ricetta CHO + complemento V02 → il
+//    pasto resta DENTRO il target, il secondo non si somma sopra ────────────────────────
+
+test("ricetta a leva CHO + complemento proteico: il pasto resta entro il target (nessun +20-38%)", () => {
+  // Il riso al pomodoro è povero di proteine → V02 aggiunge sempre una fonte PRO.
+  // Prima del fix: ricetta risolta a TUTTO lo slot + pesce sopra → slot a +20-38%.
+  let checked = 0;
+  for (const date of DATES) {
+    const plan = compose(date, { grammar: true, recipes: [risoPomodoro] });
+    for (const s of plan) {
+      const rec = s.items.find((it) => it.recipe?.recipeKey === "riso_al_pomodoro");
+      if (!rec) continue;
+      const pro = s.items.find((x) => x.foodRole === "protein_primary");
+      if (!pro) continue;
+      checked += 1;
+      const target = slots().find((b) => b.key === s.slot)!;
+      // Il complemento c'è E il totale sta dentro il target (+5% di tolleranza del solver a step).
+      assert.ok(s.totals.kcal <= target.kcal * 1.05, `${date} ${s.slot}: ${s.totals.kcal} vs target ${target.kcal}`);
+      // La ricetta ha lasciato spazio al secondo: non occupa più l'intero slot.
+      assert.ok(rec.kcal <= target.kcal * 0.75, `${date}: la ricetta (${rec.kcal}) non lascia spazio al secondo su ${target.kcal}`);
+    }
+  }
+  assert.ok(checked >= 3, `casi ricetta+complemento osservati in 30 giorni: ${checked}`);
+});
+
+// ── D02 (SOFT): a cena, settimana senza pesce → il pesce sale in cima; con pesce già in
+//    memoria il bonus si spegne; mai a pranzo; mai sopra i verdetti ────────────────────
+
+test("D02: bonus pesce solo a CENA e solo finché la settimana è senza pesce", () => {
+  assert.equal(grammarD02FishBonus(cod, { meal: "dinner" }, {}), GRAMMAR_D02_FISH_DINNER_BONUS);
+  assert.equal(grammarD02FishBonus(cod, { meal: "dinner" }, { "prot:pesce": 1 }), 0, "pesce già in settimana → niente bonus");
+  assert.equal(grammarD02FishBonus(cod, { meal: "lunch" }, {}), 0, "D02 vive sotto CENA");
+  assert.equal(grammarD02FishBonus(chicken, { meal: "dinner" }, {}), 0, "non è pesce");
+  assert.equal(weekHasFish({ "prot:pesce_azzurro": 2 }), true);
+  assert.equal(weekHasFish({ "prot:pollo": 3 }), false);
+});
+
+test("D02 nel pick: cena a settimana vuota → il merluzzo batte il pollo; con pesce già servito → torna la rotazione normale", () => {
+  const entries = [chicken, cod, egg];
+  const empty = pickStapleForPool({ poolKey: "dinner_pro", seed: 3, menuEntries: entries, grammar: { meal: "dinner" }, dayCtx: { weekStapleCounts: {} } });
+  assert.equal(empty?.entry.canonicalKey, "cod_raw", "settimana senza pesce: D02 porta il pesce in cima");
+  const withFish = pickStapleForPool({ poolKey: "dinner_pro", seed: 3, menuEntries: entries, grammar: { meal: "dinner" }, dayCtx: { weekStapleCounts: { "prot:pesce": 1 } } });
+  assert.notEqual(withFish?.entry.canonicalKey, undefined);
+  // Il bonus NON scavalca i verdetti: merluzzo con dieta vegetariana resta fuori.
+  const veg = pickStapleForPool({ poolKey: "dinner_pro", seed: 3, menuEntries: entries, grammar: { meal: "dinner" }, dayCtx: { weekStapleCounts: {} }, dietType: "vegetarian" });
+  assert.notEqual(veg?.entry.canonicalKey, "cod_raw", "vegetariano: il pesce non entra nemmeno con D02");
 });

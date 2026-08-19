@@ -33,6 +33,7 @@ import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
   GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE,
   GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+  GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT,
   GRAMMAR_RECIPE_MIN_G,
   GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G,
   GRAMMAR_RECIPE_STEP_G,
@@ -408,7 +409,22 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
     const recipeProG = ((firstPass[0] ?? 0) * recipeLine.hit.proteinPer100g) / 100;
     if (target.proteinG - recipeProG >= GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G) {
       const proLine = pickLineForRole(proteinSpec, slotKey, pools, ctx);
-      if (proLine) lines.splice(1, 0, proLine);
+      if (proLine) {
+        // Il secondo entra: la ricetta non può più occupare l'intero slot, altrimenti il
+        // complemento si somma SOPRA il target invece di starci dentro. Il tetto della
+        // ricetta scende alla sua quota da primo; il solver riequilibra sotto quel tetto.
+        const kcalPer100 = recipeLine.hit.kcalPer100g;
+        if (kcalPer100 > 0) {
+          const shareCapG =
+            Math.floor(((target.kcal * GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT * 100) / kcalPer100) / GRAMMAR_RECIPE_STEP_G) *
+            GRAMMAR_RECIPE_STEP_G;
+          recipeLine.spec = {
+            ...recipeLine.spec,
+            maxG: Math.max(GRAMMAR_RECIPE_MIN_G, Math.min(recipeLine.spec.maxG, shareCapG)),
+          };
+        }
+        lines.splice(1, 0, proLine);
+      }
     }
   }
 

@@ -18,7 +18,7 @@ import {
 import type { MediterraneanDayContext, MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
 import { isCanonicalKeyUsedToday } from "@/lib/nutrition/meal-rotation-guard";
 import type { MenuFoodEntry } from "@/lib/nutrition/v2/menu-food-catalog-db";
-import { grammarPenaltyForEntry, type GrammarPickFilter } from "@/lib/nutrition/v2/meal-grammar";
+import { grammarD02FishBonus, grammarPenaltyForEntry, type GrammarPickFilter } from "@/lib/nutrition/v2/meal-grammar";
 
 export type StapleRegistryEntry = {
   canonicalKey: string;
@@ -574,6 +574,11 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       else if (weekCount > 0) score -= weekCount * 80;
       // La frequenza abbassa la priorità ma NON esclude: mai sotto il filtro `score > 0`.
       if (grammarPenalty > 0) score = Math.max(1, score - grammarPenalty);
+      // D02 (SOFT): a cena, settimana ancora senza pesce → il pesce sale in cima. Solo un
+      // bonus di priorità: verdetti (EXCLUDE, tetti, dieta) restano sopra a tutto.
+      if (menuEntries && ctx.grammar) {
+        score += grammarD02FishBonus(e as MenuFoodEntry, ctx.grammar, ctx.dayCtx?.weekStapleCounts);
+      }
       return { e, score, idx, hit };
     })
     .filter((x) => x.score > 0 && "hit" in x && x.hit)
