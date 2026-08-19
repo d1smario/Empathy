@@ -6,6 +6,7 @@ import { canAccessAthleteData } from "@/lib/athlete/can-access-athlete-data";
 import { assertPlatformEntitlementForApi } from "@/lib/billing/assert-platform-entitlement";
 import { getSupabasePublicConfig } from "@/lib/integrations/integration-status";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { noStoreFetch } from "@/lib/supabase/no-store-fetch";
 import { createSupabaseCookieClient } from "@/lib/supabase/server";
 
 /** Errore auth/allenamento — stesso ruolo di V1 `RequestAuthError` per route training. */
@@ -121,7 +122,9 @@ export async function requireAuthenticatedTrainingUser(req: NextRequest): Promis
     }
     const rlsClient = createClient(config.url, config.anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      // Bearer (niente cookies() → Next non marca la richiesta dinamica): senza no-store le
+      // GET PostgREST finirebbero nella Data Cache (vedi lib/supabase/no-store-fetch.ts).
+      global: { headers: { Authorization: `Bearer ${bearer}` }, fetch: noStoreFetch },
     });
     return { userId: got.user.id, rlsClient };
   }

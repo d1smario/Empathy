@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { createNodeSupabaseServicePreferred } from "@/lib/supabase-node-client";
 import { readSupabaseAnonKey, readSupabasePublicUrl } from "@/lib/supabase-env";
+import { noStoreFetch } from "@/lib/supabase/no-store-fetch";
 
 /**
  * Client server per query dati atleti dopo auth verificata.
@@ -22,6 +23,8 @@ export function createRequestSupabaseClient(accessToken: string) {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      // Niente Data Cache di Next sulle GET PostgREST (vedi lib/supabase/no-store-fetch.ts).
+      fetch: noStoreFetch,
     },
   });
 }

@@ -9934,12 +9934,21 @@ function partitionFdcNutrientsFromCompact(compact) {
 
 // apps/web/lib/supabase/admin.ts
 import { createClient } from "@supabase/supabase-js";
+
+// apps/web/lib/supabase/no-store-fetch.ts
+function withNoStoreCache(baseFetch) {
+  return (input, init) => baseFetch(input, { ...init ?? {}, cache: "no-store" });
+}
+var noStoreFetch = (input, init) => withNoStoreCache((i, o) => fetch(i, o))(input, init);
+
+// apps/web/lib/supabase/admin.ts
 function createSupabaseAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return null;
   return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: noStoreFetch }
   });
 }
 
