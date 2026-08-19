@@ -12,6 +12,16 @@ import {
   poolLabel,
   SERVING_BASIS_LABELS,
 } from "@/components/admin/foods/menu-food-pool-labels";
+import {
+  defaultMealRolesFromPools,
+  validateMenuFoodMealRoles,
+} from "@/lib/admin/menu-food-meal-roles-validation";
+import {
+  AdminMenuFoodMealRolesFields,
+  mealRolesDraftFromInput,
+  mealRolesDraftToBody,
+  type MealRolesDraft,
+} from "@/components/admin/foods/AdminMenuFoodMealRolesFields";
 
 const COPY = {
   title: "Aggiungi alimento dal database",
@@ -41,6 +51,8 @@ const COPY = {
   errLabel: "Il nome è obbligatorio.",
   errPools: "Seleziona almeno un pool.",
   errSavePrefix: "Aggiunta non riuscita",
+  errMealRolesPrefix: "Ruoli e punteggi",
+  mealRolesAuto: "Proposti dai pool scelti: si aggiornano finché non li modifichi a mano.",
 } as const;
 
 const INPUT =
@@ -66,7 +78,7 @@ export function AdminMenuFoodAddDialog({
   onAdded,
 }: {
   onClose: () => void;
-  onAdded: (added: AdminMenuFoodRow) => void;
+  onAdded: (added: AdminMenuFoodRow, warning?: string | null) => void;
 }) {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -82,6 +94,12 @@ export function AdminMenuFoodAddDialog({
   const [isMeat, setIsMeat] = useState(false);
   const [isFish, setIsFish] = useState(false);
   const [isAnimalProduct, setIsAnimalProduct] = useState(false);
+  // Grammatica: finché l'admin non la tocca, segue i pool (default puri); al primo
+  // ritocco manuale smette di seguirli (non si sovrascrive il lavoro fatto a mano).
+  const [mealRoles, setMealRoles] = useState<MealRolesDraft>(() =>
+    mealRolesDraftFromInput(defaultMealRolesFromPools([])),
+  );
+  const [mealRolesTouched, setMealRolesTouched] = useState(false);
 
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -137,7 +155,11 @@ export function AdminMenuFoodAddDialog({
   };
 
   const togglePool = (key: string) =>
-    setPoolKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    setPoolKeys((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      if (!mealRolesTouched) setMealRoles(mealRolesDraftFromInput(defaultMealRolesFromPools(next)));
+      return next;
+    });
 
   const save = async () => {
     const found: string[] = [];
@@ -145,6 +167,9 @@ export function AdminMenuFoodAddDialog({
     if (!SNAKE_CASE_RE.test(canonicalKey.trim())) found.push(COPY.errCanonical);
     if (!labelIt.trim()) found.push(COPY.errLabel);
     if (poolKeys.length === 0) found.push(COPY.errPools);
+    const mealRolesBody = mealRolesDraftToBody(mealRoles);
+    const mealRolesCheck = validateMenuFoodMealRoles(mealRolesBody);
+    if (!mealRolesCheck.ok) found.push(`${COPY.errMealRolesPrefix}: ${mealRolesCheck.error}`);
     if (found.length > 0) {
       setErrors(found);
       return;
@@ -165,14 +190,16 @@ export function AdminMenuFoodAddDialog({
           is_meat: isMeat,
           is_fish: isFish,
           is_animal_product: isAnimalProduct,
+          meal_roles: mealRolesBody,
         }),
       });
-      const j = (await res.json()) as { ok?: boolean; food?: AdminMenuFoodRow; error?: string };
+      const j = (await res.json()) as { ok?: boolean; food?: AdminMenuFoodRow; error?: string; warning?: string | null };
       if (!res.ok || !j.ok || !j.food) {
         setErrors([j.error ? `${COPY.errSavePrefix}: ${j.error}` : `${COPY.errSavePrefix}.`]);
         return;
       }
-      onAdded(j.food);
+      // L'alimento c'è anche se la riga di score non è passata: lo diciamo a chi chiama.
+      onAdded(j.food, j.warning ?? null);
     } catch {
       setErrors([`${COPY.errSavePrefix}: richiesta non riuscita.`]);
     } finally {
@@ -358,6 +385,19 @@ export function AdminMenuFoodAddDialog({
                   })}
                 </div>
               </section>
+
+              <div className="space-y-2">
+                <AdminMenuFoodMealRolesFields
+                  idPrefix="menu-add-roles"
+                  draft={mealRoles}
+                  onChange={(next) => {
+                    setMealRolesTouched(true);
+                    setMealRoles(next);
+                  }}
+                  showDefaultsWarning={false}
+                />
+                {!mealRolesTouched ? <p className="text-[0.65rem] text-gray-600">{COPY.mealRolesAuto}</p> : null}
+              </div>
 
               <section className="space-y-3">
                 <p className={SECTION}>{COPY.secFlags}</p>

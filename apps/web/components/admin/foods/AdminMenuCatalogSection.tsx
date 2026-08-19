@@ -39,6 +39,12 @@ const COPY = {
   thProtein: "Prot",
   thFat: "Grassi",
   thDiet: "Dieta",
+  thScore: "Score",
+  scoreOk: "✓",
+  scoreMissing: "manca",
+  scoreOkTitle: (source: string) => `Ruoli e punteggi per pasto presenti (fonte: ${source})`,
+  scoreMissingTitle: "Fuori grammatica: nessun ruolo/punteggio per pasto, il motore lo tratta senza ruolo",
+  onlyWithoutScore: "Solo senza score",
   thActive: "Attivo",
   active: "Attivo",
   inactive: "Disattivato",
@@ -84,6 +90,7 @@ export function AdminMenuCatalogSection() {
   const [info, setInfo] = useState<string | null>(null);
 
   const [pool, setPool] = useState<string>("");
+  const [onlyWithoutScore, setOnlyWithoutScore] = useState(false);
   const [editing, setEditing] = useState<AdminMenuFoodRow | null>(null);
   const [adding, setAdding] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -115,10 +122,13 @@ export function AdminMenuCatalogSection() {
 
   const activeCount = useMemo(() => rows.filter((r) => r.is_active).length, [rows]);
 
-  const filteredRows = useMemo(
-    () => (pool ? rows.filter((r) => r.pool_keys.includes(pool)) : rows),
-    [rows, pool],
-  );
+  const withoutScoreCount = useMemo(() => rows.filter((r) => !r.has_meal_roles).length, [rows]);
+
+  const filteredRows = useMemo(() => {
+    let list = pool ? rows.filter((r) => r.pool_keys.includes(pool)) : rows;
+    if (onlyWithoutScore) list = list.filter((r) => !r.has_meal_roles);
+    return list;
+  }, [rows, pool, onlyWithoutScore]);
 
   // Ricalcolo locale dei conteggi per pool (solo attivi = ciò che vede il motore).
   const countByPool = useCallback((list: AdminMenuFoodRow[]) => {
@@ -148,9 +158,11 @@ export function AdminMenuCatalogSection() {
   );
 
   const onAdded = useCallback(
-    (added: AdminMenuFoodRow) => {
+    (added: AdminMenuFoodRow, warning?: string | null) => {
       setAdding(false);
       setInfo(COPY.addedInfo(added.label_it));
+      // Alimento inserito ma score no: lo mostriamo come errore (non bloccante) accanto all'info.
+      setErr(warning ?? null);
       const next = [...rows, added].sort(
         (a, b) => a.sort_priority - b.sort_priority || a.label_it.localeCompare(b.label_it, "it"),
       );
@@ -260,8 +272,26 @@ export function AdminMenuCatalogSection() {
           </div>
         </div>
 
-        {/* Filtri a pill per pool */}
+        {/* Filtri a pill per pool + filtro «solo senza score» */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-white/10 p-3">
+          <button
+            type="button"
+            onClick={() => setOnlyWithoutScore((v) => !v)}
+            aria-pressed={onlyWithoutScore}
+            title={COPY.scoreMissingTitle}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.7rem] font-medium transition",
+              onlyWithoutScore
+                ? "border-rose-400/60 bg-rose-500/15 text-rose-100"
+                : withoutScoreCount > 0
+                  ? "border-rose-400/30 bg-rose-500/5 text-rose-300 hover:border-rose-400/50"
+                  : "border-white/10 bg-white/5 text-gray-400 hover:border-white/25 hover:text-gray-200",
+            )}
+          >
+            {COPY.onlyWithoutScore}
+            <span className="font-mono text-[0.6rem] text-gray-500">{withoutScoreCount}</span>
+          </button>
+          <span className="mx-1 h-4 w-px bg-white/10" aria-hidden />
           {poolPills.map((p) => {
             const value = p ?? "";
             const count = p == null ? activeCount : byPool[p] ?? 0;
@@ -304,6 +334,7 @@ export function AdminMenuCatalogSection() {
                 <th className="px-4 py-3 text-right font-medium text-emerald-400/70">{COPY.thProtein}</th>
                 <th className="px-4 py-3 text-right font-medium text-rose-400/70">{COPY.thFat}</th>
                 <th className="px-4 py-3 font-medium">{COPY.thDiet}</th>
+                <th className="px-4 py-3 font-medium">{COPY.thScore}</th>
                 <th className="px-4 py-3 font-medium">{COPY.thActive}</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -311,7 +342,7 @@ export function AdminMenuCatalogSection() {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-xs text-gray-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-xs text-gray-500">
                     {loading ? COPY.loading : COPY.empty}
                   </td>
                 </tr>
@@ -362,6 +393,23 @@ export function AdminMenuCatalogSection() {
                     </td>
                     <td className="px-4 py-3">
                       <DietBadges row={r} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.has_meal_roles ? (
+                        <span
+                          title={COPY.scoreOkTitle(r.meal_roles?.source_version ?? "?")}
+                          className="inline-block rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-300"
+                        >
+                          {COPY.scoreOk}
+                        </span>
+                      ) : (
+                        <span
+                          title={COPY.scoreMissingTitle}
+                          className="inline-block rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-300"
+                        >
+                          {COPY.scoreMissing}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button

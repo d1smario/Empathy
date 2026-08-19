@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { MENU_FOOD_SERVING_BASES } from "@/lib/nutrition/v2/menu-food-pools";
@@ -10,6 +10,16 @@ import {
   poolLabel,
   SERVING_BASIS_LABELS,
 } from "@/components/admin/foods/menu-food-pool-labels";
+import {
+  defaultMealRolesFromPools,
+  validateMenuFoodMealRoles,
+} from "@/lib/admin/menu-food-meal-roles-validation";
+import {
+  AdminMenuFoodMealRolesFields,
+  mealRolesDraftFromInput,
+  mealRolesDraftToBody,
+  type MealRolesDraft,
+} from "@/components/admin/foods/AdminMenuFoodMealRolesFields";
 
 const COPY = {
   title: "Modifica cibo del menù",
@@ -34,6 +44,7 @@ const COPY = {
   errLabelRequired: "Il nome è obbligatorio.",
   errPoolsRequired: "Seleziona almeno un pool.",
   errSavePrefix: "Salvataggio non riuscito",
+  errMealRolesPrefix: "Ruoli e punteggi",
 } as const;
 
 const INPUT =
@@ -51,8 +62,13 @@ type Draft = {
   is_fish: boolean;
   is_animal_product: boolean;
   sort_priority: string;
+  meal_roles: MealRolesDraft;
 };
 
+/**
+ * Precompila la grammatica dalla riga di score se c'è; altrimenti dai pool (default puri)
+ * e il form mostra l'avviso «fuori grammatica».
+ */
 function draftFromRow(row: AdminMenuFoodRow): Draft {
   return {
     label_it: row.label_it,
@@ -64,6 +80,7 @@ function draftFromRow(row: AdminMenuFoodRow): Draft {
     is_fish: row.is_fish,
     is_animal_product: row.is_animal_product,
     sort_priority: String(row.sort_priority),
+    meal_roles: mealRolesDraftFromInput(row.meal_roles ?? defaultMealRolesFromPools(row.pool_keys)),
   };
 }
 
@@ -82,6 +99,8 @@ export function AdminMenuFoodEditDialog({
   onSaved: (saved: AdminMenuFoodRow) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFromRow(row));
+  /** Fotografia della grammatica all'apertura: serve a sapere se l'admin l'ha toccata. */
+  const initialMealRolesBody = useMemo(() => mealRolesDraftToBody(draftFromRow(row).meal_roles), [row]);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -105,6 +124,11 @@ export function AdminMenuFoodEditDialog({
     const found: string[] = [];
     if (!draft.label_it.trim()) found.push(COPY.errLabelRequired);
     if (draft.pool_keys.length === 0) found.push(COPY.errPoolsRequired);
+    // Stessa validazione della API, qui per un messaggio immediato e leggibile: ciò che
+    // passa di qui è esattamente ciò che il loader del motore accetta.
+    const mealRolesBody = mealRolesDraftToBody(draft.meal_roles);
+    const mealRolesCheck = validateMenuFoodMealRoles(mealRolesBody);
+    if (!mealRolesCheck.ok) found.push(`${COPY.errMealRolesPrefix}: ${mealRolesCheck.error}`);
     if (found.length > 0) {
       setErrors(found);
       return;
@@ -121,6 +145,13 @@ export function AdminMenuFoodEditDialog({
       is_fish: draft.is_fish,
       is_animal_product: draft.is_animal_product,
     };
+    // La grammatica si invia SOLO se l'admin l'ha toccata, o se l'alimento ne era privo
+    // (così un «fuori grammatica» entra al primo salvataggio). Altrimenti un salvataggio
+    // qualsiasi — cambiare la priorità, un flag — riscriverebbe la riga score identica ma
+    // con source_version 'admin', e si perderebbe la traccia di cosa è ancora intatto da
+    // Mario (mario_v5): è l'unico modo per sapere, fra sei mesi, quali score sono suoi.
+    const mealRolesTouched = JSON.stringify(mealRolesBody) !== JSON.stringify(initialMealRolesBody);
+    if (mealRolesTouched || !row.has_meal_roles) patch.meal_roles = mealRolesBody;
     if (spRaw !== "") {
       const sp = Number(spRaw);
       if (Number.isFinite(sp)) patch.sort_priority = Math.trunc(sp);
@@ -291,6 +322,16 @@ export function AdminMenuFoodEditDialog({
               })}
             </div>
           </section>
+
+          {/* Grammatica: ruoli e punteggi per pasto */}
+          <AdminMenuFoodMealRolesFields
+            idPrefix="menu-food-roles"
+            draft={draft.meal_roles}
+            onChange={(next) => set("meal_roles", next)}
+            showDefaultsWarning={!row.has_meal_roles}
+            sourceVersion={row.meal_roles?.source_version ?? null}
+            updatedAt={row.meal_roles?.updated_at ?? null}
+          />
 
           {/* Flag dieta */}
           <section className="space-y-3">

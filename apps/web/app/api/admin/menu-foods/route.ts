@@ -6,7 +6,13 @@ import {
   MENU_FOOD_POOL_KEY_SET,
   MENU_FOOD_SERVING_BASIS_SET,
 } from "@/lib/nutrition/v2/menu-food-pools";
-import type { AdminMenuFoodRow } from "@/components/admin/foods/menu-food-types";
+import type { AdminMenuFoodMealRoles, AdminMenuFoodRow } from "@/components/admin/foods/menu-food-types";
+import {
+  MENU_FOOD_ROLE_FIELDS,
+  MENU_FOOD_SCORE_FIELDS,
+  validateMenuFoodMealRoles,
+  type MenuFoodMealRolesInput,
+} from "@/lib/admin/menu-food-meal-roles-validation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,6 +51,12 @@ type MenuRow = {
   is_active: boolean | null;
 };
 
+/** Colonne lette da `nutrition_menu_food_meal_roles` (stesse del loader motore + metadati). */
+const MEAL_ROLES_SELECT_COLUMNS =
+  "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed, source_version, updated_at";
+
+type MealRolesDbRow = Record<string, unknown> & { canonical_key: string };
+
 type FdcMacroRow = {
   fdc_id: number;
   description: string | null;
@@ -76,8 +88,85 @@ export async function fetchFdcMacros(
   return { map, error: null };
 }
 
-/** Mapping riga menù + macro → shape client `AdminMenuFoodRow` (fonte unica del contratto). */
-export function toAdminMenuFoodRow(row: MenuRow, macro: FdcMacroRow | undefined): AdminMenuFoodRow {
+/**
+ * Righe di score per i canonical_key richiesti (tabella 1:1, FK → catalogo): a chunk
+ * come le macro. Riusata da GET (tutti) e da PATCH/POST (una chiave). Mappa key → riga.
+ */
+export async function fetchMealRoles(
+  admin: SupabaseClient,
+  canonicalKeys: string[],
+): Promise<{ map: Map<string, AdminMenuFoodMealRoles>; error: string | null }> {
+  const map = new Map<string, AdminMenuFoodMealRoles>();
+  const unique = [...new Set(canonicalKeys.filter((k) => typeof k === "string" && k))];
+  for (let i = 0; i < unique.length; i += FDC_IN_CHUNK) {
+    const { data, error } = await admin
+      .from("nutrition_menu_food_meal_roles")
+      .select(MEAL_ROLES_SELECT_COLUMNS)
+      .in("canonical_key", unique.slice(i, i + FDC_IN_CHUNK));
+    if (error) return { map, error: error.message };
+    for (const raw of (data ?? []) as MealRolesDbRow[]) {
+      const mapped = toAdminMealRoles(raw);
+      if (mapped) map.set(raw.canonical_key, mapped);
+    }
+  }
+  return { map, error: null };
+}
+
+/**
+ * Riga DB → shape client. numeric(3,1) arriva da PostgREST come STRINGA: qui diventa
+ * numero così il form non deve saperlo. Non valida (i CHECK DB garantiscono i set).
+ */
+export function toAdminMealRoles(raw: MealRolesDbRow | null | undefined): AdminMenuFoodMealRoles | null {
+  if (!raw) return null;
+  const num = (v: unknown): number => {
+    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : 0;
+  };
+  const numOrNull = (v: unknown): number | null => {
+    if (v == null || v === "") return null;
+    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : null;
+  };
+  const out = {} as AdminMenuFoodMealRoles;
+  for (const f of MENU_FOOD_SCORE_FIELDS) out[f] = num(raw[f]);
+  for (const f of MENU_FOOD_ROLE_FIELDS) out[f] = String(raw[f] ?? "NONE") as AdminMenuFoodMealRoles[typeof f];
+  out.macro_role = String(raw.macro_role ?? "MIXED") as AdminMenuFoodMealRoles["macro_role"];
+  out.frequency = String(raw.frequency ?? "COMMON") as AdminMenuFoodMealRoles["frequency"];
+  out.max_week = numOrNull(raw.max_week);
+  out.prep_speed = numOrNull(raw.prep_speed);
+  out.source_version = typeof raw.source_version === "string" ? raw.source_version : null;
+  out.updated_at = typeof raw.updated_at === "string" ? raw.updated_at : null;
+  return out;
+}
+
+/**
+ * UPSERT della riga di score di un alimento (ON CONFLICT canonical_key DO UPDATE):
+ * source_version 'admin' e updated_at now() così si distingue la curazione a mano dal
+ * refresh di Mario. Ritorna la riga salvata (shape client) o l'errore.
+ */
+export async function upsertMealRoles(
+  admin: SupabaseClient,
+  canonicalKey: string,
+  value: MenuFoodMealRolesInput,
+): Promise<{ mealRoles: AdminMenuFoodMealRoles | null; error: string | null }> {
+  const { data, error } = await admin
+    .from("nutrition_menu_food_meal_roles")
+    .upsert(
+      { canonical_key: canonicalKey, ...value, source_version: "admin", updated_at: new Date().toISOString() },
+      { onConflict: "canonical_key" },
+    )
+    .select(MEAL_ROLES_SELECT_COLUMNS)
+    .maybeSingle();
+  if (error) return { mealRoles: null, error: error.message };
+  return { mealRoles: toAdminMealRoles(data as MealRolesDbRow | null), error: null };
+}
+
+/** Mapping riga menù + macro + score → shape client `AdminMenuFoodRow` (fonte unica del contratto). */
+export function toAdminMenuFoodRow(
+  row: MenuRow,
+  macro: FdcMacroRow | undefined,
+  mealRoles: AdminMenuFoodMealRoles | null = null,
+): AdminMenuFoodRow {
   const poolKeys = Array.isArray(row.pool_keys)
     ? (row.pool_keys as unknown[]).filter((k): k is string => typeof k === "string")
     : [];
@@ -102,6 +191,8 @@ export function toAdminMenuFoodRow(row: MenuRow, macro: FdcMacroRow | undefined)
       fat: macro?.fat_100g ?? null,
     },
     usdaDescription: macro?.description ?? null,
+    meal_roles: mealRoles,
+    has_meal_roles: mealRoles != null,
   };
 }
 
@@ -142,7 +233,18 @@ export async function GET() {
     return NextResponse.json({ ok: false as const, error: macroErr }, { status: 500, headers: NO_STORE });
   }
 
-  const foods = menuRows.map((r) => toAdminMenuFoodRow(r, macroMap.get(Number(r.fdc_id))));
+  // Left join manuale con la tabella score: null = alimento senza grammatica.
+  const { map: rolesMap, error: rolesErr } = await fetchMealRoles(
+    admin,
+    menuRows.map((r) => r.canonical_key),
+  );
+  if (rolesErr) {
+    return NextResponse.json({ ok: false as const, error: rolesErr }, { status: 500, headers: NO_STORE });
+  }
+
+  const foods = menuRows.map((r) =>
+    toAdminMenuFoodRow(r, macroMap.get(Number(r.fdc_id)), rolesMap.get(r.canonical_key) ?? null),
+  );
 
   // Conta per pool solo gli attivi: la cifra rappresenta ciò che il motore vede.
   const byPool: Record<string, number> = {};
@@ -183,7 +285,12 @@ export function normalizePoolKeys(raw: unknown): { keys: string[]; error: null }
  * POST /api/admin/menu-foods — aggiunge un cibo al menù partendo da un fdc_id già
  * presente nel catalogo USDA locale. Body:
  * { canonical_key, fdc_id, label_it, serving_basis, pool_keys[],
- *   rotation_key?, carb_family?, is_meat?, is_fish?, is_animal_product?, sort_priority? }
+ *   rotation_key?, carb_family?, is_meat?, is_fish?, is_animal_product?, sort_priority?,
+ *   meal_roles? }
+ * `meal_roles` (opzionale) crea la riga di score nello stesso giro, DOPO l'insert del
+ * catalogo: se quella seconda scrittura fallisce l'alimento resta e la risposta porta
+ * `warning` (meglio un alimento senza score che niente; si completa dal dialog Modifica).
+ * Se `meal_roles` è presente ma NON valido → 400 prima di toccare il DB.
  */
 export async function POST(req: Request) {
   const session = await requirePlatformAdminSession();
@@ -232,6 +339,16 @@ export async function POST(req: Request) {
   const poolCheck = normalizePoolKeys(body.pool_keys);
   if (poolCheck.error) {
     return NextResponse.json({ ok: false as const, error: poolCheck.error }, { status: 400, headers: NO_STORE });
+  }
+
+  // Validazione score PRIMA dell'insert: un body incoerente non deve lasciare a metà.
+  let mealRolesInput: MenuFoodMealRolesInput | null = null;
+  if ("meal_roles" in body && body.meal_roles != null) {
+    const check = validateMenuFoodMealRoles(body.meal_roles);
+    if (!check.ok) {
+      return NextResponse.json({ ok: false as const, error: check.error }, { status: 400, headers: NO_STORE });
+    }
+    mealRolesInput = check.value;
   }
 
   // Unicità canonical_key → 409 (la PK farebbe comunque fallire l'insert, ma un
@@ -297,6 +414,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false as const, error: "Insert non riuscito." }, { status: 500, headers: NO_STORE });
   }
 
-  const food = toAdminMenuFoodRow(data as MenuRow, macro);
-  return NextResponse.json({ ok: true as const, food }, { headers: NO_STORE });
+  let mealRoles: AdminMenuFoodMealRoles | null = null;
+  let warning: string | null = null;
+  if (mealRolesInput) {
+    const saved = await upsertMealRoles(admin, canonicalKey, mealRolesInput);
+    if (saved.error) {
+      // L'alimento è già nel catalogo: lo diciamo, non lo annulliamo.
+      warning = `Alimento aggiunto, ma il salvataggio di ruoli/punteggi non è riuscito: ${saved.error}. Completali da «Modifica».`;
+    } else {
+      mealRoles = saved.mealRoles;
+    }
+  }
+
+  const food = toAdminMenuFoodRow(data as MenuRow, macro, mealRoles);
+  return NextResponse.json({ ok: true as const, food, warning }, { headers: NO_STORE });
 }

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { requirePlatformAdminSession } from "@/lib/auth/require-platform-admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { MENU_FOOD_SERVING_BASIS_SET } from "@/lib/nutrition/v2/menu-food-pools";
-import { fetchFdcMacros, normalizePoolKeys, toAdminMenuFoodRow } from "../route";
+import { fetchFdcMacros, fetchMealRoles, normalizePoolKeys, toAdminMenuFoodRow, upsertMealRoles } from "../route";
+import type { AdminMenuFoodMealRoles } from "@/components/admin/foods/menu-food-types";
+import {
+  validateMenuFoodMealRoles,
+  type MenuFoodMealRolesInput,
+} from "@/lib/admin/menu-food-meal-roles-validation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,6 +17,9 @@ export const runtime = "nodejs";
  * PATCH: aggiorna i campi whitelisted; DELETE: rimuove la riga.
  * Il fdc_id NON è modificabile (cambierebbe l'identità del cibo → si crea una riga
  * nuova via POST e si elimina la vecchia).
+ * PATCH accetta anche `meal_roles` (oggetto intero) → UPSERT su
+ * nutrition_menu_food_meal_roles; senza quella chiave la tabella score NON viene toccata.
+ * DELETE: la FK ON DELETE CASCADE cancella da sola la riga di score.
  */
 
 const NO_STORE = { "Cache-Control": "no-store" as const };
@@ -104,19 +112,34 @@ export async function PATCH(req: Request, { params }: { params: { key: string } 
     update.sort_priority = Math.trunc(sp);
   }
 
-  if (Object.keys(update).length === 0) {
+  // meal_roles: validato PRIMA di qualsiasi scrittura (catalogo o score).
+  let mealRolesInput: MenuFoodMealRolesInput | null = null;
+  if ("meal_roles" in body) {
+    const check = validateMenuFoodMealRoles(body.meal_roles);
+    if (!check.ok) {
+      return NextResponse.json({ ok: false as const, error: check.error }, { status: 400, headers: NO_STORE });
+    }
+    mealRolesInput = check.value;
+  }
+
+  if (Object.keys(update).length === 0 && !mealRolesInput) {
     return NextResponse.json(
       { ok: false as const, error: "Nessun campo da aggiornare." },
       { status: 400, headers: NO_STORE },
     );
   }
 
-  const { data, error } = await admin
-    .from("nutrition_menu_foods")
-    .update(update)
-    .eq("canonical_key", key)
-    .select(MENU_SELECT_COLUMNS)
-    .maybeSingle();
+  // Riga catalogo: update se ci sono campi, altrimenti sola lettura (serve comunque per
+  // la risposta e per verificare che la chiave esista prima dell'upsert score).
+  const { data, error } =
+    Object.keys(update).length > 0
+      ? await admin
+          .from("nutrition_menu_foods")
+          .update(update)
+          .eq("canonical_key", key)
+          .select(MENU_SELECT_COLUMNS)
+          .maybeSingle()
+      : await admin.from("nutrition_menu_foods").select(MENU_SELECT_COLUMNS).eq("canonical_key", key).maybeSingle();
   if (error) {
     return NextResponse.json({ ok: false as const, error: error.message }, { status: 500, headers: NO_STORE });
   }
@@ -124,10 +147,27 @@ export async function PATCH(req: Request, { params }: { params: { key: string } 
     return NextResponse.json({ ok: false as const, error: "Cibo del menù non trovato." }, { status: 404, headers: NO_STORE });
   }
 
-  // Macro joinate nella risposta così il client aggiorna la riga senza rifare la GET.
   const row = data as Parameters<typeof toAdminMenuFoodRow>[0];
+
+  // Score: upsert se richiesto, altrimenti rilettura della riga esistente (left join).
+  let mealRoles: AdminMenuFoodMealRoles | null = null;
+  if (mealRolesInput) {
+    const saved = await upsertMealRoles(admin, key, mealRolesInput);
+    if (saved.error) {
+      return NextResponse.json(
+        { ok: false as const, error: `Ruoli/punteggi non salvati: ${saved.error}` },
+        { status: 500, headers: NO_STORE },
+      );
+    }
+    mealRoles = saved.mealRoles;
+  } else {
+    const { map } = await fetchMealRoles(admin, [key]);
+    mealRoles = map.get(key) ?? null;
+  }
+
+  // Macro joinate nella risposta così il client aggiorna la riga senza rifare la GET.
   const { map: macroMap } = await fetchFdcMacros(admin, [Number(row.fdc_id)]);
-  const food = toAdminMenuFoodRow(row, macroMap.get(Number(row.fdc_id)));
+  const food = toAdminMenuFoodRow(row, macroMap.get(Number(row.fdc_id)), mealRoles);
   return NextResponse.json({ ok: true as const, food }, { headers: NO_STORE });
 }
 

@@ -5,6 +5,16 @@
  * riusarlo senza rompere il bundle del browser.
  */
 import type { MenuFoodPoolKey, MenuFoodServingBasis } from "@/lib/nutrition/v2/menu-food-pools";
+import type { MenuFoodMealRolesInput } from "@/lib/admin/menu-food-meal-roles-validation";
+
+/**
+ * Riga di `nutrition_menu_food_meal_roles` come la espone la GET admin (colonne DB +
+ * metadati). Stessi campi del body `meal_roles` accettato da PATCH/POST.
+ */
+export type AdminMenuFoodMealRoles = MenuFoodMealRolesInput & {
+  source_version: string | null;
+  updated_at: string | null;
+};
 
 /** Riga del catalogo menù arricchita con le macro reali per 100 g (fonte USDA). */
 export type AdminMenuFoodRow = {
@@ -29,6 +39,13 @@ export type AdminMenuFoodRow = {
   };
   /** `description` USDA della riga FDC (per disambiguare il fdc_id in UI). */
   usdaDescription: string | null;
+  /**
+   * Grammatica (score/ruoli per pasto) da `nutrition_menu_food_meal_roles`, left join:
+   * null = l'alimento NON ha riga di score («fuori grammatica», il motore lo tratta senza ruolo).
+   */
+  meal_roles: AdminMenuFoodMealRoles | null;
+  /** Comodo per badge/filtro tabella: `meal_roles != null`. */
+  has_meal_roles: boolean;
 };
 
 export type { MenuFoodPoolKey, MenuFoodServingBasis };
