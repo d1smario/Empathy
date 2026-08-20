@@ -544,3 +544,59 @@ where r.canonical_key = v.canonical_key
 --          count(*) filter (where substitution_group is null) as senza_gruppo,
 --          count(*) filter (where substitutes = '[]'::jsonb) as senza_sostituti
 --   from public.nutrition_menu_food_meal_roles;
+
+-- ─────────────────────────────────────────────────────────────────────────────────────
+-- CORREZIONE DI 10 RIGHE AVVELENATE NEL FILE SORGENTE (slittamenti da match di
+-- sottostringa/autofill nel processo di classificazione del nutrizionista, confermati
+-- sul file): «anaCARDI»→cardi, «semi di ZUCCA»→zucca e «pasta agli SPINACI»→spinaci
+-- diventati VERDURE/contorno con score 10 a pranzo/cena; «rana PESCAtrice»→pesca e
+-- Melanzane diventate FRUTTA da colazione (sostituti anguria/guava); Edamame diventato
+-- FORMAGGIO (con la nota sui formaggi); Bevanda di riso diventata cereale da pasto
+-- (375 g di bevanda come «pasta» del pranzo). I sostituti incrociati dentro i cluster
+-- sbagliati dimostrano che la classificazione era involontaria.
+-- Valori corretti = quelli dei FRATELLI nel file stesso (Mandorle per la frutta secca;
+-- Semi di girasole per i semi; Pasta di semola per la pasta; Zucchine per le melanzane;
+-- Sogliola per la rana pescatrice; Soia per l'edamame; Bevanda di avena per quella di
+-- riso): nessun valore inventato. Da riportare a Mario per il fix nel suo file (v7).
+-- ─────────────────────────────────────────────────────────────────────────────────────
+
+update public.nutrition_menu_food_meal_roles r set
+  score_breakfast        = v.score_breakfast,
+  score_snack            = v.score_snack,
+  score_lunch            = v.score_lunch,
+  score_dinner           = v.score_dinner,
+  score_pre_workout      = v.score_pre_workout,
+  score_post_workout     = v.score_post_workout,
+  breakfast_cho_role     = v.breakfast_cho_role,
+  breakfast_protein_role = v.breakfast_protein_role,
+  breakfast_fat_role     = v.breakfast_fat_role,
+  main_meal_role         = v.main_meal_role,
+  snack_role             = v.snack_role,
+  mediterranean_priority = v.mediterranean_priority,
+  substitution_group     = v.substitution_group,
+  generative_note        = v.generative_note,
+  substitutes            = v.substitutes,
+  source_version         = 'mario_v6_fix_slittamento',
+  updated_at             = now()
+from (values
+-- frutta secca: come Mandorle/Burro di mandorle (9,9,0,0,0,0 · FAT PRIMARY · BREAKFAST_FAT_NUTS)
+('cashews',               9, 9, 0, 0, 0, 0, 'NONE', 'NONE', 'PRIMARY',   'SECONDARY_FAT',        'FAST_FAT_PRO', 'COMMON',        'BREAKFAST_FAT_NUTS',  NULL, '["cashews_roasted","cashew_butter","mixed_nuts_roasted"]'::jsonb),
+('cashews_roasted',       9, 9, 0, 0, 0, 0, 'NONE', 'NONE', 'PRIMARY',   'SECONDARY_FAT',        'FAST_FAT_PRO', 'COMMON',        'BREAKFAST_FAT_NUTS',  NULL, '["cashews","cashew_butter","mixed_nuts_roasted"]'::jsonb),
+('cashew_butter',         9, 9, 0, 0, 0, 0, 'NONE', 'NONE', 'PRIMARY',   'SECONDARY_FAT',        'FAST_FAT_PRO', 'COMMON',        'BREAKFAST_FAT_NUTS',  NULL, '["cashews_roasted","cashews","almond_butter"]'::jsonb),
+-- semi: come Semi di girasole/Semi di chia (6,9,0,0,0,0 · FAT SECONDARY · BREAKFAST_FAT_SEEDS · SECOND_CHOICE)
+('pumpkin_seeds_raw',     6, 9, 0, 0, 0, 0, 'NONE', 'NONE', 'SECONDARY', 'SECONDARY_FAT',        'FAST_FAT_PRO', 'SECOND_CHOICE', 'BREAKFAST_FAT_SEEDS', 'Seconda scelta rispetto a frutta oleosa/creme; usare come complemento', '["pumpkin_seeds_roasted","sunflower_seeds","sesame_seeds"]'::jsonb),
+('pumpkin_seeds_roasted', 6, 9, 0, 0, 0, 0, 'NONE', 'NONE', 'SECONDARY', 'SECONDARY_FAT',        'FAST_FAT_PRO', 'SECOND_CHOICE', 'BREAKFAST_FAT_SEEDS', 'Seconda scelta rispetto a frutta oleosa/creme; usare come complemento', '["pumpkin_seeds_raw","sunflower_seeds_roasted","sesame_seeds"]'::jsonb),
+-- pasta: come Pasta di semola/Pasta all'uovo (0,0,10,10,4,5 · PRIMARY_COMPLEX_CARB · MAIN_COMPLEX_CARB · PRIMARY)
+('pasta_spinach',         0, 0, 10, 10, 4, 5, 'NONE', 'NONE', 'NONE',    'PRIMARY_COMPLEX_CARB', 'LOW',          'PRIMARY',       'MAIN_COMPLEX_CARB',   NULL, '["pasta_dry","pasta_whole","pasta_egg"]'::jsonb),
+-- verdura: come Zucchine (0,0,10,10,0,0 · FIBER_SIDE · VEGETABLE)
+('eggplant',              0, 0, 10, 10, 0, 0, 'NONE', 'NONE', 'NONE',    'FIBER_SIDE',           'LOW',          'COMMON',        'VEGETABLE',           NULL, '["zucchini_raw","bell_pepper_red","tomato_raw"]'::jsonb),
+-- pesce magro: come Sogliola (0,0,10,10,0,7 · PRIMARY_PROTEIN · FISH_LEAN · PRIMARY)
+('monkfish',              0, 0, 10, 10, 0, 7, 'NONE', 'NONE', 'NONE',    'PRIMARY_PROTEIN',      'LOW',          'PRIMARY',       'FISH_LEAN',           NULL, '["sole","turbot","john_dory"]'::jsonb),
+-- proteina vegetale: come Soia (0,0,8,8,0,0 · PRIMARY_OR_SECONDARY_PROTEIN · PLANT_PROTEIN · ROTATION)
+('edamame',               0, 0, 8, 8, 0, 0, 'NONE', 'NONE', 'NONE',      'PRIMARY_OR_SECONDARY_PROTEIN', 'LOW',  'ROTATION',      'PLANT_PROTEIN',       NULL, '["soybeans_cooked","tofu_firm","lupins"]'::jsonb),
+-- bevanda vegetale da colazione: come Bevanda di avena (10,0,0,0,8,8 · bcho PRIMARY_COMPLEX · BREAKFAST_COMPLEX_CARB · ROTATION)
+('rice_drink',            10, 0, 0, 0, 8, 8, 'PRIMARY_COMPLEX', 'NONE', 'NONE', 'NONE',          'LOW',          'ROTATION',      'BREAKFAST_COMPLEX_CARB', NULL, '["oat_drink","rice_cream","puffed_rice"]'::jsonb)
+) as v (canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout,
+        breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role,
+        mediterranean_priority, substitution_group, generative_note, substitutes)
+where r.canonical_key = v.canonical_key;
