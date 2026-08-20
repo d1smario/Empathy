@@ -4220,6 +4220,268 @@ function registerMealCanonicalKeys(ctx, meal) {
   }
 }
 
+// apps/web/lib/nutrition/v2/menu-food-catalog-db.ts
+function mealRolesHasV6(mr) {
+  return mr.breakfastChoRole != null && mr.breakfastChoRole !== "NONE" || mr.breakfastProteinRole != null && mr.breakfastProteinRole !== "NONE" || mr.breakfastFatRole != null && mr.breakfastFatRole !== "NONE" || mr.mainMealRole != null && mr.mainMealRole !== "NONE" || mr.snackRole != null && mr.snackRole !== "NONE" || mr.substitutionGroup != null;
+}
+var SERVING_BASES = /* @__PURE__ */ new Set(["dry_grams", "cooked_grams", "ml"]);
+function str(v) {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+function num(v) {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+var MEAL_ROLES = /* @__PURE__ */ new Set([
+  "CHO_PRIMARY",
+  "CHO_SECONDARY",
+  "PRO_PRIMARY",
+  "PRO_SECONDARY",
+  "FAT_COMPLEMENT",
+  "FIBER_VEG",
+  "FIBER_MICRO_PRIMARY",
+  "MIXED",
+  "COMPOSITE_MAIN",
+  "EXCLUDE",
+  "NONE"
+]);
+var MACRO_ROLES = /* @__PURE__ */ new Set([
+  "CHO_PRIMARY",
+  "CHO_SECONDARY",
+  "PRO_PRIMARY",
+  "PRO_SECONDARY",
+  "FAT_PRIMARY",
+  "FIBER_MICRO",
+  "MIXED",
+  "PRO_FAT_MIXED"
+]);
+var FREQUENCIES = /* @__PURE__ */ new Set(["COMMON", "ROTATION", "OCCASIONAL"]);
+var BREAKFAST_CHO_ROLES = /* @__PURE__ */ new Set([
+  "PRIMARY_COMPLEX",
+  "SECONDARY_SIMPLE",
+  "SECONDARY_MIXED",
+  "NONE"
+]);
+var BREAKFAST_PROTEIN_ROLES = /* @__PURE__ */ new Set([
+  "PRIMARY",
+  "SECONDARY",
+  "SECONDARY_SAVOURY",
+  "NONE"
+]);
+var BREAKFAST_FAT_ROLES = /* @__PURE__ */ new Set(["PRIMARY", "SECONDARY", "NONE"]);
+var MAIN_MEAL_ROLES = /* @__PURE__ */ new Set([
+  "PRIMARY_PROTEIN",
+  "SECONDARY_PROTEIN",
+  "PRIMARY_OR_SECONDARY_PROTEIN",
+  "PRIMARY_COMPLEX_CARB",
+  "SECONDARY_CARB",
+  "FIBER_SIDE",
+  "SECONDARY_FAT",
+  "FAT_CONDIMENT",
+  "COMPOSITE_MAIN",
+  "NONE"
+]);
+var SNACK_ROLES = /* @__PURE__ */ new Set([
+  "FAST_CARB",
+  "FAST_PROTEIN",
+  "FAST_FAT_PRO",
+  "MEDIUM",
+  "LOW",
+  "NONE"
+]);
+var MEDITERRANEAN_PRIORITIES = /* @__PURE__ */ new Set([
+  "PRIMARY",
+  "COMMON",
+  "ROTATION",
+  "SECOND_CHOICE",
+  "LIMITED",
+  "OCCASIONAL"
+]);
+function v6Enum(v, set, fallback) {
+  const s = str(v)?.toUpperCase();
+  return s && set.has(s) ? s : fallback;
+}
+function parseSubstitutes(v) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((k) => typeof k === "string" && k.trim().length > 0);
+}
+function score(v) {
+  const n = num(v);
+  if (n == null) return 0;
+  return Math.min(10, Math.max(0, n));
+}
+function mealRole(v) {
+  const s = str(v)?.toUpperCase();
+  return s && MEAL_ROLES.has(s) ? s : "NONE";
+}
+function parseMenuFoodMealRoleRow(raw) {
+  const r = raw;
+  const canonicalKey = str(r?.canonical_key);
+  if (!canonicalKey) return null;
+  const macroRaw = str(r?.macro_role)?.toUpperCase();
+  const freqRaw = str(r?.frequency)?.toUpperCase();
+  const maxWeek = num(r?.max_week);
+  const prepSpeed = num(r?.prep_speed);
+  return {
+    canonicalKey,
+    mealRoles: {
+      scores: {
+        breakfast: score(r?.score_breakfast),
+        snack: score(r?.score_snack),
+        lunch: score(r?.score_lunch),
+        dinner: score(r?.score_dinner),
+        preWorkout: score(r?.score_pre_workout),
+        postWorkout: score(r?.score_post_workout)
+      },
+      roles: {
+        breakfast: mealRole(r?.role_breakfast),
+        snack: mealRole(r?.role_snack),
+        lunch: mealRole(r?.role_lunch),
+        dinner: mealRole(r?.role_dinner)
+      },
+      macroRole: macroRaw && MACRO_ROLES.has(macroRaw) ? macroRaw : null,
+      frequency: freqRaw && FREQUENCIES.has(freqRaw) ? freqRaw : "COMMON",
+      maxWeek: maxWeek != null && maxWeek >= 1 ? Math.trunc(maxWeek) : null,
+      prepSpeed: prepSpeed != null && prepSpeed >= 0 ? Math.min(10, Math.trunc(prepSpeed)) : null,
+      // v6: valore ignoto/mancante → default DB (NONE/COMMON), come per i ruoli v5. Se la
+      // select è ricaduta sul set v5 (colonne assenti) i default rendono `mealRolesHasV6`
+      // false e la grammatica resta sul vocabolario v5 per la riga.
+      breakfastChoRole: v6Enum(r?.breakfast_cho_role, BREAKFAST_CHO_ROLES, "NONE"),
+      breakfastProteinRole: v6Enum(
+        r?.breakfast_protein_role,
+        BREAKFAST_PROTEIN_ROLES,
+        "NONE"
+      ),
+      breakfastFatRole: v6Enum(r?.breakfast_fat_role, BREAKFAST_FAT_ROLES, "NONE"),
+      mainMealRole: v6Enum(r?.main_meal_role, MAIN_MEAL_ROLES, "NONE"),
+      snackRole: v6Enum(r?.snack_role, SNACK_ROLES, "NONE"),
+      mediterraneanPriority: v6Enum(
+        r?.mediterranean_priority,
+        MEDITERRANEAN_PRIORITIES,
+        "COMMON"
+      ),
+      substitutionGroup: str(r?.substitution_group),
+      substitutes: parseSubstitutes(r?.substitutes)
+    }
+  };
+}
+function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
+  const mealRolesByKey = /* @__PURE__ */ new Map();
+  for (const raw of mealRoleRows) {
+    const parsed2 = parseMenuFoodMealRoleRow(raw);
+    if (parsed2) mealRolesByKey.set(parsed2.canonicalKey, parsed2.mealRoles);
+  }
+  const macroByFdc = /* @__PURE__ */ new Map();
+  for (const raw of macroRows) {
+    const r = raw;
+    const fdcId = num(r?.fdc_id);
+    const kcal = num(r?.kcal_100g);
+    if (fdcId == null || fdcId <= 0 || kcal == null || kcal <= 0) continue;
+    macroByFdc.set(fdcId, {
+      kcal,
+      carbs: num(r?.carbs_100g) ?? 0,
+      protein: num(r?.protein_100g) ?? 0,
+      fat: num(r?.fat_100g) ?? 0
+    });
+  }
+  const parsed = [];
+  for (const raw of menuRows) {
+    const r = raw;
+    const canonicalKey = str(r?.canonical_key);
+    const fdcId = num(r?.fdc_id);
+    const poolKeys = Array.isArray(r?.pool_keys) ? r.pool_keys.filter((k) => typeof k === "string" && k.trim().length > 0) : [];
+    if (!canonicalKey || fdcId == null || fdcId <= 0 || poolKeys.length === 0) continue;
+    const macro = macroByFdc.get(fdcId);
+    if (!macro) continue;
+    const servingBasisRaw = str(r?.serving_basis) ?? "";
+    parsed.push({
+      entry: {
+        canonicalKey,
+        labelIt: str(r?.label_it) ?? canonicalKey.replace(/_/g, " "),
+        servingBasis: SERVING_BASES.has(servingBasisRaw) ? servingBasisRaw : "dry_grams",
+        rotationKey: str(r?.rotation_key) ?? void 0,
+        carbFamily: str(r?.carb_family) ?? void 0,
+        fdcId,
+        kcalPer100g: macro.kcal,
+        carbsPer100g: macro.carbs,
+        proteinPer100g: macro.protein,
+        fatPer100g: macro.fat,
+        isMeat: r?.is_meat === true,
+        isFish: r?.is_fish === true,
+        isAnimalProduct: r?.is_animal_product === true,
+        mealRoles: mealRolesByKey.get(canonicalKey)
+      },
+      poolKeys,
+      sortPriority: num(r?.sort_priority) ?? 999
+    });
+  }
+  if (parsed.length === 0) return null;
+  parsed.sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
+    return a.entry.canonicalKey < b.entry.canonicalKey ? -1 : a.entry.canonicalKey > b.entry.canonicalKey ? 1 : 0;
+  });
+  const pools = /* @__PURE__ */ new Map();
+  for (const p of parsed) {
+    for (const poolKey of p.poolKeys) {
+      const list = pools.get(poolKey) ?? [];
+      list.push(p.entry);
+      pools.set(poolKey, list);
+    }
+  }
+  return pools.size > 0 ? pools : null;
+}
+var menuFoodPoolsCache = null;
+var MENU_FOOD_CACHE_TTL_MS = 5 * 6e4;
+var FDC_IN_CHUNK = 200;
+var MEAL_ROLES_V5_SELECT = "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed";
+var MEAL_ROLES_V6_EXTRA_SELECT = "breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, substitutes";
+async function loadMenuFoodPools(admin) {
+  if (menuFoodPoolsCache && Date.now() - menuFoodPoolsCache.at < MENU_FOOD_CACHE_TTL_MS) {
+    return menuFoodPoolsCache.pools;
+  }
+  try {
+    const { data: menuRows, error } = await admin.from("nutrition_menu_foods").select(
+      "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority"
+    ).eq("is_active", true);
+    if (error || !Array.isArray(menuRows) || menuRows.length === 0) {
+      menuFoodPoolsCache = { at: Date.now(), pools: null };
+      return null;
+    }
+    const fdcIds = [
+      ...new Set(
+        menuRows.map((r) => num(r?.fdc_id)).filter((n) => n != null && n > 0)
+      )
+    ];
+    const macroRows = [];
+    for (let i = 0; i < fdcIds.length; i += FDC_IN_CHUNK) {
+      const { data, error: macroError } = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g").in("fdc_id", fdcIds.slice(i, i + FDC_IN_CHUNK));
+      if (macroError) {
+        menuFoodPoolsCache = { at: Date.now(), pools: null };
+        return null;
+      }
+      if (Array.isArray(data)) macroRows.push(...data);
+    }
+    const fullRoles = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
+    const rolesMissingColumns = fullRoles.error != null && (fullRoles.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(fullRoles.error.message ?? ""));
+    const { data: mealRoleRows, error: mealRoleError } = rolesMissingColumns ? await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT) : fullRoles;
+    const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
+    menuFoodPoolsCache = { at: Date.now(), pools };
+    return pools;
+  } catch {
+    menuFoodPoolsCache = { at: Date.now(), pools: null };
+    return null;
+  }
+}
+function menuRotationKeyResolver(pools) {
+  const byCanonical = /* @__PURE__ */ new Map();
+  for (const entries of pools.values()) {
+    for (const e of entries) {
+      if (e.rotationKey && !byCanonical.has(e.canonicalKey)) byCanonical.set(e.canonicalKey, e.rotationKey);
+    }
+  }
+  return (canonicalKey) => byCanonical.get(canonicalKey);
+}
+
 // apps/web/lib/nutrition/v2/meal-grammar.ts
 function resolveMealGrammarMode(env, athleteId) {
   const raw = (env.NUTRITION_MEAL_GRAMMAR_MODE ?? "").trim().toLowerCase();
@@ -4249,7 +4511,49 @@ var GRAMMAR_ROLES_BY_POOL = {
   snack_cho: { primary: ["CHO_PRIMARY", "CHO_SECONDARY", "MIXED"] },
   snack_pro: { primary: ["PRO_PRIMARY", "PRO_SECONDARY"] }
 };
+var GRAMMAR_V6_ROLES_BY_POOL = {
+  breakfast_cho: { axis: "breakfast_cho", primary: ["PRIMARY_COMPLEX"] },
+  breakfast_pro: { axis: "breakfast_protein", primary: ["PRIMARY"], fallback: ["SECONDARY_SAVOURY", "SECONDARY"] },
+  breakfast_fat: { axis: "breakfast_fat", primary: ["PRIMARY"], fallback: ["SECONDARY"] },
+  lunch_carb: { axis: "main", primary: ["PRIMARY_COMPLEX_CARB"], fallback: ["SECONDARY_CARB"] },
+  lunch_pro: { axis: "main", primary: ["PRIMARY_PROTEIN"], fallback: ["SECONDARY_PROTEIN", "PRIMARY_OR_SECONDARY_PROTEIN"] },
+  lunch_veg: { axis: "main", primary: ["FIBER_SIDE"] },
+  dinner_carb: { axis: "main", primary: ["PRIMARY_COMPLEX_CARB"], fallback: ["SECONDARY_CARB"] },
+  dinner_pro: { axis: "main", primary: ["PRIMARY_PROTEIN"], fallback: ["SECONDARY_PROTEIN", "PRIMARY_OR_SECONDARY_PROTEIN"] },
+  dinner_veg: { axis: "main", primary: ["FIBER_SIDE"] },
+  snack_cho: { axis: "snack", primary: ["FAST_CARB"] },
+  snack_pro: { axis: "snack", primary: ["FAST_PROTEIN", "FAST_FAT_PRO", "MEDIUM"] }
+};
+function grammarPoolMeal(poolKey) {
+  if (poolKey.startsWith("breakfast_")) return "breakfast";
+  if (poolKey.startsWith("lunch_")) return "lunch";
+  if (poolKey.startsWith("dinner_")) return "dinner";
+  if (poolKey.startsWith("snack_")) return "snack";
+  return null;
+}
+function grammarV6RoleFor(mr, axis) {
+  switch (axis) {
+    case "breakfast_cho":
+      return mr.breakfastChoRole ?? "NONE";
+    case "breakfast_protein":
+      return mr.breakfastProteinRole ?? "NONE";
+    case "breakfast_fat":
+      return mr.breakfastFatRole ?? "NONE";
+    case "main":
+      return mr.mainMealRole ?? "NONE";
+    case "snack":
+      return mr.snackRole ?? "NONE";
+  }
+}
 var GRAMMAR_BREAKFAST_SECONDARY_ROLES = ["CHO_SECONDARY"];
+var GRAMMAR_BREAKFAST_SECONDARY_V6 = {
+  axis: "breakfast_cho",
+  roles: ["SECONDARY_SIMPLE", "SECONDARY_MIXED"]
+};
+var GRAMMAR_MAIN_FAT_CONDIMENT_V6 = {
+  axis: "main",
+  roles: ["FAT_CONDIMENT"]
+};
 var GRAMMAR_BREAKFAST_SECONDARY_EXTRA_POOLS = ["snack_cho"];
 function breakfastSecondaryMenuEntries(pools) {
   if (!pools) return [];
@@ -4263,14 +4567,41 @@ function breakfastSecondaryMenuEntries(pools) {
   }
   for (const pk of GRAMMAR_BREAKFAST_SECONDARY_EXTRA_POOLS) {
     for (const e of pools.get(pk) ?? []) {
-      if (seen.has(e.canonicalKey) || e.mealRoles?.roles.breakfast !== "CHO_SECONDARY") continue;
+      if (seen.has(e.canonicalKey) || !isBreakfastSecondaryEntry(e)) continue;
       seen.add(e.canonicalKey);
       out.push(e);
     }
   }
   return out;
 }
+function isBreakfastSecondaryEntry(e) {
+  const mr = e.mealRoles;
+  if (!mr) return false;
+  if (mealRolesHasV6(mr)) {
+    return mr.breakfastChoRole === "SECONDARY_SIMPLE" || mr.breakfastChoRole === "SECONDARY_MIXED";
+  }
+  return mr.roles.breakfast === "CHO_SECONDARY";
+}
 var GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE = 0.15;
+var GRAMMAR_B01_PRIMARY_SHARE_MIN = 0.75;
+var GRAMMAR_B01_PRIMARY_SHARE_MAX = 0.9;
+var GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK = 2;
+function isBreakfastSweetEntry(e) {
+  return e.mealRoles?.breakfastChoRole === "SECONDARY_MIXED";
+}
+function weekBreakfastSweetsCount(entryIndex, week) {
+  if (!week) return 0;
+  let n = 0;
+  const counted = /* @__PURE__ */ new Set();
+  for (const e of entryIndex.values()) {
+    if (!isBreakfastSweetEntry(e)) continue;
+    const countKey = e.rotationKey && (week[e.rotationKey] ?? 0) > 0 ? e.rotationKey : e.canonicalKey;
+    if (counted.has(countKey)) continue;
+    counted.add(countKey);
+    n += Math.max(week[e.canonicalKey] ?? 0, e.rotationKey ? week[e.rotationKey] ?? 0 : 0);
+  }
+  return n;
+}
 var GRAMMAR_SNACK_PREP_SPEED_MIN = 7;
 var GRAMMAR_FREQUENCY_PENALTY = {
   COMMON: 0,
@@ -4293,13 +4624,71 @@ function grammarD02FishBonus(entry2, filter, week) {
 function grammarPenaltyForEntry(entry2, filter, weekCount) {
   const mr = entry2.mealRoles;
   if (!mr) return 0;
-  const role = mr.roles[filter.meal];
   const score2 = mr.scores[filter.meal];
-  if (role === "EXCLUDE" || !(score2 > 0)) return null;
-  if (filter.allowedRoles && !filter.allowedRoles.has(role)) return null;
+  if (!(score2 > 0)) return null;
+  if (filter.v6 && mealRolesHasV6(mr)) {
+    if (!filter.v6.allowed.has(grammarV6RoleFor(mr, filter.v6.axis))) return null;
+  } else {
+    const role = mr.roles[filter.meal];
+    if (role === "EXCLUDE") return null;
+    if (filter.allowedRoles && !filter.allowedRoles.has(role)) return null;
+  }
+  if (filter.meal === "breakfast" && isBreakfastSweetEntry(entry2) && (filter.sweetsWeekCount ?? 0) >= GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK) {
+    return null;
+  }
   if (mr.maxWeek != null && weekCount >= mr.maxWeek) return null;
   if (filter.prepSpeedMin != null && mr.prepSpeed != null && mr.prepSpeed < filter.prepSpeedMin) return null;
   return GRAMMAR_FREQUENCY_PENALTY[mr.frequency] ?? 0;
+}
+var GRAMMAR_MEDITERRANEAN_PRIORITY_RANK = {
+  PRIMARY: 0,
+  COMMON: 1,
+  ROTATION: 2,
+  SECOND_CHOICE: 3,
+  LIMITED: 4,
+  OCCASIONAL: 5
+};
+var GRAMMAR_V5_FREQUENCY_RANK = { COMMON: 1, ROTATION: 2, OCCASIONAL: 5 };
+var GRAMMAR_B03_GROUP_RANK = {
+  BREAKFAST_COMPLEX_CARB: 0,
+  BREAD_BASED_CARB: 1
+};
+function grammarSubstituteRank(entry2, substituteFor) {
+  const group = entry2.mealRoles?.substitutionGroup ?? null;
+  if (group != null && substituteFor.substitutionGroup != null && group === substituteFor.substitutionGroup) return 0;
+  const idx = substituteFor.substitutes.indexOf(entry2.canonicalKey);
+  if (idx >= 0) return 1 + idx;
+  return 1e3;
+}
+function grammarOrderingKeys(entry2, filter, week) {
+  const mr = entry2.mealRoles;
+  const tier = mr && mealRolesHasV6(mr) && mr.mediterraneanPriority ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority] : GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1;
+  return {
+    subRank: filter.substituteFor ? grammarSubstituteRank(entry2, filter.substituteFor) : 0,
+    d02: grammarD02FishBonus(entry2, filter, week),
+    tier,
+    mealScore: mr?.scores[filter.meal] ?? 0,
+    groupRank: filter.meal === "breakfast" ? GRAMMAR_B03_GROUP_RANK[mr?.substitutionGroup ?? ""] ?? 0 : 0
+  };
+}
+function compareGrammarOrderingKeys(a, b) {
+  if (a.subRank !== b.subRank) return a.subRank - b.subRank;
+  if (a.d02 !== b.d02) return b.d02 - a.d02;
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  if (a.mealScore !== b.mealScore) return b.mealScore - a.mealScore;
+  if (a.groupRank !== b.groupRank) return a.groupRank - b.groupRank;
+  return 0;
+}
+var GRAMMAR_MAIN_FAT_MIN_G = 5;
+var GRAMMAR_MAIN_FAT_MAX_G = 20;
+var GRAMMAR_MAIN_FAT_STEP_G = 5;
+var GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G = 4;
+function mainMealFatCondimentEntries(entryIndex) {
+  const out = [];
+  for (const e of entryIndex.values()) {
+    if (e.mealRoles?.mainMealRole === "FAT_CONDIMENT") out.push(e);
+  }
+  return out;
 }
 var RECIPE_FREQUENCY_RANK = { COMMON: 0, ROTATION: 1, OCCASIONAL: 2 };
 var RECIPE_ROTATION_PREFIX = "recipe:";
@@ -4541,6 +4930,21 @@ function slotSummary(s) {
     fatG: round1(s.totals.fatG)
   };
 }
+function b01ShareFlags(after) {
+  const flags = [];
+  for (const s of after) {
+    if (mealForSlot(s.slot) !== "breakfast") continue;
+    const choP = s.items.filter((it) => it.foodRole === "cho_complex").reduce((a, it) => a + it.choG, 0);
+    const choS = s.items.filter((it) => it.foodRole === "cho_simple").reduce((a, it) => a + it.choG, 0);
+    const choTot = s.totals.choG;
+    if (!(choP > 0) || !(choS > 0) || !(choTot > 0)) continue;
+    const share = choP / choTot;
+    if (share < GRAMMAR_B01_PRIMARY_SHARE_MIN || share > GRAMMAR_B01_PRIMARY_SHARE_MAX) {
+      flags.push(`b01_share_out:${s.slot}:${Math.round(share * 100)}`);
+    }
+  }
+  return flags;
+}
 function buildMealGrammarProvenance(input) {
   const keys = [.../* @__PURE__ */ new Set([...input.before.map((s) => s.slot), ...input.after.map((s) => s.slot)])];
   const slots = keys.map((key) => {
@@ -4565,7 +4969,7 @@ function buildMealGrammarProvenance(input) {
     applied: input.applied,
     recipesAvailable: input.recipesAvailable,
     changedSlots: slots.filter((s) => s.changed).length,
-    flags: [...input.flags ?? []],
+    flags: [...input.flags ?? [], ...b01ShareFlags(input.after)],
     slots
   };
 }
@@ -5033,15 +5437,18 @@ function pickStapleForPool(ctx) {
     const hit = menuEntries ? menuFoodEntryToHit(e) : canonicalToHit(e);
     if (!hit) return { e, score: -8e3, idx };
     if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4e3, idx };
-    let score2 = 1e3 - (idx + poolSize - dayOffset) % poolSize * 10;
-    if (weekCount >= ROTATION_TARGET_WEEK_USES) score2 -= 120;
-    else if (weekCount > 0) score2 -= weekCount * 80;
-    if (grammarPenalty > 0) score2 = Math.max(1, score2 - grammarPenalty);
-    if (menuEntries && ctx.grammar) {
-      score2 += grammarD02FishBonus(e, ctx.grammar, ctx.dayCtx?.weekStapleCounts);
+    const score2 = 1e3 - (idx + poolSize - dayOffset) % poolSize * 10 - (weekCount >= ROTATION_TARGET_WEEK_USES ? 120 : weekCount > 0 ? weekCount * 80 : 0);
+    const g = menuEntries && ctx.grammar ? grammarOrderingKeys(e, ctx.grammar, ctx.dayCtx?.weekStapleCounts) : void 0;
+    return { e, score: score2, idx, hit, g };
+  }).filter((x) => x.score > 0 && "hit" in x && x.hit).sort((a, b) => {
+    const ag = a.g;
+    const bg = b.g;
+    if (ag && bg) {
+      const c = compareGrammarOrderingKeys(ag, bg);
+      if (c !== 0) return c;
     }
-    return { e, score: score2, idx, hit };
-  }).filter((x) => x.score > 0 && "hit" in x && x.hit).sort((a, b) => b.score - a.score);
+    return b.score - a.score;
+  });
   const best = scored[0];
   if (!best || !("hit" in best) || !best.hit) return null;
   return { entry: best.e, hit: best.hit };
@@ -5147,195 +5554,6 @@ async function loadWeeklyStapleCountsFromDb(db, athleteId, planDate, opts) {
   } catch {
     return {};
   }
-}
-
-// apps/web/lib/nutrition/v2/menu-food-catalog-db.ts
-var SERVING_BASES = /* @__PURE__ */ new Set(["dry_grams", "cooked_grams", "ml"]);
-function str(v) {
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
-function num(v) {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : null;
-}
-var MEAL_ROLES = /* @__PURE__ */ new Set([
-  "CHO_PRIMARY",
-  "CHO_SECONDARY",
-  "PRO_PRIMARY",
-  "PRO_SECONDARY",
-  "FAT_COMPLEMENT",
-  "FIBER_VEG",
-  "FIBER_MICRO_PRIMARY",
-  "MIXED",
-  "COMPOSITE_MAIN",
-  "EXCLUDE",
-  "NONE"
-]);
-var MACRO_ROLES = /* @__PURE__ */ new Set([
-  "CHO_PRIMARY",
-  "CHO_SECONDARY",
-  "PRO_PRIMARY",
-  "PRO_SECONDARY",
-  "FAT_PRIMARY",
-  "FIBER_MICRO",
-  "MIXED",
-  "PRO_FAT_MIXED"
-]);
-var FREQUENCIES = /* @__PURE__ */ new Set(["COMMON", "ROTATION", "OCCASIONAL"]);
-function score(v) {
-  const n = num(v);
-  if (n == null) return 0;
-  return Math.min(10, Math.max(0, n));
-}
-function mealRole(v) {
-  const s = str(v)?.toUpperCase();
-  return s && MEAL_ROLES.has(s) ? s : "NONE";
-}
-function parseMenuFoodMealRoleRow(raw) {
-  const r = raw;
-  const canonicalKey = str(r?.canonical_key);
-  if (!canonicalKey) return null;
-  const macroRaw = str(r?.macro_role)?.toUpperCase();
-  const freqRaw = str(r?.frequency)?.toUpperCase();
-  const maxWeek = num(r?.max_week);
-  const prepSpeed = num(r?.prep_speed);
-  return {
-    canonicalKey,
-    mealRoles: {
-      scores: {
-        breakfast: score(r?.score_breakfast),
-        snack: score(r?.score_snack),
-        lunch: score(r?.score_lunch),
-        dinner: score(r?.score_dinner),
-        preWorkout: score(r?.score_pre_workout),
-        postWorkout: score(r?.score_post_workout)
-      },
-      roles: {
-        breakfast: mealRole(r?.role_breakfast),
-        snack: mealRole(r?.role_snack),
-        lunch: mealRole(r?.role_lunch),
-        dinner: mealRole(r?.role_dinner)
-      },
-      macroRole: macroRaw && MACRO_ROLES.has(macroRaw) ? macroRaw : null,
-      frequency: freqRaw && FREQUENCIES.has(freqRaw) ? freqRaw : "COMMON",
-      maxWeek: maxWeek != null && maxWeek >= 1 ? Math.trunc(maxWeek) : null,
-      prepSpeed: prepSpeed != null && prepSpeed >= 0 ? Math.min(10, Math.trunc(prepSpeed)) : null
-    }
-  };
-}
-function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
-  const mealRolesByKey = /* @__PURE__ */ new Map();
-  for (const raw of mealRoleRows) {
-    const parsed2 = parseMenuFoodMealRoleRow(raw);
-    if (parsed2) mealRolesByKey.set(parsed2.canonicalKey, parsed2.mealRoles);
-  }
-  const macroByFdc = /* @__PURE__ */ new Map();
-  for (const raw of macroRows) {
-    const r = raw;
-    const fdcId = num(r?.fdc_id);
-    const kcal = num(r?.kcal_100g);
-    if (fdcId == null || fdcId <= 0 || kcal == null || kcal <= 0) continue;
-    macroByFdc.set(fdcId, {
-      kcal,
-      carbs: num(r?.carbs_100g) ?? 0,
-      protein: num(r?.protein_100g) ?? 0,
-      fat: num(r?.fat_100g) ?? 0
-    });
-  }
-  const parsed = [];
-  for (const raw of menuRows) {
-    const r = raw;
-    const canonicalKey = str(r?.canonical_key);
-    const fdcId = num(r?.fdc_id);
-    const poolKeys = Array.isArray(r?.pool_keys) ? r.pool_keys.filter((k) => typeof k === "string" && k.trim().length > 0) : [];
-    if (!canonicalKey || fdcId == null || fdcId <= 0 || poolKeys.length === 0) continue;
-    const macro = macroByFdc.get(fdcId);
-    if (!macro) continue;
-    const servingBasisRaw = str(r?.serving_basis) ?? "";
-    parsed.push({
-      entry: {
-        canonicalKey,
-        labelIt: str(r?.label_it) ?? canonicalKey.replace(/_/g, " "),
-        servingBasis: SERVING_BASES.has(servingBasisRaw) ? servingBasisRaw : "dry_grams",
-        rotationKey: str(r?.rotation_key) ?? void 0,
-        carbFamily: str(r?.carb_family) ?? void 0,
-        fdcId,
-        kcalPer100g: macro.kcal,
-        carbsPer100g: macro.carbs,
-        proteinPer100g: macro.protein,
-        fatPer100g: macro.fat,
-        isMeat: r?.is_meat === true,
-        isFish: r?.is_fish === true,
-        isAnimalProduct: r?.is_animal_product === true,
-        mealRoles: mealRolesByKey.get(canonicalKey)
-      },
-      poolKeys,
-      sortPriority: num(r?.sort_priority) ?? 999
-    });
-  }
-  if (parsed.length === 0) return null;
-  parsed.sort((a, b) => {
-    if (a.sortPriority !== b.sortPriority) return a.sortPriority - b.sortPriority;
-    return a.entry.canonicalKey < b.entry.canonicalKey ? -1 : a.entry.canonicalKey > b.entry.canonicalKey ? 1 : 0;
-  });
-  const pools = /* @__PURE__ */ new Map();
-  for (const p of parsed) {
-    for (const poolKey of p.poolKeys) {
-      const list = pools.get(poolKey) ?? [];
-      list.push(p.entry);
-      pools.set(poolKey, list);
-    }
-  }
-  return pools.size > 0 ? pools : null;
-}
-var menuFoodPoolsCache = null;
-var MENU_FOOD_CACHE_TTL_MS = 5 * 6e4;
-var FDC_IN_CHUNK = 200;
-async function loadMenuFoodPools(admin) {
-  if (menuFoodPoolsCache && Date.now() - menuFoodPoolsCache.at < MENU_FOOD_CACHE_TTL_MS) {
-    return menuFoodPoolsCache.pools;
-  }
-  try {
-    const { data: menuRows, error } = await admin.from("nutrition_menu_foods").select(
-      "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority"
-    ).eq("is_active", true);
-    if (error || !Array.isArray(menuRows) || menuRows.length === 0) {
-      menuFoodPoolsCache = { at: Date.now(), pools: null };
-      return null;
-    }
-    const fdcIds = [
-      ...new Set(
-        menuRows.map((r) => num(r?.fdc_id)).filter((n) => n != null && n > 0)
-      )
-    ];
-    const macroRows = [];
-    for (let i = 0; i < fdcIds.length; i += FDC_IN_CHUNK) {
-      const { data, error: macroError } = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g").in("fdc_id", fdcIds.slice(i, i + FDC_IN_CHUNK));
-      if (macroError) {
-        menuFoodPoolsCache = { at: Date.now(), pools: null };
-        return null;
-      }
-      if (Array.isArray(data)) macroRows.push(...data);
-    }
-    const { data: mealRoleRows, error: mealRoleError } = await admin.from("nutrition_menu_food_meal_roles").select(
-      "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed"
-    );
-    const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
-    menuFoodPoolsCache = { at: Date.now(), pools };
-    return pools;
-  } catch {
-    menuFoodPoolsCache = { at: Date.now(), pools: null };
-    return null;
-  }
-}
-function menuRotationKeyResolver(pools) {
-  const byCanonical = /* @__PURE__ */ new Map();
-  for (const entries of pools.values()) {
-    for (const e of entries) {
-      if (e.rotationKey && !byCanonical.has(e.canonicalKey)) byCanonical.set(e.canonicalKey, e.rotationKey);
-    }
-  }
-  return (canonicalKey) => byCanonical.get(canonicalKey);
 }
 
 // apps/web/lib/nutrition/load-nutrition-athlete-profile.ts
@@ -7563,11 +7781,15 @@ function portionHintIt(label, grams, spec, servingBasis) {
 }
 function grammarFilterFor(ctx, slotKey, poolKey, rolesOverride, relaxWeekCaps) {
   if (!ctx.grammar) return void 0;
-  const roles = rolesOverride ?? GRAMMAR_ROLES_BY_POOL[poolKey]?.primary;
   const meal = mealForSlot(slotKey);
+  const v5Roles = rolesOverride ? rolesOverride.v5 : GRAMMAR_ROLES_BY_POOL[poolKey]?.primary;
+  const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[poolKey];
+  const v6 = rolesOverride ? rolesOverride.v6 : poolV6 && grammarPoolMeal(poolKey) === meal ? { axis: poolV6.axis, roles: poolV6.primary } : void 0;
   return {
     meal,
-    ...roles ? { allowedRoles: new Set(roles) } : {},
+    ...v5Roles ? { allowedRoles: new Set(v5Roles) } : {},
+    ...v6 ? { v6: { axis: v6.axis, allowed: new Set(v6.roles) } } : {},
+    ...meal === "breakfast" ? { sweetsWeekCount: ctx.grammar.sweetsWeekCount } : {},
     ...meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {},
     ...relaxWeekCaps ? { relaxWeekCaps: true } : {}
   };
@@ -7588,20 +7810,39 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
     usedFdcIds: ctx.usedFdcIds,
     menuEntries: hasMenuPool ? menuEntries : void 0
   };
-  let staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride) });
+  let staplePick = pickStapleForPool({
+    ...pickArgs,
+    grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps)
+  });
   const fallbackRoles = GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.fallback;
-  if (!staplePick && ctx.grammar && !rolesOverride && fallbackRoles) {
-    staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, fallbackRoles) });
+  const fallbackV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey]?.fallback;
+  const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey];
+  const v6InMeal = poolV6 && grammarPoolMeal(spec.poolKey) === mealForSlot(slotKey);
+  if (!staplePick && ctx.grammar && !rolesOverride && (fallbackRoles || v6InMeal && fallbackV6)) {
+    staplePick = pickStapleForPool({
+      ...pickArgs,
+      grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, {
+        ...fallbackRoles ? { v5: fallbackRoles } : {},
+        ...v6InMeal && fallbackV6 ? { v6: { axis: poolV6.axis, roles: fallbackV6 } } : {}
+      }, opts?.relaxWeekCaps)
+    });
   }
   if (!staplePick && ctx.grammar && hasMenuPool) {
     if (!opts?.optional) {
-      const roles = rolesOverride ?? [
-        ...GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? [],
-        ...fallbackRoles ?? []
-      ];
+      const v5All = rolesOverride ? rolesOverride.v5 : [...GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? [], ...fallbackRoles ?? []];
+      const v6All = rolesOverride ? rolesOverride.v6 : v6InMeal ? { axis: poolV6.axis, roles: [...poolV6.primary, ...fallbackV6 ?? []] } : void 0;
       staplePick = pickStapleForPool({
         ...pickArgs,
-        grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, roles.length > 0 ? roles : void 0, true)
+        grammar: grammarFilterFor(
+          ctx,
+          slotKey,
+          spec.poolKey,
+          {
+            ...v5All && v5All.length > 0 ? { v5: v5All } : {},
+            ...v6All ? { v6: v6All } : {}
+          },
+          true
+        )
       });
       if (staplePick) ctx.grammar.flags.push(`week_caps_relaxed:${slotKey}:${spec.poolKey}`);
     }
@@ -7611,14 +7852,16 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
     }
   }
   if (staplePick) {
-    if (staplePick.entry.rotationKey) {
-      ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
-      ctx.dayCtx.usedStaples.add(staplePick.entry.rotationKey);
-    } else if (staplePick.entry.carbFamily) {
-      ctx.usedCarbFamilies.add(staplePick.entry.carbFamily);
+    if (!opts?.skipUsageRegistration) {
+      if (staplePick.entry.rotationKey) {
+        ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
+        ctx.dayCtx.usedStaples.add(staplePick.entry.rotationKey);
+      } else if (staplePick.entry.carbFamily) {
+        ctx.usedCarbFamilies.add(staplePick.entry.carbFamily);
+      }
+      if (staplePick.hit.fdcId > 0) ctx.usedFdcIds.add(staplePick.hit.fdcId);
+      ctx.dayCtx.dayUsedCanonicalKeys?.add(staplePick.entry.canonicalKey);
     }
-    if (staplePick.hit.fdcId > 0) ctx.usedFdcIds.add(staplePick.hit.fdcId);
-    ctx.dayCtx.dayUsedCanonicalKeys?.add(staplePick.entry.canonicalKey);
     return { spec, hit: staplePick.hit, staple: staplePick.entry };
   }
   const rawPool = pools.get(spec.poolKey) ?? [];
@@ -7687,7 +7930,9 @@ function pickBreakfastSecondaryChoLine(target, pools, ctx) {
   const secondaryEntries = breakfastSecondaryMenuEntries(ctx.menuPools);
   if (secondaryEntries.length === 0) return null;
   const line = pickLineForRole(spec, "breakfast", pools, ctx, {
-    rolesOverride: GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+    // v5 CHO_SECONDARY per le entry storiche, v6 SECONDARY_SIMPLE/SECONDARY_MIXED (B02;
+    // i dolci SECONDARY_MIXED entrano SOLO da qui: mai come fonte principale — B04).
+    rolesOverride: { v5: GRAMMAR_BREAKFAST_SECONDARY_ROLES, v6: GRAMMAR_BREAKFAST_SECONDARY_V6 },
     menuEntriesOverride: secondaryEntries,
     optional: true
   });
@@ -7696,6 +7941,37 @@ function pickBreakfastSecondaryChoLine(target, pools, ctx) {
   const grams = wantedChoG * 100 / line.hit.carbsPer100g;
   const fixedG = Math.max(spec.minG, Math.min(spec.maxG, Math.round(grams / spec.stepG) * spec.stepG));
   return { ...line, spec: { ...spec, fixedG } };
+}
+function pickMainMealFatCondimentLine(slotKey, target, lines, pools, ctx) {
+  const g = ctx.grammar;
+  if (!g) return null;
+  const entries = mainMealFatCondimentEntries(g.entryIndex);
+  if (entries.length === 0) return null;
+  if (lines.length > 0) {
+    const firstPass = solveFdcMealPortions(lines, target);
+    const fatCovered = lines.reduce((s, l, i) => s + (firstPass[i] ?? 0) * l.hit.fatPer100g / 100, 0);
+    if (target.fatG - fatCovered < GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G) {
+      g.flags.push(`fat_condiment_skipped:${slotKey}`);
+      return null;
+    }
+  }
+  const spec = {
+    foodRole: "fat",
+    lever: "fat",
+    poolKey: "main_fat",
+    minG: GRAMMAR_MAIN_FAT_MIN_G,
+    maxG: GRAMMAR_MAIN_FAT_MAX_G,
+    stepG: GRAMMAR_MAIN_FAT_STEP_G
+  };
+  return pickLineForRole(spec, slotKey, pools, ctx, {
+    rolesOverride: { v6: GRAMMAR_MAIN_FAT_CONDIMENT_V6 },
+    menuEntriesOverride: entries,
+    optional: true,
+    // L'EVO condisce pranzo E cena tutti i giorni: niente tetto di rotazione di famiglia
+    // e niente dedupe giornaliero (il max_week esplicito di Mario resta duro).
+    relaxWeekCaps: true,
+    skipUsageRegistration: true
+  });
 }
 function composeSlotFromAssembly(slot, pools, ctx) {
   const slotKey = slot.key;
@@ -7739,6 +8015,10 @@ function composeSlotFromAssembly(slot, pools, ctx) {
         lines.splice(1, 0, proLine);
       }
     }
+  }
+  if (ctx.grammar && isMainMealSlot(slotKey) && lines.length > 0) {
+    const condiment = pickMainMealFatCondimentLine(slotKey, target, lines, pools, ctx);
+    if (condiment) lines.push(condiment);
   }
   if (lines.length === 0) {
     return {
@@ -7816,6 +8096,8 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
   const choLine = lines[choIdx];
   if (target.carbsG > 100 && choLine.staple?.canonicalKey === "bread_white") {
     const altMenuEntries = ctx.menuPools?.get(choLine.spec.poolKey);
+    const swapRoles = choLine.staple?.mealRoles;
+    const baseFilter = grammarFilterFor(ctx, slotKey, choLine.spec.poolKey);
     const alt = pickStapleForPool({
       poolKey: choLine.spec.poolKey,
       seed: ctx.seed + 17,
@@ -7826,7 +8108,15 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
       usedFdcIds: ctx.usedFdcIds,
       menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : void 0,
       // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
-      grammar: grammarFilterFor(ctx, slotKey, choLine.spec.poolKey)
+      grammar: baseFilter ? {
+        ...baseFilter,
+        ...swapRoles ? {
+          substituteFor: {
+            substitutionGroup: swapRoles.substitutionGroup ?? null,
+            substitutes: swapRoles.substitutes ?? []
+          }
+        } : {}
+      } : void 0
     });
     if (alt && alt.entry.canonicalKey !== "bread_white") {
       lines[choIdx] = { spec: choLine.spec, hit: alt.hit, staple: alt.entry };
@@ -7953,12 +8243,17 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
     request,
     menuPools: options?.menuFoodPools ?? null,
     ...options?.mealGrammar?.enabled ? {
-      grammar: {
-        recipes: options.mealGrammar.recipes ?? [],
-        entryIndex: menuFoodEntryIndex(options?.menuFoodPools),
-        recipeUsedToday: false,
-        flags: options.mealGrammar.diagnostics ?? []
-      }
+      grammar: (() => {
+        const entryIndex = menuFoodEntryIndex(options?.menuFoodPools);
+        return {
+          recipes: options.mealGrammar.recipes ?? [],
+          entryIndex,
+          recipeUsedToday: false,
+          // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
+          sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),
+          flags: options.mealGrammar.diagnostics ?? []
+        };
+      })()
     } : {}
   };
   return dietSlots.map((slot) => {
