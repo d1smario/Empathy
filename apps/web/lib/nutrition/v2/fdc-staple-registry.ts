@@ -18,7 +18,13 @@ import {
 import type { MediterraneanDayContext, MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
 import { isCanonicalKeyUsedToday } from "@/lib/nutrition/meal-rotation-guard";
 import type { MenuFoodEntry } from "@/lib/nutrition/v2/menu-food-catalog-db";
-import { grammarD02FishBonus, grammarPenaltyForEntry, type GrammarPickFilter } from "@/lib/nutrition/v2/meal-grammar";
+import {
+  compareGrammarOrderingKeys,
+  grammarOrderingKeys,
+  grammarPenaltyForEntry,
+  type GrammarOrderingKeys,
+  type GrammarPickFilter,
+} from "@/lib/nutrition/v2/meal-grammar";
 
 export type StapleRegistryEntry = {
   canonicalKey: string;
@@ -569,20 +575,28 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       const hit = menuEntries ? menuFoodEntryToHit(e as MenuFoodEntry) : canonicalToHit(e);
       if (!hit) return { e, score: -8000, idx };
       if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4000, idx };
-      let score = 1000 - ((idx + poolSize - dayOffset) % poolSize) * 10;
-      if (weekCount >= ROTATION_TARGET_WEEK_USES) score -= 120;
-      else if (weekCount > 0) score -= weekCount * 80;
-      // La frequenza abbassa la priorità ma NON esclude: mai sotto il filtro `score > 0`.
-      if (grammarPenalty > 0) score = Math.max(1, score - grammarPenalty);
-      // D02 (SOFT): a cena, settimana ancora senza pesce → il pesce sale in cima. Solo un
-      // bonus di priorità: verdetti (EXCLUDE, tetti, dieta) restano sopra a tutto.
-      if (menuEntries && ctx.grammar) {
-        score += grammarD02FishBonus(e as MenuFoodEntry, ctx.grammar, ctx.dayCtx?.weekStapleCounts);
-      }
-      return { e, score, idx, hit };
+      const score = 1000 - ((idx + poolSize - dayOffset) % poolSize) * 10
+        - (weekCount >= ROTATION_TARGET_WEEK_USES ? 120 : weekCount > 0 ? weekCount * 80 : 0);
+      // Grammatica v6 (B03/M04, decisione 3): le gerarchie SOFT sono chiavi di ORDINAMENTO
+      // separate (R01 → D02 → tier mediterranean_priority → score del pasto → B03), MAI una
+      // penalità sottrattiva — il floor Math.max(1, score-penalty) schiacciava i tier oltre
+      // il primo a parità 1. Il punteggio di rotazione resta l'ultima chiave (varietà).
+      const g =
+        menuEntries && ctx.grammar
+          ? grammarOrderingKeys(e as MenuFoodEntry, ctx.grammar, ctx.dayCtx?.weekStapleCounts)
+          : undefined;
+      return { e, score, idx, hit, g };
     })
     .filter((x) => x.score > 0 && "hit" in x && x.hit)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      const ag = (a as { g?: GrammarOrderingKeys }).g;
+      const bg = (b as { g?: GrammarOrderingKeys }).g;
+      if (ag && bg) {
+        const c = compareGrammarOrderingKeys(ag, bg);
+        if (c !== 0) return c;
+      }
+      return b.score - a.score;
+    });
 
   const best = scored[0];
   if (!best || !("hit" in best) || !best.hit) return null;

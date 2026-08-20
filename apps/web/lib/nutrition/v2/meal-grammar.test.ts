@@ -1,11 +1,16 @@
 /**
- * Grammatica dei pasti (Mario v5) nel compositore V2 — test PURI su un catalogo finto.
- * Copre: gate; B01/B02 a colazione; score 0 = filtro secco; max_week; ricette come
- * matrice mista (item con componenti, macro = Σ ingredienti, ingrediente vietato → ricetta
- * vietata); persist = ingredienti uno per riga con Σ kcal = item; off bit-identico;
- * shadow/on decisi dal gate (servito ≠ registrato); riparazione giro 1: mai USDA grezzo
- * sotto grammatica (raw pool NON vuoti), B02 dalla frutta di snack_cho, regola 7 filtrata,
- * semantica max_week di famiglia.
+ * Grammatica dei pasti (Mario v5 + sistema ruoli v6) nel compositore V2 — test PURI su
+ * un catalogo finto. Copre: gate; B01/B02 a colazione; score 0 = filtro secco; max_week;
+ * ricette come matrice mista (item con componenti, macro = Σ ingredienti, ingrediente
+ * vietato → ricetta vietata); persist = ingredienti uno per riga con Σ kcal = item; off
+ * bit-identico; shadow/on decisi dal gate (servito ≠ registrato); riparazione giro 1:
+ * mai USDA grezzo sotto grammatica (raw pool NON vuoti), B02 dalla frutta di snack_cho,
+ * regola 7 filtrata, semantica max_week di famiglia.
+ *
+ * SEZIONE v6 (in coda): filtri per asse (B01/B06/B07, M02/M03, S01/S03), ordinamento a
+ * chiavi mediterranean_priority+score (B03/M04), quarta riga FAT_CONDIMENT (M01) con
+ * skip a pasto già ricco (D02-v1), tetto dolci B05, sostituzioni R01/R02, degradazione
+ * v5 per entry senza dati v6. Le fixture v5 restano: sono il caso «dati v5, codice v6».
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -20,14 +25,18 @@ import {
   breakfastSecondaryMenuEntries,
   buildMealGrammarProvenance,
   chooseRecipeForSlot,
+  GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK,
   GRAMMAR_D02_FISH_DINNER_BONUS,
   grammarD02FishBonus,
   grammarPenaltyForEntry,
+  isBreakfastSweetEntry,
   menuFoodEntryIndex,
   recipeCandidatesForMeal,
   recipeLever,
   resolveMealGrammarMode,
   scaleRecipe,
+  substituteGramsByKcal,
+  weekBreakfastSweetsCount,
   weekHasFish,
 } from "@/lib/nutrition/v2/meal-grammar";
 import { pendingMealItemRowsFromProduction } from "@/lib/nutrition/v2/persist-v2-plan-to-db";
@@ -41,15 +50,18 @@ type ScoreSpec = Partial<MenuFoodMealRoles["scores"]>;
 function roles(
   r: RoleSpec,
   s: ScoreSpec,
-  extra?: Partial<Pick<MenuFoodMealRoles, "macroRole" | "frequency" | "maxWeek" | "prepSpeed">>,
+  // `extra` accetta anche i campi v6 (breakfastChoRole, mainMealRole, substitutionGroup…):
+  // assenti = fixture v5 pura (mealRolesHasV6 false → la grammatica usa il vocabolario v5).
+  extra?: Partial<Omit<MenuFoodMealRoles, "roles" | "scores">>,
 ): MenuFoodMealRoles {
   return {
     roles: { breakfast: "NONE", snack: "NONE", lunch: "NONE", dinner: "NONE", ...r },
     scores: { breakfast: 0, snack: 0, lunch: 0, dinner: 0, preWorkout: 0, postWorkout: 0, ...s },
-    macroRole: extra?.macroRole ?? null,
-    frequency: extra?.frequency ?? "COMMON",
-    maxWeek: extra?.maxWeek ?? null,
-    prepSpeed: extra?.prepSpeed ?? null,
+    macroRole: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    prepSpeed: null,
+    ...extra,
   };
 }
 
@@ -250,6 +262,9 @@ test("max_week rispettato su 7 giorni: il pollo (max_week 2) esce al massimo 2 v
   assert.ok(chickenDays > 0, "il pollo resta pescabile finché sotto il tetto");
 });
 
+// NOTA v6: dal sistema v6 (decisione 3, regola B03) l'ordinamento è a CHIAVI (tier
+// mediterranean_priority → score del pasto → rotazione), non più penalità sottrattiva;
+// per le entry senza dati v6 il tier viene dalla frequenza v5 — stesso esito atteso qui.
 test("frequenza OCCASIONAL abbassa la priorità: a parità il COMMON vince, ma l'OCCASIONAL resta pescabile", () => {
   const entries = [guanciale, cod];
   for (let seed = 0; seed < 6; seed += 1) {
@@ -262,6 +277,9 @@ test("frequenza OCCASIONAL abbassa la priorità: a parità il COMMON vince, ma l
 
 // ── B01/B02 colazione ────────────────────────────────────────────────────────────────
 
+// NOTA v6: questo test usa fixture SENZA dati v6 → esercita il percorso di DEGRADAZIONE
+// (vocabolario v5, com'era prima della regola B01 v6). Il comportamento con dati v6
+// (filtro PRIMARY_COMPLEX, split 80-85/10-15, gerarchia B03) è nella sezione v6 in coda.
 test("colazione B01/B02: CHO_PRIMARY copre 80-90% dei CHO strutturali, PRO da PRO_PRIMARY, niente pasta", () => {
   for (const date of DATES.slice(0, 10)) {
     const plan = compose(date, { grammar: true });
@@ -804,4 +822,263 @@ test("frequency della ricetta: a parità di conteggio la COMMON precede la ROTAT
     if (c) picked.add(c.recipe.recipeKey);
   }
   assert.deepEqual([...picked], ["riso_rotazione"]);
+});
+
+// ═══ SISTEMA RUOLI v6 (file Mario v6, GENERATIVE_RULES_V2) ═════════════════════════════
+// Catalogo finto con ENTRAMBI i vocabolari (come il DB dopo la migrazione 20260820090100:
+// colonne v5 intatte, colonne v6 valorizzate): dove confliggono deve vincere la v6.
+
+const oat6 = food("oat6", "Avena", { kcal: 380, cho: 66, pro: 13, fat: 7 }, roles({ breakfast: "CHO_PRIMARY" }, { breakfast: 10 }, { breakfastChoRole: "PRIMARY_COMPLEX", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAKFAST_COMPLEX_CARB" }), { rotationKey: "breakfast:oat6" });
+const bread6 = food("bread6", "Pane bianco", { kcal: 270, cho: 50, pro: 9, fat: 3 }, roles({ breakfast: "CHO_PRIMARY" }, { breakfast: 10 }, { breakfastChoRole: "PRIMARY_COMPLEX", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAD_BASED_CARB" }), { rotationKey: "breakfast:bread6" });
+const apple6 = food("apple6", "Mela", { kcal: 52, cho: 14, pro: 0.3, fat: 0.2 }, roles({ breakfast: "CHO_SECONDARY", snack: "CHO_SECONDARY" }, { breakfast: 7, snack: 9 }, { breakfastChoRole: "SECONDARY_SIMPLE", snackRole: "FAST_CARB", mediterraneanPriority: "COMMON", substitutionGroup: "FRUIT", prepSpeed: 10 }));
+const sweet6 = food("sweet6", "Cornetto", { kcal: 410, cho: 45, pro: 8, fat: 22 }, roles({ breakfast: "CHO_SECONDARY" }, { breakfast: 6 }, { breakfastChoRole: "SECONDARY_MIXED", mediterraneanPriority: "OCCASIONAL", substitutionGroup: "BREAKFAST_SWEET_OCCASIONAL", frequency: "OCCASIONAL" }), { rotationKey: "breakfast:cornetto6" });
+const yog6 = food("yog6", "Yogurt greco", { kcal: 60, cho: 4, pro: 10, fat: 0.5 }, roles({ breakfast: "PRO_PRIMARY", snack: "PRO_PRIMARY" }, { breakfast: 10, snack: 9 }, { breakfastProteinRole: "PRIMARY", snackRole: "FAST_PROTEIN", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAKFAST_PROTEIN_DAIRY", prepSpeed: 10 }), { isAnimalProduct: true });
+// B06: la v5 direbbe PRO_PRIMARY con score 8, la v6 dice NONE (i formaggi NON sono
+// proteina di colazione): il divieto è nei DATI e la v6 vince.
+const ricotta6 = food("ricotta6", "Ricotta", { kcal: 140, cho: 3, pro: 11, fat: 9 }, roles({ breakfast: "PRO_PRIMARY" }, { breakfast: 8 }, { breakfastProteinRole: "NONE", mainMealRole: "SECONDARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "CHEESE_PROTEIN" }), { isAnimalProduct: true });
+const nuts6 = food("nuts6", "Mandorle", { kcal: 580, cho: 20, pro: 21, fat: 50 }, roles({ breakfast: "FAT_COMPLEMENT", snack: "PRO_SECONDARY" }, { breakfast: 10, snack: 9 }, { breakfastFatRole: "PRIMARY", snackRole: "FAST_FAT_PRO", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAKFAST_FAT_NUTS", prepSpeed: 10 }));
+const seeds6 = food("seeds6", "Semi di chia", { kcal: 486, cho: 42, pro: 17, fat: 31 }, roles({ breakfast: "FAT_COMPLEMENT" }, { breakfast: 6 }, { breakfastFatRole: "SECONDARY", mediterraneanPriority: "COMMON", substitutionGroup: "BREAKFAST_FAT_SEEDS", prepSpeed: 10 }));
+// M04: i valori sono ESATTAMENTE quelli della regola nei dati v6 (EVO 10, avocado 8,
+// altri oli 4/LIMITED): l'ordinamento tier+score fa la gerarchia, zero hardcode.
+const evo6 = food("evo6", "Olio EVO", { kcal: 884, cho: 0, pro: 0, fat: 100 }, roles({}, { lunch: 10, dinner: 10 }, { mainMealRole: "FAT_CONDIMENT", mediterraneanPriority: "COMMON", substitutionGroup: "FAT_CONDIMENT" }));
+const avoc6 = food("avoc6", "Avocado", { kcal: 160, cho: 9, pro: 2, fat: 15 }, roles({}, { lunch: 8, dinner: 8 }, { mainMealRole: "FAT_CONDIMENT", mediterraneanPriority: "COMMON", substitutionGroup: "FAT_CONDIMENT" }));
+const oilseed6 = food("oilseed6", "Olio di semi", { kcal: 884, cho: 0, pro: 0, fat: 100 }, roles({}, { lunch: 4, dinner: 4 }, { mainMealRole: "FAT_CONDIMENT", mediterraneanPriority: "LIMITED", substitutionGroup: "FAT_CONDIMENT" }));
+const pasta6 = food("pasta6", "Pasta", { kcal: 350, cho: 71, pro: 12, fat: 1.5 }, roles({ lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" }, { lunch: 10, dinner: 10, snack: 0 }, { mainMealRole: "PRIMARY_COMPLEX_CARB", snackRole: "LOW", mediterraneanPriority: "PRIMARY", substitutionGroup: "MAIN_COMPLEX_CARB" }), { rotationKey: "carb:pasta6", carbFamily: "pasta" });
+const rice6 = food("rice6", "Riso", { kcal: 360, cho: 79, pro: 7, fat: 0.6 }, roles({ lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_COMPLEX_CARB", mediterraneanPriority: "PRIMARY", substitutionGroup: "MAIN_COMPLEX_CARB" }), { rotationKey: "carb:rice6", carbFamily: "riso" });
+const potato6 = food("potato6", "Patate", { kcal: 77, cho: 17, pro: 2, fat: 0.1 }, roles({ lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" }, { lunch: 9, dinner: 9 }, { mainMealRole: "SECONDARY_CARB", mediterraneanPriority: "COMMON", substitutionGroup: "MAIN_COMPLEX_CARB" }), { rotationKey: "carb:potato6" });
+const chicken6 = food("chicken6", "Pollo", { kcal: 110, cho: 0, pro: 23, fat: 1.2 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "WHITE_MEAT" }), { rotationKey: "prot:pollo6", isMeat: true });
+const cod6 = food("cod6", "Merluzzo", { kcal: 82, cho: 0, pro: 18, fat: 0.7 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "FISH_LEAN" }), { rotationKey: "prot:pesce6", isFish: true });
+const mackerel6 = food("mackerel6", "Sgombro", { kcal: 305, cho: 0, pro: 19, fat: 25 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 9, dinner: 9 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "ROTATION", substitutionGroup: "FISH_FATTY" }), { rotationKey: "prot:sgombro6", isFish: true });
+const legumes6 = food("legumes6", "Lenticchie", { kcal: 116, cho: 20, pro: 9, fat: 0.4 }, roles({ lunch: "PRO_SECONDARY", dinner: "PRO_SECONDARY" }, { lunch: 9, dinner: 9 }, { mainMealRole: "PRIMARY_OR_SECONDARY_PROTEIN", mediterraneanPriority: "PRIMARY", substitutionGroup: "PLANT_PROTEIN" }));
+const veg6 = food("veg6", "Zucchine", { kcal: 17, cho: 3, pro: 1.2, fat: 0.3 }, roles({ lunch: "FIBER_VEG", dinner: "FIBER_VEG" }, { lunch: 10, dinner: 10 }, { mainMealRole: "FIBER_SIDE", mediterraneanPriority: "PRIMARY", substitutionGroup: "VEGETABLE" }));
+// S03: score_spuntino > 0 ma snack_role LOW — solo il ruolo v6 lo esclude (la v5 lo farebbe entrare).
+const butter6 = food("butter6", "Burro", { kcal: 717, cho: 0, pro: 0.9, fat: 81 }, roles({ snack: "PRO_SECONDARY" }, { snack: 3 }, { snackRole: "LOW", mediterraneanPriority: "LIMITED", substitutionGroup: "ANIMAL_FAT", prepSpeed: 10 }));
+
+function v6Pools(): MenuFoodPoolMap {
+  return new Map<string, MenuFoodEntry[]>([
+    // bread6 prima di oat6: senza il tiebreak B03 la rotazione a seed 0 partirebbe dal pane.
+    ["breakfast_cho", [bread6, oat6, sweet6]],
+    ["breakfast_pro", [ricotta6, yog6]],
+    ["breakfast_fat", [seeds6, nuts6]],
+    ["lunch_carb", [pasta6, rice6, potato6]],
+    ["lunch_pro", [chicken6, cod6, legumes6]],
+    ["lunch_veg", [veg6]],
+    ["dinner_carb", [pasta6, rice6, potato6]],
+    ["dinner_pro", [chicken6, cod6, legumes6]],
+    ["dinner_veg", [veg6]],
+    ["snack_cho", [apple6, pasta6]],
+    ["snack_pro", [yog6, nuts6, butter6]],
+    // Pool «virtuale» solo per far entrare i condimenti nell'entryIndex (in prod stanno
+    // in un pool reale del catalogo, es. breakfast_fat): la linea M01 pesca per ruolo.
+    ["main_fat", [evo6, avoc6, oilseed6]],
+  ]);
+}
+
+test("v6 filtro per asse: la v6 VINCE sul v5 (B06 ricotta fuori colazione); entry senza dati v6 degrada al v5", () => {
+  const bproFilter = { meal: "breakfast" as const, allowedRoles: new Set(["PRO_PRIMARY" as const]), v6: { axis: "breakfast_protein" as const, allowed: new Set(["PRIMARY"]) } };
+  // ricotta6: v5 direbbe PRO_PRIMARY/8 (passa), v6 dice NONE → fuori.
+  assert.equal(grammarPenaltyForEntry(ricotta6, bproFilter, 0), null, "B06: la v6 vince sul v5");
+  assert.equal(grammarPenaltyForEntry(yog6, bproFilter, 0), 0);
+  // Entry v5 pura (yogurt della fixture storica, senza dati v6): stesso filtro → vocabolario v5.
+  assert.equal(grammarPenaltyForEntry(yogurt, bproFilter, 0), 0, "degradazione: dati v5 + codice v6 non svuota nulla");
+  // S03: burro LOW con score 3 — il v5 lo farebbe entrare, il ruolo v6 lo esclude.
+  const snackFilter = { meal: "snack" as const, v6: { axis: "snack" as const, allowed: new Set(["FAST_CARB", "FAST_PROTEIN", "FAST_FAT_PRO", "MEDIUM"]) } };
+  assert.equal(grammarPenaltyForEntry(butter6, snackFilter, 0), null, "S03: LOW fuori per ruolo, non per score");
+  assert.equal(grammarPenaltyForEntry(nuts6, snackFilter, 0), 0);
+});
+
+test("v6 B05: tetto dolci cumulato sul marcatore SECONDARY_MIXED (il max_week per-alimento non basta)", () => {
+  assert.equal(isBreakfastSweetEntry(sweet6), true);
+  assert.equal(isBreakfastSweetEntry(apple6), false);
+  const idx = menuFoodEntryIndex(v6Pools());
+  assert.equal(weekBreakfastSweetsCount(idx, { "breakfast:cornetto6": 2 }), 2);
+  assert.equal(weekBreakfastSweetsCount(idx, {}), 0);
+  const f = { meal: "breakfast" as const, sweetsWeekCount: GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK };
+  assert.equal(grammarPenaltyForEntry(sweet6, f, 0), null, "al tetto il dolce esce");
+  assert.equal(grammarPenaltyForEntry(sweet6, { meal: "breakfast", sweetsWeekCount: 1 }, 0), 400, "sotto il tetto resta OCCASIONAL (penalità v5 = solo contratto della funzione)");
+  assert.equal(grammarPenaltyForEntry(apple6, f, 0), 0, "il tetto vale solo per i dolci marcati");
+});
+
+test("v6 colazione (B01/B02/B03/B06/B07): assi v6 + ordinamento tier/score/gruppo", () => {
+  for (const date of DATES.slice(0, 10)) {
+    const plan = composeWith(v6Pools(), rawPools(), date, { grammar: true });
+    const b = plan.find((s) => s.slot === "breakfast")!;
+    const primary = b.items.filter((it) => it.foodRole === "cho_complex");
+    const secondary = b.items.filter((it) => it.foodRole === "cho_simple");
+    // B01: solo PRIMARY_COMPLEX come base; B03: a parità di priority/score (cereali e
+    // pane sono ENTRAMBI PRIMARY/10 nei dati) il substitution_group fa il tiebreak.
+    assert.equal(primary.length, 1, `${date}: una CHO primaria`);
+    assert.equal(primary[0]!.canonicalKey, "oat6", `${date}: cereali prima del pane (B03)`);
+    // B02: quota semplice; la frutta COMMON vince sul dolce OCCASIONAL (tier).
+    assert.equal(secondary.length, 1, `${date}: una CHO secondaria`);
+    assert.equal(secondary[0]!.canonicalKey, "apple6");
+    // Split B01/B02 dentro la forbetta 80-85 ± 5pp.
+    const share = primary[0]!.choG / (primary[0]!.choG + secondary[0]!.choG);
+    assert.ok(share >= 0.75 && share <= 0.9, `${date}: quota primaria ${share.toFixed(2)}`);
+    // B06: yogurt (PRIMARY), MAI ricotta (NONE in v6 nonostante il v5 PRO_PRIMARY 8).
+    const pro = b.items.find((it) => it.foodRole === "protein_primary");
+    assert.equal(pro?.canonicalKey, "yog6", `${date}: B06`);
+    // B07: frutta oleosa (PRIMARY) prima dei semi (SECONDARY).
+    const fat = b.items.find((it) => it.foodRole === "fat");
+    assert.equal(fat?.canonicalKey, "nuts6", `${date}: B07`);
+  }
+});
+
+test("v6 B07: pool PRIMARY svuotato (deny mandorle) → ripiego sui SECONDARY (semi)", () => {
+  const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+    denyFragments: ["nuts6"],
+    request: req(DATES[0]!),
+    menuFoodPools: v6Pools(),
+    mealGrammar: { enabled: true, recipes: [] },
+  });
+  const b = plan.find((s) => s.slot === "breakfast")!;
+  const fat = b.items.find((it) => it.foodRole === "fat");
+  assert.equal(fat?.canonicalKey, "seeds6");
+});
+
+test("v6 M01/M04: pranzo e cena hanno la QUARTA riga FAT_CONDIMENT — EVO preferenziale, 5-20 g, contata nei totali, riusabile a cena", () => {
+  for (const date of DATES.slice(0, 8)) {
+    const plan = composeWith(v6Pools(), rawPools(), date, { grammar: true });
+    for (const slotKey of ["lunch", "dinner"] as const) {
+      const s = plan.find((x) => x.slot === slotKey)!;
+      const fats = s.items.filter((it) => it.foodRole === "fat");
+      assert.equal(fats.length, 1, `${date} ${slotKey}: una linea condimento`);
+      // M04: EVO (COMMON, score 10) batte avocado (COMMON, 8) e olio di semi (LIMITED, 4).
+      assert.equal(fats[0]!.canonicalKey, "evo6", `${date} ${slotKey}: EVO preferenziale`);
+      assert.ok(fats[0]!.grams >= 5 && fats[0]!.grams <= 20 && fats[0]!.grams % 5 === 0, `${date} ${slotKey}: ${fats[0]!.grams} g`);
+      // Il condimento è CONTATO nelle macro del pasto (i totali sono la Σ degli item).
+      const sumFat = s.items.reduce((a, it) => a + it.fatG, 0);
+      assert.ok(Math.abs(sumFat - s.totals.fatG) < 0.5, `${date} ${slotKey}: totali coerenti`);
+      // Lo slot non esplode: il solver riequilibra dentro il target (+15% di tolleranza).
+      const target = slots().find((b) => b.key === slotKey)!;
+      assert.ok(s.totals.kcal <= target.kcal * 1.15, `${date} ${slotKey}: ${s.totals.kcal} vs ${target.kcal}`);
+    }
+  }
+});
+
+test("v6 M01 skip (D02-v1): proteina già grassa (sgombro) copre il target → niente olio aggiunto + flag", () => {
+  // Solo a pranzo: a cena lo sgombro è già «usato oggi» e il pool proteico salta —
+  // il comportamento del condimento a cena in quel caso non è l'oggetto del test.
+  const menu = new Map<string, MenuFoodEntry[]>([...v6Pools(), ["lunch_pro", [mackerel6]]]);
+  const diagnostics: string[] = [];
+  const plan = composeWith(menu, rawPools(), DATES[2]!, { grammar: true, diagnostics });
+  const lunch = plan.find((x) => x.slot === "lunch")!;
+  assert.equal(lunch.items.find((it) => it.foodRole === "protein_primary")?.canonicalKey, "mackerel6");
+  assert.ok(!lunch.items.some((it) => it.foodRole === "fat"), "lunch: nessun condimento su pasto già ricco");
+  assert.ok(diagnostics.includes("fat_condiment_skipped:lunch"), `flag mancante: ${diagnostics.join(",")}`);
+  // Controprova: la cena (proteina magra) il condimento lo ha.
+  const dinner = plan.find((x) => x.slot === "dinner")!;
+  assert.ok(dinner.items.some((it) => it.foodRole === "fat"), "dinner magra: condimento presente");
+});
+
+test("v6 M02: PRIMARY_COMPLEX_CARB esauriti dalla rotazione → alternativa SECONDARY_CARB (patate), senza uscire dall'ontologia", () => {
+  const week = { "carb:pasta6": 3, "carb:rice6": 3 };
+  const plan = composeWith(v6Pools(), rawPools(), DATES[1]!, { grammar: true, week });
+  const lunch = plan.find((s) => s.slot === "lunch")!;
+  const cho = lunch.items.find((it) => it.foodRole === "cho_complex");
+  assert.equal(cho?.canonicalKey, "potato6", "M02: patate come alternativa, mai USDA");
+});
+
+test("v6 M03: dieta vegana svuota i PRIMARY_PROTEIN → legumi (PRIMARY_OR_SECONDARY_PROTEIN) come fonte", () => {
+  // Due fonti vegetali così anche la cena (dedupe giornaliero) ha la sua alternativa.
+  const tofu6 = food("tofu6", "Tofu", { kcal: 76, cho: 1.9, pro: 8, fat: 4.8 }, roles({ lunch: "PRO_SECONDARY", dinner: "PRO_SECONDARY" }, { lunch: 8, dinner: 8 }, { mainMealRole: "PRIMARY_OR_SECONDARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "PLANT_PROTEIN" }));
+  const menu = new Map<string, MenuFoodEntry[]>([
+    ...v6Pools(),
+    ["lunch_pro", [chicken6, cod6, legumes6, tofu6]],
+    ["dinner_pro", [chicken6, cod6, legumes6, tofu6]],
+  ]);
+  const plan = composeWith(menu, rawPools(), DATES[3]!, { grammar: true, request: { dietType: "vegan" } });
+  const seen: string[] = [];
+  for (const slotKey of ["lunch", "dinner"] as const) {
+    const s = plan.find((x) => x.slot === slotKey)!;
+    const pro = s.items.find((it) => it.foodRole === "protein_primary");
+    assert.ok(pro && ["legumes6", "tofu6"].includes(pro.canonicalKey!), `${slotKey}: fonte vegetale, mai carne/pesce`);
+    seen.push(pro!.canonicalKey!);
+  }
+  assert.equal(new Set(seen).size, 2, "pranzo e cena ruotano le due fonti vegetali");
+});
+
+test("v6 S01/S03: lo spuntino pesca solo FAST_* (pasta LOW/score 0 mai; burro LOW mai nonostante score 3)", () => {
+  const snackSlots: MealPlanV2DietSlotBudget[] = [
+    { key: "snack_am", label: "Spuntino", pct: 10, kcal: 250, carbs: 30, protein: 15, fat: 8 },
+  ];
+  for (const date of DATES.slice(0, 6)) {
+    const plan = composeWith(v6Pools(), rawPools(), date, { grammar: true, slots: snackSlots });
+    const s = plan[0]!;
+    assert.ok(!s.items.some((it) => it.canonicalKey === "pasta6"), `${date}: S03 niente pasti completi`);
+    assert.ok(!s.items.some((it) => it.canonicalKey === "butter6"), `${date}: S03 LOW fuori per ruolo`);
+    const cho = s.items.find((it) => it.foodRole === "cho_simple");
+    assert.equal(cho?.canonicalKey, "apple6", `${date}: S02 frutta`);
+  }
+});
+
+test("v6 B02/B04/B05 nel compositore: il dolce entra SOLO come linea secondaria e il tetto settimanale lo spegne", () => {
+  // Senza frutta disponibile il dolce è l'unica quota secondaria: entra accanto alla
+  // primaria (B04: mai da solo), finché il conteggio settimanale non raggiunge il tetto.
+  const menu = new Map<string, MenuFoodEntry[]>([...v6Pools(), ["snack_cho", []]]);
+  const fresh = composeWith(menu, rawPools(), DATES[4]!, { grammar: true });
+  const bFresh = fresh.find((s) => s.slot === "breakfast")!;
+  const sec = bFresh.items.filter((it) => it.foodRole === "cho_simple");
+  assert.equal(sec.length, 1);
+  assert.equal(sec[0]!.canonicalKey, "sweet6", "senza frutta il dolce copre la quota B02");
+  assert.ok(bFresh.items.some((it) => it.foodRole === "cho_complex"), "B04: sempre accanto a una PRIMARY_COMPLEX");
+  const diagnostics: string[] = [];
+  const capped = composeWith(menu, rawPools(), DATES[4]!, { grammar: true, week: { "breakfast:cornetto6": GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK }, diagnostics });
+  const bCapped = capped.find((s) => s.slot === "breakfast")!;
+  assert.ok(!bCapped.items.some((it) => it.foodRole === "cho_simple"), "B05: al tetto la linea dolce salta");
+  assert.ok(diagnostics.includes("optional_line_skipped:breakfast:breakfast_cho"), diagnostics.join(","));
+});
+
+test("v6 R01: nel re-pick il sostituto preferito è lo stesso substitution_group, poi i substitutes espliciti in ordine", () => {
+  const sameGroup = food("samegroup6", "Nasello", { kcal: 90, cho: 0, pro: 19, fat: 1 }, roles({ lunch: "PRO_PRIMARY" }, { lunch: 9 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "FISH_LEAN" }));
+  const listed = food("listed6", "Orata", { kcal: 100, cho: 0, pro: 20, fat: 2 }, roles({ lunch: "PRO_PRIMARY" }, { lunch: 9 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "GENERIC_PROTEIN" }));
+  const other = food("other6", "Tacchino", { kcal: 105, cho: 0, pro: 22, fat: 1.5 }, roles({ lunch: "PRO_PRIMARY" }, { lunch: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "PRIMARY", substitutionGroup: "WHITE_MEAT" }), { isMeat: true });
+  const substituteFor = { substitutionGroup: "FISH_LEAN", substitutes: ["listed6"] };
+  // Senza preferenza vincerebbe `other6` (tier PRIMARY, score 10): con substituteFor
+  // vince PRIMA il gruppo, poi la lista esplicita — mai la sola convenienza di punteggio.
+  const first = pickStapleForPool({ poolKey: "lunch_pro", seed: 0, menuEntries: [other, listed, sameGroup], grammar: { meal: "lunch", substituteFor } });
+  assert.equal(first?.entry.canonicalKey, "samegroup6");
+  const second = pickStapleForPool({ poolKey: "lunch_pro", seed: 0, menuEntries: [other, listed], grammar: { meal: "lunch", substituteFor } });
+  assert.equal(second?.entry.canonicalKey, "listed6");
+  const third = pickStapleForPool({ poolKey: "lunch_pro", seed: 0, menuEntries: [other], grammar: { meal: "lunch", substituteFor } });
+  assert.equal(third?.entry.canonicalKey, "other6", "esauriti gruppo e lista, resta il pool con ruolo ammesso");
+});
+
+test("v6 R02: grammatura del sostituto a parità di kcal (grams × kcal_orig / kcal_sost)", () => {
+  // 100 g di pasta (350 kcal/100g) sostituiti con lenticchie (116 kcal/100g) → 301,7 g.
+  assert.equal(substituteGramsByKcal(100, 350, 116), 301.7);
+  assert.equal(substituteGramsByKcal(80, 270, 270), 80);
+  // Input degeneri: mai NaN/Infinity, si tengono i grammi originali.
+  assert.equal(substituteGramsByKcal(100, 350, 0), 100);
+  assert.equal(substituteGramsByKcal(0, 350, 116), 0);
+});
+
+test("v6 B01 verifica in provenienza: quota primaria fuori forbetta → flag b01_share_out (verifica, non correzione)", () => {
+  // choOther = CHO delle linee NON cho_complex/cho_simple (latte/yogurt): la regola
+  // dice «80-85% dei CHO del pasto», quindi il denominatore è s.totals.choG.
+  const mkSlot = (choP: number, choS: number, choOther = 0): MealPlanV2ComposedSlot => ({
+    slot: "breakfast",
+    labelIt: "Colazione",
+    targetKcal: 600,
+    items: [
+      { fdcId: 1, description: "Avena", grams: 80, kcal: 300, choG: choP, proG: 10, fatG: 5, foodRole: "cho_complex" },
+      { fdcId: 2, description: "Mela", grams: 100, kcal: 52, choG: choS, proG: 0.3, fatG: 0.2, foodRole: "cho_simple" },
+      ...(choOther > 0
+        ? [{ fdcId: 3, description: "Yogurt greco", grams: 250, kcal: 145, choG: choOther, proG: 22.5, fatG: 4.8, foodRole: "protein_primary" as const }]
+        : []),
+    ],
+    totals: { kcal: 352 + (choOther > 0 ? 145 : 0), choG: choP + choS + choOther, proG: 10.3 + (choOther > 0 ? 22.5 : 0), fatG: 5.2 + (choOther > 0 ? 4.8 : 0) },
+  });
+  const out = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50, 30)], recipesAvailable: 0 });
+  assert.ok(out.flags.some((f) => f.startsWith("b01_share_out:breakfast:")), out.flags.join(","));
+  const ok = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(68, 12)], recipesAvailable: 0 });
+  assert.ok(!ok.flags.some((f) => f.startsWith("b01_share_out")), ok.flags.join(","));
+  // Caso del finding: 50,5 g complessi + 10,5 g semplici + 9 g dallo yogurt → quota
+  // reale 50,5/70 = 72% (< 75%, fuori). Il vecchio denominatore (choP+choS) avrebbe
+  // detto 50,5/61 = 83% e NON avrebbe flaggato.
+  const hidden = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50.5, 10.5, 9)], recipesAvailable: 0 });
+  assert.ok(hidden.flags.some((f) => f.startsWith("b01_share_out:breakfast:72")), hidden.flags.join(","));
+  // Stessa ripartizione ma senza CHO nascosta nella proteina → 50,5/61 = 83%, dentro.
+  const clean = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50.5, 10.5)], recipesAvailable: 0 });
+  assert.ok(!clean.flags.some((f) => f.startsWith("b01_share_out")), clean.flags.join(","));
 });

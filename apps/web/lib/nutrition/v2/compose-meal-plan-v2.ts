@@ -33,6 +33,12 @@ import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
   GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE,
   GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+  GRAMMAR_BREAKFAST_SECONDARY_V6,
+  GRAMMAR_MAIN_FAT_CONDIMENT_V6,
+  GRAMMAR_MAIN_FAT_MAX_G,
+  GRAMMAR_MAIN_FAT_MIN_G,
+  GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G,
+  GRAMMAR_MAIN_FAT_STEP_G,
   GRAMMAR_RECIPE_KCAL_SHARE_WITH_COMPLEMENT,
   GRAMMAR_RECIPE_MIN_G,
   GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G,
@@ -40,15 +46,20 @@ import {
   GRAMMAR_RECIPE_VEG_SHARE_MIN,
   GRAMMAR_ROLES_BY_POOL,
   GRAMMAR_SNACK_PREP_SPEED_MIN,
+  GRAMMAR_V6_ROLES_BY_POOL,
   breakfastSecondaryMenuEntries,
   chooseRecipeForSlot,
+  grammarPoolMeal,
+  mainMealFatCondimentEntries,
   mealForSlot,
   menuFoodEntryIndex,
   recipeCandidateToHit,
   recipeCandidatesForMeal,
   recipeLever,
   scaleRecipe,
+  weekBreakfastSweetsCount,
   type GrammarPickFilter,
+  type GrammarV6Axis,
   type RecipeCandidate,
 } from "@/lib/nutrition/v2/meal-grammar";
 import { mediterraneanMealToV2Items } from "@/lib/nutrition/v2/v2-mediterranean-meal-adapter";
@@ -137,30 +148,49 @@ export function portionHintIt(
 type PickLine = FdcAssemblyLine & { staple?: StapleRegistryEntry; recipe?: RecipeCandidate };
 
 /**
- * Filtro grammatica per un pick dentro `slotKey`: pasto dello slot + ruoli ammessi nel pool
- * (o quelli passati) + prep_speed minimo agli spuntini (S01). Solo con grammatica attiva.
+ * Selezione ruoli per un pick: vocabolario v5 e/o asse v6 (il filtro applica il v6 alle
+ * entry che portano dati v6 e il v5 alle altre — decisione 2, degradazione inclusa).
+ */
+type GrammarRolesOverride = {
+  v5?: readonly MenuFoodMealRole[];
+  v6?: { axis: GrammarV6Axis; roles: readonly string[] };
+};
+
+/**
+ * Filtro grammatica per un pick dentro `slotKey`: pasto dello slot + ruoli ammessi nel
+ * pool (v5 E v6, o quelli passati) + prep_speed minimo agli spuntini (S01) + conteggio
+ * dolci per B05 a colazione. L'asse v6 del pool si applica SOLO nel suo pasto naturale
+ * (la regola 7 usa breakfast_cho a pranzo: lì resta il v5). Solo con grammatica attiva.
  */
 function grammarFilterFor(
   ctx: ComposeContext,
   slotKey: MealSlotKey,
   poolKey: string,
-  rolesOverride?: readonly MenuFoodMealRole[],
+  rolesOverride?: GrammarRolesOverride,
   relaxWeekCaps?: boolean,
 ): GrammarPickFilter | undefined {
   if (!ctx.grammar) return undefined;
-  const roles = rolesOverride ?? GRAMMAR_ROLES_BY_POOL[poolKey]?.primary;
   const meal = mealForSlot(slotKey);
+  const v5Roles = rolesOverride ? rolesOverride.v5 : GRAMMAR_ROLES_BY_POOL[poolKey]?.primary;
+  const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[poolKey];
+  const v6 = rolesOverride
+    ? rolesOverride.v6
+    : poolV6 && grammarPoolMeal(poolKey) === meal
+      ? { axis: poolV6.axis, roles: poolV6.primary }
+      : undefined;
   return {
     meal,
-    ...(roles ? { allowedRoles: new Set(roles) } : {}),
+    ...(v5Roles ? { allowedRoles: new Set(v5Roles) } : {}),
+    ...(v6 ? { v6: { axis: v6.axis, allowed: new Set(v6.roles) } } : {}),
+    ...(meal === "breakfast" ? { sweetsWeekCount: ctx.grammar.sweetsWeekCount } : {}),
     ...(meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {}),
     ...(relaxWeekCaps ? { relaxWeekCaps: true } : {}),
   };
 }
 
 type PickLineOptions = {
-  /** Ruoli ammessi al posto dei primari del pool (es. B02: CHO_SECONDARY). */
-  rolesOverride?: readonly MenuFoodMealRole[];
+  /** Ruoli ammessi al posto dei primari del pool (es. B02: CHO secondaria v5+v6). */
+  rolesOverride?: GrammarRolesOverride;
   /** Entry del catalogo da usare al posto di `menuPools.get(spec.poolKey)` (es. B02: pool virtuale). */
   menuEntriesOverride?: MenuFoodEntry[];
   /**
@@ -168,6 +198,16 @@ type PickLineOptions = {
    * «relaxWeekCaps» (B02: la quota secondaria «può» coprire il residuo, non deve).
    */
   optional?: boolean;
+  /**
+   * Ignora da subito il tetto di rotazione di famiglia (condimento M01: l'olio EVO si
+   * ripete per natura, non è un piatto da ruotare). Il max_week di Mario resta duro.
+   */
+  relaxWeekCaps?: boolean;
+  /**
+   * Non registrare il pick in usedFdcIds/dayUsedCanonicalKeys/famiglie (condimento M01:
+   * lo stesso EVO deve poter condire pranzo E cena dello stesso giorno).
+   */
+  skipUsageRegistration?: boolean;
 };
 
 function pickLineForRole(
@@ -197,12 +237,26 @@ function pickLineForRole(
     usedFdcIds: ctx.usedFdcIds,
     menuEntries: hasMenuPool ? menuEntries : undefined,
   };
-  let staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride) });
-  // Grammatica: se nessun ruolo primario è disponibile (es. dieta vegana a pranzo), i ruoli
-  // di ripiego del pool (PRO_SECONDARY/MIXED, regola L02) possono diventare la fonte.
+  let staplePick = pickStapleForPool({
+    ...pickArgs,
+    grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps),
+  });
+  // Grammatica: se nessun ruolo primario è disponibile (es. dieta vegana a pranzo), i
+  // ruoli di ripiego del pool possono diventare la fonte — v5 (PRO_SECONDARY/MIXED, L02)
+  // e v6 (M03: SECONDARY_PROTEIN/legumi; M02: SECONDARY_CARB/patate; B06: affettati; B07:
+  // semi/grassi animali) insieme: per ogni entry vale il suo vocabolario.
   const fallbackRoles = GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.fallback;
-  if (!staplePick && ctx.grammar && !rolesOverride && fallbackRoles) {
-    staplePick = pickStapleForPool({ ...pickArgs, grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, fallbackRoles) });
+  const fallbackV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey]?.fallback;
+  const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey];
+  const v6InMeal = poolV6 && grammarPoolMeal(spec.poolKey) === mealForSlot(slotKey);
+  if (!staplePick && ctx.grammar && !rolesOverride && (fallbackRoles || (v6InMeal && fallbackV6))) {
+    staplePick = pickStapleForPool({
+      ...pickArgs,
+      grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, {
+        ...(fallbackRoles ? { v5: fallbackRoles } : {}),
+        ...(v6InMeal && fallbackV6 ? { v6: { axis: poolV6.axis, roles: fallbackV6 } } : {}),
+      }, opts?.relaxWeekCaps),
+    });
   }
   if (!staplePick && ctx.grammar && hasMenuPool) {
     // La grammatica ha SVUOTATO il pool del catalogo (rotazione settimanale/max_week esauriti).
@@ -211,13 +265,26 @@ function pickLineForRole(
     // (ontologia e max_week di Mario intatti), e se non basta la linea salta e lo si
     // registra in provenienza.
     if (!opts?.optional) {
-      const roles = rolesOverride ?? [
-        ...(GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? []),
-        ...(fallbackRoles ?? []),
-      ];
+      const v5All = rolesOverride
+        ? rolesOverride.v5
+        : [...(GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? []), ...(fallbackRoles ?? [])];
+      const v6All = rolesOverride
+        ? rolesOverride.v6
+        : v6InMeal
+          ? { axis: poolV6.axis, roles: [...poolV6.primary, ...(fallbackV6 ?? [])] }
+          : undefined;
       staplePick = pickStapleForPool({
         ...pickArgs,
-        grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, roles.length > 0 ? roles : undefined, true),
+        grammar: grammarFilterFor(
+          ctx,
+          slotKey,
+          spec.poolKey,
+          {
+            ...(v5All && v5All.length > 0 ? { v5: v5All } : {}),
+            ...(v6All ? { v6: v6All } : {}),
+          },
+          true,
+        ),
       });
       if (staplePick) ctx.grammar.flags.push(`week_caps_relaxed:${slotKey}:${spec.poolKey}`);
     }
@@ -228,14 +295,16 @@ function pickLineForRole(
   }
 
   if (staplePick) {
-    if (staplePick.entry.rotationKey) {
-      ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
-      ctx.dayCtx.usedStaples.add(staplePick.entry.rotationKey);
-    } else if (staplePick.entry.carbFamily) {
-      ctx.usedCarbFamilies.add(staplePick.entry.carbFamily);
+    if (!opts?.skipUsageRegistration) {
+      if (staplePick.entry.rotationKey) {
+        ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
+        ctx.dayCtx.usedStaples.add(staplePick.entry.rotationKey);
+      } else if (staplePick.entry.carbFamily) {
+        ctx.usedCarbFamilies.add(staplePick.entry.carbFamily);
+      }
+      if (staplePick.hit.fdcId > 0) ctx.usedFdcIds.add(staplePick.hit.fdcId);
+      ctx.dayCtx.dayUsedCanonicalKeys?.add(staplePick.entry.canonicalKey);
     }
-    if (staplePick.hit.fdcId > 0) ctx.usedFdcIds.add(staplePick.hit.fdcId);
-    ctx.dayCtx.dayUsedCanonicalKeys?.add(staplePick.entry.canonicalKey);
     return { spec, hit: staplePick.hit, staple: staplePick.entry };
   }
 
@@ -267,6 +336,8 @@ type GrammarComposeState = {
   entryIndex: Map<string, MenuFoodEntry>;
   /** Al massimo una ricetta al giorno. */
   recipeUsedToday: boolean;
+  /** B05: dolci da colazione già serviti in settimana (conteggio cumulato sul marcatore). */
+  sweetsWeekCount: number;
   /**
    * Diagnostica della composizione (pool svuotati, tetti allentati, linee saltate): il
    * chiamante la passa in `mealGrammar.diagnostics` e la scrive nei flag di provenienza,
@@ -360,7 +431,9 @@ function pickBreakfastSecondaryChoLine(
   const secondaryEntries = breakfastSecondaryMenuEntries(ctx.menuPools);
   if (secondaryEntries.length === 0) return null;
   const line = pickLineForRole(spec, "breakfast", pools, ctx, {
-    rolesOverride: GRAMMAR_BREAKFAST_SECONDARY_ROLES,
+    // v5 CHO_SECONDARY per le entry storiche, v6 SECONDARY_SIMPLE/SECONDARY_MIXED (B02;
+    // i dolci SECONDARY_MIXED entrano SOLO da qui: mai come fonte principale — B04).
+    rolesOverride: { v5: GRAMMAR_BREAKFAST_SECONDARY_ROLES, v6: GRAMMAR_BREAKFAST_SECONDARY_V6 },
     menuEntriesOverride: secondaryEntries,
     optional: true,
   });
@@ -369,6 +442,54 @@ function pickBreakfastSecondaryChoLine(
   const grams = (wantedChoG * 100) / line.hit.carbsPer100g;
   const fixedG = Math.max(spec.minG, Math.min(spec.maxG, Math.round(grams / spec.stepG) * spec.stepG));
   return { ...line, spec: { ...spec, fixedG } };
+}
+
+/**
+ * M01/M04 (v6): la QUARTA riga del pasto principale — il condimento grasso. Pool virtuale
+ * dei main_meal_role='FAT_CONDIMENT' (EVO, avocado, altri oli): l'ordinamento
+ * priority+score fa da solo la gerarchia di M04 (EVO COMMON/10 > avocado COMMON/8 > oli
+ * LIMITED/4), zero liste hardcoded. Grammi solver-controlled 5-20 g, contati nelle macro
+ * del pasto. D02-v1 («non aggiungere olio a un pasto già ricco»): se al first-pass i
+ * grassi delle altre linee coprono già ~il target dello slot, la linea si salta (flag).
+ */
+function pickMainMealFatCondimentLine(
+  slotKey: MealSlotKey,
+  target: { kcal: number; carbsG: number; proteinG: number; fatG: number },
+  lines: PickLine[],
+  pools: FdcPoolMap,
+  ctx: ComposeContext,
+): PickLine | null {
+  const g = ctx.grammar;
+  if (!g) return null;
+  const entries = mainMealFatCondimentEntries(g.entryIndex);
+  // Nessun condimento nel catalogo (dati v5): nessuna linea e nessun flag — il pasto
+  // resta a tre righe come prima della v6.
+  if (entries.length === 0) return null;
+  if (lines.length > 0) {
+    const firstPass = solveFdcMealPortions(lines, target);
+    const fatCovered = lines.reduce((s, l, i) => s + ((firstPass[i] ?? 0) * l.hit.fatPer100g) / 100, 0);
+    if (target.fatG - fatCovered < GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G) {
+      g.flags.push(`fat_condiment_skipped:${slotKey}`);
+      return null;
+    }
+  }
+  const spec: MealSlotAssemblyRole = {
+    foodRole: "fat",
+    lever: "fat",
+    poolKey: "main_fat",
+    minG: GRAMMAR_MAIN_FAT_MIN_G,
+    maxG: GRAMMAR_MAIN_FAT_MAX_G,
+    stepG: GRAMMAR_MAIN_FAT_STEP_G,
+  };
+  return pickLineForRole(spec, slotKey, pools, ctx, {
+    rolesOverride: { v6: GRAMMAR_MAIN_FAT_CONDIMENT_V6 },
+    menuEntriesOverride: entries,
+    optional: true,
+    // L'EVO condisce pranzo E cena tutti i giorni: niente tetto di rotazione di famiglia
+    // e niente dedupe giornaliero (il max_week esplicito di Mario resta duro).
+    relaxWeekCaps: true,
+    skipUsageRegistration: true,
+  });
 }
 
 function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolMap, ctx: ComposeContext): MealPlanV2ComposedSlot {
@@ -426,6 +547,13 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
         lines.splice(1, 0, proLine);
       }
     }
+  }
+
+  // M01 (v6): quarta riga FAT_CONDIMENT nei pasti principali, DOPO ricetta/complementi
+  // così il residuo grassi tiene conto di tutto il piatto (D02-v1: skip a pasto già ricco).
+  if (ctx.grammar && isMainMealSlot(slotKey) && lines.length > 0) {
+    const condiment = pickMainMealFatCondimentLine(slotKey, target, lines, pools, ctx);
+    if (condiment) lines.push(condiment);
   }
 
   if (lines.length === 0) {
@@ -513,6 +641,11 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
   const choLine = lines[choIdx]!;
   if (target.carbsG > 100 && choLine.staple?.canonicalKey === "bread_white") {
     const altMenuEntries = ctx.menuPools?.get(choLine.spec.poolKey);
+    // R01 (v6): il sostituto preferito viene dallo stesso substitution_group del pane
+    // sostituito, in subordine dai suoi substitutes espliciti in ordine — mai una
+    // sostituzione cross-gruppo per sole kcal: il filtro ruolo/score resta il verdetto (V01).
+    const swapRoles = (choLine.staple as MenuFoodEntry | undefined)?.mealRoles;
+    const baseFilter = grammarFilterFor(ctx, slotKey, choLine.spec.poolKey);
     const alt = pickStapleForPool({
       poolKey: choLine.spec.poolKey,
       seed: ctx.seed + 17,
@@ -523,7 +656,19 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
       usedFdcIds: ctx.usedFdcIds,
       menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : undefined,
       // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
-      grammar: grammarFilterFor(ctx, slotKey, choLine.spec.poolKey),
+      grammar: baseFilter
+        ? {
+            ...baseFilter,
+            ...(swapRoles
+              ? {
+                  substituteFor: {
+                    substitutionGroup: swapRoles.substitutionGroup ?? null,
+                    substitutes: swapRoles.substitutes ?? [],
+                  },
+                }
+              : {}),
+          }
+        : undefined,
     });
     if (alt && alt.entry.canonicalKey !== "bread_white") {
       lines[choIdx] = { spec: choLine.spec, hit: alt.hit, staple: alt.entry };
@@ -697,12 +842,17 @@ export function composeMealPlanV2(
     menuPools: options?.menuFoodPools ?? null,
     ...(options?.mealGrammar?.enabled
       ? {
-          grammar: {
-            recipes: options.mealGrammar.recipes ?? [],
-            entryIndex: menuFoodEntryIndex(options?.menuFoodPools),
-            recipeUsedToday: false,
-            flags: options.mealGrammar.diagnostics ?? [],
-          },
+          grammar: (() => {
+            const entryIndex = menuFoodEntryIndex(options?.menuFoodPools);
+            return {
+              recipes: options.mealGrammar.recipes ?? [],
+              entryIndex,
+              recipeUsedToday: false,
+              // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
+              sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),
+              flags: options.mealGrammar.diagnostics ?? [],
+            };
+          })(),
         }
       : {}),
   };

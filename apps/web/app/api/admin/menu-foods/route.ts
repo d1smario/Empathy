@@ -51,9 +51,23 @@ type MenuRow = {
   is_active: boolean | null;
 };
 
-/** Colonne lette da `nutrition_menu_food_meal_roles` (stesse del loader motore + metadati). */
-const MEAL_ROLES_SELECT_COLUMNS =
+/** Colonne v5 lette da `nutrition_menu_food_meal_roles` (stesse del loader motore + metadati). */
+const MEAL_ROLES_V5_SELECT_COLUMNS =
   "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed, source_version, updated_at";
+
+/**
+ * Colonne complete v5+v6 (migrazione 20260820090000). `substitutes` è in sola LETTURA
+ * per l'admin (editing fuori scope): l'upsert non la scrive mai, quindi resta di Mario.
+ */
+const MEAL_ROLES_SELECT_COLUMNS = `${MEAL_ROLES_V5_SELECT_COLUMNS}, breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, generative_note, substitutes`;
+
+/** 42703 = colonna inesistente: ambiente non ancora migrato alla v6 → select v5. */
+function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
+  return (
+    error != null &&
+    (error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(error.message ?? ""))
+  );
+}
 
 type MealRolesDbRow = Record<string, unknown> & { canonical_key: string };
 
@@ -98,13 +112,23 @@ export async function fetchMealRoles(
 ): Promise<{ map: Map<string, AdminMenuFoodMealRoles>; error: string | null }> {
   const map = new Map<string, AdminMenuFoodMealRoles>();
   const unique = [...new Set(canonicalKeys.filter((k) => typeof k === "string" && k))];
+  // Retry v5 su 42703 (colonne v6 non ancora migrate): meglio una GET senza campi v6
+  // che l'intero pannello alimenti rotto per una colonna in meno.
+  let selectColumns = MEAL_ROLES_SELECT_COLUMNS;
   for (let i = 0; i < unique.length; i += FDC_IN_CHUNK) {
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("nutrition_menu_food_meal_roles")
-      .select(MEAL_ROLES_SELECT_COLUMNS)
+      .select(selectColumns)
       .in("canonical_key", unique.slice(i, i + FDC_IN_CHUNK));
+    if (isMissingColumnError(error) && selectColumns !== MEAL_ROLES_V5_SELECT_COLUMNS) {
+      selectColumns = MEAL_ROLES_V5_SELECT_COLUMNS;
+      ({ data, error } = await admin
+        .from("nutrition_menu_food_meal_roles")
+        .select(selectColumns)
+        .in("canonical_key", unique.slice(i, i + FDC_IN_CHUNK)));
+    }
     if (error) return { map, error: error.message };
-    for (const raw of (data ?? []) as MealRolesDbRow[]) {
+    for (const raw of (data ?? []) as unknown as MealRolesDbRow[]) {
       const mapped = toAdminMealRoles(raw);
       if (mapped) map.set(raw.canonical_key, mapped);
     }
@@ -134,6 +158,22 @@ export function toAdminMealRoles(raw: MealRolesDbRow | null | undefined): AdminM
   out.frequency = String(raw.frequency ?? "COMMON") as AdminMenuFoodMealRoles["frequency"];
   out.max_week = numOrNull(raw.max_week);
   out.prep_speed = numOrNull(raw.prep_speed);
+  // v6 (colonne assenti nell'ambiente non migrato → default DB, il form parte da lì).
+  out.breakfast_cho_role = String(raw.breakfast_cho_role ?? "NONE") as AdminMenuFoodMealRoles["breakfast_cho_role"];
+  out.breakfast_protein_role = String(
+    raw.breakfast_protein_role ?? "NONE",
+  ) as AdminMenuFoodMealRoles["breakfast_protein_role"];
+  out.breakfast_fat_role = String(raw.breakfast_fat_role ?? "NONE") as AdminMenuFoodMealRoles["breakfast_fat_role"];
+  out.main_meal_role = String(raw.main_meal_role ?? "NONE") as AdminMenuFoodMealRoles["main_meal_role"];
+  out.snack_role = String(raw.snack_role ?? "NONE") as AdminMenuFoodMealRoles["snack_role"];
+  out.mediterranean_priority = String(
+    raw.mediterranean_priority ?? "COMMON",
+  ) as AdminMenuFoodMealRoles["mediterranean_priority"];
+  out.substitution_group = typeof raw.substitution_group === "string" ? raw.substitution_group : null;
+  out.generative_note = typeof raw.generative_note === "string" ? raw.generative_note : null;
+  out.substitutes = Array.isArray(raw.substitutes)
+    ? (raw.substitutes as unknown[]).filter((k): k is string => typeof k === "string")
+    : [];
   out.source_version = typeof raw.source_version === "string" ? raw.source_version : null;
   out.updated_at = typeof raw.updated_at === "string" ? raw.updated_at : null;
   return out;

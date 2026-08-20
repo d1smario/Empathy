@@ -64,6 +64,42 @@ export type MenuFoodMacroRole =
 
 export type MenuFoodFrequency = "COMMON" | "ROTATION" | "OCCASIONAL";
 
+// ── Sistema ruoli v6 (file EMPATHY_FOOD_KNOWLEDGE_BASE_v6) ───────────────────────────
+// La v6 SOSTITUISCE i ruoli per-pasto v5: a colazione tre assi separati (CHO/proteine/
+// grassi), un ruolo unico per pranzo+cena (main), un ruolo spuntino, più la gerarchia
+// mediterranea (ordinamento SOFT) e il gruppo di sostituzione (R01). I campi sono
+// OPZIONALI sul tipo: una riga letta con la select v5 (colonne non ancora migrate) o una
+// fixture v5 non li ha, e la grammatica ricade sul vocabolario v5 per QUELLA entry.
+
+/** v6, colazione asse CHO: PRIMARY_COMPLEX = base glucidica (B01), SECONDARY_SIMPLE = quota semplice (B02), SECONDARY_MIXED = dolci occasionali (B04/B05). */
+export type MenuFoodBreakfastChoRole = "PRIMARY_COMPLEX" | "SECONDARY_SIMPLE" | "SECONDARY_MIXED" | "NONE";
+/** v6, colazione asse proteico (B06): PRIMARY = latte/yogurt/kefir/uova; SECONDARY_SAVOURY = affettati (ripiego salato). */
+export type MenuFoodBreakfastProteinRole = "PRIMARY" | "SECONDARY" | "SECONDARY_SAVOURY" | "NONE";
+/** v6, colazione asse lipidico (B07): PRIMARY = frutta oleosa/creme; SECONDARY = semi/grassi animali. */
+export type MenuFoodBreakfastFatRole = "PRIMARY" | "SECONDARY" | "NONE";
+/** v6, ruolo unico a pranzo E cena (M01-M04). FAT_CONDIMENT = condimento grasso (quarta riga del pasto). */
+export type MenuFoodMainMealRole =
+  | "PRIMARY_PROTEIN"
+  | "SECONDARY_PROTEIN"
+  | "PRIMARY_OR_SECONDARY_PROTEIN"
+  | "PRIMARY_COMPLEX_CARB"
+  | "SECONDARY_CARB"
+  | "FIBER_SIDE"
+  | "SECONDARY_FAT"
+  | "FAT_CONDIMENT"
+  | "COMPOSITE_MAIN"
+  | "NONE";
+/** v6, idoneità spuntino (S01/S03): FAST_* = pronto; MEDIUM = ripiego (uova); LOW/NONE = fuori. */
+export type MenuFoodSnackRole = "FAST_CARB" | "FAST_PROTEIN" | "FAST_FAT_PRO" | "MEDIUM" | "LOW" | "NONE";
+/** v6, gerarchia mediterranea: ORDINAMENTO (B03/M04), mai peso fine né esclusione. */
+export type MenuFoodMediterraneanPriority =
+  | "PRIMARY"
+  | "COMMON"
+  | "ROTATION"
+  | "SECOND_CHOICE"
+  | "LIMITED"
+  | "OCCASIONAL";
+
 /** Momenti della giornata con uno score di idoneità (0-10). */
 export type MenuFoodScoreSlot = "breakfast" | "snack" | "lunch" | "dinner" | "preWorkout" | "postWorkout";
 /** Pasti con un ruolo di composizione (pre/post workout hanno solo lo score). */
@@ -80,7 +116,37 @@ export type MenuFoodMealRoles = {
   maxWeek: number | null;
   /** Velocità di preparazione 0-10; null se non valorizzata. */
   prepSpeed: number | null;
+  // Colonne v6 — opzionali: assenti quando la riga viene dalla select v5 (colonne non
+  // ancora migrate) o da una fixture v5. La grammatica usa `mealRolesHasV6` per decidere
+  // per-entry se applicare il vocabolario v6 o ricadere sul v5.
+  breakfastChoRole?: MenuFoodBreakfastChoRole;
+  breakfastProteinRole?: MenuFoodBreakfastProteinRole;
+  breakfastFatRole?: MenuFoodBreakfastFatRole;
+  mainMealRole?: MenuFoodMainMealRole;
+  snackRole?: MenuFoodSnackRole;
+  mediterraneanPriority?: MenuFoodMediterraneanPriority;
+  /** Gruppo di sostituzione v6 (R01): si scambia solo dentro lo stesso gruppo. */
+  substitutionGroup?: string | null;
+  /** Sostituti espliciti in ordine di preferenza (canonical_key), v6. */
+  substitutes?: string[];
 };
+
+/**
+ * True se la riga porta DATI v6 reali (un ruolo v6 non-NONE o un substitution_group):
+ * il default 'NONE'/'COMMON' delle colonne appena aggiunte NON è un dato — con dati v5
+ * e codice v6 un filtro che chiedesse PRIMARY_COMPLEX su colonne tutte NONE svuoterebbe
+ * la colazione. Nei 492 alimenti migrati ogni riga ha substitution_group → true.
+ */
+export function mealRolesHasV6(mr: MenuFoodMealRoles): boolean {
+  return (
+    (mr.breakfastChoRole != null && mr.breakfastChoRole !== "NONE") ||
+    (mr.breakfastProteinRole != null && mr.breakfastProteinRole !== "NONE") ||
+    (mr.breakfastFatRole != null && mr.breakfastFatRole !== "NONE") ||
+    (mr.mainMealRole != null && mr.mainMealRole !== "NONE") ||
+    (mr.snackRole != null && mr.snackRole !== "NONE") ||
+    mr.substitutionGroup != null
+  );
+}
 
 export type MenuFoodPoolMap = Map<string, MenuFoodEntry[]>;
 
@@ -121,6 +187,61 @@ const MACRO_ROLES: ReadonlySet<string> = new Set<MenuFoodMacroRole>([
   "PRO_FAT_MIXED",
 ]);
 const FREQUENCIES: ReadonlySet<string> = new Set<MenuFoodFrequency>(["COMMON", "ROTATION", "OCCASIONAL"]);
+
+// Set v6 (stessi valori dei CHECK della migrazione 20260820090000).
+const BREAKFAST_CHO_ROLES: ReadonlySet<string> = new Set<MenuFoodBreakfastChoRole>([
+  "PRIMARY_COMPLEX",
+  "SECONDARY_SIMPLE",
+  "SECONDARY_MIXED",
+  "NONE",
+]);
+const BREAKFAST_PROTEIN_ROLES: ReadonlySet<string> = new Set<MenuFoodBreakfastProteinRole>([
+  "PRIMARY",
+  "SECONDARY",
+  "SECONDARY_SAVOURY",
+  "NONE",
+]);
+const BREAKFAST_FAT_ROLES: ReadonlySet<string> = new Set<MenuFoodBreakfastFatRole>(["PRIMARY", "SECONDARY", "NONE"]);
+const MAIN_MEAL_ROLES: ReadonlySet<string> = new Set<MenuFoodMainMealRole>([
+  "PRIMARY_PROTEIN",
+  "SECONDARY_PROTEIN",
+  "PRIMARY_OR_SECONDARY_PROTEIN",
+  "PRIMARY_COMPLEX_CARB",
+  "SECONDARY_CARB",
+  "FIBER_SIDE",
+  "SECONDARY_FAT",
+  "FAT_CONDIMENT",
+  "COMPOSITE_MAIN",
+  "NONE",
+]);
+const SNACK_ROLES: ReadonlySet<string> = new Set<MenuFoodSnackRole>([
+  "FAST_CARB",
+  "FAST_PROTEIN",
+  "FAST_FAT_PRO",
+  "MEDIUM",
+  "LOW",
+  "NONE",
+]);
+const MEDITERRANEAN_PRIORITIES: ReadonlySet<string> = new Set<MenuFoodMediterraneanPriority>([
+  "PRIMARY",
+  "COMMON",
+  "ROTATION",
+  "SECOND_CHOICE",
+  "LIMITED",
+  "OCCASIONAL",
+]);
+
+/** Parser tollerante generico per un enum v6: valore ignoto/null → fallback (mai throw). */
+function v6Enum<T extends string>(v: unknown, set: ReadonlySet<string>, fallback: T): T {
+  const s = str(v)?.toUpperCase();
+  return s && set.has(s) ? (s as T) : fallback;
+}
+
+/** substitutes jsonb → array di canonical_key; qualunque forma non-array → []. */
+function parseSubstitutes(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((k): k is string => typeof k === "string" && k.trim().length > 0);
+}
 
 /** Score 0-10: null/NaN/fuori range → clamp, mancante → 0. Numeric PostgREST arriva come stringa. */
 function score(v: unknown): number {
@@ -170,6 +291,25 @@ export function parseMenuFoodMealRoleRow(raw: unknown): { canonicalKey: string; 
       frequency: freqRaw && FREQUENCIES.has(freqRaw) ? (freqRaw as MenuFoodFrequency) : "COMMON",
       maxWeek: maxWeek != null && maxWeek >= 1 ? Math.trunc(maxWeek) : null,
       prepSpeed: prepSpeed != null && prepSpeed >= 0 ? Math.min(10, Math.trunc(prepSpeed)) : null,
+      // v6: valore ignoto/mancante → default DB (NONE/COMMON), come per i ruoli v5. Se la
+      // select è ricaduta sul set v5 (colonne assenti) i default rendono `mealRolesHasV6`
+      // false e la grammatica resta sul vocabolario v5 per la riga.
+      breakfastChoRole: v6Enum<MenuFoodBreakfastChoRole>(r?.breakfast_cho_role, BREAKFAST_CHO_ROLES, "NONE"),
+      breakfastProteinRole: v6Enum<MenuFoodBreakfastProteinRole>(
+        r?.breakfast_protein_role,
+        BREAKFAST_PROTEIN_ROLES,
+        "NONE",
+      ),
+      breakfastFatRole: v6Enum<MenuFoodBreakfastFatRole>(r?.breakfast_fat_role, BREAKFAST_FAT_ROLES, "NONE"),
+      mainMealRole: v6Enum<MenuFoodMainMealRole>(r?.main_meal_role, MAIN_MEAL_ROLES, "NONE"),
+      snackRole: v6Enum<MenuFoodSnackRole>(r?.snack_role, SNACK_ROLES, "NONE"),
+      mediterraneanPriority: v6Enum<MenuFoodMediterraneanPriority>(
+        r?.mediterranean_priority,
+        MEDITERRANEAN_PRIORITIES,
+        "COMMON",
+      ),
+      substitutionGroup: str(r?.substitution_group),
+      substitutes: parseSubstitutes(r?.substitutes),
     },
   };
 }
@@ -270,6 +410,13 @@ let menuFoodPoolsCache: { at: number; pools: MenuFoodPoolMap | null } | null = n
 const MENU_FOOD_CACHE_TTL_MS = 5 * 60_000;
 const FDC_IN_CHUNK = 200;
 
+/** Colonne v5 di nutrition_menu_food_meal_roles (select minima, sempre presente). */
+const MEAL_ROLES_V5_SELECT =
+  "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed";
+/** Colonne v6 (migrazione 20260820090000): la select le tenta, con retry v5 su 42703. */
+const MEAL_ROLES_V6_EXTRA_SELECT =
+  "breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, substitutes";
+
 export function resetMenuFoodPoolsCacheForTests(): void {
   menuFoodPoolsCache = null;
 }
@@ -313,11 +460,20 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     // Score/ruoli di Mario: tabella 1:1 separata (nessun embed PostgREST: una query in
     // più è più semplice del join dichiarato e non cambia se la tabella manca). Un errore
     // qui NON annulla il catalogo: si prosegue senza mealRoles, come prima dell'import.
-    const { data: mealRoleRows, error: mealRoleError } = await admin
+    // Le colonne v6 (migrazione 20260820090000) hanno retry ESPLICITO su 42703 verso la
+    // select v5 — stesso pattern di loadMenuRecipes: colonna mancante → select minima,
+    // MAI grammatica azzerata in silenzio per una colonna in meno. `generative_note` non
+    // si carica: è solo admin, il motore non la usa.
+    const fullRoles = await admin
       .from("nutrition_menu_food_meal_roles")
-      .select(
-        "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed",
-      );
+      .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
+    const rolesMissingColumns =
+      fullRoles.error != null &&
+      (fullRoles.error.code === "42703" ||
+        /column .* does not exist|could not find the .* column/i.test(fullRoles.error.message ?? ""));
+    const { data: mealRoleRows, error: mealRoleError } = rolesMissingColumns
+      ? await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT)
+      : fullRoles;
 
     const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
     menuFoodPoolsCache = { at: Date.now(), pools };

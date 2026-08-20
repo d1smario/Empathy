@@ -1,14 +1,20 @@
 /**
- * Grammatica dei pasti del nutrizionista (file Mario v5) dentro il compositore V2:
- * «la grammatica di Mario, i nostri numeri». Qui vivono le parti PURE (nessun I/O):
+ * Grammatica dei pasti del nutrizionista (file Mario v6, regole GENERATIVE_RULES_V2)
+ * dentro il compositore V2: «la grammatica di Mario, i nostri numeri». Qui vivono le
+ * parti PURE (nessun I/O):
  *
  *  - il gate `NUTRITION_MEAL_GRAMMAR_MODE` (off | shadow | on, default shadow);
- *  - il filtro secco per pasto (score 0 / ruolo EXCLUDE → fuori; max_week; frequenza
- *    come priorità) applicato DENTRO il pool di assemblaggio — e sotto grammatica un pool
- *    del catalogo svuotato NON ricade mai sul pool USDA grezzo (vedi pickLineForRole nel
- *    compositore: ripiego «relaxWeekCaps» sull'ontologia intatta, poi linea saltata + flag);
+ *  - il filtro secco per pasto (score 0 → fuori; ruolo v6 per asse — B01/B06/B07,
+ *    M02/M03, S01/S03 — con fallback al vocabolario v5 per le entry senza dati v6;
+ *    max_week; tetto dolci B05) applicato DENTRO il pool di assemblaggio — e sotto
+ *    grammatica un pool del catalogo svuotato NON ricade mai sul pool USDA grezzo (vedi
+ *    pickLineForRole nel compositore: ripiego «relaxWeekCaps», poi linea saltata + flag);
+ *  - l'ORDINAMENTO a chiavi (B03/M04, decisione 3): mediterranean_priority poi score del
+ *    pasto poi la rotazione esistente — mai penalità sottrattiva, mai peso fine;
  *  - le ricette come matrice mista (L04/V02): eleggibilità per pasto, esclusioni sugli
  *    INGREDIENTI, macro per 100 g calcolate dagli ingredienti del catalogo, scala grammi;
+ *  - le sostituzioni R01/R02: preferenza per stesso substitution_group / sostituti
+ *    espliciti nei punti in cui il motore GIÀ sostituisce, equivalenza in grammi a kcal;
  *  - la provenienza vecchia-vs-nuova per `nutrition_plan.inputs_provenance.meal_grammar`.
  *
  * PERCHÉ il pool resta lo slot e il ruolo è un filtro in più: i pool del catalogo sono già
@@ -27,11 +33,14 @@ import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
 import { ROTATION_MAX_WEEK_USES } from "@/lib/nutrition/meal-composition-rules";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
-import type {
-  MenuFoodEntry,
-  MenuFoodMealRole,
-  MenuFoodPoolMap,
-  MenuFoodRoleMeal,
+import {
+  mealRolesHasV6,
+  type MenuFoodEntry,
+  type MenuFoodMealRole,
+  type MenuFoodMealRoles,
+  type MenuFoodMediterraneanPriority,
+  type MenuFoodPoolMap,
+  type MenuFoodRoleMeal,
 } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 
@@ -101,8 +110,94 @@ export const GRAMMAR_ROLES_BY_POOL: Readonly<Record<string, GrammarPoolRoles>> =
   snack_pro: { primary: ["PRO_PRIMARY", "PRO_SECONDARY"] },
 };
 
-/** B02: la quota CHO secondaria di colazione (frutta, miele, marmellata). */
+// ── Ruoli v6 per pool (B01/B06/B07, M01-M04, S01/S03) ────────────────────────────────
+
+/** Asse del sistema ruoli v6 su cui un pool filtra (una colonna per asse). */
+export type GrammarV6Axis = "breakfast_cho" | "breakfast_protein" | "breakfast_fat" | "main" | "snack";
+
+export type GrammarPoolRolesV6 = {
+  axis: GrammarV6Axis;
+  /** Ruoli v6 che possono coprire il pool come fonte principale. */
+  primary: readonly string[];
+  /** Ruoli v6 ammessi SOLO quando nessun primario è disponibile (pool svuotato). */
+  fallback?: readonly string[];
+};
+
+/**
+ * Le regole v6 tradotte in «quale ruolo v6 può stare in quale pool» (vince sul v5 dove
+ * l'entry porta dati v6, decisione 2):
+ *  - B01: la CHO primaria di colazione SOLO da breakfast_cho_role='PRIMARY_COMPLEX';
+ *  - B06: proteina colazione PRIMARY (latte/yogurt/kefir/uova); i formaggi sono NONE nei
+ *    DATI, nessun hardcode; ripiego salato SECONDARY_SAVOURY (affettati) a pool svuotato;
+ *  - B07: grassi PRIMARY (frutta oleosa/creme) prima di SECONDARY (semi/grassi animali);
+ *    gli oli liquidi sono ESCLUSI dai dati (score_colazione 0 → filtro secco);
+ *  - M02: CHO principale PRIMARY_COMPLEX_CARB, patate e derivati (SECONDARY_CARB) come
+ *    alternativa; M03: proteina PRIMARY_PROTEIN, legumi come alternativa (fallback);
+ *  - S01/S03: spuntino SOLO snack_role FAST_* (+MEDIUM = uova, ripiego dei dati): i pasti
+ *    completi cucinati sono LOW/NONE e restano fuori per ruolo.
+ */
+export const GRAMMAR_V6_ROLES_BY_POOL: Readonly<Record<string, GrammarPoolRolesV6>> = {
+  breakfast_cho: { axis: "breakfast_cho", primary: ["PRIMARY_COMPLEX"] },
+  breakfast_pro: { axis: "breakfast_protein", primary: ["PRIMARY"], fallback: ["SECONDARY_SAVOURY", "SECONDARY"] },
+  breakfast_fat: { axis: "breakfast_fat", primary: ["PRIMARY"], fallback: ["SECONDARY"] },
+  lunch_carb: { axis: "main", primary: ["PRIMARY_COMPLEX_CARB"], fallback: ["SECONDARY_CARB"] },
+  lunch_pro: { axis: "main", primary: ["PRIMARY_PROTEIN"], fallback: ["SECONDARY_PROTEIN", "PRIMARY_OR_SECONDARY_PROTEIN"] },
+  lunch_veg: { axis: "main", primary: ["FIBER_SIDE"] },
+  dinner_carb: { axis: "main", primary: ["PRIMARY_COMPLEX_CARB"], fallback: ["SECONDARY_CARB"] },
+  dinner_pro: { axis: "main", primary: ["PRIMARY_PROTEIN"], fallback: ["SECONDARY_PROTEIN", "PRIMARY_OR_SECONDARY_PROTEIN"] },
+  dinner_veg: { axis: "main", primary: ["FIBER_SIDE"] },
+  snack_cho: { axis: "snack", primary: ["FAST_CARB"] },
+  snack_pro: { axis: "snack", primary: ["FAST_PROTEIN", "FAST_FAT_PRO", "MEDIUM"] },
+};
+
+/**
+ * Pasto «naturale» di un pool: l'asse v6 si applica SOLO quando il pool viene usato nel
+ * suo pasto (la regola 7 pesca il pane da breakfast_cho a PRANZO: lì vale il vocabolario
+ * v5 — role_lunch/score_lunch — non l'asse colazione, che a pranzo non significa nulla).
+ */
+export function grammarPoolMeal(poolKey: string): MenuFoodRoleMeal | null {
+  if (poolKey.startsWith("breakfast_")) return "breakfast";
+  if (poolKey.startsWith("lunch_")) return "lunch";
+  if (poolKey.startsWith("dinner_")) return "dinner";
+  if (poolKey.startsWith("snack_")) return "snack";
+  return null;
+}
+
+/** Valore dell'asse v6 sulla riga di score (NONE quando la colonna manca — select v5). */
+export function grammarV6RoleFor(mr: MenuFoodMealRoles, axis: GrammarV6Axis): string {
+  switch (axis) {
+    case "breakfast_cho":
+      return mr.breakfastChoRole ?? "NONE";
+    case "breakfast_protein":
+      return mr.breakfastProteinRole ?? "NONE";
+    case "breakfast_fat":
+      return mr.breakfastFatRole ?? "NONE";
+    case "main":
+      return mr.mainMealRole ?? "NONE";
+    case "snack":
+      return mr.snackRole ?? "NONE";
+  }
+}
+
+/** B02: la quota CHO secondaria di colazione (frutta, miele, marmellata) — vocabolario v5. */
 export const GRAMMAR_BREAKFAST_SECONDARY_ROLES: readonly MenuFoodMealRole[] = ["CHO_SECONDARY"];
+
+/**
+ * B02 v6: la linea secondaria ammette la quota semplice (frutta/confettura/miele/succo,
+ * SECONDARY_SIMPLE) E i dolci occasionali (SECONDARY_MIXED) — così un dolce non può MAI
+ * essere l'unica fonte CHO (B04): la sua linea esiste solo accanto a una PRIMARY_COMPLEX
+ * già scelta, e il tetto B05 + il tier OCCASIONAL lo tengono raro.
+ */
+export const GRAMMAR_BREAKFAST_SECONDARY_V6: { axis: GrammarV6Axis; roles: readonly string[] } = {
+  axis: "breakfast_cho",
+  roles: ["SECONDARY_SIMPLE", "SECONDARY_MIXED"],
+};
+
+/** M01/M04 v6: la quarta riga del pasto principale — il condimento grasso (EVO preferenziale). */
+export const GRAMMAR_MAIN_FAT_CONDIMENT_V6: { axis: GrammarV6Axis; roles: readonly string[] } = {
+  axis: "main",
+  roles: ["FAT_CONDIMENT"],
+};
 
 /**
  * B02 («Frutta, miele, marmellata»): in prod la frutta vive nel pool `snack_cho`, non in
@@ -125,9 +220,11 @@ export function breakfastSecondaryMenuEntries(pools: MenuFoodPoolMap | null | un
   }
   for (const pk of GRAMMAR_BREAKFAST_SECONDARY_EXTRA_POOLS) {
     for (const e of pools.get(pk) ?? []) {
-      // Dagli altri pool entra SOLO chi Mario ha marcato CHO_SECONDARY a colazione (un
-      // alimento senza score in snack_cho non diventa colazione per omissione).
-      if (seen.has(e.canonicalKey) || e.mealRoles?.roles.breakfast !== "CHO_SECONDARY") continue;
+      // Dagli altri pool entra SOLO chi Mario ha marcato come quota secondaria di
+      // colazione (un alimento senza score in snack_cho non diventa colazione per
+      // omissione): v6 breakfast_cho_role SECONDARY_SIMPLE/SECONDARY_MIXED (B02), o il
+      // v5 CHO_SECONDARY per le entry senza dati v6.
+      if (seen.has(e.canonicalKey) || !isBreakfastSecondaryEntry(e)) continue;
       seen.add(e.canonicalKey);
       out.push(e);
     }
@@ -135,21 +232,77 @@ export function breakfastSecondaryMenuEntries(pools: MenuFoodPoolMap | null | un
   return out;
 }
 
+/** True se l'entry è marcata quota CHO secondaria di colazione (B02): v6 prima, v5 come fallback. */
+export function isBreakfastSecondaryEntry(e: Pick<MenuFoodEntry, "mealRoles">): boolean {
+  const mr = e.mealRoles;
+  if (!mr) return false;
+  if (mealRolesHasV6(mr)) {
+    return mr.breakfastChoRole === "SECONDARY_SIMPLE" || mr.breakfastChoRole === "SECONDARY_MIXED";
+  }
+  return mr.roles.breakfast === "CHO_SECONDARY";
+}
+
 /**
- * B01/B02: quota della CHO di colazione coperta dal CHO_PRIMARY (0,80-0,90) → la linea
- * secondaria copre il complemento (0,10-0,20). Punto medio 0,15, così anche con lo
- * step di 5 g la primaria resta dentro la forbetta.
+ * B01/B02 (v6, HARD): 80-85% dei CHO della colazione da fonti complesse (PRIMARY_COMPLEX),
+ * 10-15% dalla quota semplice → la linea secondaria copre 0,15 (punto medio della somma
+ * dei due vincoli, tolleranza ±5pp per decisione 5), la primaria — leva del solver —
+ * chiude il resto. La verifica post-compose sta in `buildMealGrammarProvenance`
+ * (flag `b01_share_out`): verifica, non correzione.
  */
 export const GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE = 0.15;
+
+/** B01 (decisione 5): forbetta ammessa per la quota primaria = 80-85% ± 5pp. */
+export const GRAMMAR_B01_PRIMARY_SHARE_MIN = 0.75;
+export const GRAMMAR_B01_PRIMARY_SHARE_MAX = 0.9;
+
+/**
+ * B05 (SOFT→tetto): dolci breakfast max 2/settimana. Il marcatore REALE nei dati v6 è
+ * `breakfast_cho_role='SECONDARY_MIXED'` (coincide 1:1 con substitution_group
+ * 'BREAKFAST_SWEET_OCCASIONAL' e food_subcategory 'DOLCE_OCCASIONALE': oggi 2 alimenti,
+ * cornetto e waffle). Il max_week per-alimento NON basta (il waffle nei dati ha
+ * max_week 7, in contrasto con la sua stessa nota «Max 1-2 volte/settimana» — incoerenza
+ * segnalata a Mario, i dati si importano così come sono). Il «soprattutto in giorni ad
+ * alta richiesta» resta NON modellato: nessun aggancio al day-engine, semplificazione
+ * dichiarata.
+ */
+export const GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK = 2;
+
+/** True se l'entry è un dolce da colazione (marcatore B04/B05). */
+export function isBreakfastSweetEntry(e: Pick<MenuFoodEntry, "mealRoles">): boolean {
+  return e.mealRoles?.breakfastChoRole === "SECONDARY_MIXED";
+}
+
+/**
+ * Conteggio settimanale CUMULATO dei dolci da colazione (B05): somma dei conteggi di
+ * famiglia degli alimenti marcati, dedupe sulla chiave contata (una famiglia condivisa
+ * da due dolci conta una volta). Calcolato una volta per composizione dal compositore.
+ */
+export function weekBreakfastSweetsCount(
+  entryIndex: Map<string, MenuFoodEntry>,
+  week?: Record<string, number>,
+): number {
+  if (!week) return 0;
+  let n = 0;
+  const counted = new Set<string>();
+  for (const e of entryIndex.values()) {
+    if (!isBreakfastSweetEntry(e)) continue;
+    const countKey = e.rotationKey && (week[e.rotationKey] ?? 0) > 0 ? e.rotationKey : e.canonicalKey;
+    if (counted.has(countKey)) continue;
+    counted.add(countKey);
+    n += Math.max(week[e.canonicalKey] ?? 0, e.rotationKey ? (week[e.rotationKey] ?? 0) : 0);
+  }
+  return n;
+}
 
 /** S01 (HARD): spuntino pratico → prep_speed minimo (valore_default del file regole). */
 export const GRAMMAR_SNACK_PREP_SPEED_MIN = 7;
 
 /**
- * Penalità di priorità per frequenza (mai esclusione): più grandi dell'offset massimo di
- * rotazione per seed (pool ≤ 40 → 390) così un OCCASIONAL perde contro qualunque COMMON
- * disponibile e un ROTATION contro la maggior parte, ma entrambi restano pescabili quando
- * i COMMON sono esauriti da rotazione/tetti settimanali.
+ * Penalità di priorità per frequenza (mai esclusione). Dal sistema v6 l'ordinamento del
+ * pick è a CHIAVI (grammarOrderingKeys: la frequenza v5 diventa il tier per le entry
+ * senza dati v6) e questo valore non viene più sottratto dal punteggio: resta il
+ * contratto informativo di `grammarPenaltyForEntry` (0 = COMMON, >0 = declassato,
+ * null = escluso) usato dai chiamanti come verdetto.
  */
 export const GRAMMAR_FREQUENCY_PENALTY: Readonly<Record<string, number>> = {
   COMMON: 0,
@@ -160,9 +313,10 @@ export const GRAMMAR_FREQUENCY_PENALTY: Readonly<Record<string, number>> = {
 /**
  * D02 (SOFT): «privilegiare grassi insaturi e fonti ittiche/oleose nel bilancio
  * settimanale». Non è un vincolo, è una spinta: a CENA, se nella settimana non è ancora
- * comparso pesce, il pesce riceve un bonus di priorità che vince l'offset di rotazione per
- * seed (max 390 nei pool ≤40) ma perde contro le esclusioni e i tetti (che sono già
- * verdetti, non punteggi). Appena una famiglia ittica è nella memoria settimanale, il bonus
+ * comparso pesce, il pesce riceve un bonus che lo porta in cima (dal v6 è la chiave di
+ * ordinamento più alta dopo la preferenza di sostituzione R01) ma perde contro le
+ * esclusioni e i tetti (che sono verdetti, non punteggi). Appena una famiglia ittica è
+ * nella memoria settimanale, il bonus
  * si spegne: due pesci in settimana non sono un obiettivo, uno sì. Non si tocca il
  * «quanto» (i grassi restano quelli del modello), solo QUALE proteina viene scelta.
  * Perché solo a cena: è dove Mario la colloca (D02 sta sotto CENA), e a pranzo la scelta
@@ -198,8 +352,23 @@ export function grammarD02FishBonus(
 
 export type GrammarPickFilter = {
   meal: MenuFoodRoleMeal;
-  /** Ruoli ammessi nel pool per questo pick; assente = solo il filtro score/EXCLUDE. */
+  /** Ruoli v5 ammessi nel pool per questo pick; assente = solo il filtro score/EXCLUDE. */
   allowedRoles?: ReadonlySet<MenuFoodMealRole>;
+  /**
+   * Ruoli v6 ammessi sull'asse del pool. Quando l'entry porta dati v6 (mealRolesHasV6)
+   * questo VINCE sul vocabolario v5 (decisione 2); un'entry senza dati v6 ricade su
+   * `allowedRoles` — così con dati v5 e codice v6 nulla si svuota.
+   */
+  v6?: { axis: GrammarV6Axis; allowed: ReadonlySet<string> };
+  /** B05: conteggio settimanale cumulato dei dolci da colazione (weekBreakfastSweetsCount). */
+  sweetsWeekCount?: number;
+  /**
+   * R01: preferenza di sostituzione — nei re-pick (regola 7) le entry con lo stesso
+   * substitution_group dell'alimento sostituito vengono prima, poi i sostituti espliciti
+   * in ordine, poi il resto del pool con ruolo ammesso. Mai sostituzione per sole kcal:
+   * il filtro ontologico (ruolo/score) resta comunque il verdetto (V01).
+   */
+  substituteFor?: { substitutionGroup: string | null; substitutes: readonly string[] };
   /** S01: prep_speed minimo (solo spuntini). null/assente sul cibo → passa. */
   prepSpeedMin?: number;
   /**
@@ -234,13 +403,157 @@ export function grammarPenaltyForEntry(
 ): number | null {
   const mr = entry.mealRoles;
   if (!mr) return 0;
-  const role = mr.roles[filter.meal];
   const score = mr.scores[filter.meal];
-  if (role === "EXCLUDE" || !(score > 0)) return null;
-  if (filter.allowedRoles && !filter.allowedRoles.has(role)) return null;
+  if (!(score > 0)) return null;
+  // Ruolo: asse v6 quando il filtro lo chiede E l'entry porta dati v6 (lì la v6 VINCE sul
+  // v5, EXCLUDE compreso — decisione 2); altrimenti il vocabolario v5 storico.
+  if (filter.v6 && mealRolesHasV6(mr)) {
+    if (!filter.v6.allowed.has(grammarV6RoleFor(mr, filter.v6.axis))) return null;
+  } else {
+    const role = mr.roles[filter.meal];
+    if (role === "EXCLUDE") return null;
+    if (filter.allowedRoles && !filter.allowedRoles.has(role)) return null;
+  }
+  // B05: i dolci da colazione hanno un tetto CUMULATO settimanale proprio (il max_week
+  // per-alimento non basta: waffle max_week 7 nei dati).
+  if (
+    filter.meal === "breakfast" &&
+    isBreakfastSweetEntry(entry) &&
+    (filter.sweetsWeekCount ?? 0) >= GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK
+  ) {
+    return null;
+  }
   if (mr.maxWeek != null && weekCount >= mr.maxWeek) return null;
   if (filter.prepSpeedMin != null && mr.prepSpeed != null && mr.prepSpeed < filter.prepSpeedMin) return null;
   return GRAMMAR_FREQUENCY_PENALTY[mr.frequency] ?? 0;
+}
+
+// ── Ordinamento a chiavi (B03/M04, decisione 3) ──────────────────────────────────────
+
+/**
+ * B03/M04 (SOFT): le gerarchie si applicano come ORDINAMENTO a chiavi separate, MAI come
+ * penalità sottrattiva — il floor `Math.max(1, score - penalty)` del punteggio di
+ * rotazione schiaccerebbe tutti i tier oltre il primo a parità 1. Tier più basso = viene
+ * prima. Le entry senza dati v6 usano la frequenza v5 come tier (stessa semantica).
+ */
+export const GRAMMAR_MEDITERRANEAN_PRIORITY_RANK: Readonly<Record<MenuFoodMediterraneanPriority, number>> = {
+  PRIMARY: 0,
+  COMMON: 1,
+  ROTATION: 2,
+  SECOND_CHOICE: 3,
+  LIMITED: 4,
+  OCCASIONAL: 5,
+};
+
+const GRAMMAR_V5_FREQUENCY_RANK: Readonly<Record<string, number>> = { COMMON: 1, ROTATION: 2, OCCASIONAL: 5 };
+
+/**
+ * B03: nei dati v6 cereali e pane hanno ENTRAMBI priority=PRIMARY e score_colazione=10 —
+ * la gerarchia «cereali > pane e derivati» della regola non è derivabile da priority/score,
+ * quindi il substitution_group fa da tiebreak (solo a colazione).
+ */
+const GRAMMAR_B03_GROUP_RANK: Readonly<Record<string, number>> = {
+  BREAKFAST_COMPLEX_CARB: 0,
+  BREAD_BASED_CARB: 1,
+};
+
+/** Rango di preferenza R01 dentro un re-pick: stesso gruppo (0) < sostituto esplicito (1+i) < resto. */
+export function grammarSubstituteRank(
+  entry: Pick<MenuFoodEntry, "canonicalKey" | "mealRoles">,
+  substituteFor: NonNullable<GrammarPickFilter["substituteFor"]>,
+): number {
+  const group = entry.mealRoles?.substitutionGroup ?? null;
+  if (group != null && substituteFor.substitutionGroup != null && group === substituteFor.substitutionGroup) return 0;
+  const idx = substituteFor.substitutes.indexOf(entry.canonicalKey);
+  if (idx >= 0) return 1 + idx;
+  return 1000;
+}
+
+export type GrammarOrderingKeys = {
+  /** R01: preferenza di sostituzione (asc). 0 quando il pick non è una sostituzione. */
+  subRank: number;
+  /** D02: bonus pesce a cena (desc) — conservato dalla v1, resta la chiave più alta. */
+  d02: number;
+  /** Tier mediterranean_priority v6 (asc); frequenza v5 per le entry senza dati v6. */
+  tier: number;
+  /** Score del pasto (desc): dentro lo stesso tier decide la gerarchia fine di Mario. */
+  mealScore: number;
+  /** B03: tiebreak cereali-prima-del-pane a colazione (asc). */
+  groupRank: number;
+};
+
+/**
+ * Chiavi di ordinamento della grammatica per un'entry già ammessa dal filtro secco
+ * (grammarPenaltyForEntry ≠ null). Il punteggio di rotazione esistente (seed offset +
+ * penalità settimanali) resta l'ULTIMA chiave, nel chiamante: a parità di tier e score
+ * la varietà continua a farla la rotazione, come prima.
+ */
+export function grammarOrderingKeys(
+  entry: MenuFoodEntry,
+  filter: GrammarPickFilter,
+  week?: Record<string, number>,
+): GrammarOrderingKeys {
+  const mr = entry.mealRoles;
+  const tier =
+    mr && mealRolesHasV6(mr) && mr.mediterraneanPriority
+      ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority]
+      : (GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1);
+  return {
+    subRank: filter.substituteFor ? grammarSubstituteRank(entry, filter.substituteFor) : 0,
+    d02: grammarD02FishBonus(entry, filter, week),
+    tier,
+    mealScore: mr?.scores[filter.meal] ?? 0,
+    groupRank:
+      filter.meal === "breakfast" ? (GRAMMAR_B03_GROUP_RANK[mr?.substitutionGroup ?? ""] ?? 0) : 0,
+  };
+}
+
+/** Comparatore delle chiavi (a prima di b se < 0). L'ordine delle chiavi è il contratto. */
+export function compareGrammarOrderingKeys(a: GrammarOrderingKeys, b: GrammarOrderingKeys): number {
+  if (a.subRank !== b.subRank) return a.subRank - b.subRank;
+  if (a.d02 !== b.d02) return b.d02 - a.d02;
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  if (a.mealScore !== b.mealScore) return b.mealScore - a.mealScore;
+  if (a.groupRank !== b.groupRank) return a.groupRank - b.groupRank;
+  return 0;
+}
+
+// ── Sostituzioni (R01/R02) ───────────────────────────────────────────────────────────
+
+/**
+ * R02 (HARD): grammatura del sostituto a parità di ENERGIA —
+ * grams_sost = grams_orig × kcal100_orig / kcal100_sost (le colonne eq_g del file v6
+ * sono vuote: l'equivalenza si calcola a runtime). Vale SOLO per le linee a grammi
+ * FISSI: sulle linee a leva il solver ri-risolve a target macro, che è più preciso
+ * della sola equivalenza kcal — applicarla lì sarebbe lavoro sovrascritto.
+ */
+export function substituteGramsByKcal(gramsOrig: number, kcal100Orig: number, kcal100Sub: number): number {
+  if (!(gramsOrig > 0) || !(kcal100Orig > 0) || !(kcal100Sub > 0)) return gramsOrig;
+  return round1((gramsOrig * kcal100Orig) / kcal100Sub);
+}
+
+// ── Condimento grasso dei pasti principali (M01/M04) ─────────────────────────────────
+
+/**
+ * M01 (HARD): pranzo e cena hanno QUATTRO righe — CHO complesso, proteina, contorno
+ * fibra e CONDIMENTO GRASSO. La linea condimento pesca dal pool virtuale dei
+ * main_meal_role='FAT_CONDIMENT' (EVO, avocado, altri oli); i grammi li decide il
+ * solver dentro [5, 20] g e vengono CONTATI nelle macro del pasto. D02-v1: se il pasto
+ * è già ricco di grassi (ricetta composita, proteina grassa) la linea si salta — sotto
+ * questo residuo di grassi target un condimento non avrebbe spazio.
+ */
+export const GRAMMAR_MAIN_FAT_MIN_G = 5;
+export const GRAMMAR_MAIN_FAT_MAX_G = 20;
+export const GRAMMAR_MAIN_FAT_STEP_G = 5;
+export const GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G = 4;
+
+/** Pool virtuale del condimento: le entry del catalogo con main_meal_role='FAT_CONDIMENT'. */
+export function mainMealFatCondimentEntries(entryIndex: Map<string, MenuFoodEntry>): MenuFoodEntry[] {
+  const out: MenuFoodEntry[] = [];
+  for (const e of entryIndex.values()) {
+    if (e.mealRoles?.mainMealRole === "FAT_CONDIMENT") out.push(e);
+  }
+  return out;
 }
 
 // ── Ricette (L04/V02) ────────────────────────────────────────────────────────────────
@@ -646,6 +959,30 @@ function slotSummary(s: MealPlanV2ComposedSlot | undefined) {
 }
 
 /**
+ * B01 (decisione 5): verifica post-compose della quota CHO complessa a colazione —
+ * quota = choG primaria / choG TOTALE del pasto (s.totals.choG, «80-85% dei CHO del
+ * pasto»: entra anche la CHO delle linee non-CHO, es. latte/yogurt), forbetta
+ * 80-85% ± 5pp → [0,75, 0,90]. Si valuta SOLO quando entrambe le linee esistono
+ * (la B02 saltata ha già il suo flag `optional_line_skipped`). È una VERIFICA,
+ * non una correzione: fuori forbetta → flag.
+ */
+function b01ShareFlags(after: MealPlanV2ComposedSlot[]): string[] {
+  const flags: string[] = [];
+  for (const s of after) {
+    if (mealForSlot(s.slot) !== "breakfast") continue;
+    const choP = s.items.filter((it) => it.foodRole === "cho_complex").reduce((a, it) => a + it.choG, 0);
+    const choS = s.items.filter((it) => it.foodRole === "cho_simple").reduce((a, it) => a + it.choG, 0);
+    const choTot = s.totals.choG;
+    if (!(choP > 0) || !(choS > 0) || !(choTot > 0)) continue;
+    const share = choP / choTot;
+    if (share < GRAMMAR_B01_PRIMARY_SHARE_MIN || share > GRAMMAR_B01_PRIMARY_SHARE_MAX) {
+      flags.push(`b01_share_out:${s.slot}:${Math.round(share * 100)}`);
+    }
+  }
+  return flags;
+}
+
+/**
  * Confronto compatto vecchia-vs-nuova composizione, da scrivere in
  * `nutrition_plan.inputs_provenance.meal_grammar` (accanto a `day_engine`, mai al suo posto).
  */
@@ -680,7 +1017,7 @@ export function buildMealGrammarProvenance(input: {
     applied: input.applied,
     recipesAvailable: input.recipesAvailable,
     changedSlots: slots.filter((s) => s.changed).length,
-    flags: [...(input.flags ?? [])],
+    flags: [...(input.flags ?? []), ...b01ShareFlags(input.after)],
     slots,
   };
 }

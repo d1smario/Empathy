@@ -2,17 +2,29 @@
 
 import { cn } from "@/lib/cn";
 import {
+  MENU_FOOD_BREAKFAST_CHO_ROLES,
+  MENU_FOOD_BREAKFAST_FAT_ROLES,
+  MENU_FOOD_BREAKFAST_PROTEIN_ROLES,
   MENU_FOOD_FREQUENCIES,
   MENU_FOOD_MACRO_ROLES,
+  MENU_FOOD_MAIN_MEAL_ROLES,
   MENU_FOOD_MEAL_ROLES,
+  MENU_FOOD_MEDITERRANEAN_PRIORITIES,
   MENU_FOOD_ROLE_MEALS,
+  MENU_FOOD_SNACK_ROLES,
   type MenuFoodMealRolesInput,
 } from "@/lib/admin/menu-food-meal-roles-validation";
 import {
+  BREAKFAST_CHO_ROLE_LABELS,
+  BREAKFAST_FAT_ROLE_LABELS,
+  BREAKFAST_PROTEIN_ROLE_LABELS,
   FREQUENCY_LABELS,
   MACRO_ROLE_LABELS,
+  MAIN_MEAL_ROLE_LABELS,
   MEAL_ROLE_LABELS,
+  MEDITERRANEAN_PRIORITY_LABELS,
   ROLE_MEAL_LABELS,
+  SNACK_ROLE_LABELS,
 } from "@/components/admin/foods/menu-food-meal-role-labels";
 
 const COPY = {
@@ -33,6 +45,19 @@ const COPY = {
   prepSpeedPh: "vuoto = n/d",
   sourceLine: (source: string, updated: string | null) =>
     `Fonte: ${source}${updated ? ` · aggiornato ${updated}` : ""}`,
+  sectionV6: "Ruoli v6 (sistema Mario v6)",
+  hintV6:
+    "Il motore legge QUESTI ruoli (v6): i ruoli per pasto qui sopra restano come storico v5. «Nessuno» = l'alimento non copre quell'asse.",
+  bChoRole: "Colazione — asse CHO",
+  bProRole: "Colazione — asse proteico",
+  bFatRole: "Colazione — asse grassi",
+  mainRole: "Pranzo e cena (ruolo unico)",
+  snackRole: "Spuntino",
+  medPriority: "Priorità mediterranea (ordinamento)",
+  substitutionGroup: "Gruppo di sostituzione",
+  substitutionGroupPh: "es. FRUIT, FISH_LEAN (vuoto = nessuno)",
+  generativeNote: "Nota generativa (Mario)",
+  generativeNotePh: "vincolo testuale, informativo",
 } as const;
 
 const INPUT =
@@ -61,6 +86,15 @@ export type MealRolesDraft = {
   frequency: string;
   max_week: string;
   prep_speed: string;
+  // v6
+  breakfast_cho_role: string;
+  breakfast_protein_role: string;
+  breakfast_fat_role: string;
+  main_meal_role: string;
+  snack_role: string;
+  mediterranean_priority: string;
+  substitution_group: string;
+  generative_note: string;
 };
 
 export function mealRolesDraftFromInput(v: MenuFoodMealRolesInput): MealRolesDraft {
@@ -79,6 +113,15 @@ export function mealRolesDraftFromInput(v: MenuFoodMealRolesInput): MealRolesDra
     frequency: v.frequency,
     max_week: v.max_week == null ? "" : String(v.max_week),
     prep_speed: v.prep_speed == null ? "" : String(v.prep_speed),
+    // v6: una riga v5 (senza colonne nuove) parte dai default DB, mai undefined nel form.
+    breakfast_cho_role: v.breakfast_cho_role ?? "NONE",
+    breakfast_protein_role: v.breakfast_protein_role ?? "NONE",
+    breakfast_fat_role: v.breakfast_fat_role ?? "NONE",
+    main_meal_role: v.main_meal_role ?? "NONE",
+    snack_role: v.snack_role ?? "NONE",
+    mediterranean_priority: v.mediterranean_priority ?? "COMMON",
+    substitution_group: v.substitution_group ?? "",
+    generative_note: v.generative_note ?? "",
   };
 }
 
@@ -99,6 +142,14 @@ export function mealRolesDraftToBody(d: MealRolesDraft): Record<string, unknown>
     frequency: d.frequency,
     max_week: d.max_week.trim() === "" ? null : d.max_week,
     prep_speed: d.prep_speed.trim() === "" ? null : d.prep_speed,
+    breakfast_cho_role: d.breakfast_cho_role,
+    breakfast_protein_role: d.breakfast_protein_role,
+    breakfast_fat_role: d.breakfast_fat_role,
+    main_meal_role: d.main_meal_role,
+    snack_role: d.snack_role,
+    mediterranean_priority: d.mediterranean_priority,
+    substitution_group: d.substitution_group.trim() === "" ? null : d.substitution_group,
+    generative_note: d.generative_note.trim() === "" ? null : d.generative_note,
   };
 }
 
@@ -232,6 +283,68 @@ export function AdminMenuFoodMealRolesFields({
             />
           </div>
         ))}
+      </div>
+
+      {/* Ruoli v6 (sistema Mario v6): il motore legge questi */}
+      <div className="space-y-3 rounded-xl border border-sky-400/20 bg-sky-500/[0.04] p-3">
+        <p className={SECTION}>{COPY.sectionV6}</p>
+        <p className="text-[0.65rem] text-gray-600">{COPY.hintV6}</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {(
+            [
+              ["breakfast_cho_role", COPY.bChoRole, MENU_FOOD_BREAKFAST_CHO_ROLES, BREAKFAST_CHO_ROLE_LABELS],
+              ["breakfast_protein_role", COPY.bProRole, MENU_FOOD_BREAKFAST_PROTEIN_ROLES, BREAKFAST_PROTEIN_ROLE_LABELS],
+              ["breakfast_fat_role", COPY.bFatRole, MENU_FOOD_BREAKFAST_FAT_ROLES, BREAKFAST_FAT_ROLE_LABELS],
+              ["main_meal_role", COPY.mainRole, MENU_FOOD_MAIN_MEAL_ROLES, MAIN_MEAL_ROLE_LABELS],
+              ["snack_role", COPY.snackRole, MENU_FOOD_SNACK_ROLES, SNACK_ROLE_LABELS],
+              ["mediterranean_priority", COPY.medPriority, MENU_FOOD_MEDITERRANEAN_PRIORITIES, MEDITERRANEAN_PRIORITY_LABELS],
+            ] as const
+          ).map(([field, label, values, labels]) => (
+            <div key={field}>
+              <label className={LABEL} htmlFor={`${idPrefix}-${field}`}>
+                {label}
+              </label>
+              <select
+                id={`${idPrefix}-${field}`}
+                value={draft[field]}
+                onChange={(e) => set(field, e.target.value)}
+                className={INPUT}
+              >
+                {values.map((v) => (
+                  <option key={v} value={v}>
+                    {(labels as Record<string, string>)[v] ?? v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-substitution_group`}>
+              {COPY.substitutionGroup}
+            </label>
+            <input
+              id={`${idPrefix}-substitution_group`}
+              type="text"
+              value={draft.substitution_group}
+              onChange={(e) => set("substitution_group", e.target.value)}
+              placeholder={COPY.substitutionGroupPh}
+              className={cn(INPUT, "font-mono text-xs uppercase")}
+            />
+          </div>
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-generative_note`}>
+              {COPY.generativeNote}
+            </label>
+            <input
+              id={`${idPrefix}-generative_note`}
+              type="text"
+              value={draft.generative_note}
+              onChange={(e) => set("generative_note", e.target.value)}
+              placeholder={COPY.generativeNotePh}
+              className={INPUT}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Macro role, frequenza, tetto, velocità */}

@@ -9,9 +9,12 @@ import type { MenuFoodMealRolesInput } from "@/lib/admin/menu-food-meal-roles-va
 
 /**
  * Riga di `nutrition_menu_food_meal_roles` come la espone la GET admin (colonne DB +
- * metadati). Stessi campi del body `meal_roles` accettato da PATCH/POST.
+ * metadati). Stessi campi del body `meal_roles` accettato da PATCH/POST, PIÙ
+ * `substitutes` in sola lettura: l'editing dei sostituti è fuori scope e l'upsert admin
+ * non scrive mai quella colonna (i valori di Mario restano intatti).
  */
 export type AdminMenuFoodMealRoles = MenuFoodMealRolesInput & {
+  substitutes: string[];
   source_version: string | null;
   updated_at: string | null;
 };

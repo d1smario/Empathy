@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   loadMenuFoodPools,
   mapMenuFoodRows,
+  mealRolesHasV6,
   menuRotationKeyResolver,
   parseMenuFoodMealRoleRow,
   resetMenuFoodPoolsCacheForTests,
@@ -249,5 +250,85 @@ test("loadMenuFoodPools: legge nutrition_menu_food_meal_roles e aggancia; errore
   );
   assert.ok(withoutRoles);
   assert.equal(withoutRoles!.get("lunch_carb")![0]!.mealRoles, undefined);
+  resetMenuFoodPoolsCacheForTests();
+});
+
+// ---- Sistema ruoli v6 (colonne migrazione 20260820090000) ----
+
+test("parseMenuFoodMealRoleRow: campi v6 letti e tollerati (ignoto → default), substitutes non-array → []", () => {
+  const parsed = parseMenuFoodMealRoleRow(
+    roleRow({
+      breakfast_cho_role: "primary_complex",
+      breakfast_protein_role: "SECONDARY_SAVOURY",
+      breakfast_fat_role: "PRIMARY",
+      main_meal_role: "FAT_CONDIMENT",
+      snack_role: "FAST_CARB",
+      mediterranean_priority: "LIMITED",
+      substitution_group: "FAT_CONDIMENT",
+      substitutes: ["olive_oil", "avocado", 42, ""],
+    }),
+  );
+  assert.ok(parsed);
+  const mr = parsed!.mealRoles;
+  assert.equal(mr.breakfastChoRole, "PRIMARY_COMPLEX");
+  assert.equal(mr.breakfastProteinRole, "SECONDARY_SAVOURY");
+  assert.equal(mr.breakfastFatRole, "PRIMARY");
+  assert.equal(mr.mainMealRole, "FAT_CONDIMENT");
+  assert.equal(mr.snackRole, "FAST_CARB");
+  assert.equal(mr.mediterraneanPriority, "LIMITED");
+  assert.equal(mr.substitutionGroup, "FAT_CONDIMENT");
+  assert.deepEqual(mr.substitutes, ["olive_oil", "avocado"]);
+  assert.equal(mealRolesHasV6(mr), true);
+
+  // Valori ignoti / colonne assenti (select v5) → default, mai throw, e hasV6 false.
+  const v5only = parseMenuFoodMealRoleRow(roleRow({ breakfast_cho_role: "BOH", substitutes: "non-array" }));
+  assert.ok(v5only);
+  assert.equal(v5only!.mealRoles.breakfastChoRole, "NONE");
+  assert.equal(v5only!.mealRoles.mainMealRole, "NONE");
+  assert.equal(v5only!.mealRoles.mediterraneanPriority, "COMMON");
+  assert.equal(v5only!.mealRoles.substitutionGroup, null);
+  assert.deepEqual(v5only!.mealRoles.substitutes, []);
+  assert.equal(mealRolesHasV6(v5only!.mealRoles), false, "default v6 = nessun dato v6: la grammatica resta sul v5");
+});
+
+/** Client finto con COD A: la prima select sulla tabella score fallisce 42703, la seconda risponde. */
+function fakeAdminRolesQueue(menu: FakeResult, fdc: FakeResult, rolesQueue: FakeResult[], calls?: string[]): SupabaseClient {
+  return {
+    from(table: string) {
+      calls?.push(table);
+      const result =
+        table === "nutrition_menu_foods"
+          ? menu
+          : table === "nutrition_menu_food_meal_roles"
+            ? (rolesQueue.shift() ?? { data: [], error: null })
+            : fdc;
+      const builder: Record<string, unknown> = {};
+      builder.select = () => builder;
+      builder.eq = () => builder;
+      builder.in = () => builder;
+      builder.then = (resolve: (v: FakeResult) => void) => resolve(result);
+      return builder;
+    },
+  } as unknown as SupabaseClient;
+}
+
+test("loadMenuFoodPools: colonne v6 mancanti (42703) → retry sulla select v5, la grammatica NON si azzera", async () => {
+  resetMenuFoodPoolsCacheForTests();
+  const calls: string[] = [];
+  const pools = await loadMenuFoodPools(
+    fakeAdminRolesQueue(
+      { data: [menuRow({})], error: null },
+      { data: [macroRow(169756)], error: null },
+      [
+        { data: null, error: { code: "42703", message: 'column nutrition_menu_food_meal_roles.substitutes does not exist' } },
+        { data: [roleRow({})], error: null },
+      ],
+      calls,
+    ),
+  );
+  assert.ok(pools);
+  const entry = pools!.get("lunch_carb")![0]!;
+  assert.equal(entry.mealRoles?.roles.lunch, "CHO_PRIMARY", "mealRoles v5 caricati nonostante la colonna v6 mancante");
+  assert.equal(calls.filter((t) => t === "nutrition_menu_food_meal_roles").length, 2, "una select piena + un retry v5");
   resetMenuFoodPoolsCacheForTests();
 });

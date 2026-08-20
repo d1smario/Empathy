@@ -40,6 +40,44 @@ export type MenuFoodMacroRoleValue = (typeof MENU_FOOD_MACRO_ROLES)[number];
 export const MENU_FOOD_FREQUENCIES = ["COMMON", "ROTATION", "OCCASIONAL"] as const;
 export type MenuFoodFrequencyValue = (typeof MENU_FOOD_FREQUENCIES)[number];
 
+// ── Sistema ruoli v6 (migrazione 20260820090000) — set SPECULARI ai CHECK del DB ─────
+
+export const MENU_FOOD_BREAKFAST_CHO_ROLES = ["NONE", "PRIMARY_COMPLEX", "SECONDARY_SIMPLE", "SECONDARY_MIXED"] as const;
+export type MenuFoodBreakfastChoRoleValue = (typeof MENU_FOOD_BREAKFAST_CHO_ROLES)[number];
+
+export const MENU_FOOD_BREAKFAST_PROTEIN_ROLES = ["NONE", "PRIMARY", "SECONDARY", "SECONDARY_SAVOURY"] as const;
+export type MenuFoodBreakfastProteinRoleValue = (typeof MENU_FOOD_BREAKFAST_PROTEIN_ROLES)[number];
+
+export const MENU_FOOD_BREAKFAST_FAT_ROLES = ["NONE", "PRIMARY", "SECONDARY"] as const;
+export type MenuFoodBreakfastFatRoleValue = (typeof MENU_FOOD_BREAKFAST_FAT_ROLES)[number];
+
+export const MENU_FOOD_MAIN_MEAL_ROLES = [
+  "NONE",
+  "PRIMARY_PROTEIN",
+  "SECONDARY_PROTEIN",
+  "PRIMARY_OR_SECONDARY_PROTEIN",
+  "PRIMARY_COMPLEX_CARB",
+  "SECONDARY_CARB",
+  "FIBER_SIDE",
+  "SECONDARY_FAT",
+  "FAT_CONDIMENT",
+  "COMPOSITE_MAIN",
+] as const;
+export type MenuFoodMainMealRoleValue = (typeof MENU_FOOD_MAIN_MEAL_ROLES)[number];
+
+export const MENU_FOOD_SNACK_ROLES = ["NONE", "FAST_CARB", "FAST_PROTEIN", "FAST_FAT_PRO", "MEDIUM", "LOW"] as const;
+export type MenuFoodSnackRoleValue = (typeof MENU_FOOD_SNACK_ROLES)[number];
+
+export const MENU_FOOD_MEDITERRANEAN_PRIORITIES = [
+  "PRIMARY",
+  "COMMON",
+  "ROTATION",
+  "SECOND_CHOICE",
+  "LIMITED",
+  "OCCASIONAL",
+] as const;
+export type MenuFoodMediterraneanPriorityValue = (typeof MENU_FOOD_MEDITERRANEAN_PRIORITIES)[number];
+
 const MEAL_ROLE_SET: ReadonlySet<string> = new Set(MENU_FOOD_MEAL_ROLES);
 const MACRO_ROLE_SET: ReadonlySet<string> = new Set(MENU_FOOD_MACRO_ROLES);
 const FREQUENCY_SET: ReadonlySet<string> = new Set(MENU_FOOD_FREQUENCIES);
@@ -64,7 +102,29 @@ export type MenuFoodMealRolesInput = {
   frequency: MenuFoodFrequencyValue;
   max_week: number | null;
   prep_speed: number | null;
+  // Colonne v6 — OPZIONALI: presenti nel body solo se il chiamante le manda (i dialog
+  // le mandano sempre). L'upsert PostgREST scrive SOLO le colonne del payload, quindi un
+  // body senza campi v6 lascia intatti i valori di Mario (mario_v6) — è il contratto che
+  // protegge anche `substitutes`, che l'admin NON edita e non viene mai inclusa qui.
+  breakfast_cho_role?: MenuFoodBreakfastChoRoleValue;
+  breakfast_protein_role?: MenuFoodBreakfastProteinRoleValue;
+  breakfast_fat_role?: MenuFoodBreakfastFatRoleValue;
+  main_meal_role?: MenuFoodMainMealRoleValue;
+  snack_role?: MenuFoodSnackRoleValue;
+  mediterranean_priority?: MenuFoodMediterraneanPriorityValue;
+  substitution_group?: string | null;
+  generative_note?: string | null;
 };
+
+/** Campi v6 a enumerazione: (chiave, set ammesso) — usati da validate e dal form. */
+export const MENU_FOOD_V6_ENUM_FIELDS = [
+  ["breakfast_cho_role", MENU_FOOD_BREAKFAST_CHO_ROLES],
+  ["breakfast_protein_role", MENU_FOOD_BREAKFAST_PROTEIN_ROLES],
+  ["breakfast_fat_role", MENU_FOOD_BREAKFAST_FAT_ROLES],
+  ["main_meal_role", MENU_FOOD_MAIN_MEAL_ROLES],
+  ["snack_role", MENU_FOOD_SNACK_ROLES],
+  ["mediterranean_priority", MENU_FOOD_MEDITERRANEAN_PRIORITIES],
+] as const;
 
 export const MENU_FOOD_SCORE_FIELDS = [
   "score_breakfast",
@@ -158,6 +218,41 @@ export function validateMenuFoodMealRoles(raw: unknown): MealRolesValidation {
     out.prep_speed = n;
   }
 
+  // Campi v6: opzionali per contratto (assenti nel body → colonne NON toccate
+  // dall'upsert, i valori di Mario restano). Presenti → devono essere validi.
+  for (const [field, allowed] of MENU_FOOD_V6_ENUM_FIELDS) {
+    if (!(field in r)) continue;
+    const v = typeof r[field] === "string" ? r[field].trim().toUpperCase() : "";
+    if (!(allowed as readonly string[]).includes(v)) {
+      return { ok: false, error: `${field}: "${String(r[field])}" non è un valore valido.` };
+    }
+    (out as Record<string, unknown>)[field] = v;
+  }
+
+  // substitution_group: testo libero normalizzato MAIUSCOLO_SNAKE ("" = null). Il CHECK
+  // del DB accetta solo i 23 gruppi osservati: un gruppo nuovo fallisce lì con errore
+  // esplicito finché il CHECK non viene esteso con una migrazione.
+  if ("substitution_group" in r) {
+    if (r.substitution_group == null || r.substitution_group === "") {
+      out.substitution_group = null;
+    } else if (typeof r.substitution_group !== "string") {
+      return { ok: false, error: "substitution_group: deve essere testo o vuoto." };
+    } else {
+      out.substitution_group = r.substitution_group.trim().toUpperCase().replace(/\s+/g, "_");
+    }
+  }
+
+  // generative_note: testo libero di Mario ("" = null), nessuna normalizzazione.
+  if ("generative_note" in r) {
+    if (r.generative_note == null || r.generative_note === "") {
+      out.generative_note = null;
+    } else if (typeof r.generative_note !== "string") {
+      return { ok: false, error: "generative_note: deve essere testo o vuoto." };
+    } else {
+      out.generative_note = r.generative_note.trim() || null;
+    }
+  }
+
   return { ok: true, value: out as MenuFoodMealRolesInput };
 }
 
@@ -187,6 +282,23 @@ export function defaultMealRolesFromPools(poolKeys: readonly string[]): MenuFood
     frequency: "COMMON",
     max_week: null,
     prep_speed: null,
+    // v6: default proposti dagli stessi pool (stessa regola dei ruoli v5); l'admin li
+    // controlla e salva. Gruppo e nota restano vuoti: li decide chi cura l'alimento.
+    breakfast_cho_role: pools.has("breakfast_cho") ? "PRIMARY_COMPLEX" : "NONE",
+    breakfast_protein_role: pools.has("breakfast_pro") ? "PRIMARY" : "NONE",
+    breakfast_fat_role: pools.has("breakfast_fat") ? "PRIMARY" : "NONE",
+    main_meal_role:
+      pools.has("lunch_pro") || pools.has("dinner_pro")
+        ? "PRIMARY_PROTEIN"
+        : pools.has("lunch_carb") || pools.has("dinner_carb")
+          ? "PRIMARY_COMPLEX_CARB"
+          : pools.has("lunch_veg") || pools.has("dinner_veg")
+            ? "FIBER_SIDE"
+            : "NONE",
+    snack_role: pools.has("snack_pro") ? "FAST_PROTEIN" : pools.has("snack_cho") ? "FAST_CARB" : "NONE",
+    mediterranean_priority: "COMMON",
+    substitution_group: null,
+    generative_note: null,
   };
 
   // Per pasto: primo pool «vincente» in ordine di priorità (pro batte carb batte fat/veg).
