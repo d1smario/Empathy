@@ -4297,6 +4297,17 @@ var MEDITERRANEAN_PRIORITIES = /* @__PURE__ */ new Set([
   "LIMITED",
   "OCCASIONAL"
 ]);
+var GENERATIVE_TIERS = /* @__PURE__ */ new Set([
+  "CORE",
+  "ROTATION",
+  "OCCASIONAL",
+  "VARIETY",
+  "EXCLUDE_DEFAULT"
+]);
+var SUBSTITUTION_MODES = /* @__PURE__ */ new Set([
+  "ENERGY_EQUIVALENT",
+  "PORTION_EQUIVALENT"
+]);
 function v6Enum(v, set, fallback) {
   const s = str(v)?.toUpperCase();
   return s && set.has(s) ? s : fallback;
@@ -4361,7 +4372,16 @@ function parseMenuFoodMealRoleRow(raw) {
         "COMMON"
       ),
       substitutionGroup: str(r?.substitution_group),
-      substitutes: parseSubstitutes(r?.substitutes)
+      substitutes: parseSubstitutes(r?.substitutes),
+      // v9: parsing TOLLERANTE ma senza default inventati — la chiave assente nella riga
+      // (select degradata a v5/v6, fixture senza dati v9) lascia il campo undefined, così
+      // la grammatica degrada al vocabolario v6/v5 per QUELLA entry. Dopo la migrazione
+      // ogni riga porta il default DB ('VARIETY'/true) e i campi sono sempre presenti.
+      ...GENERATIVE_TIERS.has(str(r?.generative_tier)?.toUpperCase() ?? "") ? { generativeTier: str(r?.generative_tier).toUpperCase() } : {},
+      ...r?.default_enabled === true || r?.default_enabled === false ? { defaultEnabled: r.default_enabled === true } : {},
+      ...r != null && typeof r === "object" && "selection_weight" in r ? { selectionWeight: num(r.selection_weight) } : {},
+      ...SUBSTITUTION_MODES.has(str(r?.substitution_mode)?.toUpperCase() ?? "") ? { substitutionMode: str(r?.substitution_mode).toUpperCase() } : {},
+      ...str(r?.substitute_pool) ? { substitutePool: str(r?.substitute_pool) } : {}
     }
   };
 }
@@ -4435,6 +4455,7 @@ var MENU_FOOD_CACHE_TTL_MS = 5 * 6e4;
 var FDC_IN_CHUNK = 200;
 var MEAL_ROLES_V5_SELECT = "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed";
 var MEAL_ROLES_V6_EXTRA_SELECT = "breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, substitutes";
+var MEAL_ROLES_V9_EXTRA_SELECT = "generative_tier, default_enabled, selection_weight, substitution_mode, substitute_pool";
 async function loadMenuFoodPools(admin) {
   if (menuFoodPoolsCache && Date.now() - menuFoodPoolsCache.at < MENU_FOOD_CACHE_TTL_MS) {
     return menuFoodPoolsCache.pools;
@@ -4461,9 +4482,15 @@ async function loadMenuFoodPools(admin) {
       }
       if (Array.isArray(data)) macroRows.push(...data);
     }
-    const fullRoles = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
-    const rolesMissingColumns = fullRoles.error != null && (fullRoles.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(fullRoles.error.message ?? ""));
-    const { data: mealRoleRows, error: mealRoleError } = rolesMissingColumns ? await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT) : fullRoles;
+    const rolesMissingColumns = (res) => res.error != null && (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
+    let rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}, ${MEAL_ROLES_V9_EXTRA_SELECT}`);
+    if (rolesMissingColumns(rolesRes)) {
+      rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
+    }
+    if (rolesMissingColumns(rolesRes)) {
+      rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT);
+    }
+    const { data: mealRoleRows, error: mealRoleError } = rolesRes;
     const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
     menuFoodPoolsCache = { at: Date.now(), pools };
     return pools;
@@ -4624,6 +4651,11 @@ function grammarD02FishBonus(entry2, filter, week) {
 function grammarPenaltyForEntry(entry2, filter, weekCount) {
   const mr = entry2.mealRoles;
   if (!mr) return 0;
+  if (mr.generativeTier === "EXCLUDE_DEFAULT" || mr.defaultEnabled === false) return null;
+  if (filter.varietyBlocked && mr.generativeTier === "VARIETY") return null;
+  if (filter.substituteFor && mr.generativeTier != null && mr.generativeTier !== "CORE" && mr.generativeTier !== "ROTATION") {
+    return null;
+  }
   const score2 = mr.scores[filter.meal];
   if (!(score2 > 0)) return null;
   if (filter.v6 && mealRolesHasV6(mr)) {
@@ -4649,6 +4681,12 @@ var GRAMMAR_MEDITERRANEAN_PRIORITY_RANK = {
   OCCASIONAL: 5
 };
 var GRAMMAR_V5_FREQUENCY_RANK = { COMMON: 1, ROTATION: 2, OCCASIONAL: 5 };
+var GRAMMAR_V9_TIER_RANK = {
+  CORE: 0,
+  ROTATION: 1,
+  OCCASIONAL: 2,
+  VARIETY: 3
+};
 var GRAMMAR_B03_GROUP_RANK = {
   BREAKFAST_COMPLEX_CARB: 0,
   BREAD_BASED_CARB: 1
@@ -4656,13 +4694,15 @@ var GRAMMAR_B03_GROUP_RANK = {
 function grammarSubstituteRank(entry2, substituteFor) {
   const group = entry2.mealRoles?.substitutionGroup ?? null;
   if (group != null && substituteFor.substitutionGroup != null && group === substituteFor.substitutionGroup) return 0;
+  const pool = entry2.mealRoles?.substitutePool ?? null;
+  if (pool != null && substituteFor.substitutePool != null && pool === substituteFor.substitutePool) return 0;
   const idx = substituteFor.substitutes.indexOf(entry2.canonicalKey);
   if (idx >= 0) return 1 + idx;
   return 1e3;
 }
 function grammarOrderingKeys(entry2, filter, week) {
   const mr = entry2.mealRoles;
-  const tier = mr && mealRolesHasV6(mr) && mr.mediterraneanPriority ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority] : GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1;
+  const tier = mr?.generativeTier != null && GRAMMAR_V9_TIER_RANK[mr.generativeTier] != null ? GRAMMAR_V9_TIER_RANK[mr.generativeTier] : mr && mealRolesHasV6(mr) && mr.mediterraneanPriority ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority] : GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1;
   return {
     subRank: filter.substituteFor ? grammarSubstituteRank(entry2, filter.substituteFor) : 0,
     d02: grammarD02FishBonus(entry2, filter, week),
@@ -4691,6 +4731,27 @@ function mainMealFatCondimentEntries(entryIndex) {
   return out;
 }
 var RECIPE_FREQUENCY_RANK = { COMMON: 0, ROTATION: 1, OCCASIONAL: 2 };
+var RECIPE_TIER_RANK = { CORE: 0, ROTATION: 1, OCCASIONAL: 2 };
+function recipeRank(r) {
+  if (r.tier != null && RECIPE_TIER_RANK[r.tier] != null) return RECIPE_TIER_RANK[r.tier];
+  return RECIPE_FREQUENCY_RANK[r.frequency] ?? 0;
+}
+var GRAMMAR_RECIPE_FAMILY_MAX_WEEK = {
+  LASAGNE: 1,
+  CRESPELLE: 1,
+  PIZZA: 1,
+  BURGER: 1
+};
+function recipeFamilyWeekCounts(recipes, weekStapleCounts) {
+  const counts = /* @__PURE__ */ new Map();
+  if (!weekStapleCounts) return counts;
+  for (const r of recipes ?? []) {
+    if (!r.family) continue;
+    const c = weekStapleCounts[recipeRotationKey(r.recipeKey)] ?? 0;
+    if (c > 0) counts.set(r.family, (counts.get(r.family) ?? 0) + c);
+  }
+  return counts;
+}
 var RECIPE_ROTATION_PREFIX = "recipe:";
 function recipeRotationKey(recipeKey) {
   return `${RECIPE_ROTATION_PREFIX}${recipeKey}`;
@@ -4740,6 +4801,9 @@ var CARRIER_ROLES = /* @__PURE__ */ new Set([
   "COMPOSITE_MAIN"
 ]);
 function recipeEligibleForMeal(cand, meal) {
+  const meals = cand.recipe?.meals;
+  if (meals && meals.length > 0) return meals.includes(meal);
+  if (meal === "breakfast" || meal === "snack") return false;
   return cand.ingredients.some(({ entry: entry2 }) => {
     const mr = entry2.mealRoles;
     if (!mr) return false;
@@ -4756,6 +4820,7 @@ function ingredientWeekCountFor(entry2, week) {
 function recipeCandidatesForMeal(input) {
   const out = [];
   const deny = input.denyFragments ?? [];
+  const familyCounts = recipeFamilyWeekCounts(input.recipes, input.weekStapleCounts);
   for (const recipe of input.recipes ?? []) {
     const ingredients = [];
     let resolvable = true;
@@ -4815,10 +4880,12 @@ function recipeCandidatesForMeal(input) {
     if (!recipeEligibleForMeal(cand, input.meal)) continue;
     if (cand.weekCount >= ROTATION_MAX_WEEK_USES) continue;
     if (recipe.maxWeek != null && cand.weekCount >= recipe.maxWeek) continue;
+    const familyCap = recipe.family != null ? GRAMMAR_RECIPE_FAMILY_MAX_WEEK[recipe.family] : void 0;
+    if (familyCap != null && (familyCounts.get(recipe.family) ?? 0) >= familyCap) continue;
     out.push(cand);
   }
   out.sort(
-    (a, b) => a.weekCount !== b.weekCount ? a.weekCount - b.weekCount : RECIPE_FREQUENCY_RANK[a.recipe.frequency] !== RECIPE_FREQUENCY_RANK[b.recipe.frequency] ? RECIPE_FREQUENCY_RANK[a.recipe.frequency] - RECIPE_FREQUENCY_RANK[b.recipe.frequency] : a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0
+    (a, b) => a.weekCount !== b.weekCount ? a.weekCount - b.weekCount : recipeRank(a.recipe) !== recipeRank(b.recipe) ? recipeRank(a.recipe) - recipeRank(b.recipe) : a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0
   );
   return out;
 }
@@ -4840,12 +4907,16 @@ function fnv1a(s) {
 }
 function chooseRecipeForSlot(input) {
   if (input.candidates.length === 0 || input.recipeAlreadyToday) return null;
-  if (weekRecipeCount(input.weekStapleCounts) >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
+  const weeklyCount = input.weeklyCapRecipes ? input.weeklyCapRecipes.reduce(
+    (s, r) => s + (input.weekStapleCounts?.[recipeRotationKey(r.recipeKey)] ?? 0),
+    0
+  ) : weekRecipeCount(input.weekStapleCounts);
+  if (weeklyCount >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
   const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
   if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
   const first = input.candidates[0];
   const tier = input.candidates.filter(
-    (c) => c.weekCount === first.weekCount && RECIPE_FREQUENCY_RANK[c.recipe.frequency] === RECIPE_FREQUENCY_RANK[first.recipe.frequency]
+    (c) => c.weekCount === first.weekCount && recipeRank(c.recipe) === recipeRank(first.recipe)
   );
   const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
   return tier[offset] ?? null;
@@ -4887,9 +4958,30 @@ function foodRoleForRecipeIngredient(entry2) {
   if (p >= c) return "protein_primary";
   return "cho_complex";
 }
+var GRAMMAR_SHAKE_POWDER_MIN_G = 20;
+var GRAMMAR_SHAKE_POWDER_MAX_G = 35;
+function isProteinShakeFamily(family) {
+  if (!family) return false;
+  return /PROTEIN/.test(family) && /(SHAKE|CREAM)/.test(family);
+}
 function scaleRecipe(cand, grams) {
-  const components = cand.ingredients.map(({ gramsPer100g, entry: entry2 }) => {
-    const g = round1(grams * gramsPer100g / 100);
+  const gramsFor = cand.ingredients.map(({ gramsPer100g }) => grams * gramsPer100g / 100);
+  if (isProteinShakeFamily(cand.recipe.family)) {
+    const powderIdx = cand.ingredients.findIndex(({ entry: entry2 }) => entry2.mealRoles?.defaultEnabled === false);
+    if (powderIdx >= 0) {
+      const naive = gramsFor[powderIdx];
+      const anchored = Math.min(GRAMMAR_SHAKE_POWDER_MAX_G, Math.max(GRAMMAR_SHAKE_POWDER_MIN_G, naive));
+      const othersNaive = gramsFor.reduce((s, g, i) => i === powderIdx ? s : s + g, 0);
+      const factor = othersNaive > 0 ? (othersNaive + (naive - anchored)) / othersNaive : 1;
+      if (anchored !== naive && factor > 0) {
+        for (let i = 0; i < gramsFor.length; i += 1) {
+          gramsFor[i] = i === powderIdx ? anchored : gramsFor[i] * factor;
+        }
+      }
+    }
+  }
+  const components = cand.ingredients.map(({ entry: entry2 }, i) => {
+    const g = round1(gramsFor[i]);
     const f = g / 100;
     return {
       canonicalKey: entry2.canonicalKey,
@@ -7791,7 +7883,11 @@ function grammarFilterFor(ctx, slotKey, poolKey, rolesOverride, relaxWeekCaps) {
     ...v6 ? { v6: { axis: v6.axis, allowed: new Set(v6.roles) } } : {},
     ...meal === "breakfast" ? { sweetsWeekCount: ctx.grammar.sweetsWeekCount } : {},
     ...meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {},
-    ...relaxWeekCaps ? { relaxWeekCaps: true } : {}
+    ...relaxWeekCaps ? { relaxWeekCaps: true } : {},
+    // V7-03 (v9): dopo il primo VARIETY dello slot TUTTE le linee successive (B02,
+    // condimento M01, re-pick regola 7) ereditano il blocco — il filtro si costruisce a
+    // ogni pick, quindi legge lo stato aggiornato.
+    ...ctx.grammar.varietyUsedInSlot ? { varietyBlocked: true } : {}
   };
 }
 function pickLineForRole(spec, slotKey, pools, ctx, opts) {
@@ -7852,6 +7948,9 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
     }
   }
   if (staplePick) {
+    if (ctx.grammar && staplePick.entry.mealRoles?.generativeTier === "VARIETY") {
+      ctx.grammar.varietyUsedInSlot = true;
+    }
     if (!opts?.skipUsageRegistration) {
       if (staplePick.entry.rotationKey) {
         ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
@@ -7872,7 +7971,9 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
 }
 function pickRecipeLine(slotKey, target, ctx) {
   const g = ctx.grammar;
-  if (!g || !isMainMealSlot(slotKey) || g.recipeUsedToday) return null;
+  if (!g) return null;
+  const isMain = isMainMealSlot(slotKey);
+  if (isMain ? g.recipeUsedToday : g.shakeUsedToday) return null;
   const candidates = recipeCandidatesForMeal({
     recipes: g.recipes,
     entryIndex: g.entryIndex,
@@ -7881,17 +7982,30 @@ function pickRecipeLine(slotKey, target, ctx) {
     denyFragments: ctx.denyFragments,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts
   }).filter((c) => !c.ingredients.some(({ entry: entry2 }) => ctx.usedFdcIds.has(entry2.fdcId)));
+  const weeklyCapRecipes = g.recipes.filter((r) => {
+    const meals = r.meals;
+    if (!meals || meals.length === 0) return isMain;
+    return isMain ? meals.includes("lunch") || meals.includes("dinner") : meals.includes("breakfast") || meals.includes("snack");
+  });
   const cand = chooseRecipeForSlot({
     candidates,
     seed: ctx.seed,
     slotKey,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
-    recipeAlreadyToday: g.recipeUsedToday
+    recipeAlreadyToday: isMain ? g.recipeUsedToday : g.shakeUsedToday,
+    weeklyCapRecipes
   });
   if (!cand) return null;
   const kcalCapG = Math.floor(target.kcal * 100 / cand.per100.kcal / GRAMMAR_RECIPE_STEP_G) * GRAMMAR_RECIPE_STEP_G;
   if (kcalCapG < GRAMMAR_RECIPE_MIN_G) return null;
-  g.recipeUsedToday = true;
+  if (isMain) g.recipeUsedToday = true;
+  else g.shakeUsedToday = true;
+  if (cand.ingredients.some(({ entry: entry2 }) => entry2.mealRoles?.generativeTier === "VARIETY")) {
+    g.varietyUsedInSlot = true;
+  }
+  if (isProteinShakeFamily(cand.recipe.family)) {
+    g.flags.push(`shake_powder_anchored:${slotKey}:${cand.recipe.recipeKey}`);
+  }
   for (const { entry: entry2 } of cand.ingredients) {
     if (entry2.fdcId > 0) ctx.usedFdcIds.add(entry2.fdcId);
     ctx.dayCtx.dayUsedCanonicalKeys?.add(entry2.canonicalKey);
@@ -7906,8 +8020,10 @@ function pickRecipeLine(slotKey, target, ctx) {
     spec: {
       foodRole: "composite_dish",
       // Matrice a base CHO → è il primo (leva cho); piatto proteico (cotoletta) → è il
-      // secondo (leva protein) e il primo resta.
-      lever: recipeLever(cand.per100),
+      // secondo (leva protein) e il primo resta. A colazione/spuntino la leva è SEMPRE
+      // protein (P04: lo shake RIMPIAZZA la linea proteica primaria — CHO complesso,
+      // frutta e grassi restano; guard esplicito contro uno shake CHO-led).
+      lever: isMain ? recipeLever(cand.per100) : "protein",
       poolKey: "recipe",
       minG: GRAMMAR_RECIPE_MIN_G,
       maxG: kcalCapG,
@@ -7977,6 +8093,7 @@ function composeSlotFromAssembly(slot, pools, ctx) {
   const slotKey = slot.key;
   const roles = MEAL_SLOT_ASSEMBLY[slotKey] ?? MEAL_SLOT_ASSEMBLY.snack_am;
   const target = slotMacroTargetsFromDiet(slot);
+  if (ctx.grammar) ctx.grammar.varietyUsedInSlot = false;
   const lines = [];
   const recipeLine = ctx.grammar ? pickRecipeLine(slotKey, target, ctx) : null;
   const recipeIsCho = recipeLine?.spec.lever === "cho";
@@ -8081,6 +8198,30 @@ function composeSlotFromAssembly(slot, pools, ctx) {
     }),
     { kcal: 0, choG: 0, proG: 0, fatG: 0 }
   );
+  if (ctx.grammar && items.length > 0) {
+    let classified = 0;
+    let core = 0;
+    lines.forEach((line, i) => {
+      const g = grams[i] ?? 0;
+      if (g < (line.spec.lever === "fat" ? 4 : 8)) return;
+      if (line.recipe) {
+        for (const { entry: entry2 } of line.recipe.ingredients) {
+          const t2 = entry2.mealRoles?.generativeTier;
+          if (!t2) continue;
+          classified += 1;
+          if (t2 === "CORE") core += 1;
+        }
+        return;
+      }
+      const t = line.staple?.mealRoles?.generativeTier;
+      if (!t) return;
+      classified += 1;
+      if (t === "CORE") core += 1;
+    });
+    if (classified > 0) {
+      ctx.grammar.flags.push(`core_share:${slotKey}:${Math.round(core / classified * 100)}`);
+    }
+  }
   return {
     slot: slot.key,
     labelIt: slot.label,
@@ -8113,7 +8254,10 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
         ...swapRoles ? {
           substituteFor: {
             substitutionGroup: swapRoles.substitutionGroup ?? null,
-            substitutes: swapRoles.substitutes ?? []
+            substitutes: swapRoles.substitutes ?? [],
+            // v9: il pool di sostituzione del sostituito raffina la preferenza
+            // (SOFT, grammarSubstituteRank); il verdetto V7-R01 vive nel filtro.
+            substitutePool: swapRoles.substitutePool ?? null
           }
         } : {}
       } : void 0
@@ -8249,6 +8393,8 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
           recipes: options.mealGrammar.recipes ?? [],
           entryIndex,
           recipeUsedToday: false,
+          shakeUsedToday: false,
+          varietyUsedInSlot: false,
           // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
           sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),
           flags: options.mealGrammar.diagnostics ?? []
@@ -8274,6 +8420,8 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
 
 // apps/web/lib/nutrition/v2/menu-recipe-catalog-db.ts
 var RECIPE_FREQUENCIES = /* @__PURE__ */ new Set(["COMMON", "ROTATION", "OCCASIONAL"]);
+var RECIPE_TIERS = /* @__PURE__ */ new Set(["CORE", "ROTATION", "OCCASIONAL"]);
+var RECIPE_MEALS = /* @__PURE__ */ new Set(["breakfast", "snack", "lunch", "dinner"]);
 function parseRecipeFrequency(raw) {
   const v = typeof raw === "string" ? raw.trim().toUpperCase() : "";
   return RECIPE_FREQUENCIES.has(v) ? v : "COMMON";
@@ -8339,6 +8487,9 @@ function mapMenuRecipeRows(recipeRows, componentRows, log = defaultLogger) {
       continue;
     }
     components.sort((a, b) => a.position - b.position);
+    const hasMealsColumn = r != null && typeof r === "object" && "meals" in r;
+    const mealsParsed = Array.isArray(r?.meals) ? r.meals.filter((m) => typeof m === "string" && RECIPE_MEALS.has(m)) : [];
+    const tierRaw = str2(r?.tier)?.toUpperCase();
     recipes.push({
       id,
       recipeKey,
@@ -8346,7 +8497,11 @@ function mapMenuRecipeRows(recipeRows, componentRows, log = defaultLogger) {
       note: str2(r?.note),
       frequency: parseRecipeFrequency(r?.frequency),
       maxWeek: parseRecipeMaxWeek(r?.max_week),
-      components
+      components,
+      ...r != null && typeof r === "object" && "family" in r ? { family: str2(r.family) } : {},
+      ...tierRaw && RECIPE_TIERS.has(tierRaw) ? { tier: tierRaw } : {},
+      ...r != null && typeof r === "object" && "selection_weight" in r ? { selectionWeight: num3(r.selection_weight) } : {},
+      ...hasMealsColumn ? { meals: mealsParsed.length > 0 ? mealsParsed : ["lunch", "dinner"] } : {}
     });
   }
   recipes.sort((a, b) => a.recipeKey < b.recipeKey ? -1 : a.recipeKey > b.recipeKey ? 1 : 0);
@@ -8359,9 +8514,12 @@ async function loadMenuRecipes(admin) {
     return menuRecipesCache.recipes;
   }
   try {
-    const full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week").eq("is_active", true);
-    const missingColumns = full.error != null && (full.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(full.error.message ?? ""));
-    const { data: recipeRows, error } = missingColumns ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true) : full;
+    const missingColumns = (res) => res.error != null && (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
+    let full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals").eq("is_active", true);
+    if (missingColumns(full)) {
+      full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week").eq("is_active", true);
+    }
+    const { data: recipeRows, error } = missingColumns(full) ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true) : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;
