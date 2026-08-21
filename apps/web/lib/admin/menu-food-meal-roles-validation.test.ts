@@ -223,3 +223,61 @@ test("i set v6 della UI/API coincidono con quelli accettati dal loader del motor
     }
   }
 });
+
+// ---- Campi v9 (tier generativo, migrazione 20260821090000) ----
+
+test("validateMenuFoodMealRoles v9: assenti → non compaiono nel value; presenti → normalizzati e validati", () => {
+  const base = { ...VALID };
+  const none = validateMenuFoodMealRoles(base);
+  assert.ok(none.ok);
+  if (none.ok) {
+    assert.equal("generative_tier" in none.value, false);
+    assert.equal("default_enabled" in none.value, false);
+    assert.equal("selection_weight" in none.value, false);
+  }
+
+  const full = validateMenuFoodMealRoles({
+    ...base,
+    generative_tier: "core",
+    default_enabled: "false",
+    selection_weight: "45",
+    substitution_mode: "portion_equivalent",
+    substitute_pool: "main protein",
+  });
+  assert.ok(full.ok);
+  if (full.ok) {
+    assert.equal(full.value.generative_tier, "CORE");
+    assert.equal(full.value.default_enabled, false);
+    assert.equal(full.value.selection_weight, 45);
+    assert.equal(full.value.substitution_mode, "PORTION_EQUIVALENT");
+    assert.equal(full.value.substitute_pool, "MAIN_PROTEIN");
+  }
+
+  // Vuoti dalla UI → null (mode/peso/pool), booleano vero.
+  const empty = validateMenuFoodMealRoles({ ...base, selection_weight: "", substitution_mode: "", substitute_pool: "", default_enabled: true });
+  assert.ok(empty.ok);
+  if (empty.ok) {
+    assert.equal(empty.value.selection_weight, null);
+    assert.equal(empty.value.substitution_mode, null);
+    assert.equal(empty.value.substitute_pool, null);
+    assert.equal(empty.value.default_enabled, true);
+  }
+});
+
+test("validateMenuFoodMealRoles v9: valori invalidi → errore esplicito", () => {
+  const base = { ...VALID };
+  assert.equal(validateMenuFoodMealRoles({ ...base, generative_tier: "BOH" }).ok, false);
+  assert.equal(validateMenuFoodMealRoles({ ...base, default_enabled: "si" }).ok, false);
+  assert.equal(validateMenuFoodMealRoles({ ...base, selection_weight: 101 }).ok, false);
+  assert.equal(validateMenuFoodMealRoles({ ...base, selection_weight: 4.5 }).ok, false);
+  assert.equal(validateMenuFoodMealRoles({ ...base, substitution_mode: "KCAL" }).ok, false);
+});
+
+test("defaultMealRolesFromPools v9: specchio dei default DB — VARIETY, abilitato, resto null", () => {
+  const d = defaultMealRolesFromPools(["lunch_pro"]);
+  assert.equal(d.generative_tier, "VARIETY");
+  assert.equal(d.default_enabled, true);
+  assert.equal(d.selection_weight, null);
+  assert.equal(d.substitution_mode, null);
+  assert.equal(d.substitute_pool, null);
+});

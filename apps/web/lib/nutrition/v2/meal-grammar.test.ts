@@ -27,15 +27,21 @@ import {
   chooseRecipeForSlot,
   GRAMMAR_BREAKFAST_SWEETS_MAX_WEEK,
   GRAMMAR_D02_FISH_DINNER_BONUS,
+  GRAMMAR_SHAKE_POWDER_MAX_G,
+  GRAMMAR_SHAKE_POWDER_MIN_G,
   grammarD02FishBonus,
+  grammarOrderingKeys,
   grammarPenaltyForEntry,
   isBreakfastSweetEntry,
+  isProteinShakeFamily,
   menuFoodEntryIndex,
   recipeCandidatesForMeal,
   recipeLever,
+  recipeRank,
   resolveMealGrammarMode,
   scaleRecipe,
   substituteGramsByKcal,
+  substituteGramsForMode,
   weekBreakfastSweetsCount,
   weekHasFish,
 } from "@/lib/nutrition/v2/meal-grammar";
@@ -1081,4 +1087,336 @@ test("v6 B01 verifica in provenienza: quota primaria fuori forbetta → flag b01
   // Stessa ripartizione ma senza CHO nascosta nella proteina → 50,5/61 = 83%, dentro.
   const clean = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50.5, 10.5)], recipesAvailable: 0 });
   assert.ok(!clean.flags.some((f) => f.startsWith("b01_share_out")), clean.flags.join(","));
+});
+
+// ═══ SISTEMA TIER v9 (file Mario v9: CORE-first + shake proteici) ══════════════════════
+// Catalogo finto con TUTTI e tre i vocabolari (v5+v6+v9), come il DB dopo la migrazione
+// 20260821090100: il tier v9 è la PRIMA chiave d'ordinamento, EXCLUDE_DEFAULT/disabled
+// sono verdetti, VARIETY è contingentata a 1 per pasto.
+
+const corePasta9 = food("pasta9", "Pasta", { kcal: 350, cho: 71, pro: 12, fat: 1.5 }, roles({ lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" }, { lunch: 8, dinner: 8 }, { mainMealRole: "PRIMARY_COMPLEX_CARB", mediterraneanPriority: "COMMON", substitutionGroup: "MAIN_COMPLEX_CARB", generativeTier: "CORE", defaultEnabled: true }), { rotationKey: "carb:pasta9", carbFamily: "pasta" });
+// VARIETY con score PIÙ ALTO e priorità v6 MIGLIORE (PRIMARY), messo PRIMO nel pool:
+// senza il tier v9 vincerebbe lui per ordinamento v6 e rotazione.
+const varietyAmaranth9 = food("amaranth9", "Amaranto", { kcal: 371, cho: 65, pro: 14, fat: 7 }, roles({ lunch: "CHO_PRIMARY", dinner: "CHO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_COMPLEX_CARB", mediterraneanPriority: "PRIMARY", substitutionGroup: "MAIN_COMPLEX_CARB", generativeTier: "VARIETY", defaultEnabled: true }), { rotationKey: "carb:amaranth9" });
+const excluded9 = food("sprouts9", "Germogli di soia", { kcal: 30, cho: 5, pro: 3, fat: 0.5 }, roles({ lunch: "FIBER_VEG", dinner: "FIBER_VEG" }, { lunch: 10, dinner: 10 }, { mainMealRole: "FIBER_SIDE", mediterraneanPriority: "PRIMARY", substitutionGroup: "VEGETABLE", generativeTier: "EXCLUDE_DEFAULT", defaultEnabled: true }));
+const disabledOil9 = food("sunfloweroil9", "Olio di girasole", { kcal: 884, cho: 0, pro: 0, fat: 100 }, roles({}, { lunch: 4, dinner: 4 }, { mainMealRole: "FAT_CONDIMENT", mediterraneanPriority: "LIMITED", substitutionGroup: "FAT_CONDIMENT", generativeTier: "VARIETY", defaultEnabled: false }));
+const varietyBeef9 = food("beef9", "Manzo raro", { kcal: 150, cho: 0, pro: 22, fat: 6 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "RED_MEAT", generativeTier: "VARIETY" }), { rotationKey: "prot:beef9", isMeat: true });
+const varietyVeg9 = food("radish9", "Rapanelli", { kcal: 16, cho: 3.4, pro: 0.7, fat: 0.1 }, roles({ lunch: "FIBER_VEG", dinner: "FIBER_VEG" }, { lunch: 10, dinner: 10 }, { mainMealRole: "FIBER_SIDE", mediterraneanPriority: "PRIMARY", substitutionGroup: "VEGETABLE", generativeTier: "VARIETY" }), { rotationKey: "veg:radish9" });
+const coreVeg9 = food("zucchine9", "Zucchine", { kcal: 17, cho: 3, pro: 1.2, fat: 0.3 }, roles({ lunch: "FIBER_VEG", dinner: "FIBER_VEG" }, { lunch: 9, dinner: 9 }, { mainMealRole: "FIBER_SIDE", mediterraneanPriority: "COMMON", substitutionGroup: "VEGETABLE", generativeTier: "CORE" }), { rotationKey: "veg:zucchine9" });
+
+test("v9 tier: CORE è la PRIMA chiave d'ordinamento — batte score più alto, priorità v6 migliore e rotazione", () => {
+  for (let seed = 0; seed < 10; seed += 1) {
+    const p = pickStapleForPool({ poolKey: "lunch_carb", seed, menuEntries: [varietyAmaranth9, corePasta9], grammar: { meal: "lunch" } });
+    assert.equal(p?.entry.canonicalKey, "pasta9", `seed ${seed}: il CORE vince sempre`);
+  }
+  // Senza il pasta CORE il VARIETY resta pescabile (tier = ordinamento, non verdetto).
+  const only = pickStapleForPool({ poolKey: "lunch_carb", seed: 0, menuEntries: [varietyAmaranth9], grammar: { meal: "lunch" } });
+  assert.equal(only?.entry.canonicalKey, "amaranth9");
+});
+
+test("v9 verdetti: EXCLUDE_DEFAULT e default_enabled=false non entrano MAI da soli (P01)", () => {
+  assert.equal(grammarPenaltyForEntry(excluded9, { meal: "lunch" }, 0), null, "EXCLUDE_DEFAULT → verdetto");
+  assert.equal(grammarPenaltyForEntry(disabledOil9, { meal: "lunch" }, 0), null, "disabled → verdetto");
+  const p = pickStapleForPool({ poolKey: "lunch_veg", seed: 0, menuEntries: [excluded9, coreVeg9], grammar: { meal: "lunch" } });
+  assert.equal(p?.entry.canonicalKey, "zucchine9");
+  const none = pickStapleForPool({ poolKey: "lunch_veg", seed: 0, menuEntries: [excluded9], grammar: { meal: "lunch" } });
+  assert.equal(none, null, "pool di soli esclusi → nessun pick, mai l'escluso");
+});
+
+test("v9 scale miste dichiarate: un v9 VARIETY (rank 3) precede un v6 LIMITED (rank 4)", () => {
+  const v6Limited = oilseed6; // LIMITED senza tier v9
+  const kV9 = grammarOrderingKeys(varietyAmaranth9, { meal: "lunch" });
+  const kV6 = grammarOrderingKeys(v6Limited, { meal: "lunch" });
+  assert.equal(kV9.tier, 3);
+  assert.equal(kV6.tier, 4);
+  assert.ok(kV9.tier < kV6.tier, "comportamento fissato: scala v9 e scala v6 convivono nel campo tier");
+});
+
+test("v9 V7-03: massimo UN alimento VARIETY per pasto — il secondo pick VARIETY dello slot è verdetto", () => {
+  const menu = new Map<string, MenuFoodEntry[]>([
+    ["lunch_carb", [corePasta9]],
+    ["lunch_pro", [varietyBeef9]],
+    ["lunch_veg", [varietyVeg9, coreVeg9]],
+    ["dinner_carb", [corePasta9]],
+    ["dinner_pro", [varietyBeef9]],
+    ["dinner_veg", [varietyVeg9, coreVeg9]],
+    ["breakfast_cho", [oat6]],
+    ["breakfast_pro", [yog6]],
+    ["breakfast_fat", [nuts6]],
+    ["snack_cho", [apple6]],
+    ["snack_pro", [yog6]],
+  ]);
+  for (const date of DATES.slice(0, 6)) {
+    const plan = composeWith(menu, rawPools(), date, { grammar: true });
+    const lunch = plan.find((s) => s.slot === "lunch")!;
+    const pro = lunch.items.find((it) => it.foodRole === "protein_primary");
+    assert.equal(pro?.canonicalKey, "beef9", `${date}: il primo VARIETY dello slot entra`);
+    const veg = lunch.items.find((it) => it.foodRole === "veg_condiment");
+    assert.equal(veg?.canonicalKey, "zucchine9", `${date}: il secondo VARIETY (rapanelli) è bloccato, entra il CORE`);
+    const varietyCount = lunch.items.filter((it) => ["beef9", "radish9", "amaranth9"].includes(it.canonicalKey ?? "")).length;
+    assert.ok(varietyCount <= 1, `${date}: ${varietyCount} VARIETY nello slot`);
+  }
+  // Contorno con SOLO VARIETY: la linea salta (flag), mai un secondo VARIETY.
+  const menu2 = new Map(menu);
+  menu2.set("lunch_veg", [varietyVeg9]);
+  const diagnostics: string[] = [];
+  const plan2 = composeWith(menu2, rawPools(), DATES[0]!, { grammar: true, diagnostics });
+  const lunch2 = plan2.find((s) => s.slot === "lunch")!;
+  assert.ok(!lunch2.items.some((it) => it.canonicalKey === "radish9"), "niente secondo VARIETY");
+  assert.ok(diagnostics.some((f) => f === "pool_exhausted:lunch:lunch_veg"), diagnostics.join(","));
+});
+
+test("v9 V7-01: core_share misurata nei flag (provenienza), mai forzata", () => {
+  const menu = new Map<string, MenuFoodEntry[]>([
+    ["lunch_carb", [corePasta9]],
+    ["lunch_pro", [varietyBeef9]],
+    ["lunch_veg", [coreVeg9]],
+    ["dinner_carb", [corePasta9]],
+    ["dinner_pro", [varietyBeef9]],
+    ["dinner_veg", [coreVeg9]],
+    ["breakfast_cho", [oat6]],
+    ["breakfast_pro", [yog6]],
+    ["breakfast_fat", [nuts6]],
+    ["snack_cho", [apple6]],
+    ["snack_pro", [yog6]],
+  ]);
+  const diagnostics: string[] = [];
+  composeWith(menu, rawPools(), DATES[0]!, { grammar: true, diagnostics });
+  const lunchShare = diagnostics.find((f) => f.startsWith("core_share:lunch:"));
+  assert.ok(lunchShare, `flag core_share mancante: ${diagnostics.join(",")}`);
+  // pasta CORE + manzo VARIETY + zucchine CORE = 2/3 → 67.
+  assert.equal(lunchShare, "core_share:lunch:67");
+  // Fixture v6 (nessun tier): NESSUN flag core_share — si misura solo ciò che è classificato.
+  const diagV6: string[] = [];
+  composeWith(v6Pools(), rawPools(), DATES[0]!, { grammar: true, diagnostics: diagV6 });
+  assert.ok(!diagV6.some((f) => f.startsWith("core_share:")), diagV6.join(","));
+});
+
+test("v9 V7-R01: nei re-pick di sostituzione entrano SOLO CORE/ROTATION (le entry senza tier degradano al v6)", () => {
+  const substituteFor = { substitutionGroup: "MAIN_COMPLEX_CARB", substitutes: [] };
+  assert.equal(grammarPenaltyForEntry(varietyAmaranth9, { meal: "lunch", substituteFor }, 0), null, "VARIETY fuori dai sostituti automatici");
+  assert.equal(grammarPenaltyForEntry(corePasta9, { meal: "lunch", substituteFor }, 0), 0, "CORE resta sostituto valido");
+  // Entry v6 pura (senza tier): nessun verdetto v9, comportamento v6 invariato.
+  assert.equal(grammarPenaltyForEntry(pasta6, { meal: "lunch", substituteFor }, 0), 0);
+});
+
+test("v9 substituteGramsForMode: PORTION = stessi grammi, ENERGY/assente = kcal-equivalenza", () => {
+  assert.equal(substituteGramsForMode("PORTION_EQUIVALENT", 120, 17, 16), 120);
+  assert.equal(substituteGramsForMode("ENERGY_EQUIVALENT", 100, 350, 116), 301.7);
+  assert.equal(substituteGramsForMode(null, 100, 350, 116), 301.7);
+  assert.equal(substituteGramsForMode(undefined, 80, 270, 270), 80);
+});
+
+// ── Ricette v9: tier/famiglia/meals + shake proteici ─────────────────────────────────
+
+const almondDrink9 = food("almond_drink_unsweetened", "Bevanda di mandorla", { kcal: 15, cho: 0.34, pro: 0.55, fat: 1.22 }, roles({}, { breakfast: 6, snack: 7 }, { macroRole: "MIXED", generativeTier: "ROTATION", defaultEnabled: true, prepSpeed: 10 }), { rotationKey: "breakfast:latte9" });
+const whey9 = food("whey_protein_powder", "Proteine whey in polvere", { kcal: 385, cho: 18, pro: 66.7, fat: 5.13 }, roles({}, { breakfast: 8, snack: 9 }, { macroRole: "PRO_PRIMARY", generativeTier: "ROTATION", defaultEnabled: false, prepSpeed: 10 }));
+
+const shake9: MenuRecipe = {
+  id: "s9",
+  recipeKey: "shake_whey_mandorla",
+  labelIt: "Shake whey e mandorla",
+  note: null,
+  frequency: "ROTATION",
+  maxWeek: 3,
+  family: "PROTEIN_SHAKE_LIGHT",
+  tier: "ROTATION",
+  selectionWeight: 30,
+  meals: ["breakfast", "snack"],
+  components: [
+    { position: 1, canonicalKey: "whey_protein_powder", fdcId: whey9.fdcId, labelIt: "Proteine whey in polvere", gramsPer100g: 10.71, isNeutral: false },
+    { position: 2, canonicalKey: "almond_drink_unsweetened", fdcId: almondDrink9.fdcId, labelIt: "Bevanda di mandorla", gramsPer100g: 89.29, isNeutral: false },
+  ],
+};
+
+function v9ShakePools(): MenuFoodPoolMap {
+  return new Map<string, MenuFoodEntry[]>([
+    ...v6Pools(),
+    // Pool virtuale per l'entryIndex delle ricette (P01: whey disabled → mai standalone).
+    ["shake_ing", [whey9, almondDrink9]],
+  ]);
+}
+
+test("v9 P01 dentro le ricette: l'ingrediente disabled NON uccide la ricetta shake (verdetto solo sui pick standalone)", () => {
+  const idx = menuFoodEntryIndex(v9ShakePools());
+  const cands = recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idx, meal: "breakfast" });
+  assert.equal(cands.length, 1, "lo shake resta candidabile a colazione nonostante la polvere disabled");
+  // …ma la stessa polvere non entra MAI come alimento a sé.
+  const p = pickStapleForPool({ poolKey: "breakfast_pro", seed: 0, menuEntries: [whey9], grammar: { meal: "breakfast" } });
+  assert.equal(p, null);
+});
+
+test("v9 meals esplicita: lo shake è candidabile a colazione/spuntino e MAI a pranzo/cena; le legacy senza meals mai a colazione", () => {
+  const idx = menuFoodEntryIndex(v9ShakePools());
+  assert.equal(recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idx, meal: "lunch" }).length, 0);
+  assert.equal(recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idx, meal: "snack" }).length, 1);
+  // Ricetta LEGACY (senza colonna meals): a colazione non entra per omissione.
+  const idxLegacy = menuFoodEntryIndex(pools());
+  assert.equal(recipeCandidatesForMeal({ recipes: [carbonara], entryIndex: idxLegacy, meal: "breakfast" }).length, 0);
+});
+
+test("v9 P04: lo shake a colazione RIMPIAZZA la linea proteica primaria; CHO complesso e B02 restano; polvere ancorata 20-35 g", () => {
+  let found = 0;
+  for (const date of DATES) {
+    const diagnostics: string[] = [];
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v9ShakePools(),
+      mealGrammar: { enabled: true, recipes: [shake9], diagnostics },
+    });
+    for (const s of plan) {
+      const it = s.items.find((x) => x.recipe?.recipeKey === "shake_whey_mandorla");
+      if (!it) continue;
+      found += 1;
+      assert.equal(s.slot, "breakfast", `${date}: lo shake vive solo negli slot dichiarati`);
+      assert.ok(!s.items.some((x) => x.foodRole === "protein_primary"), `${date}: P04 — la proteina primaria è rimpiazzata`);
+      assert.ok(s.items.some((x) => x.foodRole === "cho_complex"), `${date}: il CHO complesso resta`);
+      // P02: la polvere è ancorata alla forbice, il liquido assorbe il resto.
+      const powder = it.recipe!.components.find((c) => c.canonicalKey === "whey_protein_powder")!;
+      assert.ok(
+        powder.grams >= GRAMMAR_SHAKE_POWDER_MIN_G && powder.grams <= GRAMMAR_SHAKE_POWDER_MAX_G,
+        `${date}: polvere ${powder.grams} g fuori [20, 35]`,
+      );
+      // Totali = Σ componenti anche con l'ancora.
+      const sumKcal = it.recipe!.components.reduce((a, c) => a + c.kcal, 0);
+      assert.ok(Math.abs(sumKcal - it.kcal) < 0.11, `${date}: kcal item ${it.kcal} vs Σ ${sumKcal}`);
+      assert.ok(diagnostics.some((f) => f.startsWith("shake_powder_anchored:breakfast:")), diagnostics.join(","));
+    }
+    // La polvere non compare MAI come item standalone (P01).
+    for (const s of plan) {
+      assert.ok(!s.items.some((x) => !x.recipe && x.canonicalKey === "whey_protein_powder"), `${date}: polvere standalone`);
+    }
+  }
+  assert.ok(found >= 3, `shake serviti in 30 giorni: ${found}`);
+});
+
+test("v9 contatori separati: lo shake del mattino NON brucia la ricetta di pranzo/cena (e viceversa)", () => {
+  const risoPollo9: MenuRecipe = {
+    id: "rp9",
+    recipeKey: "riso_pollo9",
+    labelIt: "Riso pollo",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    family: "RICE",
+    tier: "CORE",
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Riso", gramsPer100g: 45, isNeutral: false },
+      { position: 2, canonicalKey: "chicken6", fdcId: chicken6.fdcId, labelIt: "Pollo", gramsPer100g: 40, isNeutral: false },
+      { position: 3, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 15, isNeutral: true },
+    ],
+  };
+  let both = 0;
+  for (const date of DATES) {
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v9ShakePools(),
+      mealGrammar: { enabled: true, recipes: [shake9, risoPollo9] },
+    });
+    const hasShake = plan.some((s) => s.slot === "breakfast" && s.items.some((x) => x.recipe?.recipeKey === "shake_whey_mandorla"));
+    const hasMain = plan.some((s) => (s.slot === "lunch" || s.slot === "dinner") && s.items.some((x) => x.recipe?.recipeKey === "riso_pollo9"));
+    if (hasShake && hasMain) both += 1;
+  }
+  assert.ok(both >= 1, `nessun giorno con shake E ricetta principale in 30 giorni: i contatori non sono separati`);
+});
+
+test("v9 tetto per FAMIGLIA: una lasagna in settimana blocca TUTTE le varianti lasagne; le altre famiglie no", () => {
+  const idx = menuFoodEntryIndex(pools());
+  const mkLasagna = (n: string): MenuRecipe => ({
+    ...risoPomodoro,
+    id: n,
+    recipeKey: n,
+    labelIt: n,
+    family: "LASAGNE",
+    tier: "ROTATION",
+    meals: ["lunch", "dinner"],
+    maxWeek: 2,
+  });
+  const lasA = mkLasagna("lasagne_a");
+  const lasB = mkLasagna("lasagne_b");
+  const pastaFam: MenuRecipe = { ...risoPomodoro, id: "pf", recipeKey: "pasta_fam", labelIt: "Pasta fam", family: "PASTA", tier: "CORE", meals: ["lunch", "dinner"] };
+  const fresh = recipeCandidatesForMeal({ recipes: [lasA, lasB, pastaFam], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
+  assert.deepEqual(fresh.map((c) => c.recipe.recipeKey).sort(), ["lasagne_a", "lasagne_b", "pasta_fam"]);
+  const afterOne = recipeCandidatesForMeal({ recipes: [lasA, lasB, pastaFam], entryIndex: idx, meal: "lunch", weekStapleCounts: { "recipe:lasagne_a": 1 } });
+  assert.deepEqual(afterOne.map((c) => c.recipe.recipeKey), ["pasta_fam"], "famiglia LASAGNE al tetto (1): entrambe le varianti fuori, PASTA (senza tetto famiglia) resta");
+});
+
+test("v9 rank ricette: il tier vince sulla frequency (CORE/OCCASIONAL prima di ROTATION/COMMON) e il sorteggio usa lo stesso rank", () => {
+  const idx = menuFoodEntryIndex(pools());
+  const coreOcc: MenuRecipe = { ...risoPomodoro, id: "t1", recipeKey: "riso_core", labelIt: "Riso core", frequency: "OCCASIONAL", tier: "CORE", meals: ["lunch", "dinner"] };
+  const rotCommon: MenuRecipe = { ...risoPomodoro, id: "t2", recipeKey: "riso_rot", labelIt: "Riso rot", frequency: "COMMON", tier: "ROTATION", meals: ["lunch", "dinner"] };
+  assert.equal(recipeRank(coreOcc), 0);
+  assert.equal(recipeRank(rotCommon), 1);
+  const cands = recipeCandidatesForMeal({ recipes: [rotCommon, coreOcc], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
+  assert.deepEqual(cands.map((c) => c.recipe.recipeKey), ["riso_core", "riso_rot"]);
+  const picked = new Set<string>();
+  for (let seed = 0; seed < 60; seed += 1) {
+    const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false });
+    if (c) picked.add(c.recipe.recipeKey);
+  }
+  assert.deepEqual([...picked], ["riso_core"], "il sorteggio non mescola i rank");
+});
+
+test("v9 scaleRecipe: ancora della polvere SOLO per le famiglie proteiche, totali = Σ componenti", () => {
+  assert.equal(isProteinShakeFamily("PROTEIN_SHAKE_LIGHT"), true);
+  assert.equal(isProteinShakeFamily("PROTEIN_CREAM"), true);
+  assert.equal(isProteinShakeFamily("PLANT_PROTEIN_SHAKE"), true);
+  assert.equal(isProteinShakeFamily("PASTA"), false);
+  assert.equal(isProteinShakeFamily(null), false);
+  const idx = menuFoodEntryIndex(v9ShakePools());
+  const cand = recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idx, meal: "breakfast" })[0]!;
+  // 350 g: la polvere naive sarebbe 37,5 g → ancorata a 35, il liquido assorbe la differenza.
+  const big = scaleRecipe(cand, 350);
+  const bigPowder = big.components.find((c) => c.canonicalKey === "whey_protein_powder")!;
+  assert.equal(bigPowder.grams, 35);
+  const bigTotalG = big.components.reduce((a, c) => a + c.grams, 0);
+  assert.ok(Math.abs(bigTotalG - 350) < 0.3, `totale ${bigTotalG} ≠ 350`);
+  assert.ok(Math.abs(big.totals.kcal - big.components.reduce((a, c) => a + c.kcal, 0)) < 0.11);
+  // 150 g: naive 16,1 g → ancorata a 20, il liquido si stringe.
+  const small = scaleRecipe(cand, 150);
+  const smallPowder = small.components.find((c) => c.canonicalKey === "whey_protein_powder")!;
+  assert.equal(smallPowder.grams, 20);
+  const smallTotalG = small.components.reduce((a, c) => a + c.grams, 0);
+  assert.ok(Math.abs(smallTotalG - 150) < 0.3, `totale ${smallTotalG} ≠ 150`);
+  // Ricetta NON proteica (carbonara, family assente): scala proporzionale come prima.
+  const idxL = menuFoodEntryIndex(pools());
+  const carb = recipeCandidatesForMeal({ recipes: [carbonara], entryIndex: idxL, meal: "lunch" })[0]!;
+  assert.equal(scaleRecipe(carb, 300).components[0]!.grams, 105);
+});
+
+test("v9 off bit-identico: i campi v9 sul catalogo NON toccano il path off (grammatica spenta)", () => {
+  // Stesse fixture v5, clonate CON i campi v9 valorizzati: il path off deve produrre
+  // esattamente la stessa composizione (i campi nuovi vivono solo dietro ctx.grammar).
+  const withV9 = (): MenuFoodPoolMap => {
+    const out = new Map<string, MenuFoodEntry[]>();
+    for (const [k, list] of pools()) {
+      out.set(
+        k,
+        list.map((e) => ({
+          ...e,
+          mealRoles: e.mealRoles
+            ? { ...e.mealRoles, generativeTier: "VARIETY" as const, defaultEnabled: true, selectionWeight: 10, substitutionMode: null, substitutePool: null }
+            : undefined,
+        })),
+      );
+    }
+    return out;
+  };
+  for (const date of DATES.slice(0, 7)) {
+    const legacy = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: pools(),
+    });
+    const v9off = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: withV9(),
+      mealGrammar: { enabled: false, recipes: [shake9] },
+    });
+    assert.equal(JSON.stringify(v9off), JSON.stringify(legacy), `${date}: off con dati v9 ≠ storico`);
+  }
 });

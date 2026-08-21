@@ -50,6 +50,7 @@ import {
   breakfastSecondaryMenuEntries,
   chooseRecipeForSlot,
   grammarPoolMeal,
+  isProteinShakeFamily,
   mainMealFatCondimentEntries,
   mealForSlot,
   menuFoodEntryIndex,
@@ -185,6 +186,10 @@ function grammarFilterFor(
     ...(meal === "breakfast" ? { sweetsWeekCount: ctx.grammar.sweetsWeekCount } : {}),
     ...(meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {}),
     ...(relaxWeekCaps ? { relaxWeekCaps: true } : {}),
+    // V7-03 (v9): dopo il primo VARIETY dello slot TUTTE le linee successive (B02,
+    // condimento M01, re-pick regola 7) ereditano il blocco — il filtro si costruisce a
+    // ogni pick, quindi legge lo stato aggiornato.
+    ...(ctx.grammar.varietyUsedInSlot ? { varietyBlocked: true } : {}),
   };
 }
 
@@ -295,6 +300,12 @@ function pickLineForRole(
   }
 
   if (staplePick) {
+    // V7-03 (v9): il pick VARIETY consuma il budget varietà dello slot. ANCHE con
+    // skipUsageRegistration (condimento M01): la regola non deve dipendere dai dati
+    // (l'EVO è CORE oggi, ma un condimento VARIETY conterebbe comunque).
+    if (ctx.grammar && (staplePick.entry as MenuFoodEntry).mealRoles?.generativeTier === "VARIETY") {
+      ctx.grammar.varietyUsedInSlot = true;
+    }
     if (!opts?.skipUsageRegistration) {
       if (staplePick.entry.rotationKey) {
         ctx.usedCarbFamilies.add(staplePick.entry.rotationKey);
@@ -334,8 +345,16 @@ type GrammarComposeState = {
   recipes: readonly MenuRecipe[];
   /** canonical_key → entry del catalogo, per risolvere gli ingredienti delle ricette. */
   entryIndex: Map<string, MenuFoodEntry>;
-  /** Al massimo una ricetta al giorno. */
+  /** Al massimo una ricetta al giorno NEI PASTI PRINCIPALI (pranzo/cena). */
   recipeUsedToday: boolean;
+  /**
+   * v9: contatore SEPARATO per le ricette di colazione/spuntino (shake proteici, P04):
+   * lo shake del mattino non deve bruciare la lasagna di pranzo (e viceversa) — sono
+   * percorsi diversi con tetti diversi. Al massimo una anche qui, al giorno.
+   */
+  shakeUsedToday: boolean;
+  /** V7-03 (v9): lo slot corrente ha già servito un alimento VARIETY (reset a inizio slot). */
+  varietyUsedInSlot: boolean;
   /** B05: dolci da colazione già serviti in settimana (conteggio cumulato sul marcatore). */
   sweetsWeekCount: number;
   /**
@@ -358,7 +377,13 @@ function pickRecipeLine(
   ctx: ComposeContext,
 ): PickLine | null {
   const g = ctx.grammar;
-  if (!g || !isMainMealSlot(slotKey) || g.recipeUsedToday) return null;
+  if (!g) return null;
+  // v9 (D3.5): due percorsi con contatori giornalieri e budget settimanali SEPARATI —
+  // pasti principali (pranzo/cena: lasagne, pizza…) vs colazione/spuntini (shake
+  // proteici con `meals` esplicita). Uno shake al mattino non brucia la ricetta di
+  // pranzo, e viceversa.
+  const isMain = isMainMealSlot(slotKey);
+  if (isMain ? g.recipeUsedToday : g.shakeUsedToday) return null;
   const candidates = recipeCandidatesForMeal({
     recipes: g.recipes,
     entryIndex: g.entryIndex,
@@ -367,12 +392,22 @@ function pickRecipeLine(
     denyFragments: ctx.denyFragments,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
   }).filter((c) => !c.ingredients.some(({ entry }) => ctx.usedFdcIds.has(entry.fdcId)));
+  // Budget settimanale del percorso: le ricette che possono servire questo tipo di slot
+  // (legacy senza `meals` = pasti principali).
+  const weeklyCapRecipes = g.recipes.filter((r) => {
+    const meals = r.meals;
+    if (!meals || meals.length === 0) return isMain;
+    return isMain
+      ? meals.includes("lunch") || meals.includes("dinner")
+      : meals.includes("breakfast") || meals.includes("snack");
+  });
   const cand = chooseRecipeForSlot({
     candidates,
     seed: ctx.seed,
     slotKey,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
-    recipeAlreadyToday: g.recipeUsedToday,
+    recipeAlreadyToday: isMain ? g.recipeUsedToday : g.shakeUsedToday,
+    weeklyCapRecipes,
   });
   if (!cand) return null;
 
@@ -381,7 +416,19 @@ function pickRecipeLine(
   const kcalCapG = Math.floor(((target.kcal * 100) / cand.per100.kcal) / GRAMMAR_RECIPE_STEP_G) * GRAMMAR_RECIPE_STEP_G;
   if (kcalCapG < GRAMMAR_RECIPE_MIN_G) return null;
 
-  g.recipeUsedToday = true;
+  if (isMain) g.recipeUsedToday = true;
+  else g.shakeUsedToday = true;
+  // V7-03: una ricetta con almeno un ingrediente VARIETY consuma il budget varietà
+  // dello slot (decisione: sì, un solo flag — mai 2 VARIETY nel pasto, nemmeno uno in
+  // ricetta e uno da pick).
+  if (cand.ingredients.some(({ entry }) => entry.mealRoles?.generativeTier === "VARIETY")) {
+    g.varietyUsedInSlot = true;
+  }
+  // P02: la famiglia proteica ha la polvere ancorata in scaleRecipe — flag di
+  // provenienza per misurare in shadow la deriva rispetto al solver lineare.
+  if (isProteinShakeFamily(cand.recipe.family)) {
+    g.flags.push(`shake_powder_anchored:${slotKey}:${cand.recipe.recipeKey}`);
+  }
   for (const { entry } of cand.ingredients) {
     if (entry.fdcId > 0) ctx.usedFdcIds.add(entry.fdcId);
     ctx.dayCtx.dayUsedCanonicalKeys?.add(entry.canonicalKey);
@@ -396,8 +443,10 @@ function pickRecipeLine(
     spec: {
       foodRole: "composite_dish",
       // Matrice a base CHO → è il primo (leva cho); piatto proteico (cotoletta) → è il
-      // secondo (leva protein) e il primo resta.
-      lever: recipeLever(cand.per100),
+      // secondo (leva protein) e il primo resta. A colazione/spuntino la leva è SEMPRE
+      // protein (P04: lo shake RIMPIAZZA la linea proteica primaria — CHO complesso,
+      // frutta e grassi restano; guard esplicito contro uno shake CHO-led).
+      lever: isMain ? recipeLever(cand.per100) : "protein",
       poolKey: "recipe",
       minG: GRAMMAR_RECIPE_MIN_G,
       maxG: kcalCapG,
@@ -496,6 +545,9 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
   const slotKey = slot.key as MealSlotKey;
   const roles = MEAL_SLOT_ASSEMBLY[slotKey] ?? MEAL_SLOT_ASSEMBLY.snack_am;
   const target = slotMacroTargetsFromDiet(slot);
+
+  // V7-03 (v9): il budget varietà è PER SLOT — reset in testa, prima di qualunque pick.
+  if (ctx.grammar) ctx.grammar.varietyUsedInSlot = false;
 
   const lines: PickLine[] = [];
   // Grammatica, L04: la ricetta (se scelta) occupa una leva del pasto principale — il primo
@@ -624,6 +676,35 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
     { kcal: 0, choG: 0, proG: 0, fatG: 0 },
   );
 
+  // V7-01 (v9): quota CORE del pasto — MISURATA (flag di provenienza), mai forzata:
+  // l'ordinamento per tier la rende emergente. Conta per NUMERO di componenti (come la
+  // regola) i soli componenti classificati v9 (tier presente): con dati v6 non c'è tier
+  // → nessun flag, nessun rumore.
+  if (ctx.grammar && items.length > 0) {
+    let classified = 0;
+    let core = 0;
+    lines.forEach((line, i) => {
+      const g = grams[i] ?? 0;
+      if (g < (line.spec.lever === "fat" ? 4 : 8)) return;
+      if (line.recipe) {
+        for (const { entry } of line.recipe.ingredients) {
+          const t = entry.mealRoles?.generativeTier;
+          if (!t) continue;
+          classified += 1;
+          if (t === "CORE") core += 1;
+        }
+        return;
+      }
+      const t = (line.staple as MenuFoodEntry | undefined)?.mealRoles?.generativeTier;
+      if (!t) return;
+      classified += 1;
+      if (t === "CORE") core += 1;
+    });
+    if (classified > 0) {
+      ctx.grammar.flags.push(`core_share:${slotKey}:${Math.round((core / classified) * 100)}`);
+    }
+  }
+
   return {
     slot: slot.key,
     labelIt: slot.label,
@@ -664,6 +745,9 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
                   substituteFor: {
                     substitutionGroup: swapRoles.substitutionGroup ?? null,
                     substitutes: swapRoles.substitutes ?? [],
+                    // v9: il pool di sostituzione del sostituito raffina la preferenza
+                    // (SOFT, grammarSubstituteRank); il verdetto V7-R01 vive nel filtro.
+                    substitutePool: swapRoles.substitutePool ?? null,
                   },
                 }
               : {}),
@@ -848,6 +932,8 @@ export function composeMealPlanV2(
               recipes: options.mealGrammar.recipes ?? [],
               entryIndex,
               recipeUsedToday: false,
+              shakeUsedToday: false,
+              varietyUsedInSlot: false,
               // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
               sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),
               flags: options.mealGrammar.diagnostics ?? [],

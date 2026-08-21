@@ -56,10 +56,13 @@ const MEAL_ROLES_V5_SELECT_COLUMNS =
   "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed, source_version, updated_at";
 
 /**
- * Colonne complete v5+v6 (migrazione 20260820090000). `substitutes` è in sola LETTURA
+ * Colonne v5+v6 (migrazione 20260820090000). `substitutes` è in sola LETTURA
  * per l'admin (editing fuori scope): l'upsert non la scrive mai, quindi resta di Mario.
  */
-const MEAL_ROLES_SELECT_COLUMNS = `${MEAL_ROLES_V5_SELECT_COLUMNS}, breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, generative_note, substitutes`;
+const MEAL_ROLES_V6_SELECT_COLUMNS = `${MEAL_ROLES_V5_SELECT_COLUMNS}, breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, generative_note, substitutes`;
+
+/** Colonne complete v5+v6+v9 (migrazione 20260821090000). */
+const MEAL_ROLES_SELECT_COLUMNS = `${MEAL_ROLES_V6_SELECT_COLUMNS}, generative_tier, default_enabled, selection_weight, substitution_mode, substitute_pool`;
 
 /** 42703 = colonna inesistente: ambiente non ancora migrato alla v6 → select v5. */
 function isMissingColumnError(error: { code?: string; message?: string } | null): boolean {
@@ -112,14 +115,22 @@ export async function fetchMealRoles(
 ): Promise<{ map: Map<string, AdminMenuFoodMealRoles>; error: string | null }> {
   const map = new Map<string, AdminMenuFoodMealRoles>();
   const unique = [...new Set(canonicalKeys.filter((k) => typeof k === "string" && k))];
-  // Retry v5 su 42703 (colonne v6 non ancora migrate): meglio una GET senza campi v6
-  // che l'intero pannello alimenti rotto per una colonna in meno.
+  // Degradazione a STADI su 42703 (v9 → v6 → v5, come il loader del motore): un
+  // ambiente senza colonne v9 perde SOLO le v9, mai anche le v6 — meglio una GET con
+  // meno campi che l'intero pannello alimenti rotto per una colonna in meno.
   let selectColumns = MEAL_ROLES_SELECT_COLUMNS;
   for (let i = 0; i < unique.length; i += FDC_IN_CHUNK) {
     let { data, error } = await admin
       .from("nutrition_menu_food_meal_roles")
       .select(selectColumns)
       .in("canonical_key", unique.slice(i, i + FDC_IN_CHUNK));
+    if (isMissingColumnError(error) && selectColumns === MEAL_ROLES_SELECT_COLUMNS) {
+      selectColumns = MEAL_ROLES_V6_SELECT_COLUMNS;
+      ({ data, error } = await admin
+        .from("nutrition_menu_food_meal_roles")
+        .select(selectColumns)
+        .in("canonical_key", unique.slice(i, i + FDC_IN_CHUNK)));
+    }
     if (isMissingColumnError(error) && selectColumns !== MEAL_ROLES_V5_SELECT_COLUMNS) {
       selectColumns = MEAL_ROLES_V5_SELECT_COLUMNS;
       ({ data, error } = await admin
@@ -174,6 +185,15 @@ export function toAdminMealRoles(raw: MealRolesDbRow | null | undefined): AdminM
   out.substitutes = Array.isArray(raw.substitutes)
     ? (raw.substitutes as unknown[]).filter((k): k is string => typeof k === "string")
     : [];
+  // v9 (colonne assenti nell'ambiente non migrato → default DB, il form parte da lì).
+  out.generative_tier = String(raw.generative_tier ?? "VARIETY") as AdminMenuFoodMealRoles["generative_tier"];
+  out.default_enabled = raw.default_enabled !== false;
+  out.selection_weight = numOrNull(raw.selection_weight);
+  out.substitution_mode =
+    typeof raw.substitution_mode === "string" && raw.substitution_mode
+      ? (raw.substitution_mode as AdminMenuFoodMealRoles["substitution_mode"])
+      : null;
+  out.substitute_pool = typeof raw.substitute_pool === "string" ? raw.substitute_pool : null;
   out.source_version = typeof raw.source_version === "string" ? raw.source_version : null;
   out.updated_at = typeof raw.updated_at === "string" ? raw.updated_at : null;
   return out;

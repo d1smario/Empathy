@@ -100,6 +100,17 @@ export type MenuFoodMediterraneanPriority =
   | "LIMITED"
   | "OCCASIONAL";
 
+// ── Sistema tier v9 (file EMPATHY_FOOD_KNOWLEDGE_BASE_v9, CORE-first) ────────────────
+
+/**
+ * v9, tier generativo: PRIMA chiave d'ordinamento del pick (CORE < ROTATION <
+ * OCCASIONAL < VARIETY); EXCLUDE_DEFAULT = verdetto (mai generato di default).
+ */
+export type MenuFoodGenerativeTier = "CORE" | "ROTATION" | "OCCASIONAL" | "VARIETY" | "EXCLUDE_DEFAULT";
+
+/** v9, modalità di sostituzione: PORTION = stessi grammi (verdure), ENERGY = kcal-equivalenza (macro). */
+export type MenuFoodSubstitutionMode = "ENERGY_EQUIVALENT" | "PORTION_EQUIVALENT";
+
 /** Momenti della giornata con uno score di idoneità (0-10). */
 export type MenuFoodScoreSlot = "breakfast" | "snack" | "lunch" | "dinner" | "preWorkout" | "postWorkout";
 /** Pasti con un ruolo di composizione (pre/post workout hanno solo lo score). */
@@ -129,6 +140,19 @@ export type MenuFoodMealRoles = {
   substitutionGroup?: string | null;
   /** Sostituti espliciti in ordine di preferenza (canonical_key), v6. */
   substitutes?: string[];
+  // Colonne v9 (migrazione 20260821090000) — opzionali come le v6: assenti quando la
+  // select è ricaduta su v5/v6 o su una fixture senza dati v9. NESSUN default inventato
+  // dal parser: colonna assente → undefined (il default DB 'VARIETY'/true vive nel DB).
+  /** v9: tier generativo CORE-first (prima chiave d'ordinamento; EXCLUDE_DEFAULT = verdetto). */
+  generativeTier?: MenuFoodGenerativeTier;
+  /** v9, P01: false = mai pescabile da solo (polveri proteiche, oli di semi, verdure rare). */
+  defaultEnabled?: boolean;
+  /** v9: peso di selezione del file. Persistito, NON consumato dal motore (dormiente). */
+  selectionWeight?: number | null;
+  /** v9: modalità di sostituzione (null = default energy). */
+  substitutionMode?: MenuFoodSubstitutionMode | null;
+  /** v9: pool di sostituzione del file (preferenza SOFT nei re-pick). */
+  substitutePool?: string | null;
 };
 
 /**
@@ -231,6 +255,19 @@ const MEDITERRANEAN_PRIORITIES: ReadonlySet<string> = new Set<MenuFoodMediterran
   "OCCASIONAL",
 ]);
 
+// Set v9 (stessi valori dei CHECK della migrazione 20260821090000).
+const GENERATIVE_TIERS: ReadonlySet<string> = new Set<MenuFoodGenerativeTier>([
+  "CORE",
+  "ROTATION",
+  "OCCASIONAL",
+  "VARIETY",
+  "EXCLUDE_DEFAULT",
+]);
+const SUBSTITUTION_MODES: ReadonlySet<string> = new Set<MenuFoodSubstitutionMode>([
+  "ENERGY_EQUIVALENT",
+  "PORTION_EQUIVALENT",
+]);
+
 /** Parser tollerante generico per un enum v6: valore ignoto/null → fallback (mai throw). */
 function v6Enum<T extends string>(v: unknown, set: ReadonlySet<string>, fallback: T): T {
   const s = str(v)?.toUpperCase();
@@ -310,6 +347,23 @@ export function parseMenuFoodMealRoleRow(raw: unknown): { canonicalKey: string; 
       ),
       substitutionGroup: str(r?.substitution_group),
       substitutes: parseSubstitutes(r?.substitutes),
+      // v9: parsing TOLLERANTE ma senza default inventati — la chiave assente nella riga
+      // (select degradata a v5/v6, fixture senza dati v9) lascia il campo undefined, così
+      // la grammatica degrada al vocabolario v6/v5 per QUELLA entry. Dopo la migrazione
+      // ogni riga porta il default DB ('VARIETY'/true) e i campi sono sempre presenti.
+      ...(GENERATIVE_TIERS.has(str(r?.generative_tier)?.toUpperCase() ?? "")
+        ? { generativeTier: str(r?.generative_tier)!.toUpperCase() as MenuFoodGenerativeTier }
+        : {}),
+      ...(r?.default_enabled === true || r?.default_enabled === false
+        ? { defaultEnabled: r.default_enabled === true }
+        : {}),
+      ...(r != null && typeof r === "object" && "selection_weight" in r
+        ? { selectionWeight: num(r.selection_weight) }
+        : {}),
+      ...(SUBSTITUTION_MODES.has(str(r?.substitution_mode)?.toUpperCase() ?? "")
+        ? { substitutionMode: str(r?.substitution_mode)!.toUpperCase() as MenuFoodSubstitutionMode }
+        : {}),
+      ...(str(r?.substitute_pool) ? { substitutePool: str(r?.substitute_pool) } : {}),
     },
   };
 }
@@ -416,6 +470,9 @@ const MEAL_ROLES_V5_SELECT =
 /** Colonne v6 (migrazione 20260820090000): la select le tenta, con retry v5 su 42703. */
 const MEAL_ROLES_V6_EXTRA_SELECT =
   "breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, substitutes";
+/** Colonne v9 (migrazione 20260821090000): terzo stadio della select, retry v6 su 42703. */
+const MEAL_ROLES_V9_EXTRA_SELECT =
+  "generative_tier, default_enabled, selection_weight, substitution_mode, substitute_pool";
 
 export function resetMenuFoodPoolsCacheForTests(): void {
   menuFoodPoolsCache = null;
@@ -460,20 +517,26 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     // Score/ruoli di Mario: tabella 1:1 separata (nessun embed PostgREST: una query in
     // più è più semplice del join dichiarato e non cambia se la tabella manca). Un errore
     // qui NON annulla il catalogo: si prosegue senza mealRoles, come prima dell'import.
-    // Le colonne v6 (migrazione 20260820090000) hanno retry ESPLICITO su 42703 verso la
-    // select v5 — stesso pattern di loadMenuRecipes: colonna mancante → select minima,
-    // MAI grammatica azzerata in silenzio per una colonna in meno. `generative_note` non
-    // si carica: è solo admin, il motore non la usa.
-    const fullRoles = await admin
+    // Le colonne v6/v9 hanno retry ESPLICITO su 42703 a TRE STADI PROGRESSIVI
+    // (v5+v6+v9 → v5+v6 → v5): su un ambiente senza colonne v9 si perdono SOLO le v9,
+    // mai anche la v6 — MAI grammatica azzerata in silenzio per una colonna in meno.
+    // `generative_note` non si carica: è solo admin, il motore non la usa.
+    const rolesMissingColumns = (res: { error: { code?: string; message?: string } | null }) =>
+      res.error != null &&
+      (res.error.code === "42703" ||
+        /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
+    let rolesRes = await admin
       .from("nutrition_menu_food_meal_roles")
-      .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
-    const rolesMissingColumns =
-      fullRoles.error != null &&
-      (fullRoles.error.code === "42703" ||
-        /column .* does not exist|could not find the .* column/i.test(fullRoles.error.message ?? ""));
-    const { data: mealRoleRows, error: mealRoleError } = rolesMissingColumns
-      ? await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT)
-      : fullRoles;
+      .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}, ${MEAL_ROLES_V9_EXTRA_SELECT}`);
+    if (rolesMissingColumns(rolesRes)) {
+      rolesRes = await admin
+        .from("nutrition_menu_food_meal_roles")
+        .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
+    }
+    if (rolesMissingColumns(rolesRes)) {
+      rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT);
+    }
+    const { data: mealRoleRows, error: mealRoleError } = rolesRes;
 
     const pools = mapMenuFoodRows(menuRows, macroRows, !mealRoleError && Array.isArray(mealRoleRows) ? mealRoleRows : []);
     menuFoodPoolsCache = { at: Date.now(), pools };

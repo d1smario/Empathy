@@ -78,6 +78,14 @@ export const MENU_FOOD_MEDITERRANEAN_PRIORITIES = [
 ] as const;
 export type MenuFoodMediterraneanPriorityValue = (typeof MENU_FOOD_MEDITERRANEAN_PRIORITIES)[number];
 
+// ── Sistema tier v9 (migrazione 20260821090000) — set SPECULARI ai CHECK del DB ──────
+
+export const MENU_FOOD_GENERATIVE_TIERS = ["CORE", "ROTATION", "OCCASIONAL", "VARIETY", "EXCLUDE_DEFAULT"] as const;
+export type MenuFoodGenerativeTierValue = (typeof MENU_FOOD_GENERATIVE_TIERS)[number];
+
+export const MENU_FOOD_SUBSTITUTION_MODES = ["ENERGY_EQUIVALENT", "PORTION_EQUIVALENT"] as const;
+export type MenuFoodSubstitutionModeValue = (typeof MENU_FOOD_SUBSTITUTION_MODES)[number];
+
 const MEAL_ROLE_SET: ReadonlySet<string> = new Set(MENU_FOOD_MEAL_ROLES);
 const MACRO_ROLE_SET: ReadonlySet<string> = new Set(MENU_FOOD_MACRO_ROLES);
 const FREQUENCY_SET: ReadonlySet<string> = new Set(MENU_FOOD_FREQUENCIES);
@@ -114,6 +122,13 @@ export type MenuFoodMealRolesInput = {
   mediterranean_priority?: MenuFoodMediterraneanPriorityValue;
   substitution_group?: string | null;
   generative_note?: string | null;
+  // Colonne v9 — stesso contratto delle v6: assenti nel body → colonne NON toccate
+  // dall'upsert (i valori di Mario restano); presenti → validate.
+  generative_tier?: MenuFoodGenerativeTierValue;
+  default_enabled?: boolean;
+  selection_weight?: number | null;
+  substitution_mode?: MenuFoodSubstitutionModeValue | null;
+  substitute_pool?: string | null;
 };
 
 /** Campi v6 a enumerazione: (chiave, set ammesso) — usati da validate e dal form. */
@@ -253,6 +268,62 @@ export function validateMenuFoodMealRoles(raw: unknown): MealRolesValidation {
     }
   }
 
+  // ── Campi v9 (stesso contratto opzionale dei v6) ──────────────────────────────────
+
+  // generative_tier: enum NOT NULL a DB (default VARIETY) → se presente deve essere valido.
+  if ("generative_tier" in r) {
+    const v = typeof r.generative_tier === "string" ? r.generative_tier.trim().toUpperCase() : "";
+    if (!(MENU_FOOD_GENERATIVE_TIERS as readonly string[]).includes(v)) {
+      return { ok: false, error: `generative_tier: "${String(r.generative_tier)}" non è un tier valido.` };
+    }
+    out.generative_tier = v as MenuFoodGenerativeTierValue;
+  }
+
+  // default_enabled: booleano STRETTO (o "true"/"false" dalla UI select).
+  if ("default_enabled" in r) {
+    const v = r.default_enabled;
+    if (v === true || v === "true") out.default_enabled = true;
+    else if (v === false || v === "false") out.default_enabled = false;
+    else return { ok: false, error: `default_enabled: deve essere true o false, ricevuto ${String(v)}.` };
+  }
+
+  // selection_weight: intero 0-100 (range osservato nel file v9) oppure null.
+  if ("selection_weight" in r) {
+    if (r.selection_weight == null || r.selection_weight === "") {
+      out.selection_weight = null;
+    } else {
+      const n = toNumber(r.selection_weight);
+      if (n == null || !Number.isInteger(n) || n < 0 || n > 100) {
+        return { ok: false, error: `selection_weight: deve essere un intero 0-100 o vuoto, ricevuto ${String(r.selection_weight)}.` };
+      }
+      out.selection_weight = n;
+    }
+  }
+
+  // substitution_mode: enum oppure null ("" dalla UI = null).
+  if ("substitution_mode" in r) {
+    if (r.substitution_mode == null || r.substitution_mode === "") {
+      out.substitution_mode = null;
+    } else {
+      const v = typeof r.substitution_mode === "string" ? r.substitution_mode.trim().toUpperCase() : "";
+      if (!(MENU_FOOD_SUBSTITUTION_MODES as readonly string[]).includes(v)) {
+        return { ok: false, error: `substitution_mode: "${String(r.substitution_mode)}" non è una modalità valida.` };
+      }
+      out.substitution_mode = v as MenuFoodSubstitutionModeValue;
+    }
+  }
+
+  // substitute_pool: testo libero normalizzato MAIUSCOLO_SNAKE ("" = null), come substitution_group.
+  if ("substitute_pool" in r) {
+    if (r.substitute_pool == null || r.substitute_pool === "") {
+      out.substitute_pool = null;
+    } else if (typeof r.substitute_pool !== "string") {
+      return { ok: false, error: "substitute_pool: deve essere testo o vuoto." };
+    } else {
+      out.substitute_pool = r.substitute_pool.trim().toUpperCase().replace(/\s+/g, "_");
+    }
+  }
+
   return { ok: true, value: out as MenuFoodMealRolesInput };
 }
 
@@ -299,6 +370,13 @@ export function defaultMealRolesFromPools(poolKeys: readonly string[]): MenuFood
     mediterranean_priority: "COMMON",
     substitution_group: null,
     generative_note: null,
+    // v9: specchio dei default DB (DDL 20260821090000) — un alimento nuovo parte
+    // VARIETY/abilitato, il resto lo decide chi cura l'alimento.
+    generative_tier: "VARIETY",
+    default_enabled: true,
+    selection_weight: null,
+    substitution_mode: null,
+    substitute_pool: null,
   };
 
   // Per pasto: primo pool «vincente» in ordine di priorità (pro batte carb batte fat/veg).

@@ -152,3 +152,59 @@ test("loadMenuRecipes: errore o tabella vuota → null, mai throw; successo → 
   assert.equal(calls.length, callsAfterFirst);
   resetMenuRecipesCacheForTests();
 });
+
+// ---- Colonne v9 (family/tier/selection_weight/meals, migrazione 20260821090000) ----
+
+test("mapMenuRecipeRows v9: family/tier/selection_weight/meals letti; meals malformato → default lunch+dinner; colonna ASSENTE → campo assente", () => {
+  const recipes = mapMenuRecipeRows(
+    [recipeRow({ family: "PROTEIN_SHAKE_LIGHT", tier: "rotation", selection_weight: 30, meals: ["breakfast", "snack", "boh", 42] })],
+    pizzaComponents,
+  );
+  const r = recipes[0]!;
+  assert.equal(r.family, "PROTEIN_SHAKE_LIGHT");
+  assert.equal(r.tier, "ROTATION");
+  assert.equal(r.selectionWeight, 30);
+  assert.deepEqual(r.meals, ["breakfast", "snack"], "meals filtrata sui 4 valori ammessi");
+
+  // meals presente ma vuota/malformata → default lunch+dinner (coerente col default DB).
+  const malformed = mapMenuRecipeRows([recipeRow({ meals: "non-array" })], pizzaComponents)[0]!;
+  assert.deepEqual(malformed.meals, ["lunch", "dinner"]);
+  const emptyArr = mapMenuRecipeRows([recipeRow({ meals: [] })], pizzaComponents)[0]!;
+  assert.deepEqual(emptyArr.meals, ["lunch", "dinner"]);
+
+  // Riga LEGACY (colonna meals proprio assente): il campo NON esiste — l'eleggibilità
+  // resta la deduzione dagli ingredienti, mai un lunch+dinner inventato dal parser.
+  const legacy = mapMenuRecipeRows([recipeRow({})], pizzaComponents)[0]!;
+  assert.equal("meals" in legacy, false);
+  assert.equal("family" in legacy, false);
+  assert.equal(legacy.tier, undefined);
+});
+
+test("loadMenuRecipes: retry a TRE stadi — 42703 sulle colonne v9 → select frequency/max_week (che NON si perdono)", async () => {
+  resetMenuRecipesCacheForTests();
+  const queue: Array<{ data: unknown; error: unknown }> = [
+    { data: null, error: { code: "42703", message: "column nutrition_recipes.meals does not exist" } },
+    { data: [recipeRow({ frequency: "OCCASIONAL", max_week: 1 })], error: null },
+  ];
+  const calls: string[] = [];
+  const admin = {
+    from(table: string) {
+      calls.push(table);
+      const result =
+        table === "nutrition_recipes" ? (queue.shift() ?? { data: [], error: null }) : { data: pizzaComponents, error: null };
+      const builder: Record<string, unknown> = {};
+      builder.select = () => builder;
+      builder.eq = () => builder;
+      builder.in = () => builder;
+      builder.then = (resolve: (v: unknown) => void) => resolve(result);
+      return builder;
+    },
+  } as unknown as SupabaseClient;
+  const recipes = await loadMenuRecipes(admin);
+  assert.ok(recipes);
+  assert.equal(recipes![0]!.frequency, "OCCASIONAL", "frequency sopravvive alla mancanza delle colonne v9");
+  assert.equal(recipes![0]!.maxWeek, 1);
+  assert.equal(recipes![0]!.tier, undefined);
+  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 2, "v9 fallita + stadio v6 riuscito");
+  resetMenuRecipesCacheForTests();
+});

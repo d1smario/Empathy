@@ -41,6 +41,7 @@ import {
   type MenuFoodMediterraneanPriority,
   type MenuFoodPoolMap,
   type MenuFoodRoleMeal,
+  type MenuFoodSubstitutionMode,
 } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 
@@ -367,8 +368,20 @@ export type GrammarPickFilter = {
    * substitution_group dell'alimento sostituito vengono prima, poi i sostituti espliciti
    * in ordine, poi il resto del pool con ruolo ammesso. Mai sostituzione per sole kcal:
    * il filtro ontologico (ruolo/score) resta comunque il verdetto (V01).
+   * V7-R01 (v9): dentro un re-pick i sostituti automatici vengono SOLO da CORE/ROTATION
+   * (verdetto sulle entry con tier v9); `substitutePool` (se noto) raffina la preferenza
+   * in grammarSubstituteRank, SOFT, mai verdetto.
    */
-  substituteFor?: { substitutionGroup: string | null; substitutes: readonly string[] };
+  substituteFor?: {
+    substitutionGroup: string | null;
+    substitutes: readonly string[];
+    substitutePool?: string | null;
+  };
+  /**
+   * V7-03 (v9): massimo UN alimento VARIETY per pasto. Quando lo slot ha già servito un
+   * VARIETY, le entry VARIETY successive diventano verdetto (null), non penalità.
+   */
+  varietyBlocked?: boolean;
   /** S01: prep_speed minimo (solo spuntini). null/assente sul cibo → passa. */
   prepSpeedMin?: number;
   /**
@@ -403,6 +416,24 @@ export function grammarPenaltyForEntry(
 ): number | null {
   const mr = entry.mealRoles;
   if (!mr) return 0;
+  // v9, VERDETTI di tier (prima di tutto il resto): EXCLUDE_DEFAULT = mai generato di
+  // default; default_enabled=false = mai pescabile da solo (P01: polveri proteiche, oli
+  // di semi, verdure rare). NON si applica agli ingredienti DENTRO le ricette
+  // (recipeCandidatesForMeal non passa da qui): P01 vuole le polveri «mai da sole», ma
+  // dentro gli shake sì — estendere questo verdetto lì ucciderebbe tutte le ricette shake.
+  if (mr.generativeTier === "EXCLUDE_DEFAULT" || mr.defaultEnabled === false) return null;
+  // V7-03: slot che ha già servito un VARIETY → le altre entry VARIETY sono fuori.
+  if (filter.varietyBlocked && mr.generativeTier === "VARIETY") return null;
+  // V7-R01: in un re-pick di sostituzione i sostituti automatici vengono SOLO da
+  // CORE/ROTATION (le entry senza tier v9 degradano al comportamento v6: nessun verdetto).
+  if (
+    filter.substituteFor &&
+    mr.generativeTier != null &&
+    mr.generativeTier !== "CORE" &&
+    mr.generativeTier !== "ROTATION"
+  ) {
+    return null;
+  }
   const score = mr.scores[filter.meal];
   if (!(score > 0)) return null;
   // Ruolo: asse v6 quando il filtro lo chiede E l'entry porta dati v6 (lì la v6 VINCE sul
@@ -448,6 +479,22 @@ export const GRAMMAR_MEDITERRANEAN_PRIORITY_RANK: Readonly<Record<MenuFoodMedite
 const GRAMMAR_V5_FREQUENCY_RANK: Readonly<Record<string, number>> = { COMMON: 1, ROTATION: 2, OCCASIONAL: 5 };
 
 /**
+ * v9 (CORE-first): il tier generativo è la PRIMA chiave d'ordinamento quando presente
+ * (sostituisce mediterranean_priority; fallback: priorità v6, poi frequenza v5).
+ * EXCLUDE_DEFAULT non ha rank: è un VERDETTO (grammarPenaltyForEntry → null), mai un tier.
+ * NOTA dichiarata: le tre scale (v9 0-3, v6 0-5, v5 1/2/5) convivono nello stesso campo
+ * `tier` — in un pool misto (alimento admin senza tier accanto ai 492 migrati) un v6
+ * LIMITED (4) perde contro un v9 VARIETY (3) per costruzione. Dopo l'import ogni riga
+ * porta il default DB VARIETY, quindi il caso è marginale; fissato da un test.
+ */
+export const GRAMMAR_V9_TIER_RANK: Readonly<Record<string, number>> = {
+  CORE: 0,
+  ROTATION: 1,
+  OCCASIONAL: 2,
+  VARIETY: 3,
+};
+
+/**
  * B03: nei dati v6 cereali e pane hanno ENTRAMBI priority=PRIMARY e score_colazione=10 —
  * la gerarchia «cereali > pane e derivati» della regola non è derivabile da priority/score,
  * quindi il substitution_group fa da tiebreak (solo a colazione).
@@ -464,6 +511,10 @@ export function grammarSubstituteRank(
 ): number {
   const group = entry.mealRoles?.substitutionGroup ?? null;
   if (group != null && substituteFor.substitutionGroup != null && group === substituteFor.substitutionGroup) return 0;
+  // v9: lo stesso substitute_pool del sostituito vale come lo stesso gruppo (preferenza
+  // SOFT aggiuntiva, mai verdetto — il verdetto V7-R01 sta in grammarPenaltyForEntry).
+  const pool = entry.mealRoles?.substitutePool ?? null;
+  if (pool != null && substituteFor.substitutePool != null && pool === substituteFor.substitutePool) return 0;
   const idx = substituteFor.substitutes.indexOf(entry.canonicalKey);
   if (idx >= 0) return 1 + idx;
   return 1000;
@@ -494,10 +545,15 @@ export function grammarOrderingKeys(
   week?: Record<string, number>,
 ): GrammarOrderingKeys {
   const mr = entry.mealRoles;
+  // Catena a tre (v9 → v6 → v5): tier generativo v9 quando presente, altrimenti la
+  // priorità mediterranea v6, altrimenti la frequenza v5 — stessa semantica di fallback
+  // del filtro per ruolo (decisione 2).
   const tier =
-    mr && mealRolesHasV6(mr) && mr.mediterraneanPriority
-      ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority]
-      : (GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1);
+    mr?.generativeTier != null && GRAMMAR_V9_TIER_RANK[mr.generativeTier] != null
+      ? GRAMMAR_V9_TIER_RANK[mr.generativeTier]!
+      : mr && mealRolesHasV6(mr) && mr.mediterraneanPriority
+        ? GRAMMAR_MEDITERRANEAN_PRIORITY_RANK[mr.mediterraneanPriority]
+        : (GRAMMAR_V5_FREQUENCY_RANK[mr?.frequency ?? "COMMON"] ?? 1);
   return {
     subRank: filter.substituteFor ? grammarSubstituteRank(entry, filter.substituteFor) : 0,
     d02: grammarD02FishBonus(entry, filter, week),
@@ -532,6 +588,21 @@ export function substituteGramsByKcal(gramsOrig: number, kcal100Orig: number, kc
   return round1((gramsOrig * kcal100Orig) / kcal100Sub);
 }
 
+/**
+ * v9: dispatcher per `substitution_mode` — PORTION_EQUIVALENT (verdure: stessi grammi)
+ * vs ENERGY_EQUIVALENT/assente (macro: kcal-equivalenza, R02). Vale per le sole linee a
+ * grammi FISSI, come substituteGramsByKcal: sulle linee a leva il solver ri-risolve.
+ */
+export function substituteGramsForMode(
+  mode: MenuFoodSubstitutionMode | null | undefined,
+  gramsOrig: number,
+  kcal100Orig: number,
+  kcal100Sub: number,
+): number {
+  if (mode === "PORTION_EQUIVALENT") return gramsOrig;
+  return substituteGramsByKcal(gramsOrig, kcal100Orig, kcal100Sub);
+}
+
 // ── Condimento grasso dei pasti principali (M01/M04) ─────────────────────────────────
 
 /**
@@ -560,6 +631,51 @@ export function mainMealFatCondimentEntries(entryIndex: Map<string, MenuFoodEntr
 
 /** Ordine di preferenza per frequenza della ricetta (più basso = preferito). */
 const RECIPE_FREQUENCY_RANK: Readonly<Record<string, number>> = { COMMON: 0, ROTATION: 1, OCCASIONAL: 2 };
+
+/** v9: rank del tier ricetta — stessa scala della frequenza, così il fallback è coerente. */
+const RECIPE_TIER_RANK: Readonly<Record<string, number>> = { CORE: 0, ROTATION: 1, OCCASIONAL: 2 };
+
+/**
+ * Rank di scelta della ricetta: tier v9 quando presente, altrimenti frequency (stessa
+ * semantica di fallback degli alimenti). USATA sia dal sort delle candidate sia dal
+ * tier di sorteggio in chooseRecipeForSlot: le due DEVONO coincidere, altrimenti il
+ * sorteggio col seed mescola CORE e ROTATION a parità di conteggio.
+ */
+export function recipeRank(r: Pick<MenuRecipe, "tier" | "frequency">): number {
+  if (r.tier != null && RECIPE_TIER_RANK[r.tier] != null) return RECIPE_TIER_RANK[r.tier]!;
+  return RECIPE_FREQUENCY_RANK[r.frequency] ?? 0;
+}
+
+/**
+ * V7-C02 / V8-M02 (v9): tetto settimanale PER FAMIGLIA, indipendente dal numero di
+ * varianti (12 pizze diverse restano UNA pizza a settimana). I nomi famiglia sono i
+ * valori ESATTI della colonna `family` del file v9 (verificati su v9_recipes.json:
+ * PIZZA 12, BURGER 5, LASAGNE 5, CRESPELLE 4). Il conteggio famiglia si ricostruisce a
+ * runtime dalle ricette caricate (la memoria settimanale conosce solo chiavi
+ * `recipe:<key>`): una ricetta disattivata DOPO essere stata servita sparisce dal
+ * conteggio — deriva accettata e dichiarata.
+ */
+export const GRAMMAR_RECIPE_FAMILY_MAX_WEEK: Readonly<Record<string, number>> = {
+  LASAGNE: 1,
+  CRESPELLE: 1,
+  PIZZA: 1,
+  BURGER: 1,
+};
+
+/** Conteggio settimanale per famiglia: Σ dei weekStapleCounts `recipe:<key>` delle ricette della famiglia. */
+export function recipeFamilyWeekCounts(
+  recipes: readonly MenuRecipe[] | null | undefined,
+  weekStapleCounts?: Record<string, number>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  if (!weekStapleCounts) return counts;
+  for (const r of recipes ?? []) {
+    if (!r.family) continue;
+    const c = weekStapleCounts[recipeRotationKey(r.recipeKey)] ?? 0;
+    if (c > 0) counts.set(r.family, (counts.get(r.family) ?? 0) + c);
+  }
+  return counts;
+}
 
 /** Prefisso della chiave di rotazione settimanale di una ricetta (una ricetta È un rotation_key). */
 export const RECIPE_ROTATION_PREFIX = "recipe:";
@@ -655,15 +771,25 @@ const CARRIER_ROLES: ReadonlySet<MenuFoodMealRole> = new Set([
 ]);
 
 /**
- * Le ricette del catalogo NON hanno un pasto dichiarato: l'eleggibilità si deduce dagli
- * ingredienti — una ricetta va bene per il pasto M se almeno un ingrediente «portante»
- * (ruolo CHO/PRO/MIXED per M) ha score_M ≥ 7. Così porridge/smoothie/pancake (tutti gli
- * ingredienti EXCLUDE/NONE a pranzo) restano fuori da pranzo e cena, mentre pizza
- * (mozzarella PRO_SECONDARY 7) e carbonara (pasta CHO_PRIMARY 10) entrano. Non si chiede
- * che TUTTI gli ingredienti abbiano score > 0: l'olio, ad esempio, è EXCLUDE a pranzo come
- * alimento a sé ma è dentro quasi ogni ricetta di Mario.
+ * Eleggibilità della ricetta per un pasto:
+ *  - v9: quando la ricetta porta la colonna `meals`, la lista ESPLICITA decide (gli
+ *    shake dicono breakfast+snack, le lasagne lunch+dinner);
+ *  - legacy (righe senza colonna): deduzione dagli ingredienti — la ricetta va bene per
+ *    il pasto M se almeno un ingrediente «portante» (ruolo CHO/PRO/MIXED per M) ha
+ *    score_M ≥ 7. Così porridge/smoothie/pancake restano fuori da pranzo e cena, mentre
+ *    pizza (mozzarella PRO_SECONDARY 7) e carbonara (pasta CHO_PRIMARY 10) entrano.
+ *    A COLAZIONE e SPUNTINO la deduzione NON si applica: una ricetta legacy non diventa
+ *    colazione per omissione — serve la dichiarazione esplicita di Mario (v9).
+ * Non si chiede che TUTTI gli ingredienti abbiano score > 0: l'olio è EXCLUDE a pranzo
+ * come alimento a sé ma è dentro quasi ogni ricetta.
  */
-export function recipeEligibleForMeal(cand: Pick<RecipeCandidate, "ingredients">, meal: MenuFoodRoleMeal): boolean {
+export function recipeEligibleForMeal(
+  cand: Pick<RecipeCandidate, "ingredients"> & { recipe?: Pick<MenuRecipe, "meals"> },
+  meal: MenuFoodRoleMeal,
+): boolean {
+  const meals = cand.recipe?.meals;
+  if (meals && meals.length > 0) return meals.includes(meal);
+  if (meal === "breakfast" || meal === "snack") return false;
   return cand.ingredients.some(({ entry }) => {
     const mr = entry.mealRoles;
     if (!mr) return false;
@@ -704,6 +830,9 @@ export function recipeCandidatesForMeal(input: {
 }): RecipeCandidate[] {
   const out: RecipeCandidate[] = [];
   const deny = input.denyFragments ?? [];
+  // Tetto per FAMIGLIA (V7-C02/V8-M02): conteggio ricostruito a runtime dalle ricette
+  // caricate, una volta per chiamata.
+  const familyCounts = recipeFamilyWeekCounts(input.recipes, input.weekStapleCounts);
   for (const recipe of input.recipes ?? []) {
     const ingredients: RecipeCandidate["ingredients"] = [];
     let resolvable = true;
@@ -775,16 +904,20 @@ export function recipeCandidatesForMeal(input: {
     // max_week della RICETTA (pannello admin / Mario): un tetto esplicito, più stretto di
     // quello di famiglia quando c'è. È un verdetto, come max_week sugli alimenti.
     if (recipe.maxWeek != null && cand.weekCount >= recipe.maxWeek) continue;
+    // Tetto per FAMIGLIA (v9): la lasagna al ragù di lunedì blocca le lasagne alle
+    // verdure di giovedì — il tetto conta la famiglia, non la variante.
+    const familyCap = recipe.family != null ? GRAMMAR_RECIPE_FAMILY_MAX_WEEK[recipe.family] : undefined;
+    if (familyCap != null && (familyCounts.get(recipe.family!) ?? 0) >= familyCap) continue;
     out.push(cand);
   }
-  // Ordine: chi è stato servito meno in settimana viene prima; a parità, la FREQUENZA della
-  // ricetta (stessa semantica degli alimenti: COMMON prima di ROTATION prima di OCCASIONAL
-  // — abbassa la priorità, non esclude); a parità ancora, la chiave per determinismo.
+  // Ordine: chi è stato servito meno in settimana viene prima; a parità, il RANK della
+  // ricetta (tier v9 quando c'è, altrimenti frequenza — stessa semantica degli alimenti:
+  // abbassa la priorità, non esclude); a parità ancora, la chiave per determinismo.
   out.sort((a, b) =>
     a.weekCount !== b.weekCount
       ? a.weekCount - b.weekCount
-      : RECIPE_FREQUENCY_RANK[a.recipe.frequency] !== RECIPE_FREQUENCY_RANK[b.recipe.frequency]
-        ? RECIPE_FREQUENCY_RANK[a.recipe.frequency] - RECIPE_FREQUENCY_RANK[b.recipe.frequency]
+      : recipeRank(a.recipe) !== recipeRank(b.recipe)
+        ? recipeRank(a.recipe) - recipeRank(b.recipe)
         : a.recipe.recipeKey < b.recipe.recipeKey
           ? -1
           : a.recipe.recipeKey > b.recipe.recipeKey
@@ -825,18 +958,31 @@ export function chooseRecipeForSlot(input: {
   slotKey: MealSlotKey | string;
   weekStapleCounts?: Record<string, number>;
   recipeAlreadyToday: boolean;
+  /**
+   * v9: quando presente, il tetto settimanale GRAMMAR_MAX_RECIPES_PER_WEEK conta SOLO
+   * queste ricette — così i due percorsi (ricette dei pasti principali vs shake di
+   * colazione/spuntino) hanno budget settimanali separati e uno shake al mattino non
+   * brucia la lasagna di pranzo. Assente = conteggio storico su tutte le `recipe:*`.
+   */
+  weeklyCapRecipes?: readonly MenuRecipe[];
 }): RecipeCandidate | null {
   if (input.candidates.length === 0 || input.recipeAlreadyToday) return null;
-  if (weekRecipeCount(input.weekStapleCounts) >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
+  const weeklyCount = input.weeklyCapRecipes
+    ? input.weeklyCapRecipes.reduce(
+        (s, r) => s + (input.weekStapleCounts?.[recipeRotationKey(r.recipeKey)] ?? 0),
+        0,
+      )
+    : weekRecipeCount(input.weekStapleCounts);
+  if (weeklyCount >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
   const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
   if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
-  // Il «tier» fra cui si ruota col seed è: conteggio settimanale minimo E frequenza migliore
-  // fra quelle a quel conteggio. Così una pizza OCCASIONAL non entra in sorteggio contro
-  // una pasta al pomodoro COMMON finché entrambe sono a zero — esce solo quando le COMMON
-  // sono già state usate (o non ce ne sono). I candidati arrivano già ordinati.
+  // Il «tier» fra cui si ruota col seed è: conteggio settimanale minimo E rank migliore
+  // (recipeRank: tier v9, fallback frequenza — LA STESSA funzione del sort) fra quelle a
+  // quel conteggio. Così una pizza OCCASIONAL non entra in sorteggio contro una pasta al
+  // pomodoro CORE/COMMON finché entrambe sono a zero. I candidati arrivano già ordinati.
   const first = input.candidates[0]!;
   const tier = input.candidates.filter(
-    (c) => c.weekCount === first.weekCount && RECIPE_FREQUENCY_RANK[c.recipe.frequency] === RECIPE_FREQUENCY_RANK[first.recipe.frequency],
+    (c) => c.weekCount === first.weekCount && recipeRank(c.recipe) === recipeRank(first.recipe),
   );
   const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
   return tier[offset] ?? null;
@@ -884,16 +1030,53 @@ export function foodRoleForRecipeIngredient(entry: MenuFoodEntry): string {
 }
 
 /**
+ * P02 (v9): nelle famiglie shake/crema proteica la POLVERE è ancorata a questa forbice
+ * (grammi assoluti); a scalare per i target sono liquido e frutta.
+ */
+export const GRAMMAR_SHAKE_POWDER_MIN_G = 20;
+export const GRAMMAR_SHAKE_POWDER_MAX_G = 35;
+
+/** True per le famiglie ricetta con polvere ancorata (PROTEIN_SHAKE_*, PROTEIN_CREAM, PLANT_PROTEIN_SHAKE). */
+export function isProteinShakeFamily(family: string | null | undefined): boolean {
+  if (!family) return false;
+  return /PROTEIN/.test(family) && /(SHAKE|CREAM)/.test(family);
+}
+
+/**
  * Scala la ricetta a `grams` di piatto cotto: componenti con grammi e macro calcolati
  * dall'entry del catalogo (fdc), totali = Σ componenti (così «macro = somma ingredienti»
  * vale esattamente anche dopo l'arrotondamento).
+ *
+ * P02 (v9): SOLO per le famiglie proteiche (isProteinShakeFamily) il componente-polvere
+ * — riconosciuto dal marcatore P01 `defaultEnabled === false` sulla riga meal_roles, non
+ * da chiavi hardcoded — resta ancorato a [20, 35] g; il residuo lo assorbono
+ * proporzionalmente gli altri componenti (liquido/frutta), così il totale resta `grams`.
+ * NOTA dichiarata: il solver ha risolto i grammi sulle macro LINEARI per 100 g
+ * (recipeCandidateToHit) — con l'ancora le macro reali del piatto deviano dal lineare;
+ * deriva piccola (polvere 20-35 g su 250-380) e misurabile in shadow (il flag
+ * `shake_powder_anchored` la segnala dal compositore).
  */
 export function scaleRecipe(
   cand: RecipeCandidate,
   grams: number,
 ): { components: MealPlanV2RecipeComponent[]; totals: { kcal: number; choG: number; proG: number; fatG: number } } {
-  const components: MealPlanV2RecipeComponent[] = cand.ingredients.map(({ gramsPer100g, entry }) => {
-    const g = round1((grams * gramsPer100g) / 100);
+  const gramsFor = cand.ingredients.map(({ gramsPer100g }) => (grams * gramsPer100g) / 100);
+  if (isProteinShakeFamily(cand.recipe.family)) {
+    const powderIdx = cand.ingredients.findIndex(({ entry }) => entry.mealRoles?.defaultEnabled === false);
+    if (powderIdx >= 0) {
+      const naive = gramsFor[powderIdx]!;
+      const anchored = Math.min(GRAMMAR_SHAKE_POWDER_MAX_G, Math.max(GRAMMAR_SHAKE_POWDER_MIN_G, naive));
+      const othersNaive = gramsFor.reduce((s, g, i) => (i === powderIdx ? s : s + g), 0);
+      const factor = othersNaive > 0 ? (othersNaive + (naive - anchored)) / othersNaive : 1;
+      if (anchored !== naive && factor > 0) {
+        for (let i = 0; i < gramsFor.length; i += 1) {
+          gramsFor[i] = i === powderIdx ? anchored : gramsFor[i]! * factor;
+        }
+      }
+    }
+  }
+  const components: MealPlanV2RecipeComponent[] = cand.ingredients.map(({ entry }, i) => {
+    const g = round1(gramsFor[i]!);
     const f = g / 100;
     return {
       canonicalKey: entry.canonicalKey,

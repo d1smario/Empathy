@@ -7,12 +7,14 @@ import type {
   MenuFoodBreakfastFatRoleValue,
   MenuFoodBreakfastProteinRoleValue,
   MenuFoodFrequencyValue,
+  MenuFoodGenerativeTierValue,
   MenuFoodMacroRoleValue,
   MenuFoodMainMealRoleValue,
   MenuFoodMealRoleValue,
   MenuFoodMediterraneanPriorityValue,
   MenuFoodRoleMealKey,
   MenuFoodSnackRoleValue,
+  MenuFoodSubstitutionModeValue,
 } from "@/lib/admin/menu-food-meal-roles-validation";
 
 export const MEAL_ROLE_LABELS: Record<MenuFoodMealRoleValue, string> = {
@@ -104,4 +106,19 @@ export const MEDITERRANEAN_PRIORITY_LABELS: Record<MenuFoodMediterraneanPriority
   SECOND_CHOICE: "Seconda scelta",
   LIMITED: "Limitata",
   OCCASIONAL: "Occasionale",
+};
+
+// ── Etichette v9 (tier generativo CORE-first) ────────────────────────────────────────
+
+export const GENERATIVE_TIER_LABELS: Record<MenuFoodGenerativeTierValue, string> = {
+  CORE: "Core (base quotidiana)",
+  ROTATION: "Rotazione controllata",
+  OCCASIONAL: "Occasionale",
+  VARIETY: "Varietà (max 1 per pasto)",
+  EXCLUDE_DEFAULT: "Escluso di default (mai generato)",
+};
+
+export const SUBSTITUTION_MODE_LABELS: Record<MenuFoodSubstitutionModeValue, string> = {
+  ENERGY_EQUIVALENT: "Equivalenza energetica (kcal)",
+  PORTION_EQUIVALENT: "Stessa porzione (grammi)",
 };

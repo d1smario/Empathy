@@ -27,6 +27,12 @@ export type MenuRecipeComponent = {
 
 export type MenuRecipeFrequency = "COMMON" | "ROTATION" | "OCCASIONAL";
 
+/** v9: tier di scelta della ricetta (rank CORE < ROTATION < OCCASIONAL; fallback frequency). */
+export type MenuRecipeTier = "CORE" | "ROTATION" | "OCCASIONAL";
+
+/** v9: slot in cui la ricetta è candidabile (colonna `meals`, jsonb). */
+export type MenuRecipeMeal = "breakfast" | "snack" | "lunch" | "dinner";
+
 export type MenuRecipe = {
   id: string;
   recipeKey: string;
@@ -41,9 +47,23 @@ export type MenuRecipe = {
   /** Tetto di comparse a settimana (1-7), null = nessun tetto esplicito (resta quello di famiglia). */
   maxWeek: number | null;
   components: MenuRecipeComponent[];
+  // Colonne v9 (migrazione 20260821090000) — OPZIONALI: assenti quando la select è
+  // ricaduta sugli stadi precedenti o su una fixture legacy. `meals` assente ≠ default:
+  // per le righe senza colonna l'eleggibilità resta la deduzione dagli ingredienti
+  // (recipeEligibleForMeal), MAI un lunch+dinner esplicito inventato dal parser.
+  /** v9: famiglia (PASTA, FISH_DISH, PROTEIN_SHAKE_*…) — base dei tetti per famiglia. */
+  family?: string | null;
+  /** v9: tier di scelta (fallback: frequency). */
+  tier?: MenuRecipeTier | null;
+  /** v9: peso di selezione del file. Persistito, NON consumato dal motore (dormiente). */
+  selectionWeight?: number | null;
+  /** v9: slot ammessi espliciti; presente solo quando la colonna esiste. */
+  meals?: MenuRecipeMeal[];
 };
 
 const RECIPE_FREQUENCIES: ReadonlySet<string> = new Set<MenuRecipeFrequency>(["COMMON", "ROTATION", "OCCASIONAL"]);
+const RECIPE_TIERS: ReadonlySet<string> = new Set<MenuRecipeTier>(["CORE", "ROTATION", "OCCASIONAL"]);
+const RECIPE_MEALS: ReadonlySet<string> = new Set<MenuRecipeMeal>(["breakfast", "snack", "lunch", "dinner"]);
 
 function parseRecipeFrequency(raw: unknown): MenuRecipeFrequency {
   const v = typeof raw === "string" ? raw.trim().toUpperCase() : "";
@@ -135,6 +155,14 @@ export function mapMenuRecipeRows(
       continue;
     }
     components.sort((a, b) => a.position - b.position);
+    // v9 `meals`: SOLO quando la colonna è presente sulla riga; array malformato/vuoto →
+    // default lunch+dinner (coerente col default DB della DDL). Riga senza colonna →
+    // campo assente → eleggibilità dedotta dagli ingredienti come prima (bit-identico).
+    const hasMealsColumn = r != null && typeof r === "object" && "meals" in r;
+    const mealsParsed = Array.isArray(r?.meals)
+      ? (r.meals as unknown[]).filter((m): m is MenuRecipeMeal => typeof m === "string" && RECIPE_MEALS.has(m))
+      : [];
+    const tierRaw = str(r?.tier)?.toUpperCase();
     recipes.push({
       id,
       recipeKey,
@@ -143,6 +171,12 @@ export function mapMenuRecipeRows(
       frequency: parseRecipeFrequency(r?.frequency),
       maxWeek: parseRecipeMaxWeek(r?.max_week),
       components,
+      ...(r != null && typeof r === "object" && "family" in r ? { family: str(r.family) } : {}),
+      ...(tierRaw && RECIPE_TIERS.has(tierRaw) ? { tier: tierRaw as MenuRecipeTier } : {}),
+      ...(r != null && typeof r === "object" && "selection_weight" in r
+        ? { selectionWeight: num(r.selection_weight) }
+        : {}),
+      ...(hasMealsColumn ? { meals: mealsParsed.length > 0 ? mealsParsed : ["lunch", "dinner"] } : {}),
     });
   }
   recipes.sort((a, b) => (a.recipeKey < b.recipeKey ? -1 : a.recipeKey > b.recipeKey ? 1 : 0));
@@ -166,19 +200,26 @@ export async function loadMenuRecipes(admin: SupabaseClient): Promise<MenuRecipe
     return menuRecipesCache.recipes;
   }
   try {
-    // frequency/max_week: colonne della migration 20260819110000 (applicata). Se mancassero
-    // (ambiente non allineato) PostgREST torna 42703 e si ricade sulla select minima: la
-    // ricetta resta COMMON senza tetto, cioè il comportamento di prima — MAI «nessuna ricetta»
-    // per una colonna in meno.
-    const full = await admin
+    // Select a TRE STADI PROGRESSIVI su 42703 (stesso pattern del loader alimenti):
+    // v9 (family/tier/selection_weight/meals, migration 20260821090000) → frequency/
+    // max_week (20260819110000) → minima. Su un ambiente senza colonne v9 si perdono
+    // SOLO le v9, mai anche frequency/max_week — MAI «nessuna ricetta» per una colonna
+    // in meno.
+    const missingColumns = (res: { error: { code?: string; message?: string } | null }) =>
+      res.error != null &&
+      (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
+    let full: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
       .from("nutrition_recipes")
-      .select("id, recipe_key, label_it, note, frequency, max_week")
+      .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals")
       .eq("is_active", true);
-    const missingColumns =
-      full.error != null &&
-      (full.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(full.error.message ?? ""));
+    if (missingColumns(full)) {
+      full = await admin
+        .from("nutrition_recipes")
+        .select("id, recipe_key, label_it, note, frequency, max_week")
+        .eq("is_active", true);
+    }
     const { data: recipeRows, error }: { data: unknown[] | null; error: { code?: string; message?: string } | null } =
-      missingColumns
+      missingColumns(full)
         ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true)
         : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {

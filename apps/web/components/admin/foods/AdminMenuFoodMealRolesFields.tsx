@@ -6,12 +6,14 @@ import {
   MENU_FOOD_BREAKFAST_FAT_ROLES,
   MENU_FOOD_BREAKFAST_PROTEIN_ROLES,
   MENU_FOOD_FREQUENCIES,
+  MENU_FOOD_GENERATIVE_TIERS,
   MENU_FOOD_MACRO_ROLES,
   MENU_FOOD_MAIN_MEAL_ROLES,
   MENU_FOOD_MEAL_ROLES,
   MENU_FOOD_MEDITERRANEAN_PRIORITIES,
   MENU_FOOD_ROLE_MEALS,
   MENU_FOOD_SNACK_ROLES,
+  MENU_FOOD_SUBSTITUTION_MODES,
   type MenuFoodMealRolesInput,
 } from "@/lib/admin/menu-food-meal-roles-validation";
 import {
@@ -19,12 +21,14 @@ import {
   BREAKFAST_FAT_ROLE_LABELS,
   BREAKFAST_PROTEIN_ROLE_LABELS,
   FREQUENCY_LABELS,
+  GENERATIVE_TIER_LABELS,
   MACRO_ROLE_LABELS,
   MAIN_MEAL_ROLE_LABELS,
   MEAL_ROLE_LABELS,
   MEDITERRANEAN_PRIORITY_LABELS,
   ROLE_MEAL_LABELS,
   SNACK_ROLE_LABELS,
+  SUBSTITUTION_MODE_LABELS,
 } from "@/components/admin/foods/menu-food-meal-role-labels";
 
 const COPY = {
@@ -58,6 +62,19 @@ const COPY = {
   substitutionGroupPh: "es. FRUIT, FISH_LEAN (vuoto = nessuno)",
   generativeNote: "Nota generativa (Mario)",
   generativeNotePh: "vincolo testuale, informativo",
+  sectionV9: "Generativo (v9, CORE-first)",
+  hintV9:
+    "Il tier è la prima chiave di scelta (Core prima di tutto, Varietà max 1 per pasto, Escluso mai generato). «Abilitato: No» = mai da solo, ma resta usabile dentro le ricette. Il peso è salvato ma non ancora usato dal motore.",
+  generativeTier: "Tier generativo",
+  defaultEnabled: "Abilitato di default",
+  enabledYes: "Sì",
+  enabledNo: "No (solo in ricetta)",
+  selectionWeight: "Peso di selezione 0-100",
+  selectionWeightPh: "vuoto = n/d",
+  substitutionMode: "Modalità di sostituzione",
+  substitutionModeNone: "Default (kcal)",
+  substitutePool: "Pool sostituti",
+  substitutePoolPh: "es. MAIN_PROTEIN (vuoto = nessuno)",
 } as const;
 
 const INPUT =
@@ -95,6 +112,12 @@ export type MealRolesDraft = {
   mediterranean_priority: string;
   substitution_group: string;
   generative_note: string;
+  // v9
+  generative_tier: string;
+  default_enabled: string;
+  selection_weight: string;
+  substitution_mode: string;
+  substitute_pool: string;
 };
 
 export function mealRolesDraftFromInput(v: MenuFoodMealRolesInput): MealRolesDraft {
@@ -122,6 +145,12 @@ export function mealRolesDraftFromInput(v: MenuFoodMealRolesInput): MealRolesDra
     mediterranean_priority: v.mediterranean_priority ?? "COMMON",
     substitution_group: v.substitution_group ?? "",
     generative_note: v.generative_note ?? "",
+    // v9: stessi default DB della DDL 20260821090000.
+    generative_tier: v.generative_tier ?? "VARIETY",
+    default_enabled: v.default_enabled === false ? "false" : "true",
+    selection_weight: v.selection_weight == null ? "" : String(v.selection_weight),
+    substitution_mode: v.substitution_mode ?? "",
+    substitute_pool: v.substitute_pool ?? "",
   };
 }
 
@@ -150,6 +179,11 @@ export function mealRolesDraftToBody(d: MealRolesDraft): Record<string, unknown>
     mediterranean_priority: d.mediterranean_priority,
     substitution_group: d.substitution_group.trim() === "" ? null : d.substitution_group,
     generative_note: d.generative_note.trim() === "" ? null : d.generative_note,
+    generative_tier: d.generative_tier,
+    default_enabled: d.default_enabled === "false" ? false : true,
+    selection_weight: d.selection_weight.trim() === "" ? null : d.selection_weight,
+    substitution_mode: d.substitution_mode.trim() === "" ? null : d.substitution_mode,
+    substitute_pool: d.substitute_pool.trim() === "" ? null : d.substitute_pool,
   };
 }
 
@@ -342,6 +376,92 @@ export function AdminMenuFoodMealRolesFields({
               onChange={(e) => set("generative_note", e.target.value)}
               placeholder={COPY.generativeNotePh}
               className={INPUT}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Generativo v9 (tier CORE-first): il motore ordina i pick su questo tier */}
+      <div className="space-y-3 rounded-xl border border-violet-400/20 bg-violet-500/[0.04] p-3">
+        <p className={SECTION}>{COPY.sectionV9}</p>
+        <p className="text-[0.65rem] text-gray-600">{COPY.hintV9}</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-generative_tier`}>
+              {COPY.generativeTier}
+            </label>
+            <select
+              id={`${idPrefix}-generative_tier`}
+              value={draft.generative_tier}
+              onChange={(e) => set("generative_tier", e.target.value)}
+              className={INPUT}
+            >
+              {MENU_FOOD_GENERATIVE_TIERS.map((t) => (
+                <option key={t} value={t}>
+                  {GENERATIVE_TIER_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-default_enabled`}>
+              {COPY.defaultEnabled}
+            </label>
+            <select
+              id={`${idPrefix}-default_enabled`}
+              value={draft.default_enabled}
+              onChange={(e) => set("default_enabled", e.target.value)}
+              className={INPUT}
+            >
+              <option value="true">{COPY.enabledYes}</option>
+              <option value="false">{COPY.enabledNo}</option>
+            </select>
+          </div>
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-selection_weight`}>
+              {COPY.selectionWeight}
+            </label>
+            <input
+              id={`${idPrefix}-selection_weight`}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={draft.selection_weight}
+              onChange={(e) => set("selection_weight", e.target.value)}
+              placeholder={COPY.selectionWeightPh}
+              className={cn(INPUT, "text-right font-mono tabular-nums")}
+            />
+          </div>
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-substitution_mode`}>
+              {COPY.substitutionMode}
+            </label>
+            <select
+              id={`${idPrefix}-substitution_mode`}
+              value={draft.substitution_mode}
+              onChange={(e) => set("substitution_mode", e.target.value)}
+              className={INPUT}
+            >
+              <option value="">{COPY.substitutionModeNone}</option>
+              {MENU_FOOD_SUBSTITUTION_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {SUBSTITUTION_MODE_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL} htmlFor={`${idPrefix}-substitute_pool`}>
+              {COPY.substitutePool}
+            </label>
+            <input
+              id={`${idPrefix}-substitute_pool`}
+              type="text"
+              value={draft.substitute_pool}
+              onChange={(e) => set("substitute_pool", e.target.value)}
+              placeholder={COPY.substitutePoolPh}
+              className={cn(INPUT, "font-mono text-xs uppercase")}
             />
           </div>
         </div>

@@ -332,3 +332,77 @@ test("loadMenuFoodPools: colonne v6 mancanti (42703) → retry sulla select v5, 
   assert.equal(calls.filter((t) => t === "nutrition_menu_food_meal_roles").length, 2, "una select piena + un retry v5");
   resetMenuFoodPoolsCacheForTests();
 });
+
+// ---- Sistema tier v9 (colonne migrazione 20260821090000) ----
+
+test("parseMenuFoodMealRoleRow v9: campi letti quando presenti; chiave ASSENTE → undefined (mai default inventato)", () => {
+  const parsed = parseMenuFoodMealRoleRow(
+    roleRow({
+      generative_tier: "core",
+      default_enabled: false,
+      selection_weight: 45,
+      substitution_mode: "portion_equivalent",
+      substitute_pool: "MAIN_PROTEIN",
+    }),
+  );
+  assert.ok(parsed);
+  const mr = parsed!.mealRoles;
+  assert.equal(mr.generativeTier, "CORE");
+  assert.equal(mr.defaultEnabled, false);
+  assert.equal(mr.selectionWeight, 45);
+  assert.equal(mr.substitutionMode, "PORTION_EQUIVALENT");
+  assert.equal(mr.substitutePool, "MAIN_PROTEIN");
+
+  // Riga SENZA colonne v9 (select degradata): i campi restano undefined — la
+  // grammatica degrada al vocabolario v6/v5 per la entry, nessun VARIETY inventato.
+  const v6only = parseMenuFoodMealRoleRow(roleRow({}));
+  assert.equal(v6only!.mealRoles.generativeTier, undefined);
+  assert.equal(v6only!.mealRoles.defaultEnabled, undefined);
+  assert.equal("selectionWeight" in v6only!.mealRoles, false);
+
+  // Valori fuori enum → come assenti (tolleranza: mai throw, mai valore inventato).
+  const weird = parseMenuFoodMealRoleRow(roleRow({ generative_tier: "BOH", substitution_mode: "NOPE", default_enabled: "si" }));
+  assert.equal(weird!.mealRoles.generativeTier, undefined);
+  assert.equal(weird!.mealRoles.substitutionMode, undefined);
+  assert.equal(weird!.mealRoles.defaultEnabled, undefined);
+});
+
+test("loadMenuFoodPools: retry a TRE stadi — 42703 sulle colonne v9 → select v6 (la v6 NON si perde), 42703 anche lì → v5", async () => {
+  resetMenuFoodPoolsCacheForTests();
+  const calls: string[] = [];
+  const pools = await loadMenuFoodPools(
+    fakeAdminRolesQueue(
+      { data: [menuRow({})], error: null },
+      { data: [macroRow(169756)], error: null },
+      [
+        { data: null, error: { code: "42703", message: "column nutrition_menu_food_meal_roles.generative_tier does not exist" } },
+        { data: [roleRow({ breakfast_cho_role: "PRIMARY_COMPLEX", mediterranean_priority: "PRIMARY", substitution_group: "MAIN_COMPLEX_CARB" })], error: null },
+      ],
+      calls,
+    ),
+  );
+  assert.ok(pools);
+  const entry = pools!.get("lunch_carb")![0]!;
+  assert.equal(entry.mealRoles?.substitutionGroup, "MAIN_COMPLEX_CARB", "la v6 sopravvive alla mancanza delle colonne v9");
+  assert.equal(entry.mealRoles?.generativeTier, undefined);
+  assert.equal(calls.filter((t) => t === "nutrition_menu_food_meal_roles").length, 2, "v9 fallita + v6 riuscita");
+  resetMenuFoodPoolsCacheForTests();
+
+  // Doppio 42703 (né v9 né v6): si arriva alla select v5, i ruoli v5 restano.
+  const calls2: string[] = [];
+  const pools2 = await loadMenuFoodPools(
+    fakeAdminRolesQueue(
+      { data: [menuRow({})], error: null },
+      { data: [macroRow(169756)], error: null },
+      [
+        { data: null, error: { code: "42703", message: "column generative_tier does not exist" } },
+        { data: null, error: { code: "42703", message: "column substitutes does not exist" } },
+        { data: [roleRow({})], error: null },
+      ],
+      calls2,
+    ),
+  );
+  assert.equal(pools2!.get("lunch_carb")![0]!.mealRoles?.roles.lunch, "CHO_PRIMARY");
+  assert.equal(calls2.filter((t) => t === "nutrition_menu_food_meal_roles").length, 3, "v9 → v6 → v5");
+  resetMenuFoodPoolsCacheForTests();
+});
