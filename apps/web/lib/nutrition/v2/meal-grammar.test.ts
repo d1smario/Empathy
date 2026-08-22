@@ -32,8 +32,8 @@ import {
   grammarD02FishBonus,
   grammarOrderingKeys,
   grammarPenaltyForEntry,
+  isAnchoredPowderEntry,
   isBreakfastSweetEntry,
-  isProteinShakeFamily,
   menuFoodEntryIndex,
   recipeCandidatesForMeal,
   recipeLever,
@@ -1060,8 +1060,12 @@ test("v6 R02: grammatura del sostituto a parità di kcal (grams × kcal_orig / k
 });
 
 test("v6 B01 verifica in provenienza: quota primaria fuori forbetta → flag b01_share_out (verifica, non correzione)", () => {
-  // choOther = CHO delle linee NON cho_complex/cho_simple (latte/yogurt): la regola
-  // dice «80-85% dei CHO del pasto», quindi il denominatore è s.totals.choG.
+  // R-D (v11, decisione del proprietario): il denominatore è la somma CHO delle SOLE
+  // linee a ruolo glucidico (cho_complex + cho_simple + frutta), NON il CHO totale del
+  // pasto — la regola di Mario ripartisce la BASE glucidica della colazione e il
+  // lattosio di latte/yogurt (choOther) non c'entra: col totale a denominatore uno
+  // yogurt zuccherino flaggava colazioni perfettamente a regola. Forbetta invariata
+  // [0,75, 0,90].
   const mkSlot = (choP: number, choS: number, choOther = 0): MealPlanV2ComposedSlot => ({
     slot: "breakfast",
     labelIt: "Colazione",
@@ -1079,14 +1083,18 @@ test("v6 B01 verifica in provenienza: quota primaria fuori forbetta → flag b01
   assert.ok(out.flags.some((f) => f.startsWith("b01_share_out:breakfast:")), out.flags.join(","));
   const ok = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(68, 12)], recipesAvailable: 0 });
   assert.ok(!ok.flags.some((f) => f.startsWith("b01_share_out")), ok.flags.join(","));
-  // Caso del finding: 50,5 g complessi + 10,5 g semplici + 9 g dallo yogurt → quota
-  // reale 50,5/70 = 72% (< 75%, fuori). Il vecchio denominatore (choP+choS) avrebbe
-  // detto 50,5/61 = 83% e NON avrebbe flaggato.
+  // R-D: il lattosio dello yogurt (choOther = 9 g su una linea protein_primary) NON
+  // entra nel denominatore — la quota resta 50,5/61 = 83% (dentro), CON o SENZA
+  // yogurt. (Prima di R-D il denominatore era s.totals.choG: lo stesso pasto veniva
+  // flaggato a 72% per colpa di CHO che la regola di Mario non governa.)
   const hidden = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50.5, 10.5, 9)], recipesAvailable: 0 });
-  assert.ok(hidden.flags.some((f) => f.startsWith("b01_share_out:breakfast:72")), hidden.flags.join(","));
-  // Stessa ripartizione ma senza CHO nascosta nella proteina → 50,5/61 = 83%, dentro.
+  assert.ok(!hidden.flags.some((f) => f.startsWith("b01_share_out")), hidden.flags.join(","));
   const clean = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50.5, 10.5)], recipesAvailable: 0 });
   assert.ok(!clean.flags.some((f) => f.startsWith("b01_share_out")), clean.flags.join(","));
+  // Fuori forbetta sulla BASE glucidica → flagga anche in presenza di choOther: la
+  // verifica non è stata spenta, ha solo il denominatore giusto (50/80 = 63%).
+  const still = buildMealGrammarProvenance({ mode: "shadow", applied: false, before: [], after: [mkSlot(50, 30, 9)], recipesAvailable: 0 });
+  assert.ok(still.flags.some((f) => f.startsWith("b01_share_out:breakfast:")), still.flags.join(","));
 });
 
 // ═══ SISTEMA TIER v9 (file Mario v9: CORE-first + shake proteici) ══════════════════════
@@ -1360,14 +1368,23 @@ test("v9 rank ricette: il tier vince sulla frequency (CORE/OCCASIONAL prima di R
   assert.deepEqual([...picked], ["riso_core"], "il sorteggio non mescola i rank");
 });
 
-test("v9 scaleRecipe: ancora della polvere SOLO per le famiglie proteiche, totali = Σ componenti", () => {
-  assert.equal(isProteinShakeFamily("PROTEIN_SHAKE_LIGHT"), true);
-  assert.equal(isProteinShakeFamily("PROTEIN_CREAM"), true);
-  assert.equal(isProteinShakeFamily("PLANT_PROTEIN_SHAKE"), true);
-  assert.equal(isProteinShakeFamily("PASTA"), false);
-  assert.equal(isProteinShakeFamily(null), false);
-  const idx = menuFoodEntryIndex(v9ShakePools());
-  const cand = recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idx, meal: "breakfast" })[0]!;
+test("v9/v11 scaleRecipe: ancora della polvere per COMPONENTE (V11_G01, family-agnostica), totali = Σ componenti", () => {
+  // Predicato componente (fix V11_G01): polvere = marcatore P01 (disabled) + PRO_PRIMARY
+  // + densità proteica ≥ 40 g/100. Il vecchio gate sul NOME famiglia mancava i template
+  // v11 con polvere fuori dalle famiglie *PROTEIN* (PORRIDGE, SWEET_FAST).
+  assert.equal(isAnchoredPowderEntry(whey9), true);
+  assert.equal(isAnchoredPowderEntry(almondDrink9), false, "liquido enabled: niente marcatore");
+  // In prod default_enabled=false lo portano anche oli e germogli: NON sono polveri.
+  const oil11 = food("sesame_oil", "Olio di sesamo", { kcal: 884, cho: 0, pro: 0, fat: 100 }, roles({}, { breakfast: 4, snack: 4 }, { macroRole: "FAT_PRIMARY", generativeTier: "ROTATION", defaultEnabled: false, prepSpeed: 10 }));
+  const sprout11 = food("alfalfa_sprouts", "Germogli di erba medica", { kcal: 23, cho: 2.1, pro: 3.99, fat: 0.69 }, roles({}, { breakfast: 2, snack: 2 }, { macroRole: "PRO_PRIMARY", generativeTier: "ROTATION", defaultEnabled: false, prepSpeed: 5 }));
+  assert.equal(isAnchoredPowderEntry(oil11), false, "olio marcato P01: FAT_PRIMARY, non polvere");
+  assert.equal(isAnchoredPowderEntry(sprout11), false, "germoglio PRO_PRIMARY marcato: densità 3,99 sotto soglia");
+  // Polvere più «leggera» in prod: soy_protein_powder 47,6 g/100 — deve passare la soglia.
+  const soy11 = food("soy_protein_powder", "Proteine di soia in polvere", { kcal: 338, cho: 20, pro: 47.6, fat: 1.2 }, roles({}, { breakfast: 7, snack: 8 }, { macroRole: "PRO_PRIMARY", generativeTier: "ROTATION", defaultEnabled: false, prepSpeed: 10 }));
+  assert.equal(isAnchoredPowderEntry(soy11), true);
+
+  const idxV11 = menuFoodEntryIndex(new Map<string, MenuFoodEntry[]>([...v9ShakePools(), ["v11_ing", [oil11, soy11]]]));
+  const cand = recipeCandidatesForMeal({ recipes: [shake9], entryIndex: idxV11, meal: "breakfast" })[0]!;
   // 350 g: la polvere naive sarebbe 37,5 g → ancorata a 35, il liquido assorbe la differenza.
   const big = scaleRecipe(cand, 350);
   const bigPowder = big.components.find((c) => c.canonicalKey === "whey_protein_powder")!;
@@ -1381,6 +1398,46 @@ test("v9 scaleRecipe: ancora della polvere SOLO per le famiglie proteiche, total
   assert.equal(smallPowder.grams, 20);
   const smallTotalG = small.components.reduce((a, c) => a + c.grams, 0);
   assert.ok(Math.abs(smallTotalG - 150) < 0.3, `totale ${smallTotalG} ≠ 150`);
+
+  // V11_G01 (regressione del buco): family PORRIDGE — SENZA «PROTEIN» nel nome, come
+  // EMP_RECIPE_210 — con whey dentro: l'ancora si applica lo stesso.
+  const porridge11: MenuRecipe = { ...shake9, id: "p11", recipeKey: "porridge_whey_v11", labelIt: "Porridge con whey", family: "PORRIDGE" };
+  const pCand = recipeCandidatesForMeal({ recipes: [porridge11], entryIndex: idxV11, meal: "breakfast" })[0]!;
+  const pBig = scaleRecipe(pCand, 350);
+  assert.equal(pBig.components.find((c) => c.canonicalKey === "whey_protein_powder")!.grams, 35, "family PORRIDGE: whey ancorata a 35 (prima del fix scalava a 37,5)");
+  assert.ok(Math.abs(pBig.components.reduce((a, c) => a + c.grams, 0) - 350) < 0.3);
+  // family SWEET_FAST (EMP_RECIPE_249/250) con proteine di soia: idem.
+  const sweetFast11: MenuRecipe = {
+    ...shake9,
+    id: "sf11",
+    recipeKey: "latte_soia_proteine_v11",
+    labelIt: "Latte, proteine e frutta",
+    family: "SWEET_FAST",
+    components: [
+      { position: 1, canonicalKey: "soy_protein_powder", fdcId: soy11.fdcId, labelIt: "Proteine di soia in polvere", gramsPer100g: 10.71, isNeutral: false },
+      { position: 2, canonicalKey: "almond_drink_unsweetened", fdcId: almondDrink9.fdcId, labelIt: "Bevanda di mandorla", gramsPer100g: 89.29, isNeutral: false },
+    ],
+  };
+  const sfCand = recipeCandidatesForMeal({ recipes: [sweetFast11], entryIndex: idxV11, meal: "snack" })[0]!;
+  const sfSmall = scaleRecipe(sfCand, 150);
+  assert.equal(sfSmall.components.find((c) => c.canonicalKey === "soy_protein_powder")!.grams, 20, "family SWEET_FAST: soia ancorata a 20 su spuntino piccolo (prima del fix scendeva a 16,1)");
+
+  // Controprova: componente marcato P01 che NON è polvere (olio) → scala proporzionale,
+  // l'ancora NON scatta (a 150 g l'olio naive è 15 g e resta 15, non spinto a 20).
+  const oilRecipe11: MenuRecipe = {
+    ...shake9,
+    id: "o11",
+    recipeKey: "bevanda_olio_v11",
+    labelIt: "Bevanda con olio",
+    family: "SWEET_FAST",
+    components: [
+      { position: 1, canonicalKey: "sesame_oil", fdcId: oil11.fdcId, labelIt: "Olio di sesamo", gramsPer100g: 10, isNeutral: false },
+      { position: 2, canonicalKey: "almond_drink_unsweetened", fdcId: almondDrink9.fdcId, labelIt: "Bevanda di mandorla", gramsPer100g: 90, isNeutral: false },
+    ],
+  };
+  const oilCand = recipeCandidatesForMeal({ recipes: [oilRecipe11], entryIndex: idxV11, meal: "breakfast" })[0]!;
+  assert.equal(scaleRecipe(oilCand, 150).components.find((c) => c.canonicalKey === "sesame_oil")!.grams, 15, "olio marcato P01: nessuna ancora");
+
   // Ricetta NON proteica (carbonara, family assente): scala proporzionale come prima.
   const idxL = menuFoodEntryIndex(pools());
   const carb = recipeCandidatesForMeal({ recipes: [carbonara], entryIndex: idxL, meal: "lunch" })[0]!;
@@ -1419,4 +1476,345 @@ test("v9 off bit-identico: i campi v9 sul catalogo NON toccano il path off (gram
     });
     assert.equal(JSON.stringify(v9off), JSON.stringify(legacy), `${date}: off con dati v9 ≠ storico`);
   }
+});
+
+// ═══ SISTEMA TEMPLATE v11 (file Mario v11: colazioni/spuntini template-first) ══════════
+// Catalogo finto con dati v6+v9 e ricette-TEMPLATE con template_meta (come il DB dopo le
+// migrazioni 20260822*): V10_B01/B02 (il template occupa gli slot che copre), V10_S01
+// (frutta solo side per CHO residuo), V10_G01 (template-first sistematico), D3
+// (rotazione tier → gruppo-variante → protein_base), regole R-A..R-D del proprietario.
+
+import {
+  GRAMMAR_SNACK_PRO_EGG_MAX_G,
+  GRAMMAR_SNACK_PRO_MAX_G,
+  chooseRecipeForSlot as chooseRecipeForSlotV11,
+  isSnackFruitSideEntry,
+  lineDroppableBelowMinServed,
+  recipeOwnsCarb,
+  snackFruitSideEntries,
+} from "@/lib/nutrition/v2/meal-grammar";
+import type { MenuRecipeTemplateMeta } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
+
+const milk11 = food("milk_semi_skimmed", "Latte parzialmente scremato", { kcal: 46, cho: 5, pro: 3.3, fat: 1.5 }, roles({ breakfast: "PRO_PRIMARY", snack: "PRO_PRIMARY" }, { breakfast: 9, snack: 8 }, { breakfastProteinRole: "PRIMARY", snackRole: "FAST_PROTEIN", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAKFAST_PROTEIN_DAIRY", generativeTier: "CORE", defaultEnabled: true, prepSpeed: 10 }), { rotationKey: "breakfast:latte11", isAnimalProduct: true, servingBasis: "ml" });
+const bread11 = food("bread_rye11", "Pane di segale", { kcal: 259, cho: 48, pro: 8.5, fat: 3.3 }, roles({ breakfast: "CHO_PRIMARY", snack: "CHO_PRIMARY" }, { breakfast: 9, snack: 8 }, { breakfastChoRole: "PRIMARY_COMPLEX", snackRole: "FAST_CARB", mediterraneanPriority: "PRIMARY", substitutionGroup: "BREAD_BASED_CARB", generativeTier: "CORE", prepSpeed: 10 }), { rotationKey: "breakfast:bread11" });
+const bresaola11 = food("bresaola11", "Bresaola", { kcal: 151, cho: 0.4, pro: 32, fat: 2.6 }, roles({ snack: "PRO_SECONDARY" }, { snack: 8 }, { snackRole: "FAST_PROTEIN", mediterraneanPriority: "ROTATION", substitutionGroup: "CURED_LEAN", generativeTier: "ROTATION", prepSpeed: 10 }), { rotationKey: "prot:bresaola11", isMeat: true });
+const grana11 = food("grana11", "Grana Padano", { kcal: 392, cho: 0, pro: 33, fat: 28 }, roles({ snack: "PRO_SECONDARY" }, { snack: 7 }, { snackRole: "FAST_FAT_PRO", mediterraneanPriority: "COMMON", substitutionGroup: "CHEESE_PROTEIN", generativeTier: "ROTATION", prepSpeed: 10 }), { rotationKey: "prot:grana11", isAnimalProduct: true });
+const egg11 = food("egg_whole", "Uova", { kcal: 143, cho: 0.7, pro: 12.6, fat: 9.5 }, roles({ snack: "PRO_SECONDARY" }, { snack: 8 }, { snackRole: "MEDIUM", mediterraneanPriority: "COMMON", substitutionGroup: "EGG_PROTEIN", prepSpeed: 8 }), { rotationKey: "breakfast:egg11", isAnimalProduct: true });
+
+function template(
+  id: string,
+  key: string,
+  meal: "breakfast" | "snack",
+  family: string,
+  tier: "CORE" | "ROTATION",
+  meta: Partial<MenuRecipeTemplateMeta>,
+  comps: Array<[MenuFoodEntry | null, number]>,
+): MenuRecipe {
+  return {
+    id,
+    recipeKey: key,
+    labelIt: key.replace(/_/g, " "),
+    note: null,
+    frequency: "COMMON",
+    maxWeek: 3,
+    family,
+    tier,
+    selectionWeight: 100,
+    meals: [meal],
+    templateMeta: {
+      primaryCarbFamily: null,
+      proteinBaseFamily: null,
+      fruitFamily: null,
+      fatAddonFamily: null,
+      variantGroup: null,
+      standardServingG: null,
+      ...meta,
+    },
+    components: comps.map(([e, g], i) =>
+      e
+        ? { position: i + 1, canonicalKey: e.canonicalKey, fdcId: e.fdcId, labelIt: e.labelIt, gramsPer100g: g, isNeutral: false }
+        : { position: i + 1, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: g, isNeutral: true },
+    ),
+  };
+}
+
+const bowl11 = template("v11a", "bowl_avena_latte_mela_mandorle", "breakfast", "CEREAL_BOWL", "CORE",
+  { primaryCarbFamily: "OATS", proteinBaseFamily: "DAIRY_MILK", fruitFamily: "APPLE", fatAddonFamily: "NUTS", variantGroup: "VG_BOWL", standardServingG: 435 },
+  [[oat6, 16], [milk11, 57], [apple6, 23], [nuts6, 4]]);
+const porridge11 = template("v11b", "porridge_avena_latte", "breakfast", "PORRIDGE", "CORE",
+  { primaryCarbFamily: "OATS", proteinBaseFamily: "DAIRY_MILK", variantGroup: "VG_PORRIDGE" },
+  [[oat6, 22], [milk11, 78]]);
+const yogBowl11 = template("v11c", "bowl_yogurt_avena_mela", "breakfast", "YOGURT_BOWL", "CORE",
+  { primaryCarbFamily: "OATS", proteinBaseFamily: "YOGURT", fruitFamily: "APPLE", variantGroup: "VG_YOG" },
+  [[oat6, 15], [yog6, 62], [apple6, 23]]);
+const savoury11 = template("v11s1", "pane_segale_bresaola_grana", "snack", "SAVOURY_FAST", "CORE",
+  { primaryCarbFamily: "BREAD", proteinBaseFamily: "SAVOURY_PROTEIN", fatAddonFamily: "CHEESE", variantGroup: "VG_SAV" },
+  [[bread11, 45], [bresaola11, 35], [grana11, 10], [null, 10]]);
+const sweet11 = template("v11s2", "yogurt_mela_mandorle", "snack", "SWEET_FAST", "CORE",
+  { primaryCarbFamily: "MIXED", proteinBaseFamily: "YOGURT", fruitFamily: "APPLE", fatAddonFamily: "NUTS", variantGroup: "VG_SWEET" },
+  [[yog6, 70], [apple6, 22], [nuts6, 8]]);
+
+/** Pool v6 + un pool virtuale per mettere gli ingredienti v11 nell'entryIndex delle ricette. */
+function v11Pools(): MenuFoodPoolMap {
+  return new Map<string, MenuFoodEntry[]>([...v6Pools(), ["v11_ing", [milk11, bread11, bresaola11, grana11]]]);
+}
+
+test("v11 D2: il template di colazione OCCUPA cho+pro (V10_B02) — con frutta e grasso propri niente linee separate; sistematico, ogni giorno", () => {
+  for (const date of DATES.slice(0, 10)) {
+    const diagnostics: string[] = [];
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v11Pools(),
+      mealGrammar: { enabled: true, recipes: [bowl11], diagnostics },
+    });
+    const b = plan.find((s) => s.slot === "breakfast")!;
+    const rec = b.items.find((it) => it.recipe?.recipeKey === "bowl_avena_latte_mela_mandorle");
+    assert.ok(rec, `${date}: template-first è SISTEMATICO (niente roll 1/3): il template c'è ogni giorno`);
+    assert.ok(!b.items.some((it) => it.foodRole === "cho_complex"), `${date}: la linea CHO separata è soppressa`);
+    assert.ok(!b.items.some((it) => it.foodRole === "protein_primary"), `${date}: la linea proteica separata è soppressa`);
+    assert.ok(!b.items.some((it) => it.foodRole === "fat"), `${date}: fat_addon_family=NUTS → niente linea grassi in più`);
+    assert.ok(!b.items.some((it) => it.foodRole === "cho_simple"), `${date}: fruit_family=APPLE → niente B02 in più`);
+    assert.ok(diagnostics.some((f) => f.startsWith("template_first:breakfast:")), diagnostics.join(","));
+    // Il target dello slot governa la porzione: il template non sfora le kcal dello slot.
+    const target = slots().find((s) => s.key === "breakfast")!;
+    assert.ok(rec!.kcal <= target.kcal + 1, `${date}: ${rec!.kcal} vs ${target.kcal}`);
+  }
+});
+
+test("v11 D2: template SENZA frutta/grasso propri → la linea grassi e la B02 si AGGIUNGONO (solo quelle)", () => {
+  const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+    denyFragments: [],
+    request: req(DATES[0]!),
+    menuFoodPools: v11Pools(),
+    mealGrammar: { enabled: true, recipes: [porridge11] },
+  });
+  const b = plan.find((s) => s.slot === "breakfast")!;
+  assert.ok(b.items.some((it) => it.recipe?.recipeKey === "porridge_avena_latte"));
+  assert.ok(!b.items.some((it) => it.foodRole === "cho_complex"), "CHO separata soppressa");
+  assert.ok(!b.items.some((it) => it.foodRole === "protein_primary"), "PRO separata soppressa");
+  const fat = b.items.find((it) => it.foodRole === "fat");
+  assert.equal(fat?.canonicalKey, "nuts6", "fat_addon assente → linea grassi aggiunta (B07)");
+  const b02 = b.items.find((it) => it.foodRole === "cho_simple");
+  assert.equal(b02?.canonicalKey, "apple6", "fruit assente → quota B02 aggiunta (frutta COMMON)");
+});
+
+test("v11 D2 fallback: template vietato (deny su un ingrediente) → colazione a LINEE come oggi, mai vuota", () => {
+  for (const date of DATES.slice(0, 5)) {
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: ["latte"],
+      request: req(date),
+      menuFoodPools: v11Pools(),
+      mealGrammar: { enabled: true, recipes: [bowl11, porridge11] },
+    });
+    const b = plan.find((s) => s.slot === "breakfast")!;
+    assert.ok(!b.items.some((it) => it.recipe), `${date}: nessun template (il latte è vietato)`);
+    assert.ok(b.items.some((it) => it.foodRole === "cho_complex"), `${date}: fallback a linee — CHO presente`);
+    assert.ok(b.items.some((it) => it.foodRole === "protein_primary"), `${date}: fallback a linee — PRO presente`);
+  }
+});
+
+test("v11 D2 fallback: tetti settimanali esauriti (famiglia avena a 3) → nessuna candidata, colazione a linee non-avena", () => {
+  const week = { "breakfast:oat6": 3 };
+  const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+    denyFragments: [],
+    weeklyStapleCounts: week,
+    request: req(DATES[1]!),
+    menuFoodPools: v11Pools(),
+    mealGrammar: { enabled: true, recipes: [bowl11, porridge11, yogBowl11] },
+  });
+  const b = plan.find((s) => s.slot === "breakfast")!;
+  assert.ok(!b.items.some((it) => it.recipe), "tutti i template sono a base avena: fuori per il tetto di famiglia dell'ingrediente");
+  assert.ok(b.items.length > 0, "mai colazione vuota");
+  assert.ok(b.items.some((it) => it.foodRole === "cho_complex" && it.canonicalKey !== "oat6"), "CHO da un'altra famiglia");
+});
+
+const snackSlot = (carbs: number): MealPlanV2DietSlotBudget => ({ key: "snack_am", label: "Spuntino", pct: 10, kcal: 250, carbs, protein: 20, fat: 8 });
+
+test("v11 D2/V10_S01: spuntino template-led — frutta SOLO come side per CHO residuo ≥ 15 g, dimensionata sul residuo", () => {
+  // Template salato denso: il tetto kcal ferma la ricetta a ~110 g → CHO residuo ~21 g → side.
+  const diagnostics: string[] = [];
+  const plan = composeMealPlanV2(requirements, [snackSlot(45)], rawPools(), {
+    denyFragments: [],
+    request: req(DATES[2]!),
+    menuFoodPools: v11Pools(),
+    mealGrammar: { enabled: true, recipes: [savoury11], diagnostics },
+  });
+  const s = plan[0]!;
+  const rec = s.items.find((it) => it.recipe?.recipeKey === "pane_segale_bresaola_grana");
+  assert.ok(rec, "il template salato copre lo spuntino");
+  assert.ok(!s.items.some((it) => it.foodRole === "protein_secondary"), "V10_S01: niente pairing proteico casuale accanto al template");
+  const fruit = s.items.find((it) => it.foodRole === "cho_simple");
+  assert.equal(fruit?.canonicalKey, "apple6", "side di frutta per chiudere i CHO");
+  assert.ok(diagnostics.includes("fruit_side_added:snack_am"), diagnostics.join(","));
+  // Residuo sotto soglia → NESSUN side (il template basta).
+  const diag2: string[] = [];
+  const plan2 = composeMealPlanV2(requirements, [snackSlot(25)], rawPools(), {
+    denyFragments: [],
+    request: req(DATES[2]!),
+    menuFoodPools: v11Pools(),
+    mealGrammar: { enabled: true, recipes: [savoury11], diagnostics: diag2 },
+  });
+  const s2 = plan2[0]!;
+  assert.ok(s2.items.some((it) => it.recipe), "template presente");
+  assert.ok(!s2.items.some((it) => it.foodRole === "cho_simple"), "residuo < 15 g → niente frutta side");
+  assert.ok(!diag2.includes("fruit_side_added:snack_am"), diag2.join(","));
+});
+
+test("v11 D2: marcatore frutta-side (V10_S01) — solo la frutta di snack_cho, mai pane/gallette FAST_CARB", () => {
+  assert.equal(isSnackFruitSideEntry(apple6), true, "frutta: FAST_CARB + SECONDARY_SIMPLE");
+  assert.equal(isSnackFruitSideEntry(bread11), false, "pane: FAST_CARB ma non quota semplice");
+  assert.equal(isSnackFruitSideEntry(banana), true, "fixture v5: CHO_SECONDARY allo spuntino");
+  const entries = snackFruitSideEntries(new Map([["snack_cho", [apple6, bread11, pasta6]]]));
+  assert.deepEqual(entries.map((e) => e.canonicalKey), ["apple6"]);
+});
+
+test("v11 D2: dedupe giornaliero PER RICETTA (non per ingrediente): colazione e due spuntini template lo stesso giorno, mai lo stesso template due volte", () => {
+  const daySlots: MealPlanV2DietSlotBudget[] = [
+    { key: "breakfast", label: "Colazione", pct: 25, kcal: 600, carbs: 80, protein: 30, fat: 18 },
+    { key: "snack_am", label: "Spuntino", pct: 10, kcal: 250, carbs: 30, protein: 15, fat: 8 },
+    { key: "snack_pm", label: "Merenda", pct: 10, kcal: 250, carbs: 30, protein: 15, fat: 8 },
+  ];
+  for (const date of DATES.slice(0, 6)) {
+    const plan = composeMealPlanV2(requirements, daySlots, rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v11Pools(),
+      mealGrammar: { enabled: true, recipes: [yogBowl11, savoury11, sweet11] },
+    });
+    const recipesByKeySlot = plan.flatMap((s) => s.items.filter((it) => it.recipe).map((it) => ({ slot: s.slot, key: it.recipe!.recipeKey })));
+    const bKeys = recipesByKeySlot.filter((r) => r.slot === "breakfast");
+    const sKeys = recipesByKeySlot.filter((r) => r.slot !== "breakfast");
+    assert.equal(bKeys.length, 1, `${date}: la colazione ha il suo template (yogurt bowl usa lo yogurt…)`);
+    assert.equal(sKeys.length, 2, `${date}: …e ANCHE i due spuntini hanno il loro (T5: lo yogurt della colazione non li affama)`);
+    const keys = recipesByKeySlot.map((r) => r.key);
+    assert.equal(new Set(keys).size, keys.length, `${date}: mai lo stesso template due volte al giorno`);
+  }
+});
+
+test("v11 D3: ordinamento template — tier PRIMA del conteggio; conteggio di GRUPPO-VARIANTE; weekCount della ricetta come affinamento", () => {
+  const idx = menuFoodEntryIndex(v11Pools());
+  const coreA1 = { ...porridge11, id: "d3a1", recipeKey: "d3_core_a1", labelIt: "Core A1", templateMeta: { ...porridge11.templateMeta!, variantGroup: "VG_A" } };
+  const coreA2 = { ...porridge11, id: "d3a2", recipeKey: "d3_core_a2", labelIt: "Core A2", templateMeta: { ...porridge11.templateMeta!, variantGroup: "VG_A" } };
+  const coreB = { ...porridge11, id: "d3b", recipeKey: "d3_core_b", labelIt: "Core B", templateMeta: { ...porridge11.templateMeta!, variantGroup: "VG_B" } };
+  const rotC = { ...porridge11, id: "d3c", recipeKey: "d3_rot_c", labelIt: "Rot C", tier: "ROTATION" as const, templateMeta: { ...porridge11.templateMeta!, variantGroup: "VG_C" } };
+  // Il gruppo A è già stato servito (via A1): TUTTO il gruppo A retrocede, il CORE del
+  // gruppo B viene prima; la ROTATION resta ULTIMA anche a conteggio zero (tier prima
+  // del conteggio — il pasto standard CORE precede le rotazioni).
+  const cands = recipeCandidatesForMeal({ recipes: [coreA1, coreA2, coreB, rotC], entryIndex: idx, meal: "breakfast", weekStapleCounts: { "recipe:d3_core_a1": 1 } });
+  assert.deepEqual(cands.map((c) => c.recipe.recipeKey), ["d3_core_b", "d3_core_a2", "d3_core_a1", "d3_rot_c"],
+    "B (gruppo a 0) < A2 (gruppo a 1, ricetta a 0) < A1 (gruppo a 1, ricetta a 1) < ROTATION");
+});
+
+test("v11 D3/V11_B02: tie-break protein_base_family — la base NON usata di recente viene prima (settimana e giorno)", () => {
+  const idx = menuFoodEntryIndex(v11Pools());
+  const milkBased = { ...porridge11, id: "pb1", recipeKey: "pb_milk", labelIt: "PB milk", templateMeta: { ...porridge11.templateMeta!, variantGroup: "VG_PB" } };
+  const yogBased = { ...yogBowl11, id: "pb2", recipeKey: "pb_yog", labelIt: "PB yog", templateMeta: { ...yogBowl11.templateMeta!, variantGroup: "VG_PB" } };
+  // Senza memoria: parità totale → ordine per chiave (pb_milk < pb_yog).
+  const fresh = recipeCandidatesForMeal({ recipes: [yogBased, milkBased], entryIndex: idx, meal: "breakfast", weekStapleCounts: {} });
+  assert.deepEqual(fresh.map((c) => c.recipe.recipeKey), ["pb_milk", "pb_yog"]);
+  // La colazione di OGGI ha già usato DAIRY_MILK → lo yogurt passa davanti (day set).
+  const day = recipeCandidatesForMeal({ recipes: [yogBased, milkBased], entryIndex: idx, meal: "breakfast", weekStapleCounts: {}, dayUsedProteinBaseFamilies: new Set(["DAIRY_MILK"]) });
+  assert.deepEqual(day.map((c) => c.recipe.recipeKey), ["pb_yog", "pb_milk"]);
+});
+
+test("v11 D3/V10_G01: `systematic` salta roll 1/3 e budget settimanale (V10_G02: resta solo il max-ripetizioni)", () => {
+  const idx = menuFoodEntryIndex(v11Pools());
+  const week = { "recipe:pane_segale_bresaola_grana": 1, "recipe:yogurt_mela_mandorle": 2 };
+  const cands = recipeCandidatesForMeal({ recipes: [savoury11, sweet11], entryIndex: idx, meal: "snack", weekStapleCounts: week });
+  assert.ok(cands.length > 0);
+  let systematicPicks = 0;
+  let rolledPicks = 0;
+  for (let seed = 0; seed < 30; seed += 1) {
+    const sys = chooseRecipeForSlotV11({ candidates: cands, seed, slotKey: "snack_am", weekStapleCounts: week, recipeAlreadyToday: false, weeklyCapRecipes: [savoury11, sweet11], systematic: true });
+    if (sys) systematicPicks += 1;
+    const rolled = chooseRecipeForSlotV11({ candidates: cands, seed, slotKey: "snack_am", weekStapleCounts: week, recipeAlreadyToday: false, weeklyCapRecipes: [savoury11, sweet11] });
+    if (rolled) rolledPicks += 1;
+  }
+  assert.equal(systematicPicks, 30, "sistematico: il template si tenta SEMPRE (budget da 3 già pieno ignorato)");
+  assert.equal(rolledPicks, 0, "senza systematic il budget settimanale (3) blocca tutto: il vecchio percorso resta contingentato");
+});
+
+test("v11 D4 R-A: la ricetta con fonte CHO dichiarata (patate SECONDARY_CARB) POSSIEDE il carb — leva cho, linea CHO soppressa, flag", () => {
+  const polloPatate: MenuRecipe = {
+    id: "ra1",
+    recipeKey: "bocconcini_pollo_patate",
+    labelIt: "Bocconcini di pollo con patate",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    family: "CHICKEN_DISH",
+    tier: "CORE",
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "chicken6", fdcId: chicken6.fdcId, labelIt: "Pollo", gramsPer100g: 55, isNeutral: false },
+      { position: 2, canonicalKey: "potato6", fdcId: potato6.fdcId, labelIt: "Patate", gramsPer100g: 35, isNeutral: false },
+      { position: 3, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 10, isNeutral: true },
+    ],
+  };
+  const idx = menuFoodEntryIndex(v6Pools());
+  const cand = recipeCandidatesForMeal({ recipes: [polloPatate], entryIndex: idx, meal: "lunch" })[0]!;
+  // In macro la ricetta è proteica (quota kcal-CHO < 30%): senza R-A entrerebbe come
+  // «secondo» e la pasta resterebbe — due fonti CHO nello stesso piatto.
+  assert.equal(recipeLever(cand.per100), "protein", "controprova: il criterio macro direbbe protein");
+  assert.equal(recipeOwnsCarb(cand), true, "R-A: le patate (SECONDARY_CARB) sono una fonte CHO dichiarata");
+  // Fixture v5 (senza ruoli v6): R-A non scatta, decide il criterio macro come prima.
+  const idxV5 = menuFoodEntryIndex(pools());
+  const candV5 = recipeCandidatesForMeal({ recipes: [carbonara], entryIndex: idxV5, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsCarb(candV5), false, "degradazione: dati v5 → nessun possesso dichiarato");
+  let found = 0;
+  for (const date of DATES) {
+    const diagnostics: string[] = [];
+    const plan2 = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v6Pools(),
+      mealGrammar: { enabled: true, recipes: [polloPatate], diagnostics },
+    });
+    for (const s of plan2) {
+      const it = s.items.find((x) => x.recipe?.recipeKey === "bocconcini_pollo_patate");
+      if (!it) continue;
+      found += 1;
+      assert.ok(!s.items.some((x) => x !== it && x.foodRole === "cho_complex"), `${date} ${s.slot}: R-A — nessuna linea CHO accanto alla ricetta che possiede il carb`);
+      assert.ok(diagnostics.some((f) => f.startsWith(`recipe_owns_carb:${s.slot}:`)), diagnostics.join(","));
+    }
+  }
+  assert.ok(found >= 3, `casi R-A osservati in 30 giorni: ${found}`);
+});
+
+test("v11 D4 R-B: nessuna linea servita sotto 12 g — predicato (esenzioni: fat, fixed, ricette) e invariante sul composto", () => {
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "cho" } }, 11), true);
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "protein" } }, 11.9), true);
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "cho" } }, 12), false, "alla soglia si serve");
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "fat" } }, 5), false, "condimenti esenti (5-20 g di olio sono normali)");
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "fixed" } }, 10), false, "linee a grammi fissi esenti");
+  assert.equal(lineDroppableBelowMinServed({ spec: { lever: "cho" }, recipe: {} }, 10), false, "ricette esenti (proporzioni del piatto)");
+  // Invariante: su 10 giorni composti sotto grammatica nessun item non-esente sotto 12 g.
+  for (const date of DATES.slice(0, 10)) {
+    const plan = composeWith(v6Pools(), rawPools(), date, { grammar: true });
+    for (const s of plan) {
+      for (const it of s.items) {
+        if (it.recipe || it.foodRole === "fat") continue;
+        assert.ok(it.grams >= 12, `${date} ${s.slot}: «${it.description}» servito a ${it.grams} g`);
+      }
+    }
+  }
+});
+
+test("v11 D4 R-C: tetto porzione proteica dello spuntino — 150 g (120 per le uova); senza grammatica resta il maxG storico", () => {
+  const bigProteinSnack: MealPlanV2DietSlotBudget[] = [
+    { key: "snack_am", label: "Spuntino", pct: 12, kcal: 300, carbs: 20, protein: 30, fat: 8 },
+  ];
+  const menuYog = new Map<string, MenuFoodEntry[]>([...v6Pools(), ["snack_pro", [yog6]]]);
+  const legacy = composeWith(menuYog, rawPools(), DATES[3]!, { slots: bigProteinSnack });
+  const legacyPro = legacy[0]!.items.find((it) => /yogurt/i.test(it.description))!;
+  assert.equal(Math.round(legacyPro.grams), 200, "storico: il solver spinge lo yogurt al maxG di spec (200 g)");
+  const on = composeWith(menuYog, rawPools(), DATES[3]!, { grammar: true, slots: bigProteinSnack });
+  const onPro = on[0]!.items.find((it) => it.foodRole === "protein_secondary")!;
+  assert.equal(Math.round(onPro.grams), GRAMMAR_SNACK_PRO_MAX_G, "R-C: clamp a 150 g, il solver compensa sulle altre linee");
+  const menuEgg = new Map<string, MenuFoodEntry[]>([...v6Pools(), ["snack_pro", [egg11]]]);
+  const onEgg = composeWith(menuEgg, rawPools(), DATES[3]!, { grammar: true, slots: bigProteinSnack });
+  const eggPro = onEgg[0]!.items.find((it) => it.foodRole === "protein_secondary")!;
+  assert.equal(eggPro.canonicalKey, "egg_whole");
+  assert.equal(Math.round(eggPro.grams), GRAMMAR_SNACK_PRO_EGG_MAX_G, "R-C: uova a 120 g (≈2 uova)");
 });

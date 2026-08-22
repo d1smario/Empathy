@@ -299,6 +299,78 @@ export function weekBreakfastSweetsCount(
 export const GRAMMAR_SNACK_PREP_SPEED_MIN = 7;
 
 /**
+ * R-C (regola di commestibilità del proprietario, v11): la porzione proteica dello
+ * spuntino ha un TETTO leggibile — 150 g (yogurt/fiocchi), 120 g per le uova (≈2 uova):
+ * il solver, senza tetto, chiude le proteine con 200 g di yogurt magro, che non è uno
+ * spuntino. Implementato come clamp del maxG della linea `snack_pro` (il solver compensa
+ * da solo sulle altre leve); il deficit proteico residuo resta scoperto come per ogni
+ * altro cap — nessuna compensazione inventata.
+ */
+export const GRAMMAR_SNACK_PRO_MAX_G = 150;
+export const GRAMMAR_SNACK_PRO_EGG_MAX_G = 120;
+
+/**
+ * R-B (regola di commestibilità del proprietario, v11): nessuna linea SERVITA sotto
+ * questa soglia — una riga da 9 g di merluzzo non è un piatto, è un errore di stampa.
+ * Se il solver risolve una linea sotto soglia, la linea si ELIMINA e il solver
+ * ri-risolve senza (le altre leve compensano). Non si applica ai condimenti (lever
+ * `fat`: 5-20 g di olio sono normali), alle linee a grammi fissi (mai sotto il loro
+ * fixedG clampato) né ai componenti INTERNI delle ricette (le proporzioni del piatto
+ * sono della ricetta, non del solver).
+ */
+export const GRAMMAR_LINE_MIN_SERVED_G = 12;
+
+/** R-B: la linea è eliminabile? (vedi GRAMMAR_LINE_MIN_SERVED_G — esporta il criterio per i test). */
+export function lineDroppableBelowMinServed(
+  line: { spec: { lever: string }; recipe?: unknown },
+  grams: number,
+): boolean {
+  return grams < GRAMMAR_LINE_MIN_SERVED_G && line.spec.lever !== "fat" && line.spec.lever !== "fixed" && !line.recipe;
+}
+
+/**
+ * V10_S01 (HARD): allo spuntino template-led la frutta può entrare SOLO come SIDE
+ * separato per chiudere i CHO residui, e solo quando il residuo vale una porzione
+ * (≥ 15 g CHO) — mai come pairing principale accanto ad affettati/salmone.
+ */
+export const GRAMMAR_SNACK_FRUIT_SIDE_MIN_CHO_G = 15;
+
+/** V10_S01: ruoli ammessi per la linea frutta-side dello spuntino (asse snack, v6). */
+export const GRAMMAR_SNACK_FRUIT_SIDE_V6: { axis: GrammarV6Axis; roles: readonly string[] } = {
+  axis: "snack",
+  roles: ["FAST_CARB"],
+};
+
+/**
+ * V10_S01: true se l'entry è FRUTTA candidabile come side dello spuntino. Il marcatore è
+ * doppio perché FAST_CARB da solo include anche pane/gallette: la quota «semplice» di
+ * colazione (SECONDARY_SIMPLE, B02) è nei dati il marcatore della frutta/miele — la
+ * stessa distinzione usata da isBreakfastSecondaryEntry. Entry senza dati v6 → v5:
+ * CHO_SECONDARY allo spuntino (frutta nelle fixture storiche).
+ */
+export function isSnackFruitSideEntry(e: Pick<MenuFoodEntry, "mealRoles">): boolean {
+  const mr = e.mealRoles;
+  if (!mr) return false;
+  if (mealRolesHasV6(mr)) {
+    return mr.snackRole === "FAST_CARB" && mr.breakfastChoRole === "SECONDARY_SIMPLE";
+  }
+  return mr.roles.snack === "CHO_SECONDARY";
+}
+
+/** V10_S01: pool virtuale della frutta-side (entry di snack_cho marcate frutta). */
+export function snackFruitSideEntries(pools: MenuFoodPoolMap | null | undefined): MenuFoodEntry[] {
+  if (!pools) return [];
+  const out: MenuFoodEntry[] = [];
+  const seen = new Set<string>();
+  for (const e of pools.get("snack_cho") ?? []) {
+    if (seen.has(e.canonicalKey) || !isSnackFruitSideEntry(e)) continue;
+    seen.add(e.canonicalKey);
+    out.push(e);
+  }
+  return out;
+}
+
+/**
  * Penalità di priorità per frequenza (mai esclusione). Dal sistema v6 l'ordinamento del
  * pick è a CHIAVI (grammarOrderingKeys: la frequenza v5 diventa il tier per le entry
  * senza dati v6) e questo valore non viene più sottratto dal punteggio: resta il
@@ -695,8 +767,15 @@ export const GRAMMAR_RECIPE_SLOT_SHARE_PCT = 34;
 export const GRAMMAR_RECIPE_VEG_SHARE_MIN = 15;
 /** Residuo proteico oltre il quale, DOPO la ricetta (V02), si aggiunge una fonte PRO_PRIMARY (L02). */
 export const GRAMMAR_RECIPE_PROTEIN_COMPLEMENT_MIN_G = 15;
-/** Porzione minima sensata di piatto cotto (g). */
+/** Porzione minima sensata di piatto cotto (g) — pasti principali. */
 export const GRAMMAR_RECIPE_MIN_G = 150;
+/**
+ * v11: porzione minima per i TEMPLATE di colazione/spuntino. I 150 g dei pasti
+ * principali ucciderebbero i template salati densi (SAVOURY_FAST: bresaola+gallette,
+ * kcal/100 g alta → il tetto kcal dello slot scende sotto 150 g e il template verrebbe
+ * rifiutato prima ancora di provarlo). 90 g = mezza piadina farcita, porzione reale.
+ */
+export const GRAMMAR_TEMPLATE_RECIPE_MIN_G = 90;
 /**
  * Quando la ricetta a leva CHO avrà un complemento proteico (V02), il suo tetto in kcal
  * non è più l'intero slot ma questa quota: il resto è lo spazio del secondo. Senza questo
@@ -720,6 +799,29 @@ export function recipeLever(per100: { cho: number; pro: number; fat: number }): 
   if (!(total > 0)) return "cho";
   return (per100.cho * 4) / total >= GRAMMAR_RECIPE_CHO_LED_MIN_SHARE ? "cho" : "protein";
 }
+
+/**
+ * R-A (regola di commestibilità del proprietario, v11): RICETTA-O-PIATTO ai pasti
+ * principali. La soglia kcal di recipeLever guarda le MACRO: una ricetta con una vera
+ * fonte CHO ma proteica in macro (bocconcini con patate) entrava come «secondo» e il
+ * primo (pasta) restava — due fonti CHO nello stesso piatto. Qui il criterio è
+ * ONTOLOGICO: se un componente ha un ruolo glucidico dichiarato da Mario
+ * (main_meal_role PRIMARY_COMPLEX_CARB/SECONDARY_CARB, o breakfast_cho_role
+ * PRIMARY_COMPLEX), la ricetta POSSIEDE il carboidrato → prende la leva cho e la linea
+ * CHO separata si sopprime (il complemento proteico V02 resta com'è). Entry senza dati
+ * v6 → false: il criterio macro storico continua a decidere (degradazione, mai svuotare).
+ */
+export function recipeOwnsCarb(cand: Pick<RecipeCandidate, "ingredients">): boolean {
+  return cand.ingredients.some(({ entry }) => {
+    const mr = entry.mealRoles;
+    if (!mr) return false;
+    return (
+      mr.mainMealRole === "PRIMARY_COMPLEX_CARB" ||
+      mr.mainMealRole === "SECONDARY_CARB" ||
+      mr.breakfastChoRole === "PRIMARY_COMPLEX"
+    );
+  });
+}
 export const GRAMMAR_RECIPE_STEP_G = 10;
 
 export type RecipeCandidate = {
@@ -732,6 +834,27 @@ export type RecipeCandidate = {
   /** g/100 g di componenti con ruolo verdura nel pasto (per decidere il contorno). */
   vegShare: number;
   weekCount: number;
+  /**
+   * D3 (v11): chiavi d'ordinamento del percorso TEMPLATE (colazione/spuntino), calcolate
+   * da recipeCandidatesForMeal e usate IDENTICHE dal sort e dal gruppo di sorteggio di
+   * chooseRecipeForSlot (stesso contratto del commento su recipeRank: le due devono
+   * coincidere). Assente per i pasti principali (ordinamento storico).
+   */
+  templateOrdering?: {
+    /** Tier (CORE < ROTATION) — PRIMA chiave: il pasto standard prima delle rotazioni. */
+    tierRank: number;
+    /**
+     * Conteggio settimanale del GRUPPO-VARIANTE (variant_group in template_meta, D3):
+     * Σ dei `recipe:<key>` delle ricette dello stesso gruppo, ricostruito a runtime come
+     * recipeFamilyWeekCounts. Ricetta senza template_meta → il suo weekCount.
+     */
+    variantWeekCount: number;
+    /**
+     * V11_B02 (SOFT, tie-break): uso settimana+giorno della protein_base_family — una
+     * base proteica non ancora usata di recente viene prima, a parità delle chiavi sopra.
+     */
+    proteinBaseCount: number;
+  };
 };
 
 /** Indice canonical_key → entry a partire dai pool (la stessa entry vive in più pool). */
@@ -827,6 +950,11 @@ export function recipeCandidatesForMeal(input: {
   dietType?: MediterraneanDietType;
   denyFragments?: readonly string[];
   weekStapleCounts?: Record<string, number>;
+  /**
+   * V11_B02 (tie-break): protein_base_family dei template già scelti OGGI (la memoria
+   * settimanale non vede i pick della stessa composizione). Solo colazione/spuntino.
+   */
+  dayUsedProteinBaseFamilies?: ReadonlySet<string>;
 }): RecipeCandidate[] {
   const out: RecipeCandidate[] = [];
   const deny = input.denyFragments ?? [];
@@ -910,19 +1038,59 @@ export function recipeCandidatesForMeal(input: {
     if (familyCap != null && (familyCounts.get(recipe.family!) ?? 0) >= familyCap) continue;
     out.push(cand);
   }
-  // Ordine: chi è stato servito meno in settimana viene prima; a parità, il RANK della
-  // ricetta (tier v9 quando c'è, altrimenti frequenza — stessa semantica degli alimenti:
-  // abbassa la priorità, non esclude); a parità ancora, la chiave per determinismo.
+  const byKey = (a: RecipeCandidate, b: RecipeCandidate) =>
+    a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0;
+  if (input.meal === "breakfast" || input.meal === "snack") {
+    // D3 (v11), percorso TEMPLATE: tier PRIMA del conteggio (il pasto standard CORE
+    // precede le rotazioni anche quando la rotazione è a zero) → conteggio settimanale
+    // del gruppo-variante → base proteica non usata di recente (V11_B02, tie-break) →
+    // conteggio della singola ricetta (evita il bis del giorno prima) → chiave.
+    // I conteggi di gruppo sono ricostruiti a runtime dai `recipe:<key>` della memoria
+    // settimanale (stesso pattern di recipeFamilyWeekCounts) — V10_G02: NESSUN nuovo
+    // tetto, solo ordinamento; il max-ripetizioni esistente resta l'unica rotazione dura.
+    const variantCounts = new Map<string, number>();
+    const proteinBaseWeekCounts = new Map<string, number>();
+    for (const r of input.recipes ?? []) {
+      const meta = r.templateMeta;
+      if (!meta) continue;
+      const c = input.weekStapleCounts?.[recipeRotationKey(r.recipeKey)] ?? 0;
+      if (c <= 0) continue;
+      if (meta.variantGroup) variantCounts.set(meta.variantGroup, (variantCounts.get(meta.variantGroup) ?? 0) + c);
+      if (meta.proteinBaseFamily) {
+        proteinBaseWeekCounts.set(meta.proteinBaseFamily, (proteinBaseWeekCounts.get(meta.proteinBaseFamily) ?? 0) + c);
+      }
+    }
+    for (const cand of out) {
+      const meta = cand.recipe.templateMeta ?? null;
+      const pb = meta?.proteinBaseFamily ?? null;
+      cand.templateOrdering = {
+        tierRank: recipeRank(cand.recipe),
+        variantWeekCount: meta?.variantGroup ? (variantCounts.get(meta.variantGroup) ?? 0) : cand.weekCount,
+        proteinBaseCount: pb
+          ? (proteinBaseWeekCounts.get(pb) ?? 0) + (input.dayUsedProteinBaseFamilies?.has(pb) ? 1 : 0)
+          : 0,
+      };
+    }
+    out.sort((a, b) => {
+      const ta = a.templateOrdering!;
+      const tb = b.templateOrdering!;
+      if (ta.tierRank !== tb.tierRank) return ta.tierRank - tb.tierRank;
+      if (ta.variantWeekCount !== tb.variantWeekCount) return ta.variantWeekCount - tb.variantWeekCount;
+      if (ta.proteinBaseCount !== tb.proteinBaseCount) return ta.proteinBaseCount - tb.proteinBaseCount;
+      if (a.weekCount !== b.weekCount) return a.weekCount - b.weekCount;
+      return byKey(a, b);
+    });
+    return out;
+  }
+  // Pasti principali — ordine STORICO invariato: chi è stato servito meno in settimana
+  // viene prima; a parità, il RANK della ricetta (tier v9 quando c'è, altrimenti
+  // frequenza); a parità ancora, la chiave per determinismo.
   out.sort((a, b) =>
     a.weekCount !== b.weekCount
       ? a.weekCount - b.weekCount
       : recipeRank(a.recipe) !== recipeRank(b.recipe)
         ? recipeRank(a.recipe) - recipeRank(b.recipe)
-        : a.recipe.recipeKey < b.recipe.recipeKey
-          ? -1
-          : a.recipe.recipeKey > b.recipe.recipeKey
-            ? 1
-            : 0,
+        : byKey(a, b),
   );
   return out;
 }
@@ -965,25 +1133,48 @@ export function chooseRecipeForSlot(input: {
    * brucia la lasagna di pranzo. Assente = conteggio storico su tutte le `recipe:*`.
    */
   weeklyCapRecipes?: readonly MenuRecipe[];
+  /**
+   * v11 (V10_G01, template-first): true = tentativo SISTEMATICO — niente roll 1/3 e
+   * niente budget settimanale GRAMMAR_MAX_RECIPES_PER_WEEK. A colazione/spuntino il
+   * template È il pasto standard, non un'eccezione contingentata: col roll da mercoledì
+   * tutte le colazioni ricadrebbero a linee (il budget da 3 si esaurisce in 2 giorni).
+   * V10_G02: la rotazione dura resta SOLO il max-ripetizioni esistente (max_week della
+   * ricetta + ROTATION_MAX_WEEK_USES, verificati in recipeCandidatesForMeal).
+   */
+  systematic?: boolean;
 }): RecipeCandidate | null {
   if (input.candidates.length === 0 || input.recipeAlreadyToday) return null;
-  const weeklyCount = input.weeklyCapRecipes
-    ? input.weeklyCapRecipes.reduce(
-        (s, r) => s + (input.weekStapleCounts?.[recipeRotationKey(r.recipeKey)] ?? 0),
-        0,
-      )
-    : weekRecipeCount(input.weekStapleCounts);
-  if (weeklyCount >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
-  const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
-  if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
-  // Il «tier» fra cui si ruota col seed è: conteggio settimanale minimo E rank migliore
-  // (recipeRank: tier v9, fallback frequenza — LA STESSA funzione del sort) fra quelle a
-  // quel conteggio. Così una pizza OCCASIONAL non entra in sorteggio contro una pasta al
-  // pomodoro CORE/COMMON finché entrambe sono a zero. I candidati arrivano già ordinati.
+  if (!input.systematic) {
+    const weeklyCount = input.weeklyCapRecipes
+      ? input.weeklyCapRecipes.reduce(
+          (s, r) => s + (input.weekStapleCounts?.[recipeRotationKey(r.recipeKey)] ?? 0),
+          0,
+        )
+      : weekRecipeCount(input.weekStapleCounts);
+    if (weeklyCount >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
+    const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
+    if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
+  }
+  // Il «tier» fra cui si ruota col seed è il gruppo di candidate EQUIVALENTI per le
+  // chiavi del sort — LE STESSE chiavi, per contratto (commento su recipeRank): pasti
+  // principali = conteggio settimanale minimo E rank migliore; percorso template (D3,
+  // candidate con templateOrdering) = tier, conteggio gruppo-variante, base proteica e
+  // conteggio ricetta uguali alla prima. I candidati arrivano già ordinati.
   const first = input.candidates[0]!;
-  const tier = input.candidates.filter(
-    (c) => c.weekCount === first.weekCount && recipeRank(c.recipe) === recipeRank(first.recipe),
-  );
+  const sameOrderingGroup = (a: RecipeCandidate, b: RecipeCandidate): boolean => {
+    const ta = a.templateOrdering;
+    const tb = b.templateOrdering;
+    if (ta && tb) {
+      return (
+        ta.tierRank === tb.tierRank &&
+        ta.variantWeekCount === tb.variantWeekCount &&
+        ta.proteinBaseCount === tb.proteinBaseCount &&
+        a.weekCount === b.weekCount
+      );
+    }
+    return a.weekCount === b.weekCount && recipeRank(a.recipe) === recipeRank(b.recipe);
+  };
+  const tier = input.candidates.filter((c) => sameOrderingGroup(c, first));
   const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
   return tier[offset] ?? null;
 }
@@ -1036,10 +1227,36 @@ export function foodRoleForRecipeIngredient(entry: MenuFoodEntry): string {
 export const GRAMMAR_SHAKE_POWDER_MIN_G = 20;
 export const GRAMMAR_SHAKE_POWDER_MAX_G = 35;
 
-/** True per le famiglie ricetta con polvere ancorata (PROTEIN_SHAKE_*, PROTEIN_CREAM, PLANT_PROTEIN_SHAKE). */
-export function isProteinShakeFamily(family: string | null | undefined): boolean {
-  if (!family) return false;
-  return /PROTEIN/.test(family) && /(SHAKE|CREAM)/.test(family);
+/**
+ * Densità proteica minima (g/100 g) perché un componente marcato P01 conti come POLVERE
+ * proteica da ancorare. Serve perché in prod `default_enabled=false` NON è esclusivo
+ * delle polveri: lo portano anche oli (sesame_oil, coconut_oil…), germogli e verdure
+ * rare — alfalfa_sprouts è perfino PRO_PRIMARY (3,99 g/100). Le polveri reali stanno a
+ * 47,6-82 g/100 (la più bassa è soy_protein_powder 47,6): 40 le separa tutte con margine.
+ */
+export const GRAMMAR_POWDER_PROTEIN_MIN_PER_100G = 40;
+
+/**
+ * V11_G01 (fix del buco famiglia): il componente-polvere si riconosce a livello di
+ * COMPONENTE, non dal nome della famiglia ricetta. Il vecchio gate
+ * `/PROTEIN/ && /(SHAKE|CREAM|SMOOTHIE|PORRIDGE)/` mancava i template v11 con polvere
+ * fuori dalle famiglie *PROTEIN* (EMP_RECIPE_210 family PORRIDGE, EMP_RECIPE_249/250
+ * family SWEET_FAST): lì la polvere scalava proporzionalmente e poteva uscire da
+ * [20, 35] g. Criterio: marcatore P01 (`defaultEnabled === false`, mai standalone)
+ * + ruolo macro PRO_PRIMARY + densità proteica da polvere (vedi soglia sopra).
+ */
+export function isAnchoredPowderEntry(entry: MenuFoodEntry): boolean {
+  const mr = entry.mealRoles;
+  return (
+    mr?.defaultEnabled === false &&
+    mr.macroRole === "PRO_PRIMARY" &&
+    entry.proteinPer100g >= GRAMMAR_POWDER_PROTEIN_MIN_PER_100G
+  );
+}
+
+/** True se la ricetta contiene un componente-polvere da ancorare (V11_G01, family-agnostico). */
+export function recipeHasAnchoredPowder(cand: RecipeCandidate): boolean {
+  return cand.ingredients.some(({ entry }) => isAnchoredPowderEntry(entry));
 }
 
 /**
@@ -1047,9 +1264,9 @@ export function isProteinShakeFamily(family: string | null | undefined): boolean
  * dall'entry del catalogo (fdc), totali = Σ componenti (così «macro = somma ingredienti»
  * vale esattamente anche dopo l'arrotondamento).
  *
- * P02 (v9): SOLO per le famiglie proteiche (isProteinShakeFamily) il componente-polvere
- * — riconosciuto dal marcatore P01 `defaultEnabled === false` sulla riga meal_roles, non
- * da chiavi hardcoded — resta ancorato a [20, 35] g; il residuo lo assorbono
+ * P02 (v9) + V11_G01: il componente-polvere — riconosciuto per COMPONENTE da
+ * isAnchoredPowderEntry (marcatore P01 + PRO_PRIMARY + densità), family-agnostico, non
+ * da chiavi hardcoded né dal nome famiglia — resta ancorato a [20, 35] g; il residuo lo assorbono
  * proporzionalmente gli altri componenti (liquido/frutta), così il totale resta `grams`.
  * NOTA dichiarata: il solver ha risolto i grammi sulle macro LINEARI per 100 g
  * (recipeCandidateToHit) — con l'ancora le macro reali del piatto deviano dal lineare;
@@ -1061,17 +1278,15 @@ export function scaleRecipe(
   grams: number,
 ): { components: MealPlanV2RecipeComponent[]; totals: { kcal: number; choG: number; proG: number; fatG: number } } {
   const gramsFor = cand.ingredients.map(({ gramsPer100g }) => (grams * gramsPer100g) / 100);
-  if (isProteinShakeFamily(cand.recipe.family)) {
-    const powderIdx = cand.ingredients.findIndex(({ entry }) => entry.mealRoles?.defaultEnabled === false);
-    if (powderIdx >= 0) {
-      const naive = gramsFor[powderIdx]!;
-      const anchored = Math.min(GRAMMAR_SHAKE_POWDER_MAX_G, Math.max(GRAMMAR_SHAKE_POWDER_MIN_G, naive));
-      const othersNaive = gramsFor.reduce((s, g, i) => (i === powderIdx ? s : s + g), 0);
-      const factor = othersNaive > 0 ? (othersNaive + (naive - anchored)) / othersNaive : 1;
-      if (anchored !== naive && factor > 0) {
-        for (let i = 0; i < gramsFor.length; i += 1) {
-          gramsFor[i] = i === powderIdx ? anchored : gramsFor[i]! * factor;
-        }
+  const powderIdx = cand.ingredients.findIndex(({ entry }) => isAnchoredPowderEntry(entry));
+  if (powderIdx >= 0) {
+    const naive = gramsFor[powderIdx]!;
+    const anchored = Math.min(GRAMMAR_SHAKE_POWDER_MAX_G, Math.max(GRAMMAR_SHAKE_POWDER_MIN_G, naive));
+    const othersNaive = gramsFor.reduce((s, g, i) => (i === powderIdx ? s : s + g), 0);
+    const factor = othersNaive > 0 ? (othersNaive + (naive - anchored)) / othersNaive : 1;
+    if (anchored !== naive && factor > 0) {
+      for (let i = 0; i < gramsFor.length; i += 1) {
+        gramsFor[i] = i === powderIdx ? anchored : gramsFor[i]! * factor;
       }
     }
   }
@@ -1143,19 +1358,31 @@ function slotSummary(s: MealPlanV2ComposedSlot | undefined) {
 
 /**
  * B01 (decisione 5): verifica post-compose della quota CHO complessa a colazione —
- * quota = choG primaria / choG TOTALE del pasto (s.totals.choG, «80-85% dei CHO del
- * pasto»: entra anche la CHO delle linee non-CHO, es. latte/yogurt), forbetta
- * 80-85% ± 5pp → [0,75, 0,90]. Si valuta SOLO quando entrambe le linee esistono
- * (la B02 saltata ha già il suo flag `optional_line_skipped`). È una VERIFICA,
+ * forbetta 80-85% ± 5pp → [0,75, 0,90]. Si valuta SOLO quando entrambe le linee
+ * esistono (la B02 saltata ha già il suo flag `optional_line_skipped`). È una VERIFICA,
  * non una correzione: fuori forbetta → flag.
+ *
+ * R-D (v11, decisione del proprietario): il DENOMINATORE è la somma CHO delle sole
+ * linee/componenti a ruolo GLUCIDICO (cho_complex + cho_simple, frutta compresa), NON il
+ * CHO totale del pasto: la regola di Mario ripartisce la BASE glucidica della colazione
+ * (cereali vs quota semplice) e il lattosio del latte/yogurt non c'entra — col totale a
+ * denominatore uno yogurt zuccherino faceva flaggare colazioni perfettamente a regola.
+ * Quando la colazione è template-led i CHO glucidici vivono nei COMPONENTI della
+ * ricetta (foodRole per componente): si sommano quelli.
  */
 function b01ShareFlags(after: MealPlanV2ComposedSlot[]): string[] {
   const flags: string[] = [];
+  const glucidic = (foodRole: string | undefined) => foodRole === "cho_complex" || foodRole === "cho_simple";
   for (const s of after) {
     if (mealForSlot(s.slot) !== "breakfast") continue;
-    const choP = s.items.filter((it) => it.foodRole === "cho_complex").reduce((a, it) => a + it.choG, 0);
-    const choS = s.items.filter((it) => it.foodRole === "cho_simple").reduce((a, it) => a + it.choG, 0);
-    const choTot = s.totals.choG;
+    const choP = s.items.filter((it) => !it.recipe && it.foodRole === "cho_complex").reduce((a, it) => a + it.choG, 0);
+    const choS = s.items.filter((it) => !it.recipe && it.foodRole === "cho_simple").reduce((a, it) => a + it.choG, 0);
+    const choTot = s.items.reduce((a, it) => {
+      if (it.recipe) {
+        return a + it.recipe.components.reduce((b, c) => b + (glucidic(c.foodRole) ? c.choG : 0), 0);
+      }
+      return a + (glucidic(it.foodRole) ? it.choG : 0);
+    }, 0);
     if (!(choP > 0) || !(choS > 0) || !(choTot > 0)) continue;
     const share = choP / choTot;
     if (share < GRAMMAR_B01_PRIMARY_SHARE_MIN || share > GRAMMAR_B01_PRIMARY_SHARE_MAX) {

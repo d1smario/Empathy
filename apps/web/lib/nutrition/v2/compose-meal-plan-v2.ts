@@ -45,19 +45,27 @@ import {
   GRAMMAR_RECIPE_STEP_G,
   GRAMMAR_RECIPE_VEG_SHARE_MIN,
   GRAMMAR_ROLES_BY_POOL,
+  GRAMMAR_SNACK_FRUIT_SIDE_MIN_CHO_G,
+  GRAMMAR_SNACK_FRUIT_SIDE_V6,
   GRAMMAR_SNACK_PREP_SPEED_MIN,
+  GRAMMAR_SNACK_PRO_EGG_MAX_G,
+  GRAMMAR_SNACK_PRO_MAX_G,
+  GRAMMAR_TEMPLATE_RECIPE_MIN_G,
   GRAMMAR_V6_ROLES_BY_POOL,
   breakfastSecondaryMenuEntries,
   chooseRecipeForSlot,
   grammarPoolMeal,
-  isProteinShakeFamily,
+  lineDroppableBelowMinServed,
   mainMealFatCondimentEntries,
   mealForSlot,
   menuFoodEntryIndex,
   recipeCandidateToHit,
   recipeCandidatesForMeal,
+  recipeHasAnchoredPowder,
   recipeLever,
+  recipeOwnsCarb,
   scaleRecipe,
+  snackFruitSideEntries,
   weekBreakfastSweetsCount,
   type GrammarPickFilter,
   type GrammarV6Axis,
@@ -348,11 +356,16 @@ type GrammarComposeState = {
   /** Al massimo una ricetta al giorno NEI PASTI PRINCIPALI (pranzo/cena). */
   recipeUsedToday: boolean;
   /**
-   * v9: contatore SEPARATO per le ricette di colazione/spuntino (shake proteici, P04):
-   * lo shake del mattino non deve bruciare la lasagna di pranzo (e viceversa) — sono
-   * percorsi diversi con tetti diversi. Al massimo una anche qui, al giorno.
+   * v11 (era `shakeUsedToday`, uno al giorno): il percorso colazione/spuntino è
+   * template-FIRST e per-slot — colazione E spuntini possono avere ciascuno il proprio
+   * template lo stesso giorno (V10_B01/S01: il template È il pasto standard). Il dedupe
+   * giornaliero è sulla RICETTA (mai lo stesso template due volte oggi), non
+   * sull'ingrediente: il latte della colazione non deve affamare i template dello
+   * spuntino (dedupe ingredienti per-slot, non per-giorno).
    */
-  shakeUsedToday: boolean;
+  dayUsedRecipeKeys: Set<string>;
+  /** V11_B02 (tie-break): protein_base_family dei template già scelti oggi. */
+  dayUsedProteinBaseFamilies: Set<string>;
   /** V7-03 (v9): lo slot corrente ha già servito un alimento VARIETY (reset a inizio slot). */
   varietyUsedInSlot: boolean;
   /** B05: dolci da colazione già serviti in settimana (conteggio cumulato sul marcatore). */
@@ -378,22 +391,32 @@ function pickRecipeLine(
 ): PickLine | null {
   const g = ctx.grammar;
   if (!g) return null;
-  // v9 (D3.5): due percorsi con contatori giornalieri e budget settimanali SEPARATI —
-  // pasti principali (pranzo/cena: lasagne, pizza…) vs colazione/spuntini (shake
-  // proteici con `meals` esplicita). Uno shake al mattino non brucia la ricetta di
-  // pranzo, e viceversa.
+  // v9 (D3.5) + v11: due percorsi SEPARATI — pasti principali (pranzo/cena: lasagne,
+  // pizza…, roll 1/3 + budget settimanale) vs colazione/spuntini (TEMPLATE-first,
+  // V10_G01: tentativo sistematico, per-slot). Uno shake al mattino non brucia la
+  // ricetta di pranzo, e viceversa.
   const isMain = isMainMealSlot(slotKey);
-  if (isMain ? g.recipeUsedToday : g.shakeUsedToday) return null;
-  const candidates = recipeCandidatesForMeal({
+  if (isMain && g.recipeUsedToday) return null;
+  const candidatesAll = recipeCandidatesForMeal({
     recipes: g.recipes,
     entryIndex: g.entryIndex,
     meal: mealForSlot(slotKey),
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
-  }).filter((c) => !c.ingredients.some(({ entry }) => ctx.usedFdcIds.has(entry.fdcId)));
+    ...(isMain ? {} : { dayUsedProteinBaseFamilies: g.dayUsedProteinBaseFamilies }),
+  });
+  // Dedupe giornaliero per percorso: nei pasti principali resta quello sugli
+  // INGREDIENTI (mai la pancetta due volte oggi); nel percorso template il dedupe è
+  // sulla RICETTA (V10_B02: il template è il pasto, non un ingrediente di sponda) — il
+  // filtro-ingredienti affamerebbe gli spuntini: il latte/yogurt della colazione
+  // escluderebbe quasi tutti i template del pomeriggio.
+  const candidates = isMain
+    ? candidatesAll.filter((c) => !c.ingredients.some(({ entry }) => ctx.usedFdcIds.has(entry.fdcId)))
+    : candidatesAll.filter((c) => !g.dayUsedRecipeKeys.has(c.recipe.recipeKey));
   // Budget settimanale del percorso: le ricette che possono servire questo tipo di slot
-  // (legacy senza `meals` = pasti principali).
+  // (legacy senza `meals` = pasti principali). Nel percorso template il budget non si
+  // applica (systematic, V10_G02): resta solo per pranzo/cena.
   const weeklyCapRecipes = g.recipes.filter((r) => {
     const meals = r.meals;
     if (!meals || meals.length === 0) return isMain;
@@ -406,27 +429,42 @@ function pickRecipeLine(
     seed: ctx.seed,
     slotKey,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
-    recipeAlreadyToday: isMain ? g.recipeUsedToday : g.shakeUsedToday,
+    recipeAlreadyToday: isMain ? g.recipeUsedToday : false,
     weeklyCapRecipes,
+    // V10_G01 (template-first): a colazione/spuntino niente roll 1/3 e niente budget
+    // settimanale — il template si tenta SEMPRE; il fallback a linee resta per
+    // costruzione quando non c'è nessuna candidata.
+    systematic: !isMain,
   });
   if (!cand) return null;
+  const templateMeta = !isMain ? (cand.recipe.templateMeta ?? null) : null;
 
   // Tetto: la ricetta copre AL MASSIMO l'intero slot (kcal) — sotto la porzione minima
-  // sensata non ha senso servirla.
+  // sensata non ha senso servirla. Per i template la minima è più bassa (90 g: mezza
+  // piadina farcita) — coi 150 g dei pasti principali gli spuntini salati densi
+  // verrebbero rifiutati prima ancora di provarli.
+  const minRecipeG = isMain ? GRAMMAR_RECIPE_MIN_G : GRAMMAR_TEMPLATE_RECIPE_MIN_G;
   const kcalCapG = Math.floor(((target.kcal * 100) / cand.per100.kcal) / GRAMMAR_RECIPE_STEP_G) * GRAMMAR_RECIPE_STEP_G;
-  if (kcalCapG < GRAMMAR_RECIPE_MIN_G) return null;
+  if (kcalCapG < minRecipeG) return null;
 
-  if (isMain) g.recipeUsedToday = true;
-  else g.shakeUsedToday = true;
+  if (isMain) {
+    g.recipeUsedToday = true;
+  } else {
+    g.dayUsedRecipeKeys.add(cand.recipe.recipeKey);
+    if (templateMeta?.proteinBaseFamily) g.dayUsedProteinBaseFamilies.add(templateMeta.proteinBaseFamily);
+    if (templateMeta) g.flags.push(`template_first:${slotKey}:${cand.recipe.recipeKey}`);
+  }
   // V7-03: una ricetta con almeno un ingrediente VARIETY consuma il budget varietà
   // dello slot (decisione: sì, un solo flag — mai 2 VARIETY nel pasto, nemmeno uno in
   // ricetta e uno da pick).
   if (cand.ingredients.some(({ entry }) => entry.mealRoles?.generativeTier === "VARIETY")) {
     g.varietyUsedInSlot = true;
   }
-  // P02: la famiglia proteica ha la polvere ancorata in scaleRecipe — flag di
-  // provenienza per misurare in shadow la deriva rispetto al solver lineare.
-  if (isProteinShakeFamily(cand.recipe.family)) {
+  // P02 + V11_G01: la polvere è ancorata in scaleRecipe — riconoscimento per COMPONENTE
+  // (recipeHasAnchoredPowder), non per famiglia: così il flag di provenienza (misura in
+  // shadow la deriva dal solver lineare) copre anche i template v11 con polvere fuori
+  // dalle famiglie *PROTEIN* (PORRIDGE, SWEET_FAST) e resta allineato all'ancora reale.
+  if (recipeHasAnchoredPowder(cand)) {
     g.flags.push(`shake_powder_anchored:${slotKey}:${cand.recipe.recipeKey}`);
   }
   for (const { entry } of cand.ingredients) {
@@ -439,16 +477,32 @@ function pickRecipeLine(
       ctx.usedCarbFamilies.add(entry.carbFamily);
     }
   }
+  // R-A (v11): ai pasti principali la leva è ONTOLOGICA prima che macro — se la ricetta
+  // contiene una fonte CHO dichiarata (recipeOwnsCarb) possiede il carboidrato e prende
+  // la leva cho (la linea CHO separata si sopprime per lever-match); altrimenti decide
+  // la quota kcal-CHO storica. Il flag registra i casi in cui R-A ha CAMBIATO l'esito.
+  const ownsCarb = isMain && recipeOwnsCarb(cand);
+  if (ownsCarb && recipeLever(cand.per100) === "protein") {
+    g.flags.push(`recipe_owns_carb:${slotKey}:${cand.recipe.recipeKey}`);
+  }
   return {
     spec: {
       foodRole: "composite_dish",
-      // Matrice a base CHO → è il primo (leva cho); piatto proteico (cotoletta) → è il
-      // secondo (leva protein) e il primo resta. A colazione/spuntino la leva è SEMPRE
-      // protein (P04: lo shake RIMPIAZZA la linea proteica primaria — CHO complesso,
-      // frutta e grassi restano; guard esplicito contro uno shake CHO-led).
-      lever: isMain ? recipeLever(cand.per100) : "protein",
+      // Matrice a base CHO → è il primo (leva cho); piatto proteico (cotoletta, senza
+      // fonte CHO dichiarata) → è il secondo (leva protein) e il primo resta.
+      // A colazione/spuntino: template con base glucidica (primary_carb_family, V10_B02)
+      // → leva cho (il template occupa CHO+PRO dello slot); ricetta senza template_meta
+      // → protein (P04: lo shake RIMPIAZZA la sola linea proteica primaria — CHO
+      // complesso, frutta e grassi restano).
+      lever: isMain
+        ? ownsCarb
+          ? "cho"
+          : recipeLever(cand.per100)
+        : templateMeta?.primaryCarbFamily
+          ? "cho"
+          : "protein",
       poolKey: "recipe",
-      minG: GRAMMAR_RECIPE_MIN_G,
+      minG: minRecipeG,
       maxG: kcalCapG,
       stepG: GRAMMAR_RECIPE_STEP_G,
     },
@@ -489,6 +543,42 @@ function pickBreakfastSecondaryChoLine(
   if (!line || !(line.hit.carbsPer100g > 0)) return null;
   const wantedChoG = target.carbsG * GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE;
   const grams = (wantedChoG * 100) / line.hit.carbsPer100g;
+  const fixedG = Math.max(spec.minG, Math.min(spec.maxG, Math.round(grams / spec.stepG) * spec.stepG));
+  return { ...line, spec: { ...spec, fixedG } };
+}
+
+/**
+ * V10_S01 (v11): allo spuntino template-led la frutta entra SOLO come SIDE separato per
+ * chiudere i CHO residui (≥ 15 g dopo il primo solve con la sola ricetta) — mai come
+ * pairing casuale accanto ad affettati/salmone. Linea a grammi FISSI dimensionata sul
+ * residuo; pool virtuale = frutta di snack_cho (marcatore isSnackFruitSideEntry).
+ */
+function pickSnackFruitSideLine(
+  slotKey: MealSlotKey,
+  residualChoG: number,
+  pools: FdcPoolMap,
+  ctx: ComposeContext,
+): PickLine | null {
+  const spec: MealSlotAssemblyRole = {
+    foodRole: "cho_simple",
+    lever: "fixed",
+    poolKey: "snack_cho",
+    minG: 50,
+    maxG: 250,
+    stepG: 10,
+    fixedG: 100,
+  };
+  const entries = snackFruitSideEntries(ctx.menuPools);
+  if (entries.length === 0) return null;
+  const line = pickLineForRole(spec, slotKey, pools, ctx, {
+    rolesOverride: { v5: GRAMMAR_BREAKFAST_SECONDARY_ROLES, v6: GRAMMAR_SNACK_FRUIT_SIDE_V6 },
+    menuEntriesOverride: entries,
+    // Linea facoltativa: senza frutta disponibile lo spuntino resta il solo template
+    // (il residuo CHO resta scoperto, come per qualunque pool esaurito — mai USDA).
+    optional: true,
+  });
+  if (!line || !(line.hit.carbsPer100g > 0)) return null;
+  const grams = (residualChoG * 100) / line.hit.carbsPer100g;
   const fixedG = Math.max(spec.minG, Math.min(spec.maxG, Math.round(grams / spec.stepG) * spec.stepG));
   return { ...line, spec: { ...spec, fixedG } };
 }
@@ -556,12 +646,25 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
   // ricetta (V02); il contorno si aggiunge solo se la ricetta non ha già la sua verdura (L03).
   const recipeLine = ctx.grammar ? pickRecipeLine(slotKey, target, ctx) : null;
   const recipeIsCho = recipeLine?.spec.lever === "cho";
+  // v11 (V10_B01/B02/S01): template di colazione/spuntino con base glucidica — la
+  // ricetta occupa le linee CHO **e** PRO dello slot («il template occupa gli slot che
+  // copre: niente aggiunte casuali dopo»); grassi (B02 fat) e frutta si aggiungono SOLO
+  // quando il template non li porta già (fat_addon_family/fruit_family null).
+  const templateMeta =
+    recipeLine && !isMainMealSlot(slotKey) ? (recipeLine.recipe?.recipe.templateMeta ?? null) : null;
+  const templateOwnsSlot = !!templateMeta?.primaryCarbFamily;
   let proteinSpec: MealSlotAssemblyRole | null = null;
   if (recipeLine) lines.push(recipeLine);
   for (const spec of roles) {
     if (recipeLine) {
       // La ricetta occupa la SUA leva: primo (cho) o secondo (protein).
       if (spec.lever === recipeLine.spec.lever) continue;
+      if (templateOwnsSlot && spec.lever === "protein") {
+        // V10_B02: il template copre anche la proteina — nessuna linea separata e
+        // NESSUN complemento V02 (proteinSpec resta null di proposito).
+        continue;
+      }
+      if (templateOwnsSlot && spec.foodRole === "fat" && templateMeta!.fatAddonFamily) continue;
       if (recipeIsCho && spec.lever === "protein") {
         proteinSpec = spec;
         continue;
@@ -569,11 +672,41 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
       if (spec.foodRole === "veg_condiment" && recipeLine.recipe!.vegShare >= GRAMMAR_RECIPE_VEG_SHARE_MIN) continue;
     }
     const line = pickLineForRole(spec, slotKey, pools, ctx);
+    // R-C (v11): tetto leggibile della porzione proteica dello spuntino — clamp del
+    // maxG DOPO il pick (per distinguere le uova) e PRIMA del solver, su una COPIA
+    // della spec (MEAL_SLOT_ASSEMBLY è condivisa col path off: mai mutarla in place).
+    if (ctx.grammar && line && spec.poolKey === "snack_pro" && mealForSlot(slotKey) === "snack") {
+      const cap = line.staple?.canonicalKey?.startsWith("egg")
+        ? GRAMMAR_SNACK_PRO_EGG_MAX_G
+        : GRAMMAR_SNACK_PRO_MAX_G;
+      if (line.spec.maxG > cap) line.spec = { ...line.spec, maxG: cap };
+    }
     if (line) lines.push(line);
     // B02: subito dopo la CHO primaria di colazione, la quota secondaria (fissa, ~15%).
     if (ctx.grammar && slotKey === "breakfast" && spec.lever === "cho" && line) {
       const secondary = pickBreakfastSecondaryChoLine(target, pools, ctx);
       if (secondary) lines.push(secondary);
+    }
+  }
+  // B02 con template (v11): il template ha assorbito la linea CHO, ma se non porta
+  // frutta propria (fruit_family null) la quota semplice di colazione resta dovuta
+  // (B01/B02: 10-15% dei CHO dalla quota semplice).
+  if (ctx.grammar && slotKey === "breakfast" && templateOwnsSlot && !templateMeta!.fruitFamily) {
+    const secondary = pickBreakfastSecondaryChoLine(target, pools, ctx);
+    if (secondary) lines.push(secondary);
+  }
+  // V10_S01 (v11): spuntino template-led — frutta SIDE solo per chiudere CHO residui
+  // (≥ 15 g dopo il primo solve con le linee correnti), dimensionata sul residuo.
+  if (ctx.grammar && templateOwnsSlot && mealForSlot(slotKey) === "snack" && lines.length > 0) {
+    const firstPass = solveFdcMealPortions(lines, target);
+    const choCovered = lines.reduce((s, l, i) => s + ((firstPass[i] ?? 0) * l.hit.carbsPer100g) / 100, 0);
+    const residualChoG = target.carbsG - choCovered;
+    if (residualChoG >= GRAMMAR_SNACK_FRUIT_SIDE_MIN_CHO_G) {
+      const fruit = pickSnackFruitSideLine(slotKey, residualChoG, pools, ctx);
+      if (fruit) {
+        lines.push(fruit);
+        ctx.grammar.flags.push(`fruit_side_added:${slotKey}`);
+      }
     }
   }
   if (recipeLine && recipeIsCho && proteinSpec) {
@@ -622,7 +755,22 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
   // (pizza/piadina hanno già il loro pane) non si applica.
   if (!recipeIsCho) applyRegola7Cho(lines, target, slotKey, ctx);
 
-  const grams = solveFdcMealPortions(lines, target);
+  let grams = solveFdcMealPortions(lines, target);
+  // R-B (v11): nessuna linea SERVITA sotto 12 g — a punto fisso: la linea sotto soglia
+  // si ELIMINA e il solver RI-risolve (le altre leve compensano), invece della vecchia
+  // sparizione silenziosa a macro sballate. Esenti: condimenti (lever fat), linee a
+  // grammi fissi e ricette (i loro componenti interni sono proporzioni del piatto).
+  // Solo sotto grammatica: il path off resta bit-identico (soglie 4/8 in emissione).
+  if (ctx.grammar) {
+    for (let guard = lines.length; guard > 0; guard -= 1) {
+      const dropIdx = lines.findIndex((l, i) => lineDroppableBelowMinServed(l, grams[i] ?? 0));
+      if (dropIdx < 0) break;
+      ctx.grammar.flags.push(`line_dropped_min_g:${slotKey}:${lines[dropIdx]!.spec.poolKey}`);
+      lines.splice(dropIdx, 1);
+      if (lines.length === 0) break;
+      grams = solveFdcMealPortions(lines, target);
+    }
+  }
   const items: MealPlanV2ComposedItem[] = [];
 
   lines.forEach((line, i) => {
@@ -932,7 +1080,8 @@ export function composeMealPlanV2(
               recipes: options.mealGrammar.recipes ?? [],
               entryIndex,
               recipeUsedToday: false,
-              shakeUsedToday: false,
+              dayUsedRecipeKeys: new Set<string>(),
+              dayUsedProteinBaseFamilies: new Set<string>(),
               varietyUsedInSlot: false,
               // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
               sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),

@@ -208,3 +208,68 @@ test("loadMenuRecipes: retry a TRE stadi — 42703 sulle colonne v9 → select f
   assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 2, "v9 fallita + stadio v6 riuscito");
   resetMenuRecipesCacheForTests();
 });
+
+// ---- Colonna v11 (template_meta jsonb, migrazione 20260822090000) ----
+
+test("mapMenuRecipeRows v11: template_meta parsato (NONE→null); tutto-null/malformato → null; colonna ASSENTE → campo assente", () => {
+  const meta = {
+    primary_carb_family: "OATS",
+    protein_base_family: "DAIRY_MILK",
+    fruit_family: "NONE",
+    fat_addon_family: null,
+    variant_group: "V10_EXISTING",
+    standard_serving_g: 435,
+  };
+  const r = mapMenuRecipeRows([recipeRow({ template_meta: meta })], pizzaComponents)[0]!;
+  assert.deepEqual(r.templateMeta, {
+    primaryCarbFamily: "OATS",
+    proteinBaseFamily: "DAIRY_MILK",
+    fruitFamily: null,
+    fatAddonFamily: null,
+    variantGroup: "V10_EXISTING",
+    standardServingG: 435,
+  });
+  // Ricetta non-template: colonna presente ma null → templateMeta null (percorso non-template).
+  const plain = mapMenuRecipeRows([recipeRow({ template_meta: null })], pizzaComponents)[0]!;
+  assert.equal(plain.templateMeta, null);
+  // Jsonb malformato o con soli NONE → null, mai un template inventato.
+  const junk = mapMenuRecipeRows([recipeRow({ template_meta: "not-an-object" })], pizzaComponents)[0]!;
+  assert.equal(junk.templateMeta, null);
+  const allNone = mapMenuRecipeRows(
+    [recipeRow({ template_meta: { primary_carb_family: "NONE", variant_group: "" } })],
+    pizzaComponents,
+  )[0]!;
+  assert.equal(allNone.templateMeta, null);
+  // Riga LEGACY (colonna assente): il campo NON esiste.
+  const legacy = mapMenuRecipeRows([recipeRow({})], pizzaComponents)[0]!;
+  assert.equal("templateMeta" in legacy, false);
+});
+
+test("loadMenuRecipes: 42703 su template_meta → stadio v9 (family/tier/meals NON si perdono)", async () => {
+  resetMenuRecipesCacheForTests();
+  const queue: Array<{ data: unknown; error: unknown }> = [
+    { data: null, error: { code: "42703", message: "column nutrition_recipes.template_meta does not exist" } },
+    { data: [recipeRow({ family: "PIZZA", tier: "CORE", selection_weight: 10, meals: ["lunch"], frequency: "COMMON", max_week: 2 })], error: null },
+  ];
+  const calls: string[] = [];
+  const admin = {
+    from(table: string) {
+      calls.push(table);
+      const result =
+        table === "nutrition_recipes" ? (queue.shift() ?? { data: [], error: null }) : { data: pizzaComponents, error: null };
+      const builder: Record<string, unknown> = {};
+      builder.select = () => builder;
+      builder.eq = () => builder;
+      builder.in = () => builder;
+      builder.then = (resolve: (v: unknown) => void) => resolve(result);
+      return builder;
+    },
+  } as unknown as SupabaseClient;
+  const recipes = await loadMenuRecipes(admin);
+  assert.ok(recipes);
+  assert.equal(recipes![0]!.family, "PIZZA", "le colonne v9 sopravvivono alla mancanza di template_meta");
+  assert.deepEqual(recipes![0]!.meals, ["lunch"]);
+  assert.equal("templateMeta" in recipes![0]!, false, "campo assente sullo stadio senza colonna");
+  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 2, "stadio v11 fallito + stadio v9 riuscito");
+  resetMenuRecipesCacheForTests();
+});

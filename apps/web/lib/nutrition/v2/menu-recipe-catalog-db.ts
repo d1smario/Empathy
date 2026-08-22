@@ -33,6 +33,23 @@ export type MenuRecipeTier = "CORE" | "ROTATION" | "OCCASIONAL";
 /** v9: slot in cui la ricetta è candidabile (colonna `meals`, jsonb). */
 export type MenuRecipeMeal = "breakfast" | "snack" | "lunch" | "dinner";
 
+/**
+ * v11: metadati del TEMPLATE di colazione/spuntino (colonna `template_meta` jsonb,
+ * migrazione 20260822090000). I 4 family descrivono cosa il template porta già con sé
+ * (V10_B02: il template occupa gli slot che copre — il compositore aggiunge la linea
+ * grassi/frutta SOLO quando il campo è null); `variantGroup` è la chiave di rotazione
+ * di famiglia del template (D3); `standardServingG` la porzione standard del foglio.
+ * `NONE` del foglio → null (la migrazione lo fa già; il parser lo ridifende).
+ */
+export type MenuRecipeTemplateMeta = {
+  primaryCarbFamily: string | null;
+  proteinBaseFamily: string | null;
+  fruitFamily: string | null;
+  fatAddonFamily: string | null;
+  variantGroup: string | null;
+  standardServingG: number | null;
+};
+
 export type MenuRecipe = {
   id: string;
   recipeKey: string;
@@ -59,6 +76,12 @@ export type MenuRecipe = {
   selectionWeight?: number | null;
   /** v9: slot ammessi espliciti; presente solo quando la colonna esiste. */
   meals?: MenuRecipeMeal[];
+  /**
+   * v11: metadati template (colonna `template_meta`). Presente solo quando la colonna
+   * esiste nella select; null per le ricette non-template (lasagne, shake v9…) — il
+   * compositore tratta null/assente allo stesso modo (percorso non-template).
+   */
+  templateMeta?: MenuRecipeTemplateMeta | null;
 };
 
 const RECIPE_FREQUENCIES: ReadonlySet<string> = new Set<MenuRecipeFrequency>(["COMMON", "ROTATION", "OCCASIONAL"]);
@@ -87,6 +110,29 @@ function str(v: unknown): string | null {
 function num(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * v11: parse difensivo di `template_meta`. Le famiglie sono stringhe libere del foglio
+ * ('OATS', 'BREAD'…): 'NONE'/vuoto → null (il motore testa `!= null`, mai i letterali).
+ * Un jsonb malformato o tutto-null → null: la ricetta si comporta da non-template.
+ */
+function parseTemplateMeta(raw: unknown): MenuRecipeTemplateMeta | null {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const fam = (v: unknown): string | null => {
+    const s = str(v);
+    return s && s.toUpperCase() !== "NONE" ? s : null;
+  };
+  const meta: MenuRecipeTemplateMeta = {
+    primaryCarbFamily: fam(o.primary_carb_family),
+    proteinBaseFamily: fam(o.protein_base_family),
+    fruitFamily: fam(o.fruit_family),
+    fatAddonFamily: fam(o.fat_addon_family),
+    variantGroup: fam(o.variant_group),
+    standardServingG: num(o.standard_serving_g),
+  };
+  return Object.values(meta).some((v) => v != null) ? meta : null;
 }
 
 /** Log su console: il motore gira anche in Edge Function (Deno), niente logger di app. */
@@ -177,6 +223,11 @@ export function mapMenuRecipeRows(
         ? { selectionWeight: num(r.selection_weight) }
         : {}),
       ...(hasMealsColumn ? { meals: mealsParsed.length > 0 ? mealsParsed : ["lunch", "dinner"] } : {}),
+      // v11: solo quando la colonna è presente (stessa semantica di meals/family) — su
+      // uno stadio di select senza template_meta il campo resta assente, mai inventato.
+      ...(r != null && typeof r === "object" && "template_meta" in r
+        ? { templateMeta: parseTemplateMeta(r.template_meta) }
+        : {}),
     });
   }
   recipes.sort((a, b) => (a.recipeKey < b.recipeKey ? -1 : a.recipeKey > b.recipeKey ? 1 : 0));
@@ -200,18 +251,24 @@ export async function loadMenuRecipes(admin: SupabaseClient): Promise<MenuRecipe
     return menuRecipesCache.recipes;
   }
   try {
-    // Select a TRE STADI PROGRESSIVI su 42703 (stesso pattern del loader alimenti):
-    // v9 (family/tier/selection_weight/meals, migration 20260821090000) → frequency/
-    // max_week (20260819110000) → minima. Su un ambiente senza colonne v9 si perdono
-    // SOLO le v9, mai anche frequency/max_week — MAI «nessuna ricetta» per una colonna
-    // in meno.
+    // Select a STADI PROGRESSIVI su 42703 (stesso pattern del loader alimenti):
+    // v11 (template_meta, migration 20260822090000) → v9 (family/tier/selection_weight/
+    // meals, migration 20260821090000) → frequency/max_week (20260819110000) → minima.
+    // Su un ambiente senza una colonna si perde SOLO quella famiglia di colonne — MAI
+    // «nessuna ricetta» per una colonna in meno.
     const missingColumns = (res: { error: { code?: string; message?: string } | null }) =>
       res.error != null &&
       (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
     let full: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
       .from("nutrition_recipes")
-      .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals")
+      .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals, template_meta")
       .eq("is_active", true);
+    if (missingColumns(full)) {
+      full = await admin
+        .from("nutrition_recipes")
+        .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals")
+        .eq("is_active", true);
+    }
     if (missingColumns(full)) {
       full = await admin
         .from("nutrition_recipes")
