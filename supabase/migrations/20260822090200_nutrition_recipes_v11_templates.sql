@@ -19,8 +19,6 @@
 -- componenti in delete+insert per le sole chiavi di questo file.
 -- Prerequisiti: 20260822090000 (template_meta) e 20260822090100 (proxy) applicate.
 
-begin;
-
 insert into public.nutrition_recipes (recipe_key, label_it, is_active, source_ref, source_version, frequency, max_week, family, tier, selection_weight, meals, note, template_meta) values
 ('bowl_avena_latte_banana_e_mandorle', 'Bowl avena latte banana e mandorle', true, 'EMP_RECIPE_083', 'mario_v11', 'COMMON', 3, 'CEREAL_BOWL', 'CORE', 100, '["breakfast"]'::jsonb, NULL, '{"primary_carb_family":"OATS","protein_base_family":"DAIRY_MILK","fruit_family":"BANANA","fat_addon_family":"NUTS","variant_group":"V10_EXISTING","standard_serving_g":435}'::jsonb),
 ('bowl_avena_latte_scremato_mela_e_noci', 'Bowl avena latte scremato mela e noci', true, 'EMP_RECIPE_084', 'mario_v11', 'COMMON', 3, 'CEREAL_BOWL', 'CORE', 100, '["breakfast"]'::jsonb, NULL, '{"primary_carb_family":"OATS","protein_base_family":"DAIRY_MILK","fruit_family":"APPLE","fat_addon_family":"NUTS","variant_group":"V10_EXISTING","standard_serving_g":455}'::jsonb),
@@ -986,8 +984,6 @@ from (values
 ('toast_bresaola_mozzarella_e_rucola_style', 3, 'mozzarella', 170847, 'Mozzarella', 19.35, false)
 ) as v (recipe_key, position, canonical_key, fdc_id, label_it, grams_per_100g, is_neutral)
 join public.nutrition_recipes r on r.recipe_key = v.recipe_key;
-
-commit;
 
 -- CONTROLLO (eseguire dopo l'apply; atteso: v11 = 179 tutte attive con template_meta,
 -- breakfast 120 / snack 59, review 11; totale ricette 261; componenti 984;
