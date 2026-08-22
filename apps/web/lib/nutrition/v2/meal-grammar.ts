@@ -31,7 +31,7 @@
 import type { MealPlanV2ComposedSlot, MealPlanV2RecipeComponent } from "@empathy/contracts";
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-composer";
-import { ROTATION_MAX_WEEK_USES } from "@/lib/nutrition/meal-composition-rules";
+import { ROTATION_MAX_WEEK_USES, ROTATION_TARGET_WEEK_USES } from "@/lib/nutrition/meal-composition-rules";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
 import {
   mealRolesHasV6,
@@ -464,6 +464,15 @@ export type GrammarPickFilter = {
    * inglese o niente proteina.
    */
   relaxWeekCaps?: boolean;
+  /**
+   * M01/M04 (condimento): salta il blocco «già usato oggi» (isCanonicalKeyUsedToday
+   * −5000 e usedFdcIds −4000) per QUESTO pick. L'EVO dentro le ricette del giorno viene
+   * registrato in dayUsedCanonicalKeys → al pick condimento prendeva −5000 e vinceva
+   * SEMPRE avocado; ma M04 dice EVO condimento quotidiano standard. Solo priorità di
+   * scoring: verdetti ontologici, dieta, max_week e tetti restano intatti — l'avocado
+   * resta possibile quando l'EVO è escluso (dieta/deny).
+   */
+  ignoreUsedToday?: boolean;
 };
 
 /**
@@ -599,6 +608,15 @@ export type GrammarOrderingKeys = {
   d02: number;
   /** Tier mediterranean_priority v6 (asc); frequenza v5 per le entry senza dati v6. */
   tier: number;
+  /**
+   * QA 24-30 ago (varietà DENTRO il tier): conteggio settimanale di FAMIGLIA a bucket
+   * (min(count, ROTATION_MAX_WEEK_USES), asc — meno usato prima). Nei CORE di Mario quasi
+   * tutto è a score 10/10: senza questa chiave decideva l'ultima (seed offset, fino a
+   * ~500 punti) che DOMINA la penalità settimanale del punteggio di rotazione (80-120) →
+   * corn flakes 3 colazioni/7. Il tier decide chi può entrare (familiarità), l'uso
+   * settimanale ordina dentro il tier (varietà), lo score fa da gerarchia a parità di uso.
+   */
+  weekBucket: number;
   /** Score del pasto (desc): dentro lo stesso tier decide la gerarchia fine di Mario. */
   mealScore: number;
   /** B03: tiebreak cereali-prima-del-pane a colazione (asc). */
@@ -630,6 +648,17 @@ export function grammarOrderingKeys(
     subRank: filter.substituteFor ? grammarSubstituteRank(entry, filter.substituteFor) : 0,
     d02: grammarD02FishBonus(entry, filter, week),
     tier,
+    // Stessa semantica max(canonical_key, rotation_key) di ingredientWeekCountFor /
+    // weekStapleCountForEntry (ROTATION_MAX_WEEK_USES arriva da meal-composition-rules,
+    // modulo foglia: nessun ciclo di import). Nel pick condimento (ignoreUsedToday,
+    // M01/M04) il bucket è NEUTRO: l'EVO sta in ~tutte le ricette → satura la memoria
+    // settimanale dal giorno 2, e con i tier in parità (fallback v6/v5 senza
+    // generative_tier) il bucket regalerebbe il condimento all'avocado a giorni
+    // alterni — l'esatto guasto che l'esenzione corregge, reintrodotto a livello
+    // settimana. «EVO quotidiano» non deve dipendere dai dati di catalogo.
+    weekBucket: filter.ignoreUsedToday
+      ? 0
+      : Math.min(ingredientWeekCountFor(entry, week), ROTATION_MAX_WEEK_USES),
     mealScore: mr?.scores[filter.meal] ?? 0,
     groupRank:
       filter.meal === "breakfast" ? (GRAMMAR_B03_GROUP_RANK[mr?.substitutionGroup ?? ""] ?? 0) : 0,
@@ -641,6 +670,8 @@ export function compareGrammarOrderingKeys(a: GrammarOrderingKeys, b: GrammarOrd
   if (a.subRank !== b.subRank) return a.subRank - b.subRank;
   if (a.d02 !== b.d02) return b.d02 - a.d02;
   if (a.tier !== b.tier) return a.tier - b.tier;
+  // DOPO il tier, PRIMA dello score: la memoria settimanale ordina dentro il tier.
+  if (a.weekBucket !== b.weekBucket) return a.weekBucket - b.weekBucket;
   if (a.mealScore !== b.mealScore) return b.mealScore - a.mealScore;
   if (a.groupRank !== b.groupRank) return a.groupRank - b.groupRank;
   return 0;
@@ -749,6 +780,59 @@ export function recipeFamilyWeekCounts(
   return counts;
 }
 
+/**
+ * QA 24-30 ago (fix c): la rotazione dei template deve girare sulla BASE glucidica
+ * (template_meta.primary_carb_family: CORN_FLAKES, OATS, BREAD…), non su variant_group —
+ * che nel file di Mario è l'etichetta del LOTTO d'import ("V10_EXISTING"/"V11_EXPANDED"):
+ * tutti i corn flakes condividono la base ma NON il gruppo → nessuna rotazione reale
+ * (corn flakes 3 colazioni/7 misurate). Tetto settimanale per base = 2 (stesso target
+ * della rotazione famiglie, ROTATION_TARGET_WEEK_USES).
+ */
+export const GRAMMAR_TEMPLATE_BASE_MAX_WEEK = ROTATION_TARGET_WEEK_USES;
+
+/**
+ * QA fix c-bis (verifica avversariale): nei dati v11 `MIXED` non è una base glucidica,
+ * è il CATCH-ALL dei template senza base comune — 22/27 spuntini (smoothie, yogurt+
+ * frutta+noci, kefir+banana, whey+fragole… e perfino i panini col prosciutto, che nei
+ * dati stanno lì per errore di classificazione). Trattarla come base ruotabile spegne
+ * il percorso template a metà settimana: col tetto duro 2/sett e ~14 slot spuntino,
+ * dopo 2 «yogurt di soia» TUTTI i 22 MIXED sarebbero fuori (panino compreso) e il
+ * resto della settimana ricadrebbe sul pool non-template — peggio di prima del fix.
+ * MIXED = «senza base»: nessun verdetto, bucket 0, nessuna de-preferenza di giorno;
+ * la varietà DENTRO il gruppo la fanno le chiavi successive (variant_group, base
+ * proteica, conteggio ricetta) + i tetti sugli ingredienti. NB: vale SOLO per la
+ * rotazione — la leva del template (primary_carb_family presente → leva cho) NON
+ * passa da qui e non cambia.
+ */
+export const GRAMMAR_TEMPLATE_CATCH_ALL_BASES: ReadonlySet<string> = new Set(["MIXED"]);
+
+/** Base glucidica ai fini della ROTAZIONE: null per base assente o catch-all (MIXED). */
+export function templateRotationBase(recipe: Pick<MenuRecipe, "templateMeta">): string | null {
+  const base = recipe.templateMeta?.primaryCarbFamily ?? null;
+  return base && !GRAMMAR_TEMPLATE_CATCH_ALL_BASES.has(base) ? base : null;
+}
+
+/**
+ * Conteggio settimanale per BASE glucidica dei template: Σ dei weekStapleCounts
+ * `recipe:<key>` delle ricette attive con lo stesso primary_carb_family (stesso pattern
+ * di recipeFamilyWeekCounts). Null-safe: ricette senza template_meta, senza base o a
+ * base catch-all (MIXED, fix c-bis) semplicemente non contano.
+ */
+export function templateBaseWeekCounts(
+  recipes: readonly MenuRecipe[] | null | undefined,
+  weekStapleCounts?: Record<string, number>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  if (!weekStapleCounts) return counts;
+  for (const r of recipes ?? []) {
+    const base = templateRotationBase(r);
+    if (!base) continue;
+    const c = weekStapleCounts[recipeRotationKey(r.recipeKey)] ?? 0;
+    if (c > 0) counts.set(base, (counts.get(base) ?? 0) + c);
+  }
+  return counts;
+}
+
 /** Prefisso della chiave di rotazione settimanale di una ricetta (una ricetta È un rotation_key). */
 export const RECIPE_ROTATION_PREFIX = "recipe:";
 
@@ -824,6 +908,68 @@ export function recipeOwnsCarb(cand: Pick<RecipeCandidate, "ingredients">): bool
 }
 export const GRAMMAR_RECIPE_STEP_G = 10;
 
+/**
+ * QA 24-30 ago (fix d, R-A esteso alla PROTEINA): quota minima (g di componente per
+ * 100 g di piatto) perché un componente a ruolo proteico conti come «la ricetta possiede
+ * la proteina». Il confronto è STRETTO (>): a-o-sotto la soglia (pecorino 8/100, uovo
+ * della carbonara 14/100, e il manzo del ragù a ESATTAMENTE 15,00/100 in pasta_al_ragu
+ * e lasagne_al_ragu — verifica avversariale) il componente è un condimento o un legante,
+ * non il secondo del pasto.
+ */
+export const GRAMMAR_RECIPE_PROTEIN_OWN_MIN_SHARE_G = 15;
+
+/**
+ * Pavimento di DENSITÀ PROTEICA del piatto (g pro per 100 g cotti) perché la ricetta
+ * possa possedere il secondo (verifica avversariale sul fix d): il criterio
+ * ruolo-di-catalogo + quota componente NON codifica la densità, e un piatto diluito
+ * sopprime un complemento che il solver non può compensare (il target proteico dello
+ * slot resta sottoservito, stessa classe di guasto dell'audit 12 ago). Taratura sui
+ * dati di prod (SELECT sui componenti attivi pranzo/cena, 22 ago): lato «possiede»
+ * il minimo è risotto_gamberi_e_zucchine 9,17 g pro/100 (riso_tacchino_e_carote,
+ * soppressione VOLUTA dal QA di Mario, sta a 9,44); lato «non possiede» il massimo è
+ * risotto_salmone_e_zucchine 8,53 (poi farro_tonno 8,29, pasta_al_ragu 7,70,
+ * cozze_al_pomodoro_con_pane 7,21). Il pavimento a 9 cade nel varco [8,53–9,17].
+ */
+export const GRAMMAR_RECIPE_PROTEIN_OWN_MIN_DISH_PRO_100G = 9;
+
+/**
+ * QA fix d: R-A esteso alla PROTEINA — «ricetta-O-piatto» vale anche per il secondo.
+ * Una ricetta primaria che contiene già una proteina «vera» (main_meal_role
+ * PRIMARY_PROTEIN, oppure macro_role PRO_PRIMARY) con quota
+ * > GRAMMAR_RECIPE_PROTEIN_OWN_MIN_SHARE_G g/100 di piatto, E il cui piatto regge il
+ * target (per100.pro ≥ GRAMMAR_RECIPE_PROTEIN_OWN_MIN_DISH_PRO_100G), POSSIEDE la
+ * proteina: il complemento V02 si sopprime (riso_tacchino_e_carote NON riceve 80 g di
+ * manzo accanto). Stesso pattern di ispezione componenti di recipeHasAnchoredPowder;
+ * entry senza mealRoles → false (mai possedere per omissione). Il chiamante lo applica
+ * SOLO quando la ricetta è la linea PRIMARIA del pasto principale (leva cho): una
+ * ricetta che È il complemento proteico (merluzzo al pomodoro accanto al riso) non
+ * passa da qui.
+ *
+ * PRIMARY_OR_SECONDARY_PROTEIN NON basta (verifica avversariale): quel ruolo esiste per
+ * il ripiego vegano dei legumi (L02) e un legume dentro la ricetta NON è il secondo del
+ * pasto per gli onnivori — riso_piselli_e_parmigiano (8,4 g pro/100, 11% kcal proteiche)
+ * «possedeva» la proteina via piselli e sopprimeva un complemento che il solver non può
+ * compensare (servire ~35 g pro dal piatto = ~1.270 kcal, fuori budget slot → target
+ * proteico sottoservito). Un legume che è DAVVERO la proteina del piatto passa comunque
+ * dal ramo macro_role=PRO_PRIMARY — ma anche lui sotto il pavimento di densità NON
+ * possiede: un piatto a 4 g pro/100 sottoserve il target qualunque sia l'ideologia.
+ *
+ * Seconda verifica avversariale (22 ago): la sola soglia ruolo+quota ammetteva piatti a
+ * densità pari o inferiore a riso_piselli (pasta_al_ragu 7,7 g pro/100, cozze 7,2,
+ * risotto_salmone 8,5) — stessa matematica dell'esclusione di riso_piselli. Da qui i due
+ * giri di vite: quota componente STRETTA (il manzo-condimento a 15,00 esatti di
+ * pasta/lasagne al ragù torna ad avere il complemento) + pavimento di densità del piatto.
+ */
+export function recipeOwnsProtein(cand: Pick<RecipeCandidate, "per100" | "ingredients">): boolean {
+  if (!(cand.per100.pro >= GRAMMAR_RECIPE_PROTEIN_OWN_MIN_DISH_PRO_100G)) return false;
+  return cand.ingredients.some(({ gramsPer100g, entry }) => {
+    const mr = entry.mealRoles;
+    if (!mr) return false;
+    const proteinRole = mr.mainMealRole === "PRIMARY_PROTEIN" || mr.macroRole === "PRO_PRIMARY";
+    return proteinRole && gramsPer100g > GRAMMAR_RECIPE_PROTEIN_OWN_MIN_SHARE_G;
+  });
+}
+
 export type RecipeCandidate = {
   recipe: MenuRecipe;
   rotationKey: string;
@@ -841,7 +987,16 @@ export type RecipeCandidate = {
    * coincidere). Assente per i pasti principali (ordinamento storico).
    */
   templateOrdering?: {
-    /** Tier (CORE < ROTATION) — PRIMA chiave: il pasto standard prima delle rotazioni. */
+    /**
+     * QA 24-30 ago (fix c): conteggio settimana+giorno della BASE glucidica
+     * (primary_carb_family) — PRIMA chiave, prima del tier: una base già servita di
+     * recente retrocede tutto il suo gruppo di template, qualunque sia il lotto
+     * (variant_group) da cui vengono. Template senza template_meta, senza base o a
+     * base catch-all (MIXED, fix c-bis) → 0 (null-safe: nessun verdetto, nessuna
+     * penalità).
+     */
+    baseCount: number;
+    /** Tier (CORE < ROTATION): il pasto standard prima delle rotazioni. */
     tierRank: number;
     /**
      * Conteggio settimanale del GRUPPO-VARIANTE (variant_group in template_meta, D3):
@@ -955,12 +1110,21 @@ export function recipeCandidatesForMeal(input: {
    * settimanale non vede i pick della stessa composizione). Solo colazione/spuntino.
    */
   dayUsedProteinBaseFamilies?: ReadonlySet<string>;
+  /**
+   * QA 24-30 ago (fix c, livello GIORNO): primary_carb_family dei template già scelti
+   * OGGI — la de-preferenza «non ripetere» che prima passava da variant_group (etichetta
+   * di lotto nei dati) ora gira sulla BASE. Solo colazione/spuntino.
+   */
+  dayUsedTemplateBases?: ReadonlySet<string>;
 }): RecipeCandidate[] {
   const out: RecipeCandidate[] = [];
   const deny = input.denyFragments ?? [];
+  const isTemplateMeal = input.meal === "breakfast" || input.meal === "snack";
   // Tetto per FAMIGLIA (V7-C02/V8-M02): conteggio ricostruito a runtime dalle ricette
   // caricate, una volta per chiamata.
   const familyCounts = recipeFamilyWeekCounts(input.recipes, input.weekStapleCounts);
+  // QA fix c: conteggio settimanale per BASE glucidica dei template (una volta per chiamata).
+  const baseCounts = isTemplateMeal ? templateBaseWeekCounts(input.recipes, input.weekStapleCounts) : null;
   for (const recipe of input.recipes ?? []) {
     const ingredients: RecipeCandidate["ingredients"] = [];
     let resolvable = true;
@@ -1036,18 +1200,29 @@ export function recipeCandidatesForMeal(input: {
     // verdure di giovedì — il tetto conta la famiglia, non la variante.
     const familyCap = recipe.family != null ? GRAMMAR_RECIPE_FAMILY_MAX_WEEK[recipe.family] : undefined;
     if (familyCap != null && (familyCounts.get(recipe.family!) ?? 0) >= familyCap) continue;
+    // QA fix c (VERDETTO): base glucidica già servita GRAMMAR_TEMPLATE_BASE_MAX_WEEK
+    // volte in settimana → template fuori, qualunque sia il variant_group (etichetta di
+    // lotto nei dati di Mario, non la base). Verdetto duro come i tetti famiglia sopra
+    // (il percorso ricette non ha un ripiego relaxWeekCaps: i tetti famiglia esistenti
+    // si comportano allo stesso modo). Null-safe: senza template_meta, senza base o a
+    // base catch-all (MIXED, fix c-bis) la logica si salta.
+    if (baseCounts) {
+      const base = templateRotationBase(recipe);
+      if (base && (baseCounts.get(base) ?? 0) >= GRAMMAR_TEMPLATE_BASE_MAX_WEEK) continue;
+    }
     out.push(cand);
   }
   const byKey = (a: RecipeCandidate, b: RecipeCandidate) =>
     a.recipe.recipeKey < b.recipe.recipeKey ? -1 : a.recipe.recipeKey > b.recipe.recipeKey ? 1 : 0;
-  if (input.meal === "breakfast" || input.meal === "snack") {
-    // D3 (v11), percorso TEMPLATE: tier PRIMA del conteggio (il pasto standard CORE
+  if (isTemplateMeal) {
+    // D3 (v11) + QA fix c, percorso TEMPLATE: BASE glucidica non usata di recente
+    // (settimana + oggi — la rotazione REALE, per bucket) → tier (il pasto standard CORE
     // precede le rotazioni anche quando la rotazione è a zero) → conteggio settimanale
     // del gruppo-variante → base proteica non usata di recente (V11_B02, tie-break) →
     // conteggio della singola ricetta (evita il bis del giorno prima) → chiave.
     // I conteggi di gruppo sono ricostruiti a runtime dai `recipe:<key>` della memoria
-    // settimanale (stesso pattern di recipeFamilyWeekCounts) — V10_G02: NESSUN nuovo
-    // tetto, solo ordinamento; il max-ripetizioni esistente resta l'unica rotazione dura.
+    // settimanale (stesso pattern di recipeFamilyWeekCounts) — V10_G02: oltre al tetto
+    // per base (verdetto sopra), il max-ripetizioni esistente resta la rotazione dura.
     const variantCounts = new Map<string, number>();
     const proteinBaseWeekCounts = new Map<string, number>();
     for (const r of input.recipes ?? []) {
@@ -1063,7 +1238,15 @@ export function recipeCandidatesForMeal(input: {
     for (const cand of out) {
       const meta = cand.recipe.templateMeta ?? null;
       const pb = meta?.proteinBaseFamily ?? null;
+      // Fix c-bis: la base catch-all (MIXED) non ruota — bucket 0, come «senza base».
+      const base = templateRotationBase(cand.recipe);
       cand.templateOrdering = {
+        // Bucket: conteggio settimanale della base (già cappato dal verdetto) + 1 se la
+        // base è già stata servita OGGI (stesso pattern «+1 day» di proteinBaseCount).
+        baseCount: base
+          ? Math.min(baseCounts?.get(base) ?? 0, GRAMMAR_TEMPLATE_BASE_MAX_WEEK) +
+            (input.dayUsedTemplateBases?.has(base) ? 1 : 0)
+          : 0,
         tierRank: recipeRank(cand.recipe),
         variantWeekCount: meta?.variantGroup ? (variantCounts.get(meta.variantGroup) ?? 0) : cand.weekCount,
         proteinBaseCount: pb
@@ -1074,6 +1257,7 @@ export function recipeCandidatesForMeal(input: {
     out.sort((a, b) => {
       const ta = a.templateOrdering!;
       const tb = b.templateOrdering!;
+      if (ta.baseCount !== tb.baseCount) return ta.baseCount - tb.baseCount;
       if (ta.tierRank !== tb.tierRank) return ta.tierRank - tb.tierRank;
       if (ta.variantWeekCount !== tb.variantWeekCount) return ta.variantWeekCount - tb.variantWeekCount;
       if (ta.proteinBaseCount !== tb.proteinBaseCount) return ta.proteinBaseCount - tb.proteinBaseCount;
@@ -1166,6 +1350,7 @@ export function chooseRecipeForSlot(input: {
     const tb = b.templateOrdering;
     if (ta && tb) {
       return (
+        ta.baseCount === tb.baseCount &&
         ta.tierRank === tb.tierRank &&
         ta.variantWeekCount === tb.variantWeekCount &&
         ta.proteinBaseCount === tb.proteinBaseCount &&

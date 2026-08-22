@@ -1818,3 +1818,431 @@ test("v11 D4 R-C: tetto porzione proteica dello spuntino — 150 g (120 per le u
   assert.equal(eggPro.canonicalKey, "egg_whole");
   assert.equal(Math.round(eggPro.grams), GRAMMAR_SNACK_PRO_EGG_MAX_G, "R-C: uova a 120 g (≈2 uova)");
 });
+
+// ═══ FIX QA 24-30 AGO (varietà: corn flakes 3/7, avocado 6/13, complemento doppio) ═════
+// Quattro fix, tutti SOLO sotto grammatica: (1) weekBucket dentro il tier
+// dell'ordinamento; (2) condimento M01 esente dal blocco «già usato oggi»; (3) rotazione
+// template sulla BASE (primary_carb_family), non sul variant_group di lotto; (4) R-A
+// esteso alla proteina (ricetta che possiede il secondo → niente complemento V02).
+
+import {
+  GRAMMAR_TEMPLATE_BASE_MAX_WEEK,
+  compareGrammarOrderingKeys,
+  recipeOwnsProtein,
+  templateBaseWeekCounts,
+  templateRotationBase,
+} from "@/lib/nutrition/v2/meal-grammar";
+
+// Il caso di Mario: CORE di pranzo/cena quasi tutti a score 10/10 — prima del fix
+// pareggiavano su tier e score e decideva il seed offset (fino a ~500 punti), che domina
+// la penalità settimanale (80-120): la memoria «già usato» non ordinava.
+const chickenQ = food("chicken_q", "Pollo QA", { kcal: 110, cho: 0, pro: 23, fat: 1.2 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "WHITE_MEAT", generativeTier: "CORE" }), { rotationKey: "prot:polloQ", isMeat: true });
+const beefQ = food("beef_q", "Manzo QA", { kcal: 125, cho: 0, pro: 22, fat: 4 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "RED_MEAT", generativeTier: "CORE" }), { rotationKey: "prot:manzoQ", isMeat: true });
+const turkeyQ = food("turkey_q", "Tacchino QA", { kcal: 105, cho: 0, pro: 24, fat: 1 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "WHITE_MEAT", generativeTier: "CORE" }), { rotationKey: "prot:tacchinoQ", isMeat: true });
+const porkQ = food("pork_q", "Maiale QA", { kcal: 140, cho: 0, pro: 21, fat: 6 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "RED_MEAT", generativeTier: "CORE" }), { rotationKey: "prot:maialeQ", isMeat: true });
+const lambRotQ = food("lamb_q", "Agnello QA", { kcal: 200, cho: 0, pro: 20, fat: 13 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 10, dinner: 10 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "ROTATION", substitutionGroup: "RED_MEAT", generativeTier: "ROTATION" }), { rotationKey: "prot:agnelloQ", isMeat: true });
+const beefQ8 = { ...beefQ, mealRoles: { ...beefQ.mealRoles!, scores: { ...beefQ.mealRoles!.scores, lunch: 8, dinner: 8 } } };
+
+test("QA fix 1: weekBucket ordina DENTRO il tier — dopo il tier, prima dello score; cap a ROTATION_MAX; a parità di uso decide lo score", () => {
+  const lunch = { meal: "lunch" as const };
+  // Il bucket è il conteggio di FAMIGLIA (max canonical/rotation), cappato a 3.
+  assert.equal(grammarOrderingKeys(chickenQ, lunch, { "prot:polloQ": 99 }).weekBucket, 3);
+  assert.equal(grammarOrderingKeys(chickenQ, lunch, { chicken_q: 2 }).weekBucket, 2, "conta anche la canonical key");
+  assert.equal(grammarOrderingKeys(chickenQ, lunch, {}).weekBucket, 0);
+  // CASO PRIMA ROTTO: due CORE a score 10 — quello usato in settimana va DOPO.
+  const fresh = grammarOrderingKeys(beefQ, lunch, { "prot:polloQ": 1 });
+  const used = grammarOrderingKeys(chickenQ, lunch, { "prot:polloQ": 1 });
+  assert.ok(compareGrammarOrderingKeys(fresh, used) < 0, "il meno usato viene prima, a parità di tier e score");
+  // Lo score resta la gerarchia A PARITÀ di uso (bucket uguale → score 10 batte 8).
+  const w = { "prot:polloQ": 1, "prot:manzoQ": 1 };
+  assert.ok(compareGrammarOrderingKeys(grammarOrderingKeys(chickenQ, lunch, w), grammarOrderingKeys(beefQ8, lunch, w)) < 0);
+  // CASO CHE NON CAMBIA: il tier decide chi può entrare — CORE usato 3 volte batte ROTATION mai usata.
+  const coreUsed = grammarOrderingKeys(chickenQ, lunch, { "prot:polloQ": 3 });
+  const rotFresh = grammarOrderingKeys(lambRotQ, lunch, {});
+  assert.ok(compareGrammarOrderingKeys(coreUsed, rotFresh) < 0, "familiarità (tier) prima della varietà (bucket)");
+});
+
+test("QA fix 1 nel pick: il CORE già servito in settimana non vince più per seed offset; a contatori vuoti la rotazione a seed resta", () => {
+  const entries = [chickenQ, beefQ, turkeyQ, porkQ];
+  // CASO PRIMA ROTTO: pollo a 1 uso, gli altri a 0 → su NESSUN seed il pollo torna
+  // (prima il seed offset — fino a 500 punti — dominava la penalità 80 e lo riproponeva).
+  const winners = new Set<string>();
+  for (let seed = 0; seed < 40; seed += 1) {
+    const p = pickStapleForPool({ poolKey: "lunch_pro", seed, menuEntries: entries, grammar: { meal: "lunch" }, dayCtx: { weekStapleCounts: { "prot:polloQ": 1 } } });
+    assert.notEqual(p?.entry.canonicalKey, "chicken_q", `seed ${seed}: il pollo già usato è tornato`);
+    winners.add(p!.entry.canonicalKey);
+  }
+  assert.equal(winners.size, 3, "gli altri tre CORE ruotano col seed dentro il bucket 0");
+  // CASO CHE NON CAMBIA: settimana vuota → bucket tutti 0 → decide il seed come prima.
+  const freshWinners = new Set<string>();
+  for (let seed = 0; seed < 8; seed += 1) {
+    const p = pickStapleForPool({ poolKey: "lunch_pro", seed, menuEntries: entries, grammar: { meal: "lunch" }, dayCtx: { weekStapleCounts: {} } });
+    freshWinners.add(p!.entry.canonicalKey);
+  }
+  assert.equal(freshWinners.size, 4, "a contatori vuoti tutti pescabili (rotazione per data intatta)");
+});
+
+test("QA fix 2: condimento M01 esente dal blocco «già usato oggi» — l'EVO delle ricette del giorno non regala il pick all'avocado", () => {
+  const condimentFilter = { meal: "lunch" as const, v6: { axis: "main" as const, allowed: new Set(["FAT_CONDIMENT"]) } };
+  const dayWithEvo = { weekStapleCounts: {}, dayUsedCanonicalKeys: new Set(["evo6"]) };
+  // CASO PRIMA ROTTO: EVO in dayUsedCanonicalKeys+usedFdcIds (registrato da una ricetta)
+  // → senza esenzione prendeva -5000/-4000 e vinceva SEMPRE avocado.
+  const blocked = pickStapleForPool({ poolKey: "main_fat", seed: 0, menuEntries: [evo6, avoc6, oilseed6], grammar: condimentFilter, dayCtx: dayWithEvo, usedFdcIds: new Set([evo6.fdcId]) });
+  assert.equal(blocked?.entry.canonicalKey, "avoc6", "senza ignoreUsedToday il blocco resta (pick normali invariati)");
+  const exempt = pickStapleForPool({ poolKey: "main_fat", seed: 0, menuEntries: [evo6, avoc6, oilseed6], grammar: { ...condimentFilter, ignoreUsedToday: true }, dayCtx: dayWithEvo, usedFdcIds: new Set([evo6.fdcId]) });
+  assert.equal(exempt?.entry.canonicalKey, "evo6", "col fix l'EVO vince per tier/score (M04)");
+});
+
+test("QA fix 1×2: nel pick condimento il weekBucket è neutro — l'EVO resta quotidiano anche a memoria settimanale satura e tier in parità", () => {
+  // Stesso filtro del pick condimento vero: relaxWeekCaps + ignoreUsedToday (senza il
+  // primo, l'EVO a 6 usi cadrebbe sul tetto settimanale -5000 prima dell'ordinamento).
+  const condimentFilter = { meal: "lunch" as const, v6: { axis: "main" as const, allowed: new Set(["FAT_CONDIMENT"]) }, relaxWeekCaps: true, ignoreUsedToday: true };
+  // evo6/avoc6 sono ENTRAMBI COMMON senza generative_tier (il fallback v6): senza la
+  // neutralizzazione, weekBucket(EVO)>0 vs 0 dell'avocado deciderebbe PRIMA dello score
+  // e il condimento tornerebbe all'avocado a giorni alterni — il guasto del fix 2,
+  // reintrodotto a livello settimana dalla chiave del fix 1.
+  const satura = { weekStapleCounts: { evo6: 6 } };
+  for (let seed = 0; seed < 8; seed += 1) {
+    const p = pickStapleForPool({ poolKey: "main_fat", seed, menuEntries: [evo6, avoc6, oilseed6], grammar: condimentFilter, dayCtx: satura });
+    assert.equal(p?.entry.canonicalKey, "evo6", `seed ${seed}: EVO quotidiano anche a bucket saturo (M04 non dipende dai dati)`);
+  }
+  // CASO CHE NON CAMBIA: fuori dal condimento (niente ignoreUsedToday) il bucket ordina.
+  assert.ok(grammarOrderingKeys(evo6, { meal: "lunch" }, { evo6: 6 }).weekBucket > 0, "il bucket resta attivo per i pick normali");
+});
+
+test("QA fix 2 nel compositore: ricetta con EVO fra gli ingredienti → il condimento del pasto resta EVO; con EVO escluso (deny) l'avocado resta possibile", () => {
+  const pastaOlio: MenuRecipe = {
+    id: "qa_f2",
+    recipeKey: "pasta_pomodoro_evo_qa",
+    labelIt: "Pasta alle zucchine e olio EVO",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    components: [
+      { position: 1, canonicalKey: "pasta6", fdcId: pasta6.fdcId, labelIt: "Pasta", gramsPer100g: 40, isNeutral: false },
+      { position: 2, canonicalKey: "veg6", fdcId: veg6.fdcId, labelIt: "Zucchine", gramsPer100g: 25, isNeutral: false },
+      { position: 3, canonicalKey: "evo6", fdcId: evo6.fdcId, labelIt: "Olio EVO", gramsPer100g: 2, isNeutral: false },
+      { position: 4, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 33, isNeutral: true },
+    ],
+  };
+  let found = 0;
+  for (const date of DATES) {
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: v6Pools(),
+      mealGrammar: { enabled: true, recipes: [pastaOlio] },
+    });
+    for (const s of plan) {
+      if (!s.items.some((it) => it.recipe?.recipeKey === "pasta_pomodoro_evo_qa")) continue;
+      const fat = s.items.find((it) => it.foodRole === "fat");
+      if (!fat) continue; // pasto già ricco: la linea si salta, non è l'oggetto del test
+      found += 1;
+      assert.equal(fat.canonicalKey, "evo6", `${date} ${s.slot}: l'EVO della ricetta regalava il condimento all'avocado`);
+    }
+  }
+  assert.ok(found >= 3, `casi ricetta-con-EVO osservati in 30 giorni: ${found}`);
+  // CASO CHE NON CAMBIA: EVO escluso (deny/dieta) → l'avocado resta il condimento.
+  const denyEvo = composeMealPlanV2(requirements, slots(), rawPools(), {
+    denyFragments: ["evo6"],
+    request: req(DATES[0]!),
+    menuFoodPools: v6Pools(),
+    mealGrammar: { enabled: true, recipes: [] },
+  });
+  const lunchFat = denyEvo.find((s) => s.slot === "lunch")!.items.find((it) => it.foodRole === "fat");
+  assert.equal(lunchFat?.canonicalKey, "avoc6", "avocado possibile quando l'EVO è escluso");
+});
+
+// Fix 3: nel file di Mario variant_group è l'etichetta del LOTTO ("V10_EXISTING" /
+// "V11_EXPANDED"), non la base: tutti i corn flakes condividono primary_carb_family
+// CORN_FLAKES ma gruppi di lotto diversi → prima del fix nessuna rotazione reale.
+const cornflakesQ = food("cornflakes_q", "Corn flakes QA", { kcal: 380, cho: 84, pro: 7, fat: 1 }, roles({ breakfast: "CHO_PRIMARY" }, { breakfast: 9 }, { breakfastChoRole: "PRIMARY_COMPLEX", mediterraneanPriority: "COMMON", substitutionGroup: "BREAKFAST_COMPLEX_CARB", generativeTier: "CORE" }), { rotationKey: "breakfast:cerealiQ" });
+const cfLatteQ = template("qa_cf1", "cf_latte_qa", "breakfast", "CEREAL_BOWL", "CORE",
+  { primaryCarbFamily: "CORN_FLAKES", proteinBaseFamily: "DAIRY_MILK", variantGroup: "V10_EXISTING" },
+  [[cornflakesQ, 20], [milk11, 80]]);
+const cfYogQ = template("qa_cf2", "cf_yogurt_qa", "breakfast", "CEREAL_BOWL", "CORE",
+  { primaryCarbFamily: "CORN_FLAKES", proteinBaseFamily: "YOGURT", variantGroup: "V11_EXPANDED" },
+  [[cornflakesQ, 25], [yog6, 70], [null, 5]]);
+const oatPorridgeQ = template("qa_cf3", "porridge_oats_qa", "breakfast", "PORRIDGE", "CORE",
+  { primaryCarbFamily: "OATS", proteinBaseFamily: "DAIRY_MILK", variantGroup: "V10_EXISTING" },
+  [[oat6, 22], [milk11, 78]]);
+
+function qaTemplatePools(): MenuFoodPoolMap {
+  return new Map<string, MenuFoodEntry[]>([...v11Pools(), ["qa_cf_ing", [cornflakesQ]]]);
+}
+
+test("QA fix 3: rotazione template sulla BASE (primary_carb_family), non sul variant_group di lotto", () => {
+  const idx = menuFoodEntryIndex(qaTemplatePools());
+  // Conteggio per base = Σ dei recipe:<key> delle ricette con la stessa base.
+  const counts = templateBaseWeekCounts([cfLatteQ, cfYogQ, oatPorridgeQ], { "recipe:cf_latte_qa": 1, "recipe:cf_yogurt_qa": 1 });
+  assert.equal(counts.get("CORN_FLAKES"), 2);
+  assert.equal(counts.get("OATS") ?? 0, 0);
+  // CASO PRIMA ROTTO: corn flakes serviti ieri (cf_latte_qa) → col variant_group di
+  // lotto la de-preferenza colpiva cf_latte E il porridge (stesso lotto V10_EXISTING)
+  // e riproponeva cf_yogurt (lotto V11_EXPANDED): corn flakes di nuovo. Con la base:
+  // il porridge (OATS a 0) viene PRIMA di entrambi i corn flakes.
+  const cands = recipeCandidatesForMeal({ recipes: [cfLatteQ, cfYogQ, oatPorridgeQ], entryIndex: idx, meal: "breakfast", weekStapleCounts: { "recipe:cf_latte_qa": 1 } });
+  assert.deepEqual(cands.map((c) => c.recipe.recipeKey), ["porridge_oats_qa", "cf_yogurt_qa", "cf_latte_qa"]);
+  // VERDETTO: base già servita GRAMMAR_TEMPLATE_BASE_MAX_WEEK (2) volte → TUTTI i
+  // template di quella base fuori, qualunque sia la variante/il lotto.
+  const capped = recipeCandidatesForMeal({ recipes: [cfLatteQ, cfYogQ, oatPorridgeQ], entryIndex: idx, meal: "breakfast", weekStapleCounts: { "recipe:cf_latte_qa": 1, "recipe:cf_yogurt_qa": 1 } });
+  assert.deepEqual(capped.map((c) => c.recipe.recipeKey), ["porridge_oats_qa"], `tetto base a ${GRAMMAR_TEMPLATE_BASE_MAX_WEEK}`);
+  // Livello GIORNO: base servita OGGI (set dayUsedTemplateBases) → de-preferenza subito.
+  const day = recipeCandidatesForMeal({ recipes: [cfLatteQ, cfYogQ, oatPorridgeQ], entryIndex: idx, meal: "breakfast", weekStapleCounts: {}, dayUsedTemplateBases: new Set(["CORN_FLAKES"]) });
+  assert.equal(day[0]!.recipe.recipeKey, "porridge_oats_qa");
+  // Null-safe: template senza template_meta → nessun verdetto, bucket 0, nessun errore.
+  const noMeta: MenuRecipe = { ...oatPorridgeQ, id: "qa_cf4", recipeKey: "no_meta_qa", templateMeta: null };
+  const withNoMeta = recipeCandidatesForMeal({ recipes: [cfLatteQ, noMeta], entryIndex: idx, meal: "breakfast", weekStapleCounts: { "recipe:cf_latte_qa": 2 } });
+  assert.deepEqual(withNoMeta.map((c) => c.recipe.recipeKey), ["no_meta_qa"], "senza meta niente verdetto base; il cf al tetto esce");
+  // CASO CHE NON CAMBIA: senza memoria settimanale né giorno l'ordine resta tier→chiave.
+  const fresh = recipeCandidatesForMeal({ recipes: [cfLatteQ, cfYogQ, oatPorridgeQ], entryIndex: idx, meal: "breakfast", weekStapleCounts: {} });
+  assert.deepEqual(fresh.map((c) => c.recipe.recipeKey), ["cf_latte_qa", "cf_yogurt_qa", "porridge_oats_qa"], "a memoria vuota decide la chiave (tutti CORE, bucket 0)");
+});
+
+test("QA fix 3 nel compositore: colazione a base corn flakes → lo spuntino template evita la stessa base lo stesso giorno", () => {
+  const snackCornQ = template("qa_cf5", "snack_corn_qa", "snack", "SWEET_FAST", "CORE",
+    { primaryCarbFamily: "CORN_FLAKES", proteinBaseFamily: "YOGURT", variantGroup: "V10_EXISTING" },
+    [[cornflakesQ, 30], [yog6, 70]]);
+  const daySlots: MealPlanV2DietSlotBudget[] = [
+    { key: "breakfast", label: "Colazione", pct: 25, kcal: 600, carbs: 80, protein: 30, fat: 18 },
+    { key: "snack_am", label: "Spuntino", pct: 10, kcal: 250, carbs: 30, protein: 15, fat: 8 },
+  ];
+  for (const date of DATES.slice(0, 6)) {
+    const plan = composeMealPlanV2(requirements, daySlots, rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: qaTemplatePools(),
+      mealGrammar: { enabled: true, recipes: [cfLatteQ, snackCornQ, sweet11] },
+    });
+    const b = plan.find((s) => s.slot === "breakfast")!;
+    assert.ok(b.items.some((it) => it.recipe?.recipeKey === "cf_latte_qa"), `${date}: colazione corn flakes`);
+    const snack = plan.find((s) => s.slot === "snack_am")!;
+    const snackRecipe = snack.items.find((it) => it.recipe)?.recipe?.recipeKey;
+    assert.equal(snackRecipe, "yogurt_mela_mandorle", `${date}: lo spuntino evita la base CORN_FLAKES del giorno`);
+  }
+});
+
+test("QA fix 4 (R-A proteina): la ricetta primaria che contiene la proteina vera POSSIEDE il secondo — niente complemento V02", () => {
+  // Macro da petto di tacchino COTTO (30 g pro/100, come il turkey_breast di prod): il
+  // piatto della fixture arriva a 9,4 g pro/100 — sopra il pavimento di densità, come il
+  // riso_tacchino_e_carote reale (9,44 in prod).
+  const turkeyQ4 = food("turkey_q4", "Tacchino QA4", { kcal: 135, cho: 0, pro: 30, fat: 1 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 9, dinner: 9 }, { mainMealRole: "PRIMARY_PROTEIN", mediterraneanPriority: "COMMON", substitutionGroup: "WHITE_MEAT" }), { rotationKey: "prot:tacchino_q4", isMeat: true });
+  const risoTacchino: MenuRecipe = {
+    id: "qa_f4",
+    recipeKey: "riso_tacchino_carote_qa",
+    labelIt: "Riso, tacchino e carote",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Riso", gramsPer100g: 28, isNeutral: false },
+      { position: 2, canonicalKey: "turkey_q4", fdcId: turkeyQ4.fdcId, labelIt: "Tacchino", gramsPer100g: 24, isNeutral: false },
+      { position: 3, canonicalKey: "veg6", fdcId: veg6.fdcId, labelIt: "Zucchine", gramsPer100g: 20, isNeutral: false },
+      { position: 4, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 28, isNeutral: true },
+    ],
+  };
+  const qaPools = new Map<string, MenuFoodEntry[]>([...v6Pools(), ["qa_f4_ing", [turkeyQ4]]]);
+  const idx = menuFoodEntryIndex(qaPools);
+  const cand = recipeCandidatesForMeal({ recipes: [risoTacchino], entryIndex: idx, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsProtein(cand), true, "tacchino PRIMARY_PROTEIN a 24 g/100 → la ricetta possiede la proteina");
+  // CASI CHE NON CAMBIANO: componente proteico sotto quota (uovo 14 g/100 nella
+  // carbonara) o assente (riso al pomodoro) → il complemento V02 resta dovuto.
+  const idxV5 = menuFoodEntryIndex(pools());
+  assert.equal(recipeOwnsProtein(recipeCandidatesForMeal({ recipes: [carbonara], entryIndex: idxV5, meal: "lunch" })[0]!), false, "uovo a 14 g/100 < 15: legante, non secondo");
+  assert.equal(recipeOwnsProtein(recipeCandidatesForMeal({ recipes: [risoPomodoro], entryIndex: idxV5, meal: "lunch" })[0]!), false);
+  // VERIFICA AVVERSARIALE (22 ago): due controesempi presi dal catalogo di prod.
+  // 1) pasta/lasagne al ragù — manzo-condimento a ESATTAMENTE 15,00 g/100: la quota è
+  //    STRETTA (>), il ragù non è un secondo anche in un piatto denso (lasagne_al_ragu
+  //    in prod sta a 10,8 g pro/100: la densità da sola passerebbe).
+  const beefRagu = food("beef_ragu_q4", "Manzo macinato (ragù)", { kcal: 250, cho: 0, pro: 26, fat: 15 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 9, dinner: 9 }, { mainMealRole: "PRIMARY_PROTEIN", macroRole: "PRO_PRIMARY", mediterraneanPriority: "COMMON", substitutionGroup: "RED_MEAT" }), { rotationKey: "prot:manzo_q4", isMeat: true });
+  const besciamellaQ4 = food("besciamella_q4", "Besciamella e formaggio", { kcal: 180, cho: 6, pro: 25, fat: 7 }, roles({ lunch: "PRO_SECONDARY", dinner: "PRO_SECONDARY" }, { lunch: 6, dinner: 6 }, { mainMealRole: "SECONDARY_PROTEIN", macroRole: "PRO_SECONDARY", mediterraneanPriority: "COMMON", substitutionGroup: "CHEESE_PROTEIN" }), { rotationKey: "prot:besciamella_q4", isAnimalProduct: true });
+  const lasagneRagu: MenuRecipe = {
+    id: "qa_f4_ragu",
+    recipeKey: "lasagne_al_ragu_qa",
+    labelIt: "Lasagne al ragù",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Sfoglia", gramsPer100g: 28, isNeutral: false },
+      { position: 2, canonicalKey: "beef_ragu_q4", fdcId: beefRagu.fdcId, labelIt: "Ragù di manzo", gramsPer100g: 15, isNeutral: false },
+      { position: 3, canonicalKey: "besciamella_q4", fdcId: besciamellaQ4.fdcId, labelIt: "Besciamella e formaggio", gramsPer100g: 22, isNeutral: false },
+      { position: 4, canonicalKey: "veg6", fdcId: veg6.fdcId, labelIt: "Verdure", gramsPer100g: 15, isNeutral: false },
+      { position: 5, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 20, isNeutral: true },
+    ],
+  };
+  // 2) cozze al pomodoro con pane — la cozza È il secondo per ruolo (45 g/100 > 15) ma
+  //    il piatto è DILUITO (~7 g pro/100 come i 7,21 di prod): sotto il pavimento di
+  //    densità NON possiede, il complemento resta dovuto.
+  const musselsQ4 = food("mussels_q4", "Cozze", { kcal: 86, cho: 4, pro: 12, fat: 2.2 }, roles({ lunch: "PRO_PRIMARY", dinner: "PRO_PRIMARY" }, { lunch: 8, dinner: 8 }, { mainMealRole: "PRIMARY_PROTEIN", macroRole: "PRO_PRIMARY", mediterraneanPriority: "PRIMARY", substitutionGroup: "SEAFOOD" }), { rotationKey: "prot:cozze_q4", isFish: true });
+  const cozzePane: MenuRecipe = {
+    id: "qa_f4_cozze",
+    recipeKey: "cozze_pomodoro_pane_qa",
+    labelIt: "Cozze al pomodoro con pane",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Pane", gramsPer100g: 20, isNeutral: false },
+      { position: 2, canonicalKey: "mussels_q4", fdcId: musselsQ4.fdcId, labelIt: "Cozze", gramsPer100g: 45, isNeutral: false },
+      { position: 3, canonicalKey: "veg6", fdcId: veg6.fdcId, labelIt: "Pomodoro", gramsPer100g: 20, isNeutral: false },
+      { position: 4, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 15, isNeutral: true },
+    ],
+  };
+  const idxAdv = menuFoodEntryIndex(new Map<string, MenuFoodEntry[]>([...qaPools, ["qa_f4_adv", [beefRagu, besciamellaQ4, musselsQ4]]]));
+  assert.equal(recipeOwnsProtein(recipeCandidatesForMeal({ recipes: [lasagneRagu], entryIndex: idxAdv, meal: "lunch" })[0]!), false, "manzo del ragù a 15,00 esatti: quota stretta, il complemento V02 resta dovuto");
+  assert.equal(recipeOwnsProtein(recipeCandidatesForMeal({ recipes: [cozzePane], entryIndex: idxAdv, meal: "lunch" })[0]!), false, "cozze 45 g/100 ma piatto a ~7 g pro/100: sotto il pavimento di densità");
+  // Nel compositore: dove la ricetta entra come primo, NESSUNA linea proteica accanto + flag.
+  let found = 0;
+  for (const date of DATES) {
+    const diagnostics: string[] = [];
+    const plan = composeMealPlanV2(requirements, slots(), rawPools(), {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: qaPools,
+      mealGrammar: { enabled: true, recipes: [risoTacchino], diagnostics },
+    });
+    for (const s of plan) {
+      const it = s.items.find((x) => x.recipe?.recipeKey === "riso_tacchino_carote_qa");
+      if (!it) continue;
+      found += 1;
+      assert.ok(!s.items.some((x) => x.foodRole === "protein_primary"), `${date} ${s.slot}: complemento V02 accanto a una ricetta che ha già il tacchino`);
+      assert.ok(diagnostics.some((f) => f.startsWith(`recipe_owns_protein:${s.slot}:riso_tacchino_carote_qa`)), diagnostics.join(","));
+    }
+  }
+  assert.ok(found >= 3, `casi ricetta-con-proteina osservati in 30 giorni: ${found}`);
+  // Controprova compositore: il riso al pomodoro (senza proteina propria) CONSERVA il
+  // complemento e non emette il flag (il comportamento V02 storico non cambia).
+  let complemented = 0;
+  for (const date of DATES.slice(0, 15)) {
+    const diagnostics: string[] = [];
+    const plan = composeMealPlanV2(requirements, slots(), emptyPools, {
+      denyFragments: [],
+      request: req(date),
+      menuFoodPools: pools(),
+      mealGrammar: { enabled: true, recipes: [risoPomodoro], diagnostics },
+    });
+    assert.ok(!diagnostics.some((f) => f.startsWith("recipe_owns_protein:")), diagnostics.join(","));
+    for (const s of plan) {
+      if (s.items.some((x) => x.recipe) && s.items.some((x) => x.foodRole === "protein_primary")) complemented += 1;
+    }
+  }
+  assert.ok(complemented >= 1, "il complemento V02 resta per le ricette senza proteina propria");
+});
+
+// ═══ VERIFICA AVVERSARIALE 22 AGO (fix c-bis: MIXED catch-all; fix 4-bis: legumi) ══════
+
+test("QA fix c-bis: MIXED è il catch-all degli spuntini, non una base — niente verdetto, bucket 0, niente de-preferenza giorno", () => {
+  // Nei dati v11 MIXED raggruppa 22/27 template spuntino senza base glucidica comune
+  // (smoothie, yogurt+frutta, panino con bresaola): trattarla come base ruotabile col
+  // tetto duro 2/sett spegneva il percorso template a metà settimana.
+  const mixedMilk = template("qacb1", "latte_mela_noci_qa", "snack", "SWEET_FAST", "CORE",
+    { primaryCarbFamily: "MIXED", proteinBaseFamily: "DAIRY_MILK", variantGroup: "VG_MIX2" },
+    [[milk11, 70], [apple6, 20], [nuts6, 10]]);
+  const paninoMixed = template("qacb2", "pane_bresaola_qa_mixed", "snack", "SAVOURY_FAST", "CORE",
+    { primaryCarbFamily: "MIXED", proteinBaseFamily: "SAVOURY_PROTEIN", variantGroup: "VG_SAV_M" },
+    [[bread11, 45], [bresaola11, 40], [null, 15]]);
+  assert.equal(templateRotationBase(sweet11), null, "MIXED = senza base ai fini della rotazione");
+  assert.equal(templateRotationBase(savoury11), "BREAD", "le basi reali restano basi");
+  // Il conteggio per base NON conta MIXED (le basi reali sì).
+  const counts = templateBaseWeekCounts([sweet11, mixedMilk, savoury11], {
+    "recipe:yogurt_mela_mandorle": 1,
+    "recipe:latte_mela_noci_qa": 1,
+    "recipe:pane_segale_bresaola_grana": 1,
+  });
+  assert.equal(counts.has("MIXED"), false);
+  assert.equal(counts.get("BREAD"), 1);
+  // CASO PRIMA ROTTO: 2 MIXED già serviti in settimana → col verdetto sulla base TUTTI
+  // i 22 MIXED (panino compreso) sparivano dal percorso template. Ora restano candidati,
+  // tutti a bucket 0.
+  const idx = menuFoodEntryIndex(v11Pools());
+  const after2Mixed = recipeCandidatesForMeal({
+    recipes: [sweet11, mixedMilk, paninoMixed],
+    entryIndex: idx,
+    meal: "snack",
+    weekStapleCounts: { "recipe:yogurt_mela_mandorle": 1, "recipe:latte_mela_noci_qa": 1 },
+  });
+  assert.equal(after2Mixed.length, 3, "nessun verdetto base sui MIXED");
+  for (const c of after2Mixed) assert.equal(c.templateOrdering!.baseCount, 0, `${c.recipe.recipeKey}: bucket 0`);
+  // Difensivo: «MIXED» nel set del giorno (non dovrebbe più entrarci) non retrocede nulla.
+  const dayMixed = recipeCandidatesForMeal({
+    recipes: [sweet11, mixedMilk, paninoMixed],
+    entryIndex: idx,
+    meal: "snack",
+    weekStapleCounts: {},
+    dayUsedTemplateBases: new Set(["MIXED"]),
+  });
+  for (const c of dayMixed) assert.equal(c.templateOrdering!.baseCount, 0);
+  // CASO CHE NON CAMBIA: una base REALE al tetto (BREAD a 2) resta verdetto.
+  const breadCapped = recipeCandidatesForMeal({
+    recipes: [savoury11, paninoMixed],
+    entryIndex: idx,
+    meal: "snack",
+    weekStapleCounts: { "recipe:pane_segale_bresaola_grana": GRAMMAR_TEMPLATE_BASE_MAX_WEEK },
+  });
+  assert.deepEqual(breadCapped.map((c) => c.recipe.recipeKey), ["pane_bresaola_qa_mixed"], "BREAD al tetto esce, il MIXED resta");
+});
+
+test("QA fix 4-bis: PRIMARY_OR_SECONDARY_PROTEIN (legumi, ripiego vegano L02) NON possiede il secondo", () => {
+  // riso_piselli_e_parmigiano: 8,4 g pro/100 (11% kcal proteiche) — «possedeva» la
+  // proteina via piselli e sopprimeva un complemento che il solver non può compensare.
+  const peasQ4 = food("peas_q4", "Piselli QA", { kcal: 81, cho: 14, pro: 5.4, fat: 0.4 }, roles({ lunch: "PRO_SECONDARY", dinner: "PRO_SECONDARY" }, { lunch: 8, dinner: 8 }, { mainMealRole: "PRIMARY_OR_SECONDARY_PROTEIN", macroRole: "PRO_SECONDARY", mediterraneanPriority: "PRIMARY", substitutionGroup: "PLANT_PROTEIN" }));
+  const risoPiselli: MenuRecipe = {
+    id: "qa_f4b",
+    recipeKey: "riso_piselli_parmigiano_qa",
+    labelIt: "Riso, piselli e parmigiano",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Riso", gramsPer100g: 28, isNeutral: false },
+      { position: 2, canonicalKey: "peas_q4", fdcId: peasQ4.fdcId, labelIt: "Piselli", gramsPer100g: 28, isNeutral: false },
+      { position: 3, canonicalKey: "grana11", fdcId: grana11.fdcId, labelIt: "Parmigiano", gramsPer100g: 6, isNeutral: false },
+      { position: 4, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 38, isNeutral: true },
+    ],
+  };
+  const qaPools = new Map<string, MenuFoodEntry[]>([...v11Pools(), ["qa_f4b_ing", [peasQ4]]]);
+  const idx = menuFoodEntryIndex(qaPools);
+  const cand = recipeCandidatesForMeal({ recipes: [risoPiselli], entryIndex: idx, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsProtein(cand), false, "i piselli (28 g/100, PRIMARY_OR_SECONDARY_PROTEIN) non sono il secondo: il complemento V02 resta dovuto");
+  // Verifica avversariale 22 ago: anche promuovendo i piselli a macro_role PRO_PRIMARY,
+  // il piatto resta DILUITO (~5,5 g pro/100 < pavimento 9) → NON possiede comunque: un
+  // piatto a quella densità sottoserve il target proteico qualunque sia il ruolo.
+  const peasPrimary = { ...peasQ4, mealRoles: { ...peasQ4.mealRoles!, macroRole: "PRO_PRIMARY" as const } };
+  const idxPrimary = menuFoodEntryIndex(new Map<string, MenuFoodEntry[]>([...v11Pools(), ["qa_f4b_ing", [peasPrimary]]]));
+  const candPrimary = recipeCandidatesForMeal({ recipes: [risoPiselli], entryIndex: idxPrimary, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsProtein(candPrimary), false, "PRO_PRIMARY ma piatto diluito (~5,5 g pro/100): sotto il pavimento di densità il complemento resta dovuto");
+  // CASI CHE ISOLANO LE DUE CONDIZIONI su un piatto DENSO (tempeh 19 g pro/100 al 45%
+  // del piatto → ~10,7 g pro/100, sopra il pavimento):
+  //  a) mainMealRole PRIMARY_OR_SECONDARY_PROTEIN + macro_role PRO_SECONDARY → il ruolo
+  //     NON basta nemmeno con la densità a posto (il predicato di ruolo è isolato);
+  //  b) macro_role PRO_PRIMARY → possiede: il ripiego vegano (L02) resta percorribile
+  //     quando la proteina vegetale è DAVVERO la proteina del piatto.
+  const tempehQ4 = food("tempeh_q4", "Tempeh", { kcal: 195, cho: 8, pro: 19, fat: 11 }, roles({ lunch: "PRO_SECONDARY", dinner: "PRO_SECONDARY" }, { lunch: 8, dinner: 8 }, { mainMealRole: "PRIMARY_OR_SECONDARY_PROTEIN", macroRole: "PRO_SECONDARY", mediterraneanPriority: "COMMON", substitutionGroup: "PLANT_PROTEIN" }), { rotationKey: "prot:tempeh_q4" });
+  const risoTempeh: MenuRecipe = {
+    id: "qa_f4c",
+    recipeKey: "riso_tempeh_qa",
+    labelIt: "Riso e tempeh",
+    note: null,
+    frequency: "COMMON",
+    maxWeek: null,
+    meals: ["lunch", "dinner"],
+    components: [
+      { position: 1, canonicalKey: "rice6", fdcId: rice6.fdcId, labelIt: "Riso", gramsPer100g: 28, isNeutral: false },
+      { position: 2, canonicalKey: "tempeh_q4", fdcId: tempehQ4.fdcId, labelIt: "Tempeh", gramsPer100g: 45, isNeutral: false },
+      { position: 3, canonicalKey: "veg6", fdcId: veg6.fdcId, labelIt: "Zucchine", gramsPer100g: 12, isNeutral: false },
+      { position: 4, canonicalKey: null, fdcId: null, labelIt: "Acqua / brodo neutro", gramsPer100g: 15, isNeutral: true },
+    ],
+  };
+  const idxTempeh = menuFoodEntryIndex(new Map<string, MenuFoodEntry[]>([...v11Pools(), ["qa_f4c_ing", [tempehQ4]]]));
+  const candTempeh = recipeCandidatesForMeal({ recipes: [risoTempeh], entryIndex: idxTempeh, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsProtein(candTempeh), false, "piatto denso ma ruolo PRIMARY_OR_SECONDARY_PROTEIN/PRO_SECONDARY: non possiede");
+  const tempehPrimary = { ...tempehQ4, mealRoles: { ...tempehQ4.mealRoles!, macroRole: "PRO_PRIMARY" as const } };
+  const idxTempehPrimary = menuFoodEntryIndex(new Map<string, MenuFoodEntry[]>([...v11Pools(), ["qa_f4c_ing", [tempehPrimary]]]));
+  const candTempehPrimary = recipeCandidatesForMeal({ recipes: [risoTempeh], entryIndex: idxTempehPrimary, meal: "lunch" })[0]!;
+  assert.equal(recipeOwnsProtein(candTempehPrimary), true, "macro_role PRO_PRIMARY su un piatto denso: il legume/vegetale-proteina possiede il secondo");
+});

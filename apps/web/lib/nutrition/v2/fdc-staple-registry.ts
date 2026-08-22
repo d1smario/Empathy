@@ -550,6 +550,11 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
   const poolSize = entries.length;
   const dayOffset = poolSize > 0 ? ((Math.floor(Math.abs(ctx.seed)) % poolSize) + poolSize) % poolSize : 0;
 
+  // Solo grammatica + catalogo (condimento M01): il blocco «già usato oggi» si salta —
+  // l'EVO delle ricette del giorno non deve regalare il pick all'avocado. Fuori da
+  // questo caso il percorso è identico a prima, byte per byte.
+  const ignoreUsedToday = !!(menuEntries && ctx.grammar?.ignoreUsedToday);
+
   const scored = entries
     .map((e, idx) => {
       if (denyHit(e.labelIt, deny) || denyHit(e.canonicalKey, deny)) return { e, score: -10_000, idx };
@@ -565,7 +570,7 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       const grammarPenalty =
         menuEntries && ctx.grammar ? grammarPenaltyForEntry(e as MenuFoodEntry, ctx.grammar, weekCount) : 0;
       if (grammarPenalty == null) return { e, score: -6000, idx };
-      if (ctx.dayCtx && isCanonicalKeyUsedToday(ctx.dayCtx as MediterraneanDayContext, e.canonicalKey)) {
+      if (!ignoreUsedToday && ctx.dayCtx && isCanonicalKeyUsedToday(ctx.dayCtx as MediterraneanDayContext, e.canonicalKey)) {
         return { e, score: -5000, idx };
       }
       if (e.rotationKey && ctx.usedCarbFamilies?.has(e.rotationKey)) return { e, score: -3000, idx };
@@ -574,7 +579,7 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       }
       const hit = menuEntries ? menuFoodEntryToHit(e as MenuFoodEntry) : canonicalToHit(e);
       if (!hit) return { e, score: -8000, idx };
-      if (ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4000, idx };
+      if (!ignoreUsedToday && ctx.usedFdcIds?.has(hit.fdcId) && hit.fdcId > 0) return { e, score: -4000, idx };
       const score = 1000 - ((idx + poolSize - dayOffset) % poolSize) * 10
         - (weekCount >= ROTATION_TARGET_WEEK_USES ? 120 : weekCount > 0 ? weekCount * 80 : 0);
       // Grammatica v6 (B03/M04, decisione 3): le gerarchie SOFT sono chiavi di ORDINAMENTO

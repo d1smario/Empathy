@@ -64,8 +64,10 @@ import {
   recipeHasAnchoredPowder,
   recipeLever,
   recipeOwnsCarb,
+  recipeOwnsProtein,
   scaleRecipe,
   snackFruitSideEntries,
+  templateRotationBase,
   weekBreakfastSweetsCount,
   type GrammarPickFilter,
   type GrammarV6Axis,
@@ -177,6 +179,7 @@ function grammarFilterFor(
   poolKey: string,
   rolesOverride?: GrammarRolesOverride,
   relaxWeekCaps?: boolean,
+  ignoreUsedToday?: boolean,
 ): GrammarPickFilter | undefined {
   if (!ctx.grammar) return undefined;
   const meal = mealForSlot(slotKey);
@@ -194,6 +197,7 @@ function grammarFilterFor(
     ...(meal === "breakfast" ? { sweetsWeekCount: ctx.grammar.sweetsWeekCount } : {}),
     ...(meal === "snack" ? { prepSpeedMin: GRAMMAR_SNACK_PREP_SPEED_MIN } : {}),
     ...(relaxWeekCaps ? { relaxWeekCaps: true } : {}),
+    ...(ignoreUsedToday ? { ignoreUsedToday: true } : {}),
     // V7-03 (v9): dopo il primo VARIETY dello slot TUTTE le linee successive (B02,
     // condimento M01, re-pick regola 7) ereditano il blocco — il filtro si costruisce a
     // ogni pick, quindi legge lo stato aggiornato.
@@ -221,6 +225,13 @@ type PickLineOptions = {
    * lo stesso EVO deve poter condire pranzo E cena dello stesso giorno).
    */
   skipUsageRegistration?: boolean;
+  /**
+   * Salta il blocco «già usato oggi» nello scoring (condimento M01: l'EVO dentro le
+   * ricette del giorno finisce in dayUsedCanonicalKeys/usedFdcIds e regalava il
+   * condimento all'avocado — M04 vuole l'EVO quotidiano standard). Vedi
+   * GrammarPickFilter.ignoreUsedToday.
+   */
+  ignoreUsedToday?: boolean;
 };
 
 function pickLineForRole(
@@ -252,7 +263,7 @@ function pickLineForRole(
   };
   let staplePick = pickStapleForPool({
     ...pickArgs,
-    grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps),
+    grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps, opts?.ignoreUsedToday),
   });
   // Grammatica: se nessun ruolo primario è disponibile (es. dieta vegana a pranzo), i
   // ruoli di ripiego del pool possono diventare la fonte — v5 (PRO_SECONDARY/MIXED, L02)
@@ -268,7 +279,7 @@ function pickLineForRole(
       grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, {
         ...(fallbackRoles ? { v5: fallbackRoles } : {}),
         ...(v6InMeal && fallbackV6 ? { v6: { axis: poolV6.axis, roles: fallbackV6 } } : {}),
-      }, opts?.relaxWeekCaps),
+      }, opts?.relaxWeekCaps, opts?.ignoreUsedToday),
     });
   }
   if (!staplePick && ctx.grammar && hasMenuPool) {
@@ -297,6 +308,7 @@ function pickLineForRole(
             ...(v6All ? { v6: v6All } : {}),
           },
           true,
+          opts?.ignoreUsedToday,
         ),
       });
       if (staplePick) ctx.grammar.flags.push(`week_caps_relaxed:${slotKey}:${spec.poolKey}`);
@@ -366,6 +378,12 @@ type GrammarComposeState = {
   dayUsedRecipeKeys: Set<string>;
   /** V11_B02 (tie-break): protein_base_family dei template già scelti oggi. */
   dayUsedProteinBaseFamilies: Set<string>;
+  /**
+   * QA fix c (livello giorno): primary_carb_family dei template già scelti oggi — la
+   * de-preferenza «non ripetere» gira sulla BASE, non sul variant_group (etichetta di
+   * lotto nei dati di Mario).
+   */
+  dayUsedTemplateBases: Set<string>;
   /** V7-03 (v9): lo slot corrente ha già servito un alimento VARIETY (reset a inizio slot). */
   varietyUsedInSlot: boolean;
   /** B05: dolci da colazione già serviti in settimana (conteggio cumulato sul marcatore). */
@@ -404,7 +422,9 @@ function pickRecipeLine(
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
-    ...(isMain ? {} : { dayUsedProteinBaseFamilies: g.dayUsedProteinBaseFamilies }),
+    ...(isMain
+      ? {}
+      : { dayUsedProteinBaseFamilies: g.dayUsedProteinBaseFamilies, dayUsedTemplateBases: g.dayUsedTemplateBases }),
   });
   // Dedupe giornaliero per percorso: nei pasti principali resta quello sugli
   // INGREDIENTI (mai la pancetta due volte oggi); nel percorso template il dedupe è
@@ -452,6 +472,12 @@ function pickRecipeLine(
   } else {
     g.dayUsedRecipeKeys.add(cand.recipe.recipeKey);
     if (templateMeta?.proteinBaseFamily) g.dayUsedProteinBaseFamilies.add(templateMeta.proteinBaseFamily);
+    // QA fix c: la base glucidica servita oggi de-preferenzia i template della stessa
+    // base negli slot successivi (colazione corn flakes → spuntino non-corn flakes).
+    // Fix c-bis: la base catch-all (MIXED) non ruota → non si registra (invariante:
+    // il set contiene SOLO basi ruotabili, le stesse che templateOrdering guarda).
+    const rotBase = templateRotationBase(cand.recipe);
+    if (rotBase) g.dayUsedTemplateBases.add(rotBase);
     if (templateMeta) g.flags.push(`template_first:${slotKey}:${cand.recipe.recipeKey}`);
   }
   // V7-03: una ricetta con almeno un ingrediente VARIETY consuma il budget varietà
@@ -628,6 +654,10 @@ function pickMainMealFatCondimentLine(
     // e niente dedupe giornaliero (il max_week esplicito di Mario resta duro).
     relaxWeekCaps: true,
     skipUsageRegistration: true,
+    // M04: l'EVO registrato oggi dalle RICETTE (dayUsedCanonicalKeys/usedFdcIds) non
+    // deve regalare il condimento all'avocado — il gate del residuo grassi
+    // (GRAMMAR_MAIN_FAT_MIN_RESIDUAL_G) già evita il condimento nei pasti grassi.
+    ignoreUsedToday: true,
   });
 }
 
@@ -709,7 +739,19 @@ function composeSlotFromAssembly(slot: MealPlanV2DietSlotBudget, pools: FdcPoolM
       }
     }
   }
-  if (recipeLine && recipeIsCho && proteinSpec) {
+  // QA fix d (R-A esteso alla PROTEINA): la ricetta PRIMARIA del pasto principale che
+  // contiene già una proteina «vera» (ruolo di catalogo + quota > 15 g/100 di piatto +
+  // densità del piatto ≥ 9 g pro/100, verifica avversariale 22 ago) POSSIEDE il secondo
+  // — il complemento V02 si sopprime (mai più manzo 80 g accanto a
+  // riso_tacchino_e_carote; ma pasta/lasagne al ragù e cozze col pane, piatti diluiti,
+  // CONSERVANO il complemento). NON si applica alle ricette a leva protein (merluzzo al
+  // pomodoro accanto al riso: quello è primo+secondo, corretto — recipeIsCho è false lì).
+  const ownsProtein =
+    !!recipeLine && recipeIsCho && isMainMealSlot(slotKey) && recipeOwnsProtein(recipeLine.recipe!);
+  if (ownsProtein) {
+    ctx.grammar?.flags.push(`recipe_owns_protein:${slotKey}:${recipeLine!.recipe!.recipe.recipeKey}`);
+  }
+  if (recipeLine && recipeIsCho && proteinSpec && !ownsProtein) {
     // V02: prima si risolve la ricetta, poi si guarda quanta proteina manca davvero.
     const firstPass = solveFdcMealPortions(lines, target);
     const recipeProG = ((firstPass[0] ?? 0) * recipeLine.hit.proteinPer100g) / 100;
@@ -1082,6 +1124,7 @@ export function composeMealPlanV2(
               recipeUsedToday: false,
               dayUsedRecipeKeys: new Set<string>(),
               dayUsedProteinBaseFamilies: new Set<string>(),
+              dayUsedTemplateBases: new Set<string>(),
               varietyUsedInSlot: false,
               // B05: conteggio cumulato dei dolci da colazione, una volta per composizione.
               sweetsWeekCount: weekBreakfastSweetsCount(entryIndex, options?.weeklyStapleCounts),
