@@ -210,14 +210,22 @@ const DATES = Array.from({ length: 30 }, (_, i) => `2026-09-${String(i + 1).padS
 
 // ── Gate ─────────────────────────────────────────────────────────────────────────────
 
-test("gate: default shadow; off/on espliciti; allowlist accende on per singolo atleta solo in shadow", () => {
-  assert.equal(resolveMealGrammarMode({}, "a"), "shadow");
-  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "boh" }, "a"), "shadow");
+test("gate: default ON (rollout chiuso il 24 ago); off/shadow espliciti; allowlist accende on per singolo atleta solo in shadow", () => {
+  // Il DEFAULT è il caso che conta: è quello che vale su Vercel e nella Edge Function
+  // finché nessuno imposta la variabile — e nessuno la imposterà, per non ripetere la
+  // divergenza fra i due veicoli (vedi doc-comment di resolveMealGrammarMode).
+  assert.equal(resolveMealGrammarMode({}, "a"), "on");
+  assert.equal(resolveMealGrammarMode({}, null), "on", "vale anche senza athleteId");
+  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "boh" }, "a"), "on", "valore ignoto → default, non shadow");
   assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: " OFF " }, "a"), "off");
   assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "on" }, "a"), "on");
-  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_ATHLETES: "x, a" }, "a"), "on");
-  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_ATHLETES: "x" }, "a"), "shadow");
+  // Le due vie di spegnimento restano intatte: sono la sola leva per fermare il motore in
+  // produzione senza un deploy.
+  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: " Shadow " }, "a"), "shadow");
   assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "off", NUTRITION_MEAL_GRAMMAR_ATHLETES: "a" }, "a"), "off");
+  // Allowlist: ha senso solo dentro shadow (scala di rollout per la prossima feature).
+  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "shadow", NUTRITION_MEAL_GRAMMAR_ATHLETES: "x, a" }, "a"), "on");
+  assert.equal(resolveMealGrammarMode({ NUTRITION_MEAL_GRAMMAR_MODE: "shadow", NUTRITION_MEAL_GRAMMAR_ATHLETES: "x" }, "a"), "shadow");
 });
 
 // ── A. Filtro secco ──────────────────────────────────────────────────────────────────

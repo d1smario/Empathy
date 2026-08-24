@@ -50,17 +50,30 @@ import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 export type NutritionMealGrammarMode = "off" | "shadow" | "on";
 
 /**
- * `NUTRITION_MEAL_GRAMMAR_MODE`: off | shadow | on. Default (assente/ignoto) = shadow: si
- * calcola la composizione nuova e la si registra, ma si SERVE la vecchia. In shadow,
- * `NUTRITION_MEAL_GRAMMAR_ATHLETES` (csv di athlete_id) accende «on» per singoli atleti —
- * stesso schema del day-engine, così il rollout si fa per gradi senza deploy.
+ * `NUTRITION_MEAL_GRAMMAR_MODE`: off | shadow | on.
+ *
+ * **Default (assente/ignoto) = `on` dal 24 ago 2026**: finito il rollout, la grammatica È
+ * il motore — Mario ha approvato la settimana generata (24-30 ago) e il proprietario ha
+ * chiesto di servirla a tutti. Prima il default era `shadow` (calcola la composizione
+ * nuova, registra il confronto, ma SERVE la vecchia).
+ *
+ * Il default sta nel CODICE e non in una variabile d'ambiente per una ragione misurata su
+ * questo progetto: la configurazione vive in DUE posti (env di Vercel per il cron e i
+ * server Next, secret Supabase per la Edge Function) e una delle due si è già persa in un
+ * deploy passato (GARMIN_ACTIVITY_BLOBS_BUCKET), lasciando una funzione viva ma cieca. Col
+ * default nel codice i due veicoli non possono divergere: `_build.sh` bundla questo stesso
+ * file. Per spegnere resta `NUTRITION_MEAL_GRAMMAR_MODE=off` (o `shadow` per tornare al
+ * confronto in ombra), impostabile su entrambi i veicoli senza toccare il codice.
+ *
+ * In `shadow`, `NUTRITION_MEAL_GRAMMAR_ATHLETES` (csv di athlete_id) accende «on» per
+ * singoli atleti — la scala di rollout resta disponibile per la prossima feature.
  */
 export function resolveMealGrammarMode(
   env: Record<string, string | undefined>,
   athleteId: string | null | undefined,
 ): NutritionMealGrammarMode {
   const raw = (env.NUTRITION_MEAL_GRAMMAR_MODE ?? "").trim().toLowerCase();
-  const globalMode: NutritionMealGrammarMode = raw === "off" ? "off" : raw === "on" ? "on" : "shadow";
+  const globalMode: NutritionMealGrammarMode = raw === "off" ? "off" : raw === "shadow" ? "shadow" : "on";
   if (globalMode !== "shadow") return globalMode;
   const allow = (env.NUTRITION_MEAL_GRAMMAR_ATHLETES ?? "")
     .split(",")
