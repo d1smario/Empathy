@@ -4512,7 +4512,7 @@ function menuRotationKeyResolver(pools) {
 // apps/web/lib/nutrition/v2/meal-grammar.ts
 function resolveMealGrammarMode(env, athleteId) {
   const raw = (env.NUTRITION_MEAL_GRAMMAR_MODE ?? "").trim().toLowerCase();
-  const globalMode = raw === "off" ? "off" : raw === "on" ? "on" : "shadow";
+  const globalMode = raw === "off" ? "off" : raw === "shadow" ? "shadow" : "on";
   if (globalMode !== "shadow") return globalMode;
   const allow = (env.NUTRITION_MEAL_GRAMMAR_ATHLETES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const id = (athleteId ?? "").trim();
