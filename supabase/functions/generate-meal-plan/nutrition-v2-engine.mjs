@@ -11188,8 +11188,31 @@ function buildPathwayTargetRollupComparison(targets, dayTotals) {
 }
 
 // apps/web/lib/nutrition/meal-plan-response-finalize.ts
+function nutrientsFromRecipeComponents(components, snapshot) {
+  const parts = [];
+  for (const c of components) {
+    if (!(c.grams > 0)) continue;
+    const fdcKey = c.fdcId != null && c.fdcId > 0 ? `fdc:${c.fdcId}` : null;
+    const canonical = (fdcKey ? snapshot[fdcKey]?.canonical : void 0) ?? (c.canonicalKey ? snapshot[c.canonicalKey]?.canonical ?? CANONICAL_FOOD_TABLE[c.canonicalKey] : void 0);
+    if (!canonical?.kcalPer100g) continue;
+    parts.push(scaleCanonicalNutrientsToGrams(canonical, c.grams));
+  }
+  return parts.length > 0 ? sumScaledNutrients(parts) : null;
+}
 function enrichSlot(slot, snapshot) {
   const items = slot.items.map((it) => {
+    if (it.components && it.components.length > 0) {
+      const fromComponents = nutrientsFromRecipeComponents(it.components, snapshot);
+      if (fromComponents) {
+        const next2 = {
+          ...it,
+          compositionKey: it.compositionKey ?? "recipe:components",
+          compositionStatus: "fdc_cache",
+          nutrients: fromComponents
+        };
+        return next2;
+      }
+    }
     const { compositionKey, compositionStatus, nutrients } = nutrientsForMealPlanItemFromCache(
       {
         name: it.name,
@@ -11212,9 +11235,20 @@ function enrichSlot(slot, snapshot) {
 }
 async function finalizeIntelligentMealPlanCore(core, req, snapshot, opts) {
   const slotsDeduped = opts?.lunchDinnerProteinDedupe === false ? core.slots : dedupeLunchDinnerMainProteins(core.slots);
-  const fdcSnapshot = snapshot ?? await buildFdcCanonicalSnapshot(
+  const baseSnapshot = snapshot ?? await buildFdcCanonicalSnapshot(
     slotsDeduped.flatMap((s) => s.items.map((it) => inferCanonicalFoodKeyPreferName(it.name, it.portionHint)))
   );
+  const componentFdcIds = [
+    ...new Set(
+      slotsDeduped.flatMap(
+        (s) => s.items.flatMap((it) => (it.components ?? []).map((c) => c.fdcId).filter((id) => typeof id === "number" && id > 0))
+      )
+    )
+  ];
+  const fdcSnapshot = componentFdcIds.length ? {
+    ...baseSnapshot,
+    ...buildFdcCanonicalSnapshotFromFdcIds(componentFdcIds, await loadFdcFoodsByIds(componentFdcIds))
+  } : baseSnapshot;
   const slots = slotsDeduped.map((s) => enrichSlot(s, fdcSnapshot));
   const byReq = new Map(req.slots.map((s) => [s.slot, s]));
   const perSlot = slots.map((s) => {
@@ -11285,7 +11319,18 @@ function mapItem(item2, slotKey, itemIndex) {
       portionHint: `${g} g ${label} (piatto cotto) \xB7 ${parts}`,
       functionalBridge: "Alimentazione sportiva \xB7 ricetta del nutrizionista (ingredienti del catalogo)",
       approxKcal: Math.round(item2.kcal),
-      macroRole: macroRoleFromItem(item2.choG, item2.proG, item2.fatG)
+      macroRole: macroRoleFromItem(item2.choG, item2.proG, item2.fatG),
+      // Gli ingredienti in forma STRUTTURATA, non solo nel testo del portionHint: sono il
+      // dato con cui il finalize calcola i nutrienti della riga. Finché c'era solo il
+      // testo, il finalize non aveva una composizione da usare e deduceva l'alimento dal
+      // NOME del piatto — con i macro di quell'unico alimento al posto di quelli veri
+      // (25 ago: 318 righe su 318, −33 g di carboidrati e +11 g di grassi in media).
+      components: item2.recipe.components.map((c) => ({
+        canonicalKey: c.canonicalKey ?? null,
+        fdcId: typeof c.fdcId === "number" && c.fdcId > 0 ? c.fdcId : null,
+        labelIt: c.labelIt,
+        grams: Math.round(c.grams * 10) / 10
+      }))
     };
   }
   const canonicalKey = item2.canonicalKey;
