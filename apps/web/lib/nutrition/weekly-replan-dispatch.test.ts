@@ -6,6 +6,7 @@ import {
   nextMondayUTC,
   OVERRIDE_DATE_WINDOW_DAYS,
   selectWeeklyReplanTargets,
+  weeklyReplanNotReady,
   summarizeWeeklyReplanFanOut,
   type WeeklyReplanFanOutItem,
 } from "@/lib/nutrition/weekly-replan-dispatch";
@@ -79,6 +80,30 @@ test("selectWeeklyReplanTargets: deduplica — un id ripetuto sarebbe una doppia
 test("selectWeeklyReplanTargets: scarta stringhe vuote e nessun entitled ⇒ nessun bersaglio", () => {
   assert.deepEqual(selectWeeklyReplanTargets(["", "  ", "a"], new Set(["a"])), ["a"]);
   assert.deepEqual(selectWeeklyReplanTargets(["a", "b"], new Set<string>()), []);
+});
+
+test("selectWeeklyReplanTargets: il filtro PRONTEZZA tiene fuori chi non ha il peso — meglio nessun piano che un piano su 70 kg inventati", () => {
+  const entitled = new Set(["a", "b", "c"]);
+  const ready = new Set(["a", "c"]);
+  assert.deepEqual(selectWeeklyReplanTargets(["a", "b", "c"], entitled, ready), ["a", "c"]);
+  // Senza il set di prontezza il comportamento è quello storico: nessun filtro.
+  assert.deepEqual(selectWeeklyReplanTargets(["a", "b", "c"], entitled), ["a", "b", "c"]);
+});
+
+test("weeklyReplanNotReady: chi ha diritto e non è pronto NON sparisce — è l'elenco da riportare", () => {
+  const entitled = new Set(["a", "b", "c"]);
+  const ready = new Set(["a"]);
+  // b e c pagano e non ricevono nulla: senza questo elenco restano fermi per mesi
+  // (25 ago 2026: 13 abbonati senza peso, il più vecchio iscritto da 127 giorni).
+  assert.deepEqual(weeklyReplanNotReady(["a", "b", "c"], entitled, ready), ["b", "c"]);
+  // Chi non ha diritto non è «non pronto»: non è affare di questo elenco.
+  assert.deepEqual(weeklyReplanNotReady(["a", "z"], entitled, ready), []);
+  // Bersagli e non-pronti sono una PARTIZIONE degli aventi diritto: nessuno si perde.
+  const cands = ["a", "b", "c", "z", "", " a "];
+  const t = selectWeeklyReplanTargets(cands, entitled, ready);
+  const n = weeklyReplanNotReady(cands, entitled, ready);
+  assert.equal(t.length + n.length, 3);
+  assert.deepEqual([...t, ...n].sort(), ["a", "b", "c"]);
 });
 
 test("chunkForFanOut: con la platea sotto il limite parte UN solo gruppo (tutte le fetch nello stesso tick)", () => {

@@ -58,14 +58,51 @@ export function nextMondayUTC(now: Date): string {
  * protetto da un vincolo di unicità su (athlete_id, plan_date): due scritture in parallelo
  * sullo stesso giorno lascerebbero due piani. La dedup è la barriera.
  */
-export function selectWeeklyReplanTargets(candidateIds: readonly string[], entitled: ReadonlySet<string>): string[] {
+export function selectWeeklyReplanTargets(
+  candidateIds: readonly string[],
+  entitled: ReadonlySet<string>,
+  /**
+   * PRONTI a ricevere un piano: profilo con i dati che il generatore usa davvero (oggi il
+   * PESO). Assente = nessun filtro, comportamento storico.
+   *
+   * Perché serve un filtro esplicito invece di lasciar fare al generatore: senza peso il
+   * solver energetico ricade su 70 kg e produce un piano lo stesso — un piano CALCOLATO SU
+   * UN DATO INVENTATO, che è peggio di nessun piano per chi lo riceve. Meglio restare
+   * fuori dalla platea e comparire nel riepilogo come «non pronto», così chi guarda sa
+   * che quella persona esiste e cosa le manca.
+   */
+  ready?: ReadonlySet<string>,
+): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of candidateIds) {
     const id = (raw ?? "").trim();
     if (!id || seen.has(id) || !entitled.has(id)) continue;
     seen.add(id);
+    if (ready && !ready.has(id)) continue;
     out.push(id);
+  }
+  return out;
+}
+
+/**
+ * Chi ha diritto ma NON è pronto: l'elenco che il riepilogo del cron deve riportare.
+ * Sono persone che pagano e non ricevono nulla — se restano invisibili, restano ferme
+ * per mesi (misurato il 25 ago 2026: 13 abbonati senza peso in scheda, il più vecchio
+ * iscritto da 127 giorni).
+ */
+export function weeklyReplanNotReady(
+  candidateIds: readonly string[],
+  entitled: ReadonlySet<string>,
+  ready: ReadonlySet<string>,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of candidateIds) {
+    const id = (raw ?? "").trim();
+    if (!id || seen.has(id) || !entitled.has(id)) continue;
+    seen.add(id);
+    if (!ready.has(id)) out.push(id);
   }
   return out;
 }

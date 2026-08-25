@@ -12,6 +12,7 @@ import {
   OVERRIDE_DATE_WINDOW_DAYS,
   selectWeeklyReplanTargets,
   summarizeWeeklyReplanFanOut,
+  weeklyReplanNotReady,
   type WeeklyReplanFanOutItem,
 } from "@/lib/nutrition/weekly-replan-dispatch";
 import { ensureTrainingContinuity } from "@/lib/training/ensure-training-continuity";
@@ -123,26 +124,49 @@ export async function GET(req: NextRequest) {
     return runWorker(db, { athleteId: onlyAthlete, weekStart, referenceDate, run });
   }
 
-  // Atleti con piano nutrizione attivo di recente. Platea invariata: piano negli ultimi
-  // 21 giorni, poi filtro diritto d'uso.
-  const sinceIso = isoDateUTC(new Date(now.getTime() - 21 * 86_400_000));
-  const { data: planRows, error } = await db.from("nutrition_plan").select("athlete_id").gte("plan_date", sinceIso);
+  // PLATEA = CHI HA DIRITTO, non chi ha già un piano (cambiata il 25 ago 2026).
+  //
+  // Prima i candidati erano «gli atleti con un piano negli ultimi 21 giorni»: un criterio
+  // CIRCOLARE — per ricevere un piano bisognava già averne uno. Chi non ne aveva mai avuto
+  // non entrava, e chi si fermava tre settimane usciva e non rientrava più. Misurato in
+  // produzione quel giorno: 10 abbonati fuori, di cui 7 senza un piano da 84-127 giorni e
+  // 3 fermi a luglio col motore vecchio ancora in pagina. Il cron del primo piano
+  // (/api/onboarding/plan/cron) non li copriva: guarda solo la finestra dei nuovi iscritti
+  // (8 giorni), quindi chi completa l'onboarding più tardi cadeva fra i due lavori.
+  //
+  // Ora: tutti gli atleti collegati a un account → filtro diritto d'uso → filtro prontezza
+  // (peso in scheda). Chi ha diritto ma non è pronto NON sparisce: finisce in `notReady`,
+  // nel riepilogo e nella traccia durevole su empathy_events.
+  const { data: linkRows, error } = await db.from("app_user_profiles").select("athlete_id").not("athlete_id", "is", null);
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
   const candidateIds = [
-    ...new Set(((planRows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.athlete_id ?? "")).filter(Boolean)),
+    ...new Set(((linkRows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.athlete_id ?? "")).filter(Boolean)),
   ];
   const entitled = await loadEntitledAthleteIds(db, candidateIds);
-  const targets = selectWeeklyReplanTargets(candidateIds, entitled);
+  // Prontezza: il PESO è il dato senza cui il solver energetico ricade su 70 kg e servirebbe
+  // un piano calcolato su un peso inventato (vedi selectWeeklyReplanTargets).
+  const { data: readyRows } = await db.from("athlete_profiles").select("id").not("weight_kg", "is", null);
+  const ready = new Set(((readyRows ?? []) as Array<Record<string, unknown>>).map((r) => String(r.id ?? "")).filter(Boolean));
+  const targets = selectWeeklyReplanTargets(candidateIds, entitled, ready);
+  const notReady = weeklyReplanNotReady(candidateIds, entitled, ready);
 
   if (!run) {
     return NextResponse.json({
       ok: true,
       dryRun: true,
       mode: "dispatch",
-      summary: { weekStart, referenceDate, candidates: candidateIds.length, entitled: targets.length, willDispatch: targets.length },
+      summary: {
+        weekStart, referenceDate,
+        candidates: candidateIds.length,
+        entitled: targets.length + notReady.length,
+        willDispatch: targets.length,
+        notReady: notReady.length,
+      },
       preview: targets.slice(0, 50),
+      // Chi ha diritto e non riceve nulla: va VISTO, non dedotto dalla differenza dei conteggi.
+      notReadyPreview: notReady.slice(0, 50),
     });
   }
 
@@ -163,7 +187,14 @@ export async function GET(req: NextRequest) {
   // Traccia DURATURA del run: i log runtime di Vercel scadono in ~1 ora, questa riga no.
   const traced = await recordEmpathyEvent(db, {
     eventType: EVENT_RUN,
-    payload: { weekStart, referenceDate, candidates: candidateIds.length, entitled: targets.length, durationMs, ...summary },
+    payload: {
+      weekStart, referenceDate,
+      candidates: candidateIds.length,
+      entitled: targets.length + notReady.length,
+      notReady: notReady.length,
+      notReadyAthletes: notReady.slice(0, 50),
+      durationMs, ...summary,
+    },
   });
 
   return NextResponse.json({
@@ -172,7 +203,14 @@ export async function GET(req: NextRequest) {
     mode: "dispatch",
     // `traced` va detto: se è false, cercare la riga su empathy_events e non trovarla NON
     // significa che il cron non è partito.
-    summary: { weekStart, referenceDate, candidates: candidateIds.length, entitled: targets.length, durationMs, traced, ...summary },
+    summary: {
+      weekStart, referenceDate,
+      candidates: candidateIds.length,
+      entitled: targets.length + notReady.length,
+      notReady: notReady.length,
+      durationMs, traced, ...summary,
+    },
+    notReadyAthletes: notReady,
     results: items,
   });
 }
