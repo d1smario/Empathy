@@ -242,6 +242,49 @@ export function resetMenuRecipesCacheForTests(): void {
 }
 
 /**
+ * Legge TUTTE le righe di una query, una pagina per volta.
+ *
+ * PostgREST tronca ogni risposta al proprio tetto di righe (1.000 su questo progetto,
+ * misurato) e NON lo segnala: restituisce mille righe e nessun errore. Finché i
+ * componenti delle ricette erano 984 la cosa non si vedeva; il 25 ago 2026, arrivati a
+ * 1.239, la select ne riportava 1.000 e **59 ricette su 308 restavano senza ingredienti**
+ * — scartate con un warning nei log e sparite dal menù, mentre i piani continuavano a
+ * generarsi come se niente fosse. Un guasto silenzioso che cresce col catalogo, e il
+ * catalogo di Mario cresce a ogni file che ci manda.
+ *
+ * Si avanza di QUANTO SI È RICEVUTO e ci si ferma solo su una pagina vuota. La tentazione
+ * è fermarsi appena una pagina è più corta di quella chiesta, ma il tetto del server può
+ * essere più basso di `PAGE` (è configurabile e non vive nel repo): in quel caso la prima
+ * pagina tornerebbe già "corta" e il ciclo si fermerebbe subito — lo stesso guasto con un
+ * giro in più. Così invece il numero di andate e ritorni si adatta al tetto vero.
+ */
+const PAGE = 1000;
+const MAX_PAGES = 50;
+
+async function fetchAllPages(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }>,
+): Promise<{ data: unknown[] | null; error: { code?: string; message?: string } | null }> {
+  const rows: unknown[] = [];
+  // Il tetto VERO si impara dalla prima risposta: se il server ne dà meno di quante ne
+  // chiediamo, quello è il suo tetto (o i dati sono finiti, e infatti ci si ferma). Da lì
+  // in poi una pagina più corta del tetto significa «ultima», senza dover sempre pagare
+  // un giro a vuoto per scoprirlo.
+  let step = PAGE;
+  for (let from = 0, guard = 0; guard < MAX_PAGES; guard += 1) {
+    const res = await page(from, from + PAGE - 1);
+    // L'errore torna al chiamante COM'È: è così che il degrado a stadi riconosce il
+    // 42703 di una colonna mancante e riprova con la select più corta.
+    if (res.error || !Array.isArray(res.data)) return res;
+    if (res.data.length === 0) break;
+    rows.push(...res.data);
+    if (guard === 0) step = res.data.length;
+    if (res.data.length < step) break;
+    from += res.data.length;
+  }
+  return { data: rows, error: null };
+}
+
+/**
  * Carica le ricette attive con i loro componenti. null se la tabella è vuota o
  * irraggiungibile (il compositore continua senza ricette, come prima dell'import).
  * Cachiamo anche il null per non ritentare a raffica.
@@ -259,35 +302,37 @@ export async function loadMenuRecipes(admin: SupabaseClient): Promise<MenuRecipe
     const missingColumns = (res: { error: { code?: string; message?: string } | null }) =>
       res.error != null &&
       (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
-    let full: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
-      .from("nutrition_recipes")
-      .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals, template_meta")
-      .eq("is_active", true);
+    const recipeSelect = (cols: string) =>
+      fetchAllPages((from, to) =>
+        admin.from("nutrition_recipes").select(cols).eq("is_active", true).order("id", { ascending: true }).range(from, to),
+      );
+    let full = await recipeSelect(
+      "id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals, template_meta",
+    );
     if (missingColumns(full)) {
-      full = await admin
-        .from("nutrition_recipes")
-        .select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals")
-        .eq("is_active", true);
+      full = await recipeSelect("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals");
     }
     if (missingColumns(full)) {
-      full = await admin
-        .from("nutrition_recipes")
-        .select("id, recipe_key, label_it, note, frequency, max_week")
-        .eq("is_active", true);
+      full = await recipeSelect("id, recipe_key, label_it, note, frequency, max_week");
     }
     const { data: recipeRows, error }: { data: unknown[] | null; error: { code?: string; message?: string } | null } =
-      missingColumns(full)
-        ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true)
-        : full;
+      missingColumns(full) ? await recipeSelect("id, recipe_key, label_it, note") : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;
     }
     const recipeIds = recipeRows.map((r) => str((r as Record<string, unknown>)?.id)).filter((s): s is string => s != null);
-    const { data: componentRows, error: componentError } = await admin
-      .from("nutrition_recipe_components")
-      .select("recipe_id, position, canonical_key, fdc_id, label_it, grams_per_100g, is_neutral")
-      .in("recipe_id", recipeIds);
+    const { data: componentRows, error: componentError } = await fetchAllPages((from, to) =>
+      admin
+        .from("nutrition_recipe_components")
+        .select("recipe_id, position, canonical_key, fdc_id, label_it, grams_per_100g, is_neutral")
+        .in("recipe_id", recipeIds)
+        // L'ordine esplicito rende le pagine disgiunte e stabili: senza, due pagine
+        // possono ripetere o saltare righe.
+        .order("recipe_id", { ascending: true })
+        .order("position", { ascending: true })
+        .range(from, to),
+    );
     if (componentError || !Array.isArray(componentRows)) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;

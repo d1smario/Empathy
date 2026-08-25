@@ -119,20 +119,69 @@ test("mapMenuRecipeRows: ordine deterministico per recipe_key", () => {
 
 type FakeResult = { data: unknown; error: unknown };
 
-function fakeAdmin(recipes: FakeResult, components: FakeResult, calls?: string[]): SupabaseClient {
+/**
+ * Il finto client IMITA IL TETTO DI RIGHE di PostgREST: `range(from, to)` ritaglia i dati
+ * e non restituisce mai più di `pageCap` righe per risposta. Senza questa fedeltà il test
+ * non avrebbe potuto vedere il guasto del 25 ago — 1.239 componenti in tabella, 1.000
+ * restituiti, 59 ricette senza ingredienti e scartate in silenzio.
+ */
+function fakeAdmin(
+  recipes: FakeResult,
+  components: FakeResult,
+  calls?: string[],
+  pageCap = 1000,
+): SupabaseClient {
   return {
     from(table: string) {
       calls?.push(table);
       const result = table === "nutrition_recipes" ? recipes : components;
       const builder: Record<string, unknown> = {};
+      let from = 0;
+      let to = Number.MAX_SAFE_INTEGER;
+      const slice = (): FakeResult => {
+        if (!Array.isArray(result.data)) return result;
+        const rows = result.data as unknown[];
+        const end = Math.min(to + 1, from + pageCap, rows.length);
+        return { data: rows.slice(from, Math.max(from, end)), error: result.error };
+      };
       builder.select = () => builder;
       builder.eq = () => builder;
       builder.in = () => builder;
-      builder.then = (resolve: (v: FakeResult) => void) => resolve(result);
+      builder.order = () => builder;
+      builder.range = (a: number, b: number) => {
+        from = a;
+        to = b;
+        return builder;
+      };
+      builder.then = (resolve: (v: FakeResult) => void) => resolve(slice());
       return builder;
     },
   } as unknown as SupabaseClient;
 }
+
+test("loadMenuRecipes: i componenti si paginano — oltre il tetto di righe NESSUNA ricetta perde gli ingredienti", async () => {
+  // Il guasto vero del 25 ago 2026, in piccolo: il tetto di PostgREST tronca la risposta
+  // SENZA errore, e le ricette in coda restano senza componenti — quindi scartate, in
+  // silenzio, mentre i piani continuano a generarsi. In produzione: 1.239 componenti in
+  // tabella, 1.000 restituiti, 59 ricette su 308 sparite dal menù.
+  resetMenuRecipesCacheForTests();
+  const N = 25; // ricette, 4 componenti l'una = 100 righe totali
+  const CAP = 10; // tetto di pagina finto: 10 pagine da riempire
+  const ids = Array.from({ length: N }, (_, i) => `3${String(i).padStart(7, "0")}-3333-4333-8333-333333333333`);
+  const recipeRows = ids.map((id, i) => recipeRow({ id, recipe_key: `ricetta_${String(i).padStart(2, "0")}` }));
+  const componentRows = ids.flatMap((id) => [
+    comp({ recipe_id: id, position: 1, canonical_key: "pasta_dry", grams_per_100g: "40" }),
+    comp({ recipe_id: id, position: 2, canonical_key: "tuna_canned_water", grams_per_100g: "25" }),
+    comp({ recipe_id: id, position: 3, canonical_key: "tomato_raw", grams_per_100g: "30" }),
+    comp({ recipe_id: id, position: 4, canonical_key: "olive_oil", grams_per_100g: "5" }),
+  ]);
+  const recipes = await loadMenuRecipes(
+    fakeAdmin({ data: recipeRows, error: null }, { data: componentRows, error: null }, undefined, CAP),
+  );
+  assert.ok(recipes, "senza paginazione qui si otterrebbe null o un elenco monco");
+  assert.equal(recipes!.length, N, "tutte le ricette devono conservare i propri ingredienti");
+  for (const r of recipes!) assert.equal(r.components.length, 4, `${r.recipeKey}: componenti persi`);
+});
 
 test("loadMenuRecipes: errore o tabella vuota → null, mai throw; successo → ricette + cache", async () => {
   resetMenuRecipesCacheForTests();
@@ -196,7 +245,20 @@ test("loadMenuRecipes: retry a TRE stadi — 42703 sulle colonne v9 → select f
       builder.select = () => builder;
       builder.eq = () => builder;
       builder.in = () => builder;
-      builder.then = (resolve: (v: unknown) => void) => resolve(result);
+      // La paginazione dei loader chiama order/range: il finto client deve conoscerli,
+      // altrimenti il degrado a stadi non viene esercitato ma solo fatto esplodere.
+      builder.order = () => builder;
+      // range VERO anche qui: un finto client che lo ignora farebbe rileggere al loader
+      // le stesse righe a ogni giro, e il test misurerebbe un guasto suo, non del codice.
+      let from = 0;
+      builder.range = (a: number) => {
+        from = a;
+        return builder;
+      };
+      builder.then = (resolve: (v: unknown) => void) => {
+        const r = result as { data: unknown; error: unknown };
+        resolve(Array.isArray(r.data) ? { data: (r.data as unknown[]).slice(from), error: r.error } : r);
+      };
       return builder;
     },
   } as unknown as SupabaseClient;
@@ -205,7 +267,7 @@ test("loadMenuRecipes: retry a TRE stadi — 42703 sulle colonne v9 → select f
   assert.equal(recipes![0]!.frequency, "OCCASIONAL", "frequency sopravvive alla mancanza delle colonne v9");
   assert.equal(recipes![0]!.maxWeek, 1);
   assert.equal(recipes![0]!.tier, undefined);
-  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 2, "v9 fallita + stadio v6 riuscito");
+  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 3, "v9 fallita + stadio v6 riuscito + pagina di chiusura (paginazione)");
   resetMenuRecipesCacheForTests();
 });
 
@@ -261,7 +323,20 @@ test("loadMenuRecipes: 42703 su template_meta → stadio v9 (family/tier/meals N
       builder.select = () => builder;
       builder.eq = () => builder;
       builder.in = () => builder;
-      builder.then = (resolve: (v: unknown) => void) => resolve(result);
+      // La paginazione dei loader chiama order/range: il finto client deve conoscerli,
+      // altrimenti il degrado a stadi non viene esercitato ma solo fatto esplodere.
+      builder.order = () => builder;
+      // range VERO anche qui: un finto client che lo ignora farebbe rileggere al loader
+      // le stesse righe a ogni giro, e il test misurerebbe un guasto suo, non del codice.
+      let from = 0;
+      builder.range = (a: number) => {
+        from = a;
+        return builder;
+      };
+      builder.then = (resolve: (v: unknown) => void) => {
+        const r = result as { data: unknown; error: unknown };
+        resolve(Array.isArray(r.data) ? { data: (r.data as unknown[]).slice(from), error: r.error } : r);
+      };
       return builder;
     },
   } as unknown as SupabaseClient;
@@ -270,6 +345,6 @@ test("loadMenuRecipes: 42703 su template_meta → stadio v9 (family/tier/meals N
   assert.equal(recipes![0]!.family, "PIZZA", "le colonne v9 sopravvivono alla mancanza di template_meta");
   assert.deepEqual(recipes![0]!.meals, ["lunch"]);
   assert.equal("templateMeta" in recipes![0]!, false, "campo assente sullo stadio senza colonna");
-  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 2, "stadio v11 fallito + stadio v9 riuscito");
+  assert.equal(calls.filter((t) => t === "nutrition_recipes").length, 3, "stadio v11 fallito + stadio v9 riuscito + pagina di chiusura (paginazione)");
   resetMenuRecipesCacheForTests();
 });
