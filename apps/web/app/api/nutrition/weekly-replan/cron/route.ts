@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { cronSelfCallOrigin } from "@/lib/cron-self-call-origin";
 import { loadEntitledAthleteIds } from "@/lib/onboarding/onboarding-window";
 import { recordEmpathyEvent } from "@/lib/observability/empathy-event-trace";
 import { runWeeklyReplan } from "@/lib/nutrition/weekly-replan-run";
@@ -149,8 +150,10 @@ export async function GET(req: NextRequest) {
   const items: WeeklyReplanFanOutItem[] = [];
   for (const group of chunkForFanOut(targets, FAN_OUT_PARALLEL)) {
     const settled = await Promise.all(
-      // `nextUrl.origin` è l'origin che usa già il dispatcher `/api/cron/daily`.
-      group.map((athleteId) => dispatchOne(req.nextUrl.origin, athleteId, { weekStart, referenceDate })),
+      // Stesso origin del dispatcher `/api/cron/daily`, e per la STESSA ragione non è
+      // `req.nextUrl.origin`: gli URL di deployment sono dietro la protezione SSO e
+      // rispondono 302 al login, quindi il ventaglio non raggiungerebbe nessun worker.
+      group.map((athleteId) => dispatchOne(cronSelfCallOrigin(), athleteId, { weekStart, referenceDate })),
     );
     items.push(...settled);
   }

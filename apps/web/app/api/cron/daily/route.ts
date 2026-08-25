@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { flagMissingSleepForDate } from "@/lib/alerts/athlete-alerts-writers";
+import { cronSelfCallOrigin } from "@/lib/cron-self-call-origin";
+import { recordEmpathyEvent } from "@/lib/observability/empathy-event-trace";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -39,7 +41,11 @@ export async function GET(req: NextRequest) {
   }
 
   const secret = (process.env.CRON_SECRET ?? "").trim();
-  const origin = req.nextUrl.origin;
+  // MAI `req.nextUrl.origin`: Vercel invoca il cron sull'URL del deployment, che con la
+  // protezione SSO attiva (all_except_custom_domains) risponde 302 verso il login. Le
+  // fetch figlie non raggiungevano l'applicazione e OGNI job moriva prima di iniziare —
+  // due settimane di notti a vuoto senza un errore visibile. Vedi cron-self-call-origin.ts.
+  const origin = cronSelfCallOrigin();
   const isTuesday = new Date().getUTCDay() === 2; // 0=dom … 2=mar
 
   const jobs: { name: string; path: string }[] = [
@@ -82,10 +88,35 @@ export async function GET(req: NextRequest) {
     /* best-effort */
   }
 
+  // TRACCIA DURATURA DELL'ESITO. Finora l'unica prova che il cron avesse lavorato erano
+  // gli alert «sonno mancante», che stanno DOPO i job e giravano anche quando i job non
+  // partivano: dall'esterno sembrava tutto a posto mentre da due settimane non veniva
+  // generato più nulla. I log runtime di Vercel scadono in circa un'ora, questa riga no.
+  // Best-effort come il blocco sopra: un errore qui non cambia l'esito del cron.
+  const okAll = results.every((r) => r.ok);
+  try {
+    const db = createSupabaseAdminClient();
+    if (db) {
+      await recordEmpathyEvent(db, {
+        eventType: "cron.daily.run",
+        payload: {
+          origin,
+          isTuesday,
+          ok: okAll,
+          jobs: results.map((r) => ({ job: r.job, ok: r.ok, status: r.status ?? null, error: r.error ?? null })),
+          sleepMissing,
+        },
+      });
+    }
+  } catch {
+    /* best-effort */
+  }
+
   return NextResponse.json({
-    ok: results.every((r) => r.ok),
+    ok: okAll,
     ranAt: new Date().toISOString(),
     isTuesday,
+    origin,
     results,
     sleepMissing,
   });
