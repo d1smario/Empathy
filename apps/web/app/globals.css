@@ -1126,6 +1126,25 @@ body {
   color: #fff;
 }
 
+/* Ingredienti di una ricetta, sotto il nome del piatto: l'atleta deve sapere quanto
+   yogurt e quanto muesli, non solo che è «yogurt e muesli». Volutamente sommessi — sono
+   la composizione del piatto, non altre voci del pasto: il pallino colorato e il peso in
+   grassetto restano al piatto. */
+.empathy-meal-expo-food-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 3px 0 0 16px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.empathy-meal-expo-ingredient b {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .empathy-meal-expo-food-pills {
   display: flex;
   flex-wrap: wrap;

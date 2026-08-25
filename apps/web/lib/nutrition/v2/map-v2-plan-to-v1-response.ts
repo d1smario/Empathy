@@ -65,6 +65,17 @@ function mapItem(
       functionalBridge: "Alimentazione sportiva · ricetta del nutrizionista (ingredienti del catalogo)",
       approxKcal: Math.round(item.kcal),
       macroRole: macroRoleFromItem(item.choG, item.proG, item.fatG),
+      // Gli ingredienti in forma STRUTTURATA, non solo nel testo del portionHint: sono il
+      // dato con cui il finalize calcola i nutrienti della riga. Finché c'era solo il
+      // testo, il finalize non aveva una composizione da usare e deduceva l'alimento dal
+      // NOME del piatto — con i macro di quell'unico alimento al posto di quelli veri
+      // (25 ago: 318 righe su 318, −33 g di carboidrati e +11 g di grassi in media).
+      components: item.recipe.components.map((c) => ({
+        canonicalKey: c.canonicalKey ?? null,
+        fdcId: typeof c.fdcId === "number" && c.fdcId > 0 ? c.fdcId : null,
+        labelIt: c.labelIt,
+        grams: Math.round(c.grams * 10) / 10,
+      })),
     };
   }
   const canonicalKey = item.canonicalKey;

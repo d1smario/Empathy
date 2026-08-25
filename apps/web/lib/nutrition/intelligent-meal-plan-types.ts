@@ -201,6 +201,26 @@ export type IntelligentMealPlanItemOut = {
   compositionStatus?: "fdc_cache" | "canonical_estimate" | "unresolved";
   /** Stime nutrizionali scalate sulle kcal dell’item (post-finalize). */
   nutrients?: ScaledMealItemNutrients;
+  /**
+   * INGREDIENTI, quando la riga è una ricetta del nutrizionista.
+   *
+   * Non è un di più per la pagina: è il dato con cui si CALCOLANO i nutrienti della riga.
+   * Senza, il finalize non trovava una `compositionKey` e deduceva l'alimento DAL NOME —
+   * «Riso soffiato yogurt greco miele e mirtilli» → yogurt bianco intero, scalato fino
+   * alle kcal del piatto. Le kcal restavano giuste, la ripartizione dei macro era quella
+   * dello yogurt: misurato il 25 ago su 318 righe-ricetta su 318, −32,9 g di carboidrati
+   * e +10,7 g di grassi in media (punte di +53 g). È il «troppi grassi, pochi carboidrati»
+   * segnalato dal nutrizionista.
+   *
+   * Serve anche alla pagina, che così può mostrare le quantità dei singoli ingredienti
+   * invece del solo nome del piatto (l'atleta non sa quanto yogurt, quanto muesli).
+   */
+  components?: Array<{
+    canonicalKey: string | null;
+    fdcId: number | null;
+    labelIt: string;
+    grams: number;
+  }>;
 };
 
 export type IntelligentMealPlanSlotOut = {

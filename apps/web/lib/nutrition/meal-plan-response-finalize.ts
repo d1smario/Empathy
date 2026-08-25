@@ -6,23 +6,75 @@ import type {
   MealSlotKey,
 } from "@/lib/nutrition/intelligent-meal-plan-types";
 import {
+  CANONICAL_FOOD_TABLE,
   inferCanonicalFoodKeyPreferName,
+  scaleCanonicalNutrientsToGrams,
   sumScaledNutrients,
   type ScaledMealItemNutrients,
 } from "@/lib/nutrition/canonical-food-composition";
 import {
   buildFdcCanonicalSnapshot,
+  buildFdcCanonicalSnapshotFromFdcIds,
   nutrientsForMealPlanItemFromCache,
   type FdcCanonicalSnapshot,
 } from "@/lib/nutrition/fdc-to-canonical-scaler";
+import { loadFdcFoodsByIds } from "@/lib/nutrition/fdc-food-cache";
 import { buildHydrationRoutineFromMealPlanRequest } from "@/lib/nutrition/meal-plan-hydration-routine";
 import { buildMealPlanNutrientIntegrationHints } from "@/lib/nutrition/meal-plan-nutrient-integration-hints";
 import { dedupeLunchDinnerMainProteins } from "@/lib/nutrition/meal-plan-protein-dedupe";
 import type { NutrientTargetId } from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
 import { buildPathwayTargetRollupComparison } from "@/lib/nutrition/pathway-target-rollup-compare";
 
+/**
+ * Nutrienti di una riga-RICETTA: la somma dei suoi ingredienti, ciascuno scalato sui
+ * propri grammi.
+ *
+ * È la correzione del difetto segnalato dal nutrizionista il 25 ago 2026 («troppi grassi
+ * e pochi carboidrati; la somma dei singoli alimenti non coincide col totale»). Una riga
+ * ricetta non ha una `compositionKey`, perché non è un alimento: il finalize ricadeva su
+ * `inferCanonicalFoodKeyPreferName`, che indovina l'alimento DAL NOME. «Riso soffiato
+ * yogurt greco miele e mirtilli» conteneva la parola yogurt → yogurt bianco INTERO,
+ * scalato fino alle 467 kcal del piatto: kcal giuste, ripartizione dei macro di tutt'altro
+ * alimento. Su 318 righe-ricetta su 318: −32,9 g di carboidrati e +10,7 g di grassi in
+ * media, punte di +53 g.
+ *
+ * `null` quando nessun ingrediente è risolvibile: il chiamante lascia allora il percorso
+ * storico, non scrive nutrienti inventati.
+ */
+export function nutrientsFromRecipeComponents(
+  components: NonNullable<IntelligentMealPlanItemOut["components"]>,
+  snapshot: FdcCanonicalSnapshot,
+): ScaledMealItemNutrients | null {
+  const parts: ScaledMealItemNutrients[] = [];
+  for (const c of components) {
+    if (!(c.grams > 0)) continue;
+    // Il componente neutro (acqua/brodo) non ha né canonical né fdc: non porta nutrienti
+    // ed è giusto che non ne porti — ma i suoi grammi restano nel piatto.
+    const fdcKey = c.fdcId != null && c.fdcId > 0 ? `fdc:${c.fdcId}` : null;
+    const canonical =
+      (fdcKey ? snapshot[fdcKey]?.canonical : undefined) ??
+      (c.canonicalKey ? (snapshot[c.canonicalKey]?.canonical ?? CANONICAL_FOOD_TABLE[c.canonicalKey]) : undefined);
+    if (!canonical?.kcalPer100g) continue;
+    parts.push(scaleCanonicalNutrientsToGrams(canonical, c.grams));
+  }
+  return parts.length > 0 ? sumScaledNutrients(parts) : null;
+}
+
 function enrichSlot(slot: IntelligentMealPlanSlotOut, snapshot: FdcCanonicalSnapshot): IntelligentMealPlanSlotOut {
   const items = slot.items.map((it) => {
+    // RICETTA: i nutrienti vengono dagli ingredienti, mai dedotti dal nome del piatto.
+    if (it.components && it.components.length > 0) {
+      const fromComponents = nutrientsFromRecipeComponents(it.components, snapshot);
+      if (fromComponents) {
+        const next: IntelligentMealPlanItemOut = {
+          ...it,
+          compositionKey: it.compositionKey ?? "recipe:components",
+          compositionStatus: "fdc_cache",
+          nutrients: fromComponents,
+        };
+        return next;
+      }
+    }
     const { compositionKey, compositionStatus, nutrients } = nutrientsForMealPlanItemFromCache(
       {
         name: it.name,
@@ -76,11 +128,30 @@ export async function finalizeIntelligentMealPlanCore(
 ): Promise<IntelligentMealPlanAssembledCore> {
   const slotsDeduped =
     opts?.lunchDinnerProteinDedupe === false ? core.slots : dedupeLunchDinnerMainProteins(core.slots);
-  const fdcSnapshot =
+  const baseSnapshot =
     snapshot ??
     (await buildFdcCanonicalSnapshot(
       slotsDeduped.flatMap((s) => s.items.map((it) => inferCanonicalFoodKeyPreferName(it.name, it.portionHint))),
     ));
+  // Gli INGREDIENTI delle ricette non stanno nello snapshot di base, che si costruisce
+  // dai nomi degli item: il piatto è uno, gli ingredienti sono altri quattro o cinque.
+  // Li si carica per fdc_id — che il catalogo porta esplicito, quindi senza passare dagli
+  // alias nome→fdc, che per questi non esistono. Senza questo pezzo il calcolo dai
+  // componenti ricadrebbe sulla sola tabella TS interna e perderebbe gli alimenti che
+  // vivono solo nel catalogo DB.
+  const componentFdcIds = [
+    ...new Set(
+      slotsDeduped.flatMap((s) =>
+        s.items.flatMap((it) => (it.components ?? []).map((c) => c.fdcId).filter((id): id is number => typeof id === "number" && id > 0)),
+      ),
+    ),
+  ];
+  const fdcSnapshot = componentFdcIds.length
+    ? {
+        ...baseSnapshot,
+        ...buildFdcCanonicalSnapshotFromFdcIds(componentFdcIds, await loadFdcFoodsByIds(componentFdcIds)),
+      }
+    : baseSnapshot;
   const slots = slotsDeduped.map((s) => enrichSlot(s, fdcSnapshot));
   const byReq = new Map(req.slots.map((s) => [s.slot, s]));
 

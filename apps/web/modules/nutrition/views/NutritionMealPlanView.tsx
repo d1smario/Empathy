@@ -364,14 +364,28 @@ export function NutritionMealPlanWorkspace({
                         />
                       );
                     } else {
-                      const itemTotals = sumVisibleSlotMacros(sl, isVis, fallback);
-                      /** Header pasto: target % profilo (solver), non somma USDA delle voci (spesso sbilancia colazione vs pranzo). */
-                      const totals = {
-                        kcal: fallback.kcal > 0 ? fallback.kcal : itemTotals.kcal,
-                        carbsG: fallback.carbsG > 0 ? fallback.carbsG : itemTotals.carbsG,
-                        proteinG: fallback.proteinG > 0 ? fallback.proteinG : itemTotals.proteinG,
-                        fatG: fallback.fatG > 0 ? fallback.fatG : itemTotals.fatG,
-                      };
+                      /**
+                       * Header pasto = SOMMA DELLE VOCI SERVITE, non il target del solver.
+                       *
+                       * Prima mostrava il target («non somma USDA delle voci, spesso
+                       * sbilancia colazione vs pranzo»): una scelta che aveva senso finché
+                       * i macro delle voci erano inaffidabili — le righe-ricetta prendevano
+                       * i nutrienti da un alimento indovinato dal NOME del piatto. Corretto
+                       * quello (nutrientsFromRecipeComponents), la somma delle voci è il
+                       * piatto vero e il target è un altro numero.
+                       *
+                       * Mostrarli come se fossero lo stesso è ciò che il nutrizionista ha
+                       * segnalato il 25 ago: «se sommo le cifre il totale dei carboidrati è
+                       * inferiore al dovuto, quello dei grassi superiore». Misurato: su 685
+                       * pasti il 44,2% divergeva di oltre 50 kcal, fino a 1.238. Chi legge
+                       * un totale sopra un elenco si aspetta che sia la somma dell'elenco —
+                       * e deve poter fare il conto e ritrovarselo.
+                       *
+                       * `sumVisibleSlotMacros` ricade da sé sul target quando il pasto non
+                       * ha voci (pasto soppresso, o tutte rimosse dal coach): lì il target
+                       * resta l'unico numero disponibile, ed è giusto mostrarlo.
+                       */
+                      const totals = sumVisibleSlotMacros(sl, isVis, fallback);
                       const expoItems = buildExpositionItemsFromPlan(sl.items, isVis);
                       card = (
                         <EmpathyMealPlanExpositionCard

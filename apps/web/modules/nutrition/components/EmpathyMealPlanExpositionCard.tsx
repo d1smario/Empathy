@@ -220,6 +220,14 @@ export type EmpathyExpositionItem = {
   weightG?: number;
   /** fdc_id dell'alimento (da `compositionKey = "fdc:NNN"`, piano V2): abilita la foto specifica dal DB. */
   fdcId?: number;
+  /**
+   * Ingredienti, quando la riga è una ricetta del nutrizionista: si mostrano sotto il nome
+   * del piatto con le rispettive quantità. Richiesta esplicita del nutrizionista (25 ago
+   * 2026): «quando esponiamo una ricetta dovrebbe comparire anche le quantità — esempio
+   * colazione yogurt muesli fragole e noci: l'utente non sa quanto di yogurt, di muesli o
+   * di fragole».
+   */
+  components?: Array<{ labelIt: string; grams: number }>;
 };
 
 export function buildExpositionItemsFromPlan(
@@ -238,7 +246,13 @@ export function buildExpositionItemsFromPlan(
       // dallo scaling per kcal in `nutrientsForMealPlanItem`).
       const portionHintTrim = it.portionHint?.trim() ?? "";
       const isCompose = looksLikeMultiIngredientPortionHint(portionHintTrim);
-      const weightG = isCompose ? undefined : parseGramsFromPortion(`${portionHintTrim} ${it.name}`.trim());
+      // RICETTA: gli ingredienti arrivano strutturati, quindi il peso del piatto è la loro
+      // somma — un numero vero, non il primo che capita nel testo. È il caso che prima
+      // restava senza peso: `isCompose` spegneva il badge e l'atleta leggeva «Riso soffiato
+      // yogurt greco miele e mirtilli» senza sapere quanto fosse.
+      const components = (it.components ?? []).filter((c) => c.grams > 0).map((c) => ({ labelIt: c.labelIt, grams: c.grams }));
+      const recipeWeightG = components.length ? Math.round(components.reduce((s, c) => s + c.grams, 0)) : undefined;
+      const weightG = recipeWeightG ?? (isCompose ? undefined : parseGramsFromPortion(`${portionHintTrim} ${it.name}`.trim()));
       return {
         sourceIndex: ii,
         name: it.name,
@@ -250,6 +264,7 @@ export function buildExpositionItemsFromPlan(
         ig,
         weightG,
         fdcId: fdcIdFromCompositionKey(it.compositionKey),
+        ...(components.length ? { components } : {}),
       };
     });
 }
@@ -485,6 +500,17 @@ export function EmpathyMealPlanExpositionCard({
                     <span className="empathy-meal-expo-dot" aria-hidden />
                     <span className="empathy-meal-expo-food-name">{food.name}</span>
                   </div>
+                  {food.components?.length ? (
+                    // Gli ingredienti del piatto con le loro quantità: senza, «Yogurt muesli
+                    // fragole e noci» non dice all'atleta quanto yogurt, quanto muesli.
+                    <div className="empathy-meal-expo-food-ingredients">
+                      {food.components.map((c, ci) => (
+                        <span key={`${c.labelIt}-${ci}`} className="empathy-meal-expo-ingredient">
+                          {c.labelIt} <b>{Math.round(c.grams)} g</b>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="empathy-meal-expo-food-pills">
                     {food.weightG != null ? (
                       <span className="empathy-meal-expo-pill empathy-meal-expo-pill--wt">{food.weightG}g</span>
