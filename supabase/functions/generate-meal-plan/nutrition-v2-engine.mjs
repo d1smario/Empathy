@@ -8760,26 +8760,49 @@ function mapMenuRecipeRows(recipeRows, componentRows, log = defaultLogger) {
 }
 var menuRecipesCache = null;
 var MENU_RECIPE_CACHE_TTL_MS = 5 * 6e4;
+var PAGE = 1e3;
+var MAX_PAGES = 50;
+async function fetchAllPages(page) {
+  const rows = [];
+  let step = PAGE;
+  for (let from = 0, guard = 0; guard < MAX_PAGES; guard += 1) {
+    const res = await page(from, from + PAGE - 1);
+    if (res.error || !Array.isArray(res.data)) return res;
+    if (res.data.length === 0) break;
+    rows.push(...res.data);
+    if (guard === 0) step = res.data.length;
+    if (res.data.length < step) break;
+    from += res.data.length;
+  }
+  return { data: rows, error: null };
+}
 async function loadMenuRecipes(admin) {
   if (menuRecipesCache && Date.now() - menuRecipesCache.at < MENU_RECIPE_CACHE_TTL_MS) {
     return menuRecipesCache.recipes;
   }
   try {
     const missingColumns = (res) => res.error != null && (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
-    let full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals, template_meta").eq("is_active", true);
+    const recipeSelect = (cols) => fetchAllPages(
+      (from, to) => admin.from("nutrition_recipes").select(cols).eq("is_active", true).order("id", { ascending: true }).range(from, to)
+    );
+    let full = await recipeSelect(
+      "id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals, template_meta"
+    );
     if (missingColumns(full)) {
-      full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals").eq("is_active", true);
+      full = await recipeSelect("id, recipe_key, label_it, note, frequency, max_week, family, tier, selection_weight, meals");
     }
     if (missingColumns(full)) {
-      full = await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note, frequency, max_week").eq("is_active", true);
+      full = await recipeSelect("id, recipe_key, label_it, note, frequency, max_week");
     }
-    const { data: recipeRows, error } = missingColumns(full) ? await admin.from("nutrition_recipes").select("id, recipe_key, label_it, note").eq("is_active", true) : full;
+    const { data: recipeRows, error } = missingColumns(full) ? await recipeSelect("id, recipe_key, label_it, note") : full;
     if (error || !Array.isArray(recipeRows) || recipeRows.length === 0) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;
     }
     const recipeIds = recipeRows.map((r) => str2(r?.id)).filter((s) => s != null);
-    const { data: componentRows, error: componentError } = await admin.from("nutrition_recipe_components").select("recipe_id, position, canonical_key, fdc_id, label_it, grams_per_100g, is_neutral").in("recipe_id", recipeIds);
+    const { data: componentRows, error: componentError } = await fetchAllPages(
+      (from, to) => admin.from("nutrition_recipe_components").select("recipe_id, position, canonical_key, fdc_id, label_it, grams_per_100g, is_neutral").in("recipe_id", recipeIds).order("recipe_id", { ascending: true }).order("position", { ascending: true }).range(from, to)
+    );
     if (componentError || !Array.isArray(componentRows)) {
       menuRecipesCache = { at: Date.now(), recipes: null };
       return null;
