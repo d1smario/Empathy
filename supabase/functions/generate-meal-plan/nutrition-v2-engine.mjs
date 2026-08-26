@@ -5034,8 +5034,8 @@ function chooseRecipeForSlot(input) {
       0
     ) : weekRecipeCount(input.weekStapleCounts);
     if (weeklyCount >= GRAMMAR_MAX_RECIPES_PER_WEEK) return null;
-    const roll = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
-    if (roll >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
+    const roll2 = (fnv1a(`${input.seed}|${input.slotKey}`) >>> 0) % 100;
+    if (roll2 >= GRAMMAR_RECIPE_SLOT_SHARE_PCT) return null;
   }
   const first = input.candidates[0];
   const sameOrderingGroup = (a, b) => {
@@ -5047,8 +5047,35 @@ function chooseRecipeForSlot(input) {
     return a.weekCount === b.weekCount && recipeRank(a.recipe) === recipeRank(b.recipe);
   };
   const tier = input.candidates.filter((c) => sameOrderingGroup(c, first));
-  const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
-  return tier[offset] ?? null;
+  const weighted = input.candidates.filter((c) => sameWeeklyUseAndWeighable(c, first));
+  const pool = weighted.length > tier.length ? weighted : tier;
+  const roll = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % 1e5;
+  return pickByWeight(pool, roll) ?? tier[0] ?? null;
+}
+var GRAMMAR_RECIPE_TIER_WEIGHT = { 0: 100, 1: 35, 2: 10 };
+function recipeSelectionWeight(r) {
+  const declared = r.selectionWeight;
+  if (typeof declared === "number" && Number.isFinite(declared) && declared > 0) return declared;
+  return GRAMMAR_RECIPE_TIER_WEIGHT[recipeRank(r)] ?? 10;
+}
+var GRAMMAR_WEIGHTED_MAX_RANK = 1;
+function sameWeeklyUseAndWeighable(a, b) {
+  if (a.templateOrdering || b.templateOrdering) return false;
+  if (a.weekCount !== b.weekCount) return false;
+  return recipeRank(a.recipe) <= GRAMMAR_WEIGHTED_MAX_RANK && recipeRank(b.recipe) <= GRAMMAR_WEIGHTED_MAX_RANK;
+}
+function pickByWeight(pool, roll) {
+  if (pool.length === 0) return null;
+  const weights = pool.map((c) => recipeSelectionWeight(c.recipe));
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (!(total > 0)) return pool[0] ?? null;
+  let acc = 0;
+  const target = roll % total + 1;
+  for (let i = 0; i < pool.length; i += 1) {
+    acc += weights[i];
+    if (target <= acc) return pool[i];
+  }
+  return pool[pool.length - 1] ?? null;
 }
 function recipeCandidateToHit(cand) {
   return {
