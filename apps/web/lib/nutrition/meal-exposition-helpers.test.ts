@@ -13,6 +13,7 @@ import {
   estimatedItemGlycemicIndex,
   sumVisibleSlotMacros,
 } from "./meal-exposition-helpers";
+import { buildExpositionItemsFromPlan } from "@/modules/nutrition/components/EmpathyMealPlanExpositionCard";
 import type {
   IntelligentMealPlanItemOut,
   IntelligentMealPlanSlotOut,
@@ -166,4 +167,40 @@ test("sumVisibleSlotMacros: il totale pasto non perde le voci con nutrients azze
   const tot = sumVisibleSlotMacros(slot, () => true, { kcal: 0, carbsG: 0, proteinG: 0, fatG: 0 });
   assert.equal(tot.kcal, 590 + 386 + 36);
   assert.ok(tot.fatG > 26 + 6, "il grasso dei pistacchi deve entrare nel totale");
+});
+
+test("card del piano: una riga-RICETTA porta gli INGREDIENTI con le quantità e il peso del piatto", () => {
+  // Difetto segnalato dal nutrizionista (25 ago): «quando esponiamo una ricetta dovrebbe
+  // comparire anche le quantità — l'utente non sa quanto di yogurt, di muesli o di
+  // fragole». Prima il peso non usciva nemmeno: `looksLikeMultiIngredientPortionHint`
+  // spegneva il badge, perché sul testo il primo numero è un ingrediente solo.
+  const riga = item({
+    name: "Riso soffiato yogurt greco miele e mirtilli",
+    portionHint: "350 g Riso soffiato yogurt greco miele e mirtilli (piatto cotto) · Riso soffiato 63 g, Yogurt greco 0% 175 g, Miele 15 g, Mirtilli 97 g",
+    approxKcal: 455,
+    macroRole: "cho_heavy",
+    nutrients: nutrients({ kcal: 455, carbsG: 89, proteinG: 23, fatG: 1.4 }),
+    components: [
+      { canonicalKey: "puffed_rice", fdcId: 173912, labelIt: "Riso soffiato", grams: 63 },
+      { canonicalKey: "yogurt_greek_nonfat", fdcId: 330137, labelIt: "Yogurt greco 0%", grams: 175 },
+      { canonicalKey: "honey", fdcId: 169640, labelIt: "Miele", grams: 15 },
+      { canonicalKey: "blueberries_raw", fdcId: 2346411, labelIt: "Mirtilli", grams: 97 },
+    ],
+  });
+  const [out] = buildExpositionItemsFromPlan([riga], () => true);
+  assert.ok(out, "la riga deve arrivare alla card");
+  assert.equal(out!.components?.length, 4, "gli ingredienti devono arrivare alla card");
+  assert.deepEqual(out!.components?.map((c) => c.labelIt), ["Riso soffiato", "Yogurt greco 0%", "Miele", "Mirtilli"]);
+  assert.deepEqual(out!.components?.map((c) => c.grams), [63, 175, 15, 97]);
+  // Peso del piatto = somma degli ingredienti (350 g), non più assente.
+  assert.equal(out!.weightG, 350);
+});
+
+test("card del piano: una riga NON-ricetta resta com'era — nessun elenco ingredienti", () => {
+  const [out] = buildExpositionItemsFromPlan(
+    [item({ name: "Crema di anacardi", portionHint: "46 g Crema di anacardi", approxKcal: 270, macroRole: "fat", nutrients: nutrients({ kcal: 270, carbsG: 12.7, proteinG: 8.1, fatG: 22.7 }) })],
+    () => true,
+  );
+  assert.equal(out!.components, undefined, "un alimento singolo non ha ingredienti da elencare");
+  assert.equal(out!.weightG, 46, "il peso continua a leggersi dalla porzione");
 });
