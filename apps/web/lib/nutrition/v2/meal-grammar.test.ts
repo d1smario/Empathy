@@ -38,6 +38,7 @@ import {
   recipeCandidatesForMeal,
   recipeLever,
   recipeRank,
+  recipeSelectionWeight,
   resolveMealGrammarMode,
   scaleRecipe,
   substituteGramsByKcal,
@@ -805,6 +806,60 @@ test("D02 nel pick: cena a settimana vuota → il merluzzo batte il pollo; con p
 
 // ── frequency / max_week della RICETTA (pannello admin): verdetto e preferenza ─────────
 
+test("tier come PESO: le ROTATION escono circa una volta su tre, e il seed resta deterministico", () => {
+  const idx = menuFoodEntryIndex(pools());
+  // Proporzioni del catalogo vero in piccolo: 2 CORE (peso 100) e 3 ROTATION (peso 35).
+  const core = ["a", "b"].map((k, i): MenuRecipe => ({ ...risoPomodoro, id: `wc${i}`, recipeKey: `core_${k}`, labelIt: `Core ${k}`, tier: "CORE", selectionWeight: 100, meals: ["lunch", "dinner"] }));
+  const rot = ["x", "y", "z"].map((k, i): MenuRecipe => ({ ...risoPomodoro, id: `wr${i}`, recipeKey: `rot_${k}`, labelIt: `Rot ${k}`, tier: "ROTATION", selectionWeight: 35, meals: ["lunch", "dinner"] }));
+  const cands = recipeCandidatesForMeal({ recipes: [...core, ...rot], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
+  assert.equal(cands.length, 5);
+
+  let rotazioni = 0;
+  const N = 400;
+  for (let seed = 0; seed < N; seed += 1) {
+    // `systematic` salta il tiro «questo slot ha una ricetta?» e il budget settimanale:
+    // qui si misura il SORTEGGIO, non la frequenza con cui un pasto diventa una ricetta.
+    const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false, systematic: true });
+    assert.ok(c, `seed ${seed}: nessuna ricetta scelta`);
+    if (c!.recipe.tier === "ROTATION") rotazioni += 1;
+  }
+  // Attesa teorica: 3×35 / (2×100 + 3×35) = 105/305 ≈ 34%. Banda larga: qui conta che le
+  // ROTATION escano DAVVERO (prima erano 0 su 60 ricette in 182 piani veri) e che non
+  // scavalchino le CORE.
+  const quota = rotazioni / N;
+  assert.ok(quota > 0.2 && quota < 0.5, `quota ROTATION fuori banda: ${(quota * 100).toFixed(1)}%`);
+
+  // DETERMINISMO: stesso seed, stessa scelta. Se cambiasse, l'atleta vedrebbe mutare la
+  // cena a ogni apertura della pagina.
+  for (const seed of [0, 7, 42, 123]) {
+    const a = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false, systematic: true });
+    const b = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false, systematic: true });
+    assert.equal(a?.recipe.recipeKey, b?.recipe.recipeKey, `seed ${seed} non deterministico`);
+  }
+});
+
+test("tier come peso: la MEMORIA settimanale resta la prima chiave — una ROTATION mai servita batte una CORE già servita", () => {
+  const idx = menuFoodEntryIndex(pools());
+  const core: MenuRecipe = { ...risoPomodoro, id: "m1", recipeKey: "core_usata", labelIt: "Core usata", tier: "CORE", meals: ["lunch", "dinner"] };
+  const rot: MenuRecipe = { ...risoPomodoro, id: "m2", recipeKey: "rot_nuova", labelIt: "Rot nuova", tier: "ROTATION", meals: ["lunch", "dinner"] };
+  const week = { "recipe:core_usata": 1 };
+  const cands = recipeCandidatesForMeal({ recipes: [core, rot], entryIndex: idx, meal: "lunch", weekStapleCounts: week });
+  for (let seed = 0; seed < 30; seed += 1) {
+    const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: week, recipeAlreadyToday: false, systematic: true });
+    assert.equal(c?.recipe.recipeKey, "rot_nuova", `seed ${seed}: il peso non deve scavalcare la memoria settimanale`);
+  }
+});
+
+test("peso di sorteggio: quello dichiarato da Mario vince; senza, il default del tier; mai zero", () => {
+  const base = { ...risoPomodoro };
+  assert.equal(recipeSelectionWeight({ ...base, tier: "ROTATION", selectionWeight: 60 }), 60, "il foglio comanda");
+  assert.equal(recipeSelectionWeight({ ...base, tier: "CORE", selectionWeight: null }), 100);
+  assert.equal(recipeSelectionWeight({ ...base, tier: "ROTATION", selectionWeight: null }), 35);
+  // Un peso non valido non deve azzerare la ricetta: sarebbe un verdetto travestito.
+  assert.ok(recipeSelectionWeight({ ...base, tier: "CORE", selectionWeight: 0 }) > 0);
+  assert.ok(recipeSelectionWeight({ ...base, tier: "CORE", selectionWeight: -5 }) > 0);
+});
+
 test("max_week della ricetta è un verdetto: a 1 uso settimanale con max_week 1 la ricetta non è più candidata", () => {
   const idx = menuFoodEntryIndex(pools());
   const pizzaLike: MenuRecipe = { ...risoPomodoro, id: "r9", recipeKey: "riso_raro", labelIt: "Riso raro", maxWeek: 1 };
@@ -821,21 +876,27 @@ test("frequency della ricetta: a parità di conteggio la COMMON precede la ROTAT
   const occ: MenuRecipe = { ...risoPomodoro, id: "c3", recipeKey: "riso_occasionale", labelIt: "Riso occasionale", frequency: "OCCASIONAL" };
   const cands = recipeCandidatesForMeal({ recipes: [occ, rot, common], entryIndex: idx, meal: "lunch", weekStapleCounts: {} });
   assert.deepEqual(cands.map((c) => c.recipe.recipeKey), ["riso_comune", "riso_rotazione", "riso_occasionale"]);
-  // Su molti seed, con tutte a zero, esce SEMPRE la COMMON: le altre non sono nel tier.
-  let picked = new Set<string>();
+  // ORDINAMENTO invariato (COMMON → ROTATION → OCCASIONAL). Cambia il SORTEGGIO: dal 25
+  // ago COMMON e ROTATION si estraggono insieme in proporzione al peso — prima la
+  // ROTATION entrava solo a CORE esaurite, cioè mai (0 su 60 ricette in 182 piani veri).
+  // L'OCCASIONAL resta fuori: per lei Mario chiede «una o due al mese» e qui la memoria
+  // è settimanale.
+  const picked = new Set<string>();
   for (let seed = 0; seed < 60; seed += 1) {
     const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false });
     if (c) picked.add(c.recipe.recipeKey);
   }
-  assert.deepEqual([...picked], ["riso_comune"], `tier mescolato: ${[...picked].join(",")}`);
-  // Quando la COMMON è già stata servita, il tier passa alla ROTATION (weekCount 0 < 1).
-  picked = new Set();
+  assert.deepEqual([...picked].sort(), ["riso_comune", "riso_rotazione"], `atteso COMMON+ROTATION: ${[...picked].join(",")}`);
+  assert.ok(!picked.has("riso_occasionale"), "l'OCCASIONAL non entra nel sorteggio settimanale");
+  // Quando la COMMON è già stata servita, resta la sola ROTATION (weekCount 0 < 1): la
+  // memoria settimanale continua a precedere il peso.
+  const dopo = new Set<string>();
   for (let seed = 0; seed < 60; seed += 1) {
     const c2 = recipeCandidatesForMeal({ recipes: [occ, rot, common], entryIndex: idx, meal: "lunch", weekStapleCounts: { "recipe:riso_comune": 1 } });
     const c = chooseRecipeForSlot({ candidates: c2, seed, slotKey: "lunch", weekStapleCounts: { "recipe:riso_comune": 1 }, recipeAlreadyToday: false });
-    if (c) picked.add(c.recipe.recipeKey);
+    if (c) dopo.add(c.recipe.recipeKey);
   }
-  assert.deepEqual([...picked], ["riso_rotazione"]);
+  assert.deepEqual([...dopo], ["riso_rotazione"]);
 });
 
 // ═══ SISTEMA RUOLI v6 (file Mario v6, GENERATIVE_RULES_V2) ═════════════════════════════
@@ -1373,7 +1434,9 @@ test("v9 rank ricette: il tier vince sulla frequency (CORE/OCCASIONAL prima di R
     const c = chooseRecipeForSlot({ candidates: cands, seed, slotKey: "lunch", weekStapleCounts: {}, recipeAlreadyToday: false });
     if (c) picked.add(c.recipe.recipeKey);
   }
-  assert.deepEqual([...picked], ["riso_core"], "il sorteggio non mescola i rank");
+  // Il rank continua a governare l'ORDINE e il PESO (CORE 100 contro ROTATION 35), non
+  // più l'ammissione al sorteggio: entrambe escono, la CORE circa tre volte più spesso.
+  assert.deepEqual([...picked].sort(), ["riso_core", "riso_rot"], "CORE e ROTATION si sorteggiano insieme");
 });
 
 test("v9/v11 scaleRecipe: ancora della polvere per COMPONENTE (V11_G01, family-agnostica), totali = Σ componenti", () => {

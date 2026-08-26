@@ -1373,8 +1373,80 @@ export function chooseRecipeForSlot(input: {
     return a.weekCount === b.weekCount && recipeRank(a.recipe) === recipeRank(b.recipe);
   };
   const tier = input.candidates.filter((c) => sameOrderingGroup(c, first));
-  const offset = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % tier.length;
-  return tier[offset] ?? null;
+  // PASTI PRINCIPALI: il tier è un PESO, non un cancello (25 ago 2026).
+  //
+  // Il gruppo qui sopra tiene solo i candidati col rank MIGLIORE, quindi una ROTATION
+  // entra solo quando ogni singola CORE è già stata servita in settimana. Con 38 CORE
+  // disponibili e ~3 piatti-ricetta a settimana per atleta quel momento non arriva mai:
+  // misurato su 182 piani reali, CORE v9 16/19 e CORE v12 13/19 servite, ma **ROTATION
+  // 0/60 e OCCASIONAL 0/20** — ottanta ricette di Mario in catalogo e mai in tavola.
+  // Per lui «peso 35» e «occasionale» vogliono dire meno spesso, non mai.
+  //
+  // Ora CORE e ROTATION stanno nello STESSO gruppo e si sorteggia in proporzione al peso
+  // che Mario ha già scritto per ogni ricetta (selection_weight: 100 le paste, 35 gnocchi
+  // risotti e torte). Col catalogo di oggi fa circa un piatto su tre, cioè una ROTATION a
+  // settimana: se un domani decide che i risotti valgono 60, cambia il foglio e il motore
+  // lo segue senza toccare il codice.
+  //
+  // Restano fuori le OCCASIONAL (pizza, burger, lasagne): per quelle Mario ha chiesto
+  // «una o due al MESE» e la memoria qui è settimanale — a peso pieno uscirebbero ~4
+  // volte troppo. Rientreranno quando il conteggio guarderà 30 giorni invece di 7.
+  //
+  // Il resto della gerarchia NON si tocca: la memoria settimanale resta la prima chiave
+  // (`sameOrderingGroup` confronta `weekCount`), quindi una ricetta già servita non torna
+  // prima di quelle mai uscite; i verdetti (max_week, tetti di famiglia, tetto per base)
+  // hanno già filtrato le candidate a monte.
+  const weighted = input.candidates.filter((c) => sameWeeklyUseAndWeighable(c, first));
+  const pool = weighted.length > tier.length ? weighted : tier;
+  const roll = (fnv1a(`${input.seed}|${input.slotKey}|recipe`) >>> 0) % 100_000;
+  return pickByWeight(pool, roll) ?? tier[0] ?? null;
+}
+
+/**
+ * Peso di sorteggio di una ricetta: `selection_weight` di Mario quando c'è, altrimenti il
+ * valore che lui stesso usa per quel tier nel foglio (CORE 100, ROTATION 35). Mai zero o
+ * negativo: una ricetta candidata deve poter uscire, altrimenti sarebbe un verdetto
+ * travestito da preferenza — e i verdetti stanno altrove, espliciti.
+ */
+export const GRAMMAR_RECIPE_TIER_WEIGHT: Readonly<Record<number, number>> = { 0: 100, 1: 35, 2: 10 };
+
+export function recipeSelectionWeight(r: Pick<MenuRecipe, "tier" | "frequency" | "selectionWeight">): number {
+  const declared = r.selectionWeight;
+  if (typeof declared === "number" && Number.isFinite(declared) && declared > 0) return declared;
+  return GRAMMAR_RECIPE_TIER_WEIGHT[recipeRank(r)] ?? 10;
+}
+
+/**
+ * Stesso uso settimanale E rank sorteggiabile insieme (CORE e ROTATION, non OCCASIONAL).
+ * Solo per i pasti principali: il percorso template (colazione/spuntino) ha il suo
+ * ordinamento — base, tier, variante, base proteica — e non passa di qui.
+ */
+const GRAMMAR_WEIGHTED_MAX_RANK = 1; // 0 = CORE, 1 = ROTATION
+
+function sameWeeklyUseAndWeighable(a: RecipeCandidate, b: RecipeCandidate): boolean {
+  if (a.templateOrdering || b.templateOrdering) return false;
+  if (a.weekCount !== b.weekCount) return false;
+  return recipeRank(a.recipe) <= GRAMMAR_WEIGHTED_MAX_RANK && recipeRank(b.recipe) <= GRAMMAR_WEIGHTED_MAX_RANK;
+}
+
+/**
+ * Estrazione pesata DETERMINISTICA: `roll` è già derivato dal seed (atleta+data+slot), qui
+ * si mappa sull'intervallo cumulativo dei pesi. Deterministico non è un dettaglio: se la
+ * stessa giornata rigenerata desse piatti diversi, l'atleta vedrebbe cambiare la cena
+ * sotto gli occhi a ogni apertura della pagina.
+ */
+export function pickByWeight(pool: readonly RecipeCandidate[], roll: number): RecipeCandidate | null {
+  if (pool.length === 0) return null;
+  const weights = pool.map((c) => recipeSelectionWeight(c.recipe));
+  const total = weights.reduce((s, w) => s + w, 0);
+  if (!(total > 0)) return pool[0] ?? null;
+  let acc = 0;
+  const target = (roll % total) + 1; // 1..total: nessun candidato con quota nulla
+  for (let i = 0; i < pool.length; i += 1) {
+    acc += weights[i]!;
+    if (target <= acc) return pool[i]!;
+  }
+  return pool[pool.length - 1] ?? null;
 }
 
 /** La ricetta come «hit» per il solver: macro per 100 g di piatto cotto, fdcId 0 (non è un alimento). */
