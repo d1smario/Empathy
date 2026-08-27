@@ -1198,7 +1198,8 @@
     "setsCount": "{count} sets",
     "noGymProgram": "No gym program in the contract (missing <code>gymRx</code>). Regenerate from the Builder or republish the VIRYA gym plan.",
     "catalogExercises": "{count} catalog exercises · {name}",
-    "noCatalogLink": "Gym session with no catalog link (images unavailable). Republish from VIRYA or regenerate in the Builder."
+    "noCatalogLink": "Gym session with no catalog link (images unavailable). Republish from VIRYA or regenerate in the Builder.",
+    "commonMistake": "Common mistake:"
   },
   "SessionRouteMap": {
     "startPointLabel": "GPS start point",

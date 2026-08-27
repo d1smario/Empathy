@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { GymExerciseMediaThumb } from "@/components/training/GymExerciseMediaThumb";
+import { useExerciseItalianLabels } from "@/lib/training/use-exercise-italian-labels";
 
 function gymRxLine(
   rx: NonNullable<Pro2BuilderBlockContract["gymRx"]>,
@@ -28,6 +29,9 @@ export function Pro2GymSchedaBlockList({
 }) {
   const t = useTranslations("Pro2GymSchedaBlockList");
   const blocks = (contract.blocks ?? []).filter((b) => b.gymRx || b.kind === "gym_exercise" || b.kind === "strength_sets");
+  // Nome italiano ed esecuzione: l'atleta leggeva «Chest-Supported Row» e doveva già
+  // sapere di cosa si trattasse. Manca la traduzione ⇒ resta il nome originale.
+  const italiano = useExerciseItalianLabels(blocks.map((b) => b.label ?? ""));
   const withCatalog = blocks.filter((b) => Boolean(b.gymRx?.catalogExerciseId));
 
   if (!blocks.length) {
@@ -75,7 +79,7 @@ export function Pro2GymSchedaBlockList({
               />
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold text-white">
-                  {idx + 1}. {block.label}
+                  {idx + 1}. {italiano.get((block.label ?? "").trim().toLowerCase())?.nameIt || block.label}
                 </p>
                 {block.gymRx ? (
                   <>
@@ -90,6 +94,22 @@ export function Pro2GymSchedaBlockList({
                 {block.notes && block.gymRx ? (
                   <p className="mt-2 text-[0.65rem] text-gray-500">{block.notes}</p>
                 ) : null}
+                {(() => {
+                  // Come si esegue e l'errore tipico: senza, il nome da solo aiuta chi già
+                  // sa e lascia fuori chi no. In `compact` (elenco fitto) si tacciono.
+                  const it = italiano.get((block.label ?? "").trim().toLowerCase());
+                  if (compact || !it?.howToIt) return null;
+                  return (
+                    <div className="mt-3 border-t border-orange-500/15 pt-2">
+                      <p className="text-xs leading-relaxed text-gray-300">{it.howToIt}</p>
+                      {it.commonMistakeIt ? (
+                        <p className="mt-1.5 text-xs leading-relaxed text-amber-200/80">
+                          <span className="font-semibold">{t("commonMistake")}</span> {it.commonMistakeIt}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </li>

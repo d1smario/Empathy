@@ -1198,7 +1198,8 @@
     "setsCount": "{count} serie",
     "noGymProgram": "Nessuna scheda palestra nel contratto (manca <code>gymRx</code>). Rigenera dal Builder o ripubblica il piano VIRYA gym.",
     "catalogExercises": "{count} esercizi catalogo · {name}",
-    "noCatalogLink": "Seduta gym senza legame catalogo (immagini non disponibili). Ripubblica da VIRYA o rigenera nel Builder."
+    "noCatalogLink": "Seduta gym senza legame catalogo (immagini non disponibili). Ripubblica da VIRYA o rigenera nel Builder.",
+    "commonMistake": "Errore tipico:"
   },
   "SessionRouteMap": {
     "startPointLabel": "Punto di partenza GPS",
