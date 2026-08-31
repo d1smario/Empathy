@@ -222,7 +222,7 @@ export function NutritionMealPlanWorkspace({
   /** Etichette dei requisiti: STESSO dizionario della sala d'attesa onboarding (nessun secondo elenco). */
   const tOnboarding = useTranslations("Onboarding");
   const router = useRouter();
-  const { role: viewerRole, adminScoped } = useActiveAthlete();
+  const { role: viewerRole, adminScoped, platformAdminView } = useActiveAthlete();
   const requirementLabel = (item: OnboardingItemResult) => {
     const key = `items.${item.key}.label`;
     return tOnboarding.has(key) ? tOnboarding(key) : item.label;
@@ -496,16 +496,26 @@ export function NutritionMealPlanWorkspace({
                   </p>
                 </div>
               ) : (
-                <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">
-                  {/* LETTURA ≠ GENERAZIONE: mentre la query è in volo si dice «carico», mai «genero». */}
-                  {planReadLoading
+                (() => {
+                  // LETTURA ≠ GENERAZIONE: mentre la query è in volo si dice «carico», mai «genero».
+                  const stateMessage = planReadLoading
                     ? t("loadingPersistedPlan")
                     : intelligentMealLoading || canRequestIntelligentPlan
                       ? t("preparingTodayPlan")
                       : mealPathwayCatalogPending
                         ? t("loadingUsdaCatalog")
-                        : t("profileDietRequired")}
-                </p>
+                        : platformAdminView
+                          ? // Istruzione di manutenzione: nomina «Profile → Diet» e la
+                            // ripartizione per pasto, cioè cosa fare per sbloccare. Ha senso
+                            // solo per chi quei campi li può toccare; a chi non ha i comandi
+                            // non si mostra niente al suo posto — nessuna riga, nessun
+                            // paragrafo vuoto (istruzione del proprietario, 31 ago).
+                            t("profileDietRequired")
+                          : null;
+                  return stateMessage ? (
+                    <p className="mb-3 text-center text-[12px] leading-snug text-gray-400">{stateMessage}</p>
+                  ) : null;
+                })()
               )}
               {/* Scheletro card con solo i target del solver. Nessun item farlocco
                   (in passato il piano base distribuiva kcal_target/n_righe a ciascun

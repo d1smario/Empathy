@@ -218,7 +218,10 @@ export function MealPlanSection({
               ) : null}
             </div>
           </div>
-          {lowMealsBudgetWarning ? (
+          {/* Avviso di manutenzione: nomina i campi di profilo mancanti e chiude su
+              «rigenera il piano», tasto che solo l'admin vede. Fuori dall'admin non si
+              mostra nulla — nessuna versione addolcita. */}
+          {lowMealsBudgetWarning && platformAdminView ? (
             <div
               className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/95"
               role="status"
@@ -293,21 +296,41 @@ export function MealPlanSection({
                 })
               : null
           }
+          /*
+           * BANDA AVVISI DEL PIANO — SOLO ADMIN (istruzione del proprietario, 31 ago:
+           * «per chi non è admin, niente avviso»).
+           *
+           * Non descrivono il piano: danno ISTRUZIONI DI MANUTENZIONE — nominano
+           * `week_plan`, «Profile → Diet (martedì)», gli «slot», e dicono di premere
+           * «Rigenera piano», che è un bottone gated proprio su platformAdminView (poco
+           * più su, riga ~205). Il nutrizionista li ha visti da coach il 27 ago e ha
+           * segnalato: «esce quella scritta rigenera piano ma il tasto non esiste».
+           * Aveva ragione: gli si chiedeva di premere un tasto che non poteva vedere.
+           *
+           * Nascondere l'avviso NON nasconde il problema: quando compare significa che il
+           * piano ha meno pasti di quanti ne chiede il Diet, e quella è una cosa da
+           * sistemare — semplicemente non la si chiede a chi non ha i comandi per farlo.
+           *
+           * L'avviso gara (`raceDayPreRaceNotice`, poco sopra) NON è in questa banda:
+           * è contenuto del piano — la regola pasta/riso T−3 h — e resta per tutti.
+           */
           dietDayNotice={
-            mealRows.length > 0
-              ? [
-                  suppressedSnackSlots.length > 0
-                    ? t("snacksInTrainingWindow", { slots: suppressedSnackSlots.join(", ") })
-                    : null,
-                  mealRows.length < 6 && effectiveMealCountMode === "6"
-                    ? t("sixMealsExpected")
-                    : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
-                      ? t("fewerSlotsThanDiet")
+            platformAdminView
+              ? mealRows.length > 0
+                ? [
+                    suppressedSnackSlots.length > 0
+                      ? t("snacksInTrainingWindow", { slots: suppressedSnackSlots.join(", ") })
                       : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ")
-              : t("noReadableSplit", { weekDayKey: resolvedDietDay.weekDayKey })
+                    mealRows.length < 6 && effectiveMealCountMode === "6"
+                      ? t("sixMealsExpected")
+                      : intelligentMealPlan && intelligentMealPlan.slots.length < mealRows.length
+                        ? t("fewerSlotsThanDiet")
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : t("noReadableSplit", { weekDayKey: resolvedDietDay.weekDayKey })
+              : null
           }
           coachMealRemovalKeys={coachMealRemovalKeys}
           coachSessionFoodExclusions={coachSessionFoodExclusions}
