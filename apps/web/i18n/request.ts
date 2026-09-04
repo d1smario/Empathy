@@ -1,6 +1,7 @@
 import type { AbstractIntlMessages } from "next-intl";
 import { getRequestConfig } from "next-intl/server";
 import { resolveRequestLocale } from "@/lib/i18n/resolve-request-locale";
+import { applyTextOverrides, loadPublishedTextOverrides } from "@/lib/i18n/text-overrides";
 import { DEFAULT_LOCALE, FALLBACK_LOCALE, type SupportedLocale } from "@/lib/i18n/supported-locales";
 
 type MsgTree = Record<string, unknown>;
@@ -37,9 +38,13 @@ async function loadMessages(locale: SupportedLocale): Promise<AbstractIntlMessag
 export default getRequestConfig(async () => {
   const locale = await resolveRequestLocale();
   const messages = await loadMessages(locale);
+  // Override pubblicati da Admin → Testi, applicati DOPO loadMessages così coprono
+  // tutti e tre i suoi rami (merge parziale, it/en, fallback del catch). Il pannello
+  // salva bozze: qui arrivano solo i valori pubblicati.
+  const overrides = await loadPublishedTextOverrides(locale);
   return {
     locale,
-    messages,
+    messages: applyTextOverrides(messages, overrides),
     timeZone: "Europe/Zurich",
   };
 });
