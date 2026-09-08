@@ -7,6 +7,7 @@ import {
   requireAthleteWriteContext,
   supabaseForAthleteTableRead,
 } from "@/lib/auth/athlete-read-context";
+import { decideHealthStagingConfirmation } from "@/lib/auth/health-staging-confirmation-gate";
 import { getHealthUploadsBucket } from "@/lib/health/health-upload-storage";
 import { isMissingRelationError } from "@/lib/supabase/missing-relation-error";
 
@@ -235,7 +236,27 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const athleteId = String(run.athlete_id ?? "");
-    const { db } = await requireAthleteWriteContext(req, athleteId);
+    const { db, role, isPlatformAdmin, platformCoachStatus, callerAthleteId } =
+      await requireAthleteWriteContext(req, athleteId);
+    // Stesso gate della rotta `/apply`: chiudere una porta sola non serve a nulla, questa PATCH
+    // promuove la run a `committed` (+ audit + manual_actions) scrivendo con service role.
+    // `requireAthleteWriteContext` copre solo l'accesso all'atleta — che l'atleta ha su se stesso.
+    // `platformCoachStatus` non è decorativo: `role` è scrivibile dall'utente sulla propria riga,
+    // solo `"approved"` prova che la promozione a coach l'ha fatta la piattaforma.
+    const gate = decideHealthStagingConfirmation({
+      role,
+      isPlatformAdmin,
+      platformCoachStatus,
+      hasAthleteAccess: true,
+      callerAthleteId,
+      targetAthleteId: athleteId,
+    });
+    if (!gate.allowed) {
+      return NextResponse.json(
+        { ok: false as const, error: gate.error, code: gate.code },
+        { status: gate.status, headers: NO_STORE },
+      );
+    }
     const priorStatus = isStagingStatus(run.status) ? run.status : null;
     if (!priorStatus) {
       return NextResponse.json({ ok: false as const, error: "invalid_prior_status" }, { status: 409, headers: NO_STORE });

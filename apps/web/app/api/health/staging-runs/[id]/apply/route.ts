@@ -5,6 +5,7 @@ import {
   requireAuthenticatedTrainingUser,
   supabaseForAthleteTableRead,
 } from "@/lib/auth/athlete-read-context";
+import { decideHealthStagingConfirmation } from "@/lib/auth/health-staging-confirmation-gate";
 import { persistNormalizedObservations } from "@/lib/health/health-observation-normalizer";
 import { buildAndPersistHealthCausalInteractions } from "@/lib/health/health-causal-interactions";
 import type { HealthPanelTypeForParse } from "@/lib/health/lab-text-extractors";
@@ -125,7 +126,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         { status: 500, headers: NO_STORE },
       );
     }
-    const { db } = await requireAthleteWriteContext(req, athleteId);
+    const { db, role, isPlatformAdmin, platformCoachStatus, callerAthleteId } =
+      await requireAthleteWriteContext(req, athleteId);
+    // Gate di RUOLO oltre a quello di accesso atleta: `requireAthleteWriteContext` ha già
+    // lanciato 403 se `canAccessAthleteData` nega il target (quindi qui `hasAthleteAccess` è
+    // vero per costruzione), ma quel gate da solo lascia passare l'ATLETA su se stesso — e da
+    // qui in giù si scrive con service role su tabelle che la RLS all'atleta nega. La conferma
+    // dei referti è coach-only, come già dice la UI di review.
+    // `platformCoachStatus` non è decorativo: `role` è scrivibile dall'utente sulla propria riga,
+    // solo `"approved"` prova che la promozione a coach l'ha fatta la piattaforma.
+    const gate = decideHealthStagingConfirmation({
+      role,
+      isPlatformAdmin,
+      platformCoachStatus,
+      hasAthleteAccess: true,
+      callerAthleteId,
+      targetAthleteId: athleteId,
+    });
+    if (!gate.allowed) {
+      return NextResponse.json(
+        { ok: false as const, error: gate.error, code: gate.code },
+        { status: gate.status, headers: NO_STORE },
+      );
+    }
 
     const candidate = asRecord(run.candidate_bundle);
     const panelType = String(candidate.panel_type ?? "");

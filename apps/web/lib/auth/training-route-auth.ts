@@ -48,6 +48,18 @@ const athleteAccessOkAt = new Map<string, number>();
 export type CallerRoleInfo = {
   role: string | null;
   isPlatformAdmin: boolean;
+  /**
+   * `app_user_profiles.platform_coach_status`. **Serve** perché `role` da solo non è un fatto:
+   * la policy `app_user_profiles_update_own` lascia l'UPDATE sulla propria riga e il trigger
+   * `app_user_profiles_protect_platform_fields` protegge `is_platform_admin` e
+   * `platform_coach_status`, ma NON `role` — chiunque si scrive `role = "coach"`. Il trigger
+   * concede all'utente la sola transizione private→coach con status `"pending"`: `"approved"`
+   * può arrivare solo da service role / platform admin. Chi decide su azioni coach-only
+   * (es. conferma referti) deve guardare questo campo, non solo `role`.
+   */
+  platformCoachStatus: string | null;
+  /** `app_user_profiles.athlete_id` del CHIAMANTE: serve a riconoscere l'auto-validazione. */
+  athleteId: string | null;
 };
 
 const callerRoleInfoCache = new Map<string, { at: number; info: CallerRoleInfo }>();
@@ -63,13 +75,24 @@ async function resolveCallerRoleInfoCached(userId: string, rlsClient: SupabaseCl
   if (hit && Date.now() - hit.at < AUTH_GATE_OK_TTL_MS) return hit.info;
   const { data, error } = await rlsClient
     .from("app_user_profiles")
-    .select("role, is_platform_admin")
+    .select("role, is_platform_admin, platform_coach_status, athlete_id")
     .eq("user_id", userId)
     .maybeSingle();
-  const p = data as { role?: string | null; is_platform_admin?: boolean | null } | null;
+  const p = data as
+    | {
+        role?: string | null;
+        is_platform_admin?: boolean | null;
+        platform_coach_status?: string | null;
+        athlete_id?: string | null;
+      }
+    | null;
+  // Tutti i campi entrano nel valore messo in cache: un consumer non deve mai vedere
+  // un `platformCoachStatus` a null solo perché la riga arriva dalla micro-cache.
   const info: CallerRoleInfo = {
     role: typeof p?.role === "string" ? p.role : null,
     isPlatformAdmin: p?.is_platform_admin === true,
+    platformCoachStatus: typeof p?.platform_coach_status === "string" ? p.platform_coach_status : null,
+    athleteId: typeof p?.athlete_id === "string" ? p.athlete_id : null,
   };
   if (!error) {
     if (callerRoleInfoCache.size > AUTH_GATE_CACHE_MAX) callerRoleInfoCache.clear();
@@ -147,7 +170,16 @@ export async function requireAuthenticatedTrainingUser(req: NextRequest): Promis
 export async function requireTrainingAthleteWriteContext(
   req: NextRequest,
   athleteId: string,
-): Promise<{ userId: string; db: SupabaseClient; role: string | null; isPlatformAdmin: boolean }> {
+): Promise<{
+  userId: string;
+  db: SupabaseClient;
+  role: string | null;
+  isPlatformAdmin: boolean;
+  /** Vedi `CallerRoleInfo.platformCoachStatus`: `role` senza questo campo non prova nulla. */
+  platformCoachStatus: string | null;
+  /** `app_user_profiles.athlete_id` del chiamante (per i gate anti auto-validazione). */
+  callerAthleteId: string | null;
+}> {
   const target = athleteId.trim();
   if (!target) {
     throw new TrainingRouteAuthError(400, "Missing athleteId");
@@ -168,7 +200,14 @@ export async function requireTrainingAthleteWriteContext(
 
   const admin = createSupabaseAdminClient();
   const db = admin ?? rlsClient;
-  return { userId, db, role: roleInfo.role, isPlatformAdmin: roleInfo.isPlatformAdmin };
+  return {
+    userId,
+    db,
+    role: roleInfo.role,
+    isPlatformAdmin: roleInfo.isPlatformAdmin,
+    platformCoachStatus: roleInfo.platformCoachStatus,
+    callerAthleteId: roleInfo.athleteId,
+  };
 }
 
 /** Lettura “forte” dopo auth utente: preferisci service role se disponibile (es. DELETE guard su id). */
