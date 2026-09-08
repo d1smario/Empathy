@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { catalogRowMatchesViryaDistricts } from "@/lib/training/builder/pro2-gym-catalog-plan";
 import type { BuilderCatalogExerciseRow } from "@/modules/training/services/training-builder-catalog-api";
 
@@ -21,24 +22,24 @@ function row(partial: Partial<BuilderCatalogExerciseRow>): BuilderCatalogExercis
 describe("catalogRowMatchesViryaDistricts", () => {
   it("matches Italian district labels on primaryDistrict", () => {
     const r = row({ primaryDistrict: "Petto", muscleGroup: "upper" });
-    expect(catalogRowMatchesViryaDistricts(r, ["Petto"])).toBe(true);
-    expect(catalogRowMatchesViryaDistricts(r, ["Gambe"])).toBe(false);
+    assert.equal(catalogRowMatchesViryaDistricts(r, ["Petto"]), true);
+    assert.equal(catalogRowMatchesViryaDistricts(r, ["Gambe"]), false);
   });
 
   it("allows all rows for full body only selection", () => {
     const r = row({ primaryDistrict: "Gambe" });
-    expect(catalogRowMatchesViryaDistricts(r, ["Full body"])).toBe(true);
+    assert.equal(catalogRowMatchesViryaDistricts(r, ["Full body"]), true);
   });
 
   it("matches any of multiple VIRYA districts", () => {
     const petto = row({ primaryDistrict: "Petto" });
     const gambe = row({ primaryDistrict: "Quadricipiti", muscleGroup: "legs" });
-    expect(catalogRowMatchesViryaDistricts(petto, ["Petto", "Gambe"])).toBe(true);
-    expect(catalogRowMatchesViryaDistricts(gambe, ["Petto", "Gambe"])).toBe(true);
+    assert.equal(catalogRowMatchesViryaDistricts(petto, ["Petto", "Gambe"]), true);
+    assert.equal(catalogRowMatchesViryaDistricts(gambe, ["Petto", "Gambe"]), true);
   });
 
   it("matches Gambe label to quadricipiti catalog row", () => {
     const r = row({ primaryDistrict: "Quadricipiti" });
-    expect(catalogRowMatchesViryaDistricts(r, ["Gambe"])).toBe(true);
+    assert.equal(catalogRowMatchesViryaDistricts(r, ["Gambe"]), true);
   });
 });

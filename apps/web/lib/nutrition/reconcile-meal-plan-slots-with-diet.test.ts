@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { reconcileMealPlanSlotsWithDiet } from "./reconcile-meal-plan-slots-with-diet";
 import type { IntelligentMealPlanRequestSlot } from "./intelligent-meal-plan-types";
 
@@ -81,13 +82,13 @@ describe("reconcileMealPlanSlotsWithDiet", () => {
       preferredMealCount: 6,
     });
 
-    expect(r.dietConfigured).toBe(true);
-    expect(r.mealCountMode).toBe("6");
-    expect(r.slots).toHaveLength(6);
-    expect(r.rebuiltFromDiet).toBe(true);
-    expect(r.slots.some((s) => s.slot === "snack_evening")).toBe(true);
-    expect(r.slots.some((s) => s.slot === "snack_pm")).toBe(true);
+    assert.equal(r.dietConfigured, true);
+    assert.equal(r.mealCountMode, "6");
+    assert.equal(r.slots.length, 6);
+    assert.equal(r.rebuiltFromDiet, true);
+    assert.equal(r.slots.some((s) => s.slot === "snack_evening"), true);
+    assert.equal(r.slots.some((s) => s.slot === "snack_pm"), true);
     const sumKcal = r.slots.reduce((a, s) => a + s.targetKcal, 0);
-    expect(sumKcal).toBeGreaterThan(1900);
+    assert.ok(sumKcal > 1900, `somma kcal ${sumKcal} attesa > 1900`);
   });
 });

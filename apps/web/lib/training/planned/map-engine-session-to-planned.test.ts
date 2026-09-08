@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { mapEngineSessionToPlannedRow } from "@/lib/training/planned/map-engine-session-to-planned";
 
 describe("mapEngineSessionToPlannedRow", () => {
@@ -15,7 +16,7 @@ describe("mapEngineSessionToPlannedRow", () => {
         expectedLoad: { loadBand: "moderate", tssHint: 50 },
       },
     });
-    expect(row.date).toBe("2026-05-27");
-    expect(row.athlete_id).toBe("athlete-1");
+    assert.equal(row.date, "2026-05-27");
+    assert.equal(row.athlete_id, "athlete-1");
   });
 });

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { applyBuilderOperationalScaling } from "@/lib/training/builder/apply-builder-operational-scaling";
 import type { GeneratedSession } from "@/lib/training/engine";
 import type { AdaptationGuidance } from "@/lib/empathy/schemas/adaptation";
@@ -73,8 +74,8 @@ describe("applyBuilderOperationalScaling", () => {
       bioenergeticModulation: null,
       recoveryStatus: "good",
     });
-    expect(out.operationalScaling.applied).toBe(false);
-    expect(out.session.blocks[1].durationMinutes).toBe(45);
+    assert.equal(out.operationalScaling.applied, false);
+    assert.equal(out.session.blocks[1].durationMinutes, 45);
   });
 
   it("scales block minutes and TSS when score is yellow", () => {
@@ -92,9 +93,15 @@ describe("applyBuilderOperationalScaling", () => {
       },
       bioenergeticModulation: null,
     });
-    expect(out.operationalScaling.applied).toBe(true);
-    expect(out.loadAdaptation.direction).toBe("reduce");
-    expect(out.session.blocks[1].durationMinutes).toBeLessThan(45);
-    expect(out.session.expectedLoad.tssHint).toBeLessThan(80);
+    assert.equal(out.operationalScaling.applied, true);
+    assert.equal(out.loadAdaptation.direction, "reduce");
+    assert.ok(
+      out.session.blocks[1].durationMinutes < 45,
+      `durata blocco ${out.session.blocks[1].durationMinutes} attesa < 45`,
+    );
+    assert.ok(
+      (out.session.expectedLoad.tssHint ?? Number.POSITIVE_INFINITY) < 80,
+      `tssHint ${out.session.expectedLoad.tssHint} atteso < 80`,
+    );
   });
 });

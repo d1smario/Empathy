@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { resolveNutritionDietDay } from "./resolve-nutrition-diet-day";
+
+function assertCloseTo(actual: number | undefined, expected: number, digits: number) {
+  const tolerance = Math.pow(10, -digits) / 2;
+  assert.ok(
+    typeof actual === "number" && Number.isFinite(actual) && Math.abs(actual - expected) < tolerance,
+    `atteso ${actual} vicino a ${expected} (${digits} decimali)`,
+  );
+}
 
 describe("resolveNutritionDietDay", () => {
   it("legge week_plan per il weekday della data", () => {
@@ -14,11 +23,11 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.weekDayKey).toBe("Tue");
-    expect(r.source).toBe("week_plan");
-    expect(r.configured).toBe(true);
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.breakfast).toBeCloseTo(30, 0);
+    assert.equal(r.weekDayKey, "Tue");
+    assert.equal(r.source, "week_plan");
+    assert.equal(r.configured, true);
+    assert.equal(r.mealCountMode, "6");
+    assertCloseTo(r.caloricDistribution?.breakfast, 30, 0);
   });
 
   it("usa caloric_split legacy se week_plan ha solo meal_count_mode", () => {
@@ -37,9 +46,9 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.configured).toBe(true);
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.lunch).toBeCloseTo(30, 0);
+    assert.equal(r.configured, true);
+    assert.equal(r.mealCountMode, "6");
+    assertCloseTo(r.caloricDistribution?.lunch, 30, 0);
   });
 
   it("legge meal_plan.caloric_split se week_plan del giorno è vuoto", () => {
@@ -56,10 +65,10 @@ describe("resolveNutritionDietDay", () => {
       week_plan: {},
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.source).toBe("legacy_root");
-    expect(r.configured).toBe(true);
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.snacks).toBeCloseTo(10, 0);
+    assert.equal(r.source, "legacy_root");
+    assert.equal(r.configured, true);
+    assert.equal(r.mealCountMode, "6");
+    assertCloseTo(r.caloricDistribution?.snacks, 10, 0);
   });
 
   it("inferisce 6 pasti da 25/25/20 + snacks=10 (tre spuntini da 10%) anche senza meal_count_mode in JSON", () => {
@@ -72,9 +81,9 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.snacks).toBe(30);
-    expect(r.caloricDistribution?.snack_am).toBeCloseTo(10, 0);
+    assert.equal(r.mealCountMode, "6");
+    assert.equal(r.caloricDistribution?.snacks, 30);
+    assertCloseTo(r.caloricDistribution?.snack_am, 10, 0);
   });
 
   it("completa % mancanti in parity Profile se c’è meal_count_mode ma nessuno split", () => {
@@ -84,8 +93,8 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.configured).toBe(true);
-    expect(r.caloricDistribution?.breakfast).toBeCloseTo(30, 0);
+    assert.equal(r.configured, true);
+    assertCloseTo(r.caloricDistribution?.breakfast, 30, 0);
   });
 
   it("corregge meal_count_mode 4 → 6 se la ripartizione è 25/25/20 + tre spuntini da 10%", () => {
@@ -99,8 +108,8 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.snack_am).toBeCloseTo(10, 0);
+    assert.equal(r.mealCountMode, "6");
+    assertCloseTo(r.caloricDistribution?.snack_am, 10, 0);
   });
 
   it("riconosce 6 pasti con snacks totale 30% (tre spuntini salvati in Profile)", () => {
@@ -114,8 +123,8 @@ describe("resolveNutritionDietDay", () => {
       },
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.mealCountMode).toBe("6");
-    expect(r.caloricDistribution?.snack_am).toBeCloseTo(10, 0);
+    assert.equal(r.mealCountMode, "6");
+    assertCloseTo(r.caloricDistribution?.snack_am, 10, 0);
   });
 
   it("legacy 4-meals + split 25/25/20/10 inferisce 6 pasti", () => {
@@ -130,6 +139,6 @@ describe("resolveNutritionDietDay", () => {
       week_plan: {},
     };
     const r = resolveNutritionDietDay(nc, "2026-05-26");
-    expect(r.mealCountMode).toBe("6");
+    assert.equal(r.mealCountMode, "6");
   });
 });

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import {
   detectUnwantedSupercompensation,
   resolveDailyBuilderLoadAdaptation,
@@ -42,8 +43,8 @@ describe("resolveDailyBuilderLoadAdaptation", () => {
       },
       bioenergeticModulation: null,
     });
-    expect(out.direction).toBe("reduce");
-    expect(out.loadScale).toBeLessThan(0.7);
+    assert.equal(out.direction, "reduce");
+    assert.ok(out.loadScale < 0.7, `loadScale ${out.loadScale} atteso < 0.7`);
   });
 
   it("can increase slightly on high score without unwanted supercompensation", () => {
@@ -59,13 +60,13 @@ describe("resolveDailyBuilderLoadAdaptation", () => {
       bioenergeticModulation: null,
       recoveryStatus: "good",
     });
-    expect(out.unwantedSupercompensation).toBe(false);
-    expect(out.loadScale).toBeGreaterThan(1);
-    expect(out.loadScale).toBeLessThanOrEqual(1.08);
+    assert.equal(out.unwantedSupercompensation, false);
+    assert.ok(out.loadScale > 1, `loadScale ${out.loadScale} atteso > 1`);
+    assert.ok(out.loadScale <= 1.08, `loadScale ${out.loadScale} atteso <= 1.08`);
   });
 
   it("flags unwanted supercompensation when protective and executed above plan", () => {
-    expect(
+    assert.equal(
       detectUnwantedSupercompensation({
         adaptationGuidance: greenGuidance,
         operationalContext: {
@@ -83,6 +84,7 @@ describe("resolveDailyBuilderLoadAdaptation", () => {
         },
         recoveryStatus: "poor",
       }),
-    ).toBe(true);
+      true,
+    );
   });
 });

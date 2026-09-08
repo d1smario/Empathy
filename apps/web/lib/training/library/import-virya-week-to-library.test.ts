@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { parsePro2BuilderSessionContract } from "@/lib/training/library/library-item-from-contract";
 import type { Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 
@@ -17,6 +18,6 @@ describe("importViryaWeekToLibrary contract gate", () => {
   };
 
   it("accepts virya-sourced builder contracts", () => {
-    expect(parsePro2BuilderSessionContract(minimalContract)).not.toBeNull();
+    assert.notEqual(parsePro2BuilderSessionContract(minimalContract), null);
   });
 });

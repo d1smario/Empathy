@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import {
   buildDietMealSlotBudgets,
   dietMealSlotSpecsForMode,
@@ -9,12 +10,12 @@ import {
 describe("diet-meal-slot-budgets", () => {
   it("normalizza distribuzione a 100%", () => {
     const n = normalizeCaloricDistribution({ breakfast: 30, lunch: 30, dinner: 20, snacks: 10 });
-    expect(Math.round(n.breakfast + n.lunch + n.dinner + n.snacks)).toBe(100);
+    assert.equal(Math.round(n.breakfast + n.lunch + n.dinner + n.snacks), 100);
   });
 
   it("6 pasti: tre spuntini con quota snacks/3 ciascuno", () => {
     const specs = dietMealSlotSpecsForMode("6");
-    expect(specs.map((s) => s.key)).toEqual([
+    assert.deepEqual(specs.map((s) => s.key), [
       "breakfast",
       "snack_am",
       "lunch",
@@ -38,15 +39,21 @@ describe("diet-meal-slot-budgets", () => {
     });
     const breakfast = rows.find((r) => r.key === "breakfast")!;
     const evening = rows.find((r) => r.key === "snack_evening")!;
-    expect(breakfast.kcal).toBe(1200);
-    expect(evening.kcal).toBe(Math.round((4000 * (10 / 3)) / 100));
-    expect(rows.reduce((s, r) => s + r.kcal, 0)).toBeGreaterThanOrEqual(3990);
+    assert.equal(breakfast.kcal, 1200);
+    assert.equal(evening.kcal, Math.round((4000 * (10 / 3)) / 100));
+    assert.ok(
+      rows.reduce((s, r) => s + r.kcal, 0) >= 3990,
+      `somma kcal ${rows.reduce((s, r) => s + r.kcal, 0)} attesa >= 3990`,
+    );
   });
 
   it("6 pasti: 25/25/20 + campo Spuntini=10 inteso come 10% per ciascuno dei 3 spuntini", () => {
     const r = resolveSixMealSnackPercentages({ breakfast: 25, lunch: 25, dinner: 20, snacks: 10 });
-    expect(r.snack_am).toBeCloseTo(10, 0);
-    expect(r.snacksTotal).toBe(30);
+    assert.ok(
+      Math.abs(r.snack_am - 10) < 0.5,
+      `snack_am ${r.snack_am} atteso vicino a 10 (0 decimali)`,
+    );
+    assert.equal(r.snacksTotal, 30);
     const rows = buildDietMealSlotBudgets({
       mealCountMode: "6",
       caloricDistribution: { breakfast: 25, lunch: 25, dinner: 20, snacks: 10 },
@@ -61,7 +68,7 @@ describe("diet-meal-slot-budgets", () => {
         snack_evening: "22:30",
       },
     });
-    expect(rows).toHaveLength(6);
-    expect(rows.find((x) => x.key === "snack_evening")!.kcal).toBe(300);
+    assert.equal(rows.length, 6);
+    assert.equal(rows.find((x) => x.key === "snack_evening")!.kcal, 300);
   });
 });
