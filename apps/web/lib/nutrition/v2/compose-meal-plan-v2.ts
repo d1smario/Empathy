@@ -168,7 +168,11 @@ export function portionHintIt(
     return `${g} g grana grattugiato`;
   }
   if (spec.foodRole === "fat" && /olio/i.test(label)) {
-    return `${g} ml olio EVO`;
+    // L'unità la decide la riga, non il ruolo: il protocollo pre-gara prescrive GRAMMI di
+    // olio (e li fa arrivare qui con `servingBasis: "dry_grams"`). Il condimento del
+    // percorso generativo continua ad arrivare con il basis "ml" della staple registry e
+    // resta identico a prima.
+    return basis === "ml" ? `${g} ml olio EVO` : `${g} g olio EVO`;
   }
   if (/latte/i.test(label)) {
     return `${g} ml latte`;

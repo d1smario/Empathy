@@ -2,7 +2,7 @@
  * Protocollo pre-gara canonico Empathy (deterministico, tutti gli atleti).
  *
  * In giorno gara: pranzo = start gara − 3 h, pasta o riso 3 g CHO/kg,
- * grana 15–20 g, olio 15 g; il resto segue il profilo Diet (kcal/% pasti).
+ * grana 15–20 g, olio 15–20 g; il resto segue il profilo Diet (kcal/% pasti).
  *
  * REGOLA 1 (Mario): il pasto pre-gara è FISSO — quelle tre voci e basta. La quota
  * proteica la porta il grana: il generativo NON aggiunge un'altra proteina e NON
@@ -28,7 +28,11 @@ export type RaceDayPreRaceLunchRule = {
   carbsPerKgG: number;
   staple: "pasta_or_rice";
   granaPadanoG: { min: number; max: number };
-  oliveOilG: number;
+  /**
+   * «15-20 g di olio»: un INTERVALLO, esattamente come il grana. Era un numero fisso (15) —
+   * l'unica delle due voci del protocollo a non ruotare, senza che il protocollo lo chieda.
+   */
+  oliveOilG: { min: number; max: number };
 };
 
 /** Protocollo classico pre-gara — identico per ogni atleta quando il calendario segnala una gara. */
@@ -37,7 +41,7 @@ export const RACE_DAY_PRE_RACE_LUNCH_PROTOCOL: RaceDayPreRaceLunchRule = {
   carbsPerKgG: 3,
   staple: "pasta_or_rice",
   granaPadanoG: { min: 15, max: 20 },
-  oliveOilG: 15,
+  oliveOilG: { min: 15, max: 20 },
 };
 
 export function getRaceDayPreRaceLunchProtocol(): RaceDayPreRaceLunchRule {
@@ -493,14 +497,30 @@ export function buildRacePreLunchDayContext(input: {
   };
 }
 
+/** Numero in italiano con una decimale: 2.4 → «2,4». */
+function formatGPerKgIt(n: number): string {
+  return n.toFixed(1).replace(".", ",");
+}
+
 export function racePreLunchContextLine(ctx: RacePreLunchDayContext): string {
   const cho = Math.round(ctx.weightKg * ctx.rule.carbsPerKgG);
   const slotLabel = PRE_RACE_SLOT_LABEL_IT[ctx.mealSlot] ?? ctx.mealSlot;
+  // Il tetto di porzione morde solo oltre i 120 kg: quando succede lo si scrive anche nella
+  // riga di contesto del giorno, non solo nel piatto — un piano che non rispetta il protocollo
+  // non deve poter passare inosservato da nessuna delle due parti.
+  const ceilingWarning =
+    ctx.weightKg > RACE_STAPLE_MAX_PROTOCOL_WEIGHT_KG
+      ? ` ATTENZIONE: con ${ctx.weightKg} kg i ${cho} g CHO non entrano in una porzione servibile ` +
+        `(tetto ${raceStaplePortionCeilingDryG("pasta")} g di pasta secca, ${raceStaplePortionCeilingDryG("riso")} g di riso): ` +
+        `il pasto serve il massimo e resta SOTTO il protocollo — verificare il peso in profilo.`
+      : "";
   return (
     `Protocollo pre-gara: ${slotLabel} ${ctx.lunchTimeLocal} (${ctx.rule.hoursBeforeRace} h prima di ${ctx.raceStartLocal} · ${ctx.raceLabel}) — ` +
-    `pasta o riso ${ctx.rule.carbsPerKgG} g CHO/kg (~${cho} g), grana ${ctx.rule.granaPadanoG.min}–${ctx.rule.granaPadanoG.max} g, olio ${ctx.rule.oliveOilG} g. ` +
+    `pasta o riso ${ctx.rule.carbsPerKgG} g CHO/kg (~${cho} g), grana ${ctx.rule.granaPadanoG.min}–${ctx.rule.granaPadanoG.max} g, ` +
+    `olio ${ctx.rule.oliveOilG.min}–${ctx.rule.oliveOilG.max} g. ` +
     `Pasto FISSO: nessuna proteina aggiunta (la porta il grana) e nessun riempimento kcal; ` +
-    `il residuo rispetto al target Diet va sugli altri pasti del giorno.`
+    `il residuo rispetto al target Diet va sugli altri pasti del giorno.` +
+    ceilingWarning
   );
 }
 
@@ -530,8 +550,13 @@ const RACE_D = {
   granaKcalPerG: 4.0,
   granaProtPerG: 0.33,
   granaFatPerG: 0.28,
-  oilKcalPerMl: 8.84,
-  oilFatPerMl: 1.0,
+  // Olio EVO per GRAMMO (884 kcal e 100 g di grasso per 100 g), non per millilitro: il
+  // protocollo prescrive grammi e la bilancia di cucina pesa grammi. La coppia
+  // `oilKcalPerMl`/`oilFatPerMl` di prima portava questi stessi valori sotto il nome
+  // sbagliato, e il piatto ci passava attraverso una conversione ml→g (×0,92) che toglieva
+  // 1,2 g di grasso e spaccava le kcal della riga in due numeri diversi.
+  oilKcalPerG: 8.84,
+  oilFatPerG: 1.0,
 };
 
 // ── Allergeni nel protocollo gara ────────────────────────────────────────────────────
@@ -584,6 +609,23 @@ function clampStep(n: number, lo: number, hi: number, step = 5): number {
   return Math.max(lo, Math.min(hi, rounded));
 }
 
+/**
+ * Grammi di una voce del protocollo espressa come intervallo («grana 15-20 g», «olio
+ * 15-20 g»): rotazione deterministica sul seed del giorno, passo 1 g, estremi inclusi.
+ *
+ * È il meccanismo che il grana usava già da solo. L'olio, che il protocollo scrive nella
+ * stessa identica forma, era invece inchiodato al minimo: due voci gemelle con due
+ * comportamenti diversi, senza che il nutrizionista lo abbia mai chiesto. Ora la regola è
+ * una sola e la scrivono entrambe.
+ *
+ * `phase` distingue le due estrazioni: stesso seed e stessa regola, ma non la stessa
+ * pescata — altrimenti l'olio sarebbe la copia carbone del grana, il che non è «ruotare».
+ */
+function protocolRangeGrams(seed: number, range: { min: number; max: number }, phase = 0): number {
+  const span = Math.max(1, range.max - range.min + 1);
+  return clampStep(range.min + ((Math.abs(seed) + phase) % span), range.min, range.max, 1);
+}
+
 function item(
   name: string,
   portionHint: string,
@@ -603,10 +645,91 @@ function item(
   };
 }
 
-export function dryStapleGramsForTargetCarbs(staple: RaceStaple, targetCarbsG: number): number {
+/**
+ * Peso oltre il quale il protocollo NON viene più servito per intero — ed è l'unico motivo
+ * per cui un tetto di porzione sopravvive qui.
+ *
+ * Il tetto che c'era prima (320 g di pasta, 300 g di riso) non era un numero del
+ * nutrizionista: era la guardia generica del compositore, la stessa `clampStep` che tiene il
+ * pollo fra 65 e 95 g, ereditata dal file com'era PRIMA che la Regola 1 esistesse. Sopra ~80
+ * kg smetteva di essere una guardia e diventava lei il numero: l'atleta da 95 kg ha ricevuto
+ * 320 g di pasta su 6 piani gara (21/08→06/09) e 300 g di riso su altri 6 (17/08→31/08) —
+ * sempre il tetto, mai il protocollo — cioè 240 g di CHO, 2,53 g/kg invece di 3. Silenzioso:
+ * la riga del piatto continuava a dichiarare «~285 g CHO (3 g/kg)».
+ *
+ * Il protocollo ora passa intero a qualunque peso realistico (a 110 kg sono 440 g di pasta
+ * secca). Il tetto resta SOLO come difesa da un peso fuori scala — in profilo capita il peso
+ * in libbre: 200 lb digitate come kg chiederebbero 800 g di pasta secca — ed è tarato sul
+ * fabbisogno di un atleta da 120 kg, oltre qualunque peso di endurance reale (il più pesante
+ * in piattaforma ne pesa 95). Quando morde non è muto: la riga dice i CHO davvero serviti,
+ * quelli chiesti dal protocollo e i g/kg mancanti (vedi `composeRacePreLunchMainMeal`).
+ */
+export const RACE_STAPLE_MAX_PROTOCOL_WEIGHT_KG = 120;
+
+/** Grammi a crudo che coprono 3 g/kg di un atleta da 120 kg: 480 g di pasta, 450 g di riso. */
+export function raceStaplePortionCeilingDryG(staple: RaceStaple): number {
   const choPerG = staple === "pasta" ? RACE_D.pastaDryChoPerG : RACE_D.riceDryChoPerG;
+  const maxCarbsG = RACE_STAPLE_MAX_PROTOCOL_WEIGHT_KG * RACE_DAY_PRE_RACE_LUNCH_PROTOCOL.carbsPerKgG;
+  return Math.round(maxCarbsG / choPerG / 5) * 5;
+}
+
+/** Porzione minima servibile a crudo: sotto non è un piatto, è un cucchiaio. */
+const RACE_STAPLE_MIN_DRY_G: Record<RaceStaple, number> = { pasta: 50, riso: 45 };
+
+/**
+ * Sotto questo divario (g CHO) il tetto non ha davvero morso: è l'arrotondamento della
+ * porzione al passo da 5 g sulla bilancia, non un protocollo mancato.
+ */
+const RACE_STAPLE_CEILING_TOLERANCE_CHO_G = 2;
+
+/** Porzione dello staple con il conto di quanto protocollo è arrivato nel piatto. */
+export type RaceStapleServing = {
+  staple: RaceStaple;
+  /** Grammi a crudo serviti (passo 5 g, bilancia da cucina). */
+  dryG: number;
+  /** CHO chiesti dal protocollo (peso × g/kg). */
+  targetCarbsG: number;
+  /** CHO che quei grammi portano davvero. */
+  servedCarbsG: number;
+  /** Tetto di porzione dello staple, per la traccia. */
+  ceilingDryG: number;
+  /** true = il protocollo NON è stato raggiunto perché la porzione ha toccato il tetto. */
+  cappedByPortionCeiling: boolean;
+  /** g CHO mancanti al protocollo (0 quando è servito intero). */
+  shortfallCarbsG: number;
+};
+
+/**
+ * Grammi a crudo per i CHO del protocollo, CON il verdetto: servito intero o tappato.
+ * È questa la funzione da usare quando il numero va mostrato o giudicato — quella che
+ * restituisce solo i grammi non permette di accorgersi che il tetto ha morso.
+ */
+export function dryStapleServingForTargetCarbs(
+  staple: RaceStaple,
+  targetCarbsG: number,
+): RaceStapleServing {
+  const choPerG = staple === "pasta" ? RACE_D.pastaDryChoPerG : RACE_D.riceDryChoPerG;
+  const ceilingDryG = raceStaplePortionCeilingDryG(staple);
   const raw = targetCarbsG / choPerG;
-  return staple === "pasta" ? clampStep(raw, 50, 320) : clampStep(raw, 45, 300);
+  const dryG = clampStep(raw, RACE_STAPLE_MIN_DRY_G[staple], ceilingDryG);
+  const servedCarbsG = Math.round(dryG * choPerG);
+  const wantedCarbsG = Math.round(targetCarbsG);
+  const gap = Math.max(0, wantedCarbsG - servedCarbsG);
+  const capped = raw > ceilingDryG && gap > RACE_STAPLE_CEILING_TOLERANCE_CHO_G;
+  return {
+    staple,
+    dryG,
+    targetCarbsG: wantedCarbsG,
+    servedCarbsG,
+    ceilingDryG,
+    cappedByPortionCeiling: capped,
+    shortfallCarbsG: capped ? gap : 0,
+  };
+}
+
+/** Solo i grammi a crudo. Per la traccia del tetto usa `dryStapleServingForTargetCarbs`. */
+export function dryStapleGramsForTargetCarbs(staple: RaceStaple, targetCarbsG: number): number {
+  return dryStapleServingForTargetCarbs(staple, targetCarbsG).dryG;
 }
 
 type PreRaceMediterraneanProtein = "pollo" | "pesce" | "uova" | "tofu";
@@ -745,20 +868,23 @@ export function composeRacePreLunchMainMeal(
   const rule = raceCtx.rule;
   const targetCarbsG = Math.max(40, Math.round(raceCtx.weightKg * rule.carbsPerKgG));
   const staple = pickRacePreLunchStaple(seed, dayCtx, excluded);
-  const carbG = dryStapleGramsForTargetCarbs(staple, targetCarbsG);
-  const granaG = clampStep(
-    rule.granaPadanoG.min + (Math.abs(seed) % (Math.max(1, rule.granaPadanoG.max - rule.granaPadanoG.min + 1))),
-    rule.granaPadanoG.min,
-    rule.granaPadanoG.max,
-    1,
-  );
-  const oilG = rule.oliveOilG;
-  const oilMl = Math.round(oilG / 0.92);
+  const serving = dryStapleServingForTargetCarbs(staple, targetCarbsG);
+  const carbG = serving.dryG;
+  const granaG = protocolRangeGrams(seed, rule.granaPadanoG);
+  // Mezzo intervallo di sfasamento rispetto al grana (span 6 → phase 3): stessa regola e
+  // stesso seed, ma le due voci non escono mai appaiate.
+  const oilG = protocolRangeGrams(seed, rule.oliveOilG, 3);
 
-  const carbLine =
-    staple === "pasta"
-      ? `${carbG} g pasta secca (peso a crudo) — ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`
-      : `${carbG} g riso (peso a crudo) — ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`;
+  const stapleLabel = staple === "pasta" ? "pasta secca" : "riso";
+  // Quando il tetto morde, la riga NON può continuare a dichiarare i CHO chiesti: dice quelli
+  // serviti e, di seguito, quanto protocollo manca. È l'unica traccia che l'atleta e il coach
+  // leggono davvero, perché viaggia con il piatto fin dentro al piano persistito.
+  const carbLine = serving.cappedByPortionCeiling
+    ? `${carbG} g ${stapleLabel} (peso a crudo) — ~${serving.servedCarbsG} g CHO ` +
+      `(${formatGPerKgIt(serving.servedCarbsG / Math.max(1, raceCtx.weightKg))} g/kg): ` +
+      `TETTO PORZIONE ${serving.ceilingDryG} g, protocollo ${rule.carbsPerKgG} g/kg NON raggiunto — ` +
+      `chiesti ${serving.targetCarbsG} g CHO, ne mancano ${serving.shortfallCarbsG}. Verificare il peso in profilo.`
+    : `${carbG} g ${stapleLabel} (peso a crudo) — ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`;
   const carbKcal = carbG * (staple === "pasta" ? RACE_D.pastaDryKcalPerG : RACE_D.riceDryKcalPerG);
 
   const items: RaceMealItem[] = [
@@ -767,7 +893,11 @@ export function composeRacePreLunchMainMeal(
       carbLine,
       carbKcal,
       "cho_heavy",
-      "Protocollo pre-gara: amido complesso a densità CHO/kg (canonico piattaforma).",
+      serving.cappedByPortionCeiling
+        ? `Protocollo pre-gara: porzione al tetto servibile (${serving.ceilingDryG} g a crudo). ` +
+          `I ${rule.carbsPerKgG} g CHO/kg per ${raceCtx.weightKg} kg (${serving.targetCarbsG} g) non entrano in un piatto: ` +
+          `serviti ${serving.servedCarbsG} g. Peso in profilo da verificare.`
+        : "Protocollo pre-gara: amido complesso a densità CHO/kg (canonico piattaforma).",
       RACE_STAPLE_CLASSES[staple],
     ),
     item(
@@ -780,10 +910,17 @@ export function composeRacePreLunchMainMeal(
     ),
     item(
       "Olio extravergine d'oliva",
-      `${oilG} g olio EVO (~${oilMl} ml)`,
-      oilMl * RACE_D.oilKcalPerMl,
+      // In GRAMMI e basta. La parentesi «(~16 ml)» che c'era prima non era un di più: a valle
+      // il payload la ri-serviva come «15 ml», il finalize la riconvertiva in 13,8 g e il
+      // piatto perdeva 1,2 g di grasso finendo SOTTO il minimo del protocollo.
+      `${oilG} g olio EVO`,
+      // Un piatto, un numero: le kcal sono quelle dei grammi serviti (8,84 kcal/g), le stesse
+      // che la composizione canonica ricava dalla riga. Prima erano quelle di 16 ml (141) e
+      // divergevano da quelle dei nutrienti della stessa voce (122).
+      oilG * RACE_D.oilKcalPerG,
       "fat",
-      "Protocollo pre-gara: olio 15 g.",
+      `Protocollo pre-gara: olio ${rule.oliveOilG.min}–${rule.oliveOilG.max} g — ` +
+        `${oilG} g, cioè ${Math.round(oilG * RACE_D.oilFatPerG)} g di grasso.`,
       [],
     ),
   ];

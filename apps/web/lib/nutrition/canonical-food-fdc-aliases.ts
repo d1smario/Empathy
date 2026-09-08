@@ -150,7 +150,18 @@ export const CANONICAL_FOOD_TO_FDC_ID: Record<string, number | undefined> = {
   yogurt_greek: 170903, // Yogurt, Greek, plain, lowfat
   kefir: 170904, // Kefir, lowfat, plain, LIFEWAY
   soymilk: 172446, // Soymilk, original and vanilla, unfortified
-  cheese_hard: 171247,
+  /**
+   * Grana Padano → «Cheese, parmesan, HARD» (170848), non «grated» (171247).
+   *
+   * La riga del grattugiato porta 13,9 g di carboidrati per 100 g: è l'antiagglomerante
+   * (cellulosa) del formaggio già grattugiato in busta, non il formaggio. Un grana vero
+   * di carboidrati non ne ha praticamente. Con l'alias sbagliato il payload mostrava
+   * 2,5 g di CHO su 18 g di grana — un numero che il nutrizionista non riconoscerebbe —
+   * e divergeva da quello che il motore persiste in `meal_item`.
+   * La riga «hard» (392 kcal · 3,2 CHO · 35,8 PRO · 25,0 FAT) è il formaggio duro
+   * stagionato, cioè quello che il protocollo pre-gara prescrive davvero.
+   */
+  cheese_hard: 170848,
   ricotta_cheese: 170851,
   cottage_cheese: 173417,
   mozzarella: 170847, // Cheese, mozzarella, part skim milk

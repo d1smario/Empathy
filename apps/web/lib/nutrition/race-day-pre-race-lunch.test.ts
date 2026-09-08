@@ -28,7 +28,9 @@ test("protocollo pre-gara canonico: valori fissi piattaforma", () => {
   assert.deepEqual(p, RACE_DAY_PRE_RACE_LUNCH_PROTOCOL);
   assert.equal(p.hoursBeforeRace, 3);
   assert.equal(p.carbsPerKgG, 3);
-  assert.equal(p.oliveOilG, 15);
+  // «15-20 g di olio»: intervallo, come il grana — non più un 15 fisso (vedi P3).
+  assert.deepEqual(p.oliveOilG, { min: 15, max: 20 });
+  assert.deepEqual(p.granaPadanoG, { min: 15, max: 20 });
 });
 
 test("gara 220 min start 13:30 → pranzo 10:30 (3 h prima)", () => {
