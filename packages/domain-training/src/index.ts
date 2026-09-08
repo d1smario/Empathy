@@ -128,11 +128,20 @@ export { empathyCardioImpulseDailyFromSession } from "./empathy-cardio-impulse-d
 export { empathyExternalDailyImpulseFromSession } from "./empathy-external-daily-impulse";
 
 export {
+  ATHLETE_HR_THRESHOLDS_UNAVAILABLE,
   EMPATHY_LOAD_METHOD_VERSION,
+  athleteHrThresholdsFromProfile,
   inferEmpathyTrainingLoadForSession,
+  inferEmpathyTrainingLoadDetailForSession,
   trainingLoadFromPowerSession,
   trainingLoadFromHrSession,
-  resolveLthrBpm,
+  resolveAthleteLthrBpm,
+} from "./empathy-infer-training-load";
+export type {
+  AthleteHrThresholds,
+  EmpathyTrainingLoadDetail,
+  EmpathyTrainingLoadMethod,
+  EmpathyTrainingLoadSessionInput,
 } from "./empathy-infer-training-load";
 
 export {

@@ -40,6 +40,7 @@ import {
   type SessionKpiTile,
   type SessionSecondaryRow,
 } from "@/lib/training/session-detail-summary";
+import { useAthleteHrThresholds } from "@/lib/training/physiology/use-athlete-hr-thresholds";
 import {
   type GeoPoint,
   isGeoPoint,
@@ -527,9 +528,14 @@ export function CalendarDaySessionDetail({
     if (!primary) return dayExecuted;
     return [primary, ...dayExecuted.filter((w) => w.id !== primary.id)];
   }, [dayExecuted]);
+  // Soglie FC dell'atleta (anagrafica): senza, il carico delle sedute a sola FC è «—».
+  const athleteHrThresholds = useAthleteHrThresholds(athleteId);
   const vms = useMemo(
-    () => sortedExecuted.map((w) => buildSessionDetailVM(w, { ftpW: athleteFtpWatts ?? null })),
-    [sortedExecuted, athleteFtpWatts],
+    () =>
+      sortedExecuted.map((w) =>
+        buildSessionDetailVM(w, { ftpW: athleteFtpWatts ?? null, athlete: athleteHrThresholds }),
+      ),
+    [sortedExecuted, athleteFtpWatts, athleteHrThresholds],
   );
   const subtitle = t("subtitle", { count: dayExecuted.length, date: selectedDate });
 

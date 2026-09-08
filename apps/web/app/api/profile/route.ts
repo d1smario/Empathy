@@ -170,6 +170,17 @@ export async function GET(req: NextRequest) {
       height_cm: fallbackHeight,
       resting_hr_bpm: asNumber(profileData.resting_hr_bpm) ?? restingHrFromTrace,
       max_hr_bpm: asNumber(profileData.max_hr_bpm) ?? maxHrFromTrace,
+      /**
+       * FC max DICHIARATA, senza il ripiego dalle tracce.
+       *
+       * `max_hr_bpm` qui sopra cade su `maxHrFromTrace`, cioè sul massimo dei picchi
+       * delle ultime sedute: va bene per mostrare all'atleta «la FC più alta che hai
+       * toccato», NON per derivarne una soglia. L'hrTSS calcolato su una soglia presa
+       * dal picco della singola seduta è il difetto che gonfiava il carico delle
+       * uscite facili fino a +150%: chi calcola un carico deve leggere QUESTO campo,
+       * che è vuoto quando l'atleta non ha dichiarato nulla — ed è giusto che lo sia.
+       */
+      max_hr_bpm_declared: asNumber(profileData.max_hr_bpm),
     };
 
     const mergedPhysiology: Record<string, unknown> = {

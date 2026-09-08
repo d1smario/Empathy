@@ -8,6 +8,7 @@ import type {
 } from "@/lib/empathy/schemas";
 import type { ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
 import { computeDailyLoadSeries } from "@/lib/training/analytics/load-series";
+import { loadAthleteHrThresholdsForRead } from "@/lib/training/athlete-hr-thresholds";
 import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-signals";
 import { resolveCanonicalPhysiologyState } from "@/lib/physiology/profile-resolver";
 
@@ -277,7 +278,12 @@ export async function resolveInternalLoadState(
   const plannedRows = (plannedRes.data ?? []) as PlannedWorkoutRow[];
   const deviceRows = ((deviceExportsRes.data ?? []) as Array<Record<string, unknown>>) ?? [];
   const panelRows = ((panelsRes.data ?? []) as Array<Record<string, unknown>>) ?? [];
-  const loadSeries = computeDailyLoadSeries(executedRows);
+  const athleteHrThresholds = await loadAthleteHrThresholdsForRead(
+    supabase,
+    input.athleteId,
+    "internal-load-resolver",
+  );
+  const loadSeries = computeDailyLoadSeries(executedRows, { athlete: athleteHrThresholds });
   const latestLoad = loadSeries.at(-1);
   const plannedTssNext7d = plannedRows.reduce((sum, row) => sum + Math.max(0, asNum(row.tss_target) ?? 0), 0);
 

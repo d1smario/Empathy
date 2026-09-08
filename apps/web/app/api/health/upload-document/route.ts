@@ -197,11 +197,44 @@ export async function POST(req: NextRequest) {
     else if (bucket && storageErr) parts.push(`Storage: ${storageErr}`);
     else if (!bucket) parts.push("Storage non configurato (HEALTH_UPLOADS_BUCKET)");
 
+    /**
+     * Verità sull'esito, non ottimismo: la lettura automatica funziona solo sui PDF **testuali**.
+     * Su foto e scansioni `decode.parsed` è vuoto e non nasce nessuno staging run — prima questo
+     * caso tornava «Documento registrato», indistinguibile da un import riuscito, e l'utente
+     * restava con un pannello vuoto senza sapere perché (audit Health: 4 upload reali su 4).
+     */
+    const extractedFieldCount = Object.keys(decode.parsed).length;
+    const manualEntryRequired =
+      extractedFieldCount === 0 &&
+      decode.vlmProposals.length === 0 &&
+      (decode.importStatus === "needs_manual_review" || decode.importStatus === "failed");
+
+    const message = manualEntryRequired
+      ? "Nessun valore letto dal documento: la lettura automatica funziona solo sui PDF di testo, " +
+        (decode.isImage
+          ? "e questa è una foto"
+          : decode.isPdfScan
+            ? "e questo PDF è una scansione"
+            : "e questo formato non è leggibile") +
+        ". " +
+        (bucket && storagePath
+          ? "Il file è stato conservato: "
+          : "Il file non è stato conservato, tieni il referto a portata di mano: ") +
+        "inserisci i valori a mano con «Inserimento manuale»."
+      : parts.length
+        ? `Registrato. ${parts.join(" · ")}.`
+        : "Documento registrato.";
+
     return NextResponse.json(
       {
         ok: true as const,
         panelId,
         parsedKeys: Object.keys(decode.parsed),
+        extractedFieldCount,
+        /** `false` quando il documento non ha prodotto nessun valore: la UI non deve festeggiare. */
+        extracted: !manualEntryRequired,
+        manualEntryRequired,
+        fileRetained: Boolean(storagePath),
         normalization: normalizationSummary,
         storagePath,
         importStatus: decode.importStatus,
@@ -209,7 +242,7 @@ export async function POST(req: NextRequest) {
         reviewUrl: normalizationSummary?.stagingRunId
           ? `/health/staging/${normalizationSummary.stagingRunId}`
           : null,
-        message: parts.length ? `Registrato. ${parts.join(" · ")}.` : "Documento registrato.",
+        message,
       },
       { headers: NO_STORE },
     );

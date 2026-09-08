@@ -9,6 +9,7 @@ import { resolveAthleteMemorySlice } from "@/lib/memory/athlete-memory-resolver"
 import { summarizeReadSpineCoverage } from "@/lib/platform/read-spine-coverage";
 import { resolveLatestRecoverySummary } from "@/lib/reality/recovery-summary";
 import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
+import { loadAthleteHrThresholdsForRead } from "@/lib/training/athlete-hr-thresholds";
 import {
   buildCrossChannelSessionVms,
   type CrossChannelCgmRow,
@@ -446,7 +447,15 @@ export async function GET(req: NextRequest) {
     const plannedRows = (plannedData ?? []) as PlannedWorkoutAnalyticsRow[];
     const executedSessions = executedWorkoutsFromAnalyticsRows(rows, athleteId);
     const wellnessByDate = wellnessSignalsByDateFromLoadRows(enrichedRows as ExecutedWorkoutLoadRow[]);
-    const series = computeDailyLoadSeries(rows as ExecutedWorkoutLoadRow[], { wellnessByDate });
+    const athleteHrThresholds = await loadAthleteHrThresholdsForRead(
+      db,
+      athleteId,
+      "api/training/analytics",
+    );
+    const series = computeDailyLoadSeries(rows as ExecutedWorkoutLoadRow[], {
+      athlete: athleteHrThresholds,
+      wellnessByDate,
+    });
     const compareSeries = buildCompareSeries(from, to, plannedRows, series);
     const latest = series.at(-1) ?? null;
     const twinState = athleteMemory.twin;

@@ -29,6 +29,7 @@ import {
 import { TrainingCalendarTelemetryChart } from "@/components/training/TrainingCalendarTelemetryChart";
 import { TrainingPowerProfileRadar } from "@/components/training/TrainingPowerProfileRadar";
 import { resolveExecutedTrainingLoad } from "@/lib/training/infer-executed-training-load";
+import { useAthleteHrThresholds } from "@/lib/training/physiology/use-athlete-hr-thresholds";
 import {
   resolveExecutedAvgPowerW,
   resolveExecutedKcal,
@@ -104,6 +105,10 @@ export function TrainingCalendarAnalyzer({
   const [overlayOn, setOverlayOn] = useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingPlannedId, setDeletingPlannedId] = useState<string | null>(null);
+
+  // Soglie FC **dell'atleta** (anagrafica): senza, l'hrTSS non si calcola e il KPI
+  // «Carico» mostra «—» invece di un numero di ripiego.
+  const athleteHrThresholds = useAthleteHrThresholds(athleteId);
 
   const primaryExecuted = useMemo(() => pickPrimaryExecutedWorkout(dayExecuted), [dayExecuted]);
 
@@ -379,7 +384,7 @@ export function TrainingCalendarAnalyzer({
     const w = primaryExecuted;
     if (!w) {
       return {
-        tss: 0,
+        tss: null as number | null,
         kcal: 0,
         wattAvg: null as number | null,
         totalMin: 0,
@@ -396,6 +401,7 @@ export function TrainingCalendarAnalyzer({
       durationMinutes: m,
       traceSummary: tr,
     });
+    // `null` = carico non calcolabile: il KPI mostra «—», non un ripiego.
     const tss = resolveExecutedTrainingLoad({
       storedTss: w.tss,
       durationMinutes: m,
@@ -406,6 +412,7 @@ export function TrainingCalendarAnalyzer({
         "training_load_score",
         "activity_training_load",
       ]),
+      athlete: athleteHrThresholds,
     });
     const kcal = resolveExecutedKcal({
       storedKcal: w.kcal,
@@ -425,7 +432,7 @@ export function TrainingCalendarAnalyzer({
       multiSessionDay: dayExecuted.length > 1 && dayTotalMin > m + 1,
       dayTotalMin,
     };
-  }, [dayExecuted, primaryExecuted]);
+  }, [dayExecuted, primaryExecuted, athleteHrThresholds]);
 
   function formatDayDurationMin(min: number): string {
     if (!Number.isFinite(min) || min <= 0) return "—";
@@ -675,7 +682,9 @@ export function TrainingCalendarAnalyzer({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
             <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiLoadSession")}</div>
-            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">{dayRefKpis.tss.toFixed(0)}</div>
+            <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-orange-50">
+              {dayRefKpis.tss != null ? dayRefKpis.tss.toFixed(0) : "—"}
+            </div>
           </div>
           <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.08] px-4 py-3">
             <div className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("kpiKcalSession")}</div>

@@ -128,6 +128,11 @@ export async function uploadHealthDocument(input: {
   importStatus?: string;
   stagingRunId?: string | null;
   reviewUrl?: string | null;
+  /** `false` quando il documento non ha prodotto nessun valore (foto / PDF scansionato). */
+  extracted?: boolean;
+  manualEntryRequired?: boolean;
+  extractedFieldCount?: number;
+  fileRetained?: boolean;
 }> {
   const form = new FormData();
   form.set("athleteId", input.athleteId);
@@ -150,6 +155,10 @@ export async function uploadHealthDocument(input: {
     importStatus?: string;
     stagingRunId?: string | null;
     reviewUrl?: string | null;
+    extracted?: boolean;
+    manualEntryRequired?: boolean;
+    extractedFieldCount?: number;
+    fileRetained?: boolean;
   };
   if (!res.ok || !json.ok) {
     return { ok: false, error: json.error || "Upload failed" };
@@ -160,6 +169,10 @@ export async function uploadHealthDocument(input: {
     importStatus: json.importStatus,
     stagingRunId: json.stagingRunId ?? null,
     reviewUrl: json.reviewUrl ?? null,
+    extracted: json.extracted !== false,
+    manualEntryRequired: json.manualEntryRequired === true,
+    extractedFieldCount: json.extractedFieldCount,
+    fileRetained: json.fileRetained,
   };
 }
 
@@ -217,7 +230,10 @@ export async function fetchHealthSystemMap(athleteId: string): Promise<{
       .limit(120),
     sb
       .from("interpretation_staging_runs")
-      .select("id, domain, status, confidence, created_at, source_refs")
+      // `trigger_source` serve a distinguere le run per cui l'archivio offre «Apri review»
+      // (upload VLM storici, inserimento manuale): senza questa colonna il filtro lato UI
+      // confrontava sempre `undefined` e la mappa panel→run restava vuota.
+      .select("id, domain, status, confidence, created_at, source_refs, trigger_source")
       .eq("athlete_id", trimmedAthleteId)
       .in("domain", ["health", "physiology", "bioenergetics", "cross_module"])
       .in("status", ["ready", "pending_validation", "draft"])
@@ -398,4 +414,100 @@ export async function applyHealthStagingPatches(input: {
     return { ok: false, error: json.error || "Confirmation failed" };
   }
   return { ok: true, confirmedCount: json.confirmedCount };
+}
+
+/* ------------------------------------------------------------------ */
+/* Inserimento manuale referto                                          */
+/* ------------------------------------------------------------------ */
+
+/** Specchio client di `ManualMarkerOption` (`lib/health/manual-lab-entry.ts`). */
+export type HealthManualMarkerOption = {
+  key: string;
+  panelType: string;
+  label: string;
+  canonicalUnit: string | null;
+  acceptedUnits: string[];
+};
+
+export type HealthManualEntryFieldError = {
+  code: string;
+  field: "marker" | "unit" | "value" | "sampleDate" | "entries";
+  message: string;
+  index?: number;
+  markerKey?: string;
+};
+
+/**
+ * Vocabolario dei marcatori inseribili a mano. Passa dal server perché la sola fonte è
+ * `HEALTH_MARKERS` (`lib/health/health-ontology`, `server-only`): nessuna seconda ontologia
+ * duplicata nel bundle client.
+ */
+export async function fetchHealthManualMarkerCatalog(panelType?: string): Promise<{
+  ok: boolean;
+  markers: HealthManualMarkerOption[];
+  panelTypes: string[];
+  error?: string;
+}> {
+  const headers = await buildSupabaseAuthHeaders();
+  const qs = panelType ? `?panelType=${encodeURIComponent(panelType)}` : "";
+  const res = await fetch(`/api/health/manual-entry${qs}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers,
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    markers?: HealthManualMarkerOption[];
+    panelTypes?: string[];
+    error?: string;
+  };
+  if (!res.ok || !json.ok) {
+    return { ok: false, markers: [], panelTypes: [], error: json.error || "Vocabolario non disponibile" };
+  }
+  return { ok: true, markers: json.markers ?? [], panelTypes: json.panelTypes ?? [] };
+}
+
+export type HealthManualEntryInput = {
+  athleteId: string;
+  panelType: string;
+  sampleDate: string;
+  entries: Array<{ markerKey: string; value: string; unit: string }>;
+  note?: string;
+};
+
+/**
+ * Crea la proposta manuale: pannello + staging run in `pending_validation`. La conferma resta
+ * del coach approvato / platform admin (`/api/health/staging-runs/[id]/apply`).
+ */
+export async function submitHealthManualEntry(input: HealthManualEntryInput): Promise<{
+  ok: boolean;
+  error?: string;
+  message?: string;
+  reviewUrl?: string | null;
+  errors?: HealthManualEntryFieldError[];
+}> {
+  const headers = await buildSupabaseAuthHeaders();
+  headers.set("Content-Type", "application/json");
+  const res = await fetch("/api/health/manual-entry", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers,
+    body: JSON.stringify(input),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    message?: string;
+    reviewUrl?: string | null;
+    errors?: HealthManualEntryFieldError[];
+  };
+  if (!res.ok || !json.ok) {
+    return {
+      ok: false,
+      error: json.message || json.error || "Inserimento manuale non riuscito",
+      errors: json.errors,
+    };
+  }
+  return { ok: true, message: json.message, reviewUrl: json.reviewUrl ?? null };
 }

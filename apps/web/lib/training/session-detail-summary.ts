@@ -8,7 +8,7 @@
  * canoniche e a `garmin-activity-materialize.ts` per il rimap Garmin.
  */
 
-import type { ExecutedWorkout } from "@empathy/domain-training";
+import type { AthleteHrThresholds, ExecutedWorkout } from "@empathy/domain-training";
 import {
   pickMetric,
   pickSeries,
@@ -175,6 +175,7 @@ function buildKpiTiles(
   powerStats: { avg: number | null },
   hrStats: { avg: number | null },
   ftpW: number | null,
+  athleteHr: AthleteHrThresholds,
 ): SessionKpiTile[] {
   const distanceKm = pickMetric(trace, ["distance_km", "distanceKm", "km"]);
   const tiles: SessionKpiTile[] = [];
@@ -213,6 +214,8 @@ function buildKpiTiles(
     });
   }
 
+  // `null` = carico non calcolabile (nessun segnale di intensità, o atleta senza soglie):
+  // la tile mostra «—». Mai un ripiego per durata travestito da misura.
   const trainingLoad = resolveExecutedTrainingLoad({
     storedTss: w.tss,
     durationMinutes: Math.max(0, Number(w.durationMinutes ?? 0)),
@@ -223,10 +226,11 @@ function buildKpiTiles(
       "training_load_score",
       "activity_training_load",
     ]),
+    athlete: athleteHr,
   });
   tiles.push({
     label: "Carico",
-    value: trainingLoad > 0 ? fmtInt(trainingLoad) : "—",
+    value: trainingLoad != null && trainingLoad > 0 ? fmtInt(trainingLoad) : "—",
     accent: "violet",
   });
 
@@ -408,7 +412,14 @@ function buildSecondaryTable(trace: Record<string, unknown> | null): {
 
 export function buildSessionDetailVM(
   workout: ExecutedWorkout,
-  opts?: { ftpW?: number | null },
+  opts: {
+    ftpW?: number | null;
+    /**
+     * Soglie FC **dell'atleta** (`athleteHrThresholdsFromProfile`). Obbligatorie: senza,
+     * il carico delle sedute a sola FC non è calcolabile e la tile mostra «—».
+     */
+    athlete: AthleteHrThresholds;
+  },
 ): SessionDetailViewModel {
   const trace = traceRecord(workout);
   const sport =
@@ -427,7 +438,7 @@ export function buildSessionDetailVM(
     max: ["hr_max_bpm", "max_hr", "max_heart_rate", "max_heartrate"],
   });
 
-  const kpi = buildKpiTiles(workout, trace, powerStats, hrStats, opts?.ftpW ?? null);
+  const kpi = buildKpiTiles(workout, trace, powerStats, hrStats, opts.ftpW ?? null, opts.athlete);
   const { rows, series } = buildSecondaryTable(trace);
 
   const fileName = pickText(trace, ["imported_file_name"]);

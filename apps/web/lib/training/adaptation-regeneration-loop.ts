@@ -3,6 +3,7 @@ import type { TwinState } from "@/lib/empathy/schemas/twin";
 import type { RecoverySummary } from "@/lib/reality/recovery-summary";
 import type { TrainingDayOperationalContext } from "@/lib/training/day-operational-context";
 import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
+import { loadAthleteHrThresholdsForRead } from "@/lib/training/athlete-hr-thresholds";
 
 type PlannedWorkoutLoopRow = {
   date: string | null;
@@ -132,7 +133,14 @@ export async function resolveAdaptationRegenerationLoop(input: {
     throw new Error(executedError?.message ?? plannedError?.message ?? "Adaptation loop resolution failed");
   }
 
-  const series = computeDailyLoadSeries((executedData ?? []) as ExecutedWorkoutLoadRow[]);
+  const athleteHrThresholds = await loadAthleteHrThresholdsForRead(
+    supabase,
+    input.athleteId,
+    "adaptation-regeneration-loop",
+  );
+  const series = computeDailyLoadSeries((executedData ?? []) as ExecutedWorkoutLoadRow[], {
+    athlete: athleteHrThresholds,
+  });
   const compareSeries = buildCompareSeries(from, to, (plannedData ?? []) as PlannedWorkoutLoopRow[], series);
   const planLast7 = summarizePlanWindow(compareSeries);
   const lowExecutionEvidence =

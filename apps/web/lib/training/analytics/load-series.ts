@@ -1,6 +1,7 @@
 import {
   computeEmpathyLoadMetricsV2,
   inferEmpathyTrainingLoadForSession,
+  type AthleteHrThresholds,
   type EmpathyLoadMetricsDayInput,
   type EmpathyLoadWellnessInput,
 } from "@empathy/domain-training";
@@ -55,6 +56,8 @@ const HR_KEYS = [
   "averageHeartRateInBeatsPerMinute",
 ];
 
+const POWER_KEYS = ["power_avg_w", "avg_power_w", "avg_power", "normalized_power_w", "np_w"];
+
 function asNum(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
@@ -73,18 +76,28 @@ function pickMetric(trace: Record<string, unknown> | null, keys: string[]): numb
   return null;
 }
 
-function sessionTrainingLoad(row: ExecutedWorkoutLoadRow): number {
+/**
+ * Carico della singola seduta. `null` = non calcolabile: la seduta NON entra nelle
+ * serie giornaliere invece di entrarci con un numero di ripiego.
+ */
+function sessionTrainingLoad(
+  row: ExecutedWorkoutLoadRow,
+  athlete: AthleteHrThresholds,
+): number | null {
   const stored = Number(row.tss ?? 0);
   if (stored > 0) return stored;
   const hrAvg = pickMetric(row.trace_summary, HR_KEYS);
   return inferEmpathyTrainingLoadForSession({
     durationMinutes: Math.max(0, Number(row.duration_minutes ?? 0)),
     hrAvgBpm: hrAvg,
+    avgPowerW: pickMetric(row.trace_summary, POWER_KEYS),
+    athlete,
   });
 }
 
 function rowsToV2Input(
   rows: ExecutedWorkoutLoadRow[],
+  athlete: AthleteHrThresholds,
   wellnessByDate?: Map<string, EmpathyLoadWellnessInput>,
 ): EmpathyLoadMetricsDayInput[] {
   const wellness = wellnessByDate ?? wellnessSignalsByDateFromLoadRows(rows);
@@ -96,9 +109,15 @@ function rowsToV2Input(
       sessions: [],
       wellness: wellness.get(row.date),
     };
-    if (row.duration_minutes != null && Number(row.duration_minutes) > 0) {
+    const trainingLoad =
+      row.duration_minutes != null && Number(row.duration_minutes) > 0
+        ? sessionTrainingLoad(row, athlete)
+        : null;
+    // Carico assente ⇒ la seduta non contribuisce: meglio una serie più bassa che una
+    // serie alimentata da un numero inventato.
+    if (trainingLoad != null) {
       prev.sessions.push({
-        trainingLoad: sessionTrainingLoad(row),
+        trainingLoad,
         durationMinutes: Math.max(0, Number(row.duration_minutes ?? 0)),
         hrAvgBpm: pickMetric(row.trace_summary, HR_KEYS),
       });
@@ -117,15 +136,20 @@ function rowsToV2Input(
 }
 
 /** @deprecated Usare serie V2; mantiene firma per caller esistenti. */
-export function internalLoadScore(row: ExecutedWorkoutLoadRow): number {
-  return sessionTrainingLoad(row) * 0.72;
+export function internalLoadScore(row: ExecutedWorkoutLoadRow, athlete: AthleteHrThresholds): number | null {
+  const load = sessionTrainingLoad(row, athlete);
+  return load == null ? null : load * 0.72;
 }
 
 export function computeDailyLoadSeries(
   rows: ExecutedWorkoutLoadRow[],
-  options?: { wellnessByDate?: Map<string, EmpathyLoadWellnessInput> },
+  options: {
+    /** Soglie FC dell'atleta (`readAthleteHrThresholds`) — obbligatorie: senza, l'hrTSS non si calcola. */
+    athlete: AthleteHrThresholds;
+    wellnessByDate?: Map<string, EmpathyLoadWellnessInput>;
+  },
 ): DailyLoadPoint[] {
-  const v2 = computeEmpathyLoadMetricsV2(rowsToV2Input(rows, options?.wellnessByDate));
+  const v2 = computeEmpathyLoadMetricsV2(rowsToV2Input(rows, options.athlete, options.wellnessByDate));
   return v2.map((p) => ({
     date: p.date,
     external: p.trainingLoadDaily,

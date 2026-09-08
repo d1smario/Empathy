@@ -39,6 +39,7 @@ import {
   structuredValuesFieldCount,
 } from "@/modules/health/lib/health-panel-readers";
 import { HealthImportSection } from "@/modules/health/views/sections/HealthImportSection";
+import { HealthManualEntrySection } from "@/modules/health/views/sections/HealthManualEntrySection";
 import { HealthScoreSummary } from "@/modules/health/views/sections/HealthScoreSummary";
 import { HealthLatestPanelsSection } from "@/modules/health/views/sections/HealthLatestPanelsSection";
 import {
@@ -94,6 +95,14 @@ export default function HealthPageView() {
   const [uploadBusy, setUploadBusy] = useState<string | null>(null);
   const [stagingBusy, setStagingBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /**
+   * Tono del messaggio. Prima era sempre verde: un upload che non aveva estratto NIENTE
+   * (foto, PDF scansionato) veniva presentato come riuscito. Ora «warn» dice la verità e
+   * manda all'inserimento manuale.
+   */
+  const [toastTone, setToastTone] = useState<"ok" | "warn">("ok");
+  /** Incrementato quando l'upload non estrae nulla: apre e porta all'inserimento manuale. */
+  const [manualEntryOpenSignal, setManualEntryOpenSignal] = useState(0);
   const [sampleDate, setSampleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
   /** Tab di navigazione: si monta solo la sezione attiva (apertura su «Analisi dettagliata»). */
@@ -202,7 +211,9 @@ export default function HealthPageView() {
     for (const run of systemMap.stagingRuns) {
       const status = typeof run.status === "string" ? run.status : "";
       const trigger = typeof run.trigger_source === "string" ? run.trigger_source : "";
-      if (status !== "pending_validation" || trigger !== "health_upload_vlm") continue;
+      // `health_manual_entry` = referto digitato a mano: stessa review, stessa conferma del coach.
+      if (status !== "pending_validation") continue;
+      if (trigger !== "health_upload_vlm" && trigger !== "health_manual_entry") continue;
       const refs = Array.isArray(run.source_refs) ? run.source_refs : [];
       for (const ref of refs) {
         if (ref && typeof ref === "object" && !Array.isArray(ref)) {
@@ -377,11 +388,18 @@ export default function HealthPageView() {
       const res = await uploadHealthDocument({ athleteId, panelType, sampleDate, file });
       setUploadBusy(null);
       if (!res.ok) {
+        setToastTone("warn");
         setToast(res.error ?? t("uploadError"));
         return;
       }
+      /** Estrazione a vuoto ≠ upload riuscito: lo diciamo, e apriamo l'inserimento manuale. */
+      setToastTone(res.manualEntryRequired ? "warn" : "ok");
       setToast(res.message ?? t("uploadRecorded"));
       void loadTimeline();
+      if (res.manualEntryRequired) {
+        setManualEntryOpenSignal((n) => n + 1);
+        return;
+      }
       /** Fase B: se l'AI ha proposto valori, instradiamo subito alla review per la conferma
        *  (in scope coach resta dentro la scheda atleta: /athletes/[id]/health/staging/[runId]). */
       if (res.reviewUrl) {
@@ -392,6 +410,22 @@ export default function HealthPageView() {
       }
     },
     [athleteId, sampleDate, loadTimeline, adminScoped, platformAdminView, scopeOwnerUserId, t],
+  );
+
+  /**
+   * Dopo l'inserimento manuale: stessa destinazione dell'upload che ha prodotto proposte,
+   * cioè la review dove il coach conferma (in scope coach/admin resta dentro la scheda atleta).
+   */
+  const onManualEntrySubmitted = useCallback(
+    (reviewUrl: string | null) => {
+      void loadTimeline();
+      if (!reviewUrl) return;
+      const url = scopedReviewUrl(reviewUrl, { athleteId, adminScoped, platformAdminView, scopeOwnerUserId });
+      setTimeout(() => {
+        window.location.assign(url);
+      }, 800);
+    },
+    [athleteId, adminScoped, platformAdminView, scopeOwnerUserId, loadTimeline],
   );
 
   const onPatchStagingRun = useCallback(
@@ -411,9 +445,11 @@ export default function HealthPageView() {
       });
       setStagingBusy(null);
       if (!res.ok) {
+        setToastTone("warn");
         setToast(res.error ?? t("stagingUpdateFailed"));
         return;
       }
+      setToastTone("ok");
       setToast(
         status === "committed" ? t("stagingValidated") : status === "rejected" ? t("stagingRejected") : t("stagingArchived"),
       );
@@ -492,10 +528,24 @@ export default function HealthPageView() {
                   timelineErr={timelineErr}
                 />
                 {toast ? (
-                  <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-sm text-emerald-300">
+                  <p
+                    className={`rounded-xl border px-4 py-2 text-center text-sm ${
+                      toastTone === "warn"
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    }`}
+                  >
                     {toast}
                   </p>
                 ) : null}
+                {/* Via di recupero quando l'upload non estrae nulla: il referto entra a mano. */}
+                <HealthManualEntrySection
+                  athleteId={athleteId}
+                  sampleDate={sampleDate}
+                  onSampleDateChange={setSampleDate}
+                  openSignal={manualEntryOpenSignal}
+                  onSubmitted={onManualEntrySubmitted}
+                />
               </>
             ) : null}
 

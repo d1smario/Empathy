@@ -43,7 +43,7 @@ const TrainingAnalyzerCrossChannelSection = dynamic(
     loading: () => <div className="h-64 rounded-2xl border border-white/10 bg-black/20" aria-hidden />,
   },
 );
-import type { ExecutedWorkout } from "@empathy/domain-training";
+import { athleteHrThresholdsFromProfile, type ExecutedWorkout } from "@empathy/domain-training";
 import type { TrainingRealityDiagnosticsViewModel } from "@/api/training/contracts";
 import { EMPATHY_LOAD_LABELS_IT } from "@empathy/contracts";
 import {
@@ -371,7 +371,24 @@ export default function TrainingAnalyticsPageView() {
     return Math.max(0, Math.round((adaptationLoop?.expectedLoad7d ?? 0) * operationalContext.loadScale));
   }, [operationalContext, adaptationLoop?.expectedLoad7d]);
 
-  const dmMap = useMemo(() => dailyMetricMap(rows as ExecutedAnalyticsRow[]), [rows]);
+  /**
+   * Soglie FC **dell'atleta** (anagrafica), non della seduta: alimentano l'hrTSS delle
+   * sedute senza `tss` in tutte le aggregazioni di questa pagina. Senza soglie il carico
+   * di quelle sedute resta assente («—»), non un ripiego.
+   */
+  const athleteHrThresholds = useMemo(
+    () =>
+      athleteHrThresholdsFromProfile({
+        thresholdHrBpm: hrZoneThresholds.lthr,
+        maxHrBpm: hrZoneThresholds.hrMax,
+      }),
+    [hrZoneThresholds.lthr, hrZoneThresholds.hrMax],
+  );
+
+  const dmMap = useMemo(
+    () => dailyMetricMap(rows as ExecutedAnalyticsRow[], athleteHrThresholds),
+    [rows, athleteHrThresholds],
+  );
   const executedWorkouts = useMemo(() => {
     if (executedSessions.length > 0) return executedSessions;
     return athleteId ? executedWorkoutsFromAnalyticsRows(rows, athleteId) : [];
@@ -392,8 +409,8 @@ export default function TrainingAnalyticsPageView() {
   const analyticsEndDate = compareSeries.at(-1)?.date ?? bounds.to;
   // Le 4 card in alto sommano il PERIODO selezionato (windowDays), non 7g fissi.
   const refKpisWindow = useMemo(
-    () => refKpisLastNDays(rows as ExecutedAnalyticsRow[], windowDays, analyticsEndDate),
-    [rows, windowDays, analyticsEndDate],
+    () => refKpisLastNDays(rows as ExecutedAnalyticsRow[], windowDays, analyticsEndDate, athleteHrThresholds),
+    [rows, windowDays, analyticsEndDate, athleteHrThresholds],
   );
 
   const toCompareRow = (c: (typeof compareSeries)[number]): CompareDayRow => ({

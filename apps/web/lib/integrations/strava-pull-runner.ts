@@ -9,6 +9,15 @@ import { buildExecutedTrainingImportQuality } from "@/lib/reality/training-impor
 import { upsertExecutedWorkoutByExternalId } from "@/lib/training/executed/upsert-executed-workout";
 import { resolveStravaActivitySessionTimes } from "@/lib/training/executed/executed-workout-session-times";
 import { trainingLoadForExecutedPersist } from "@/lib/training/infer-executed-training-load";
+import {
+  ATHLETE_HR_THRESHOLDS_READ_FAILED_REASON,
+  readAthleteHrThresholds,
+} from "@/lib/training/athlete-hr-thresholds";
+import {
+  EMPATHY_LOAD_METHOD_VERSION,
+  type AthleteHrThresholds,
+  type EmpathyTrainingLoadDetail,
+} from "@empathy/domain-training";
 
 function stravaActivitiesUrl(): string {
   return process.env.STRAVA_API_ACTIVITIES_URL?.trim() || "https://www.strava.com/api/v3/athlete/activities";
@@ -82,10 +91,45 @@ function isDuplicate(message: string): boolean {
   return m.includes("duplicate") || m.includes("23505") || m.includes("unique") || m.includes("uq_device_sync_exports");
 }
 
+/**
+ * Carico della singola attività Strava. `athlete` porta le soglie **dell'atleta** ed è
+ * obbligatorio.
+ *
+ * Regressione R-carico #1: qui passava solo `hr_avg_bpm`/`hr_max_bpm` della seduta e
+ * nessuna soglia → prima il picco di seduta veniva usato come FC max (carico gonfiato),
+ * poi si finiva sul ripiego per durata (carico falso al ribasso: 40 su un'uscita di 2h
+ * che ne vale 136). `max_heartrate` resta in `trace_summary` come dato della seduta, ma
+ * NON entra nel calcolo del carico.
+ */
+export function stravaExecutedTrainingLoadDetail(
+  rec: Record<string, unknown>,
+  durationMinutes: number,
+  athlete: AthleteHrThresholds,
+): EmpathyTrainingLoadDetail {
+  return trainingLoadForExecutedPersist({
+    vendorLoad: null,
+    durationMinutes,
+    traceSummary: {
+      power_avg_w: num(rec.average_watts),
+      hr_avg_bpm: num(rec.average_heartrate),
+      hr_max_bpm: num(rec.max_heartrate),
+    },
+    athlete,
+  });
+}
+
 async function upsertExecutedFromStrava(input: {
   athleteId: string;
   extId: string;
   rec: Record<string, unknown>;
+  /**
+   * Soglie FC **dell'atleta**, lette una volta per giro. Obbligatorie: senza di esse
+   * l'hrTSS non si calcola. Il picco di FC dell'attività (`max_heartrate`) NON è una
+   * soglia e non entra nel calcolo.
+   */
+  athlete: AthleteHrThresholds;
+  /** true quando il profilo non era leggibile: il motivo finisce in `trace_summary`. */
+  thresholdsReadFailed: boolean;
 }): Promise<void> {
   const date = activityDay(input.rec);
   if (!date) return;
@@ -94,15 +138,9 @@ async function upsertExecutedFromStrava(input: {
   if (durationMinutes <= 0) return;
   const distanceM = num(input.rec.distance);
   const avgPower = num(input.rec.average_watts);
-  const estimateTss = trainingLoadForExecutedPersist({
-    vendorLoad: null,
-    durationMinutes,
-    traceSummary: {
-      power_avg_w: avgPower,
-      hr_avg_bpm: num(input.rec.average_heartrate),
-      hr_max_bpm: num(input.rec.max_heartrate),
-    },
-  });
+  const loadDetail = stravaExecutedTrainingLoadDetail(input.rec, durationMinutes, input.athlete);
+  /** `tss` è NOT NULL: 0 = «carico non misurato», mai un ripiego numerico. */
+  const estimateTss = loadDetail.trainingLoad ?? 0;
   const channelCoverage = stravaChannelCoverage(input.rec);
   const quality = buildExecutedTrainingImportQuality({ channelCoverage });
   const source = "api_sync:strava:activities";
@@ -119,6 +157,15 @@ async function upsertExecutedFromStrava(input: {
     hr_avg_bpm: num(input.rec.average_heartrate),
     hr_max_bpm: num(input.rec.max_heartrate),
     calories: num(input.rec.calories),
+    /** Come è stato ottenuto `tss` (vendor|power|hr|none) — QA e ricalcoli mirati. */
+    training_load_method: loadDetail.method,
+    training_load_method_version: EMPATHY_LOAD_METHOD_VERSION,
+    training_load_unavailable_reason:
+      loadDetail.trainingLoad != null
+        ? null
+        : input.thresholdsReadFailed
+          ? ATHLETE_HR_THRESHOLDS_READ_FAILED_REASON
+          : "no_intensity_signal",
     channels_available: Object.fromEntries(Object.entries(channelCoverage).map(([k, v]) => [k, v > 0])) as Record<
       string,
       boolean
@@ -177,6 +224,15 @@ export async function runStravaPullForAthlete(input: {
     throw new Error(`strava_activities_http_${res.status}:${text.slice(0, 600)}`);
   }
   const records = Array.isArray(json) ? (json as Record<string, unknown>[]) : [];
+  const supabaseForProfile = createServerSupabaseClient();
+  const thresholdsRead = await readAthleteHrThresholds(supabaseForProfile, input.athleteId);
+  if (!thresholdsRead.ok) {
+    console.error("[strava-pull-runner] soglie FC atleta non leggibili: carico non calcolato", {
+      athleteId: input.athleteId,
+      error: thresholdsRead.error,
+      activities: records.length,
+    });
+  }
   const errors: string[] = [];
   let inserted = 0;
   let skipped = 0;
@@ -213,6 +269,8 @@ export async function runStravaPullForAthlete(input: {
         athleteId: input.athleteId,
         extId,
         rec,
+        athlete: thresholdsRead.thresholds,
+        thresholdsReadFailed: !thresholdsRead.ok,
       });
       inserted += 1;
     } catch (e) {

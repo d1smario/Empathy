@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-signals";
 import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
+import { loadAthleteHrThresholdsForRead } from "@/lib/training/athlete-hr-thresholds";
 
 type DbClient = SupabaseClient;
 
@@ -219,7 +220,12 @@ export async function computeExpectedVsObtainedDeltas(input: {
   const plannedRows = (plannedRes.data ?? []) as PlannedRow[];
   const executedRows = (executedRes.data ?? []) as ExecutedRow[];
   const deviceRows = (deviceRes.data ?? []) as Array<Record<string, unknown>>;
-  const loadSeries = computeDailyLoadSeries(executedRows);
+  const athleteHrThresholds = await loadAthleteHrThresholdsForRead(
+    input.db,
+    input.athleteId,
+    "expected-vs-obtained-engine",
+  );
+  const loadSeries = computeDailyLoadSeries(executedRows, { athlete: athleteHrThresholds });
   const loadByDate = new Map(loadSeries.map((row) => [row.date, row]));
   const plannedDates = plannedRows.map((row) => row.date).filter((date): date is string => Boolean(date));
   const executedDates = executedRows.map((row) => row.date).filter((date): date is string => Boolean(date));

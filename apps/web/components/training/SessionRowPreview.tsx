@@ -13,6 +13,7 @@ import {
   type ExecutedSeriesBundle,
 } from "@/lib/training/executed-series-fetch";
 import { buildSessionDetailVM, type SessionKpiTile } from "@/lib/training/session-detail-summary";
+import { useAthleteHrThresholds } from "@/lib/training/physiology/use-athlete-hr-thresholds";
 import { formatElapsedLabel } from "@/lib/training/calendar-analyzer-helpers";
 import type { GeoPoint } from "@/lib/training/series-channel-registry";
 
@@ -118,7 +119,12 @@ export function SessionRowPreview({
     };
   }, [inView, athleteId, workout.id]);
 
-  const vm = useMemo(() => buildSessionDetailVM(workout, { ftpW: ftpW ?? null }), [workout, ftpW]);
+  // Soglie FC dell'atleta (anagrafica): senza, il carico delle sedute a sola FC è «—».
+  const athleteHrThresholds = useAthleteHrThresholds(athleteId);
+  const vm = useMemo(
+    () => buildSessionDetailVM(workout, { ftpW: ftpW ?? null, athlete: athleteHrThresholds }),
+    [workout, ftpW, athleteHrThresholds],
+  );
 
   const overlaySeries = useMemo<MultiAxisSeries[]>(
     () =>

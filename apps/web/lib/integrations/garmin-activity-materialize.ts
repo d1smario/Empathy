@@ -9,7 +9,16 @@ import { persistExecutedWorkoutSeriesFromTrace } from "@/lib/training/import-ser
 import { pickGarminActivityStableId } from "@/lib/integrations/garmin-activity-stable-id";
 import { upsertExecutedWorkoutByExternalId } from "@/lib/training/executed/upsert-executed-workout";
 import { resolveGarminActivitySessionTimes } from "@/lib/training/executed/executed-workout-session-times";
-import { inferEmpathyTrainingLoadForSession } from "@empathy/domain-training";
+import {
+  EMPATHY_LOAD_METHOD_VERSION,
+  inferEmpathyTrainingLoadDetailForSession,
+  type AthleteHrThresholds,
+  type EmpathyTrainingLoadDetail,
+} from "@empathy/domain-training";
+import {
+  ATHLETE_HR_THRESHOLDS_READ_FAILED_REASON,
+  readAthleteHrThresholds,
+} from "@/lib/training/athlete-hr-thresholds";
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
@@ -377,11 +386,24 @@ function extractGarminActivitySeries(samples: unknown): Record<string, unknown> 
   return out;
 }
 
-function inferGarminTrainingLoad(
+/**
+ * Carico della singola attività Garmin.
+ * `athlete` porta le soglie **dell'atleta** ed è obbligatorio: senza soglie l'hrTSS non
+ * si calcola e il carico resta **assente** (`trainingLoad: null`), non un ripiego.
+ */
+export function inferGarminTrainingLoad(
   r: Record<string, unknown>,
   durationMinutes: number,
-  lthrBpm: number | null = null,
-): number {
+  athlete: AthleteHrThresholds,
+): number | null {
+  return inferGarminTrainingLoadDetail(r, durationMinutes, athlete).trainingLoad;
+}
+
+export function inferGarminTrainingLoadDetail(
+  r: Record<string, unknown>,
+  durationMinutes: number,
+  athlete: AthleteHrThresholds,
+): EmpathyTrainingLoadDetail {
   const summary = buildGarminCanonicalSummary(r);
   const direct = r.trainingLoadScore ?? r.trainingStressScore ?? r.tss;
   let vendorLoad: number | null = null;
@@ -392,14 +414,13 @@ function inferGarminTrainingLoad(
     const v = te?.lte ?? te?.aerobicTrainingEffect;
     if (typeof v === "number" && Number.isFinite(v) && v >= 0) vendorLoad = Math.min(999, v * 20);
   }
-  return inferEmpathyTrainingLoadForSession({
+  return inferEmpathyTrainingLoadDetailForSession({
     vendorLoad,
     avgPowerW: summary.power_avg_w,
     ftpW: null,
     hrAvgBpm: summary.hr_avg_bpm,
-    hrMaxBpm: summary.hr_max_bpm,
-    lthrBpm,
     durationMinutes,
+    athlete,
   });
 }
 
@@ -460,21 +481,24 @@ export async function materializeGarminActivitiesFromPullResponse(input: {
   const supabase = createNodeSupabaseServicePreferred();
   let upserted = 0;
 
-  // FC di soglia (LT2) dell'atleta per hrTSS quando la seduta non ha potenza.
-  let athleteLthrBpm: number | null = null;
-  try {
-    const { data: physRow } = await supabase
-      .from("physiological_profiles")
-      .select("lt2_heart_rate")
-      .eq("athlete_id", input.athleteId)
-      .order("valid_from", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const v = physRow?.lt2_heart_rate;
-    if (typeof v === "number" && Number.isFinite(v) && v > 0) athleteLthrBpm = v;
-  } catch {
-    athleteLthrBpm = null;
+  /**
+   * Soglie FC **dell'atleta** per l'hrTSS quando la seduta non ha potenza.
+   * Senza queste il carico da FC non si calcola (niente soglia inventata).
+   *
+   * `readAthleteHrThresholds` distingue «l'atleta non ha soglie» da «la lettura è
+   * fallita»: supabase-js non lancia, ritorna `{data:null,error}`. Se fallisce lo si
+   * scrive a log e lo si marca riga per riga, invece di far scivolare in silenzio tutto
+   * il giro sul ramo peggiore.
+   */
+  const thresholdsRead = await readAthleteHrThresholds(supabase, input.athleteId);
+  if (!thresholdsRead.ok) {
+    console.error("[garmin-activity-materialize] soglie FC atleta non leggibili: carico non calcolato", {
+      athleteId: input.athleteId,
+      error: thresholdsRead.error,
+      activities: sink.length,
+    });
   }
+  const athleteThresholds = thresholdsRead.thresholds;
 
   for (const r of sink) {
     const date = activityDateString(r);
@@ -482,7 +506,13 @@ export async function materializeGarminActivitiesFromPullResponse(input: {
     if (!date || durSec == null) continue;
 
     const durationMinutes = Math.max(1, Math.round(durSec / 60));
-    const tss = inferGarminTrainingLoad(r, durationMinutes, athleteLthrBpm);
+    const loadDetail = inferGarminTrainingLoadDetail(r, durationMinutes, athleteThresholds);
+    /**
+     * `executed_workouts.tss` è NOT NULL: 0 è la codifica di «carico non misurato» già
+     * usata dal path di lettura (`stored > 0 ? stored : inferenza`). Non si scrive mai
+     * un ripiego numerico al posto del carico assente.
+     */
+    const tss = loadDetail.trainingLoad ?? 0;
     const kcalRaw = r.activeKilocalories ?? r.calories;
     const kcal = typeof kcalRaw === "number" && Number.isFinite(kcalRaw) ? kcalRaw : null;
     const kj = kcal != null ? Math.round(kcal * 4.184 * 1000) / 1000 : null;
@@ -543,6 +573,16 @@ export async function materializeGarminActivitiesFromPullResponse(input: {
       summary_id: r.summaryId ?? null,
       activity_id: r.activityId ?? null,
       source: "api_sync:garmin:activities",
+      /** Come è stato ottenuto `tss` (vendor|power|hr|none) — serve a QA e ricalcoli mirati. */
+      training_load_method: loadDetail.method,
+      training_load_method_version: EMPATHY_LOAD_METHOD_VERSION,
+      /** Perché il carico manca: profilo illeggibile vs nessun segnale di intensità. */
+      training_load_unavailable_reason:
+        loadDetail.trainingLoad != null
+          ? null
+          : thresholdsRead.ok
+            ? "no_intensity_signal"
+            : ATHLETE_HR_THRESHOLDS_READ_FAILED_REASON,
       ...canonical,
       ...samplesSeries,
       garmin_keys: Object.keys(r).slice(0, 40),

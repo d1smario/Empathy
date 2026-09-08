@@ -6,6 +6,7 @@ import { SportDisciplineGlyph } from "@/components/training/SportDisciplineGlyph
 import type { WellnessByDateMap } from "@/lib/physiology/wellness-window-summary";
 import { normalizeDateKey, traceRecord } from "@/lib/training/calendar-analyzer-helpers";
 import { resolveExecutedTrainingLoad } from "@/lib/training/infer-executed-training-load";
+import { useAthleteHrThresholds } from "@/lib/training/physiology/use-athlete-hr-thresholds";
 import { LOAD_CHIP_LABEL } from "@/lib/training/load-metrics-labels";
 import {
   plannedCalendarChipViewModel,
@@ -154,6 +155,9 @@ export function CalendarMonthGrid({
   movePlannedWorkoutToDate,
 }: CalendarMonthGridProps) {
   const t = useTranslations("CalendarMonthGrid");
+  // Soglie FC **dell'atleta** (anagrafica): senza, il chip mostra «—» invece di un
+  // carico stimato su una soglia inventata o su un ripiego per durata.
+  const athleteHrThresholds = useAthleteHrThresholds(athleteId);
   return (
     <section className="tc2-calendar-shell mb-10 rounded-2xl border border-orange-500/20 bg-gradient-to-b from-black/80 to-black/50 shadow-inner shadow-orange-950/25">
       <div className="tc2-calendar-scroll">
@@ -321,11 +325,13 @@ export function CalendarMonthGrid({
                         <div className="font-bold">{t("executed")}</div>
                         <div>
                           {w.durationMinutes}m · {LOAD_CHIP_LABEL}{" "}
+                          {/* `null` = carico non calcolabile → «—», mai un ripiego per durata. */}
                           {resolveExecutedTrainingLoad({
                             storedTss: w.tss,
                             durationMinutes: w.durationMinutes,
                             traceSummary: tr,
-                          }).toFixed(0)}
+                            athlete: athleteHrThresholds,
+                          })?.toFixed(0) ?? "—"}
                         </div>
                         <div>
                           km {km != null ? km.toFixed(1) : "—"} · Pavg {pwr != null ? Math.round(pwr) : "—"} · kcal{" "}

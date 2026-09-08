@@ -1,4 +1,5 @@
 import { EMPATHY_LOAD_LABELS_IT } from "@empathy/contracts";
+import type { AthleteHrThresholds } from "@empathy/domain-training";
 import { resolveExecutedTrainingLoad } from "@/lib/training/infer-executed-training-load";
 import {
   resolveExecutedAvgPowerW,
@@ -74,19 +75,31 @@ const EMPTY_DAY: DailyMetricAgg = {
   kSweatLast: null,
 };
 
-function mergeDay(prev: DailyMetricAgg, row: ExecutedAnalyticsRow): DailyMetricAgg {
+function mergeDay(
+  prev: DailyMetricAgg,
+  row: ExecutedAnalyticsRow,
+  athlete: AthleteHrThresholds,
+): DailyMetricAgg {
   const tr = row.trace_summary;
-  const tss = resolveExecutedTrainingLoad({
-    storedTss: row.tss,
-    durationMinutes: Math.max(0, Number(row.duration_minutes ?? 0)),
-    traceSummary: tr,
-    vendorLoad: pickMetric(tr, [
-      "training_load",
-      "trainingLoad",
-      "training_load_score",
-      "activity_training_load",
-    ]),
-  });
+  /**
+   * `null` = carico non calcolabile: la seduta non contribuisce alla somma del giorno.
+   * Il totale è quindi un limite inferiore sulle sedute misurate, non una somma gonfiata
+   * da ripieghi. Le singole sedute senza carico si vedono a «—» nel dettaglio seduta,
+   * nel chip di calendario e nel KPI dell'analyzer.
+   */
+  const tss =
+    resolveExecutedTrainingLoad({
+      storedTss: row.tss,
+      durationMinutes: Math.max(0, Number(row.duration_minutes ?? 0)),
+      traceSummary: tr,
+      vendorLoad: pickMetric(tr, [
+        "training_load",
+        "trainingLoad",
+        "training_load_score",
+        "activity_training_load",
+      ]),
+      athlete,
+    }) ?? 0;
   const minutes = Math.max(0, Number(row.duration_minutes ?? 0));
   const power = resolveExecutedAvgPowerW({
     storedKj: row.kj,
@@ -134,13 +147,17 @@ function mergeDay(prev: DailyMetricAgg, row: ExecutedAnalyticsRow): DailyMetricA
   return next;
 }
 
-export function dailyMetricMap(rows: ExecutedAnalyticsRow[]): Map<string, DailyMetricAgg> {
+export function dailyMetricMap(
+  rows: ExecutedAnalyticsRow[],
+  /** Soglie FC dell'atleta: obbligatorie, senza non si stima l'hrTSS delle sedute senza `tss`. */
+  athlete: AthleteHrThresholds,
+): Map<string, DailyMetricAgg> {
   const map = new Map<string, DailyMetricAgg>();
   for (const row of rows) {
     if (!row.date || row.date.length < 10) continue;
     const d = row.date.slice(0, 10);
     const prev = map.get(d) ?? { ...EMPTY_DAY };
-    map.set(d, mergeDay(prev, row));
+    map.set(d, mergeDay(prev, row, athlete));
   }
   return map;
 }
@@ -296,6 +313,8 @@ export function refKpisLastNDays(
   rows: ExecutedAnalyticsRow[],
   days: number,
   endDate: string,
+  /** Soglie FC dell'atleta: obbligatorie, senza non si stima l'hrTSS delle sedute senza `tss`. */
+  athlete: AthleteHrThresholds,
 ): { tss: number; kcal: number; wattAvg: number | null; totalMinutes: number } {
   const end = new Date(`${endDate}T12:00:00`);
   const start = new Date(end);
@@ -318,17 +337,20 @@ export function refKpisLastNDays(
       durationMinutes: m,
       traceSummary: tr,
     });
-    tss += resolveExecutedTrainingLoad({
-      storedTss: row.tss,
-      durationMinutes: m,
-      traceSummary: tr,
-      vendorLoad: pickMetric(tr, [
-        "training_load",
-        "trainingLoad",
-        "training_load_score",
-        "activity_training_load",
-      ]),
-    });
+    // Carico assente ⇒ non entra nella somma (limite inferiore, non ripiego).
+    tss +=
+      resolveExecutedTrainingLoad({
+        storedTss: row.tss,
+        durationMinutes: m,
+        traceSummary: tr,
+        vendorLoad: pickMetric(tr, [
+          "training_load",
+          "trainingLoad",
+          "training_load_score",
+          "activity_training_load",
+        ]),
+        athlete,
+      }) ?? 0;
     kcal += resolveExecutedKcal({
       storedKcal: row.kcal,
       storedKj: row.kj,

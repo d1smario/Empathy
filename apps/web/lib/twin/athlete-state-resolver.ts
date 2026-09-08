@@ -4,6 +4,7 @@ import type { TwinState } from "@/lib/empathy/schemas";
 import type { AdaptationScoreV1 } from "@/lib/empathy/schemas/adaptation";
 import type { InternalLoadState, RecoveryDataTier } from "@/lib/empathy/schemas/internal-load";
 import { computeDailyLoadSeries, type ExecutedWorkoutLoadRow } from "@/lib/training/analytics/load-series";
+import { loadAthleteHrThresholdsForRead } from "@/lib/training/athlete-hr-thresholds";
 import { extractSignalFromDeviceExportRow } from "@/lib/reality/sleep-recovery-signals";
 import { resolveInternalLoadState } from "@/lib/internal-load/internal-load-resolver";
 
@@ -207,7 +208,12 @@ export async function resolveCanonicalTwinState(
     executedRows,
     plannedRows,
   });
-  const series = computeDailyLoadSeries(executedRows);
+  const athleteHrThresholds = await loadAthleteHrThresholdsForRead(
+    supabase,
+    athleteId,
+    "twin/athlete-state-resolver",
+  );
+  const series = computeDailyLoadSeries(executedRows, { athlete: athleteHrThresholds });
   const latest = series.at(-1);
   const plannedTssNext7d = plannedRows.reduce((sum, row) => sum + Math.max(0, Number(row.tss_target ?? 0)), 0);
   const plannedSessionsNext7d = plannedRows.length;
