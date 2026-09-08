@@ -326,11 +326,19 @@ const FALSE_FRIEND_MODIFIERS: Array<{
   neutralizes: FalseFriendBase[];
   /** Qualifica la base direttamente, senza connettore: «grano saraceno», «noce moscata». */
   aggettivo?: boolean;
+  /**
+   * Pianta che si vende COME bevanda al posto del latte («latte di mandorla», «latte
+   * di soia», «latte di avena»). Solo per queste, e solo sulle basi che nominano una
+   * bevanda, il connettore non conta: «latte ALLE mandorle» è la stessa bevanda
+   * siciliana di «latte DI mandorla» — acqua, mandorle e zucchero, niente vaccino.
+   * Il cacao invece insaporisce e non sostituisce: «latte al cacao» resta latte.
+   */
+  bevandaVegetale?: boolean;
 }> = [
   // Frutta a guscio, arachidi, semi: la classe la mettono loro, non la base.
-  { pattern: /\bmandorl\w*\b|\balmonds?\b/, neutralizes: ["dairy", "fat"] },
-  { pattern: /\banacard\w*\b|\bcashews?\b/, neutralizes: ["dairy", "fat"] },
-  { pattern: /\bnocciol\w*\b|\bhazelnuts?\b/, neutralizes: ["dairy", "fat"] },
+  { pattern: /\bmandorl\w*\b|\balmonds?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\banacard\w*\b|\bcashews?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bnocciol\w*\b|\bhazelnuts?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
   { pattern: /\bpistacch\w*\b|\bpistachios?\b/, neutralizes: ["dairy", "fat"] },
   {
     pattern: /\bmacadamia\b|\bpecans?\b|\bpinol\w*\b|\bpine ?nuts?\b|\bcastagn\w*\b|\bchestnuts?\b/,
@@ -345,12 +353,12 @@ const FALSE_FRIEND_MODIFIERS: Array<{
     neutralizes: ["dairy", "fat"],
   },
   // Legumi e cereali: bevande e «burri» vegetali.
-  { pattern: /\bsoia\b|\bsoja\b|\bsoy\w*\b/, neutralizes: ["dairy", "fat"] },
-  { pattern: /\bavena\b|\boats?\b/, neutralizes: ["dairy", "fat"] },
-  { pattern: /\briso\b|\brice\b/, neutralizes: ["dairy", "fat", "malto"] },
+  { pattern: /\bsoia\b|\bsoja\b|\bsoy\w*\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bavena\b|\boats?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\briso\b|\brice\b/, neutralizes: ["dairy", "fat", "malto"], bevandaVegetale: true },
   { pattern: /\bmais\b|\bcorn\w*\b/, neutralizes: ["malto"] },
-  { pattern: /\bcanapa\b|\bhemp\b|\bquinoa\b|\bmiglio\b|\bmillet\b/, neutralizes: ["dairy", "fat"] },
-  { pattern: /\bcocco\b|\bcoconut\b|\bcocos\b/, neutralizes: ["dairy", "fat", "nut"] },
+  { pattern: /\bcanapa\b|\bhemp\b|\bquinoa\b|\bmiglio\b|\bmillet\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bcocco\b|\bcoconut\b|\bcocos\b/, neutralizes: ["dairy", "fat", "nut"], bevandaVegetale: true },
   // Grassi non caseari. Solo il grasso, mai il latte: vedi «latte al cacao».
   { pattern: /\bcacao\b|\bcocoa\b|\bkarit\w*\b|\bshea\b/, neutralizes: ["fat"] },
   // Dichiarazione esplicita di prodotto vegetale.
@@ -400,7 +408,7 @@ function splitFoodPhraseIntoItems(raw: string): string[] {
  */
 function neutralizeFalseFriends(item: string): string {
   let out = item;
-  for (const { pattern, neutralizes, aggettivo } of FALSE_FRIEND_MODIFIERS) {
+  for (const { pattern, neutralizes, aggettivo, bevandaVegetale } of FALSE_FRIEND_MODIFIERS) {
     const mod = pattern.source;
     for (const base of neutralizes) {
       const baseSrc = FALSE_FRIEND_BASE_WORDS[base].source;
@@ -414,6 +422,18 @@ function neutralizeFalseFriends(item: string): string {
       // EN: modificatore + (eventuale trattino/spazio) + base → «almond milk», «shea butter».
       const inglese = new RegExp(`((?:${mod})[\\s-]+)(${baseSrc})`, "g");
       out = out.replace(composto, (_m, _b, coda) => ` ${coda}`).replace(inglese, (_m, testa) => `${testa} `);
+      if (bevandaVegetale && base === "dairy") {
+        // Solo le basi che nominano una BEVANDA: «yogurt al cocco» resta latticino
+        // (yogurt vaccino al gusto di cocco), «yogurt di soia» no — e quello lo
+        // prende già la forma «di» qui sopra.
+        out = out.replace(
+          new RegExp(
+            `\\b(latte|milk|bevanda|drink)\\b(\\s+(?:\\w+\\s+){0,3}(?:${mod}))`,
+            "g",
+          ),
+          (_m, _b, coda) => ` ${coda}`,
+        );
+      }
       if (aggettivo) {
         // Terza forma: la base + l'aggettivo che la smentisce, senza connettore.
         out = out.replace(new RegExp(`(${baseSrc})(\\s+(?:${mod}))`, "g"), (_m, _b, coda) => ` ${coda}`);

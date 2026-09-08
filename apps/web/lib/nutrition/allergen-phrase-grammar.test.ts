@@ -37,13 +37,24 @@ const FALSI_AMICI: Array<[frase: string, classe: string]> = [
   ["pesca", "pesce"],
   ["pesche", "pesce"],
   ["pesca noce", "frutta_a_guscio"],
+  // Piante che SOSTITUISCONO il latte: il connettore non conta, «alle» vale «di».
+  // «latte alle mandorle» è la bevanda siciliana (acqua, mandorle, zucchero), non
+  // latte vaccino aromatizzato — verificato alla fonte l'8 settembre.
+  ["latte alle mandorle", "latte"],
+  ["latte agli anacardi", "latte"],
+  ["latte alla mandorla", "latte"],
+  ["bevanda alle mandorle", "latte"],
+  ["latte a base di soia", "latte"],
+  ["latte al cocco", "latte"],
 ];
 
 /** Frasi che DEVONO produrre la classe: qui un errore è un allergene servito. */
 const VERI: Array<[frase: string, classe: string]> = [
   ["riso al latte", "latte"],
   ["yogurt al cocco", "latte"],
-  ["latte alle mandorle", "latte"],
+  ["yogurt alla mandorla", "latte"],
+  ["latte al cacao", "latte"],
+  ["latte alla vaniglia", "latte"],
   ["latte e mandorle", "latte"],
   ["latte al cacao", "latte"],
   ["Lattosio", "latte"],
@@ -73,6 +84,10 @@ for (const [frase, classe] of VERI) {
     );
   });
 }
+
+test("«latte alle mandorle» dà comunque la frutta a guscio: è la mandorla che allerga", () => {
+  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte alle mandorle"]), ["frutta_a_guscio"]);
+});
 
 test("l'elenco resta un elenco: «latte e mandorle» dà entrambe le classi", () => {
   const out = mapFoodPhrasesToAllergenClasses(["latte e mandorle"]);

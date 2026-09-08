@@ -207,13 +207,14 @@ test("mapper: ordine INGLESE — «almond milk» non è latte", () => {
 });
 
 test("mapper: connettori mancanti e parole in mezzo", () => {
-  // DECISIONE (8 set): «latte ALLE mandorle» resta latte. In italiano «di» compone e «alle»
-  // insaporisce: il latte alle mandorle è latte vaccino aromatizzato, mentre il latte DI
-  // mandorla non lo è. Prima qui si pretendeva ["frutta_a_guscio"], e per ottenerlo era stato
-  // tolto il vincolo di posizione — con l'effetto di perdere anche «riso al latte».
-  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte alle mandorle"]), ["latte", "frutta_a_guscio"]);
-  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte agli anacardi"]), ["latte", "frutta_a_guscio"]);
-  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte alla mandorla"]), ["latte", "frutta_a_guscio"]);
+  // DECISIONE (8 set, verificata alla fonte): «latte alle mandorle» è la stessa bevanda
+  // siciliana di «latte di mandorla» — acqua, mandorle e zucchero, niente vaccino. Un latte
+  // vaccino aromatizzato si etichetta «latte aromatizzato alla mandorla» ed è raro. Quindi
+  // per le piante che SOSTITUISCONO il latte il connettore non conta; per quelle che lo
+  // INSAPORISCONO sì, ed è per questo che «latte al cacao» resta latte.
+  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte alle mandorle"]), ["frutta_a_guscio"]);
+  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte agli anacardi"]), ["frutta_a_guscio"]);
+  assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte alla mandorla"]), ["frutta_a_guscio"]);
   assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte di soia biologico"]), ["soia"]);
   assert.deepEqual(mapFoodPhrasesToAllergenClasses(["latte vegetale di avena senza zuccheri"]), []);
   assert.deepEqual(mapFoodPhrasesToAllergenClasses(["bevanda a base di mandorle"]), ["frutta_a_guscio"]);
