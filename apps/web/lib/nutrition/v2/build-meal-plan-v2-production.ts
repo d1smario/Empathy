@@ -11,7 +11,11 @@ import type { NutritionPerformanceIntegrationDials } from "@/lib/nutrition/perfo
 import type { ResolvedNutritionDietDay } from "@/lib/nutrition/resolve-nutrition-diet-day";
 import type { FlatMealTimes } from "@/lib/nutrition/routine-week-plan-meal-times";
 import { buildNutritionDayModelV2 } from "@/lib/nutrition/v2/nutrition-day-model-v2";
-import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
+import {
+  buildAllergenContextForRequest,
+  composeMealPlanV2,
+  type FdcPoolMap,
+} from "@/lib/nutrition/v2/compose-meal-plan-v2";
 import { loadMenuFoodPools } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { loadMenuRecipes } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
@@ -273,12 +277,17 @@ export async function buildMealPlanV2Production(
   ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
 
+  // Allergeni per CLASSI: indice fdcId → classi costruito UNA volta dal catalogo appena
+  // caricato e riusato da entrambe le composizioni (storica + grammatica in shadow).
+  const allergen = buildAllergenContextForRequest(input.request, menuFoodPools);
+
   const composeOptions = {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
     request: input.request,
     menuFoodPools,
+    allergen,
   };
   // Composizione storica: è quella servita in off e in shadow.
   let composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, composeOptions);

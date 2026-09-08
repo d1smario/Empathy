@@ -8,7 +8,11 @@ import {
   buildDailyNutritionRequirementsV2,
   type BuildDailyRequirementsInput,
 } from "@/lib/nutrition/v2/daily-nutrition-requirements";
-import { composeMealPlanV2, type FdcPoolMap } from "@/lib/nutrition/v2/compose-meal-plan-v2";
+import {
+  buildAllergenContextForRequest,
+  composeMealPlanV2,
+  type FdcPoolMap,
+} from "@/lib/nutrition/v2/compose-meal-plan-v2";
 import { loadMenuFoodPools } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import { FDC_BRANCH_POOL_SPECS } from "@/lib/nutrition/v2/fdc-pool-specs";
 import { buildMealPlanFoodDenyFragments } from "@/lib/nutrition/meal-plan-profile-food-filter";
@@ -165,6 +169,10 @@ export async function buildMealPlanV2Preview(
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
     menuFoodPools,
+    // Il preview non passa `request` al composer (seed/dayCtx storici): il contesto
+    // allergeni va quindi costruito ESPLICITAMENTE, altrimenti l'anteprima resterebbe
+    // l'unica superficie senza filtro per classi.
+    allergen: buildAllergenContextForRequest(input.request, menuFoodPools),
   });
 
   return {

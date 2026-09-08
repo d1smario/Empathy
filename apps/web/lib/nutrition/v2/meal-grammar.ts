@@ -34,6 +34,10 @@ import type { MediterraneanDietType } from "@/lib/nutrition/mediterranean-meal-c
 import { ROTATION_MAX_WEEK_USES, ROTATION_TARGET_WEEK_USES } from "@/lib/nutrition/meal-composition-rules";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
 import {
+  isAllergenExcludedFdcId,
+  type AllergenFilterContext,
+} from "@/lib/nutrition/v2/fdc-candidate-filter";
+import {
   mealRolesHasV6,
   type MenuFoodEntry,
   type MenuFoodMealRole,
@@ -1117,6 +1121,11 @@ export function recipeCandidatesForMeal(input: {
   meal: MenuFoodRoleMeal;
   dietType?: MediterraneanDietType;
   denyFragments?: readonly string[];
+  /**
+   * Filtro allergeni per classi: vale anche «di sponda», sugli INGREDIENTI della ricetta.
+   * Assente/null → identico a prima.
+   */
+  allergen?: AllergenFilterContext | null;
   weekStapleCounts?: Record<string, number>;
   /**
    * V11_B02 (tie-break): protein_base_family dei template già scelti OGGI (la memoria
@@ -1150,7 +1159,11 @@ export function recipeCandidatesForMeal(input: {
         resolvable = false;
         break;
       }
-      if (denyHitEntry(entry, deny) || dietExcludesEntry(entry, input.dietType)) {
+      if (
+        isAllergenExcludedFdcId(entry.fdcId, input.allergen) ||
+        denyHitEntry(entry, deny) ||
+        dietExcludesEntry(entry, input.dietType)
+      ) {
         banned = true;
         break;
       }

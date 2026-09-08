@@ -10,6 +10,10 @@ import {
 } from "@/lib/nutrition/canonical-food-composition";
 import { fdcIdForCanonicalKey } from "@/lib/nutrition/canonical-food-fdc-aliases";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
+import {
+  isAllergenExcludedFdcId,
+  type AllergenFilterContext,
+} from "@/lib/nutrition/v2/fdc-candidate-filter";
 import { isPlausiblePer100gMacros } from "@/lib/nutrition/macro-plausibility";
 import {
   ROTATION_MAX_WEEK_USES,
@@ -481,7 +485,36 @@ export type StaplePickContext = {
    * (l'allowlist hardcoded non ha score). Assente → identico a prima, byte per byte.
    */
   grammar?: GrammarPickFilter;
+  /**
+   * Filtro allergeni per CLASSI (fail-closed). Assente/null → identico a prima: la
+   * decisione resta al solo deny per sottostringhe su labelIt/canonicalKey.
+   */
+  allergen?: AllergenFilterContext | null;
 };
+
+/**
+ * Stesso input, ma con `allergen` OBBLIGATORIO. È il tipo che DEVE usare chi compone il
+ * piano di un ATLETA: `null` diventa una scelta esplicita («questo atleta non ha
+ * dichiarato nulla di mappabile»), non una dimenticanza. Nasce dal buco reale della
+ * Regola 7 — due call site costruivano l'argomento a mano e omettevano il filtro, e
+ * niente li fermava: qui a fermarli è il compilatore.
+ *
+ * `StaplePickContext` con `allergen` opzionale resta per gli usi SENZA atleta (i test di
+ * rotazione/scoring del registro, dove il filtro non ha significato).
+ */
+export type AthleteStaplePickContext = StaplePickContext & {
+  allergen: AllergenFilterContext | null;
+};
+
+/**
+ * Pick per un atleta: identico a {@link pickStapleForPool}, ma il tipo dell'argomento
+ * pretende il contesto allergeni. Unica porta d'ingresso del compositore del piano.
+ */
+export function pickStapleForAthlete(
+  ctx: AthleteStaplePickContext,
+): { entry: StapleRegistryEntry; hit: FdcFoodBrowseHit } | null {
+  return pickStapleForPool(ctx);
+}
 
 /**
  * Filtro dieta per le entry del catalogo DB: usa i flag ESPLICITI della riga invece
@@ -557,6 +590,11 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
 
   const scored = entries
     .map((e, idx) => {
+      // Allergeni PRIMA di tutto: un cibo che porta una classe non tollerata — o che
+      // nessuno ha ancora esaminato, quando il fail-closed è armato — non è «penalizzato»,
+      // non esiste. La rete per sottostringhe resta subito sotto.
+      const fdcIdForAllergen = (e as MenuFoodEntry).fdcId ?? fdcIdForCanonicalKey(e.canonicalKey);
+      if (isAllergenExcludedFdcId(fdcIdForAllergen, ctx.allergen)) return { e, score: -12_000, idx };
       if (denyHit(e.labelIt, deny) || denyHit(e.canonicalKey, deny)) return { e, score: -10_000, idx };
       const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
       // Il tetto settimanale di famiglia salta SOLO nel ripiego «relaxWeekCaps» della

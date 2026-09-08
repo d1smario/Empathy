@@ -7,6 +7,7 @@
  * Vedi `.cursor/rules/empathy_nutrition_diet_meal_plan_generative.mdc` Regola 8.
  */
 
+import type { AllergenClassToken } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import type { IntelligentMealPlanItemOut, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { MEAL_SLOT_KEYS } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MediterraneanComposedMeal, MediterraneanDayContext } from "@/lib/nutrition/mediterranean-meal-composer";
@@ -506,6 +507,12 @@ export function racePostRecoveryContextLine(ctx: RacePostRecoveryContext): strin
 
 type RaceStaple = "pasta" | "riso";
 
+/** Classi allergeniche dei due amidi del protocollo. */
+const RACE_STAPLE_CLASSES: Record<RaceStaple, readonly AllergenClassToken[]> = {
+  pasta: ["glutine"],
+  riso: [],
+};
+
 const RACE_D = {
   pastaDryKcalPerG: 3.71,
   pastaDryChoPerG: 0.75,
@@ -524,6 +531,51 @@ const RACE_D = {
   jamKcalPerG: 2.5,
 };
 
+// ── Allergeni nel protocollo gara ────────────────────────────────────────────────────
+// Il giorno gara NON passa dal catalogo del menù: gli item sono scritti qui, non hanno
+// fdcId, quindi il filtro per classi che protegge il resto del piano non li vede e la
+// rete per sottostringhe non li riconosce («Grana Padano» non contiene "latte" né
+// "formaggio"). La classe la dichiara l'item stesso, ed è OBBLIGATORIA: chi aggiunge un
+// cibo al protocollo deve dirne le classi o non compila.
+
+/** Item del protocollo gara con le classi allergeniche dichiarate. */
+export type RaceMealItem = IntelligentMealPlanItemOut & {
+  readonly allergenClasses: readonly AllergenClassToken[];
+};
+
+/**
+ * Classi che l'atleta non tollera (allergie + intolleranze + esclusioni), come le porta
+ * `AllergenFilterContext.athleteClasses`. Assente/vuoto → protocollo identico a oggi.
+ */
+export type RaceAllergenClasses = ReadonlySet<string> | null | undefined;
+
+/** Una delle classi è vietata per questo atleta? */
+export function raceClassBlocked(
+  classes: readonly AllergenClassToken[],
+  excluded: RaceAllergenClasses,
+): boolean {
+  if (!excluded || excluded.size === 0) return false;
+  return classes.some((c) => excluded.has(c));
+}
+
+/**
+ * Rete finale del protocollo: qualunque item porti una classe vietata esce dal pasto,
+ * anche quando non c'era un'alternativa da scegliere (il grana, per esempio, è fisso).
+ * Con atleta senza dichiarazioni è un no-op: stesso array, stesso ordine.
+ */
+function dropBlockedRaceItems(items: RaceMealItem[], excluded: RaceAllergenClasses): RaceMealItem[] {
+  if (!excluded || excluded.size === 0) return items;
+  return items.filter((it) => !raceClassBlocked(it.allergenClasses, excluded));
+}
+
+function raceMeal(items: RaceMealItem[]): MediterraneanComposedMeal {
+  return {
+    items,
+    lines: items.map((i) => i.portionHint),
+    totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0),
+  };
+}
+
 function clampStep(n: number, lo: number, hi: number, step = 5): number {
   const rounded = Math.round(n / step) * step;
   return Math.max(lo, Math.min(hi, rounded));
@@ -535,13 +587,16 @@ function item(
   approxKcal: number,
   role: IntelligentMealPlanItemOut["macroRole"],
   bridge: string,
-): IntelligentMealPlanItemOut {
+  /** Classi allergeniche del cibo: obbligatorie — è l'unica cosa che lo qualifica qui. */
+  allergenClasses: readonly AllergenClassToken[],
+): RaceMealItem {
   return {
     name,
     portionHint,
     approxKcal: Math.max(8, Math.round(approxKcal)),
     macroRole: role,
     functionalBridge: bridge.slice(0, 500),
+    allergenClasses,
   };
 }
 
@@ -553,10 +608,23 @@ export function dryStapleGramsForTargetCarbs(staple: RaceStaple, targetCarbsG: n
 
 type PreRaceMediterraneanProtein = "pollo" | "pesce" | "uova" | "tofu";
 
+/** Classi allergeniche delle proteine del protocollo. */
+const RACE_PROTEIN_CLASSES: Record<PreRaceMediterraneanProtein, readonly AllergenClassToken[]> = {
+  pollo: [],
+  pesce: ["pesce"],
+  uova: ["uova"],
+  tofu: ["soia"],
+};
+
+/**
+ * `null` = nessuna proteina ammessa (tutte vietate per classe): il pasto la salta invece
+ * di ripiegare sulle uova, che è esattamente ciò che un allergico non deve ricevere.
+ */
 export function pickPreRaceMediterraneanProtein(
   seed: number,
   dayCtx?: MediterraneanDayContext,
-): PreRaceMediterraneanProtein {
+  excluded?: RaceAllergenClasses,
+): PreRaceMediterraneanProtein | null {
   const diet = dayCtx?.dietType ?? "omnivore";
   let order: PreRaceMediterraneanProtein[] = ["pollo", "pesce", "uova"];
   if (diet === "pescatarian") order = ["pesce", "uova", "pollo"];
@@ -571,14 +639,18 @@ export function pickPreRaceMediterraneanProtein(
     if (p === "tofu" && /\btofu\b/.test(deny)) return false;
     return true;
   });
-  const pool = order.length ? order : (["uova"] as PreRaceMediterraneanProtein[]);
+  const fallback: PreRaceMediterraneanProtein[] = ["uova"];
+  const pool = (order.length ? order : fallback).filter(
+    (p) => !raceClassBlocked(RACE_PROTEIN_CLASSES[p], excluded),
+  );
+  if (pool.length === 0) return null;
   return pool[Math.abs(seed + 5) % pool.length] ?? "uova";
 }
 
 function preRaceMediterraneanProteinItem(
   kind: PreRaceMediterraneanProtein,
   seed: number,
-): IntelligentMealPlanItemOut {
+): RaceMealItem {
   switch (kind) {
     case "pollo":
       return item(
@@ -587,6 +659,7 @@ function preRaceMediterraneanProteinItem(
         120,
         "protein",
         "Pre-gara mediterraneo: proteina magra digeribile prima dello sforzo.",
+        RACE_PROTEIN_CLASSES.pollo,
       );
     case "pesce":
       return item(
@@ -595,6 +668,7 @@ function preRaceMediterraneanProteinItem(
         95,
         "protein",
         "Pre-gara mediterraneo: pesce magro, basso carico lipidico.",
+        RACE_PROTEIN_CLASSES.pesce,
       );
     case "tofu":
       return item(
@@ -603,6 +677,7 @@ function preRaceMediterraneanProteinItem(
         110,
         "protein",
         "Pre-gara mediterraneo: proteina vegetale.",
+        RACE_PROTEIN_CLASSES.tofu,
       );
     default:
       return item(
@@ -611,16 +686,27 @@ function preRaceMediterraneanProteinItem(
         140,
         "protein",
         "Pre-gara mediterraneo: uova, fonte proteica classica.",
+        RACE_PROTEIN_CLASSES.uova,
       );
   }
 }
 
-export function pickRacePreLunchStaple(seed: number, ctx?: MediterraneanDayContext): RaceStaple {
+export function pickRacePreLunchStaple(
+  seed: number,
+  ctx?: MediterraneanDayContext,
+  excluded?: RaceAllergenClasses,
+): RaceStaple {
   const order: RaceStaple[] = [];
   const deny = ctx?.denyFragments ?? [];
   const denyText = deny.join(" ").toLowerCase();
-  if (!/\bpasta\b|\bglut/i.test(denyText)) order.push("pasta");
-  if (!/\briso\b|\brice/i.test(denyText)) order.push("riso");
+  if (!/\bpasta\b|\bglut/i.test(denyText) && !raceClassBlocked(RACE_STAPLE_CLASSES.pasta, excluded)) {
+    order.push("pasta");
+  }
+  if (!/\briso\b|\brice/i.test(denyText) && !raceClassBlocked(RACE_STAPLE_CLASSES.riso, excluded)) {
+    order.push("riso");
+  }
+  // Il riso resta l'ultima spiaggia storica: se anche lui è vietato per classe, il pasto
+  // non deve inventarselo — l'item esce comunque dalla rete finale.
   const pool = order.length ? order : (["riso"] as RaceStaple[]);
   return pool[Math.abs(seed) % pool.length] ?? "pasta";
 }
@@ -634,16 +720,23 @@ function denyHit(fragments: readonly string[], deny?: string[]): boolean {
   return fragments.some((f) => blob.includes(f.toLowerCase()));
 }
 
+/** Classi del dolce da top-up (farina, uova, burro/latte) e del ripiego a fette+marmellata. */
+const RACE_TOPUP_CAKE_CLASSES: readonly AllergenClassToken[] = ["glutine", "uova", "latte"];
+const RACE_TOPUP_RUSK_CLASSES: readonly AllergenClassToken[] = ["glutine"];
+
 /** Riempie il gap kcal con crostata/torta CHO — mai verdure (volume/fibra pre-gara). */
 export function buildRacePreRaceKcalTopUpItem(
   gapKcal: number,
   seed: number,
   denyFragments?: string[],
-): IntelligentMealPlanItemOut | null {
+  excluded?: RaceAllergenClasses,
+): RaceMealItem | null {
   if (gapKcal < RACE_PRE_RACE_KCAL_TOPUP_MIN) return null;
 
-  const glutenBlocked = denyHit(["glutine", "gluten", "frumento", "wheat"], denyFragments);
-  if (!glutenBlocked) {
+  const glutenBlocked =
+    denyHit(["glutine", "gluten", "frumento", "wheat"], denyFragments) ||
+    raceClassBlocked(["glutine"], excluded);
+  if (!glutenBlocked && !raceClassBlocked(RACE_TOPUP_CAKE_CLASSES, excluded)) {
     const useTorta = Math.abs(seed) % 2 === 1;
     const label = useTorta ? "Torta semplice" : "Crostata di mela";
     const portionLabel = useTorta ? "torta semplice (porzione CHO pre-gara)" : "crostata di mela (porzione CHO pre-gara)";
@@ -655,11 +748,13 @@ export function buildRacePreRaceKcalTopUpItem(
       kcal,
       "cho_heavy",
       "Protocollo pre-gara: top-up kcal slot Diet con dolce CHO digeribile (no verdure voluminose).",
+      RACE_TOPUP_CAKE_CLASSES,
     );
   }
 
-  /** Fallback senza glutine: fette + marmellata (CHO rapido, basso volume). */
+  /** Ripiego: fette + marmellata (CHO rapido, basso volume). Porta comunque glutine. */
   if (denyHit(["marmellat", "jam"], denyFragments)) return null;
+  if (raceClassBlocked(RACE_TOPUP_RUSK_CLASSES, excluded)) return null;
   const jamG = clampStep(gapKcal * 0.35 / RACE_D.jamKcalPerG, 25, 55);
   const ruskG = clampStep((gapKcal - jamG * RACE_D.jamKcalPerG) / RACE_D.crackerKcalPerG, 30, 80);
   const kcal = Math.round(jamG * RACE_D.jamKcalPerG + ruskG * RACE_D.crackerKcalPerG);
@@ -668,7 +763,8 @@ export function buildRacePreRaceKcalTopUpItem(
     `${ruskG} g fette biscottate + ${jamG} g marmellata (CHO pre-gara)`,
     kcal,
     "cho_heavy",
-    "Protocollo pre-gara: top-up kcal senza glutine — CHO rapido, no verdure.",
+    "Protocollo pre-gara: top-up kcal — CHO rapido, no verdure.",
+    RACE_TOPUP_RUSK_CLASSES,
   );
 }
 
@@ -679,10 +775,12 @@ export function composeRacePreLunchMainMeal(
   seed: number,
   raceCtx: RacePreLunchDayContext,
   dayCtx?: MediterraneanDayContext,
+  /** Classi vietate all'atleta: assente/vuoto → protocollo identico a oggi. */
+  excluded?: RaceAllergenClasses,
 ): MediterraneanComposedMeal {
   const rule = raceCtx.rule;
   const targetCarbsG = Math.max(40, Math.round(raceCtx.weightKg * rule.carbsPerKgG));
-  const staple = pickRacePreLunchStaple(seed, dayCtx);
+  const staple = pickRacePreLunchStaple(seed, dayCtx, excluded);
   const carbG = dryStapleGramsForTargetCarbs(staple, targetCarbsG);
   const granaG = clampStep(
     rule.granaPadanoG.min + (Math.abs(seed) % (Math.max(1, rule.granaPadanoG.max - rule.granaPadanoG.min + 1))),
@@ -699,13 +797,15 @@ export function composeRacePreLunchMainMeal(
       : `${carbG} g riso (peso a crudo) — ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`;
   const carbKcal = carbG * (staple === "pasta" ? RACE_D.pastaDryKcalPerG : RACE_D.riceDryKcalPerG);
 
-  const items: IntelligentMealPlanItemOut[] = [
+  const proteinKind = pickPreRaceMediterraneanProtein(seed, dayCtx, excluded);
+  const items: RaceMealItem[] = [
     item(
       staple === "pasta" ? "Pasta" : "Riso",
       carbLine,
       carbKcal,
       "cho_heavy",
       "Protocollo pre-gara: amido complesso a densità CHO/kg (canonico piattaforma).",
+      RACE_STAPLE_CLASSES[staple],
     ),
     item(
       "Grana Padano",
@@ -713,29 +813,28 @@ export function composeRacePreLunchMainMeal(
       granaG * RACE_D.granaKcalPerG,
       "protein",
       "Protocollo pre-gara: grana 15–20 g.",
+      ["latte"],
     ),
-    preRaceMediterraneanProteinItem(pickPreRaceMediterraneanProtein(seed, dayCtx), seed),
+    ...(proteinKind ? [preRaceMediterraneanProteinItem(proteinKind, seed)] : []),
     item(
       "Olio extravergine d'oliva",
       `${oilG} g olio EVO (~${oilMl} ml)`,
       oilMl * RACE_D.oilKcalPerMl,
       "fat",
       "Protocollo pre-gara: olio 15 g.",
+      [],
     ),
   ];
 
-  const usedKcal = items.reduce((s, i) => s + i.approxKcal, 0);
+  // La rete finale PRIMA del top-up: il gap kcal deve tener conto di ciò che è uscito
+  // (senza il grana mancano ~70 kcal, e il dolce deve poterle coprire).
+  const kept = dropBlockedRaceItems(items, excluded);
+  const usedKcal = kept.reduce((s, i) => s + i.approxKcal, 0);
   const gapKcal = m.kcal - usedKcal;
-  const topUp = buildRacePreRaceKcalTopUpItem(gapKcal, seed, dayCtx?.denyFragments);
-  if (topUp) items.push(topUp);
+  const topUp = buildRacePreRaceKcalTopUpItem(gapKcal, seed, dayCtx?.denyFragments, excluded);
+  if (topUp) kept.push(topUp);
 
-  const lines = items.map((i) => i.portionHint);
-  const totalApproxKcal = items.reduce((s, i) => s + i.approxKcal, 0);
-  return {
-    items,
-    lines,
-    totalApproxKcal,
-  };
+  return raceMeal(kept);
 }
 
 function isSnackMealSlot(slot: MealSlotKey): boolean {
@@ -747,6 +846,7 @@ function composeMediterraneanPostWorkoutSnackMeal(
   ctx: RacePostRecoveryContext,
   seed: number,
   dayCtx?: MediterraneanDayContext,
+  excluded?: RaceAllergenClasses,
 ): MediterraneanComposedMeal {
   const deny = (dayCtx?.denyFragments ?? []).join(" ").toLowerCase();
   const useBanana = !/\bbanana\b/.test(deny) && Math.abs(seed) % 2 === 0;
@@ -757,6 +857,7 @@ function composeMediterraneanPostWorkoutSnackMeal(
         Math.round(ctx.choG * 0.55 * 4),
         "cho_heavy",
         "Post-workout: CHO rapido nello spuntino (pranzo alle 13 resta pasto completo).",
+        [],
       )
     : item(
         "Riso bianco (post-workout)",
@@ -764,18 +865,13 @@ function composeMediterraneanPostWorkoutSnackMeal(
         Math.round(ctx.choG * 0.55 * 4),
         "cho_heavy",
         "Post-workout: riso leggero nello spuntino.",
+        [],
       );
-  const proteinItem = preRaceMediterraneanProteinItem(
-    pickPreRaceMediterraneanProtein(seed + 11, dayCtx),
-    seed + 3,
-  );
-  proteinItem.approxKcal = Math.max(80, Math.round(ctx.proteinG * 3.5));
-  const items = [choItem, proteinItem];
-  return {
-    items,
-    lines: items.map((i) => i.portionHint),
-    totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0),
-  };
+  const proteinKind = pickPreRaceMediterraneanProtein(seed + 11, dayCtx, excluded);
+  const proteinItem = proteinKind ? preRaceMediterraneanProteinItem(proteinKind, seed + 3) : null;
+  if (proteinItem) proteinItem.approxKcal = Math.max(80, Math.round(ctx.proteinG * 3.5));
+  const items: RaceMealItem[] = proteinItem ? [choItem, proteinItem] : [choItem];
+  return raceMeal(dropBlockedRaceItems(items, excluded));
 }
 
 export function composeRacePostRecoveryMeal(
@@ -783,9 +879,11 @@ export function composeRacePostRecoveryMeal(
   seed: number,
   ctx: RacePostRecoveryContext,
   dayCtx?: MediterraneanDayContext,
+  /** Classi vietate all'atleta: assente/vuoto → protocollo identico a oggi. */
+  excluded?: RaceAllergenClasses,
 ): MediterraneanComposedMeal {
   if (isSnackMealSlot(slot)) {
-    return composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx);
+    return composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx, excluded);
   }
 
   const deny = (dayCtx?.denyFragments ?? []).join(" ").toLowerCase();
@@ -797,6 +895,7 @@ export function composeRacePostRecoveryMeal(
         ctx.choG * 4,
         "cho_heavy",
         "Recovery post-gara: CHO rapidi/medi per ripristino glicogeno.",
+        [],
       )
     : item(
         "Carbo Recovery Mix",
@@ -804,22 +903,22 @@ export function composeRacePostRecoveryMeal(
         ctx.choG * 4,
         "cho_heavy",
         "Recovery post-gara: miscela carbo ad alta disponibilita.",
+        [],
       );
-  const proteinKind = pickPreRaceMediterraneanProtein(seed + 7, dayCtx);
-  const proteinItem = preRaceMediterraneanProteinItem(proteinKind, seed);
-  proteinItem.approxKcal = Math.max(100, Math.round(ctx.proteinG * 4));
-  proteinItem.functionalBridge = "Recovery post-gara: proteina mediterranea (carne/pesce/uova).";
+  const proteinKind = pickPreRaceMediterraneanProtein(seed + 7, dayCtx, excluded);
+  const proteinItem = proteinKind ? preRaceMediterraneanProteinItem(proteinKind, seed) : null;
+  if (proteinItem) {
+    proteinItem.approxKcal = Math.max(100, Math.round(ctx.proteinG * 4));
+    proteinItem.functionalBridge = "Recovery post-gara: proteina mediterranea (carne/pesce/uova).";
+  }
   const mctItem = item(
     "MCT oil",
     `${ctx.mctG} g MCT oil`,
     Math.round(ctx.mctG * 8.3),
     "fat",
     "Recovery post-gara: quota lipidica rapida da MCT.",
+    [],
   );
-  const items = [choItem, proteinItem, mctItem];
-  return {
-    items,
-    lines: items.map((i) => i.portionHint),
-    totalApproxKcal: items.reduce((sum, i) => sum + i.approxKcal, 0),
-  };
+  const items: RaceMealItem[] = proteinItem ? [choItem, proteinItem, mctItem] : [choItem, mctItem];
+  return raceMeal(dropBlockedRaceItems(items, excluded));
 }

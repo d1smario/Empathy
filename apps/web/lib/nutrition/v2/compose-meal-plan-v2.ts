@@ -19,16 +19,27 @@ import {
   isRacePreRaceMealSlot,
 } from "@/lib/nutrition/race-day-pre-race-lunch";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
-import { filterFdcCandidates } from "@/lib/nutrition/v2/fdc-candidate-filter";
+import {
+  createAllergenFilterContext,
+  filterFdcCandidates,
+  type AllergenFilterContext,
+} from "@/lib/nutrition/v2/fdc-candidate-filter";
+import { buildAthleteAllergenClasses } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import { solveFdcMealPortions, type FdcAssemblyLine } from "@/lib/nutrition/v2/fdc-meal-macro-solver";
 import { pickBestFdcForRole, type RolePickContext } from "@/lib/nutrition/v2/fdc-healthy-meal-scoring";
 import {
   labelItForStaple,
-  pickStapleForPool,
+  pickStapleForAthlete,
   servingBasisForCanonical,
+  type AthleteStaplePickContext,
   type StapleRegistryEntry,
 } from "@/lib/nutrition/v2/fdc-staple-registry";
-import type { MenuFoodEntry, MenuFoodMealRole, MenuFoodPoolMap } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import {
+  buildMenuFoodAllergenIndex,
+  type MenuFoodEntry,
+  type MenuFoodMealRole,
+  type MenuFoodPoolMap,
+} from "@/lib/nutrition/v2/menu-food-catalog-db";
 import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
 import {
   GRAMMAR_BREAKFAST_SECONDARY_CHO_SHARE,
@@ -105,8 +116,9 @@ function pickFromPoolFallback(
   denyFragments: string[],
   usedFdcIds: Set<number>,
   staplePenalty: (description: string) => number,
+  allergen?: AllergenFilterContext | null,
 ): FdcFoodBrowseHit | null {
-  const filtered = filterFdcCandidates(pool, denyFragments);
+  const filtered = filterFdcCandidates(pool, denyFragments, allergen);
   const pick = pickBestFdcForRole(filtered, ctx, denyFragments, usedFdcIds, staplePenalty);
   if (pick) return pick;
 
@@ -234,6 +246,35 @@ type PickLineOptions = {
   ignoreUsedToday?: boolean;
 };
 
+/**
+ * Argomenti BASE di ogni pick del compositore, costruiti una volta sola dal contesto —
+ * filtro allergeni compreso, PER COSTRUZIONE. Il tipo di ritorno pretende `allergen`
+ * (vedi AthleteStaplePickContext), quindi né questo helper né un call site possono
+ * perderlo per strada, e il prossimo campo del contesto si aggiunge in un posto solo.
+ *
+ * Nasce da un buco vero: i due pick della Regola 7 costruivano l'oggetto a mano e
+ * omettevano `allergen`, così lo swap del pane rimetteva nel piatto proprio i cibi che
+ * il filtro aveva appena escluso.
+ */
+function stapleArgsFromContext(
+  ctx: ComposeContext,
+  poolKey: string,
+  seed: number,
+  menuEntries?: MenuFoodEntry[] | null,
+): Omit<AthleteStaplePickContext, "grammar"> {
+  return {
+    poolKey,
+    seed,
+    dietType: ctx.dietType,
+    denyFragments: ctx.denyFragments,
+    dayCtx: ctx.dayCtx,
+    usedCarbFamilies: ctx.usedCarbFamilies,
+    usedFdcIds: ctx.usedFdcIds,
+    menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : undefined,
+    allergen: ctx.allergen ?? null,
+  };
+}
+
 function pickLineForRole(
   spec: MealSlotAssemblyRole,
   slotKey: MealSlotKey,
@@ -245,23 +286,14 @@ function pickLineForRole(
   const seed = ctx.seed + spec.poolKey.length;
   const rolesOverride = opts?.rolesOverride;
 
-  // Catalogo DB prima: se il pool del menù esiste ed è non-vuoto, pickStapleForPool usa
+  // Catalogo DB prima: se il pool del menù esiste ed è non-vuoto, il pick usa
   // SOLO quello (il catalogo contiene già tutti gli alimenti pescabili: se il pick torna
   // null per penalità NON ritentiamo l'allowlist — il fallback resta il rawPool taggato).
   const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
   const hasMenuPool = !!menuEntries && menuEntries.length > 0;
 
-  const pickArgs = {
-    poolKey: spec.poolKey,
-    seed,
-    dietType: ctx.dietType,
-    denyFragments: ctx.denyFragments,
-    dayCtx: ctx.dayCtx,
-    usedCarbFamilies: ctx.usedCarbFamilies,
-    usedFdcIds: ctx.usedFdcIds,
-    menuEntries: hasMenuPool ? menuEntries : undefined,
-  };
-  let staplePick = pickStapleForPool({
+  const pickArgs = stapleArgsFromContext(ctx, spec.poolKey, seed, hasMenuPool ? menuEntries : undefined);
+  let staplePick = pickStapleForAthlete({
     ...pickArgs,
     grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps, opts?.ignoreUsedToday),
   });
@@ -274,7 +306,7 @@ function pickLineForRole(
   const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey];
   const v6InMeal = poolV6 && grammarPoolMeal(spec.poolKey) === mealForSlot(slotKey);
   if (!staplePick && ctx.grammar && !rolesOverride && (fallbackRoles || (v6InMeal && fallbackV6))) {
-    staplePick = pickStapleForPool({
+    staplePick = pickStapleForAthlete({
       ...pickArgs,
       grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, {
         ...(fallbackRoles ? { v5: fallbackRoles } : {}),
@@ -297,7 +329,7 @@ function pickLineForRole(
         : v6InMeal
           ? { axis: poolV6.axis, roles: [...poolV6.primary, ...(fallbackV6 ?? [])] }
           : undefined;
-      staplePick = pickStapleForPool({
+      staplePick = pickStapleForAthlete({
         ...pickArgs,
         grammar: grammarFilterFor(
           ctx,
@@ -340,7 +372,14 @@ function pickLineForRole(
   }
 
   const rawPool = pools.get(spec.poolKey) ?? [];
-  const hit = pickFromPoolFallback(rawPool, roleCtx, ctx.denyFragments, ctx.usedFdcIds, ctx.staplePenalty);
+  const hit = pickFromPoolFallback(
+    rawPool,
+    roleCtx,
+    ctx.denyFragments,
+    ctx.usedFdcIds,
+    ctx.staplePenalty,
+    ctx.allergen,
+  );
   if (!hit) return null;
   ctx.usedFdcIds.add(hit.fdcId);
   return { spec, hit };
@@ -359,6 +398,11 @@ type ComposeContext = {
   menuPools?: MenuFoodPoolMap | null;
   /** Grammatica dei pasti attiva (mode shadow/on): assente → composizione storica. */
   grammar?: GrammarComposeState;
+  /**
+   * Filtro allergeni per classi (fail-closed). `null` = l'atleta non ha dichiarato nulla
+   * di mappabile → nessun cambiamento rispetto a oggi.
+   */
+  allergen?: AllergenFilterContext | null;
 };
 
 type GrammarComposeState = {
@@ -421,6 +465,7 @@ function pickRecipeLine(
     meal: mealForSlot(slotKey),
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
+    allergen: ctx.allergen,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
     ...(isMain
       ? {}
@@ -917,15 +962,10 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
     // sostituzione cross-gruppo per sole kcal: il filtro ruolo/score resta il verdetto (V01).
     const swapRoles = (choLine.staple as MenuFoodEntry | undefined)?.mealRoles;
     const baseFilter = grammarFilterFor(ctx, slotKey, choLine.spec.poolKey);
-    const alt = pickStapleForPool({
-      poolKey: choLine.spec.poolKey,
-      seed: ctx.seed + 17,
-      dietType: ctx.dietType,
-      denyFragments: ctx.denyFragments,
-      dayCtx: ctx.dayCtx,
-      usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds,
-      menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : undefined,
+    const alt = pickStapleForAthlete({
+      // Stessi argomenti base delle altre linee (allergeni COMPRESI): lo swap non è una
+      // strada laterale, è lo stesso pick con un altro seed.
+      ...stapleArgsFromContext(ctx, choLine.spec.poolKey, ctx.seed + 17, altMenuEntries),
       // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
       grammar: baseFilter
         ? {
@@ -950,15 +990,8 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
   }
   if (target.carbsG >= 130 && !lines.some((l) => l.staple?.canonicalKey === "bread_white")) {
     const breadMenuEntries = ctx.menuPools?.get("breakfast_cho");
-    const breadHit = pickStapleForPool({
-      poolKey: "breakfast_cho",
-      seed: ctx.seed + 31,
-      dietType: ctx.dietType,
-      denyFragments: ctx.denyFragments,
-      dayCtx: ctx.dayCtx,
-      usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds,
-      menuEntries: breadMenuEntries && breadMenuEntries.length > 0 ? breadMenuEntries : undefined,
+    const breadHit = pickStapleForAthlete({
+      ...stapleArgsFromContext(ctx, "breakfast_cho", ctx.seed + 31, breadMenuEntries),
       // Sotto grammatica il pane secondario deve avere score > 0 nel pasto dello slot (V01):
       // nei dati v5 il pane è NONE/0 a pranzo e cena, quindi la regola 7 non aggiunge pane.
       grammar: grammarFilterFor(ctx, slotKey, "breakfast_cho"),
@@ -989,6 +1022,11 @@ function composeRaceSlot(
   const req = ctx.request;
   if (!req) return null;
 
+  // Giorno gara: il protocollo compone item HARDCODED (nessun fdcId, quindi nessuna riga
+  // di catalogo da interrogare). Il filtro per classi ci arriva così: le classi che
+  // l'atleta non tollera, che il protocollo confronta con quelle dichiarate su ogni item.
+  const excludedClasses = ctx.allergen?.athleteClasses;
+
   const slotMacros = {
     kcal: slot.kcal,
     carbsG: slot.carbs,
@@ -997,7 +1035,14 @@ function composeRaceSlot(
   };
 
   if (isRacePreRaceMealSlot(slotKey, req.racePreLunch ?? null)) {
-    const meal = composeRacePreLunchMainMeal(slotKey, slotMacros, ctx.seed, req.racePreLunch!, ctx.dayCtx);
+    const meal = composeRacePreLunchMainMeal(
+      slotKey,
+      slotMacros,
+      ctx.seed,
+      req.racePreLunch!,
+      ctx.dayCtx,
+      excludedClasses,
+    );
     const items = mediterraneanMealToV2Items(meal);
     const totals = items.reduce(
       (acc, it) => ({
@@ -1012,7 +1057,13 @@ function composeRaceSlot(
   }
 
   if (req.racePostRecovery && slotKey === req.racePostRecovery.mealSlot) {
-    const meal = composeRacePostRecoveryMeal(slotKey, ctx.seed, req.racePostRecovery, ctx.dayCtx);
+    const meal = composeRacePostRecoveryMeal(
+      slotKey,
+      ctx.seed,
+      req.racePostRecovery,
+      ctx.dayCtx,
+      excludedClasses,
+    );
     const items = mediterraneanMealToV2Items(meal);
     const totals = items.reduce(
       (acc, it) => ({
@@ -1055,6 +1106,23 @@ function normalizeDietType(raw: string | null | undefined): MediterraneanDietTyp
   return "omnivore";
 }
 
+/**
+ * Contesto allergeni dal profilo dell'atleta + catalogo del menù. Esportato perché il
+ * path production lo costruisce UNA volta e lo passa a entrambe le composizioni
+ * (storica e con grammatica), invece di ricostruire l'indice due volte.
+ */
+export function buildAllergenContextForRequest(
+  request: IntelligentMealPlanRequest | null | undefined,
+  menuFoodPools: MenuFoodPoolMap | null | undefined,
+): AllergenFilterContext | null {
+  const classes = buildAthleteAllergenClasses(request);
+  return createAllergenFilterContext({
+    allergyClasses: classes.allergyClasses,
+    exclusionClasses: classes.exclusionClasses,
+    foodIndex: buildMenuFoodAllergenIndex(menuFoodPools),
+  });
+}
+
 export function composeMealPlanV2(
   requirements: DailyNutritionRequirementsV2,
   dietSlots: MealPlanV2DietSlotBudget[],
@@ -1066,6 +1134,13 @@ export function composeMealPlanV2(
     request?: IntelligentMealPlanRequest;
     /** Pool dal catalogo DB nutrition_menu_foods — fonte primaria; null/assente → allowlist. */
     menuFoodPools?: MenuFoodPoolMap | null;
+    /**
+     * Filtro allergeni per CLASSI. Omesso → il composer lo deriva da `request`
+     * (allergie/intolleranze/esclusioni) + `menuFoodPools`; `null` esplicito lo spegne.
+     * Il chiamante lo passa quando ha già l'indice (production: due composizioni,
+     * un solo indice).
+     */
+    allergen?: AllergenFilterContext | null;
     /**
      * Grammatica dei pasti di Mario (score/ruoli per pasto + ricette). Assente/false →
      * composizione storica, BIT-IDENTICA. Il chiamante la passa solo in mode shadow/on
@@ -1099,6 +1174,13 @@ export function composeMealPlanV2(
   const usedFdcIds = new Set<number>();
   const usedCarbFamilies = new Set<string>();
 
+  // Allergeni: contesto esplicito dal chiamante, altrimenti derivato qui dal profilo che
+  // il request già porta. Nessuna classe mappata → `null` → composizione invariata.
+  const allergen =
+    options?.allergen !== undefined
+      ? options.allergen
+      : buildAllergenContextForRequest(request, options?.menuFoodPools);
+
   const staplePenalty = (description: string): number => {
     const key = description.slice(0, 40).toLowerCase();
     return options?.weeklyStapleCounts?.[key] ?? 0;
@@ -1114,6 +1196,7 @@ export function composeMealPlanV2(
     staplePenalty,
     request,
     menuPools: options?.menuFoodPools ?? null,
+    allergen,
     ...(options?.mealGrammar?.enabled
       ? {
           grammar: (() => {

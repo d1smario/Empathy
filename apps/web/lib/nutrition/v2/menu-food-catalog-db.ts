@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MealPlanV2ServingBasis } from "@empathy/contracts";
+import {
+  type AllergenClassToken,
+  normalizeAllergenClassList,
+} from "@/lib/nutrition/meal-plan-profile-food-filter";
+import type { AllergenFoodIndex, AllergenFoodInfo } from "@/lib/nutrition/v2/fdc-candidate-filter";
 
 /**
  * Catalogo curato dei cibi del menù (tabella `nutrition_menu_foods`) → pool per il
@@ -35,6 +40,17 @@ export type MenuFoodEntry = {
    * il compositore decide il fallback, il loader NON inventa valori.
    */
   mealRoles?: MenuFoodMealRoles;
+  /**
+   * Classi allergeniche DICHIARATE sull'alimento (`nutrition_menu_foods.allergen_classes`,
+   * vocabolario chiuso di 14 token). `undefined` = colonna assente dalla select o valore
+   * NULL: per il filtro fail-closed vale «non classificato», non «senza allergeni».
+   */
+  allergenClasses?: AllergenClassToken[];
+  /**
+   * `nutrition_menu_foods.allergens_reviewed`: true = riga esaminata da un umano.
+   * `undefined`/false = mai esaminata → il filtro allergeni la esclude in chiusura.
+   */
+  allergensReviewed?: boolean;
 };
 
 /** Ruolo dell'alimento DENTRO un pasto (quota che copre). EXCLUDE = vietato in quel pasto. */
@@ -431,6 +447,14 @@ export function mapMenuFoodRows(
         isFish: r?.is_fish === true,
         isAnimalProduct: r?.is_animal_product === true,
         mealRoles: mealRolesByKey.get(canonicalKey),
+        // Allergeni: NESSUN default inventato. Colonna assente (select degradata) o NULL
+        // → campo `undefined` = «non classificato» per il filtro, che decide in chiusura.
+        ...(Array.isArray(r?.allergen_classes)
+          ? { allergenClasses: normalizeAllergenClassList(r.allergen_classes) }
+          : {}),
+        ...(r?.allergens_reviewed === true || r?.allergens_reviewed === false
+          ? { allergensReviewed: r.allergens_reviewed === true }
+          : {}),
       },
       poolKeys,
       sortPriority: num(r?.sort_priority) ?? 999,
@@ -464,6 +488,16 @@ let menuFoodPoolsCache: { at: number; pools: MenuFoodPoolMap | null } | null = n
 const MENU_FOOD_CACHE_TTL_MS = 5 * 60_000;
 const FDC_IN_CHUNK = 200;
 
+/** Colonne base di nutrition_menu_foods (presenti da sempre). */
+const MENU_FOODS_BASE_SELECT =
+  "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority";
+/**
+ * Colonne allergeni: la select le TENTA e ricade sulla base su 42703, esattamente come
+ * i tre stadi delle colonne v6/v9 dei ruoli. Su un ambiente senza le colonne il catalogo
+ * arriva comunque (senza classi) e il filtro allergeni resta inerte, non rotto.
+ */
+const MENU_FOODS_ALLERGEN_EXTRA_SELECT = "allergen_classes, allergens_reviewed";
+
 /** Colonne v5 di nutrition_menu_food_meal_roles (select minima, sempre presente). */
 const MEAL_ROLES_V5_SELECT =
   "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed";
@@ -474,6 +508,15 @@ const MEAL_ROLES_V6_EXTRA_SELECT =
 const MEAL_ROLES_V9_EXTRA_SELECT =
   "generative_tier, default_enabled, selection_weight, substitution_mode, substitute_pool";
 
+/** Errore PostgREST «colonna inesistente» (42703 o messaggio equivalente). */
+function missingColumnsError(res: { error: { code?: string; message?: string } | null }): boolean {
+  return (
+    res.error != null &&
+    (res.error.code === "42703" ||
+      /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""))
+  );
+}
+
 export function resetMenuFoodPoolsCacheForTests(): void {
   menuFoodPoolsCache = null;
 }
@@ -483,12 +526,17 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     return menuFoodPoolsCache.pools;
   }
   try {
-    const { data: menuRows, error } = await admin
+    // Tipo largo: la select a due stadi produce due shape diverse (con e senza le colonne
+    // allergeni) e PostgREST le tipizza come oggetti distinti — il parsing è comunque
+    // difensivo riga per riga (`mapMenuFoodRows` prende `unknown[]`).
+    let menuRes: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
       .from("nutrition_menu_foods")
-      .select(
-        "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority",
-      )
+      .select(`${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}`)
       .eq("is_active", true);
+    if (missingColumnsError(menuRes)) {
+      menuRes = await admin.from("nutrition_menu_foods").select(MENU_FOODS_BASE_SELECT).eq("is_active", true);
+    }
+    const { data: menuRows, error } = menuRes;
     if (error || !Array.isArray(menuRows) || menuRows.length === 0) {
       menuFoodPoolsCache = { at: Date.now(), pools: null };
       return null;
@@ -521,19 +569,15 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     // (v5+v6+v9 → v5+v6 → v5): su un ambiente senza colonne v9 si perdono SOLO le v9,
     // mai anche la v6 — MAI grammatica azzerata in silenzio per una colonna in meno.
     // `generative_note` non si carica: è solo admin, il motore non la usa.
-    const rolesMissingColumns = (res: { error: { code?: string; message?: string } | null }) =>
-      res.error != null &&
-      (res.error.code === "42703" ||
-        /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
     let rolesRes = await admin
       .from("nutrition_menu_food_meal_roles")
       .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}, ${MEAL_ROLES_V9_EXTRA_SELECT}`);
-    if (rolesMissingColumns(rolesRes)) {
+    if (missingColumnsError(rolesRes)) {
       rolesRes = await admin
         .from("nutrition_menu_food_meal_roles")
         .select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
     }
-    if (rolesMissingColumns(rolesRes)) {
+    if (missingColumnsError(rolesRes)) {
       rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT);
     }
     const { data: mealRoleRows, error: mealRoleError } = rolesRes;
@@ -546,6 +590,39 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     menuFoodPoolsCache = { at: Date.now(), pools: null };
     return null;
   }
+}
+
+/**
+ * Indice fdcId → classi allergeniche, costruito DAI POOL già caricati (nessun round-trip
+ * in più): è la mappa che il composer porta fino al punto di decisione, dove i candidati
+ * sono `FdcFoodBrowseHit` e l'unica chiave comune con il catalogo è `fdcId`.
+ *
+ * Stesso fdcId su più canonical_key (caso raro): unione delle classi e `reviewed` in AND —
+ * basta una riga non esaminata perché l'alimento resti «ignoto» per il fail-closed.
+ */
+export function buildMenuFoodAllergenIndex(pools: MenuFoodPoolMap | null | undefined): AllergenFoodIndex {
+  const index = new Map<number, AllergenFoodInfo>();
+  if (!pools) return index;
+  const seenEntries = new Set<MenuFoodEntry>();
+  for (const list of pools.values()) {
+    for (const e of list) {
+      if (seenEntries.has(e)) continue;
+      seenEntries.add(e);
+      if (!(e.fdcId > 0)) continue;
+      const classes = e.allergenClasses ?? [];
+      const reviewed = e.allergensReviewed === true;
+      const prev = index.get(e.fdcId);
+      if (!prev) {
+        index.set(e.fdcId, { classes, reviewed });
+        continue;
+      }
+      index.set(e.fdcId, {
+        classes: [...new Set([...prev.classes, ...classes])],
+        reviewed: prev.reviewed && reviewed,
+      });
+    }
+  }
+  return index;
 }
 
 /**
