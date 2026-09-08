@@ -43,6 +43,98 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+/**
+ * Il TARGET del motore, sommato dagli slot della base del solver.
+ *
+ * `production.dietMealSlotBudgets` sono gli slot EFFETTIVAMENTE passati al composer
+ * (day-engine quando applied, ripartizione Diet altrimenti): gli stessi che il mapper
+ * pubblica come `response_payload.solverBasis.slots`. Finora il target viveva solo lì
+ * dentro, illeggibile in SQL; da qui nasce anche in colonna.
+ *
+ * ⚠️ NON è `kcal_target`: quella colonna contiene il SERVITO (Σ `meal_item`, verificato su
+ * 721 piani con scarto ≤ 3 kcal) e in questo giro non cambia significato — cambiarlo adesso
+ * romperebbe chi la legge. Target e servito sono due cose legittimamente diverse: convivono,
+ * ciascuna dichiarata per quello che è.
+ */
+export type SolverBasisTotals = {
+  kcal: number;
+  carbsG: number;
+  proteinG: number;
+  fatG: number;
+  /** `day_engine` solo quando gli slot serviti sono quelli del day-engine (provenance.applied). */
+  source: "day_engine" | "diet_slots";
+};
+
+export function solverBasisTotalsFromProduction(production: MealPlanV2Production): SolverBasisTotals | null {
+  const slots = production.dietMealSlotBudgets ?? [];
+  // Nessuno slot di base (chiamanti legacy, preview senza budget): NULL, non zero. Uno zero in
+  // colonna si leggerebbe come «il motore puntava a 0 kcal», che è falso.
+  if (slots.length === 0) return null;
+  // Arrotondamenti IDENTICI a quelli del payload (map-v2-plan-to-v1-response → solverBasis.slots:
+  // kcal intere e macro a 1 decimale PER SLOT, poi la somma): così la colonna e il JSON non
+  // divergono mai di un'unità e il confronto fra i due resta una verifica, non un'incognita.
+  return {
+    kcal: slots.reduce((sum, b) => sum + Math.round(num(b.kcal)), 0),
+    carbsG: round1(slots.reduce((sum, b) => sum + round1(num(b.carbs)), 0)),
+    proteinG: round1(slots.reduce((sum, b) => sum + round1(num(b.protein)), 0)),
+    fatG: round1(slots.reduce((sum, b) => sum + round1(num(b.fat)), 0)),
+    source: production.dayEngine?.applied ? "day_engine" : "diet_slots",
+  };
+}
+
+/**
+ * Colonne che un ambiente non ancora migrato può non avere: si tolgono SOLO se il DB le nomina
+ * nell'errore (42703 / PGRST204), e a gruppi, perché ogni gruppo arriva con la sua migrazione.
+ * Il codice va in produzione prima del DDL: una generazione non deve mai fallire per una colonna
+ * che non c'è ancora, e non deve nemmeno perdere le altre.
+ */
+const OPTIONAL_PLAN_COLUMN_GROUPS: ReadonlyArray<{ named: RegExp; columns: readonly string[] }> = [
+  { named: /response_payload/i, columns: ["response_payload"] },
+  {
+    named: /basis_(kcal|carbs_g|protein_g|fat_g|source)/i,
+    columns: ["basis_kcal", "basis_carbs_g", "basis_protein_g", "basis_fat_g", "basis_source"],
+  },
+];
+
+function withoutColumns(
+  row: Record<string, unknown>,
+  columns: readonly string[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) if (!columns.includes(k)) out[k] = v;
+  return out;
+}
+
+/**
+ * Insert del piano con la cintura di rollout: se il DB rifiuta nominando una colonna opzionale
+ * assente, si riprova senza QUEL gruppo (gli altri restano). Ogni altro errore torna al chiamante.
+ */
+async function insertPlanRow(
+  admin: SupabaseClient,
+  row: Record<string, unknown>,
+): Promise<{ planId: string | null; error: { message: string } | null }> {
+  let payload = row;
+  for (let attempt = 0; attempt <= OPTIONAL_PLAN_COLUMN_GROUPS.length; attempt += 1) {
+    const { data, error } = await admin.from("nutrition_plan").insert(payload).select("id").single();
+    if (!error && data?.id) return { planId: String(data.id), error: null };
+    const message = error?.message ?? "no id";
+    const group = OPTIONAL_PLAN_COLUMN_GROUPS.find(
+      (g) => g.named.test(message) && g.columns.some((c) => c in payload),
+    );
+    if (!group) return { planId: null, error: { message } };
+    console.warn("[nutrition v2 persist] colonne non ancora migrate, insert senza", {
+      columns: group.columns.filter((c) => c in payload),
+      db_error: message,
+    });
+    payload = withoutColumns(payload, group.columns);
+  }
+  return { planId: null, error: { message: "insert piano: colonne opzionali esaurite" } };
+}
+
 /** Riga di `meal_item` prima di conoscere il meal_id: i campi FK-rilevanti più il resto. */
 export type PendingMealItemRow = PendingMealItem & {
   foodRole: string;
@@ -262,16 +354,29 @@ export async function persistV2PlanToDb(
     { kcal: 0, cho: 0, pro: 0, fat: 0 },
   );
 
+  // Il target del motore (Σ slot della base del solver) — l'altra metà della verità, accanto
+  // al servito. NULL quando la base non c'è: meglio nessun target che un target inventato.
+  const basis = solverBasisTotalsFromProduction(production);
+
   const planInsertBase = {
     athlete_id: athleteId,
     plan_date: planDate,
     algorithm_version: production.algorithmVersion,
     goal: opts?.goal ?? null,
     meal_count: slots.length,
+    // ⚠️ `*_target` = SERVITO (Σ delle voci scritte), non il target: nome storico, significato
+    // invariato in questo giro perché altri lettori ci contano. Il target sta in `basis_*`.
     kcal_target: Math.round(planTotals.kcal),
     carbs_g_target: Math.round(planTotals.cho),
     protein_g_target: Math.round(planTotals.pro),
     fat_g_target: Math.round(planTotals.fat),
+    // TARGET del motore: quello su cui il piano è stato composto, leggibile in SQL senza
+    // aprire response_payload (dove resta, identico, in solverBasis.slots).
+    basis_kcal: basis?.kcal ?? null,
+    basis_carbs_g: basis?.carbsG ?? null,
+    basis_protein_g: basis?.proteinG ?? null,
+    basis_fat_g: basis?.fatG ?? null,
+    basis_source: basis?.source ?? null,
     hydration_ml_target: opts?.hydrationMlTarget ?? null,
     // Canale QA day-engine (shadow/on): report compatto vecchio-vs-nuovo interrogabile
     // con `select inputs_provenance->'day_engine' from nutrition_plan ...`.
@@ -287,28 +392,18 @@ export async function persistV2PlanToDb(
       ...(clearedTrace ? { meal_item_fdc_cleared: clearedTrace } : {}),
     },
   };
-  let { data: planRow, error: planErr } = await admin
-    .from("nutrition_plan")
-    .insert({
-      ...planInsertBase,
-      // Pagina Nutrizione read-first: la risposta renderizzabile completa si salva
-      // INSIEME al piano (una sola scrittura). NULL su chiamanti legacy senza payload.
-      response_payload: opts?.responsePayload ?? null,
-    })
-    .select("id")
-    .single();
-  if (planErr && /response_payload/i.test(planErr.message ?? "")) {
-    // Cintura rollout: colonna `response_payload` non ancora migrata in questo ambiente
-    // (42703). Degrada all'insert senza payload — il piano resta persistito e la pagina
-    // read-first, non trovando payload, degrada a generazione (comportamento pre-feature).
-    ({ data: planRow, error: planErr } = await admin
-      .from("nutrition_plan")
-      .insert(planInsertBase)
-      .select("id")
-      .single());
-  }
-  if (planErr || !planRow?.id) return { ok: false, error: `insert piano: ${planErr?.message ?? "no id"}` };
-  const planId = String(planRow.id);
+  // Cintura rollout dentro insertPlanRow: se l'ambiente non ha ancora `response_payload` o le
+  // colonne `basis_*` (42703), si riprova senza QUEL gruppo. Il piano resta persistito; la pagina
+  // read-first senza payload degrada a generazione, e senza basis_* si torna al comportamento
+  // pre-feature (il target vive solo nel payload).
+  const { planId: insertedPlanId, error: planErr } = await insertPlanRow(admin, {
+    ...planInsertBase,
+    // Pagina Nutrizione read-first: la risposta renderizzabile completa si salva
+    // INSIEME al piano (una sola scrittura). NULL su chiamanti legacy senza payload.
+    response_payload: opts?.responsePayload ?? null,
+  });
+  if (planErr || !insertedPlanId) return { ok: false, error: `insert piano: ${planErr?.message ?? "no id"}` };
+  const planId = insertedPlanId;
 
   // Insert pasti (uno per slot) e mappa slot → meal_id.
   const mealPayload = slots.map((s, idx) => ({

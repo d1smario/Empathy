@@ -45,6 +45,8 @@ function makeFakeAdmin(
   captured: Captured,
   opts?: {
     failInsertsWithResponsePayloadColumn?: boolean;
+    /** Simula un ambiente PRE-migration per le colonne `basis_*` (42703). */
+    failInsertsWithBasisColumns?: boolean;
     fdcFoodIds?: number[];
     dbRejectsFdcIds?: number[];
     dbRejectsLabels?: string[];
@@ -85,15 +87,21 @@ function makeFakeAdmin(
           insert(payload: Record<string, unknown>) {
             captured.planInsert = payload;
             captured.planInserts.push(payload);
-            const columnMissing =
-              opts?.failInsertsWithResponsePayloadColumn === true && "response_payload" in payload;
+            const missingColumn =
+              opts?.failInsertsWithResponsePayloadColumn === true && "response_payload" in payload
+                ? "response_payload"
+                : opts?.failInsertsWithBasisColumns === true && "basis_kcal" in payload
+                  ? "basis_kcal"
+                  : null;
             return {
               select: () => ({
                 single: async () =>
-                  columnMissing
+                  missingColumn
                     ? {
                         data: null,
-                        error: { message: 'column "response_payload" of relation "nutrition_plan" does not exist' },
+                        error: {
+                          message: `column "${missingColumn}" of relation "nutrition_plan" does not exist`,
+                        },
                       }
                     : { data: { id: "plan-1" }, error: null },
               }),
@@ -427,4 +435,122 @@ test("persist: nessuna riga scrivibile (tutte rifiutate) → ok:false, mai un su
   assert.equal(res.ok, false, "il chiamante deve vedere un errore, non un 200 con Oggi vuota");
   assert.match((res as { error: string }).error, /insert voci/);
   assert.equal(captured.itemsPersisted.length, 0);
+});
+
+/* ── E2: il target del motore in colonna (basis_*) ──────────────────────────────────
+ * `kcal_target` contiene il SERVITO (Σ meal_item): verificato su 721 piani, zero scarti
+ * oltre 3 kcal. Il TARGET vero — gli slot che il motore ha davvero usato — viveva solo
+ * dentro `response_payload.solverBasis.slots`, illeggibile in SQL. Da qui in avanti nasce
+ * anche in colonna: target e servito sono due cose diverse e devono convivere, entrambe
+ * dichiarate per quello che sono.
+ */
+
+/** Produzione con la BASE del solver (gli slot passati al composer) e un servito diverso. */
+function makeProductionWithBasis(
+  budgets: MealPlanV2Production["dietMealSlotBudgets"],
+  dayEngine?: DayEngineProvenance,
+): MealPlanV2Production {
+  return { ...makeProduction(dayEngine), dietMealSlotBudgets: budgets };
+}
+
+const BASIS_TWO_SLOTS: MealPlanV2Production["dietMealSlotBudgets"] = [
+  { key: "breakfast", label: "Colazione", pct: 25, kcal: 620.4, carbs: 80.24, protein: 30.16, fat: 18.32 },
+  { key: "lunch", label: "Pranzo", pct: 40, kcal: 1000.6, carbs: 130.31, protein: 55.44, fat: 28.21 },
+];
+
+test("persist: basis_* = somma degli slot della base del solver, e resta diverso da kcal_target (il servito)", async () => {
+  const captured = emptyCaptured();
+  const res = await persistV2PlanToDb(
+    makeFakeAdmin(captured),
+    "ath-1",
+    "2026-08-10",
+    makeProductionWithBasis(BASIS_TWO_SLOTS),
+  );
+  assert.deepEqual(res, OK_ONE_ITEM);
+  const plan = captured.planInsert!;
+  // Σ degli slot della base, con gli stessi arrotondamenti del payload (solverBasis.slots):
+  // 620 + 1001 = 1621 kcal; 80,2 + 130,3 = 210,5 CHO; 30,2 + 55,4 = 85,6 PRO; 18,3 + 28,2 = 46,5 FAT.
+  assert.equal(plan.basis_kcal, 1621);
+  assert.equal(plan.basis_carbs_g, 210.5);
+  assert.equal(plan.basis_protein_g, 85.6);
+  assert.equal(plan.basis_fat_g, 46.5);
+  // Il servito resta dov'era: la colonna `*_target` continua a contenere Σ meal_item (300 kcal
+  // dell'unico item della fixture). Le due informazioni convivono, e sono diverse.
+  assert.equal(plan.kcal_target, 300);
+  assert.notEqual(plan.basis_kcal, plan.kcal_target);
+});
+
+test("persist: basis_source = 'diet_slots' quando il day-engine non si è applicato", async () => {
+  const captured = emptyCaptured();
+  const shadow: DayEngineProvenance = {
+    engine: "day_classification_v1",
+    mode: "shadow",
+    applied: false,
+    applicable: true,
+    strategiaPct: 100,
+    fuelingChoG: 0,
+    flags: [],
+    slots: [],
+  };
+  await persistV2PlanToDb(
+    makeFakeAdmin(captured),
+    "ath-1",
+    "2026-08-10",
+    makeProductionWithBasis(BASIS_TWO_SLOTS, shadow),
+  );
+  assert.equal(captured.planInsert!.basis_source, "diet_slots");
+});
+
+test("persist: basis_source = 'day_engine' quando gli slot serviti sono quelli del day-engine", async () => {
+  const captured = emptyCaptured();
+  const applied: DayEngineProvenance = {
+    engine: "day_classification_v1",
+    mode: "on",
+    applied: true,
+    applicable: true,
+    strategiaPct: 100,
+    fuelingChoG: 0,
+    flags: [],
+    slots: [],
+  };
+  await persistV2PlanToDb(
+    makeFakeAdmin(captured),
+    "ath-1",
+    "2026-08-10",
+    makeProductionWithBasis(BASIS_TWO_SLOTS, applied),
+  );
+  assert.equal(captured.planInsert!.basis_source, "day_engine");
+});
+
+test("persist: nessuno slot di base (chiamante legacy) → basis_* NULL, mai uno zero che sembra un target", async () => {
+  const captured = emptyCaptured();
+  const res = await persistV2PlanToDb(makeFakeAdmin(captured), "ath-1", "2026-08-10", makeProduction());
+  assert.deepEqual(res, OK_ONE_ITEM);
+  assert.equal(captured.planInsert!.basis_kcal, null);
+  assert.equal(captured.planInsert!.basis_carbs_g, null);
+  assert.equal(captured.planInsert!.basis_protein_g, null);
+  assert.equal(captured.planInsert!.basis_fat_g, null);
+  assert.equal(captured.planInsert!.basis_source, null);
+});
+
+test("persist: ambiente senza le colonne basis_* (pre-migration) → retry senza, il piano si persiste comunque", async () => {
+  // Stesso patto di response_payload: il codice arriva in produzione prima della migrazione,
+  // e una generazione NON deve mai fallire per una colonna che non c'è ancora.
+  const captured = emptyCaptured();
+  const res = await persistV2PlanToDb(
+    makeFakeAdmin(captured, { failInsertsWithBasisColumns: true }),
+    "ath-1",
+    "2026-08-10",
+    makeProductionWithBasis(BASIS_TWO_SLOTS),
+    { responsePayload: { layer: "deterministic_meal_assembly_v1" } },
+  );
+  assert.deepEqual(res, OK_ONE_ITEM);
+  assert.equal(captured.planInserts.length, 2, "primo insert con basis_* fallisce, il retry senza passa");
+  assert.ok(!("basis_kcal" in captured.planInserts[1]!), "il retry non contiene le colonne mancanti");
+  assert.ok(!("basis_source" in captured.planInserts[1]!), "nemmeno la provenienza della base");
+  assert.deepEqual(
+    captured.planInserts[1]!.response_payload,
+    { layer: "deterministic_meal_assembly_v1" },
+    "si toglie SOLO il gruppo che manca: il payload read-first resta",
+  );
 });

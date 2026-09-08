@@ -8,12 +8,15 @@ function KpiCard({
   value,
   unit,
   hint,
+  secondary,
   icon: Icon,
 }: {
   label: string;
   value: string;
   unit: string;
   hint?: string;
+  /** Seconda riga sotto il numero: il servito accanto al target, col suo nome. */
+  secondary?: { label: string; value: string; unit: string } | null;
   icon: LucideIcon;
 }) {
   return (
@@ -33,6 +36,15 @@ function KpiCard({
           <span className="ml-1 text-xs font-medium text-gray-500">{unit}</span>
         </p>
         {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
+        {secondary ? (
+          <p className="mt-1.5 border-t border-white/10 pt-1.5 text-xs text-gray-400">
+            {secondary.label}{" "}
+            <span className="font-mono font-semibold tabular-nums text-gray-200">
+              {secondary.value}
+              <span className="ml-0.5 font-medium text-gray-500">{secondary.unit}</span>
+            </span>
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -45,48 +57,81 @@ export type NutritionDayKpiTargets = {
   fatG: number;
 };
 
+/**
+ * Etichette dal chiamante (che ha le traduzioni). Senza, restano le stringhe storiche IT:
+ * questo componente è presentazione, non decide che cosa sono i numeri che riceve.
+ */
+export type NutritionDayKpiCopy = {
+  energy?: string;
+  carbs?: string;
+  protein?: string;
+  fat?: string;
+  /** Sottotitolo della card energia: dice CHE COS'È il numero (target del piano, o stima). */
+  energyHint?: string;
+  carbsHint?: string;
+  proteinHint?: string;
+  fatHint?: string;
+  /** Nome della seconda riga (il servito). */
+  served?: string;
+};
+
 type NutritionDayKpiStripProps = {
   targets: NutritionDayKpiTargets;
   dateLabel?: string;
+  /**
+   * Il servito del piano, mostrato sotto il target su ciascuna card. Null quando non c'è un
+   * piano: senza voci non esiste un «nel piatto» da stampare, e inventarne uno sarebbe il
+   * quarto numero della giornata invece del secondo.
+   */
+  served?: NutritionDayKpiTargets | null;
+  copy?: NutritionDayKpiCopy;
 };
 
 /**
  * KPI giornalieri principali (stesso linguaggio visivo dei KpiCard del Builder training).
+ * Due righe per card e non una: il target e, sotto, quanto c'è nel piatto.
  */
-export function NutritionDayKpiStrip({ targets, dateLabel }: NutritionDayKpiStripProps) {
+export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: NutritionDayKpiStripProps) {
   const kcal = Math.round(targets.kcal);
   const c = Math.round(targets.carbsG);
   const p = Math.round(targets.proteinG);
   const f = Math.round(targets.fatG);
+  const servedLabel = copy?.served ?? "Nel piatto";
+  const servedRow = (value: number, unit: string) =>
+    served ? { label: servedLabel, value: `${Math.round(value)}`, unit } : null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
-        label="Energia giorno"
+        label={copy?.energy ?? "Energia giorno"}
         value={`${kcal}`}
         unit="kcal"
-        hint={dateLabel ? `Target · ${dateLabel}` : "Budget energetico giornaliero"}
+        hint={copy?.energyHint ?? (dateLabel ? `Target · ${dateLabel}` : "Budget energetico giornaliero")}
+        secondary={servedRow(served?.kcal ?? 0, "kcal")}
         icon={Flame}
       />
       <KpiCard
-        label="Carboidrati"
+        label={copy?.carbs ?? "Carboidrati"}
         value={`${c}`}
         unit="g"
-        hint="CHO totale"
+        hint={copy?.carbsHint ?? "CHO totale"}
+        secondary={servedRow(served?.carbsG ?? 0, "g")}
         icon={Wheat}
       />
       <KpiCard
-        label="Proteine"
+        label={copy?.protein ?? "Proteine"}
         value={`${p}`}
         unit="g"
-        hint="PRO totale"
+        hint={copy?.proteinHint ?? "PRO totale"}
+        secondary={servedRow(served?.proteinG ?? 0, "g")}
         icon={Drumstick}
       />
       <KpiCard
-        label="Grassi"
+        label={copy?.fat ?? "Grassi"}
         value={`${f}`}
         unit="g"
-        hint="Lipidi totali"
+        hint={copy?.fatHint ?? "Lipidi totali"}
+        secondary={servedRow(served?.fatG ?? 0, "g")}
         icon={Droplets}
       />
     </div>

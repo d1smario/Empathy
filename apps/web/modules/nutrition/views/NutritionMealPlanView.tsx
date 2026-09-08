@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Zap } from "lucide-react";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { NutritionDayKpiStrip } from "@/components/nutrition/NutritionDayKpiStrip";
+import type { DayEnergyTargetSource, DayMacroTotals } from "@/lib/nutrition/plan-day-energy";
 import type {
   FoodDiaryEntryViewModel,
   FunctionalFoodRecommendationsViewModel,
@@ -46,15 +47,47 @@ export type MealPlanDisplayRow = {
 
 export type NutritionMealPlanDailyTargetsProps = {
   complianceTargets: { kcal: number; carbs: number; protein: number; fat: number };
+  /**
+   * Da dove viene il target: `plan` = le basi su cui il motore ha costruito il piano di
+   * questo giorno; `estimate` = il ricalcolo del browser dal profilo, che vale solo finché
+   * un piano non c'è. La pagina non li stampa mai con lo stesso nome.
+   */
+  targetSource?: DayEnergyTargetSource;
+  /** «Nel piatto»: la somma delle porzioni del piano, la stessa che si legge sulle card. */
+  served?: DayMacroTotals | null;
+  /** (servito − target) / target sulle kcal. */
+  servedDeltaPct?: number | null;
+  /** Oltre soglia: una riga in parole dice perché i due numeri non coincidono. */
+  servedDiverges?: boolean;
+  /**
+   * True mentre si LEGGE il piano persistito. Senza piano in memoria il target è per forza
+   * la stima, ma dire «non c'è un piano» mentre lo si sta ancora leggendo sarebbe falso per
+   * il mezzo secondo della query: in quella finestra si dice che il piano sta arrivando.
+   */
+  planReadLoading?: boolean;
   dateLabel: string;
   /** Assunto del giorno dal registro diario (Diario eliminato 2026-07: vive sul Piano). */
   dayConsumed?: { kcal: number; carbs: number; protein: number; fat: number; count: number } | null;
   round: (v: number, digits?: number) => number;
 };
 
-/** Blocco KPI giornaliero: UNICO posto dei macro/kcal del giorno (sezione `mod-target-giorno`, dopo il selettore giorno). */
+/**
+ * Blocco KPI giornaliero: UNICO posto dei macro/kcal del giorno (sezione `mod-target-giorno`,
+ * dopo il selettore giorno).
+ *
+ * Due numeri, non uno, e ciascuno col suo nome: il TARGET (quello del piano quando il piano
+ * c'è; altrimenti una stima, e allora lo si dice) e il SERVITO. Divergono su circa due terzi
+ * dei piani — è normale che le porzioni reali non cadano esatte sul budget — quindi lo scarto
+ * si spiega a parole e non con un semaforo: questo è un piano alimentare, non un cruscotto
+ * di allarmi.
+ */
 export function NutritionMealPlanDailyTargets({
   complianceTargets,
+  targetSource = "plan",
+  served = null,
+  servedDeltaPct = null,
+  servedDiverges = false,
+  planReadLoading = false,
   dateLabel,
   dayConsumed,
   round,
@@ -63,10 +96,15 @@ export function NutritionMealPlanDailyTargets({
   // Il pannello «Bilancio kcal · cosa stai sommando» (energy ledger, gated coach/admin)
   // è stato RIMOSSO per tutti su richiesta del proprietario (2026-08): dettaglio motore
   // che non deve stare in grafica. Qui restano solo KPI del giorno e assunto/rimanente.
+  const fromPlan = targetSource === "plan";
+  const servedKcal = served ? Math.round(served.kcal) : null;
+  const targetKcal = Math.round(complianceTargets.kcal);
 
   return (
     <div>
-      <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">{t("dailyTarget")}</p>
+      <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
+        {fromPlan ? t("planTargetCaption") : t("estimateCaption")}
+      </p>
       <NutritionDayKpiStrip
         targets={{
           kcal: complianceTargets.kcal,
@@ -74,10 +112,41 @@ export function NutritionMealPlanDailyTargets({
           proteinG: complianceTargets.protein,
           fatG: complianceTargets.fat,
         }}
+        served={
+          served
+            ? { kcal: served.kcal, carbsG: served.carbs, proteinG: served.protein, fatG: served.fat }
+            : null
+        }
         dateLabel={dateLabel}
+        copy={{
+          energy: t("kpiEnergy"),
+          carbs: t("kpiCarbs"),
+          protein: t("kpiProtein"),
+          fat: t("kpiFat"),
+          energyHint: fromPlan
+            ? t("planTargetOn", { date: dateLabel })
+            : t("estimateOn", { date: dateLabel }),
+          carbsHint: t("kpiCarbsHint"),
+          proteinHint: t("kpiProteinHint"),
+          fatHint: t("kpiFatHint"),
+          served: t("servedLabel"),
+        }}
       />
+      {!fromPlan ? (
+        <p className="mt-2 text-xs leading-relaxed text-gray-400">
+          {planReadLoading ? t("estimateWhileReadingPlan") : t("estimateExplainer")}
+        </p>
+      ) : null}
+      {/* NESSUNA RIGA CHE SPIEGA LO SCARTO fra target e servito, per decisione esplicita
+          del proprietario (8 set). Una frase che giustifica il buco è il modo in cui un
+          difetto smette di essere un difetto e diventa una caratteristica: il piano deve
+          arrivare al suo target, non spiegare all'atleta perché non ci arriva. Lo scarto
+          medio in produzione è −6,4%, e si chiude nel motore — non qui.
+          I due numeri restano entrambi visibili (target e «nel piatto»): quella è
+          informazione, non una scusa. */}
       {/* Assunto vs rimanente del giorno (portato dal Diario, 2026-07): quello
           che registri dal carosello si riflette QUI, non su un'altra pagina.
+          Il rimanente si sottrae dal target del piano — l'unico target che esiste.
           L'idratazione minima è migrata nella card «Quanto bere oggi». */}
       {dayConsumed && dayConsumed.count > 0 ? (
         <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
@@ -91,14 +160,14 @@ export function NutritionMealPlanDailyTargets({
           <span className="text-gray-400">
             {complianceTargets.kcal - dayConsumed.kcal >= 0 ? (
               <>
-                {t("remainingToday")}{" "}
+                {fromPlan ? t("remainingOnPlanTarget") : t("remainingOnEstimate")}{" "}
                 <span className="font-mono font-bold tabular-nums text-cyan-200">
                   {round(complianceTargets.kcal - dayConsumed.kcal)} kcal
                 </span>
               </>
             ) : (
               <>
-                {t("overTarget")}{" "}
+                {fromPlan ? t("overPlanTarget") : t("overEstimate")}{" "}
                 <span className="font-mono font-bold tabular-nums text-amber-300">
                   +{round(dayConsumed.kcal - complianceTargets.kcal)} kcal
                 </span>

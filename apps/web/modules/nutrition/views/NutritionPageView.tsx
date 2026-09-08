@@ -166,6 +166,10 @@ import {
   resolveSixMealSnackPercentages,
   type CaloricDistribution,
 } from "@/lib/nutrition/diet-meal-slot-budgets";
+import {
+  buildPlanWorkspaceRowBases,
+  resolvePlanDayEnergy,
+} from "@/lib/nutrition/plan-day-energy";
 import { computeSnackSlotsSuppressedByTrainingWindow } from "@/lib/nutrition/nutrition-meal-times-training-coherence";
 import {
   distributionImpliesSixMeals,
@@ -343,6 +347,23 @@ function resolveFuelingProductImage(
 function localTodayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Icona del pasto: una sola tabella, usata sia dalla griglia Diet sia dalle righe del piano. */
+function mealSlotIcon(slotKey: string): string {
+  switch (slotKey) {
+    case "breakfast":
+      return "🌅";
+    case "lunch":
+      return "🥗";
+    case "dinner":
+    case "snack_evening":
+      return "🌙";
+    case "snack_am":
+      return "☕";
+    default:
+      return "🥤";
+  }
 }
 
 export default function NutritionPageView({ subRoute }: { subRoute: NutritionSubRoute }) {
@@ -2007,67 +2028,51 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   ]);
 
   const mealPlanCards = useMemo(() => {
-    return mealRows.map((row) => {
-      const icon =
-        row.key === "breakfast"
-          ? "🌅"
-          : row.key === "lunch"
-            ? "🥗"
-            : row.key === "dinner"
-              ? "🌙"
-              : row.key === "snack_evening"
-                ? "🌙"
-                : row.key === "snack_am"
-                  ? "☕"
-                  : "🥤";
-      return {
-        ...row,
-        icon,
-        portionHint: portionHintForMealKcal(row.kcal),
-      };
-    });
+    return mealRows.map((row) => ({
+      ...row,
+      icon: mealSlotIcon(row.key),
+      portionHint: portionHintForMealKcal(row.kcal),
+    }));
   }, [mealRows]);
 
   /** Kcal/macro per pasto: solo Diet (mai rollup USDA). USDA = composizione alimenti post-generazione. */
   const mealPlanCardsDisplay = mealPlanCards;
 
   /**
-   * Righe esposte in Meal plan: dopo la generazione allinea alla base solver (6 slot)
-   * anche se la griglia Diet locale era ancora a 4 pasti.
+   * Righe esposte in Meal plan: quando il piano c'è, TUTTE dalle basi del piano.
+   *
+   * Prima era un ibrido per-slot — la riga ricalcolata dal browser vinceva ogni volta che lo
+   * slot esisteva anche nella griglia Diet locale, e le basi coprivano solo gli slot che la
+   * griglia non aveva. Con lo stesso set di slot (il caso normale) nessun numero per pasto
+   * veniva dal piano: su Milesi, 2026-09-08, colazione 836 invece di 766, pranzo 976 invece
+   * di 766, cena 697 invece di 656. Sistemare il totale in cima senza sistemare questo
+   * avrebbe lasciato il singolo pasto ricalcolato lo stesso.
    */
   const mealPlanWorkspaceRows = useMemo(() => {
     const basis = intelligentMealPlan?.solverBasis?.slots;
     if (!basis?.length) return mealPlanCards;
-    const byKey = new Map(mealPlanCards.map((r) => [r.key as MealSlotKey, r]));
-    return basis.map((s) => {
-      const existing = byKey.get(s.slot);
-      if (existing) return existing;
-      const icon =
-        s.slot === "breakfast"
-          ? "🌅"
-          : s.slot === "lunch"
-            ? "🥗"
-            : s.slot === "dinner"
-              ? "🌙"
-              : s.slot === "snack_evening"
-                ? "🌙"
-                : s.slot === "snack_am"
-                  ? "☕"
-                  : "🥤";
-      return {
-        key: s.slot,
-        label: s.labelIt,
-        pct: 0,
-        time: s.scheduledTimeLocal,
-        kcal: s.targetKcal,
-        carbs: s.targetCarbsG,
-        protein: s.targetProteinG,
-        fat: s.targetFatG,
-        icon,
-        portionHint: portionHintForMealKcal(s.targetKcal),
-      };
-    });
+    return buildPlanWorkspaceRowBases(basis, mealPlanCards).map((row) => ({
+      ...row,
+      icon: mealSlotIcon(row.key),
+      portionHint: portionHintForMealKcal(row.kcal),
+    }));
   }, [intelligentMealPlan, mealPlanCards]);
+
+  /**
+   * Le due energie del giorno, ciascuna col suo nome: il TARGET (quello del piano quando il
+   * piano c'è, altrimenti la stima del browser dichiarata come tale) e il SERVITO (la somma
+   * delle porzioni, la stessa delle card). Da qui in poi in pagina non esiste un terzo
+   * numero della giornata.
+   */
+  const planDayEnergy = useMemo(
+    () =>
+      resolvePlanDayEnergy({
+        plan: intelligentMealPlan,
+        liveRows: mealRows,
+        isItemVisible: (slot, index) => !coachMealRemovalKeys.has(`${slot}:${index}`),
+      }),
+    [intelligentMealPlan, mealRows, coachMealRemovalKeys],
+  );
 
   const mealDisplayByKey = useMemo(() => {
     const m = new Map<MealSlotKey, (typeof mealPlanWorkspaceRows)[number]>();
@@ -2428,10 +2433,18 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
   );
 
   const complianceOverview = useMemo(() => {
-    const targetKcal = mealRows.reduce((s, m) => s + m.kcal, 0);
-    const targetCarbs = mealRows.reduce((s, m) => s + m.carbs, 0);
-    const targetProtein = mealRows.reduce((s, m) => s + m.protein, 0);
-    const targetFat = mealRows.reduce((s, m) => s + m.fat, 0);
+    /**
+     * UN SOLO TARGET: quello del piano. Prima queste quattro somme venivano da `mealRows`,
+     * cioè dalla griglia ricalcolata dal browser a ogni apertura con un modello energetico
+     * diverso da quello che ha generato il piano — su Milesi, 2026-09-08, 2788 kcal contro
+     * le 2188 su cui il piano è stato davvero costruito. Il ricalcolo resta solo quando un
+     * piano non c'è ancora, e in quel caso `planDayEnergy.source` vale `estimate` e la
+     * pagina lo dice.
+     */
+    const targetKcal = planDayEnergy.target.kcal;
+    const targetCarbs = planDayEnergy.target.carbs;
+    const targetProtein = planDayEnergy.target.protein;
+    const targetFat = planDayEnergy.target.fat;
 
     const today = localTodayIso();
     const todayEntries = diaryMacroRows.filter((d) => d.date === today);
@@ -2488,7 +2501,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       today: { ...todayTotals, score: todayScore, entries: todayEntries.length },
       week: { ...weekAvg, score: weekScore, entries: weekEntries.length, daysCovered },
     };
-  }, [mealRows, diaryMacroRows]);
+  }, [planDayEnergy, diaryMacroRows]);
 
   const nutrientSummary = useMemo(() => {
     const foodDb: Record<
@@ -3489,6 +3502,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               coachMealRemovalKeys={coachMealRemovalKeys}
               coachSessionFoodExclusions={coachSessionFoodExclusions}
               complianceOverview={complianceOverview}
+              planDayEnergy={planDayEnergy}
               selectedPlanDateLabel={selectedPlanDateLabel}
               hydrationPlan={hydrationPlan}
               dayAdjustments={dayAdjustments}

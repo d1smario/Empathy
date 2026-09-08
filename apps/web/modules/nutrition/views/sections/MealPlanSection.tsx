@@ -19,6 +19,7 @@ import type {
 import type { NutritionMicronutrientGridProps } from "@/modules/nutrition/components/NutritionMicronutrientGrid";
 import type { FoodDiaryEntryViewModel } from "@/api/nutrition/contracts";
 import type { IntelligentMealPlanResponseBody, MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
+import type { PlanDayEnergy } from "@/lib/nutrition/plan-day-energy";
 import type { MealPathwaySlotBundle } from "@/modules/nutrition/types/meal-pathway-slot-bundle";
 import type { RacePreLunchDayContext } from "@/lib/nutrition/race-day-pre-race-lunch";
 import type { OnboardingItemResult } from "@/lib/onboarding/onboarding-completeness";
@@ -62,6 +63,13 @@ export type MealPlanSectionProps = {
   coachMealRemovalKeys: Set<string>;
   coachSessionFoodExclusions: string[];
   complianceOverview: { target: { kcal: number; carbs: number; protein: number; fat: number } };
+  /**
+   * Le due energie del giorno con il nome di ciascuna: il target (del piano, o la stima
+   * dichiarata quando un piano non c'è) e il servito. `complianceOverview.target` è la
+   * stessa cifra di `planDayEnergy.target` — resta separato solo perché alimenta anche il
+   * confronto col diario.
+   */
+  planDayEnergy: PlanDayEnergy;
   selectedPlanDateLabel: string;
   hydrationPlan: { minDailyMl: number };
   /** Reintegro/riduzione del giorno (stessa card di Oggi) — resa dopo il target del giorno. */
@@ -122,6 +130,7 @@ export function MealPlanSection({
   coachMealRemovalKeys,
   coachSessionFoodExclusions,
   complianceOverview,
+  planDayEnergy,
   selectedPlanDateLabel,
   hydrationPlan,
   dayAdjustments,
@@ -248,6 +257,11 @@ export function MealPlanSection({
             protein: complianceOverview.target.protein,
             fat: complianceOverview.target.fat,
           }}
+          targetSource={planDayEnergy.source}
+          planReadLoading={planReadLoading}
+          served={planDayEnergy.served}
+          servedDeltaPct={planDayEnergy.servedDeltaPct}
+          servedDiverges={planDayEnergy.servedDiverges}
           dateLabel={selectedPlanDateLabel}
           dayConsumed={dayConsumedTotals}
           round={round}
