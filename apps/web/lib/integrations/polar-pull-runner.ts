@@ -4,6 +4,7 @@ import type { ObservationIngestTags, RealityDomain } from "@/lib/empathy/schemas
 import { observationDomainsFromPolarPayload } from "@/lib/integrations/polar-observation-from-payload";
 import { POLAR_V3_PATHS, polarApiBaseUrl } from "@/lib/integrations/polar-oauth2-api";
 import { readVendorOauthTokens } from "@/lib/integrations/vendor-oauth-read";
+import { polarDailyExternalId, polarExerciseExternalId } from "@/lib/integrations/polar-external-id";
 import { persistRealityDeviceExport } from "@/lib/reality/provider-adapters";
 import { defaultObservationIngestTags } from "@/lib/reality/observation-ingest-defaults";
 import { mergeObservationIngestTags } from "@/lib/reality/observation-merge";
@@ -337,9 +338,14 @@ export async function runPolarPullForAthlete(input: {
     }
   };
 
-  const exerciseId = (rec: Record<string, unknown>) => (typeof rec.id === "string" ? rec.id : null);
-  const dateId = (prefix: string) => (rec: Record<string, unknown>) =>
-    typeof rec.date === "string" && rec.date ? `${prefix}:${rec.date}` : null;
+  const exerciseId = (rec: Record<string, unknown>) => polarExerciseExternalId(rec);
+  /**
+   * Sonno e recharge sono aggregati giornalieri senza id lato Polar: la chiave porta dentro
+   * l'atleta, altrimenti due atleti nella stessa notte si contendono la stessa riga
+   * (`uq_device_sync_exports_provider_event` non ha `athlete_id`).
+   */
+  const dateId = (kind: "sleep" | "recharge") => (rec: Record<string, unknown>) =>
+    polarDailyExternalId({ kind, athleteId: input.athleteId, rec });
 
   await runStream(
     streams.exercise,

@@ -3,9 +3,28 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { HEALTH_MARKERS, MICROBIOTA_TAXA } from "@/lib/health/health-ontology";
 import type { HealthPanelTypeForParse } from "@/lib/health/lab-text-extractors";
+import { recordEmpathyEvent } from "@/lib/observability/empathy-event-trace";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type DbClient = SupabaseClient;
 
+/** Evento ops emesso quando il grafo causale non riesce a nascere: cercabile su `empathy_events`. */
+const LINEAGE_FAILED_EVENT = "health.observation_lineage.insert_failed";
+
+/**
+ * `metadata` è OBBLIGATORIO, e non per pignoleria di tipi.
+ *
+ * `observation_lineage.metadata` è `jsonb NOT NULL DEFAULT '{}'`, ma quel DEFAULT protegge
+ * la colonna ASSENTE, non il NULL esplicito. postgrest-js, su `.insert(array)`, calcola
+ * l'unione delle chiavi di tutte le righe e la manda come `?columns=...`; con
+ * `defaultToNull` (il suo default) le righe che quella chiave non ce l'hanno la ricevono
+ * come NULL. Un array misto — una riga con `metadata`, le altre senza — faceva quindi
+ * saltare l'INTERO batch con 23502, e con lui ogni traccia di lineage del referto.
+ *
+ * Marcandolo non-opzionale il compilatore chiude la porta: una riga senza `metadata` non
+ * si può più costruire. Il caso «non ho niente da dire» si scrive `{}`, che è esattamente
+ * ciò che il DEFAULT avrebbe messo.
+ */
 type LineageRow = {
   athlete_id: string;
   extraction_run_id: string | null;
@@ -14,7 +33,7 @@ type LineageRow = {
   target_table: string;
   target_id: string | null;
   relation: string;
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 };
 
 function appendObservationLineage(
@@ -30,6 +49,7 @@ function appendObservationLineage(
       target_table: input.tableName,
       target_id: id,
       relation: input.relation,
+      metadata: {},
     });
   }
 }
@@ -61,7 +81,13 @@ export async function persistNormalizedObservations(input: {
   parserVersion: string;
   sourceHash?: string | null;
   qualityReport?: Record<string, unknown>;
-}): Promise<{ extractionRunId: string | null; inserted: number; lineageInserted: number }> {
+}): Promise<{
+  extractionRunId: string | null;
+  inserted: number;
+  lineageInserted: number;
+  /** Messaggio del fallimento del lineage (già tracciato su `empathy_events`), `null` se è andata. */
+  lineageError: string | null;
+}> {
   const status = extractionStatusFromParsed(input.parsed, input.sourceKind);
   const { data: runRow, error: runErr } = await input.db
     .from("extraction_runs")
@@ -252,11 +278,44 @@ export async function persistNormalizedObservations(input: {
   }
 
   let lineageInserted = 0;
+  let lineageError: string | null = null;
   if (lineageRows.length) {
     const { error } = await input.db.from("observation_lineage").insert(lineageRows);
-    if (error) throw new Error(error.message);
-    lineageInserted = lineageRows.length;
+    if (error) {
+      /**
+       * Il lineage è memoria del percorso, non il percorso: le osservazioni sono già a
+       * terra e non si buttano via. Prima invece si lanciava, e la `runHealthDeterministic-
+       * PostProcess` che sta a monte incassava l'eccezione in un `catch` che la riduceva a
+       * una stringa nella risposta HTTP: bruciava anche il grafo causale e lo staging run
+       * che venivano DOPO, e un'ora più tardi non ne restava nulla da nessuna parte (la
+       * ritenzione dei log runtime su Vercel è di circa un'ora).
+       *
+       * Quindi: non blocca, ma non sparisce. La traccia va su `empathy_events` come per i
+       * cron. In scrittura la RLS di quella tabella ammette solo i platform admin, perciò
+       * serve il client service role: quello del chiamante è la sessione dell'atleta o del
+       * coach. Se il service role non è configurato, `recordEmpathyEvent` ripiega sul log.
+       */
+      lineageError = error.message;
+      const tracer = createSupabaseAdminClient() ?? input.db;
+      await recordEmpathyEvent(tracer, {
+        eventType: LINEAGE_FAILED_EVENT,
+        payload: {
+          athlete_id: input.athleteId,
+          panel_id: input.panelId,
+          panel_type: input.panelType,
+          extraction_run_id: extractionRunId,
+          parser_version: input.parserVersion,
+          rows_attempted: lineageRows.length,
+          observations_inserted: inserted,
+          relations: [...new Set(lineageRows.map((row) => row.relation))],
+          error: error.message,
+          error_code: (error as { code?: string }).code ?? null,
+        },
+      });
+    } else {
+      lineageInserted = lineageRows.length;
+    }
   }
 
-  return { extractionRunId, inserted, lineageInserted };
+  return { extractionRunId, inserted, lineageInserted, lineageError };
 }

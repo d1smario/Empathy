@@ -5,6 +5,7 @@ import type {
   RealitySourceKind,
 } from "@/lib/empathy/schemas";
 import { buildRealityIngestionEnvelope } from "@/lib/reality/build-ingestion-envelope";
+import { writeDeviceSyncExportRow, type DeviceExportStore } from "@/lib/reality/device-export-write";
 import { supportsRealityProviderFlow } from "@/lib/reality/provider-registry";
 import { normalizeRealityProvider } from "@/lib/reality/provider-utils";
 import { syncAthleteTimeSeriesSamplesForDeviceExport } from "@/lib/reality/athlete-time-series-from-device-export";
@@ -12,8 +13,12 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export type PersistRealityDeviceExportOptions = {
   /**
-   * When set with a non-empty `externalRef`, uses upsert on `(provider, external_event_id)`
-   * so OAuth reconnect (same Garmin user id, etc.) does not violate `uq_device_sync_exports_provider_event`.
+   * Deduplica su `(provider, external_event_id)`: **attiva di default** ogni volta che
+   * `externalRef` è valorizzato. Passare `false` solo per forzare l'insert secco.
+   *
+   * Era opt-in e sei runner su sette se ne dimenticavano: ogni ri-pull della finestra storica
+   * sbatteva su `uq_device_sync_exports_provider_event` e le revisioni del provider
+   * (WHOOP ricalcola recovery e sonno) non arrivavano mai alla riga già scritta.
    */
   upsertOnProviderExternalId?: boolean;
 };
@@ -209,77 +214,44 @@ export async function persistRealityDeviceExport(
     },
   };
 
-  const useUpsert = Boolean(options?.upsertOnProviderExternalId && externalRefTrimmed);
-
   const selectCols = "id, athlete_id, provider, status, external_ref, created_at, updated_at, payload";
 
-  let data: Record<string, unknown> | null = null;
-  let error: { message: string; code?: string } | null = null;
+  /**
+   * Porta verso `device_sync_exports`: la logica di merge sta in `device-export-write`,
+   * qui resta solo il dialetto PostgREST.
+   */
+  const store: DeviceExportStore = {
+    async findByProviderExternalId({ provider, externalEventId }) {
+      const { data: existing, error: selErr } = await supabase
+        .from("device_sync_exports")
+        .select("id, athlete_id")
+        .eq("provider", provider)
+        .eq("external_event_id", externalEventId)
+        .maybeSingle();
+      if (selErr) throw new Error(selErr.message);
+      const row = existing as { id?: unknown; athlete_id?: unknown } | null;
+      const id = row && typeof row.id === "string" ? row.id : null;
+      const owner = row && typeof row.athlete_id === "string" ? row.athlete_id : null;
+      return id && owner ? { id, athleteId: owner } : null;
+    },
+    async insert(row) {
+      const ins = await supabase.from("device_sync_exports").insert(row).select(selectCols).single();
+      return { row: (ins.data as Record<string, unknown> | null) ?? null, error: ins.error ?? null };
+    },
+    async updateById({ id, patch }) {
+      const up = await supabase.from("device_sync_exports").update(patch).eq("id", id).select(selectCols).single();
+      return { row: (up.data as Record<string, unknown> | null) ?? null, error: up.error ?? null };
+    },
+  };
 
-  if (useUpsert && externalRefTrimmed) {
-    /**
-     * `.upsert(onConflict: provider,external_event_id)` fallisce con indici UNIQUE **parziali**
-     * (`WHERE external_event_id IS NOT NULL`): Postgres non inferisce il constraint per ON CONFLICT.
-     * Merge esplicito come fallback compatibile con tutte le versioni DB / PostgREST.
-     */
-    const extId = externalRefTrimmed;
-    const { data: existing, error: selErr } = await supabase
-      .from("device_sync_exports")
-      .select("id")
-      .eq("provider", storedProvider)
-      .eq("external_event_id", extId)
-      .maybeSingle();
-
-    if (selErr) {
-      throw new Error(selErr.message);
-    }
-
-    const existingId =
-      existing && typeof (existing as { id?: unknown }).id === "string" ? (existing as { id: string }).id : null;
-
-    const updateRow = {
-      athlete_id: insertRow.athlete_id,
-      external_ref: insertRow.external_ref,
-      status: insertRow.status,
-      sync_kind: insertRow.sync_kind,
-      payload: insertRow.payload,
-      ...(createdAt ? { created_at: createdAt } : {}),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (existingId) {
-      const up = await supabase.from("device_sync_exports").update(updateRow).eq("id", existingId).select(selectCols).single();
-      data = up.data as Record<string, unknown> | null;
-      error = up.error;
-    } else {
-      const ins = await supabase.from("device_sync_exports").insert(insertRow).select(selectCols).single();
-      data = ins.data as Record<string, unknown> | null;
-      error = ins.error;
-      const dup =
-        ins.error &&
-        (ins.error.code === "23505" ||
-          /duplicate key|unique constraint|violates unique constraint/i.test(ins.error.message ?? ""));
-      if (dup) {
-        const up = await supabase
-          .from("device_sync_exports")
-          .update(updateRow)
-          .eq("provider", storedProvider)
-          .eq("external_event_id", extId)
-          .select(selectCols)
-          .single();
-        data = up.data as Record<string, unknown> | null;
-        error = up.error;
-      }
-    }
-  } else {
-    const ins = await supabase.from("device_sync_exports").insert(insertRow).select(selectCols).single();
-    data = ins.data as Record<string, unknown> | null;
-    error = ins.error;
-  }
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  const written = await writeDeviceSyncExportRow(store, {
+    provider: storedProvider,
+    athleteId: input.athleteId,
+    externalEventId: externalRefTrimmed,
+    insertRow,
+    dedupeOnExternalEventId: options?.upsertOnProviderExternalId,
+  });
+  const data = written.row;
 
   const exportRow = data as Record<string, unknown> | null;
   const exportId = exportRow && typeof exportRow.id === "string" ? exportRow.id : null;
@@ -353,7 +325,7 @@ export async function persistRealityProviderCallback(input: PersistRealityProvid
           ? ["provider_authorization_code_or_verifier"]
           : [],
     },
-    { upsertOnProviderExternalId: Boolean(externalRef) },
+    // niente opzione: la deduplica su (provider, external_event_id) è il default quando c'è externalRef
   );
 }
 
