@@ -40,6 +40,7 @@ import {
   type DayEngineProvenance,
 } from "@/lib/nutrition/v2/day-engine-integration";
 import { buildMenuFoodFiberFermentedIndex } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import { redistributeSuppressedSlotBudgets } from "@/lib/nutrition/v2/redistribute-suppressed-slot-budgets";
 import { buildPreEffortFilterContext } from "@/lib/nutrition/v2/pre-effort-food-filter";
 import { recordEmpathyEvent } from "@/lib/observability/empathy-event-trace";
 
@@ -333,6 +334,26 @@ export async function buildMealPlanV2Production(
         evidence: preEffort.evidence,
         menuCatalogLoaded: menuFoodPools != null,
       },
+    });
+  }
+
+  // Slot soppressi dalla finestra di allenamento: il pasto resta NON servito, ma il suo
+  // budget non evapora — va agli altri pasti del giorno (il fueling ha la sua borsa
+  // separata in `daily-energy-solver`). Prima di qui: 72 slot soppressi su 720 piani di
+  // produzione dichiaravano un target e servivano zero, ~26.000 kcal di scarto puro.
+  // La ridistribuzione avviene su `composerSlots`, cioè sull'UNICA fonte che il compositore
+  // usa E che il payload ripubblica come `solverBasis.slots`: target e servito restano
+  // misurati sullo stesso numero.
+  const suppressedKeys = input.request.suppressedSlots ?? [];
+  if (suppressedKeys.length > 0) {
+    composerSlots = redistributeSuppressedSlotBudgets(composerSlots, {
+      suppressedKeys,
+      // Gli slot a protocollo (pre-gara fisso, recovery post-gara) non inseguono il budget:
+      // dargli kcal in più sarebbe carta straccia.
+      excludeKeys: [
+        ...(input.request.racePreLunch ? [input.request.racePreLunch.mealSlot] : []),
+        ...(input.request.racePostRecovery ? [input.request.racePostRecovery.mealSlot] : []),
+      ],
     });
   }
 
