@@ -98,10 +98,13 @@ export async function bootstrapAppUserProfile(
    * l'insert atleta del primo onboarding viola la RLS (403) per ogni nuovo utente.
    */
   if (!current) {
+    // `athlete_id` NON compare nel payload: la colonna è a NULL di default, e ometterla
+    // è ciò che permette di togliere il privilegio di scrittura su quella colonna ai
+    // ruoli anon/authenticated. Elencarla, anche solo per scriverci null, richiederebbe
+    // il grant — e quel grant è la porta da cui si entrava nei dati di un altro atleta.
     const { error: seedErr } = await db.from("app_user_profiles").insert({
       user_id: input.userId,
       role,
-      athlete_id: null,
       platform_coach_status: role === "coach" ? "pending" : null,
     });
     if (seedErr && seedErr.code !== "23505") {
