@@ -44,9 +44,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const explicitAthleteId = typeof body.athleteId === "string" ? body.athleteId.trim() : "";
-  const athleteIdBody = explicitAthleteId || null;
-  const email = String(body.email ?? "").trim().toLowerCase() || null;
+  /**
+   * `athleteId` ed `email` NON si prendono più dal corpo della richiesta.
+   *
+   * Erano due chiavi in mano al chiamante: il bootstrap scrive con service_role, quindi
+   * chi passava l'athleteId di un altro (o la sua email, risolta per email dal lookup)
+   * si collegava alla riga profilo di quell'atleta — e `canAccessAthleteData` concede
+   * l'accesso sul solo confronto `athlete_id === target`, prima di guardare ruolo o
+   * roster. Nessuno verificava che quei due valori appartenessero a chi chiamava.
+   *
+   * L'identità ora viene solo dalla sessione: `user.email` è l'unico dato d'identità
+   * che il chiamante non può falsificare, e l'athlete_id già collegato si legge dal DB.
+   * Il campo `athleteId` resta accettato nel contratto HTTP ma viene ignorato: i client
+   * vecchi continuano a funzionare senza poter più decidere a chi collegarsi.
+   */
+  const email = (user.email ?? "").trim().toLowerCase() || null;
   const firstName = String(body.firstName ?? "").trim() || null;
   const lastName = String(body.lastName ?? "").trim() || null;
 
@@ -80,8 +92,11 @@ export async function POST(req: Request) {
 
   const role = resolveBootstrapRole(requestedRole, current);
 
-  const athleteIdForBootstrap =
-    role === "coach" ? athleteIdBody : athleteIdBody ?? current?.athlete_id ?? null;
+  // Solo il collegamento già presente in DB: mai un id che arriva da fuori. Per il coach
+  // resta null — il ramo coach del bootstrap userebbe quell'id per iscriversi in
+  // `coach_athletes` come coach dell'atleta indicato, e quell'iscrizione non deve poter
+  // nascere da una richiesta del client.
+  const athleteIdForBootstrap = role === "coach" ? null : (current?.athlete_id ?? null);
 
   const result = await bootstrapAppUserProfile(supabase, {
     userId,
