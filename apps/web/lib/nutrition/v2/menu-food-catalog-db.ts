@@ -5,6 +5,12 @@ import {
   normalizeAllergenClassList,
 } from "@/lib/nutrition/meal-plan-profile-food-filter";
 import type { AllergenFoodIndex, AllergenFoodInfo } from "@/lib/nutrition/v2/fdc-candidate-filter";
+import {
+  fiberNetApplies,
+  type MenuFoodFiberFermentedIndex,
+  type MenuFoodFiberFermentedInfo,
+  menuFoodFiberFermentedInfo,
+} from "@/lib/nutrition/v2/menu-food-fiber-fermented";
 
 /**
  * Catalogo curato dei cibi del menù (tabella `nutrition_menu_foods`) → pool per il
@@ -34,6 +40,46 @@ export type MenuFoodEntry = {
   isMeat: boolean;
   isFish: boolean;
   isAnimalProduct: boolean;
+  /**
+   * REGOLA 2 di Mario — `nutrition_menu_foods.is_fermented`: yogurt in ogni forma, kefir,
+   * latticello, panna acida, tempeh, formaggi stagionati.
+   *
+   * `undefined` = la COLONNA NON È ARRIVATA (select degradata su un ambiente senza la
+   * migrazione 20260908150000) oppure il valore è NULL: «non classificato», che NON è «non
+   * fermentato». Mettere `false` qui era il terzo fail-open della stessa famiglia — la riga
+   * rispondeva per una colonna che nessuno aveva letto, e lo yogurt tornava nel piatto
+   * pre-sforzo. Chi decide (`pre-effort-food-filter`) tratta l'assenza come esclusione.
+   */
+  isFermented?: boolean;
+  /**
+   * REGOLA 2 di Mario — `nutrition_menu_foods.is_wholegrain`: pasta/pane/riso integrali,
+   * farro, avena, muesli, crusca, segale, quinoa… Proprietà DICHIARATA, non dedotta dalla
+   * fibra: sei integrali del catalogo stanno sotto qualunque soglia (riso integrale cotto
+   * 1,6 g/100 g). `undefined` = colonna assente dalla select o NULL, con la stessa lettura
+   * di {@link MenuFoodEntry.isFermented}: non classificato, non «non integrale».
+   */
+  isWholegrain?: boolean;
+  /**
+   * Fibra per 100 g CONFRONTABILE: il numero di `nutrition_fdc_foods.fiber_100g` quando la
+   * riga appartiene a una popolazione in cui la soglia sa giudicare — cereali e carboidrati
+   * (`breakfast_cho` sul secco, `lunch_carb`/`dinner_carb` sul secco e sul cotto) e legumi
+   * ovunque (vedi `fiberNetApplies`). `undefined` significa DUE cose, e per il verdetto
+   * valgono uguale: fibra non misurata (42 righe su 499, quasi tutte carni e pesci) oppure
+   * numero non confrontabile con nessuna soglia — il cornetto pesato «come si mangia» in
+   * mezzo alle confetture, la mandorla in mezzo ai grassi. In entrambi i casi l'alimento
+   * resta affidato alle due colonne dichiarate.
+   * Va letta SEMPRE insieme a {@link MenuFoodEntry.servingBasis}, e le soglie (una per base)
+   * vivono in `menu-food-fiber-fermented.ts`.
+   */
+  fiberPer100g?: number;
+  /**
+   * Il numero grezzo di `nutrition_fdc_foods.fiber_100g`, presente ogni volta che è misurato
+   * anche dove la soglia non si applica. Non entra nel verdetto: serve alla diagnostica e a
+   * dire all'indice «di questo alimento una misura esiste» — senza, un prosciutto fuori dalle
+   * popolazioni della rete diventerebbe «ignoto» per i candidati USDA e sparirebbe dal
+   * pre-sforzo per il motivo sbagliato.
+   */
+  fiberMeasuredPer100g?: number;
   /**
    * Grammatica di Mario (tabella 1:1 `nutrition_menu_food_meal_roles`): score e ruoli per
    * pasto. `undefined` = alimento senza riga di score (es. inserito da admin dopo l'import):
@@ -201,7 +247,7 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-type MacroRow = { kcal: number; carbs: number; protein: number; fat: number };
+type MacroRow = { kcal: number; carbs: number; protein: number; fat: number; fiber: number | null };
 
 const MEAL_ROLES: ReadonlySet<string> = new Set<MenuFoodMealRole>([
   "CHO_PRIMARY",
@@ -415,6 +461,9 @@ export function mapMenuFoodRows(
       carbs: num(r?.carbs_100g) ?? 0,
       protein: num(r?.protein_100g) ?? 0,
       fat: num(r?.fat_100g) ?? 0,
+      // Fibra: NIENTE `?? 0`. Non misurata ≠ zero fibra, e confonderle qui direbbe al filtro
+      // pre-sforzo che un integrale senza riga USDA è povero di fibre.
+      fiber: num(r?.fiber_100g),
     });
   }
 
@@ -431,12 +480,27 @@ export function mapMenuFoodRows(
     const macro = macroByFdc.get(fdcId);
     if (!macro) continue;
     const servingBasisRaw = str(r?.serving_basis) ?? "";
+    const servingBasis = (SERVING_BASES.has(servingBasisRaw) ? servingBasisRaw : "dry_grams") as MealPlanV2ServingBasis;
+    const mealRoles = mealRolesByKey.get(canonicalKey);
+    const rotationKey = str(r?.rotation_key) ?? undefined;
+    // REGOLA 2 (fibre): il numero si giudica solo dove il confronto ha senso — cereali,
+    // carboidrati e legumi. Fuori di lì resta misurato ma muto (vedi `fiberNetApplies`).
+    const fiberComparable =
+      macro.fiber != null &&
+      fiberNetApplies({
+        poolKeys,
+        servingBasis,
+        substitutionGroup: mealRoles?.substitutionGroup,
+        rotationKey,
+      })
+        ? macro.fiber
+        : null;
     parsed.push({
       entry: {
         canonicalKey,
         labelIt: str(r?.label_it) ?? canonicalKey.replace(/_/g, " "),
-        servingBasis: (SERVING_BASES.has(servingBasisRaw) ? servingBasisRaw : "dry_grams") as MealPlanV2ServingBasis,
-        rotationKey: str(r?.rotation_key) ?? undefined,
+        servingBasis,
+        rotationKey,
         carbFamily: str(r?.carb_family) ?? undefined,
         fdcId,
         kcalPer100g: macro.kcal,
@@ -446,7 +510,17 @@ export function mapMenuFoodRows(
         isMeat: r?.is_meat === true,
         isFish: r?.is_fish === true,
         isAnimalProduct: r?.is_animal_product === true,
-        mealRoles: mealRolesByKey.get(canonicalKey),
+        // Regola 2 (fermentati e integrali): NESSUN default inventato, come per le classi
+        // allergeniche. Colonna assente dalla select (ambiente non migrato) o NULL → campo
+        // `undefined` = «non classificato», e il filtro pre-sforzo decide in chiusura. Il
+        // vecchio `=== true` faceva rispondere «no» per una colonna mai letta.
+        ...(typeof r?.is_fermented === "boolean" ? { isFermented: r.is_fermented } : {}),
+        ...(typeof r?.is_wholegrain === "boolean" ? { isWholegrain: r.is_wholegrain } : {}),
+        // Regola 2 (fibre): il campo resta ASSENTE se la fibra non è misurata (vedi MacroRow)
+        // o se il numero non appartiene a una popolazione confrontabile.
+        ...(fiberComparable != null ? { fiberPer100g: fiberComparable } : {}),
+        ...(macro.fiber != null ? { fiberMeasuredPer100g: macro.fiber } : {}),
+        mealRoles,
         // Allergeni: NESSUN default inventato. Colonna assente (select degradata) o NULL
         // → campo `undefined` = «non classificato» per il filtro, che decide in chiusura.
         ...(Array.isArray(r?.allergen_classes)
@@ -497,6 +571,18 @@ const MENU_FOODS_BASE_SELECT =
  * arriva comunque (senza classi) e il filtro allergeni resta inerte, non rotto.
  */
 const MENU_FOODS_ALLERGEN_EXTRA_SELECT = "allergen_classes, allergens_reviewed";
+/**
+ * Colonna fermentati (migrazione 20260908150000): TERZO stadio della select, con retry a
+ * scalare su 42703. Su un ambiente senza la colonna si perde SOLO il flag fermentati, mai
+ * anche le classi allergeniche — stessa scala progressiva dei ruoli v6/v9.
+ */
+const MENU_FOODS_FERMENTED_EXTRA_SELECT = "is_fermented";
+/**
+ * Colonna integrali (migrazione 20260908160000): QUARTO stadio della select, con retry a
+ * scalare su 42703. Su un ambiente senza la colonna si perde SOLO il flag integrali (la
+ * regola resta in piedi con fermentati e fibra), mai anche i fermentati o gli allergeni.
+ */
+const MENU_FOODS_WHOLEGRAIN_EXTRA_SELECT = "is_wholegrain";
 
 /** Colonne v5 di nutrition_menu_food_meal_roles (select minima, sempre presente). */
 const MEAL_ROLES_V5_SELECT =
@@ -531,8 +617,22 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     // difensivo riga per riga (`mapMenuFoodRows` prende `unknown[]`).
     let menuRes: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
       .from("nutrition_menu_foods")
-      .select(`${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}`)
+      .select(
+        `${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}, ${MENU_FOODS_FERMENTED_EXTRA_SELECT}, ${MENU_FOODS_WHOLEGRAIN_EXTRA_SELECT}`,
+      )
       .eq("is_active", true);
+    if (missingColumnsError(menuRes)) {
+      menuRes = await admin
+        .from("nutrition_menu_foods")
+        .select(`${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}, ${MENU_FOODS_FERMENTED_EXTRA_SELECT}`)
+        .eq("is_active", true);
+    }
+    if (missingColumnsError(menuRes)) {
+      menuRes = await admin
+        .from("nutrition_menu_foods")
+        .select(`${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}`)
+        .eq("is_active", true);
+    }
     if (missingColumnsError(menuRes)) {
       menuRes = await admin.from("nutrition_menu_foods").select(MENU_FOODS_BASE_SELECT).eq("is_active", true);
     }
@@ -551,10 +651,21 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
     ];
     const macroRows: unknown[] = [];
     for (let i = 0; i < fdcIds.length; i += FDC_IN_CHUNK) {
-      const { data, error: macroError } = await admin
+      const chunk = fdcIds.slice(i, i + FDC_IN_CHUNK);
+      // `fiber_100g` serve alla Regola 2 (fibre pre-sforzo). Un errore «colonna assente» qui
+      // NON deve annullare il catalogo — senza macro il motore non compone niente — quindi si
+      // ritenta senza la fibra, esattamente come gli stadi della select del menù.
+      let macroRes: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
         .from("nutrition_fdc_foods")
-        .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g")
-        .in("fdc_id", fdcIds.slice(i, i + FDC_IN_CHUNK));
+        .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g")
+        .in("fdc_id", chunk);
+      if (missingColumnsError(macroRes)) {
+        macroRes = await admin
+          .from("nutrition_fdc_foods")
+          .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g")
+          .in("fdc_id", chunk);
+      }
+      const { data, error: macroError } = macroRes;
       if (macroError) {
         menuFoodPoolsCache = { at: Date.now(), pools: null };
         return null;
@@ -619,6 +730,63 @@ export function buildMenuFoodAllergenIndex(pools: MenuFoodPoolMap | null | undef
       index.set(e.fdcId, {
         classes: [...new Set([...prev.classes, ...classes])],
         reviewed: prev.reviewed && reviewed,
+      });
+    }
+  }
+  return index;
+}
+
+/**
+ * REGOLA 2 di Mario — indice fdcId → {fermentato, integrale, fibra}, gemello di
+ * {@link buildMenuFoodAllergenIndex}: costruito DAI POOL già caricati (nessun round-trip in
+ * più) perché al punto di decisione i candidati sono `FdcFoodBrowseHit` e l'unica chiave
+ * comune con il catalogo è `fdcId`.
+ *
+ * È QUI che la fibra incontra la sua base di porzione: `servingBasis` vive sulla riga, non
+ * sull'fdcId, quindi il verdetto sulla soglia va calcolato mentre la riga è ancora in mano.
+ * Chi legge l'indice più a valle riceve un booleano già confrontato con la soglia giusta,
+ * non un numero di cui non conosce la scala.
+ *
+ * Stesso fdcId su più canonical_key (raro): si fonde IN CHIUSURA — fermentato, integrale e
+ * «oltre soglia» in OR. I booleani si fondono, NON i grammi: due righe su basi diverse hanno
+ * numeri incommensurabili e prenderne il massimo confronterebbe di nuovo mele con pere. Della
+ * fibra si tiene la riga che ha deciso il verdetto (o la prima misurata), a scopo diagnostico.
+ */
+export function buildMenuFoodFiberFermentedIndex(
+  pools: MenuFoodPoolMap | null | undefined,
+): MenuFoodFiberFermentedIndex {
+  const index = new Map<number, MenuFoodFiberFermentedInfo>();
+  if (!pools) return index;
+  const seenEntries = new Set<MenuFoodEntry>();
+  for (const list of pools.values()) {
+    for (const e of list) {
+      if (seenEntries.has(e)) continue;
+      seenEntries.add(e);
+      if (!(e.fdcId > 0)) continue;
+      const info = menuFoodFiberFermentedInfo(e.isFermented, e.fiberPer100g, {
+        isWholegrain: e.isWholegrain,
+        servingBasis: e.servingBasis,
+        measuredFiberPer100g: e.fiberMeasuredPer100g,
+      });
+      const prev = index.get(e.fdcId);
+      if (!prev) {
+        index.set(e.fdcId, info);
+        continue;
+      }
+      // Diagnostica: vince la riga che è oltre soglia, altrimenti la prima con una misura.
+      const shown = prev.overFiberThreshold || prev.fiberPer100g != null ? prev : info;
+      const wholegrain = prev.wholegrain || info.wholegrain;
+      const overFiberThreshold = prev.overFiberThreshold || info.overFiberThreshold;
+      index.set(e.fdcId, {
+        // In chiusura come `reviewed` degli allergeni: basta una riga che non risponde
+        // perché l'fdcId resti non classificato.
+        classified: prev.classified && info.classified,
+        fermented: prev.fermented || info.fermented,
+        wholegrain,
+        fiberPer100g: shown.fiberPer100g,
+        fiberBasis: shown.fiberBasis,
+        overFiberThreshold,
+        highFiber: wholegrain || overFiberThreshold,
       });
     }
   }

@@ -4,6 +4,12 @@
  * In giorno gara: pranzo = start gara − 3 h, pasta o riso 3 g CHO/kg,
  * grana 15–20 g, olio 15 g; il resto segue il profilo Diet (kcal/% pasti).
  *
+ * REGOLA 1 (Mario): il pasto pre-gara è FISSO — quelle tre voci e basta. La quota
+ * proteica la porta il grana: il generativo NON aggiunge un'altra proteina e NON
+ * riempie il divario kcal con un dolce. Se il protocollo costa meno del budget dello
+ * slot Diet, il residuo va agli altri pasti del giorno
+ * (`redistributeRacePreRaceBudgetSurplus`), mai a ristuffare il pre-gara.
+ *
  * Vedi `.cursor/rules/empathy_nutrition_diet_meal_plan_generative.mdc` Regola 8.
  */
 
@@ -492,8 +498,9 @@ export function racePreLunchContextLine(ctx: RacePreLunchDayContext): string {
   const slotLabel = PRE_RACE_SLOT_LABEL_IT[ctx.mealSlot] ?? ctx.mealSlot;
   return (
     `Protocollo pre-gara: ${slotLabel} ${ctx.lunchTimeLocal} (${ctx.rule.hoursBeforeRace} h prima di ${ctx.raceStartLocal} · ${ctx.raceLabel}) — ` +
-    `pasta o riso ${ctx.rule.carbsPerKgG} g CHO/kg (~${cho} g), grana ${ctx.rule.granaPadanoG.min}–${ctx.rule.granaPadanoG.max} g, olio ${ctx.rule.oliveOilG} g; ` +
-    `se mancano kcal rispetto al target Diet → crostata/torta CHO (no verdure voluminose pre-gara).`
+    `pasta o riso ${ctx.rule.carbsPerKgG} g CHO/kg (~${cho} g), grana ${ctx.rule.granaPadanoG.min}–${ctx.rule.granaPadanoG.max} g, olio ${ctx.rule.oliveOilG} g. ` +
+    `Pasto FISSO: nessuna proteina aggiunta (la porta il grana) e nessun riempimento kcal; ` +
+    `il residuo rispetto al target Diet va sugli altri pasti del giorno.`
   );
 }
 
@@ -525,10 +532,6 @@ const RACE_D = {
   granaFatPerG: 0.28,
   oilKcalPerMl: 8.84,
   oilFatPerMl: 1.0,
-  crostataKcalPerG: 3.2,
-  crostataChoPerG: 0.48,
-  crackerKcalPerG: 4.16,
-  jamKcalPerG: 2.5,
 };
 
 // ── Allergeni nel protocollo gara ────────────────────────────────────────────────────
@@ -711,73 +714,34 @@ export function pickRacePreLunchStaple(
   return pool[Math.abs(seed) % pool.length] ?? "pasta";
 }
 
-/** Soglia minima gap kcal (rispetto target slot Diet) per aggiungere dolce CHO. */
-export const RACE_PRE_RACE_KCAL_TOPUP_MIN = 60;
-
-function denyHit(fragments: readonly string[], deny?: string[]): boolean {
-  if (!deny?.length) return false;
-  const blob = deny.join(" ").toLowerCase();
-  return fragments.some((f) => blob.includes(f.toLowerCase()));
-}
-
-/** Classi del dolce da top-up (farina, uova, burro/latte) e del ripiego a fette+marmellata. */
-const RACE_TOPUP_CAKE_CLASSES: readonly AllergenClassToken[] = ["glutine", "uova", "latte"];
-const RACE_TOPUP_RUSK_CLASSES: readonly AllergenClassToken[] = ["glutine"];
-
-/** Riempie il gap kcal con crostata/torta CHO — mai verdure (volume/fibra pre-gara). */
-export function buildRacePreRaceKcalTopUpItem(
-  gapKcal: number,
-  seed: number,
-  denyFragments?: string[],
-  excluded?: RaceAllergenClasses,
-): RaceMealItem | null {
-  if (gapKcal < RACE_PRE_RACE_KCAL_TOPUP_MIN) return null;
-
-  const glutenBlocked =
-    denyHit(["glutine", "gluten", "frumento", "wheat"], denyFragments) ||
-    raceClassBlocked(["glutine"], excluded);
-  if (!glutenBlocked && !raceClassBlocked(RACE_TOPUP_CAKE_CLASSES, excluded)) {
-    const useTorta = Math.abs(seed) % 2 === 1;
-    const label = useTorta ? "Torta semplice" : "Crostata di mela";
-    const portionLabel = useTorta ? "torta semplice (porzione CHO pre-gara)" : "crostata di mela (porzione CHO pre-gara)";
-    const g = clampStep(gapKcal / RACE_D.crostataKcalPerG, 55, 190);
-    const kcal = Math.round(g * RACE_D.crostataKcalPerG);
-    return item(
-      label,
-      `${g} g ${portionLabel}`,
-      kcal,
-      "cho_heavy",
-      "Protocollo pre-gara: top-up kcal slot Diet con dolce CHO digeribile (no verdure voluminose).",
-      RACE_TOPUP_CAKE_CLASSES,
-    );
-  }
-
-  /** Ripiego: fette + marmellata (CHO rapido, basso volume). Porta comunque glutine. */
-  if (denyHit(["marmellat", "jam"], denyFragments)) return null;
-  if (raceClassBlocked(RACE_TOPUP_RUSK_CLASSES, excluded)) return null;
-  const jamG = clampStep(gapKcal * 0.35 / RACE_D.jamKcalPerG, 25, 55);
-  const ruskG = clampStep((gapKcal - jamG * RACE_D.jamKcalPerG) / RACE_D.crackerKcalPerG, 30, 80);
-  const kcal = Math.round(jamG * RACE_D.jamKcalPerG + ruskG * RACE_D.crackerKcalPerG);
-  return item(
-    "Fette biscottate e marmellata",
-    `${ruskG} g fette biscottate + ${jamG} g marmellata (CHO pre-gara)`,
-    kcal,
-    "cho_heavy",
-    "Protocollo pre-gara: top-up kcal — CHO rapido, no verdure.",
-    RACE_TOPUP_RUSK_CLASSES,
-  );
-}
-
-/** Composizione fissa pre-gara; gap kcal → crostata/torta CHO (no verdure). */
+/**
+ * Composizione FISSA pre-gara (REGOLA 1 di Mario): pasta o riso per 3 g CHO/kg,
+ * olio 15–20 g, grana padano. Tre voci, punto.
+ *
+ * Niente proteina scelta dal generativo (la quota proteica la porta il grana) e niente
+ * dolce di riempimento kcal: il pasto NON insegue il budget dello slot Diet. Il residuo
+ * kcal lo raccolgono gli altri pasti del giorno — vedi
+ * `redistributeRacePreRaceBudgetSurplus`, chiamato dal compositore V2.
+ *
+ * Resta l'unica sottrazione ammessa: `dropBlockedRaceItems`, cioè l'allergene. Un
+ * allergico al latte riceve il pasto SENZA grana (due voci), non un sostituto.
+ */
 export function composeRacePreLunchMainMeal(
   slot: MealSlotKey,
+  /**
+   * Budget kcal/macro dello slot Diet. Il protocollo è fisso e NON lo insegue: resta nella
+   * firma perché i chiamanti (compositore mediterraneo e V2) lo passano per ogni slot, ed è
+   * il compositore a redistribuire il residuo sugli altri pasti.
+   */
   m: { kcal: number; carbsG: number; proteinG: number; fatG: number },
   seed: number,
   raceCtx: RacePreLunchDayContext,
   dayCtx?: MediterraneanDayContext,
-  /** Classi vietate all'atleta: assente/vuoto → protocollo identico a oggi. */
+  /** Classi vietate all'atleta: assente/vuoto → protocollo identico per tutti. */
   excluded?: RaceAllergenClasses,
 ): MediterraneanComposedMeal {
+  void slot;
+  void m;
   const rule = raceCtx.rule;
   const targetCarbsG = Math.max(40, Math.round(raceCtx.weightKg * rule.carbsPerKgG));
   const staple = pickRacePreLunchStaple(seed, dayCtx, excluded);
@@ -797,7 +761,6 @@ export function composeRacePreLunchMainMeal(
       : `${carbG} g riso (peso a crudo) — ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`;
   const carbKcal = carbG * (staple === "pasta" ? RACE_D.pastaDryKcalPerG : RACE_D.riceDryKcalPerG);
 
-  const proteinKind = pickPreRaceMediterraneanProtein(seed, dayCtx, excluded);
   const items: RaceMealItem[] = [
     item(
       staple === "pasta" ? "Pasta" : "Riso",
@@ -812,10 +775,9 @@ export function composeRacePreLunchMainMeal(
       `${granaG} g grana grattugiato`,
       granaG * RACE_D.granaKcalPerG,
       "protein",
-      "Protocollo pre-gara: grana 15–20 g.",
+      "Protocollo pre-gara: grana 15–20 g — è LUI la quota proteica del pasto.",
       ["latte"],
     ),
-    ...(proteinKind ? [preRaceMediterraneanProteinItem(proteinKind, seed)] : []),
     item(
       "Olio extravergine d'oliva",
       `${oilG} g olio EVO (~${oilMl} ml)`,
@@ -826,15 +788,89 @@ export function composeRacePreLunchMainMeal(
     ),
   ];
 
-  // La rete finale PRIMA del top-up: il gap kcal deve tener conto di ciò che è uscito
-  // (senza il grana mancano ~70 kcal, e il dolce deve poterle coprire).
-  const kept = dropBlockedRaceItems(items, excluded);
-  const usedKcal = kept.reduce((s, i) => s + i.approxKcal, 0);
-  const gapKcal = m.kcal - usedKcal;
-  const topUp = buildRacePreRaceKcalTopUpItem(gapKcal, seed, dayCtx?.denyFragments, excluded);
-  if (topUp) kept.push(topUp);
+  return raceMeal(dropBlockedRaceItems(items, excluded));
+}
 
-  return raceMeal(kept);
+/** Sotto questo residuo (kcal) non si tocca nulla: rumore di arrotondamento. */
+export const RACE_PRE_RACE_BUDGET_SURPLUS_MIN_KCAL = 25;
+
+/** Riga di budget di uno slot, come la porta il compositore V2. */
+export type RaceSlotBudgetRow = {
+  key: string;
+  kcal: number;
+  carbs: number;
+  protein: number;
+  fat: number;
+};
+
+/**
+ * Il pre-gara è fisso: quando costa MENO del budget del suo slot, il residuo va agli altri
+ * pasti del giorno (proporzionale alle loro kcal) e il budget del pre-gara scende a quanto
+ * il protocollo pesa davvero. Così il totale giornaliero resta quello del profilo Diet
+ * senza che il generativo ristuffi il piatto pre-gara.
+ *
+ * Quando invece il protocollo SFORA il budget del suo slot (caso frequente: 3 g CHO/kg
+ * pesano tanto), qui non si tocca niente — svuotare cena e colazione per far quadrare il
+ * giorno è una decisione di prodotto che il nutrizionista non ha preso. In quel caso il
+ * comportamento resta identico a prima.
+ *
+ * `excludeKeys` = slot che il residuo NON deve raggiungere: slot soppressi (finestra
+ * fueling) e slot con composizione a protocollo (recovery post-gara), che il budget lo
+ * ignorano.
+ */
+export function redistributeRacePreRaceBudgetSurplus<T extends RaceSlotBudgetRow>(
+  slots: readonly T[],
+  input: {
+    preRaceSlotKey: string;
+    preRaceTotals: { kcal: number; choG: number; proG: number; fatG: number };
+    excludeKeys?: readonly string[];
+  },
+): T[] {
+  const idx = slots.findIndex((s) => s.key === input.preRaceSlotKey);
+  if (idx < 0) return [...slots];
+
+  const budget = slots[idx]!;
+  const surplus = Math.round(budget.kcal - input.preRaceTotals.kcal);
+  if (surplus < RACE_PRE_RACE_BUDGET_SURPLUS_MIN_KCAL) return [...slots];
+
+  const blocked = new Set(input.excludeKeys ?? []);
+  const receivers = slots
+    .map((row, i) => ({ row, i }))
+    .filter(({ i, row }) => i !== idx && !blocked.has(row.key) && row.kcal > 0);
+  if (receivers.length === 0) return [...slots];
+
+  const next = slots.map((s) => ({ ...s }));
+  next[idx] = {
+    ...next[idx]!,
+    kcal: Math.round(input.preRaceTotals.kcal),
+    carbs: Math.round(input.preRaceTotals.choG),
+    protein: Math.round(input.preRaceTotals.proG),
+    fat: Math.round(input.preRaceTotals.fatG),
+  };
+
+  const totalReceiverKcal = receivers.reduce((s, r) => s + r.row.kcal, 0);
+  if (totalReceiverKcal <= 0) return next;
+
+  /** L'ultimo riceve il resto: nessuna kcal persa negli arrotondamenti. */
+  let leftover = surplus;
+  receivers.forEach((r, n) => {
+    const share =
+      n === receivers.length - 1
+        ? leftover
+        : Math.round((surplus * r.row.kcal) / totalReceiverKcal);
+    leftover -= share;
+    if (share <= 0) return;
+    const ratio = (r.row.kcal + share) / r.row.kcal;
+    next[r.i] = {
+      ...next[r.i]!,
+      kcal: Math.round(r.row.kcal + share),
+      carbs: Math.round(r.row.carbs * ratio),
+      protein: Math.round(r.row.protein * ratio),
+      fat: Math.round(r.row.fat * ratio),
+    };
+  });
+
+  return next;
 }
 
 function isSnackMealSlot(slot: MealSlotKey): boolean {

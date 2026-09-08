@@ -48,6 +48,10 @@ import {
   type MenuFoodSubstitutionMode,
 } from "@/lib/nutrition/v2/menu-food-catalog-db";
 import type { MenuRecipe } from "@/lib/nutrition/v2/menu-recipe-catalog-db";
+import {
+  isPreEffortExcludedFood,
+  type PreEffortSlotRestriction,
+} from "@/lib/nutrition/v2/pre-effort-food-filter";
 
 // ── Gate ─────────────────────────────────────────────────────────────────────────────
 
@@ -1126,6 +1130,12 @@ export function recipeCandidatesForMeal(input: {
    * Assente/null → identico a prima.
    */
   allergen?: AllergenFilterContext | null;
+  /**
+   * REGOLA 2 di Mario, di sponda sugli INGREDIENTI: un template di colazione con yogurt o
+   * fiocchi integrali non deve rientrare dalla porta della ricetta quando lo slot è
+   * pre-sforzo in un giorno intenso. Assente/null → identico a prima.
+   */
+  preEffort?: PreEffortSlotRestriction | null;
   weekStapleCounts?: Record<string, number>;
   /**
    * V11_B02 (tie-break): protein_base_family dei template già scelti OGGI (la memoria
@@ -1161,6 +1171,7 @@ export function recipeCandidatesForMeal(input: {
       }
       if (
         isAllergenExcludedFdcId(entry.fdcId, input.allergen) ||
+        isPreEffortExcludedFood(entry, input.preEffort, entry.fdcId) ||
         denyHitEntry(entry, deny) ||
         dietExcludesEntry(entry, input.dietType)
       ) {

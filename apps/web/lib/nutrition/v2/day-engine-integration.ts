@@ -232,8 +232,53 @@ export function resolveFirstSessionStartMinutes(args: {
   planDate: string;
   plannedDurationsMin: number[];
 }): number | null {
+  return readRoutineDay(args).first;
+}
+
+/**
+ * TUTTI gli inizi seduta del giorno (minuti da mezzanotte), ordinati e senza doppioni.
+ *
+ * Perché esiste accanto a {@link resolveFirstSessionStartMinutes}: la regola pre-sforzo di
+ * Mario non chiede «quando inizia la giornata di lavoro» ma «quali pasti precedono uno
+ * sforzo», e chi si allena due volte ha DUE finestre. In prod tre atleti hanno la doppia
+ * seduta compilata (`has_training2` + `training2_start_time`): per uno di loro, il martedì,
+ * la prima seduta è alle 10:00 e la seconda alle 18:00 — con la sola prima seduta lo
+ * spuntino delle 16:30, a 90 minuti dallo sforzo, restava fuori dalla regola.
+ *
+ * La seconda seduta entra SOLO col flag `has_training2` del giorno: `training2_start_time`
+ * da solo non basta, perché il Profilo lo scrive a "18:00" per tutti come valore di default
+ * (`ProfilePageView`) e fidarsi dell'orario inventerebbe una seduta serale a chiunque.
+ * Con il flag alzato l'orario si cerca sul giorno, poi sulla radice (`training2_start_time`
+ * o `training_2.start_time`, le due forme che il Profilo salva).
+ *
+ * La PRIMA seduta mantiene esattamente il cancello di prima (Σ ≥ 25 min pianificati oppure
+ * `has_training`, e orario esplicito): il day-engine sceglie la tabella §5 mattino/pomeriggio
+ * su quel numero e non deve cambiare idea per via di questa aggiunta.
+ */
+export function resolveSessionStartMinutes(args: {
+  routineConfig?: Record<string, unknown> | null;
+  planDate: string;
+  plannedDurationsMin: number[];
+}): number[] {
+  const { first, second } = readRoutineDay(args);
+  const out = new Set<number>();
+  if (first != null) out.add(first);
+  if (second != null) out.add(second);
+  return [...out].sort((a, b) => a - b);
+}
+
+function truthyFlag(v: unknown): boolean {
+  return v === true || v === 1 || String(v).toLowerCase() === "true" || String(v) === "1";
+}
+
+/** Letture condivise dalle due funzioni sopra: una sola interpretazione della routine. */
+function readRoutineDay(args: {
+  routineConfig?: Record<string, unknown> | null;
+  planDate: string;
+  plannedDurationsMin: number[];
+}): { first: number | null; second: number | null } {
   const rc = args.routineConfig;
-  if (!rc || typeof rc !== "object" || Array.isArray(rc)) return null;
+  if (!rc || typeof rc !== "object" || Array.isArray(rc)) return { first: null, second: null };
   const root = rc as Record<string, unknown>;
   const weekPlanRaw = root.week_plan;
   const weekPlan =
@@ -252,14 +297,24 @@ export function resolveFirstSessionStartMinutes(args: {
     (s, n) => s + (Number.isFinite(n) && n > 0 ? n : 0),
     0,
   );
-  const hr = day.has_training;
-  const hasTraining =
-    sumPlanned >= 25 || hr === true || hr === 1 || String(hr).toLowerCase() === "true" || String(hr) === "1";
-  if (!hasTraining) return null;
+  const hasTraining = sumPlanned >= 25 || truthyFlag(day.has_training);
+  const explicit = hasTraining
+    ? (nonEmptyTime(day.training1_start_time) ?? nonEmptyTime(root.training1_start_time))
+    : null;
+  const first = explicit ? parseLocalTimeToMinutes(explicit) : null;
 
-  const explicit = nonEmptyTime(day.training1_start_time) ?? nonEmptyTime(root.training1_start_time);
-  if (!explicit) return null;
-  return parseLocalTimeToMinutes(explicit);
+  const rootTraining2 =
+    root.training_2 && typeof root.training_2 === "object" && !Array.isArray(root.training_2)
+      ? (root.training_2 as Record<string, unknown>)
+      : {};
+  const explicit2 = truthyFlag(day.has_training2)
+    ? (nonEmptyTime(day.training2_start_time) ??
+      nonEmptyTime(root.training2_start_time) ??
+      nonEmptyTime(rootTraining2.start_time))
+    : null;
+  const second = explicit2 ? parseLocalTimeToMinutes(explicit2) : null;
+
+  return { first, second };
 }
 
 function pickStrategiaPct(dayTypePct: number | null | undefined): number {

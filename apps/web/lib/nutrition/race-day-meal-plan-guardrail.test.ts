@@ -136,7 +136,7 @@ test("guardrail: corsa 9:30→12:00 — post-workout spuntino 12:45, pranzo 13:0
   assert.ok(lunchRow!.kcal >= 700, "pranzo non svuotato per recovery spuntino");
 });
 
-test("guardrail: pre-gara include proteina mediterranea (carne/pesce/uova)", () => {
+test("guardrail: pre-gara FISSO — nessuna proteina aggiunta dal generativo (REGOLA 1)", () => {
   const ctx = buildRacePreLunchDayContext({
     weightKg: 70,
     planDate: "2026-06-07",
@@ -155,7 +155,11 @@ test("guardrail: pre-gara include proteina mediterranea (carne/pesce/uova)", () 
   );
   const names = meal.items.map((i) => i.name.toLowerCase()).join(" ");
   assert.match(names, /pasta|riso/);
-  assert.match(names, /pollo|pesce|uov|tacchino|tofu/);
+  // La quota proteica la porta il grana: il generativo non deve integrarne altra.
+  assert.match(names, /grana/);
+  assert.doesNotMatch(names, /pollo|pesce|uov|tacchino|tofu/, names);
+  assert.doesNotMatch(names, /crostata|torta|fette biscottate/, names);
+  assert.equal(meal.items.length, 3, names);
 });
 
 test("guardrail: gara mattutina 09:00 2h30 — recovery su snack_am post-gara, merenda alle 16", () => {

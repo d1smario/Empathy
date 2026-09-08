@@ -5,9 +5,9 @@ import {
   buildRacePreLunchDayContext,
   choosePostRaceChoPerKg,
   composeRacePostRecoveryMeal,
+  composeRacePreLunchMainMeal,
   getRaceDayPostRecoveryRule,
   rebalanceMealRowsForRacePostRecovery,
-  buildRacePreRaceKcalTopUpItem,
   computePreRaceLunchMinutes,
   dryStapleGramsForTargetCarbs,
   getRaceDayPreRaceLunchProtocol,
@@ -124,18 +124,36 @@ test("composeMediterraneanMeal lunch pre-gara: pasta/riso + grana + olio", () =>
   assert.ok(meal.items.some((i) => /grana/i.test(i.name)));
   assert.ok(meal.items.some((i) => /olio/i.test(i.name)));
   assert.ok(!meal.items.some((i) => /verdure/i.test(i.name)));
-  assert.ok(meal.items.some((i) => /Crostata|Torta/i.test(i.name)));
+  // REGOLA 1: il pasto è fisso — il divario kcal NON si riempie più con crostata/torta.
+  assert.ok(!meal.items.some((i) => /Crostata|Torta|Fette biscottate/i.test(i.name)), names);
+  assert.equal(meal.items.length, 3, names);
 });
 
-test("gap kcal pre-gara: crostata/torta risolve in memoria canonica", () => {
-  const topUp = buildRacePreRaceKcalTopUpItem(220, 3);
-  assert.ok(topUp);
-  const res = nutrientsForMealPlanItem({ name: topUp!.name, portionHint: topUp!.portionHint, approxKcal: topUp!.approxKcal });
-  assert.notEqual(res.compositionStatus, "unresolved");
-});
-
-test("gap kcal sotto soglia: nessun top-up", () => {
-  assert.equal(buildRacePreRaceKcalTopUpItem(40, 1), null);
+test("pre-gara: le tre voci fisse risolvono in memoria canonica (nessuna riga irrisolta)", () => {
+  const raceCtx = buildRacePreLunchDayContext({
+    weightKg: 70,
+    planDate: "2026-05-31",
+    routineConfig: {
+      week_plan: { Sun: { day_mode: "race", training1_start_time: "13:30" } },
+    },
+    plannedSessions: [{ duration_minutes: 220, type: "race" }],
+  });
+  assert.ok(raceCtx);
+  const meal = composeRacePreLunchMainMeal(
+    raceCtx!.mealSlot,
+    { kcal: 1400, carbsG: 210, proteinG: 45, fatG: 25 },
+    3,
+    raceCtx!,
+  );
+  assert.equal(meal.items.length, 3);
+  for (const it of meal.items) {
+    const res = nutrientsForMealPlanItem({
+      name: it.name,
+      portionHint: it.portionHint,
+      approxKcal: it.approxKcal,
+    });
+    assert.notEqual(res.compositionStatus, "unresolved", it.name);
+  }
 });
 
 test("isPlannedSessionRaceLike riconosce type race e keyword gara", () => {

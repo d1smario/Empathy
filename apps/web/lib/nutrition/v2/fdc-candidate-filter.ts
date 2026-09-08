@@ -3,6 +3,10 @@ import {
   type AllergenClassToken,
   normalizeAllergenClassList,
 } from "@/lib/nutrition/meal-plan-profile-food-filter";
+import {
+  isPreEffortExcludedHit,
+  type PreEffortSlotRestriction,
+} from "@/lib/nutrition/v2/pre-effort-food-filter";
 
 /** Descrizioni SR Legacy / artefatti / junk food da escludere dal composer V2. */
 const DESCRIPTION_DENYLIST = [
@@ -155,11 +159,17 @@ export function filterFdcCandidates(
   candidates: FdcFoodBrowseHit[],
   denyFragments: string[],
   allergen?: AllergenFilterContext | null,
+  /**
+   * Regola pre-sforzo di Mario (fermentati/fibra) quando QUESTO slot cade prima della
+   * seduta in un giorno intenso o di gara. `null`/assente → nessun cambiamento.
+   */
+  preEffort?: PreEffortSlotRestriction | null,
 ): FdcFoodBrowseHit[] {
   return candidates.filter(
     (c) =>
       c.kcalPer100g > 0 &&
       !isAllergenExcludedFdcId(c.fdcId, allergen) &&
+      !isPreEffortExcludedHit(c, preEffort) &&
       !isDeniedFdcDescription(c.description, denyFragments),
   );
 }

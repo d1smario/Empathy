@@ -16,6 +16,10 @@ import {
 } from "@/lib/nutrition/v2/fdc-candidate-filter";
 import { isPlausiblePer100gMacros } from "@/lib/nutrition/macro-plausibility";
 import {
+  isPreEffortExcludedFood,
+  type PreEffortSlotRestriction,
+} from "@/lib/nutrition/v2/pre-effort-food-filter";
+import {
   ROTATION_MAX_WEEK_USES,
   ROTATION_TARGET_WEEK_USES,
 } from "@/lib/nutrition/meal-composition-rules";
@@ -490,6 +494,12 @@ export type StaplePickContext = {
    * decisione resta al solo deny per sottostringhe su labelIt/canonicalKey.
    */
   allergen?: AllergenFilterContext | null;
+  /**
+   * REGOLA 2 di Mario: pasto PRE-SFORZO di un giorno di carico intenso o di gara — niente
+   * fermentati né alimenti ad alta fibra. Vale per QUESTO pick (lo slot lo decide il
+   * compositore, vedi pre-effort-food-filter). Assente/null → identico a prima.
+   */
+  preEffort?: PreEffortSlotRestriction | null;
 };
 
 /**
@@ -504,6 +514,11 @@ export type StaplePickContext = {
  */
 export type AthleteStaplePickContext = StaplePickContext & {
   allergen: AllergenFilterContext | null;
+  /**
+   * Come `allergen`: OBBLIGATORIO per chi compone il piano di un atleta, così `null`
+   * («questo slot non è pre-sforzo») è una scelta esplicita e non una dimenticanza.
+   */
+  preEffort: PreEffortSlotRestriction | null;
 };
 
 /**
@@ -595,6 +610,12 @@ export function pickStapleForPool(ctx: StaplePickContext): { entry: StapleRegist
       // non esiste. La rete per sottostringhe resta subito sotto.
       const fdcIdForAllergen = (e as MenuFoodEntry).fdcId ?? fdcIdForCanonicalKey(e.canonicalKey);
       if (isAllergenExcludedFdcId(fdcIdForAllergen, ctx.allergen)) return { e, score: -12_000, idx };
+      // Regola pre-sforzo (Mario): stessa FORMA degli allergeni — esclusione, non penalità.
+      // Un fermentato o un integrale prima di una seduta intensa non è «meno preferito»:
+      // per quel pasto non esiste. Fuori dagli slot pre-sforzo `preEffort` è null → no-op.
+      if (isPreEffortExcludedFood(e, ctx.preEffort, fdcIdForAllergen)) {
+        return { e, score: -11_000, idx };
+      }
       if (denyHit(e.labelIt, deny) || denyHit(e.canonicalKey, deny)) return { e, score: -10_000, idx };
       const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
       // Il tetto settimanale di famiglia salta SOLO nel ripiego «relaxWeekCaps» della

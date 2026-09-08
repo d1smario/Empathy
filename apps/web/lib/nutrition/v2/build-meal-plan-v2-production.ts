@@ -28,6 +28,7 @@ import { queryFdcBranchPool } from "@/lib/nutrition/v2/fdc-branch-query";
 import type { FdcFoodBrowseFilter } from "@/lib/nutrition/v2/fdc-food-taxonomy";
 import { CLASSIFIER_VERSION } from "@/lib/nutrition/v2/fdc-food-taxonomy";
 import type { BuildDailyRequirementsInput } from "@/lib/nutrition/v2/daily-nutrition-requirements";
+import type { NutritionDayClass } from "@/lib/nutrition/v2/day-classification-engine";
 import { bridgeSubstrateFuelingToProtocolMeta } from "@/lib/nutrition/v2/bridge-substrate-fueling-to-protocol";
 import {
   buildDayEngineProvenance,
@@ -35,8 +36,12 @@ import {
   dayEngineSlotsToDietBudgets,
   resolveDayEngineMode,
   resolveFirstSessionStartMinutes,
+  resolveSessionStartMinutes,
   type DayEngineProvenance,
 } from "@/lib/nutrition/v2/day-engine-integration";
+import { buildMenuFoodFiberFermentedIndex } from "@/lib/nutrition/v2/menu-food-catalog-db";
+import { buildPreEffortFilterContext } from "@/lib/nutrition/v2/pre-effort-food-filter";
+import { recordEmpathyEvent } from "@/lib/observability/empathy-event-trace";
 
 const DEFAULT_MEAL_TIMES: FlatMealTimes & { snack_evening?: string } = {
   breakfast: "07:30",
@@ -225,6 +230,27 @@ export async function buildMealPlanV2Production(
     process.env as Record<string, string | undefined>,
     input.request.athleteId,
   );
+  /**
+   * Inizio della PRIMA seduta del giorno (minuti da mezzanotte). Serviva già al day-engine
+   * per la tabella §5 mattino/pomeriggio; ora serve anche alla regola pre-sforzo di Mario
+   * (quali pasti cadono prima dello sforzo), quindi si calcola UNA volta qui fuori — anche
+   * quando il day-engine è spento.
+   */
+  const routineSessionArgs = {
+    routineConfig: input.routineConfig ?? null,
+    planDate: input.request.planDate,
+    plannedDurationsMin: (input.plannedSessions ?? []).map((s) => s.durationMin),
+  };
+  const firstSessionStartMinutes = resolveFirstSessionStartMinutes(routineSessionArgs);
+  /**
+   * TUTTE le sedute del giorno per la regola pre-sforzo: il day-engine sceglie la tabella
+   * §5 sulla PRIMA, ma «quali pasti precedono uno sforzo» dipende da ognuna — chi si allena
+   * mattina e pomeriggio ha due finestre, e con la sola prima il pasto che precede la
+   * seconda restava scoperto.
+   */
+  const sessionStartMinutes = resolveSessionStartMinutes(routineSessionArgs);
+  /** Classe del giorno (Mario) quando il day-engine l'ha calcolata: la usa la regola pre-sforzo. */
+  let dayEngineDayClass: NutritionDayClass | null = null;
   if (dayEngineMode !== "off") {
     try {
       const computed = computeDayEngineDay({
@@ -238,12 +264,9 @@ export async function buildMealPlanV2Production(
         weightKg: requirements.weightKg,
         bodyFatPct: input.bodyFatPct ?? null,
         lifestyleActivityClass: input.lifestyleActivityClass ?? null,
-        firstSessionStartMinutes: resolveFirstSessionStartMinutes({
-          routineConfig: input.routineConfig ?? null,
-          planDate: input.request.planDate,
-          plannedDurationsMin: (input.plannedSessions ?? []).map((s) => s.durationMin),
-        }),
+        firstSessionStartMinutes,
       });
+      dayEngineDayClass = computed.dayClass ?? null;
       // Guardrail v1: nei giorni gara gli slot restano quelli attuali (pre/post-race
       // hanno override dedicati che il day-engine v1 non modella) — shadow registra.
       const isRaceDay = Boolean(input.request.racePreLunch || input.request.racePostRecovery);
@@ -281,6 +304,38 @@ export async function buildMealPlanV2Production(
   // caricato e riusato da entrambe le composizioni (storica + grammatica in shadow).
   const allergen = buildAllergenContextForRequest(input.request, menuFoodPools);
 
+  // ── REGOLA 2 (fermentati/fibra prima dello sforzo) ────────────────────────────────
+  // Il contesto si costruisce QUI, non dentro il compositore, per due motivi: le due
+  // composizioni (storica + grammatica in shadow) devono vedere lo stesso indice, e questo
+  // è l'unico punto che ha il client per lasciare traccia quando si cade nel fail-closed.
+  const preEffort = buildPreEffortFilterContext({
+    requirements,
+    request: input.request,
+    // dayClass null (day-engine off o non applicabile) → la classe si ricava dal rapporto
+    // consumo/BMR di requirements.energy (vedi pre-effort-food-filter).
+    dayClass: dayEngineDayClass,
+    trainingStartMinutes: sessionStartMinutes,
+    foodIndex: buildMenuFoodFiberFermentedIndex(menuFoodPools),
+  });
+  // Fail-closed: la regola deve valere ma il catalogo non risponde. Non si cambia il
+  // comportamento (il non classificato resta fuori dal piatto), si LASCIA UNA TRACCIA —
+  // altrimenti «pasti pre-sforzo poveri» diventa indistinguibile da «Mario voleva così».
+  // Best-effort, come tutte le tracce: non deve mai far fallire una generazione.
+  if (preEffort?.sourceUnavailable) {
+    await recordEmpathyEvent(admin, {
+      eventType: "nutrition_pre_effort_catalog_unavailable",
+      payload: {
+        athleteId: input.request.athleteId,
+        planDate: input.request.planDate,
+        why: preEffort.why,
+        slots: [...preEffort.slots],
+        effortStartMinutes: [...preEffort.effortStartMinutes],
+        evidence: preEffort.evidence,
+        menuCatalogLoaded: menuFoodPools != null,
+      },
+    });
+  }
+
   const composeOptions = {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
@@ -288,6 +343,11 @@ export async function buildMealPlanV2Production(
     request: input.request,
     menuFoodPools,
     allergen,
+    // REGOLA 2 di Mario (fermentati/fibra nei pasti pre-sforzo): contesto già costruito
+    // sopra — le due composizioni devono decidere sullo stesso indice e sulle stesse finestre.
+    dayClass: dayEngineDayClass,
+    trainingStartMinutes: sessionStartMinutes,
+    preEffort,
   };
   // Composizione storica: è quella servita in off e in shadow.
   let composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, composeOptions);

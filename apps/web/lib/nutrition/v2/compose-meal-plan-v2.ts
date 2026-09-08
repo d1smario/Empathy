@@ -17,6 +17,7 @@ import {
   composeRacePostRecoveryMeal,
   composeRacePreLunchMainMeal,
   isRacePreRaceMealSlot,
+  redistributeRacePreRaceBudgetSurplus,
 } from "@/lib/nutrition/race-day-pre-race-lunch";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@/lib/nutrition/v2/fdc-staple-registry";
 import {
   buildMenuFoodAllergenIndex,
+  buildMenuFoodFiberFermentedIndex,
   type MenuFoodEntry,
   type MenuFoodMealRole,
   type MenuFoodPoolMap,
@@ -84,6 +86,13 @@ import {
   type GrammarV6Axis,
   type RecipeCandidate,
 } from "@/lib/nutrition/v2/meal-grammar";
+import {
+  buildPreEffortFilterContext,
+  preEffortRestrictionForSlot,
+  type PreEffortFilterContext,
+  type PreEffortSlotRestriction,
+} from "@/lib/nutrition/v2/pre-effort-food-filter";
+import type { NutritionDayClass } from "@/lib/nutrition/v2/day-classification-engine";
 import { mediterraneanMealToV2Items } from "@/lib/nutrition/v2/v2-mediterranean-meal-adapter";
 import {
   MEAL_SLOT_ASSEMBLY,
@@ -117,8 +126,9 @@ function pickFromPoolFallback(
   usedFdcIds: Set<number>,
   staplePenalty: (description: string) => number,
   allergen?: AllergenFilterContext | null,
+  preEffort?: PreEffortSlotRestriction | null,
 ): FdcFoodBrowseHit | null {
-  const filtered = filterFdcCandidates(pool, denyFragments, allergen);
+  const filtered = filterFdcCandidates(pool, denyFragments, allergen, preEffort);
   const pick = pickBestFdcForRole(filtered, ctx, denyFragments, usedFdcIds, staplePenalty);
   if (pick) return pick;
 
@@ -258,6 +268,7 @@ type PickLineOptions = {
  */
 function stapleArgsFromContext(
   ctx: ComposeContext,
+  slotKey: MealSlotKey,
   poolKey: string,
   seed: number,
   menuEntries?: MenuFoodEntry[] | null,
@@ -272,6 +283,9 @@ function stapleArgsFromContext(
     usedFdcIds: ctx.usedFdcIds,
     menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : undefined,
     allergen: ctx.allergen ?? null,
+    // Regola 2 di Mario: la restrizione dipende dallo SLOT (pre-sforzo o no), non solo
+    // dal giorno — per questo lo slot entra qui, dove nasce ogni pick.
+    preEffort: preEffortRestrictionForSlot(ctx.preEffort, slotKey),
   };
 }
 
@@ -292,7 +306,7 @@ function pickLineForRole(
   const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
   const hasMenuPool = !!menuEntries && menuEntries.length > 0;
 
-  const pickArgs = stapleArgsFromContext(ctx, spec.poolKey, seed, hasMenuPool ? menuEntries : undefined);
+  const pickArgs = stapleArgsFromContext(ctx, slotKey, spec.poolKey, seed, hasMenuPool ? menuEntries : undefined);
   let staplePick = pickStapleForAthlete({
     ...pickArgs,
     grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps, opts?.ignoreUsedToday),
@@ -379,6 +393,7 @@ function pickLineForRole(
     ctx.usedFdcIds,
     ctx.staplePenalty,
     ctx.allergen,
+    preEffortRestrictionForSlot(ctx.preEffort, slotKey),
   );
   if (!hit) return null;
   ctx.usedFdcIds.add(hit.fdcId);
@@ -403,6 +418,12 @@ type ComposeContext = {
    * di mappabile → nessun cambiamento rispetto a oggi.
    */
   allergen?: AllergenFilterContext | null;
+  /**
+   * REGOLA 2 di Mario: giorni di carico intenso/gara → niente fermentati né alimenti ad
+   * alta fibra nei pasti che cadono prima dello sforzo. `null` = giorno non intenso o
+   * nessun pasto in finestra → composizione identica a oggi.
+   */
+  preEffort?: PreEffortFilterContext | null;
 };
 
 type GrammarComposeState = {
@@ -466,6 +487,9 @@ function pickRecipeLine(
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
     allergen: ctx.allergen,
+    // Regola 2: la ricetta è una porta laterale verso lo stesso piatto — il template di
+    // colazione con yogurt/fiocchi integrali cade con i suoi ingredienti.
+    preEffort: preEffortRestrictionForSlot(ctx.preEffort, slotKey),
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
     ...(isMain
       ? {}
@@ -965,7 +989,7 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
     const alt = pickStapleForAthlete({
       // Stessi argomenti base delle altre linee (allergeni COMPRESI): lo swap non è una
       // strada laterale, è lo stesso pick con un altro seed.
-      ...stapleArgsFromContext(ctx, choLine.spec.poolKey, ctx.seed + 17, altMenuEntries),
+      ...stapleArgsFromContext(ctx, slotKey, choLine.spec.poolKey, ctx.seed + 17, altMenuEntries),
       // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
       grammar: baseFilter
         ? {
@@ -991,7 +1015,7 @@ function applyRegola7Cho(lines: PickLine[], target: { carbsG: number }, slotKey:
   if (target.carbsG >= 130 && !lines.some((l) => l.staple?.canonicalKey === "bread_white")) {
     const breadMenuEntries = ctx.menuPools?.get("breakfast_cho");
     const breadHit = pickStapleForAthlete({
-      ...stapleArgsFromContext(ctx, "breakfast_cho", ctx.seed + 31, breadMenuEntries),
+      ...stapleArgsFromContext(ctx, slotKey, "breakfast_cho", ctx.seed + 31, breadMenuEntries),
       // Sotto grammatica il pane secondario deve avere score > 0 nel pasto dello slot (V01):
       // nei dati v5 il pane è NONE/0 a pranzo e cena, quindi la regola 7 non aggiunge pane.
       grammar: grammarFilterFor(ctx, slotKey, "breakfast_cho"),
@@ -1142,6 +1166,26 @@ export function composeMealPlanV2(
      */
     allergen?: AllergenFilterContext | null;
     /**
+     * REGOLA 2 di Mario (giorni intensi/gara, pasti pre-sforzo): classe del giorno già
+     * calcolata dal chiamante (day-engine). Assente → il compositore la ricava dal
+     * rapporto consumo/BMR di `requirements.energy` (vedi pre-effort-food-filter).
+     */
+    dayClass?: NutritionDayClass | null;
+    /**
+     * REGOLA 2: minuti da mezzanotte degli inizi seduta del giorno
+     * (`resolveSessionStartMinutes`: TUTTE le sedute, non solo la prima — chi si allena
+     * mattina e pomeriggio ha due finestre pre-sforzo). Nei giorni gara la partenza gara
+     * del `racePreLunch` si aggiunge. Assente/null e fuori gara → nessun pasto è
+     * «pre-sforzo»: no-op. Un singolo numero resta accettato.
+     */
+    trainingStartMinutes?: number | readonly number[] | null;
+    /**
+     * REGOLA 2: contesto già costruito dal chiamante — stessa forma di `allergen`. Serve a
+     * chi deve SAPERE se si è caduti nel ramo fail-closed (catalogo muto) per tracciarlo;
+     * omesso → il compositore lo deriva qui, `null` esplicito lo spegne.
+     */
+    preEffort?: PreEffortFilterContext | null;
+    /**
      * Grammatica dei pasti di Mario (score/ruoli per pasto + ricette). Assente/false →
      * composizione storica, BIT-IDENTICA. Il chiamante la passa solo in mode shadow/on
      * (in shadow per la composizione «ombra», mai per quella servita).
@@ -1154,7 +1198,6 @@ export function composeMealPlanV2(
     };
   },
 ): MealPlanV2ComposedSlot[] {
-  void requirements;
   const denyFragments = options?.denyFragments ?? [];
   const suppressed = new Set(options?.suppressedSlots ?? []);
   const request = options?.request;
@@ -1181,6 +1224,20 @@ export function composeMealPlanV2(
       ? options.allergen
       : buildAllergenContextForRequest(request, options?.menuFoodPools);
 
+  // REGOLA 2 (Mario): giorno di carico intenso o gara → i pasti che cadono prima dello
+  // sforzo perdono fermentati e alimenti ad alta fibra. `null` = niente da decidere.
+  const preEffort =
+    options?.preEffort !== undefined
+      ? options.preEffort
+      : buildPreEffortFilterContext({
+          requirements,
+          request,
+          dayClass: options?.dayClass ?? null,
+          trainingStartMinutes: options?.trainingStartMinutes ?? null,
+          // Indice fermentato/fibra dal catalogo già caricato: stessa strada dell'indice allergeni.
+          foodIndex: buildMenuFoodFiberFermentedIndex(options?.menuFoodPools),
+        });
+
   const staplePenalty = (description: string): number => {
     const key = description.slice(0, 40).toLowerCase();
     return options?.weeklyStapleCounts?.[key] ?? 0;
@@ -1197,6 +1254,7 @@ export function composeMealPlanV2(
     request,
     menuPools: options?.menuFoodPools ?? null,
     allergen,
+    preEffort,
     ...(options?.mealGrammar?.enabled
       ? {
           grammar: (() => {
@@ -1218,7 +1276,42 @@ export function composeMealPlanV2(
       : {}),
   };
 
-  return dietSlots.map((slot) => {
+  // Diagnostica: quando la Regola 2 (pre-sforzo) è attiva si VEDE, come per i ripieghi
+  // della grammatica — in shadow è il canale per capire su quali giorni e pasti morde.
+  if (preEffort && ctx.grammar) ctx.grammar.flags.push(`pre_effort:${preEffort.why}`);
+
+  // ── Giorno gara: gli slot a protocollo si compongono PRIMA ────────────────────────
+  // Pre-gara e recovery post-gara non pescano dai pool e non toccano lo stato del ctx
+  // (usedFdcIds, famiglie, grammatica): comporli in anticipo non cambia di una virgola
+  // ciò che compongono gli altri slot, e serve a conoscere quanto pesa davvero il pasto
+  // fisso prima di distribuire i budget.
+  const raceComposedByKey = new Map<string, MealPlanV2ComposedSlot>();
+  for (const slot of dietSlots) {
+    if (suppressed.has(slot.key as MealSlotKey)) continue;
+    const composed = composeRaceSlot(slot, ctx);
+    if (composed) raceComposedByKey.set(slot.key, composed);
+  }
+
+  /**
+   * REGOLA 1 (Mario): il pre-gara è fisso (pasta/riso + olio + grana). Se costa meno del
+   * budget del suo slot, il residuo va agli ALTRI pasti — mai a ristuffare il piatto
+   * pre-gara. Se invece lo sfora, qui non si tocca nulla (comportamento invariato).
+   */
+  const preRaceKey = request?.racePreLunch?.mealSlot;
+  const preRaceComposed = preRaceKey ? raceComposedByKey.get(preRaceKey) : undefined;
+  const effectiveSlots =
+    preRaceKey && preRaceComposed
+      ? redistributeRacePreRaceBudgetSurplus(dietSlots, {
+          preRaceSlotKey: preRaceKey,
+          preRaceTotals: preRaceComposed.totals,
+          excludeKeys: [
+            ...suppressed,
+            ...(request?.racePostRecovery ? [request.racePostRecovery.mealSlot] : []),
+          ],
+        })
+      : dietSlots;
+
+  return effectiveSlots.map((slot) => {
     if (suppressed.has(slot.key as MealSlotKey)) {
       return {
         slot: slot.key,
@@ -1228,8 +1321,8 @@ export function composeMealPlanV2(
         totals: { kcal: 0, choG: 0, proG: 0, fatG: 0 },
       };
     }
-    const raceSlot = composeRaceSlot(slot, ctx);
-    if (raceSlot) return raceSlot;
+    const raceSlot = raceComposedByKey.get(slot.key);
+    if (raceSlot) return { ...raceSlot, targetKcal: slot.kcal };
     return composeSlotFromAssembly(slot, pools, ctx);
   });
 }

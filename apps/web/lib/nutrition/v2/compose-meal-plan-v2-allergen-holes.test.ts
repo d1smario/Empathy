@@ -203,6 +203,11 @@ test("giorno gara: chi non tollera il latte non riceve grana né dolce da top-up
 
 test("giorno gara: senza allergie il protocollo resta intatto (nessuna regressione)", () => {
   const served = raceDayDescriptions(false);
+  assert.ok(served.some((d) => /pasta|riso/i.test(d)), served.join(", "));
   assert.ok(served.some((d) => /grana/i.test(d)), served.join(", "));
-  assert.ok(served.some((d) => /crostata|torta/i.test(d)), served.join(", "));
+  assert.ok(served.some((d) => /olio/i.test(d)), served.join(", "));
+  // REGOLA 1 (Mario): il pre-gara è fisso a tre voci — niente dolce di riempimento kcal
+  // e niente proteina aggiunta, nemmeno con un budget di slot largo.
+  assert.ok(!served.some((d) => /crostata|torta|fette biscottate/i.test(d)), served.join(", "));
+  assert.equal(served.length, 3, served.join(", "));
 });
