@@ -990,6 +990,10 @@ function racePreLunchContextLine(ctx) {
 function racePostRecoveryContextLine(ctx) {
   return `Recovery post-gara (${ctx.raceLabel}) nello slot ${ctx.mealSlot}: CHO ${ctx.choPerKgG.toFixed(1)} g/kg (~${ctx.choG} g), PRO 0.6 g/kg (~${ctx.proteinG} g), MCT 0.2 g/kg (~${ctx.mctG} g), totale ~${ctx.totalKcal} kcal.`;
 }
+var RACE_STAPLE_CLASSES = {
+  pasta: ["glutine"],
+  riso: []
+};
 var RACE_D = {
   pastaDryKcalPerG: 3.71,
   pastaDryChoPerG: 0.75,
@@ -1007,17 +1011,33 @@ var RACE_D = {
   crackerKcalPerG: 4.16,
   jamKcalPerG: 2.5
 };
+function raceClassBlocked(classes, excluded) {
+  if (!excluded || excluded.size === 0) return false;
+  return classes.some((c) => excluded.has(c));
+}
+function dropBlockedRaceItems(items, excluded) {
+  if (!excluded || excluded.size === 0) return items;
+  return items.filter((it) => !raceClassBlocked(it.allergenClasses, excluded));
+}
+function raceMeal(items) {
+  return {
+    items,
+    lines: items.map((i) => i.portionHint),
+    totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0)
+  };
+}
 function clampStep(n, lo, hi, step = 5) {
   const rounded = Math.round(n / step) * step;
   return Math.max(lo, Math.min(hi, rounded));
 }
-function item(name, portionHint, approxKcal, role, bridge) {
+function item(name, portionHint, approxKcal, role, bridge, allergenClasses) {
   return {
     name,
     portionHint,
     approxKcal: Math.max(8, Math.round(approxKcal)),
     macroRole: role,
-    functionalBridge: bridge.slice(0, 500)
+    functionalBridge: bridge.slice(0, 500),
+    allergenClasses
   };
 }
 function dryStapleGramsForTargetCarbs(staple, targetCarbsG) {
@@ -1025,7 +1045,13 @@ function dryStapleGramsForTargetCarbs(staple, targetCarbsG) {
   const raw = targetCarbsG / choPerG;
   return staple === "pasta" ? clampStep(raw, 50, 320) : clampStep(raw, 45, 300);
 }
-function pickPreRaceMediterraneanProtein(seed, dayCtx) {
+var RACE_PROTEIN_CLASSES = {
+  pollo: [],
+  pesce: ["pesce"],
+  uova: ["uova"],
+  tofu: ["soia"]
+};
+function pickPreRaceMediterraneanProtein(seed, dayCtx, excluded) {
   const diet = dayCtx?.dietType ?? "omnivore";
   let order = ["pollo", "pesce", "uova"];
   if (diet === "pescatarian") order = ["pesce", "uova", "pollo"];
@@ -1039,7 +1065,11 @@ function pickPreRaceMediterraneanProtein(seed, dayCtx) {
     if (p === "tofu" && /\btofu\b/.test(deny)) return false;
     return true;
   });
-  const pool = order.length ? order : ["uova"];
+  const fallback = ["uova"];
+  const pool = (order.length ? order : fallback).filter(
+    (p) => !raceClassBlocked(RACE_PROTEIN_CLASSES[p], excluded)
+  );
+  if (pool.length === 0) return null;
   return pool[Math.abs(seed + 5) % pool.length] ?? "uova";
 }
 function preRaceMediterraneanProteinItem(kind, seed) {
@@ -1050,7 +1080,8 @@ function preRaceMediterraneanProteinItem(kind, seed) {
         `${clampStep(70 + seed % 3 * 10, 65, 95, 5)} g petto di pollo/tacchino (cottura semplice)`,
         120,
         "protein",
-        "Pre-gara mediterraneo: proteina magra digeribile prima dello sforzo."
+        "Pre-gara mediterraneo: proteina magra digeribile prima dello sforzo.",
+        RACE_PROTEIN_CLASSES.pollo
       );
     case "pesce":
       return item(
@@ -1058,7 +1089,8 @@ function preRaceMediterraneanProteinItem(kind, seed) {
         `${clampStep(80 + seed % 2 * 15, 75, 110, 5)} g merluzzo o pesce bianco (al vapore/padella)`,
         95,
         "protein",
-        "Pre-gara mediterraneo: pesce magro, basso carico lipidico."
+        "Pre-gara mediterraneo: pesce magro, basso carico lipidico.",
+        RACE_PROTEIN_CLASSES.pesce
       );
     case "tofu":
       return item(
@@ -1066,7 +1098,8 @@ function preRaceMediterraneanProteinItem(kind, seed) {
         `${clampStep(90 + seed % 2 * 15, 80, 120, 10)} g tofu compatto`,
         110,
         "protein",
-        "Pre-gara mediterraneo: proteina vegetale."
+        "Pre-gara mediterraneo: proteina vegetale.",
+        RACE_PROTEIN_CLASSES.tofu
       );
     default:
       return item(
@@ -1074,16 +1107,21 @@ function preRaceMediterraneanProteinItem(kind, seed) {
         `${2 + seed % 2} uova medie (\u2248${clampStep(100 + seed % 2 * 25, 100, 130, 25)} g, strapazzate)`,
         140,
         "protein",
-        "Pre-gara mediterraneo: uova, fonte proteica classica."
+        "Pre-gara mediterraneo: uova, fonte proteica classica.",
+        RACE_PROTEIN_CLASSES.uova
       );
   }
 }
-function pickRacePreLunchStaple(seed, ctx) {
+function pickRacePreLunchStaple(seed, ctx, excluded) {
   const order = [];
   const deny = ctx?.denyFragments ?? [];
   const denyText = deny.join(" ").toLowerCase();
-  if (!/\bpasta\b|\bglut/i.test(denyText)) order.push("pasta");
-  if (!/\briso\b|\brice/i.test(denyText)) order.push("riso");
+  if (!/\bpasta\b|\bglut/i.test(denyText) && !raceClassBlocked(RACE_STAPLE_CLASSES.pasta, excluded)) {
+    order.push("pasta");
+  }
+  if (!/\briso\b|\brice/i.test(denyText) && !raceClassBlocked(RACE_STAPLE_CLASSES.riso, excluded)) {
+    order.push("riso");
+  }
   const pool = order.length ? order : ["riso"];
   return pool[Math.abs(seed) % pool.length] ?? "pasta";
 }
@@ -1093,10 +1131,12 @@ function denyHit(fragments, deny) {
   const blob = deny.join(" ").toLowerCase();
   return fragments.some((f) => blob.includes(f.toLowerCase()));
 }
-function buildRacePreRaceKcalTopUpItem(gapKcal, seed, denyFragments) {
+var RACE_TOPUP_CAKE_CLASSES = ["glutine", "uova", "latte"];
+var RACE_TOPUP_RUSK_CLASSES = ["glutine"];
+function buildRacePreRaceKcalTopUpItem(gapKcal, seed, denyFragments, excluded) {
   if (gapKcal < RACE_PRE_RACE_KCAL_TOPUP_MIN) return null;
-  const glutenBlocked = denyHit(["glutine", "gluten", "frumento", "wheat"], denyFragments);
-  if (!glutenBlocked) {
+  const glutenBlocked = denyHit(["glutine", "gluten", "frumento", "wheat"], denyFragments) || raceClassBlocked(["glutine"], excluded);
+  if (!glutenBlocked && !raceClassBlocked(RACE_TOPUP_CAKE_CLASSES, excluded)) {
     const useTorta = Math.abs(seed) % 2 === 1;
     const label = useTorta ? "Torta semplice" : "Crostata di mela";
     const portionLabel = useTorta ? "torta semplice (porzione CHO pre-gara)" : "crostata di mela (porzione CHO pre-gara)";
@@ -1107,10 +1147,12 @@ function buildRacePreRaceKcalTopUpItem(gapKcal, seed, denyFragments) {
       `${g} g ${portionLabel}`,
       kcal2,
       "cho_heavy",
-      "Protocollo pre-gara: top-up kcal slot Diet con dolce CHO digeribile (no verdure voluminose)."
+      "Protocollo pre-gara: top-up kcal slot Diet con dolce CHO digeribile (no verdure voluminose).",
+      RACE_TOPUP_CAKE_CLASSES
     );
   }
   if (denyHit(["marmellat", "jam"], denyFragments)) return null;
+  if (raceClassBlocked(RACE_TOPUP_RUSK_CLASSES, excluded)) return null;
   const jamG = clampStep(gapKcal * 0.35 / RACE_D.jamKcalPerG, 25, 55);
   const ruskG = clampStep((gapKcal - jamG * RACE_D.jamKcalPerG) / RACE_D.crackerKcalPerG, 30, 80);
   const kcal = Math.round(jamG * RACE_D.jamKcalPerG + ruskG * RACE_D.crackerKcalPerG);
@@ -1119,13 +1161,14 @@ function buildRacePreRaceKcalTopUpItem(gapKcal, seed, denyFragments) {
     `${ruskG} g fette biscottate + ${jamG} g marmellata (CHO pre-gara)`,
     kcal,
     "cho_heavy",
-    "Protocollo pre-gara: top-up kcal senza glutine \u2014 CHO rapido, no verdure."
+    "Protocollo pre-gara: top-up kcal \u2014 CHO rapido, no verdure.",
+    RACE_TOPUP_RUSK_CLASSES
   );
 }
-function composeRacePreLunchMainMeal(slot, m, seed, raceCtx, dayCtx) {
+function composeRacePreLunchMainMeal(slot, m, seed, raceCtx, dayCtx, excluded) {
   const rule = raceCtx.rule;
   const targetCarbsG = Math.max(40, Math.round(raceCtx.weightKg * rule.carbsPerKgG));
-  const staple = pickRacePreLunchStaple(seed, dayCtx);
+  const staple = pickRacePreLunchStaple(seed, dayCtx, excluded);
   const carbG = dryStapleGramsForTargetCarbs(staple, targetCarbsG);
   const granaG = clampStep(
     rule.granaPadanoG.min + Math.abs(seed) % Math.max(1, rule.granaPadanoG.max - rule.granaPadanoG.min + 1),
@@ -1137,46 +1180,45 @@ function composeRacePreLunchMainMeal(slot, m, seed, raceCtx, dayCtx) {
   const oilMl = Math.round(oilG / 0.92);
   const carbLine = staple === "pasta" ? `${carbG} g pasta secca (peso a crudo) \u2014 ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)` : `${carbG} g riso (peso a crudo) \u2014 ~${targetCarbsG} g CHO (${rule.carbsPerKgG} g/kg)`;
   const carbKcal = carbG * (staple === "pasta" ? RACE_D.pastaDryKcalPerG : RACE_D.riceDryKcalPerG);
+  const proteinKind = pickPreRaceMediterraneanProtein(seed, dayCtx, excluded);
   const items = [
     item(
       staple === "pasta" ? "Pasta" : "Riso",
       carbLine,
       carbKcal,
       "cho_heavy",
-      "Protocollo pre-gara: amido complesso a densit\xE0 CHO/kg (canonico piattaforma)."
+      "Protocollo pre-gara: amido complesso a densit\xE0 CHO/kg (canonico piattaforma).",
+      RACE_STAPLE_CLASSES[staple]
     ),
     item(
       "Grana Padano",
       `${granaG} g grana grattugiato`,
       granaG * RACE_D.granaKcalPerG,
       "protein",
-      "Protocollo pre-gara: grana 15\u201320 g."
+      "Protocollo pre-gara: grana 15\u201320 g.",
+      ["latte"]
     ),
-    preRaceMediterraneanProteinItem(pickPreRaceMediterraneanProtein(seed, dayCtx), seed),
+    ...proteinKind ? [preRaceMediterraneanProteinItem(proteinKind, seed)] : [],
     item(
       "Olio extravergine d'oliva",
       `${oilG} g olio EVO (~${oilMl} ml)`,
       oilMl * RACE_D.oilKcalPerMl,
       "fat",
-      "Protocollo pre-gara: olio 15 g."
+      "Protocollo pre-gara: olio 15 g.",
+      []
     )
   ];
-  const usedKcal = items.reduce((s, i) => s + i.approxKcal, 0);
+  const kept = dropBlockedRaceItems(items, excluded);
+  const usedKcal = kept.reduce((s, i) => s + i.approxKcal, 0);
   const gapKcal = m.kcal - usedKcal;
-  const topUp = buildRacePreRaceKcalTopUpItem(gapKcal, seed, dayCtx?.denyFragments);
-  if (topUp) items.push(topUp);
-  const lines = items.map((i) => i.portionHint);
-  const totalApproxKcal = items.reduce((s, i) => s + i.approxKcal, 0);
-  return {
-    items,
-    lines,
-    totalApproxKcal
-  };
+  const topUp = buildRacePreRaceKcalTopUpItem(gapKcal, seed, dayCtx?.denyFragments, excluded);
+  if (topUp) kept.push(topUp);
+  return raceMeal(kept);
 }
 function isSnackMealSlot(slot) {
   return slot === "snack_am" || slot === "snack_pm" || slot === "snack_evening";
 }
-function composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx) {
+function composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx, excluded) {
   const deny = (dayCtx?.denyFragments ?? []).join(" ").toLowerCase();
   const useBanana = !/\bbanana\b/.test(deny) && Math.abs(seed) % 2 === 0;
   const choItem = useBanana ? item(
@@ -1184,29 +1226,25 @@ function composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx) {
     `${clampStep(Math.max(80, Math.round(ctx.choG * 0.55)), 80, 140, 10)} g banana matura`,
     Math.round(ctx.choG * 0.55 * 4),
     "cho_heavy",
-    "Post-workout: CHO rapido nello spuntino (pranzo alle 13 resta pasto completo)."
+    "Post-workout: CHO rapido nello spuntino (pranzo alle 13 resta pasto completo).",
+    []
   ) : item(
     "Riso bianco (post-workout)",
     `${Math.max(45, Math.round(ctx.choG * 0.55 / 0.8))} g riso cotto`,
     Math.round(ctx.choG * 0.55 * 4),
     "cho_heavy",
-    "Post-workout: riso leggero nello spuntino."
+    "Post-workout: riso leggero nello spuntino.",
+    []
   );
-  const proteinItem = preRaceMediterraneanProteinItem(
-    pickPreRaceMediterraneanProtein(seed + 11, dayCtx),
-    seed + 3
-  );
-  proteinItem.approxKcal = Math.max(80, Math.round(ctx.proteinG * 3.5));
-  const items = [choItem, proteinItem];
-  return {
-    items,
-    lines: items.map((i) => i.portionHint),
-    totalApproxKcal: items.reduce((s, i) => s + i.approxKcal, 0)
-  };
+  const proteinKind = pickPreRaceMediterraneanProtein(seed + 11, dayCtx, excluded);
+  const proteinItem = proteinKind ? preRaceMediterraneanProteinItem(proteinKind, seed + 3) : null;
+  if (proteinItem) proteinItem.approxKcal = Math.max(80, Math.round(ctx.proteinG * 3.5));
+  const items = proteinItem ? [choItem, proteinItem] : [choItem];
+  return raceMeal(dropBlockedRaceItems(items, excluded));
 }
-function composeRacePostRecoveryMeal(slot, seed, ctx, dayCtx) {
+function composeRacePostRecoveryMeal(slot, seed, ctx, dayCtx, excluded) {
   if (isSnackMealSlot(slot)) {
-    return composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx);
+    return composeMediterraneanPostWorkoutSnackMeal(ctx, seed, dayCtx, excluded);
   }
   const deny = (dayCtx?.denyFragments ?? []).join(" ").toLowerCase();
   const preferRice = /\briso\b|\brice\b/.test(deny) ? false : Math.abs(seed) % 2 === 0;
@@ -1215,31 +1253,32 @@ function composeRacePostRecoveryMeal(slot, seed, ctx, dayCtx) {
     `${Math.max(70, Math.round(ctx.choG / 0.8))} g riso (peso a crudo) per ~${ctx.choG} g CHO`,
     ctx.choG * 4,
     "cho_heavy",
-    "Recovery post-gara: CHO rapidi/medi per ripristino glicogeno."
+    "Recovery post-gara: CHO rapidi/medi per ripristino glicogeno.",
+    []
   ) : item(
     "Carbo Recovery Mix",
     `${ctx.choG} g CHO da miscela carbo recovery`,
     ctx.choG * 4,
     "cho_heavy",
-    "Recovery post-gara: miscela carbo ad alta disponibilita."
+    "Recovery post-gara: miscela carbo ad alta disponibilita.",
+    []
   );
-  const proteinKind = pickPreRaceMediterraneanProtein(seed + 7, dayCtx);
-  const proteinItem = preRaceMediterraneanProteinItem(proteinKind, seed);
-  proteinItem.approxKcal = Math.max(100, Math.round(ctx.proteinG * 4));
-  proteinItem.functionalBridge = "Recovery post-gara: proteina mediterranea (carne/pesce/uova).";
+  const proteinKind = pickPreRaceMediterraneanProtein(seed + 7, dayCtx, excluded);
+  const proteinItem = proteinKind ? preRaceMediterraneanProteinItem(proteinKind, seed) : null;
+  if (proteinItem) {
+    proteinItem.approxKcal = Math.max(100, Math.round(ctx.proteinG * 4));
+    proteinItem.functionalBridge = "Recovery post-gara: proteina mediterranea (carne/pesce/uova).";
+  }
   const mctItem = item(
     "MCT oil",
     `${ctx.mctG} g MCT oil`,
     Math.round(ctx.mctG * 8.3),
     "fat",
-    "Recovery post-gara: quota lipidica rapida da MCT."
+    "Recovery post-gara: quota lipidica rapida da MCT.",
+    []
   );
-  const items = [choItem, proteinItem, mctItem];
-  return {
-    items,
-    lines: items.map((i) => i.portionHint),
-    totalApproxKcal: items.reduce((sum, i) => sum + i.approxKcal, 0)
-  };
+  const items = proteinItem ? [choItem, proteinItem, mctItem] : [choItem, mctItem];
+  return raceMeal(dropBlockedRaceItems(items, excluded));
 }
 
 // apps/web/lib/nutrition/routine-race-day-context.ts
@@ -1677,6 +1716,172 @@ function filterIntelligentMealPlanRequestFoods(req) {
     ...req,
     slots: req.slots.map((s) => filterSlot(s, fragments, excludedFdcIds))
   };
+}
+var ALLERGEN_CLASS_TOKENS = [
+  "glutine",
+  "crostacei",
+  "uova",
+  "pesce",
+  "arachidi",
+  "soia",
+  "latte",
+  "frutta_a_guscio",
+  "sedano",
+  "senape",
+  "sesamo",
+  "solfiti",
+  "lupini",
+  "molluschi"
+];
+var ALLERGEN_CLASS_TOKEN_SET = new Set(ALLERGEN_CLASS_TOKENS);
+function foldPhrase(s) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function normalizeAllergenClassToken(raw) {
+  if (typeof raw !== "string") return null;
+  const key = foldPhrase(raw).replace(/[\s\-.]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return ALLERGEN_CLASS_TOKEN_SET.has(key) ? key : null;
+}
+function normalizeAllergenClassList(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item2 of raw) {
+    const token = normalizeAllergenClassToken(item2);
+    if (!token || seen.has(token)) continue;
+    seen.add(token);
+    out.push(token);
+  }
+  return out;
+}
+var FALSE_FRIEND_BASE_WORDS = {
+  dairy: /\b(?:latte|milk|yogh?urt|panna|cream|cheese|formagg\w*)\b/g,
+  fat: /\b(?:burro|butter)\b/g,
+  nut: /\bnoc[ei]\b/g,
+  grano: /\bgrano\b/g,
+  malto: /\bmalto\b/g
+};
+var FALSE_FRIEND_MODIFIERS = [
+  // Frutta a guscio, arachidi, semi: la classe la mettono loro, non la base.
+  { pattern: /\bmandorl\w*\b|\balmonds?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\banacard\w*\b|\bcashews?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bnocciol\w*\b|\bhazelnuts?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bpistacch\w*\b|\bpistachios?\b/, neutralizes: ["dairy", "fat"] },
+  {
+    pattern: /\bmacadamia\b|\bpecans?\b|\bpinol\w*\b|\bpine ?nuts?\b|\bcastagn\w*\b|\bchestnuts?\b/,
+    neutralizes: ["dairy", "fat"]
+  },
+  { pattern: /\bnoc[ei]\b|\bwalnuts?\b/, neutralizes: ["dairy", "fat"] },
+  { pattern: /\barachid\w*\b|\bpeanuts?\b|\bgroundnuts?\b/, neutralizes: ["dairy", "fat"] },
+  { pattern: /\bsesamo\b|\bsesame\b|\btahin\w*\b/, neutralizes: ["dairy", "fat"] },
+  // «semi» solo davanti al complemento («semi di girasole»): «latte semi-scremato» è latte.
+  {
+    pattern: /\bsemi\s+d[ie]\b|\bseeds?\b|\bgirasole\b|\bsunflower\b|\bzucca\b|\bpumpkin\b|\bflax\w*\b/,
+    neutralizes: ["dairy", "fat"]
+  },
+  // Legumi e cereali: bevande e «burri» vegetali.
+  { pattern: /\bsoia\b|\bsoja\b|\bsoy\w*\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bavena\b|\boats?\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\briso\b|\brice\b/, neutralizes: ["dairy", "fat", "malto"], bevandaVegetale: true },
+  { pattern: /\bmais\b|\bcorn\w*\b/, neutralizes: ["malto"] },
+  { pattern: /\bcanapa\b|\bhemp\b|\bquinoa\b|\bmiglio\b|\bmillet\b/, neutralizes: ["dairy", "fat"], bevandaVegetale: true },
+  { pattern: /\bcocco\b|\bcoconut\b|\bcocos\b/, neutralizes: ["dairy", "fat", "nut"], bevandaVegetale: true },
+  // Grassi non caseari. Solo il grasso, mai il latte: vedi «latte al cacao».
+  { pattern: /\bcacao\b|\bcocoa\b|\bkarit\w*\b|\bshea\b/, neutralizes: ["fat"] },
+  // Dichiarazione esplicita di prodotto vegetale.
+  { pattern: /\bvegetal\w*\b|\bvegan\w*\b|\bplant ?based\b/, neutralizes: ["dairy", "fat"], aggettivo: true },
+  // Il grano che non è frumento e le noci che non sono frutta a guscio.
+  { pattern: /\bsaracen\w*\b|\bbuckwheat\b|\bturco\b/, neutralizes: ["grano"], aggettivo: true },
+  { pattern: /\bmoscat[ae]\b|\bnutmegs?\b/, neutralizes: ["nut"], aggettivo: true },
+  { pattern: /\bpesc(?:a|he)\b|\bnettarin\w*\b|\bnectarines?\b/, neutralizes: ["nut"], aggettivo: true }
+];
+function splitFoodPhraseIntoItems(raw) {
+  const folded = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/['’ʼ`()[\]{}"«»]/g, " ").replace(/\s+/g, " ").trim();
+  return folded.split(/\s*[,;/|+&]\s*|\s+(?:e|ed|o|od|oppure|con|and|or|with|plus)\s+/).map((s) => s.trim()).filter((s) => s.length >= 2);
+}
+function neutralizeFalseFriends(item2) {
+  let out = item2;
+  for (const { pattern, neutralizes, aggettivo, bevandaVegetale } of FALSE_FRIEND_MODIFIERS) {
+    const mod = pattern.source;
+    for (const base of neutralizes) {
+      const baseSrc = FALSE_FRIEND_BASE_WORDS[base].source;
+      const composto = new RegExp(
+        `(${baseSrc})(\\s+(?:\\w+\\s+){0,2}d(?:i)?\\s+(?:\\w+\\s+){0,2}(?:${mod}))`,
+        "g"
+      );
+      const inglese = new RegExp(`((?:${mod})[\\s-]+)(${baseSrc})`, "g");
+      out = out.replace(composto, (_m, _b, coda) => ` ${coda}`).replace(inglese, (_m, testa) => `${testa} `);
+      if (bevandaVegetale && base === "dairy") {
+        out = out.replace(
+          new RegExp(
+            `\\b(latte|milk|bevanda|drink)\\b(\\s+(?:\\w+\\s+){0,3}(?:${mod}))`,
+            "g"
+          ),
+          (_m, _b, coda) => ` ${coda}`
+        );
+      }
+      if (aggettivo) {
+        out = out.replace(new RegExp(`(${baseSrc})(\\s+(?:${mod}))`, "g"), (_m, _b, coda) => ` ${coda}`);
+      }
+    }
+  }
+  return out;
+}
+var PHRASE_TO_ALLERGEN_CLASSES = [
+  {
+    match: /glutin|gluten|celiac|celiach|coeliac|frumento|\bwheat\b|\bgrano\b|\borzo\b|barley|segale|\brye\b|\bfarro\b|\bspelt\b|kamut|triticale|semola|semolino|cous ?cous|couscous|bulgur|seitan|\bmalto\b/,
+    classes: ["glutine"]
+  },
+  {
+    match: /lattos|lactose|\blatte\b|latticin|latticell|\bdairy\b|casein|\bmilk\b|formaggio|formaggi\b|cheese|yogurt|yoghurt|\bpanna\b|\bcream\b|ricotta|mozzarella|parmigian|pecorino|mascarpone|\bwhey\b|siero di latte|kefir|cottage|\bburro\b|\bbutter\b/,
+    classes: ["latte"]
+  },
+  { match: /\buov[ao]\b|\buova\b|\bovo\b|albume|tuorlo|\begg/, classes: ["uova"] },
+  {
+    match: /\bpesc[ei]\b|\bfish\b|\bittic|\btonno\b|\btuna\b|salmon|merluzz|\bcod\b|sgombro|mackerel|acciug|anchov|sardin|\btrota\b|\btrout\b|branzino|\borata\b|spigola|aringa|herring|nasello|platessa|baccal|\bsogliola\b|pesce spada/,
+    classes: ["pesce"]
+  },
+  {
+    match: /crostace|crustace|shellfish|gamber|\bshrimp\b|\bprawn|aragost|lobster|granchio|\bcrab\b|scampi|\bastice\b|mazzancoll|\bkrill\b/,
+    classes: ["crostacei"]
+  },
+  {
+    match: /mollusc|\bclam\b|vongol|\bcozze\b|mussel|ostrich?e\b|\boyster|calamar|\bsquid\b|\bpolpo\b|octopus|\bseppi[ae]\b|capesant|scallop|lumach|\bsnail/,
+    classes: ["molluschi"]
+  },
+  { match: /arachid|peanut|groundnut/, classes: ["arachidi"] },
+  {
+    match: /frutta a guscio|frutta secca|tree ?nuts?|\bnuts?\b|\bnoci\b|\bnoce\b|nocciol|mandorl|almond|hazelnut|anacard|cashew|pistacch|pistachio|macadamia|\bpecan\b|\bpinol|pine ?nut|walnut|noce del brasile|brazil ?nut/,
+    classes: ["frutta_a_guscio"]
+  },
+  { match: /\bsoia\b|\bsoy\b|soybean|\bsoja\b|\btofu\b|edamame|\bmiso\b|tempeh|tamari|\bshoyu\b/, classes: ["soia"] },
+  { match: /\bsedan[oi]\b|\bcelery\b|celeriac/, classes: ["sedano"] },
+  { match: /\bsenap|mustard/, classes: ["senape"] },
+  { match: /sesam|tahin|gomasio/, classes: ["sesamo"] },
+  { match: /solfit|sulphite|sulfite|anidride solforosa|\bso2\b|metabisolfit/, classes: ["solfiti"] },
+  { match: /\blupin/, classes: ["lupini"] }
+];
+function mapFoodPhrasesToAllergenClasses(phrases) {
+  const found = /* @__PURE__ */ new Set();
+  for (const raw of phrases ?? []) {
+    if (typeof raw !== "string") continue;
+    for (const item2 of splitFoodPhraseIntoItems(raw)) {
+      const text = neutralizeFalseFriends(item2);
+      for (const row2 of PHRASE_TO_ALLERGEN_CLASSES) {
+        if (row2.match.test(text)) {
+          for (const c of row2.classes) found.add(c);
+        }
+      }
+    }
+  }
+  return ALLERGEN_CLASS_TOKENS.filter((t) => found.has(t));
+}
+function buildAthleteAllergenClasses(req) {
+  const allergyClasses = mapFoodPhrasesToAllergenClasses([
+    ...req?.allergies ?? [],
+    ...req?.intolerances ?? []
+  ]);
+  return { allergyClasses, exclusionClasses: [], all: [...allergyClasses] };
 }
 
 // apps/web/lib/nutrition/meal-slot-food-rules.ts
@@ -4136,6 +4341,90 @@ function fdcIdForCanonicalKey(canonicalKey) {
   return CANONICAL_FOOD_TO_FDC_ID[canonicalKey];
 }
 
+// apps/web/lib/nutrition/v2/fdc-candidate-filter.ts
+var DESCRIPTION_DENYLIST = [
+  /^beverage$/i,
+  /^beverages$/i,
+  /^snacks?,?\s/i,
+  /butter replacement/i,
+  /meal replacement/i,
+  /infant formula/i,
+  /babyfood/i,
+  /walrus/i,
+  /alaska native/i,
+  /navajo/i,
+  /graham cracker.*crust/i,
+  /pie crust.*cookie/i,
+  /restaurant,\s*chinese/i,
+  /gelatins,\s*dry powder/i,
+  /french fries/i,
+  /potato chips/i,
+  /tortilla chips/i,
+  /onion rings/i,
+  /corn dog/i,
+  /fast foods/i,
+  /kraft foods/i,
+  /general mills/i,
+  /granola bar/i,
+  /fruit leather/i,
+  /candy bar/i,
+  /ice cream/i,
+  /cupcake/i,
+  /doughnut/i,
+  /rice cake/i,
+  /\bcrackers?\b/i,
+  /mini rice cakes/i,
+  /^candies/i,
+  /^candy,/i
+];
+function isDeniedFdcDescription(description, denyFragments) {
+  const d = description.toLowerCase();
+  for (const frag of denyFragments) {
+    if (frag && d.includes(frag.toLowerCase())) return true;
+  }
+  for (const re of DESCRIPTION_DENYLIST) {
+    if (re.test(description)) return true;
+  }
+  return false;
+}
+function createAllergenFilterContext(input) {
+  const athleteClasses = /* @__PURE__ */ new Set([...input.allergyClasses, ...input.exclusionClasses ?? []]);
+  if (athleteClasses.size === 0) return null;
+  const foodIndex = input.foodIndex ?? /* @__PURE__ */ new Map();
+  let hasReviewed = false;
+  for (const info of foodIndex.values()) {
+    if (info.reviewed) {
+      hasReviewed = true;
+      break;
+    }
+  }
+  return {
+    athleteClasses,
+    failClosed: input.allergyClasses.length > 0 && hasReviewed,
+    foodIndex
+  };
+}
+function isAllergenExcludedInfo(info, ctx) {
+  if (!ctx || ctx.athleteClasses.size === 0) return false;
+  if (info) {
+    for (const c of info.classes) {
+      if (ctx.athleteClasses.has(c)) return true;
+    }
+  }
+  if (!ctx.failClosed) return false;
+  return !info || !info.reviewed;
+}
+function isAllergenExcludedFdcId(fdcId, ctx) {
+  if (!ctx || ctx.athleteClasses.size === 0) return false;
+  const info = typeof fdcId === "number" && Number.isFinite(fdcId) ? ctx.foodIndex.get(fdcId) : void 0;
+  return isAllergenExcludedInfo(info, ctx);
+}
+function filterFdcCandidates(candidates, denyFragments, allergen) {
+  return candidates.filter(
+    (c) => c.kcalPer100g > 0 && !isAllergenExcludedFdcId(c.fdcId, allergen) && !isDeniedFdcDescription(c.description, denyFragments)
+  );
+}
+
 // apps/web/lib/nutrition/macro-plausibility.ts
 var MAX_KCAL_PER_100G = 900;
 var MAX_MACRO_PER_100G = 100;
@@ -4429,7 +4718,11 @@ function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
         isMeat: r?.is_meat === true,
         isFish: r?.is_fish === true,
         isAnimalProduct: r?.is_animal_product === true,
-        mealRoles: mealRolesByKey.get(canonicalKey)
+        mealRoles: mealRolesByKey.get(canonicalKey),
+        // Allergeni: NESSUN default inventato. Colonna assente (select degradata) o NULL
+        // → campo `undefined` = «non classificato» per il filtro, che decide in chiusura.
+        ...Array.isArray(r?.allergen_classes) ? { allergenClasses: normalizeAllergenClassList(r.allergen_classes) } : {},
+        ...r?.allergens_reviewed === true || r?.allergens_reviewed === false ? { allergensReviewed: r.allergens_reviewed === true } : {}
       },
       poolKeys,
       sortPriority: num(r?.sort_priority) ?? 999
@@ -4453,17 +4746,24 @@ function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
 var menuFoodPoolsCache = null;
 var MENU_FOOD_CACHE_TTL_MS = 5 * 6e4;
 var FDC_IN_CHUNK = 200;
+var MENU_FOODS_BASE_SELECT = "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority";
+var MENU_FOODS_ALLERGEN_EXTRA_SELECT = "allergen_classes, allergens_reviewed";
 var MEAL_ROLES_V5_SELECT = "canonical_key, score_breakfast, score_snack, score_lunch, score_dinner, score_pre_workout, score_post_workout, role_breakfast, role_snack, role_lunch, role_dinner, macro_role, frequency, max_week, prep_speed";
 var MEAL_ROLES_V6_EXTRA_SELECT = "breakfast_cho_role, breakfast_protein_role, breakfast_fat_role, main_meal_role, snack_role, mediterranean_priority, substitution_group, substitutes";
 var MEAL_ROLES_V9_EXTRA_SELECT = "generative_tier, default_enabled, selection_weight, substitution_mode, substitute_pool";
+function missingColumnsError(res) {
+  return res.error != null && (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
+}
 async function loadMenuFoodPools(admin) {
   if (menuFoodPoolsCache && Date.now() - menuFoodPoolsCache.at < MENU_FOOD_CACHE_TTL_MS) {
     return menuFoodPoolsCache.pools;
   }
   try {
-    const { data: menuRows, error } = await admin.from("nutrition_menu_foods").select(
-      "canonical_key, fdc_id, label_it, serving_basis, pool_keys, rotation_key, carb_family, is_meat, is_fish, is_animal_product, sort_priority"
-    ).eq("is_active", true);
+    let menuRes = await admin.from("nutrition_menu_foods").select(`${MENU_FOODS_BASE_SELECT}, ${MENU_FOODS_ALLERGEN_EXTRA_SELECT}`).eq("is_active", true);
+    if (missingColumnsError(menuRes)) {
+      menuRes = await admin.from("nutrition_menu_foods").select(MENU_FOODS_BASE_SELECT).eq("is_active", true);
+    }
+    const { data: menuRows, error } = menuRes;
     if (error || !Array.isArray(menuRows) || menuRows.length === 0) {
       menuFoodPoolsCache = { at: Date.now(), pools: null };
       return null;
@@ -4482,12 +4782,11 @@ async function loadMenuFoodPools(admin) {
       }
       if (Array.isArray(data)) macroRows.push(...data);
     }
-    const rolesMissingColumns = (res) => res.error != null && (res.error.code === "42703" || /column .* does not exist|could not find the .* column/i.test(res.error.message ?? ""));
     let rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}, ${MEAL_ROLES_V9_EXTRA_SELECT}`);
-    if (rolesMissingColumns(rolesRes)) {
+    if (missingColumnsError(rolesRes)) {
       rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(`${MEAL_ROLES_V5_SELECT}, ${MEAL_ROLES_V6_EXTRA_SELECT}`);
     }
-    if (rolesMissingColumns(rolesRes)) {
+    if (missingColumnsError(rolesRes)) {
       rolesRes = await admin.from("nutrition_menu_food_meal_roles").select(MEAL_ROLES_V5_SELECT);
     }
     const { data: mealRoleRows, error: mealRoleError } = rolesRes;
@@ -4498,6 +4797,30 @@ async function loadMenuFoodPools(admin) {
     menuFoodPoolsCache = { at: Date.now(), pools: null };
     return null;
   }
+}
+function buildMenuFoodAllergenIndex(pools) {
+  const index = /* @__PURE__ */ new Map();
+  if (!pools) return index;
+  const seenEntries = /* @__PURE__ */ new Set();
+  for (const list of pools.values()) {
+    for (const e of list) {
+      if (seenEntries.has(e)) continue;
+      seenEntries.add(e);
+      if (!(e.fdcId > 0)) continue;
+      const classes = e.allergenClasses ?? [];
+      const reviewed = e.allergensReviewed === true;
+      const prev = index.get(e.fdcId);
+      if (!prev) {
+        index.set(e.fdcId, { classes, reviewed });
+        continue;
+      }
+      index.set(e.fdcId, {
+        classes: [.../* @__PURE__ */ new Set([...prev.classes, ...classes])],
+        reviewed: prev.reviewed && reviewed
+      });
+    }
+  }
+  return index;
 }
 function menuRotationKeyResolver(pools) {
   const byCanonical = /* @__PURE__ */ new Map();
@@ -4910,7 +5233,7 @@ function recipeCandidatesForMeal(input) {
         resolvable = false;
         break;
       }
-      if (denyHitEntry(entry2, deny) || dietExcludesEntry(entry2, input.dietType)) {
+      if (isAllergenExcludedFdcId(entry2.fdcId, input.allergen) || denyHitEntry(entry2, deny) || dietExcludesEntry(entry2, input.dietType)) {
         banned = true;
         break;
       }
@@ -5627,6 +5950,9 @@ function canonicalToHit(entry2) {
     tagSource: "db"
   };
 }
+function pickStapleForAthlete(ctx) {
+  return pickStapleForPool(ctx);
+}
 function filterMenuFoodsByDiet(entries, dietType) {
   if (dietType === "pescatarian") return entries.filter((e) => !e.isMeat);
   if (dietType === "vegetarian") return entries.filter((e) => !e.isMeat && !e.isFish);
@@ -5677,6 +6003,8 @@ function pickStapleForPool(ctx) {
   const dayOffset = poolSize > 0 ? (Math.floor(Math.abs(ctx.seed)) % poolSize + poolSize) % poolSize : 0;
   const ignoreUsedToday = !!(menuEntries && ctx.grammar?.ignoreUsedToday);
   const scored = entries.map((e, idx) => {
+    const fdcIdForAllergen = e.fdcId ?? fdcIdForCanonicalKey(e.canonicalKey);
+    if (isAllergenExcludedFdcId(fdcIdForAllergen, ctx.allergen)) return { e, score: -12e3, idx };
     if (denyHit2(e.labelIt, deny) || denyHit2(e.canonicalKey, deny)) return { e, score: -1e4, idx };
     const weekCount = weekStapleCountForEntry(e, ctx.dayCtx?.weekStapleCounts);
     if (weekCount >= ROTATION_MAX_WEEK_USES && !(menuEntries && ctx.grammar?.relaxWeekCaps)) {
@@ -7685,58 +8013,6 @@ function createMediterraneanDayContext(planDate, weekStapleCounts, postWorkoutMe
   };
 }
 
-// apps/web/lib/nutrition/v2/fdc-candidate-filter.ts
-var DESCRIPTION_DENYLIST = [
-  /^beverage$/i,
-  /^beverages$/i,
-  /^snacks?,?\s/i,
-  /butter replacement/i,
-  /meal replacement/i,
-  /infant formula/i,
-  /babyfood/i,
-  /walrus/i,
-  /alaska native/i,
-  /navajo/i,
-  /graham cracker.*crust/i,
-  /pie crust.*cookie/i,
-  /restaurant,\s*chinese/i,
-  /gelatins,\s*dry powder/i,
-  /french fries/i,
-  /potato chips/i,
-  /tortilla chips/i,
-  /onion rings/i,
-  /corn dog/i,
-  /fast foods/i,
-  /kraft foods/i,
-  /general mills/i,
-  /granola bar/i,
-  /fruit leather/i,
-  /candy bar/i,
-  /ice cream/i,
-  /cupcake/i,
-  /doughnut/i,
-  /rice cake/i,
-  /\bcrackers?\b/i,
-  /mini rice cakes/i,
-  /^candies/i,
-  /^candy,/i
-];
-function isDeniedFdcDescription(description, denyFragments) {
-  const d = description.toLowerCase();
-  for (const frag of denyFragments) {
-    if (frag && d.includes(frag.toLowerCase())) return true;
-  }
-  for (const re of DESCRIPTION_DENYLIST) {
-    if (re.test(description)) return true;
-  }
-  return false;
-}
-function filterFdcCandidates(candidates, denyFragments) {
-  return candidates.filter(
-    (c) => c.kcalPer100g > 0 && !isDeniedFdcDescription(c.description, denyFragments)
-  );
-}
-
 // apps/web/lib/nutrition/v2/fdc-meal-macro-solver.ts
 function clampStep2(n, lo, hi, step) {
   const clamped = Math.max(lo, Math.min(hi, n));
@@ -7993,8 +8269,8 @@ function macrosFromHit(c, grams) {
     fatG: round13(c.fatPer100g * f) || round13((c.kcalPer100g - c.carbsPer100g * 4 - c.proteinPer100g * 4) / 9 * f) || 0
   };
 }
-function pickFromPoolFallback(pool, ctx, denyFragments, usedFdcIds, staplePenalty) {
-  const filtered = filterFdcCandidates(pool, denyFragments);
+function pickFromPoolFallback(pool, ctx, denyFragments, usedFdcIds, staplePenalty, allergen) {
+  const filtered = filterFdcCandidates(pool, denyFragments, allergen);
   const pick = pickBestFdcForRole(filtered, ctx, denyFragments, usedFdcIds, staplePenalty);
   if (pick) return pick;
   if (isMainMealSlot(ctx.slot) && ctx.spec.foodRole === "cho_complex") {
@@ -8056,23 +8332,27 @@ function grammarFilterFor(ctx, slotKey, poolKey, rolesOverride, relaxWeekCaps, i
     ...ctx.grammar.varietyUsedInSlot ? { varietyBlocked: true } : {}
   };
 }
-function pickLineForRole(spec, slotKey, pools, ctx, opts) {
-  const roleCtx = { slot: slotKey, poolKey: spec.poolKey, spec };
-  const seed = ctx.seed + spec.poolKey.length;
-  const rolesOverride = opts?.rolesOverride;
-  const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
-  const hasMenuPool = !!menuEntries && menuEntries.length > 0;
-  const pickArgs = {
-    poolKey: spec.poolKey,
+function stapleArgsFromContext(ctx, poolKey, seed, menuEntries) {
+  return {
+    poolKey,
     seed,
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
     dayCtx: ctx.dayCtx,
     usedCarbFamilies: ctx.usedCarbFamilies,
     usedFdcIds: ctx.usedFdcIds,
-    menuEntries: hasMenuPool ? menuEntries : void 0
+    menuEntries: menuEntries && menuEntries.length > 0 ? menuEntries : void 0,
+    allergen: ctx.allergen ?? null
   };
-  let staplePick = pickStapleForPool({
+}
+function pickLineForRole(spec, slotKey, pools, ctx, opts) {
+  const roleCtx = { slot: slotKey, poolKey: spec.poolKey, spec };
+  const seed = ctx.seed + spec.poolKey.length;
+  const rolesOverride = opts?.rolesOverride;
+  const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
+  const hasMenuPool = !!menuEntries && menuEntries.length > 0;
+  const pickArgs = stapleArgsFromContext(ctx, spec.poolKey, seed, hasMenuPool ? menuEntries : void 0);
+  let staplePick = pickStapleForAthlete({
     ...pickArgs,
     grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, rolesOverride, opts?.relaxWeekCaps, opts?.ignoreUsedToday)
   });
@@ -8081,7 +8361,7 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
   const poolV6 = GRAMMAR_V6_ROLES_BY_POOL[spec.poolKey];
   const v6InMeal = poolV6 && grammarPoolMeal(spec.poolKey) === mealForSlot(slotKey);
   if (!staplePick && ctx.grammar && !rolesOverride && (fallbackRoles || v6InMeal && fallbackV6)) {
-    staplePick = pickStapleForPool({
+    staplePick = pickStapleForAthlete({
       ...pickArgs,
       grammar: grammarFilterFor(ctx, slotKey, spec.poolKey, {
         ...fallbackRoles ? { v5: fallbackRoles } : {},
@@ -8093,7 +8373,7 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
     if (!opts?.optional) {
       const v5All = rolesOverride ? rolesOverride.v5 : [...GRAMMAR_ROLES_BY_POOL[spec.poolKey]?.primary ?? [], ...fallbackRoles ?? []];
       const v6All = rolesOverride ? rolesOverride.v6 : v6InMeal ? { axis: poolV6.axis, roles: [...poolV6.primary, ...fallbackV6 ?? []] } : void 0;
-      staplePick = pickStapleForPool({
+      staplePick = pickStapleForAthlete({
         ...pickArgs,
         grammar: grammarFilterFor(
           ctx,
@@ -8131,7 +8411,14 @@ function pickLineForRole(spec, slotKey, pools, ctx, opts) {
     return { spec, hit: staplePick.hit, staple: staplePick.entry };
   }
   const rawPool = pools.get(spec.poolKey) ?? [];
-  const hit = pickFromPoolFallback(rawPool, roleCtx, ctx.denyFragments, ctx.usedFdcIds, ctx.staplePenalty);
+  const hit = pickFromPoolFallback(
+    rawPool,
+    roleCtx,
+    ctx.denyFragments,
+    ctx.usedFdcIds,
+    ctx.staplePenalty,
+    ctx.allergen
+  );
   if (!hit) return null;
   ctx.usedFdcIds.add(hit.fdcId);
   return { spec, hit };
@@ -8147,6 +8434,7 @@ function pickRecipeLine(slotKey, target, ctx) {
     meal: mealForSlot(slotKey),
     dietType: ctx.dietType,
     denyFragments: ctx.denyFragments,
+    allergen: ctx.allergen,
     weekStapleCounts: ctx.dayCtx.weekStapleCounts,
     ...isMain ? {} : { dayUsedProteinBaseFamilies: g.dayUsedProteinBaseFamilies, dayUsedTemplateBases: g.dayUsedTemplateBases }
   });
@@ -8495,15 +8783,10 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
     const altMenuEntries = ctx.menuPools?.get(choLine.spec.poolKey);
     const swapRoles = choLine.staple?.mealRoles;
     const baseFilter = grammarFilterFor(ctx, slotKey, choLine.spec.poolKey);
-    const alt = pickStapleForPool({
-      poolKey: choLine.spec.poolKey,
-      seed: ctx.seed + 17,
-      dietType: ctx.dietType,
-      denyFragments: ctx.denyFragments,
-      dayCtx: ctx.dayCtx,
-      usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds,
-      menuEntries: altMenuEntries && altMenuEntries.length > 0 ? altMenuEntries : void 0,
+    const alt = pickStapleForAthlete({
+      // Stessi argomenti base delle altre linee (allergeni COMPRESI): lo swap non è una
+      // strada laterale, è lo stesso pick con un altro seed.
+      ...stapleArgsFromContext(ctx, choLine.spec.poolKey, ctx.seed + 17, altMenuEntries),
       // Sotto grammatica anche il sostituto passa dal filtro del pasto (V01).
       grammar: baseFilter ? {
         ...baseFilter,
@@ -8524,15 +8807,8 @@ function applyRegola7Cho(lines, target, slotKey, ctx) {
   }
   if (target.carbsG >= 130 && !lines.some((l) => l.staple?.canonicalKey === "bread_white")) {
     const breadMenuEntries = ctx.menuPools?.get("breakfast_cho");
-    const breadHit = pickStapleForPool({
-      poolKey: "breakfast_cho",
-      seed: ctx.seed + 31,
-      dietType: ctx.dietType,
-      denyFragments: ctx.denyFragments,
-      dayCtx: ctx.dayCtx,
-      usedCarbFamilies: ctx.usedCarbFamilies,
-      usedFdcIds: ctx.usedFdcIds,
-      menuEntries: breadMenuEntries && breadMenuEntries.length > 0 ? breadMenuEntries : void 0,
+    const breadHit = pickStapleForAthlete({
+      ...stapleArgsFromContext(ctx, "breakfast_cho", ctx.seed + 31, breadMenuEntries),
       // Sotto grammatica il pane secondario deve avere score > 0 nel pasto dello slot (V01):
       // nei dati v5 il pane è NONE/0 a pranzo e cena, quindi la regola 7 non aggiunge pane.
       grammar: grammarFilterFor(ctx, slotKey, "breakfast_cho")
@@ -8558,6 +8834,7 @@ function composeRaceSlot(slot, ctx) {
   const slotKey = slot.key;
   const req = ctx.request;
   if (!req) return null;
+  const excludedClasses = ctx.allergen?.athleteClasses;
   const slotMacros = {
     kcal: slot.kcal,
     carbsG: slot.carbs,
@@ -8565,7 +8842,14 @@ function composeRaceSlot(slot, ctx) {
     fatG: slot.fat
   };
   if (isRacePreRaceMealSlot(slotKey, req.racePreLunch ?? null)) {
-    const meal = composeRacePreLunchMainMeal(slotKey, slotMacros, ctx.seed, req.racePreLunch, ctx.dayCtx);
+    const meal = composeRacePreLunchMainMeal(
+      slotKey,
+      slotMacros,
+      ctx.seed,
+      req.racePreLunch,
+      ctx.dayCtx,
+      excludedClasses
+    );
     const items = mediterraneanMealToV2Items(meal);
     const totals = items.reduce(
       (acc, it) => ({
@@ -8579,7 +8863,13 @@ function composeRaceSlot(slot, ctx) {
     return { slot: slot.key, labelIt: slot.label, targetKcal: slot.kcal, items, totals };
   }
   if (req.racePostRecovery && slotKey === req.racePostRecovery.mealSlot) {
-    const meal = composeRacePostRecoveryMeal(slotKey, ctx.seed, req.racePostRecovery, ctx.dayCtx);
+    const meal = composeRacePostRecoveryMeal(
+      slotKey,
+      ctx.seed,
+      req.racePostRecovery,
+      ctx.dayCtx,
+      excludedClasses
+    );
     const items = mediterraneanMealToV2Items(meal);
     const totals = items.reduce(
       (acc, it) => ({
@@ -8610,6 +8900,14 @@ function normalizeDietType(raw) {
   if (d === "pescatarian" || d.includes("pesc")) return "pescatarian";
   return "omnivore";
 }
+function buildAllergenContextForRequest(request, menuFoodPools) {
+  const classes = buildAthleteAllergenClasses(request);
+  return createAllergenFilterContext({
+    allergyClasses: classes.allergyClasses,
+    exclusionClasses: classes.exclusionClasses,
+    foodIndex: buildMenuFoodAllergenIndex(menuFoodPools)
+  });
+}
 function composeMealPlanV2(requirements, dietSlots, pools, options) {
   void requirements;
   const denyFragments = options?.denyFragments ?? [];
@@ -8628,6 +8926,7 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
   );
   const usedFdcIds = /* @__PURE__ */ new Set();
   const usedCarbFamilies = /* @__PURE__ */ new Set();
+  const allergen = options?.allergen !== void 0 ? options.allergen : buildAllergenContextForRequest(request, options?.menuFoodPools);
   const staplePenalty = (description) => {
     const key = description.slice(0, 40).toLowerCase();
     return options?.weeklyStapleCounts?.[key] ?? 0;
@@ -8642,6 +8941,7 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
     staplePenalty,
     request,
     menuPools: options?.menuFoodPools ?? null,
+    allergen,
     ...options?.mealGrammar?.enabled ? {
       grammar: (() => {
         const entryIndex = menuFoodEntryIndex(options?.menuFoodPools);
@@ -9981,12 +10281,14 @@ async function buildMealPlanV2Production(input, admin) {
     grammarMode !== "off" ? loadMenuRecipes(admin) : Promise.resolve(null)
   ]);
   const denyFragments = buildMealPlanFoodDenyFragments(input.request);
+  const allergen = buildAllergenContextForRequest(input.request, menuFoodPools);
   const composeOptions = {
     denyFragments,
     weeklyStapleCounts: input.request.weeklyStapleCounts,
     suppressedSlots: input.request.suppressedSlots,
     request: input.request,
-    menuFoodPools
+    menuFoodPools,
+    allergen
   };
   let composedMealPlan = composeMealPlanV2(requirements, composerSlots, pools, composeOptions);
   let mealGrammar;
