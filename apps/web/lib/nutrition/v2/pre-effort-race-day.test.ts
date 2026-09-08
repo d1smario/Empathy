@@ -199,14 +199,21 @@ test("gara alle 13:30: la colazione delle 08:00 è pulita anche se è a 5 h e me
   }
 });
 
-test("finestra: in gara TUTTI i pasti prima della partenza, in allenamento solo quelli entro 3 h", () => {
+test("finestra: in gara TUTTI i pasti del giorno, in allenamento solo quelli entro 3 h", () => {
   const times = { breakfast: "08:00", lunch: "10:30", snack_pm: "16:30", dinner: "20:00" } as const;
   const gara = preEffortSlotsFromTimes({
     effortStartMinutes: null,
     raceStartMinutes: 13 * 60 + 30,
     mealTimesBySlot: { ...times },
   });
-  assert.deepEqual([...gara].sort(), ["breakfast", "lunch"], "in gara la colazione delle 8 entra comunque");
+  // «Giorno di gara no fibre» (decisione del proprietario, 8 set): non c'è né finestra né
+  // confronto con l'orario di partenza. Anche lo spuntino delle 16:30 e la cena delle 20:00,
+  // che vengono DOPO la gara delle 13:30, sono ristretti.
+  assert.deepEqual(
+    [...gara].sort(),
+    ["breakfast", "dinner", "lunch", "snack_pm"],
+    "in giorno gara entrano tutti i pasti, anche quelli dopo la partenza",
+  );
 
   const allenamento = preEffortSlotsFromTimes({
     effortStartMinutes: 13 * 60 + 30,
@@ -268,14 +275,16 @@ test("R1 vince su R2: il pasto a protocollo esce dagli slot ristretti, gli ALTRI
   assert.match(filter!.why, /r1_protocollo_esente:lunch/);
 });
 
-test("R1 vince su R2: gara al mattino, l'unico pasto prima della partenza è il protocollo → niente da filtrare", () => {
-  // Gara alle 10:00 → protocollo sulla colazione (07:00), e prima della partenza non c'è
-  // altro. Tolto il protocollo l'insieme è vuoto: contesto `null`, cioè no-op esplicito —
-  // il compositore si comporta esattamente come senza la regola.
+test("R1 vince su R2: gara al mattino, il protocollo esce e gli ALTRI pasti del giorno restano ristretti", () => {
+  // Gara alle 10:00 → il protocollo cade sulla colazione (07:00). Con «giorno di gara no
+  // fibre» il resto della giornata NON è più libero: pranzo e cena, che vengono dopo la
+  // partenza, restano ristretti. È il pasto a protocollo — e solo quello — a uscire.
   const ctx = raceCtx("10:00");
   assert.equal(ctx.mealSlot, "breakfast");
   const filter = filterFor(ctx, { breakfast: ctx.lunchTimeLocal, lunch: "13:00", dinner: "20:00" });
-  assert.equal(filter, null, `atteso no-op, ottenuto slot ristretti: ${filter ? [...filter.slots].join(", ") : ""}`);
+  assert.notEqual(filter, null, "in giorno gara il filtro deve restare attivo sugli altri pasti");
+  const slots = [...(filter?.slots ?? [])].sort();
+  assert.deepEqual(slots, ["dinner", "lunch"], "fuori il protocollo (colazione), dentro pranzo e cena");
 });
 
 test("R1 vince su R2: gara al mattino, il pre-gara resta a 3 voci col grana padano", () => {

@@ -375,8 +375,18 @@ export function preEffortSlotsFromTimes(input: {
     const m = parseLocalTimeToMinutes(time);
     if (m == null) continue;
     const preTraining = trainingStarts.some((start) => m <= start && start - m <= window);
-    const preRace = raceStarts.some((start) => m <= start);
-    if (preTraining || preRace) out.add(slot as MealSlotKey);
+    /**
+     * GIORNO DI GARA: NIENTE FIBRE, PUNTO — non «niente fibre prima della partenza».
+     *
+     * Decisione del proprietario (8 set), alla domanda su quanto indietro dovesse
+     * arrivare la pulizia con una gara serale: «giorno di gara no fibre». Nessun tetto
+     * e nessuna finestra, e nemmeno il confronto con l'orario di partenza: se il giorno
+     * è di gara, OGNI pasto è ristretto. Prima qui c'era `m <= start`, che con una gara
+     * alle 20:00 lasciava comunque libera la cena delle 20:30 — cioè la coda di una
+     * giornata in cui l'intestino ha appena lavorato.
+     */
+    const isRaceDay = raceStarts.length > 0;
+    if (preTraining || isRaceDay) out.add(slot as MealSlotKey);
   }
   return out;
 }
