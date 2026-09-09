@@ -4863,6 +4863,83 @@ function registerMealCanonicalKeys(ctx, meal) {
   }
 }
 
+// apps/web/lib/nutrition/v2/fdc-micronutrient-density.ts
+var USDA_IDS_BY_TARGET = {
+  vitA_mcg_RAE: [1106],
+  vitC_mg: [1162],
+  vitD_mcg: [1114, 1110],
+  vitE_mg: [1109],
+  vitK_mcg: [1185],
+  thiamineB1_mg: [1165],
+  riboflavinB2_mg: [1166],
+  niacinB3_mg: [1167],
+  vitB6_mg: [1175],
+  folate_mcg: [1177, 1187, 1190],
+  vitB12_mcg: [1178],
+  ca_mg: [1087],
+  fe_mg: [1089],
+  mg_mg: [1090],
+  p_mg: [1091],
+  k_mg: [1092],
+  na_mg: [1093],
+  zn_mg: [1095],
+  se_mcg: [1103],
+  fiberG: [1079],
+  omega3G: [1404, 1405, 1272, 1278]
+};
+var NUTRIENT_TARGET_IDS = Object.keys(USDA_IDS_BY_TARGET);
+var TARGET_BY_USDA_ID = /* @__PURE__ */ new Map();
+for (const [target, ids] of Object.entries(USDA_IDS_BY_TARGET)) {
+  for (const id of ids) if (!TARGET_BY_USDA_ID.has(id)) TARGET_BY_USDA_ID.set(id, target);
+}
+function asNumber(v) {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+function extractMicrosPer100g(...jsonColumns) {
+  const out = {};
+  for (const col of jsonColumns) {
+    if (!Array.isArray(col)) continue;
+    for (const raw of col) {
+      if (!raw || typeof raw !== "object") continue;
+      const entry2 = raw;
+      const usdaId = asNumber(entry2.nutrientId);
+      if (usdaId == null) continue;
+      const target = TARGET_BY_USDA_ID.get(Math.round(usdaId));
+      if (!target) continue;
+      const amount = asNumber(entry2.amountPer100g);
+      if (amount == null) continue;
+      out[target] = (out[target] ?? 0) + amount;
+    }
+  }
+  return out;
+}
+function compareMicroDensity(a, b, targets) {
+  for (const target of targets) {
+    const va = a?.[target] ?? 0;
+    const vb = b?.[target] ?? 0;
+    if (va === vb) continue;
+    const scale = Math.max(va, vb);
+    if (scale > 0 && Math.abs(va - vb) / scale < 0.01) continue;
+    return va - vb;
+  }
+  return 0;
+}
+function normalizeNutrientTargets(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const item2 of raw) {
+    const id = typeof item2?.nutrientId === "string" ? item2.nutrientId : "";
+    if (!id || !(id in USDA_IDS_BY_TARGET)) continue;
+    const target = id;
+    if (seen.has(target)) continue;
+    seen.add(target);
+    out.push(target);
+  }
+  return out;
+}
+
 // apps/web/lib/nutrition/v2/menu-food-catalog-db.ts
 function mealRolesHasV6(mr) {
   return mr.breakfastChoRole != null && mr.breakfastChoRole !== "NONE" || mr.breakfastProteinRole != null && mr.breakfastProteinRole !== "NONE" || mr.breakfastFatRole != null && mr.breakfastFatRole !== "NONE" || mr.mainMealRole != null && mr.mainMealRole !== "NONE" || mr.snackRole != null && mr.snackRole !== "NONE" || mr.substitutionGroup != null;
@@ -5047,7 +5124,8 @@ function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
       fat: num(r?.fat_100g) ?? 0,
       // Fibra: NIENTE `?? 0`. Non misurata ≠ zero fibra, e confonderle qui direbbe al filtro
       // pre-sforzo che un integrale senza riga USDA è povero di fibre.
-      fiber: num(r?.fiber_100g)
+      fiber: num(r?.fiber_100g),
+      micros: extractMicrosPer100g(r?.minerals, r?.vitamins, r?.other_nutrients)
     });
   }
   const parsed = [];
@@ -5077,6 +5155,7 @@ function mapMenuFoodRows(menuRows, macroRows, mealRoleRows = []) {
         rotationKey,
         carbFamily: str(r?.carb_family) ?? void 0,
         fdcId,
+        ...macro.micros && Object.keys(macro.micros).length ? { microsPer100g: macro.micros } : {},
         kcalPer100g: macro.kcal,
         carbsPer100g: macro.carbs,
         proteinPer100g: macro.protein,
@@ -5162,7 +5241,10 @@ async function loadMenuFoodPools(admin) {
     const macroRows = [];
     for (let i = 0; i < fdcIds.length; i += FDC_IN_CHUNK) {
       const chunk = fdcIds.slice(i, i + FDC_IN_CHUNK);
-      let macroRes = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g").in("fdc_id", chunk);
+      let macroRes = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g, minerals, vitamins, other_nutrients").in("fdc_id", chunk);
+      if (missingColumnsError(macroRes)) {
+        macroRes = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g").in("fdc_id", chunk);
+      }
       if (missingColumnsError(macroRes)) {
         macroRes = await admin.from("nutrition_fdc_foods").select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g").in("fdc_id", chunk);
       }
@@ -5209,6 +5291,18 @@ function buildMenuFoodAllergenIndex(pools) {
         classes: [.../* @__PURE__ */ new Set([...prev.classes, ...classes])],
         reviewed: prev.reviewed && reviewed
       });
+    }
+  }
+  return index;
+}
+function buildMenuFoodMicronutrientIndex(pools) {
+  const index = /* @__PURE__ */ new Map();
+  if (!pools) return index;
+  for (const list of pools.values()) {
+    for (const e of list) {
+      if (!(e.fdcId > 0) || index.has(e.fdcId)) continue;
+      const micros = e.microsPer100g;
+      if (micros && Object.keys(micros).length > 0) index.set(e.fdcId, micros);
     }
   }
   return index;
@@ -8547,9 +8641,14 @@ function scoreFdcForRole(hit, ctx, denyFragments, staplePenalty) {
   score2 -= staplePenalty(d) * 40;
   return score2;
 }
+var NUTRIENT_TIEBREAK_EPS = 12;
+function microsForHit(hit, ctx) {
+  return ctx.microsByFdcId?.get(hit.fdcId) ?? hit.microsPer100g;
+}
 function pickBestFdcForRole(pool, ctx, denyFragments, usedFdcIds, staplePenalty) {
   let best = null;
   let bestScore = -Infinity;
+  const targets = ctx.nutrientTargets ?? [];
   for (const hit of pool) {
     if (usedFdcIds.has(hit.fdcId) || hit.kcalPer100g <= 0) continue;
     if (ctx.spec.lever === "cho" && hit.carbsPer100g < 8) continue;
@@ -8557,6 +8656,23 @@ function pickBestFdcForRole(pool, ctx, denyFragments, usedFdcIds, staplePenalty)
     if (ctx.spec.lever === "fat" && hit.fatPer100g < 3) continue;
     const score2 = scoreFdcForRole(hit, ctx, denyFragments, staplePenalty);
     if (score2 <= -5e3) continue;
+    if (score2 > bestScore + NUTRIENT_TIEBREAK_EPS) {
+      bestScore = score2;
+      best = hit;
+      continue;
+    }
+    if (best && targets.length > 0 && score2 >= bestScore - NUTRIENT_TIEBREAK_EPS) {
+      const cmp = compareMicroDensity(microsForHit(hit, ctx), microsForHit(best, ctx), targets);
+      if (cmp > 0) {
+        bestScore = Math.max(bestScore, score2);
+        best = hit;
+        continue;
+      }
+      if (cmp < 0) {
+        bestScore = Math.max(bestScore, score2);
+        continue;
+      }
+    }
     if (score2 > bestScore) {
       bestScore = score2;
       best = hit;
@@ -8800,7 +8916,13 @@ function stapleArgsFromContext(ctx, slotKey, poolKey, seed, menuEntries) {
   };
 }
 function pickLineForRole(spec, slotKey, pools, ctx, opts) {
-  const roleCtx = { slot: slotKey, poolKey: spec.poolKey, spec };
+  const roleCtx = {
+    slot: slotKey,
+    poolKey: spec.poolKey,
+    spec,
+    ...ctx.nutrientTargets?.length ? { nutrientTargets: ctx.nutrientTargets } : {},
+    ...ctx.microsByFdcId?.size ? { microsByFdcId: ctx.microsByFdcId } : {}
+  };
   const seed = ctx.seed + spec.poolKey.length;
   const rolesOverride = opts?.rolesOverride;
   const menuEntries = opts?.menuEntriesOverride ?? ctx.menuPools?.get(spec.poolKey);
@@ -9408,6 +9530,8 @@ function composeMealPlanV2(requirements, dietSlots, pools, options) {
     menuPools: options?.menuFoodPools ?? null,
     allergen,
     preEffort,
+    nutrientTargets: normalizeNutrientTargets(request?.nutrientBoostTargets),
+    microsByFdcId: buildMenuFoodMicronutrientIndex(options?.menuFoodPools),
     ...options?.mealGrammar?.enabled ? {
       grammar: (() => {
         const entryIndex = menuFoodEntryIndex(options?.menuFoodPools);
@@ -9899,6 +10023,7 @@ function fdcRowToHit(row2, tagRow) {
   const carbsPer100g = Number(row2.carbs_100g) || 0;
   const fatPer100g = Number(row2.fat_100g) || 0;
   const fiberG = row2.fiber_100g != null ? Number(row2.fiber_100g) : void 0;
+  const microsPer100g = extractMicrosPer100g(row2.minerals, row2.vitamins, row2.other_nutrients);
   let tags;
   let tagSource = "runtime_classifier";
   if (tagRow && Array.isArray(tagRow.diet_profile)) {
@@ -9933,7 +10058,8 @@ function fdcRowToHit(row2, tagRow) {
     carbsPer100g,
     fatPer100g,
     tags,
-    tagSource
+    tagSource,
+    ...Object.keys(microsPer100g).length ? { microsPer100g } : {}
   };
 }
 function applyDietProfileSqlFilter(query, dietProfile) {
@@ -9985,7 +10111,11 @@ async function queryFdcBranchPool(admin, filter) {
     ids.push(id);
   }
   if (ids.length === 0) return [];
-  const { data: foods, error: foodErr } = await admin.from("nutrition_fdc_foods").select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g").in("fdc_id", ids).gt("kcal_100g", 0);
+  let foodRes = await admin.from("nutrition_fdc_foods").select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g, minerals, vitamins, other_nutrients").in("fdc_id", ids).gt("kcal_100g", 0);
+  if (foodRes.error?.code === "42703") {
+    foodRes = await admin.from("nutrition_fdc_foods").select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g").in("fdc_id", ids).gt("kcal_100g", 0);
+  }
+  const { data: foods, error: foodErr } = foodRes;
   if (foodErr || !Array.isArray(foods) || foods.length === 0) return [];
   const hits = [];
   for (const row2 of foods) {
@@ -10520,6 +10650,53 @@ function buildDayEngineProvenance(result, currentSlots, applied) {
   };
 }
 
+// apps/web/lib/nutrition/v2/redistribute-suppressed-slot-budgets.ts
+var SUPPRESSED_SLOT_REDISTRIBUTION_MIN_KCAL = 25;
+var SUPPRESSED_SLOT_MAX_RECEIVER_GROWTH = 0.35;
+function redistributeSuppressedSlotBudgets(slots, input) {
+  const suppressed = new Set(input.suppressedKeys);
+  if (suppressed.size === 0) return [...slots];
+  const donorIdx = slots.map((row2, i) => ({ row: row2, i })).filter(({ row: row2 }) => suppressed.has(row2.key) && row2.kcal > 0);
+  if (donorIdx.length === 0) return [...slots];
+  const movedKcal = donorIdx.reduce((s, d) => s + d.row.kcal, 0);
+  if (movedKcal < SUPPRESSED_SLOT_REDISTRIBUTION_MIN_KCAL) return [...slots];
+  const blocked = /* @__PURE__ */ new Set([...suppressed, ...input.excludeKeys ?? []]);
+  const receivers = slots.map((row2, i) => ({ row: row2, i })).filter(({ row: row2 }) => !blocked.has(row2.key) && row2.kcal > 0);
+  if (receivers.length === 0) return [...slots];
+  const totalReceiverKcal = receivers.reduce((s, r) => s + r.row.kcal, 0);
+  if (totalReceiverKcal <= 0) return [...slots];
+  const capacityKcal = receivers.reduce((s, r) => s + r.row.kcal * SUPPRESSED_SLOT_MAX_RECEIVER_GROWTH, 0);
+  const placedKcal = Math.min(movedKcal, capacityKcal);
+  if (placedKcal < SUPPRESSED_SLOT_REDISTRIBUTION_MIN_KCAL) return [...slots];
+  const placedShare = placedKcal / movedKcal;
+  const next = slots.map((s) => ({ ...s }));
+  for (const d of donorIdx) {
+    const keep = 1 - placedShare;
+    next[d.i] = {
+      ...next[d.i],
+      kcal: Math.round(d.row.kcal * keep),
+      carbs: Math.round(d.row.carbs * keep),
+      protein: Math.round(d.row.protein * keep),
+      fat: Math.round(d.row.fat * keep)
+    };
+  }
+  let leftover = Math.round(placedKcal);
+  receivers.forEach((r, n) => {
+    const share = n === receivers.length - 1 ? leftover : Math.round(placedKcal * r.row.kcal / totalReceiverKcal);
+    leftover -= share;
+    if (share <= 0) return;
+    const ratio = (r.row.kcal + share) / r.row.kcal;
+    next[r.i] = {
+      ...next[r.i],
+      kcal: Math.round(r.row.kcal + share),
+      carbs: Math.round(r.row.carbs * ratio),
+      protein: Math.round(r.row.protein * ratio),
+      fat: Math.round(r.row.fat * ratio)
+    };
+  });
+  return next;
+}
+
 // apps/web/lib/observability/empathy-event-trace.ts
 async function recordEmpathyEvent(db, event) {
   try {
@@ -10722,6 +10899,18 @@ async function buildMealPlanV2Production(input, admin) {
         evidence: preEffort.evidence,
         menuCatalogLoaded: menuFoodPools != null
       }
+    });
+  }
+  const suppressedKeys = input.request.suppressedSlots ?? [];
+  if (suppressedKeys.length > 0) {
+    composerSlots = redistributeSuppressedSlotBudgets(composerSlots, {
+      suppressedKeys,
+      // Gli slot a protocollo (pre-gara fisso, recovery post-gara) non inseguono il budget:
+      // dargli kcal in più sarebbe carta straccia.
+      excludeKeys: [
+        ...input.request.racePreLunch ? [input.request.racePreLunch.mealSlot] : [],
+        ...input.request.racePostRecovery ? [input.request.racePostRecovery.mealSlot] : []
+      ]
     });
   }
   const composeOptions = {
