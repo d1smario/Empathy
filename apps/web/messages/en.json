@@ -2610,7 +2610,12 @@
     "vo2SourcePowerEstimate": "<b>Power estimate only</b> ({vo2L} L/min, {vo2MlKg} ml/kg/min) — for a credible maximum capacity, fill in the CP curve in Metabolic profile (VO₂max engine); the lab no longer uses the registry VO₂max as a ceiling.",
     "saveOxidativeCapacity": "Save oxidative capacity",
     "recalculateOxidativeCapacity": "Recalculate oxidative capacity",
-    "pressRecalculateHint": "Press recalculate to force the model refresh."
+    "pressRecalculateHint": "Press recalculate to force the model refresh.",
+    "deviceVo2maxLabel": "Measured by the watch",
+    "deviceVo2maxSportCycling": "cycling",
+    "deviceVo2maxSportRunning": "running",
+    "deviceVo2maxOn": "Garmin, {sport}, {date}",
+    "deviceVo2maxNoDate": "Garmin, {sport}"
   },
   "PhysiologyPro2LactateLab": {
     "overviewBanner": "Compact balances · bars (engine {version})",

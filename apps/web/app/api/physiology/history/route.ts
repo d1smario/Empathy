@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadLatestDeviceVo2max } from "@/lib/physiology/device-vo2max";
 import { AthleteReadContextError, requireAthleteReadContext } from "@/lib/auth/athlete-read-context";
 import { estimateVo2FromDevice } from "@/lib/engines/vo2-estimator";
 import { AUTO_DECODE_SESSION_WINDOW } from "@/lib/physiology/auto-decode-sessions";
@@ -198,6 +199,13 @@ export async function GET(req: NextRequest) {
     const vo2maxMlMinKgStored = asNum(
       (storedPhysiologyRes.data as { vo2max_ml_min_kg?: unknown } | null)?.vo2max_ml_min_kg,
     );
+
+    /**
+     * VO₂max MISURATO dall'orologio (Garmin `userMetrics`). Non tocca né la colonna né il
+     * canonico: viaggia a parte perché la card deve poter dire da dove viene il numero.
+     * Una lettura fallita degrada a `null` — è un dato in più, non deve rompere la pagina.
+     */
+    const deviceVo2max = await loadLatestDeviceVo2max(db, athleteId).catch(() => null);
     const executed =
       ((executedRes.data ?? []) as Array<{
         id: string | null;
@@ -499,6 +507,8 @@ export async function GET(req: NextRequest) {
         athleteWeightKg,
         profileVo2maxMlMinKg: vo2maxMlMinKgStored,
         profileVo2maxLMin: vo2StoredLMin,
+        /** Misurato dal dispositivo: valore, sport, giorno e origine. `null` se non ne è mai arrivato uno. */
+        deviceVo2max,
         // Valore CANONICO del resolver (run metabolic_profile > colonna). Serve alla
         // traccia di audit di `metabolic_lab_runs.input_payload`, che ha sempre
         // registrato questo: separarlo dal valore mostrato in card evita che i run

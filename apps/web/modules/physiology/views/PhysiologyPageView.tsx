@@ -145,6 +145,10 @@ export default function MetabolicLabPage() {
   const [healthBioCoreTempCBaseline, setHealthBioCoreTempCBaseline] = useState<number | null>(null);
   const [profileVo2maxLMin, setProfileVo2maxLMin] = useState<number | null>(null);
   const [profileVo2maxMlMinKg, setProfileVo2maxMlMinKg] = useState<number | null>(null);
+  /** VO₂max misurato dall'orologio: mostrato accanto alla stima, con la sua origine. */
+  const [deviceVo2max, setDeviceVo2max] = useState<
+    { mlMinKg: number; sport: "cycling" | "running"; measuredOn: string | null; enhanced: boolean } | null
+  >(null);
   /**
    * VO₂max canonico del resolver: NON si mostra (la card espone la colonna scritta dai
    * suoi bottoni), serve solo alla traccia di audit dei run max_oxidate, che da sempre
@@ -698,6 +702,12 @@ export default function MetabolicLabPage() {
           : null;
       setProfileVo2maxLMin(pVo2L);
       setProfileVo2maxMlMinKg(pVo2Ml);
+      const dev = payload.deviceVo2max;
+      setDeviceVo2max(
+        dev && Number.isFinite(dev.mlMinKg)
+          ? { mlMinKg: dev.mlMinKg, sport: dev.sport, measuredOn: dev.measuredOn ?? null, enhanced: dev.enhanced }
+          : null,
+      );
       setCanonicalVo2maxLMin(
         payload.canonicalVo2maxLMin != null && Number.isFinite(payload.canonicalVo2maxLMin)
           ? payload.canonicalVo2maxLMin
@@ -885,6 +895,7 @@ export default function MetabolicLabPage() {
         setSelectedWorkoutId("");
         setProfileVo2maxLMin(null);
         setProfileVo2maxMlMinKg(null);
+        setDeviceVo2max(null);
         setCanonicalVo2maxLMin(null);
         setCanonicalVo2maxMlMinKg(null);
         setAutoLactateBaseline(null);
@@ -1466,6 +1477,35 @@ export default function MetabolicLabPage() {
                 <>{t("noLabVo2maxEnterOrImport")}</>
               )}
             </p>
+            {/* Il VO₂max MISURATO dall'orologio. Sta qui e non nella riga della stima CP perché
+                è l'unico dei tre che non è derivato: il numero va letto insieme alla sua origine.
+                Non scrive nulla sul profilo — sostituire il valore salvato è una scelta, non un
+                effetto collaterale del fatto che è arrivato un dato. */}
+            {deviceVo2max ? (
+              <p className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2 text-sm">
+                <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-sky-300">
+                  {t("deviceVo2maxLabel")}
+                </span>
+                <span className="font-mono font-bold tabular-nums text-sky-50">
+                  {deviceVo2max.mlMinKg.toFixed(1)}
+                  <span className="ml-1 text-xs font-medium text-gray-400">ml/kg/min</span>
+                </span>
+                <span className="text-xs text-gray-400">
+                  {deviceVo2max.measuredOn
+                    ? t("deviceVo2maxOn", {
+                        sport: t(
+                          deviceVo2max.sport === "cycling" ? "deviceVo2maxSportCycling" : "deviceVo2maxSportRunning",
+                        ),
+                        date: deviceVo2max.measuredOn,
+                      })
+                    : t("deviceVo2maxNoDate", {
+                        sport: t(
+                          deviceVo2max.sport === "cycling" ? "deviceVo2maxSportCycling" : "deviceVo2maxSportRunning",
+                        ),
+                      })}
+                </span>
+              </p>
+            ) : null}
             {labVo2Message ? <p className="mb-3 text-sm text-emerald-300/95">{labVo2Message}</p> : null}
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">

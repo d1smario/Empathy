@@ -26,6 +26,18 @@ export async function fetchPhysiologyHistoryAndFtp(athleteId: string) {
     /** VO₂max come scritto sulla riga corrente di `physiological_profiles` (colonna, non valore canonico). */
     profileVo2maxMlMinKg?: number | null;
     profileVo2maxLMin?: number | null;
+    /**
+     * VO₂max MISURATO dall'orologio (Garmin `userMetrics`). È l'unico dei tre che non è
+     * derivato: gli altri due escono dalla curva di potenza o da un inserimento a mano.
+     */
+    deviceVo2max?: {
+      mlMinKg: number;
+      sport: "cycling" | "running";
+      measuredOn: string | null;
+      provider: "garmin";
+      enhanced: boolean;
+      fitnessAge: number | null;
+    } | null;
     /** VO₂max canonico del resolver (ultimo run `metabolic_profile` con precedenza sulla colonna): traccia di audit. */
     canonicalVo2maxMlMinKg?: number | null;
     canonicalVo2maxLMin?: number | null;
