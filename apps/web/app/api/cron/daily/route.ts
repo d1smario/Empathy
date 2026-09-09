@@ -53,6 +53,9 @@ export async function GET(req: NextRequest) {
     { name: "whoop-pull", path: "/api/integrations/whoop/pull/cron" },
     { name: "onboarding-email", path: "/api/onboarding/email/cron?send=true" },
     { name: "onboarding-plan", path: "/api/onboarding/plan/cron?run=true" },
+    // Istantanea punteggi: prima la scriveva la GET di /analysis a ogni visita, quindi il
+    // trend a 30 giorni aveva un punto solo nei giorni in cui qualcuno apriva la pagina.
+    { name: "dashboard-snapshot", path: "/api/dashboard/scores/snapshot/cron" },
   ];
   if (isTuesday) {
     jobs.push({ name: "weekly-replan", path: "/api/nutrition/weekly-replan/cron?run=true" });
