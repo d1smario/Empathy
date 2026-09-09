@@ -2611,11 +2611,11 @@
     "saveOxidativeCapacity": "Save oxidative capacity",
     "recalculateOxidativeCapacity": "Recalculate oxidative capacity",
     "pressRecalculateHint": "Press recalculate to force the model refresh.",
-    "deviceVo2maxLabel": "Measured by the watch",
     "deviceVo2maxSportCycling": "cycling",
     "deviceVo2maxSportRunning": "running",
     "deviceVo2maxOn": "Garmin, {sport}, {date}",
-    "deviceVo2maxNoDate": "Garmin, {sport}"
+    "deviceVo2maxNoDate": "Garmin, {sport}",
+    "measuredVo2max": "Measured VO₂max"
   },
   "PhysiologyPro2LactateLab": {
     "overviewBanner": "Compact balances · bars (engine {version})",

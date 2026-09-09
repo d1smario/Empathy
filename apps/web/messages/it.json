@@ -2611,11 +2611,11 @@
     "saveOxidativeCapacity": "Salva capacità ossidativa",
     "recalculateOxidativeCapacity": "Ricalcola capacità ossidativa",
     "pressRecalculateHint": "Premi ricalcola per forzare il refresh del modello.",
-    "deviceVo2maxLabel": "Misurato dall'orologio",
     "deviceVo2maxSportCycling": "bici",
     "deviceVo2maxSportRunning": "corsa",
     "deviceVo2maxOn": "Garmin, {sport}, {date}",
-    "deviceVo2maxNoDate": "Garmin, {sport}"
+    "deviceVo2maxNoDate": "Garmin, {sport}",
+    "measuredVo2max": "VO₂max misurato"
   },
   "PhysiologyPro2LactateLab": {
     "overviewBanner": "Bilanci compatti · barre (motore {version})",

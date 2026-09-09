@@ -147,7 +147,13 @@ export default function MetabolicLabPage() {
   const [profileVo2maxMlMinKg, setProfileVo2maxMlMinKg] = useState<number | null>(null);
   /** VO₂max misurato dall'orologio: mostrato accanto alla stima, con la sua origine. */
   const [deviceVo2max, setDeviceVo2max] = useState<
-    { mlMinKg: number; sport: "cycling" | "running"; measuredOn: string | null; enhanced: boolean } | null
+    {
+      mlMinKg: number;
+      sport: "cycling" | "running";
+      measuredOn: string | null;
+      provider: "garmin";
+      enhanced: boolean;
+    } | null
   >(null);
   /**
    * VO₂max canonico del resolver: NON si mostra (la card espone la colonna scritta dai
@@ -705,7 +711,13 @@ export default function MetabolicLabPage() {
       const dev = payload.deviceVo2max;
       setDeviceVo2max(
         dev && Number.isFinite(dev.mlMinKg)
-          ? { mlMinKg: dev.mlMinKg, sport: dev.sport, measuredOn: dev.measuredOn ?? null, enhanced: dev.enhanced }
+          ? {
+              mlMinKg: dev.mlMinKg,
+              sport: dev.sport,
+              measuredOn: dev.measuredOn ?? null,
+              provider: dev.provider,
+              enhanced: dev.enhanced,
+            }
           : null,
       );
       setCanonicalVo2maxLMin(
@@ -946,7 +958,8 @@ export default function MetabolicLabPage() {
               lt1_watts: cpModel.lt1,
               lt2_watts: cpModel.lt2,
               v_lamax: cpModel.vlamax,
-              vo2max_ml_min_kg: cpModel.vo2maxMlMinKg,
+              /** Il misurato vince sulla stima: la colonna deve dire quello che dice la pagina. */
+              vo2max_ml_min_kg: vo2maxShownMlMinKg,
               cp_watts: cpModel.cp,
               }
             : null,
@@ -960,6 +973,20 @@ export default function MetabolicLabPage() {
     setSaving(false);
   }
 
+  /**
+   * IL VALORE MOSTRATO. Quando l'orologio ha misurato il VO₂max, quello vince: la stima dalla
+   * curva di potenza esce da schermo invece di restare accanto come secondo numero. Due VO₂max
+   * diversi nella stessa pagina non sono trasparenza, sono un dubbio.
+   *
+   * Vale anche per quello che si salva: se lo schermo mostra il misurato e il bottone scrivesse
+   * la stima, il profilo direbbe un'altra cosa dalla pagina che l'ha prodotto.
+   */
+  const vo2maxShownMlMinKg = deviceVo2max?.mlMinKg ?? cpModel.vo2maxMlMinKg;
+  const vo2maxIsMeasured = deviceVo2max != null;
+  const vo2maxShownLMin = vo2maxIsMeasured
+    ? (vo2maxShownMlMinKg * labBodyMassKg) / 1000
+    : cpModel.vo2maxLMin;
+
   function saveMetabolicProfileSnapshot() {
     void saveSnapshot("metabolic_profile", cpInputs, {
       cp: cpModel.cp,
@@ -968,10 +995,18 @@ export default function MetabolicLabPage() {
       lt2: cpModel.lt2,
       fatmax: cpModel.fatmax,
       vlamax: cpModel.vlamax,
-      vo2max_ml_min_kg: cpModel.vo2maxMlMinKg,
-      vo2max_l_min: cpModel.vo2maxLMin,
+      vo2max_ml_min_kg: vo2maxShownMlMinKg,
+      vo2max_l_min: vo2maxShownLMin,
       vo2max_estimate: cpModel.vo2maxEstimate,
       vo2max_model_version: "empathy-vo2max-metabolic-v3",
+      /**
+       * Origine del numero salvato. La stima da curva resta nel payload (`vo2max_cp_estimate`)
+       * anche quando perde: un run senza il valore che il modello avrebbe prodotto non è
+       * confrontabile con quelli di ieri.
+       */
+      vo2max_source: vo2maxIsMeasured ? `device:${deviceVo2max?.provider}:${deviceVo2max?.sport}` : "cp_curve",
+      vo2max_measured_on: deviceVo2max?.measuredOn ?? null,
+      vo2max_cp_estimate_ml_min_kg: cpModel.vo2maxMlMinKg,
       sprintReserve: cpModel.sprintReserve,
       wPrimeJ: cpModel.wPrimeJ,
       pcrCapacityJ: cpModel.pcrCapacityJ,
@@ -1477,35 +1512,6 @@ export default function MetabolicLabPage() {
                 <>{t("noLabVo2maxEnterOrImport")}</>
               )}
             </p>
-            {/* Il VO₂max MISURATO dall'orologio. Sta qui e non nella riga della stima CP perché
-                è l'unico dei tre che non è derivato: il numero va letto insieme alla sua origine.
-                Non scrive nulla sul profilo — sostituire il valore salvato è una scelta, non un
-                effetto collaterale del fatto che è arrivato un dato. */}
-            {deviceVo2max ? (
-              <p className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2 text-sm">
-                <span className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-sky-300">
-                  {t("deviceVo2maxLabel")}
-                </span>
-                <span className="font-mono font-bold tabular-nums text-sky-50">
-                  {deviceVo2max.mlMinKg.toFixed(1)}
-                  <span className="ml-1 text-xs font-medium text-gray-400">ml/kg/min</span>
-                </span>
-                <span className="text-xs text-gray-400">
-                  {deviceVo2max.measuredOn
-                    ? t("deviceVo2maxOn", {
-                        sport: t(
-                          deviceVo2max.sport === "cycling" ? "deviceVo2maxSportCycling" : "deviceVo2maxSportRunning",
-                        ),
-                        date: deviceVo2max.measuredOn,
-                      })
-                    : t("deviceVo2maxNoDate", {
-                        sport: t(
-                          deviceVo2max.sport === "cycling" ? "deviceVo2maxSportCycling" : "deviceVo2maxSportRunning",
-                        ),
-                      })}
-                </span>
-              </p>
-            ) : null}
             {labVo2Message ? <p className="mb-3 text-sm text-emerald-300/95">{labVo2Message}</p> : null}
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -1677,9 +1683,45 @@ export default function MetabolicLabPage() {
               {/* Riga 1: dato unico VO₂max stimato + azioni salva/ricalcola */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                  {cpCurveHasData ? (
+                  {/* Il misurato NON è dietro il gate della curva: 7 dei 13 atleti che hanno un
+                      VO₂max dall'orologio non hanno mai digitato una curva di potenza, e con il
+                      gate vedrebbero «compila la curva» al posto del proprio dato misurato. */}
+                  {deviceVo2max ? (
                     <>
-                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">{t("estimatedVo2max")}</span>
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-sky-300">
+                        {t("measuredVo2max")}
+                      </span>
+                      <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-emerald-50 sm:text-4xl">
+                        {vo2maxShownMlMinKg.toFixed(1)}
+                        <span className="ml-1 text-xs font-medium text-gray-500">ml/kg/min</span>
+                      </span>
+                      <span className="text-sm text-gray-400">
+                        ≈ {vo2maxShownLMin.toFixed(2)} L/min @ {labBodyMassKg.toFixed(0)} kg
+                      </span>
+                      <span className="text-xs text-sky-300/80">
+                        {deviceVo2max.measuredOn
+                          ? t("deviceVo2maxOn", { sport: t(
+                          deviceVo2max.sport === "cycling"
+                            ? "deviceVo2maxSportCycling"
+                            : "deviceVo2maxSportRunning",
+                        ), date: deviceVo2max.measuredOn })
+                          : t("deviceVo2maxNoDate", { sport: t(
+                          deviceVo2max.sport === "cycling"
+                            ? "deviceVo2maxSportCycling"
+                            : "deviceVo2maxSportRunning",
+                        ) })}
+                      </span>
+                      {cpCurveHasData ? (
+                        <span className="text-sm text-gray-500">
+                          · CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W
+                        </span>
+                      ) : null}
+                    </>
+                  ) : cpCurveHasData ? (
+                    <>
+                      <span className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-gray-500">
+                        {t("estimatedVo2max")}
+                      </span>
                       <span className="font-mono text-3xl font-black tabular-nums tracking-tight text-emerald-50 sm:text-4xl">
                         {cpModel.vo2maxMlMinKg.toFixed(1)}
                         <span className="ml-1 text-xs font-medium text-gray-500">ml/kg/min</span>
@@ -1687,12 +1729,12 @@ export default function MetabolicLabPage() {
                       <span className="text-sm text-gray-400">
                         ≈ {cpModel.vo2maxLMin.toFixed(2)} L/min @ {labBodyMassKg.toFixed(0)} kg
                       </span>
-                      <span className="text-sm text-gray-500">· CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W</span>
+                      <span className="text-sm text-gray-500">
+                        · CP {cpModel.cp.toFixed(0)} W · FTP {cpModel.ftp.toFixed(0)} W
+                      </span>
                     </>
                   ) : (
-                    <span className="text-sm text-amber-200/85">
-                      {t("fillCpCurveHint")}
-                    </span>
+                    <span className="text-sm text-amber-200/85">{t("fillCpCurveHint")}</span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
