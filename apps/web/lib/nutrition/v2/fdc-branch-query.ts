@@ -1,4 +1,5 @@
 import type { FdcFoodTaxonomy } from "@empathy/contracts";
+import { extractMicrosPer100g, type MicrosPer100g } from "@/lib/nutrition/v2/fdc-micronutrient-density";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPlausiblePer100gMacros } from "@/lib/nutrition/macro-plausibility";
 import {
@@ -20,6 +21,12 @@ export type FdcFoodBrowseHit = {
   fatPer100g: number;
   tags: FdcFoodTaxonomy;
   tagSource: "db" | "runtime_classifier";
+  /**
+   * Micronutrienti per 100 g, solo quelli che possono essere un target di pathway.
+   * Serve al criterio di pareggio a parità di ruolo (vedi `fdc-micronutrient-density`).
+   * Assente quando la riga non li porta: il pareggio ricade sull'ordine di prima.
+   */
+  microsPer100g?: MicrosPer100g;
 };
 
 export function fdcRowToHit(
@@ -36,6 +43,7 @@ export function fdcRowToHit(
   const carbsPer100g = Number(row.carbs_100g) || 0;
   const fatPer100g = Number(row.fat_100g) || 0;
   const fiberG = row.fiber_100g != null ? Number(row.fiber_100g) : undefined;
+  const microsPer100g = extractMicrosPer100g(row.minerals, row.vitamins, row.other_nutrients);
 
   let tags: FdcFoodTaxonomy;
   let tagSource: "db" | "runtime_classifier" = "runtime_classifier";
@@ -74,6 +82,7 @@ export function fdcRowToHit(
     fatPer100g,
     tags,
     tagSource,
+    ...(Object.keys(microsPer100g).length ? { microsPer100g } : {}),
   };
 }
 
@@ -148,11 +157,24 @@ export async function queryFdcBranchPool(
   }
   if (ids.length === 0) return [];
 
-  const { data: foods, error: foodErr } = await admin
+  /**
+   * `minerals`/`vitamins`/`other_nutrients` servono al pareggio per densità di micronutriente.
+   * Se le colonne mancassero su un ambiente, si ritenta senza: il motore continua a comporre,
+   * perde solo il criterio di pareggio. MAI un pool vuoto per una colonna in meno.
+   */
+  let foodRes: { data: Record<string, unknown>[] | null; error: { code?: string; message?: string } | null } = await admin
     .from("nutrition_fdc_foods")
-    .select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g")
+    .select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g, minerals, vitamins, other_nutrients")
     .in("fdc_id", ids)
     .gt("kcal_100g", 0);
+  if (foodRes.error?.code === "42703") {
+    foodRes = await admin
+      .from("nutrition_fdc_foods")
+      .select("fdc_id, description, kcal_100g, protein_100g, carbs_100g, fat_100g, fiber_100g")
+      .in("fdc_id", ids)
+      .gt("kcal_100g", 0);
+  }
+  const { data: foods, error: foodErr } = foodRes;
 
   if (foodErr || !Array.isArray(foods) || foods.length === 0) return [];
 

@@ -5,6 +5,8 @@ import type {
   MealPlanV2DietSlotBudget,
   MealPlanV2ServingBasis,
 } from "@empathy/contracts";
+import type { NutrientTargetId } from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
+import { normalizeNutrientTargets, type MicrosPer100g } from "@/lib/nutrition/v2/fdc-micronutrient-density";
 import type { IntelligentMealPlanRequest } from "@/lib/nutrition/intelligent-meal-plan-types";
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
 import { isMainMealSlot } from "@/lib/nutrition/meal-composition-rules";
@@ -37,6 +39,7 @@ import {
 } from "@/lib/nutrition/v2/fdc-staple-registry";
 import {
   buildMenuFoodAllergenIndex,
+  buildMenuFoodMicronutrientIndex,
   buildMenuFoodFiberFermentedIndex,
   type MenuFoodEntry,
   type MenuFoodMealRole,
@@ -300,7 +303,13 @@ function pickLineForRole(
   ctx: ComposeContext,
   opts?: PickLineOptions,
 ): PickLine | null {
-  const roleCtx: RolePickContext = { slot: slotKey, poolKey: spec.poolKey, spec };
+  const roleCtx: RolePickContext = {
+    slot: slotKey,
+    poolKey: spec.poolKey,
+    spec,
+    ...(ctx.nutrientTargets?.length ? { nutrientTargets: ctx.nutrientTargets } : {}),
+    ...(ctx.microsByFdcId?.size ? { microsByFdcId: ctx.microsByFdcId } : {}),
+  };
   const seed = ctx.seed + spec.poolKey.length;
   const rolesOverride = opts?.rolesOverride;
 
@@ -428,6 +437,15 @@ type ComposeContext = {
    * nessun pasto in finestra → composizione identica a oggi.
    */
   preEffort?: PreEffortFilterContext | null;
+  /**
+   * ESAMI DEL SANGUE → PIATTO. I micronutrienti che servono a questo atleta oggi, in ordine
+   * di priorità, ricavati dai cofattori di pathway (ferritina bassa → ferro). Entrano solo
+   * come criterio di pareggio a parità di ruolo: nessun effetto su macro, grammi o budget.
+   * Vuoto = nessun referto utile, composizione identica a prima.
+   */
+  nutrientTargets?: readonly NutrientTargetId[];
+  /** fdcId → micronutrienti per 100 g, dal catalogo già in memoria (nessun round-trip). */
+  microsByFdcId?: Map<number, MicrosPer100g>;
 };
 
 type GrammarComposeState = {
@@ -1259,6 +1277,8 @@ export function composeMealPlanV2(
     menuPools: options?.menuFoodPools ?? null,
     allergen,
     preEffort,
+    nutrientTargets: normalizeNutrientTargets(request?.nutrientBoostTargets),
+    microsByFdcId: buildMenuFoodMicronutrientIndex(options?.menuFoodPools),
     ...(options?.mealGrammar?.enabled
       ? {
           grammar: (() => {

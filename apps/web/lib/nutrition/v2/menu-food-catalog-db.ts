@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { extractMicrosPer100g, type MicrosPer100g } from "@/lib/nutrition/v2/fdc-micronutrient-density";
 import type { MealPlanV2ServingBasis } from "@empathy/contracts";
 import {
   type AllergenClassToken,
@@ -32,6 +33,12 @@ export type MenuFoodEntry = {
   /** Famiglia carb — no duplicato pranzo+cena stesso giorno. */
   carbFamily?: string;
   fdcId: number;
+  /**
+   * Micronutrienti per 100 g dal dataset locale, limitati ai target di pathway. È il capo
+   * del filo che parte dagli esami del sangue: `fdc-micronutrient-density` li confronta al
+   * momento della scelta, a parità di ruolo. Assente = riga senza dati micro.
+   */
+  microsPer100g?: MicrosPer100g;
   kcalPer100g: number;
   carbsPer100g: number;
   proteinPer100g: number;
@@ -247,7 +254,15 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-type MacroRow = { kcal: number; carbs: number; protein: number; fat: number; fiber: number | null };
+type MacroRow = {
+  kcal: number;
+  carbs: number;
+  protein: number;
+  fat: number;
+  fiber: number | null;
+  /** Micronutrienti per 100 g, solo i target di pathway: servono al pareggio per densità. */
+  micros?: MicrosPer100g;
+};
 
 const MEAL_ROLES: ReadonlySet<string> = new Set<MenuFoodMealRole>([
   "CHO_PRIMARY",
@@ -464,6 +479,7 @@ export function mapMenuFoodRows(
       // Fibra: NIENTE `?? 0`. Non misurata ≠ zero fibra, e confonderle qui direbbe al filtro
       // pre-sforzo che un integrale senza riga USDA è povero di fibre.
       fiber: num(r?.fiber_100g),
+      micros: extractMicrosPer100g(r?.minerals, r?.vitamins, r?.other_nutrients),
     });
   }
 
@@ -503,6 +519,7 @@ export function mapMenuFoodRows(
         rotationKey,
         carbFamily: str(r?.carb_family) ?? undefined,
         fdcId,
+        ...(macro.micros && Object.keys(macro.micros).length ? { microsPer100g: macro.micros } : {}),
         kcalPer100g: macro.kcal,
         carbsPer100g: macro.carbs,
         proteinPer100g: macro.protein,
@@ -655,10 +672,18 @@ export async function loadMenuFoodPools(admin: SupabaseClient): Promise<MenuFood
       // `fiber_100g` serve alla Regola 2 (fibre pre-sforzo). Un errore «colonna assente» qui
       // NON deve annullare il catalogo — senza macro il motore non compone niente — quindi si
       // ritenta senza la fibra, esattamente come gli stadi della select del menù.
+      // Le colonne JSON dei micronutrienti stanno nello stadio più ricco: se mancano si
+      // scende, e il motore perde SOLO il pareggio per densità, mai il pool.
       let macroRes: { data: unknown[] | null; error: { code?: string; message?: string } | null } = await admin
         .from("nutrition_fdc_foods")
-        .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g")
+        .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g, minerals, vitamins, other_nutrients")
         .in("fdc_id", chunk);
+      if (missingColumnsError(macroRes)) {
+        macroRes = await admin
+          .from("nutrition_fdc_foods")
+          .select("fdc_id, kcal_100g, carbs_100g, protein_100g, fat_100g, fiber_100g")
+          .in("fdc_id", chunk);
+      }
       if (missingColumnsError(macroRes)) {
         macroRes = await admin
           .from("nutrition_fdc_foods")
@@ -731,6 +756,30 @@ export function buildMenuFoodAllergenIndex(pools: MenuFoodPoolMap | null | undef
         classes: [...new Set([...prev.classes, ...classes])],
         reviewed: prev.reviewed && reviewed,
       });
+    }
+  }
+  return index;
+}
+
+/**
+ * Indice fdcId → micronutrienti per 100 g, gemello di {@link buildMenuFoodAllergenIndex}:
+ * costruito DAI POOL già caricati, perché al punto di decisione i candidati sono
+ * `FdcFoodBrowseHit` e l'unica chiave comune con il catalogo è `fdcId`.
+ *
+ * Stesso fdcId su più canonical_key: vince la prima riga con dati. I valori sono per 100 g
+ * dello stesso alimento, quindi non c'è nulla da fondere — sommarli gonfierebbe l'alimento
+ * tante volte quante sono le sue righe di catalogo.
+ */
+export function buildMenuFoodMicronutrientIndex(
+  pools: MenuFoodPoolMap | null | undefined,
+): Map<number, MicrosPer100g> {
+  const index = new Map<number, MicrosPer100g>();
+  if (!pools) return index;
+  for (const list of pools.values()) {
+    for (const e of list) {
+      if (!(e.fdcId > 0) || index.has(e.fdcId)) continue;
+      const micros = e.microsPer100g;
+      if (micros && Object.keys(micros).length > 0) index.set(e.fdcId, micros);
     }
   }
   return index;

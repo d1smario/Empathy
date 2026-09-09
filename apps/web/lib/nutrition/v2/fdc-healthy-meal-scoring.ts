@@ -1,4 +1,6 @@
 import type { MealSlotKey } from "@/lib/nutrition/intelligent-meal-plan-types";
+import type { NutrientTargetId } from "@/lib/nutrition/pathway-cofactors-to-nutrient-targets";
+import { compareMicroDensity, type MicrosPer100g } from "@/lib/nutrition/v2/fdc-micronutrient-density";
 import type { MealSlotAssemblyRole } from "@/lib/nutrition/v2/meal-slot-assembly-spec";
 import type { FdcFoodBrowseHit } from "@/lib/nutrition/v2/fdc-branch-query";
 import { isDeniedFdcDescription } from "@/lib/nutrition/v2/fdc-candidate-filter";
@@ -8,6 +10,14 @@ export type RolePickContext = {
   slot: MealSlotKey;
   poolKey: string;
   spec: MealSlotAssemblyRole;
+  /**
+   * Micronutrienti che servono a QUESTO atleta oggi, in ordine di priorità — il capo del
+   * filo che parte dagli esami del sangue (ferritina bassa → `fe_mg`). Vuoto = nessun
+   * referto utile, e la scelta è identica a prima.
+   */
+  nutrientTargets?: readonly NutrientTargetId[];
+  /** fdcId → micronutrienti per 100 g, dal catalogo già in memoria. */
+  microsByFdcId?: Map<number, MicrosPer100g>;
 };
 
 const MAIN_MEAL_FORBIDDEN =
@@ -77,6 +87,18 @@ export function scoreFdcForRole(
   return score;
 }
 
+/**
+ * Ampiezza del pareggio. I bonus di ruolo valgono 160-200 punti, quindi 12 non può MAI
+ * scavalcare una preferenza di ruolo: tiene insieme solo i candidati che differiscono per
+ * il contenuto di macro, cioè quelli che per quel posto nel pasto sono equivalenti.
+ */
+const NUTRIENT_TIEBREAK_EPS = 12;
+
+/** I micronutrienti dell'alimento: dall'indice del catalogo, o dal hit se li porta già. */
+function microsForHit(hit: FdcFoodBrowseHit, ctx: RolePickContext): MicrosPer100g | undefined {
+  return ctx.microsByFdcId?.get(hit.fdcId) ?? hit.microsPer100g;
+}
+
 export function pickBestFdcForRole(
   pool: FdcFoodBrowseHit[],
   ctx: RolePickContext,
@@ -86,6 +108,7 @@ export function pickBestFdcForRole(
 ): FdcFoodBrowseHit | null {
   let best: FdcFoodBrowseHit | null = null;
   let bestScore = -Infinity;
+  const targets = ctx.nutrientTargets ?? [];
 
   for (const hit of pool) {
     if (usedFdcIds.has(hit.fdcId) || hit.kcalPer100g <= 0) continue;
@@ -95,6 +118,33 @@ export function pickBestFdcForRole(
 
     const score = scoreFdcForRole(hit, ctx, denyFragments, staplePenalty);
     if (score <= -5000) continue;
+
+    if (score > bestScore + NUTRIENT_TIEBREAK_EPS) {
+      bestScore = score;
+      best = hit;
+      continue;
+    }
+
+    /**
+     * Zona di pareggio: per il ruolo i due alimenti sono equivalenti, quindi decide il
+     * sangue. Nessun effetto su macro o grammi — cambia QUALE alimento entra, non quanto.
+     * Senza target attivi resta il comportamento storico (vince il punteggio più alto).
+     */
+    if (best && targets.length > 0 && score >= bestScore - NUTRIENT_TIEBREAK_EPS) {
+      const cmp = compareMicroDensity(microsForHit(hit, ctx), microsForHit(best, ctx), targets);
+      if (cmp > 0) {
+        // Il punteggio migliore resta quello più alto dei due: il pareggio sceglie
+        // l'alimento, non riscrive la soglia con cui si confronteranno i prossimi.
+        bestScore = Math.max(bestScore, score);
+        best = hit;
+        continue;
+      }
+      if (cmp < 0) {
+        bestScore = Math.max(bestScore, score);
+        continue;
+      }
+    }
+
     if (score > bestScore) {
       bestScore = score;
       best = hit;
