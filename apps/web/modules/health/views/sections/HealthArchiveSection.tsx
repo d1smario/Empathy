@@ -162,7 +162,10 @@ export function HealthArchiveSection({
             const reviewRunId = pendingVlmRunByPanelId.get(p.id) ?? null;
             const importStatus = imp?.status ?? "";
             const isPendingVlm =
-              Boolean(vals?.vlm_pending_validation) || importStatus === "vlm_proposed" || reviewRunId != null;
+              Boolean(vals?.vlm_pending_validation) ||
+              importStatus === "vlm_proposed" ||
+              importStatus === "ocr_proposed" ||
+              reviewRunId != null;
             const valueEntries =
               vals && typeof vals === "object"
                 ? Object.entries(vals)

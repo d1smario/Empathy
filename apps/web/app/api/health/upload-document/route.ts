@@ -92,7 +92,11 @@ export async function POST(req: NextRequest) {
     const panelId = inserted?.id ?? null;
     let normalizationSummary: HealthNormalizationSummary | null = null;
 
-    if (panelId && decode.importStatus === "vlm_proposed" && decode.vlmProposals.length > 0) {
+    /** Proposte da confermare: dal modello di ieri o dall'OCR di oggi, stesso percorso. */
+    const proposedCount = decode.vlmProposals.length + decode.ocrProposals.length;
+    const isProposal = decode.importStatus === "vlm_proposed" || decode.importStatus === "ocr_proposed";
+
+    if (panelId && isProposal && proposedCount > 0) {
       const sr = await persistHealthVlmStagingRun({
         db,
         athleteId,
@@ -113,7 +117,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    if (panelId && decode.importStatus !== "vlm_proposed") {
+    if (panelId && !isProposal) {
       const post = await runHealthDeterministicPostProcess({
         db,
         athleteId,
@@ -172,7 +176,7 @@ export async function POST(req: NextRequest) {
     if (Object.keys(decode.parsed).length > 0) {
       parts.push(`${Object.keys(decode.parsed).length} parametri dal PDF`);
     }
-    if (decode.importStatus === "vlm_proposed") {
+    if (isProposal) {
       parts.push(
         `${decode.vlmProposals.length} parametri proposti via ${decode.vlmProvider === "anthropic" ? "Claude" : "GPT-4o"} (vision)${decode.vlmDetectedProvider ? ` · provider rilevato: ${decode.vlmDetectedProvider}` : ""}`,
       );
@@ -190,7 +194,7 @@ export async function POST(req: NextRequest) {
     }
     if (normalizationSummary?.stagingRunId) {
       parts.push(
-        decode.importStatus === "vlm_proposed" ? "review da confermare aperta" : "staging interpretativo aperto",
+        isProposal ? "review da confermare aperta" : "staging interpretativo aperto",
       );
     }
     if (storagePath) parts.push("file su Storage");

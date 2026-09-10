@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { HealthPanelTypeForParse } from "@/lib/health/lab-text-extractors";
 
 export type HealthMarkerDefinition = {

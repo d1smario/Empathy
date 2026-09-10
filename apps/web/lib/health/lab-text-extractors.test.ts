@@ -99,3 +99,38 @@ test("epigenetics parser detects gene hits and methylation flags", () => {
   assert.ok(genes.includes("COMT"));
   assert.ok(flags.some((f) => String(f).toLowerCase().includes("hypermethyl")));
 });
+
+/**
+ * Un numero dentro il NOME del marcatore non è il suo valore. Prima «Vitamina B12 410»
+ * dava 12 — una carenza grave che non esiste — e «Vitamina D 25-OH 28» dava 25, che è
+ * abbastanza plausibile da passare inosservato.
+ */
+test("la cifra attaccata al nome non viene scambiata per il valore", () => {
+  const p = extractStructuredValuesFromLabText(
+    ["Vitamina B12 410 pg/mL 200 - 900", "Vitamina D 25-OH 28 ng/mL 30 - 100"].join("\n"),
+    "blood",
+  );
+  assert.equal(p.b12, 410);
+  assert.equal(p.vit_d, 28);
+});
+
+test("funziona anche con il nome scritto al contrario", () => {
+  const p = extractStructuredValuesFromLabText("25-OH vitamina D 33 ng/mL", "blood");
+  assert.equal(p.vit_d, 33);
+});
+
+test("la forma 1,25-OH non diventa 1,25", () => {
+  const p = extractStructuredValuesFromLabText("1,25-OH vitamina D 45 ng/mL", "blood");
+  assert.equal(p.vit_d, 45);
+});
+
+test("l'unità attaccata al numero non lo squalifica", () => {
+  const p = extractStructuredValuesFromLabText("Emoglobina 14,8g/dL", "blood");
+  assert.equal(p.emoglobina, 14.8);
+});
+
+test("un valore normale resta quello di prima", () => {
+  const p = extractStructuredValuesFromLabText("Ferritina 62 ng/mL 30 - 400\nGlicemia 92 mg/dL", "blood");
+  assert.equal(p.ferritina, 62);
+  assert.equal(p.glicemia, 92);
+});

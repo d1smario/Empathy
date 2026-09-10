@@ -63,6 +63,7 @@
     "recharts": "^2.15.0",
     "server-only": "^0.0.1",
     "stripe": "^17.6.0",
+    "tesseract.js": "^7.0.0",
     "three": "^0.185.1"
   },
   "devDependencies": {

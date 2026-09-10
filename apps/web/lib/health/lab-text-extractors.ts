@@ -1,4 +1,3 @@
-import "server-only";
 import { normalizeLoosePdfText } from "@/lib/health/lab-pdf-text-normalize";
 import { EPIGENETIC_GENE_BANK, HEALTH_MARKERS, MICROBIOTA_TAXA } from "@/lib/health/health-ontology";
 
@@ -24,23 +23,46 @@ function isLikelyYearInteger(token: string, value: number): boolean {
  * Primo numero plausibile dopo la label nella finestra di testo (decimali EU e interi 2–6 cifre;
  * opzionale 1–9 per GR/WBC molto bassi).
  */
+/**
+ * Un numero incollato alle lettere fa parte di un NOME, non è una misura.
+ *
+ * «Vitamina B12 410 pg/mL» dava 12, e «Vitamina D 25-OH 28 ng/mL» dava 25: il primo numero
+ * incontrato era quello dentro il nome del marcatore. Con 12 pg/mL di B12 si legge una carenza
+ * grave che non esiste, e 25 invece di 28 passa inosservato perché è plausibile.
+ *
+ * Due forme, entrambe di nome e non di valore:
+ * - cifra attaccata a una lettera che la precede: B12, K2, D3, T4;
+ * - cifra seguita da trattino e lettere: 25-OH, 1,25-OH, 25-hydroxy.
+ *
+ * L'unità attaccata senza spazio («14,8g/dL») NON è un nome: la lettera dopo il numero, da
+ * sola, non squalifica il candidato.
+ */
+function looksLikePartOfName(slice: string, index: number, raw: string): boolean {
+  const before = index > 0 ? slice[index - 1] : "";
+  if (/[A-Za-z]/.test(before)) return true;
+  const after = slice.slice(index + raw.length, index + raw.length + 2);
+  return /^-[A-Za-z]/.test(after);
+}
+
 function firstNumericInSlice(slice: string, opts?: { allowSingleDigit?: boolean }): number | null {
-  const candidates: Array<{ raw: string; v: number }> = [];
+  const candidates: Array<{ raw: string; v: number; at: number }> = [];
   const reDecimalOrMulti = /\d+[.,]\d+|\d{2,6}/g;
   let m: RegExpExecArray | null;
   while ((m = reDecimalOrMulti.exec(slice)) !== null) {
+    if (looksLikePartOfName(slice, m.index, m[0])) continue;
     const v = parseEuNumber(m[0]);
-    if (v != null && !isLikelyYearInteger(m[0], v)) candidates.push({ raw: m[0], v });
+    if (v != null && !isLikelyYearInteger(m[0], v)) candidates.push({ raw: m[0], v, at: m.index });
   }
   if (opts?.allowSingleDigit) {
     const reSingle = /\b([1-9])\b/g;
     while ((m = reSingle.exec(slice)) !== null) {
+      if (looksLikePartOfName(slice, m.index, m[1])) continue;
       const v = parseEuNumber(m[1]);
-      if (v != null) candidates.push({ raw: m[1], v });
+      if (v != null) candidates.push({ raw: m[1], v, at: m.index });
     }
   }
   if (!candidates.length) return null;
-  candidates.sort((a, b) => slice.indexOf(a.raw) - slice.indexOf(b.raw));
+  candidates.sort((a, b) => a.at - b.at);
   return candidates[0]?.v ?? null;
 }
 
@@ -61,7 +83,11 @@ function numberAfterLabels(
     for (;;) {
       const i = lower.indexOf(L, from);
       if (i < 0) break;
-      const slice = norm.slice(i, i + window);
+      /**
+       * Si legge DOPO l'etichetta, non da dove comincia: se l'alias contiene una cifra
+       * («vitamina b12») quella cifra non deve poter passare per il valore.
+       */
+      const slice = norm.slice(i + L.length, i + L.length + window);
       const v = firstNumericInSlice(slice, opts);
       if (v != null) return v;
       from = i + Math.max(1, L.length);

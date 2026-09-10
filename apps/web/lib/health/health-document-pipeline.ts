@@ -21,6 +21,8 @@ import {
   type HealthPanelTypeForParse,
 } from "@/lib/health/lab-text-extractors";
 import { extractTextFromPdfBuffer } from "@/lib/health/parse-health-pdf";
+import { extractTextFromImageBuffer } from "@/lib/health/ocr-image";
+import { isOcrSupportedMime } from "@/lib/health/ocr-image-rules";
 import { persistNormalizedObservations } from "@/lib/health/health-observation-normalizer";
 import { buildAndPersistHealthCausalInteractions } from "@/lib/health/health-causal-interactions";
 
@@ -38,6 +40,8 @@ export type HealthDecodeImportStatus =
   | "parsed_full"
   | "parsed_partial"
   | "vlm_proposed"
+  /** Valori letti da una foto con l'OCR: sono PROPOSTE, vanno confermate prima di valere. */
+  | "ocr_proposed"
   | "needs_manual_review"
   | "failed";
 
@@ -53,6 +57,17 @@ export type HealthDecodeResult = {
   isPdfScan: boolean;
   pdfPages: number;
   pdfText: string | null;
+  /** Il testo è stato ricavato da un'immagine con l'OCR, non letto dal PDF. */
+  fromOcr: boolean;
+  /** Fiducia dichiarata dall'OCR (0-100). `null` quando il testo non viene da lì. */
+  ocrConfidence: number | null;
+  /**
+   * Valori riconosciuti sul testo dell'OCR. Stanno QUI e non in `parsed` di proposito:
+   * `parsed` finisce nel percorso deterministico, che scrive i valori come certi. Una foto
+   * letta da una macchina non è un valore certo — passa dalla conferma, come i referti
+   * inseriti a mano.
+   */
+  ocrProposals: HealthFieldProposal[];
   importStatus: HealthDecodeImportStatus;
 };
 
@@ -63,10 +78,16 @@ function isPdfMime(mime: string, filename: string): boolean {
 }
 
 /**
- * Decode puro (no DB): SOLO parser deterministico (PDF testuale). Il fallback VLM
- * (Claude → GPT-4o) è stato RIMOSSO (decisione 2026-07: piattaforma senza chiamate
- * AI): immagini e PDF scansionati finiscono in `needs_manual_review` (inserimento
- * manuale in review, percorso già previsto). Idempotente: stesso buffer + stesso
+ * Decode puro (no DB): parser deterministico sul testo. Il fallback VLM (Claude → GPT-4o)
+ * è stato RIMOSSO (decisione 2026-07: piattaforma senza chiamate AI).
+ *
+ * Da lì in avanti foto e scansioni finivano sempre in `needs_manual_review`, perché senza
+ * testo il matcher non ha niente da leggere — e quello che la gente carica davvero è una
+ * fotografia. Ora c'è un passaggio di OCR (Tesseract, riconoscimento ottico classico:
+ * nessun modello linguistico, nessuna chiamata esterna a servizi di IA) che trasforma
+ * l'immagine in testo e lo passa allo STESSO matcher del PDF. Quello che ne esce resta una
+ * proposta da confermare: l'OCR sbaglia, e un valore del sangue sbagliato è peggio di un
+ * valore assente. Idempotente: stesso buffer + stesso
  * panelType → stesso risultato. I campi vlm* restano nel contratto per compatibilità
  * con gli staging run storici già salvati.
  */
@@ -90,10 +111,40 @@ export async function decodeHealthDocument(input: {
     }
   }
 
-  const parsed: Record<string, unknown> = pdfText
-    ? extractStructuredValuesFromLabText(pdfText, panelType)
-    : {};
   const isPdfScan = isPdf && !pdfText;
+
+  /**
+   * OCR solo dove serve: se il PDF aveva già il testo non si tocca niente. Un fallimento
+   * qui non è un errore — riporta al comportamento di prima, cioè l'inserimento a mano.
+   */
+  let ocrText: string | null = null;
+  let ocrConfidence: number | null = null;
+  if (!pdfText && (isImage || isOcrSupportedMime(mime, filename))) {
+    const ocr = await extractTextFromImageBuffer(buffer);
+    if (ocr) {
+      ocrText = ocr.text;
+      ocrConfidence = ocr.confidence;
+    }
+  }
+
+  const sourceText = pdfText ?? ocrText;
+  const readValues: Record<string, unknown> = sourceText
+    ? extractStructuredValuesFromLabText(sourceText, panelType)
+    : {};
+
+  /** Dal PDF i valori sono certi; dalla foto sono proposte. Stessi numeri, peso diverso. */
+  const fromOcr = pdfText == null && ocrText != null;
+  const parsed: Record<string, unknown> = fromOcr ? {} : readValues;
+  const ocrProposals: HealthFieldProposal[] = fromOcr
+    ? Object.entries(readValues)
+        .filter(([, v]) => v != null && (typeof v === "number" || typeof v === "string"))
+        .map(([field, value]) => ({
+          field,
+          value: value as number | string,
+          confidence: Math.max(0, Math.min(1, (ocrConfidence ?? 0) / 100)),
+          notes: "Letto da immagine con OCR: da confermare.",
+        }))
+    : [];
 
   const vlmProposals: HealthFieldProposal[] = [];
   const vlmProvider: "anthropic" | "openai" | null = null;
@@ -102,7 +153,9 @@ export async function decodeHealthDocument(input: {
   const vlmQualityNotes: string[] = [];
 
   let importStatus: HealthDecodeImportStatus;
-  if (Object.keys(parsed).length > 0) {
+  if (ocrProposals.length > 0) {
+    importStatus = "ocr_proposed";
+  } else if (Object.keys(parsed).length > 0) {
     const hasStructured = Object.keys(parsed).some(
       (k) => k.endsWith("_taxa") || k.endsWith("_hits") || k.endsWith("_flags"),
     );
@@ -126,7 +179,10 @@ export async function decodeHealthDocument(input: {
     isImage,
     isPdfScan,
     pdfPages,
-    pdfText,
+    pdfText: pdfText ?? ocrText,
+    fromOcr,
+    ocrConfidence,
+    ocrProposals,
     importStatus,
   };
 }
@@ -206,7 +262,7 @@ export function buildPanelValuesPayload(input: {
   const { decode, importBlock } = input;
   if (decode.importStatus === "vlm_proposed" && decode.vlmProposals.length > 0) {
     return {
-      vlm_proposals: decode.vlmProposals.map((p) => ({
+      vlm_proposals: [...decode.vlmProposals, ...decode.ocrProposals].map((p) => ({
         field: p.field,
         value: p.value,
         unit: p.unit,
@@ -238,7 +294,9 @@ export async function persistHealthVlmStagingRun(args: {
   triggerSource?: "health_upload_vlm" | "health_panel_reanalyze_vlm";
 }): Promise<{ stagingRunId: string | null; error?: string }> {
   const trigger = args.triggerSource ?? "health_upload_vlm";
-  const patches = args.decode.vlmProposals.map((p) => ({
+  /** Proposte da confermare, da qualunque lettore vengano: modello di ieri od OCR di oggi. */
+  const proposals = [...args.decode.vlmProposals, ...args.decode.ocrProposals];
+  const patches = proposals.map((p) => ({
     target: `health.${args.panelType}`,
     action: "set_field",
     field: p.field,
@@ -249,8 +307,7 @@ export async function persistHealthVlmStagingRun(args: {
     notes: p.notes ?? null,
   }));
   const overall =
-    args.decode.vlmProposals.reduce((acc, p) => acc + (p.confidence || 0), 0) /
-    Math.max(1, args.decode.vlmProposals.length);
+    proposals.reduce((acc, p) => acc + (p.confidence || 0), 0) / Math.max(1, proposals.length);
   const { data, error } = await args.db
     .from("interpretation_staging_runs")
     .insert({
@@ -266,7 +323,7 @@ export async function persistHealthVlmStagingRun(args: {
         vlm_model: args.decode.vlmModel,
         detected_provider: args.decode.vlmDetectedProvider,
         quality_notes: args.decode.vlmQualityNotes,
-        field_count: args.decode.vlmProposals.length,
+        field_count: proposals.length,
         re_analysis: trigger === "health_panel_reanalyze_vlm",
       },
       proposed_structured_patches: patches,

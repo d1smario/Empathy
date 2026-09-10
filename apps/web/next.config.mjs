@@ -93,7 +93,12 @@ const nextConfig = {
     /** Monorepo (Next 14.2): tracing fino alla root repo per `packages/*` su Vercel. */
     outputFileTracingRoot: path.join(__dirname, "..", ".."),
     /** `pdf-parse` (fs nativo) — Next 14: chiave sotto `experimental`, non `serverExternalPackages`. */
-    serverComponentsExternalPackages: ["pdf-parse"],
+    serverComponentsExternalPackages: ["pdf-parse", "tesseract.js"],
+    /**
+     * `tesseract.js` porta un core WebAssembly da decine di MB e carica worker e dati
+     * di lingua a runtime: impacchettarlo romperebbe la build. Resta esterno come
+     * `pdf-parse`, e viene importato solo quando arriva davvero un'immagine.
+     */
   },
   /** Alias URL (V1 / naming): virya → vyria, analyzer → analytics. */
   async redirects() {

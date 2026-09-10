@@ -190,7 +190,10 @@ export default function HealthPageView() {
           ? (vals.import as Record<string, unknown>)
           : null;
       const importStatus = typeof importBlock?.status === "string" ? (importBlock?.status as string) : "";
-      const isPendingVlm = Boolean(vals?.vlm_pending_validation) || importStatus === "vlm_proposed";
+      const isPendingVlm =
+        Boolean(vals?.vlm_pending_validation) ||
+        importStatus === "vlm_proposed" ||
+        importStatus === "ocr_proposed";
       if (isPendingVlm) vlmPending++;
       if (flatFields > 0) withCanonicalValues++;
       else if (proposalCount > 0) withProposalsOnly++;
