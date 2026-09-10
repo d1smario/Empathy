@@ -5367,6 +5367,8 @@
     "repsOutOfRange": "Ripetizioni fuori scala: controlla il numero.",
     "weightOutOfRange": "Carico fuori scala: controlla il numero.",
     "setOutOfRange": "Numero di serie fuori scala.",
-    "saveFailed": "Non sono riuscito a salvare. Riprova."
+    "saveFailed": "Non sono riuscito a salvare. Riprova.",
+    "byCoach": "coach",
+    "byAdmin": "admin"
   }
 }

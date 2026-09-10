@@ -10,12 +10,20 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * Chi ha registrato la serie. Il carico scritto qui diventa lo storico su cui il coach
+ * prescriverà la volta dopo: se a scriverlo è stato lui, chi legge deve poterlo sapere.
+ * Il ruolo non è una dichiarazione del client — la policy lo confronta con quello vero.
+ */
+export type SetLogRecorder = "athlete" | "coach" | "admin";
+
 export type ExerciseSetLogRow = {
   blockId: string;
   setIndex: number;
   reps: number | null;
   weightKg: number | null;
   done: boolean;
+  recordedByRole: SetLogRecorder;
 };
 
 export type ExerciseSetLogKey = {
@@ -77,7 +85,13 @@ type DbRow = {
   reps?: unknown;
   weight_kg?: unknown;
   done?: unknown;
+  recorded_by_role?: unknown;
 };
+
+/** Un valore ignoto non diventa «atleta»: nel dubbio si dice che l'ha scritto il coach. */
+function asRecorder(v: unknown): SetLogRecorder {
+  return v === "coach" || v === "admin" ? v : v === "athlete" ? "athlete" : "athlete";
+}
 
 function asNum(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
@@ -96,6 +110,7 @@ export function mapDbRows(rows: readonly DbRow[]): ExerciseSetLogRow[] {
       reps: asNum(r.reps),
       weightKg: asNum(r.weight_kg),
       done: r.done !== false,
+      recordedByRole: asRecorder(r.recorded_by_role),
     });
   }
   return out;
@@ -109,7 +124,7 @@ export async function loadExerciseSetLog(
 ): Promise<ExerciseSetLogRow[]> {
   const { data, error } = await db
     .from("executed_exercise_sets")
-    .select("block_id, set_index, reps, weight_kg, done")
+    .select("block_id, set_index, reps, weight_kg, done, recorded_by_role")
     .eq("athlete_id", athleteId)
     .eq("date", date);
   if (error || !Array.isArray(data)) return [];
@@ -123,6 +138,9 @@ export type SaveSetLogInput = ExerciseSetLogKey & {
   reps?: number | null;
   weightKg?: number | null;
   done?: boolean;
+  /** Chi sta scrivendo: deve combaciare con l'identità reale, o la policy rifiuta. */
+  recordedByUserId: string;
+  recordedByRole: SetLogRecorder;
 };
 
 export type SaveSetLogResult = { ok: true } | { ok: false; error: string };
@@ -149,6 +167,8 @@ export async function saveExerciseSet(db: SupabaseClient, input: SaveSetLogInput
       reps: input.reps ?? null,
       weight_kg: input.weightKg ?? null,
       done: input.done ?? true,
+      recorded_by_user_id: input.recordedByUserId,
+      recorded_by_role: input.recordedByRole,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "athlete_id,date,block_id,set_index" },

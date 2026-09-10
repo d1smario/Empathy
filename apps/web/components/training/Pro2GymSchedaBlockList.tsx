@@ -38,8 +38,6 @@ export function Pro2GymSchedaBlockList({
     date: string;
     plannedWorkoutId?: string | null;
     rows: ExerciseSetLogRow[];
-    /** In scope coach/admin si legge soltanto: registra chi si allena. */
-    readOnly?: boolean;
     onSaved?: () => void;
   } | null;
 }) {
@@ -120,7 +118,6 @@ export function Pro2GymSchedaBlockList({
                     catalogExerciseId={block.gymRx?.catalogExerciseId ?? null}
                     prescribedSets={block.gymRx?.sets ?? null}
                     logged={log.rows}
-                    readOnly={log.readOnly}
                     onSaved={log.onSaved}
                   />
                 ) : null}

@@ -56,7 +56,9 @@ test("la chiave distingue blocchi diversi con lo stesso numero di serie", () => 
 
 test("mapDbRows legge i numeri anche quando arrivano come stringhe", () => {
   const out = mapDbRows([{ block_id: "b1", set_index: "2", reps: "8", weight_kg: "82.50", done: true }]);
-  assert.deepEqual(out, [{ blockId: "b1", setIndex: 2, reps: 8, weightKg: 82.5, done: true }]);
+  assert.deepEqual(out, [
+    { blockId: "b1", setIndex: 2, reps: 8, weightKg: 82.5, done: true, recordedByRole: "athlete" },
+  ]);
 });
 
 test("mapDbRows scarta le righe senza aggancio invece di inventarlo", () => {
@@ -68,4 +70,15 @@ test("mapDbRows scarta le righe senza aggancio invece di inventarlo", () => {
 test("done assente vale «fatta»; solo false è «saltata»", () => {
   assert.equal(mapDbRows([{ block_id: "b", set_index: 1 }])[0]?.done, true);
   assert.equal(mapDbRows([{ block_id: "b", set_index: 1, done: false }])[0]?.done, false);
+});
+
+test("chi ha registrato viene letto dalla riga", () => {
+  assert.equal(mapDbRows([{ block_id: "b", set_index: 1, recorded_by_role: "coach" }])[0]?.recordedByRole, "coach");
+  assert.equal(mapDbRows([{ block_id: "b", set_index: 1, recorded_by_role: "admin" }])[0]?.recordedByRole, "admin");
+  assert.equal(mapDbRows([{ block_id: "b", set_index: 1, recorded_by_role: "athlete" }])[0]?.recordedByRole, "athlete");
+});
+
+test("un valore ignoto non diventa qualcos'altro di silenzioso", () => {
+  assert.equal(mapDbRows([{ block_id: "b", set_index: 1 }])[0]?.recordedByRole, "athlete");
+  assert.equal(mapDbRows([{ block_id: "b", set_index: 1, recorded_by_role: "pinco" }])[0]?.recordedByRole, "athlete");
 });

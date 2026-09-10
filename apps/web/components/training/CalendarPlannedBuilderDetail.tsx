@@ -537,7 +537,6 @@ export function CalendarPlannedBuilderDetail({
                           date: workout.date,
                           plannedWorkoutId: workout.id ?? null,
                           rows: setLog,
-                          readOnly: coachControls,
                           onSaved: () => setSetLogToken((v) => v + 1),
                         }
                       : null

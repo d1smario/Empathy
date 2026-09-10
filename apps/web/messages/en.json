@@ -5367,6 +5367,8 @@
     "repsOutOfRange": "Reps out of range: check the number.",
     "weightOutOfRange": "Load out of range: check the number.",
     "setOutOfRange": "Set number out of range.",
-    "saveFailed": "Could not save. Try again."
+    "saveFailed": "Could not save. Try again.",
+    "byCoach": "coach",
+    "byAdmin": "admin"
   }
 }

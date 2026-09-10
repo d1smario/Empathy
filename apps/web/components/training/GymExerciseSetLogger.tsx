@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
+import { useActiveAthlete } from "@/lib/use-active-athlete";
 import {
   clearExerciseSet,
   saveExerciseSet,
@@ -10,6 +11,7 @@ import {
   validateSetLogRow,
   visibleSetCount,
   type ExerciseSetLogRow,
+  type SetLogRecorder,
 } from "@/lib/training/exercise-set-log";
 
 export type GymExerciseSetLoggerProps = {
@@ -23,8 +25,6 @@ export type GymExerciseSetLoggerProps = {
   prescribedSets?: number | null;
   /** Righe già registrate per questo blocco (dal caricamento del giorno). */
   logged: ExerciseSetLogRow[];
-  /** In scope coach/admin si guarda soltanto: registra chi si allena. */
-  readOnly?: boolean;
   onSaved?: () => void;
 };
 
@@ -62,11 +62,18 @@ export function GymExerciseSetLogger({
   catalogExerciseId,
   prescribedSets,
   logged,
-  readOnly = false,
   onSaved,
 }: GymExerciseSetLoggerProps) {
   const t = useTranslations("GymExerciseSetLogger");
   const db = useMemo(() => createEmpathyBrowserSupabase(), []);
+  const { userId, role, adminScoped } = useActiveAthlete();
+  /**
+   * Chi sto per dichiarare di essere. Non è una scelta: la policy confronta questo valore
+   * con l'identità vera e rifiuta la scrittura se non combaciano — un coach non può
+   * registrare come se fosse l'atleta.
+   */
+  const writerRole: SetLogRecorder = adminScoped ? "admin" : role === "coach" ? "coach" : "athlete";
+  const readOnly = !userId;
 
   const byIndex = useMemo(() => {
     const m = new Map<number, ExerciseSetLogRow>();
@@ -111,6 +118,8 @@ export function GymExerciseSetLogger({
       setBusy(key);
       setError(null);
       const res = await saveExerciseSet(db, {
+        recordedByUserId: userId!,
+        recordedByRole: writerRole,
         athleteId,
         date,
         plannedWorkoutId: plannedWorkoutId ?? null,
@@ -126,7 +135,7 @@ export function GymExerciseSetLogger({
       if (!res.ok) setError(t("saveFailed"));
       else onSaved?.();
     },
-    [db, readOnly, blockId, byIndex, drafts, athleteId, date, plannedWorkoutId, catalogExerciseId, exerciseName, t, onSaved],
+    [db, readOnly, blockId, byIndex, drafts, athleteId, date, plannedWorkoutId, catalogExerciseId, exerciseName, t, onSaved, userId, writerRole],
   );
 
   const forget = useCallback(
@@ -187,6 +196,12 @@ export function GymExerciseSetLogger({
                 />
                 <span className="text-gray-500">kg</span>
               </label>
+              {/* Chi ha scritto: si dice solo quando NON è l'atleta, altrimenti è rumore. */}
+              {recorded && row?.recordedByRole !== "athlete" ? (
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[0.58rem] text-sky-200">
+                  {row?.recordedByRole === "admin" ? t("byAdmin") : t("byCoach")}
+                </span>
+              ) : null}
               {readOnly ? (
                 <span className="text-[0.65rem] text-gray-500">
                   {recorded ? (row?.done ? t("stateDone") : t("stateSkipped")) : t("stateNoAnswer")}

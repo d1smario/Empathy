@@ -101,3 +101,70 @@ grant select, insert, update, delete on public.executed_exercise_sets to authent
 -- La RLS lo fermerebbe comunque (senza auth.uid() nessuna policy passa), ma il permesso in
 -- meno è una difesa in più che non costa niente.
 revoke all on public.executed_exercise_sets from anon;
+
+-- ── Chi ha registrato la serie ──────────────────────────────────────────────────────────
+-- Il carico scritto qui diventa lo storico su cui il coach prescriverà la volta dopo: se a
+-- scriverlo è il coach stesso, il cerchio si chiude su sé stesso e chi legge non se ne accorge.
+-- Con questa colonna resta scritto se quel numero l'ha messo chi ha sollevato o chi guardava.
+--
+-- Il ruolo NON è dichiarato liberamente dal client: la policy lo confronta con quello che il
+-- richiedente è davvero. Un coach non può scrivere «athlete».
+alter table public.executed_exercise_sets
+  add column if not exists recorded_by_user_id uuid,
+  add column if not exists recorded_by_role text not null default 'athlete';
+
+alter table public.executed_exercise_sets
+  drop constraint if exists executed_exercise_sets_recorded_by_role_ck;
+alter table public.executed_exercise_sets
+  add constraint executed_exercise_sets_recorded_by_role_ck
+  check (recorded_by_role in ('athlete', 'coach', 'admin'));
+
+drop policy if exists executed_exercise_sets_access_scoped on public.executed_exercise_sets;
+create policy executed_exercise_sets_access_scoped
+  on public.executed_exercise_sets
+  as permissive for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.app_user_profiles aup
+      where aup.user_id = (select auth.uid())
+        and (
+          (aup.role = 'private' and aup.athlete_id = executed_exercise_sets.athlete_id)
+          or (aup.role = 'coach' and exists (
+            select 1 from public.coach_athletes ca
+            where ca.coach_user_id = (select auth.uid())
+              and ca.athlete_id = executed_exercise_sets.athlete_id
+          ))
+        )
+    )
+  )
+  with check (
+    recorded_by_user_id = (select auth.uid())
+    and exists (
+      select 1 from public.app_user_profiles aup
+      where aup.user_id = (select auth.uid())
+        and (
+          (
+            aup.role = 'private'
+            and aup.athlete_id = executed_exercise_sets.athlete_id
+            and executed_exercise_sets.recorded_by_role = 'athlete'
+          )
+          or (
+            aup.role = 'coach'
+            and executed_exercise_sets.recorded_by_role = 'coach'
+            and exists (
+              select 1 from public.coach_athletes ca
+              where ca.coach_user_id = (select auth.uid())
+                and ca.athlete_id = executed_exercise_sets.athlete_id
+            )
+          )
+        )
+    )
+  );
+
+drop policy if exists platform_admin_all on public.executed_exercise_sets;
+create policy platform_admin_all
+  on public.executed_exercise_sets
+  as permissive for all
+  using (is_platform_admin())
+  with check (is_platform_admin() and recorded_by_role = 'admin');
