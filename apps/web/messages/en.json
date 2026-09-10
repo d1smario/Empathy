@@ -3695,10 +3695,14 @@
   },
   "BioenergeticChannelExpandModal": {
     "chartAriaLabel": "Chart {label}",
-    "closeChart": "Close chart"
+    "closeChart": "Close chart",
+    "originEstimate": "Estimate",
+    "originMeasured": "Measured"
   },
   "BioenergeticsContinuousMonitoringGrid": {
-    "expandChart": "Expand chart {label}"
+    "expandChart": "Expand chart {label}",
+    "originEstimate": "Estimate",
+    "originMeasured": "Measured"
   },
   "BioenergeticsDaySeriesPanel": {
     "noSeries": "No time series long enough for additional curves (at least 2 points per channel required).",

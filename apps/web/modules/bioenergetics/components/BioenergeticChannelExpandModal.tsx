@@ -10,6 +10,7 @@ import {
   fusionSummary,
   governanceIt,
   planeBadgeClass,
+  isEstimatedPlane,
   planeLabel,
   prepareBioenergeticChannel,
 } from "./BioenergeticChannelChart";
@@ -71,13 +72,12 @@ export function BioenergeticChannelExpandModal({
             <p className="text-lg font-bold text-white">{channel.labelIt}</p>
             <p className="font-mono text-[0.7rem] uppercase tracking-[0.2em] text-gray-500">{channel.unit}</p>
           </div>
-          {showTech ? (
-            <span
-              className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide ${planeBadgeClass(channel.dataPlane)}`}
-            >
-              {planeLabel(channel.dataPlane)}
-            </span>
-          ) : null}
+          <span
+            className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[0.62rem] font-semibold uppercase tracking-wide ${planeBadgeClass(channel.dataPlane)}`}
+          >
+            {isEstimatedPlane(channel.dataPlane) ? t("originEstimate") : t("originMeasured")}
+            {showTech ? <span className="ml-1 opacity-70">· {planeLabel(channel.dataPlane)}</span> : null}
+          </span>
         </div>
 
         {showTech && channel.curveResolution ? (

@@ -13,6 +13,7 @@ import {
   fusionSummary,
   governanceIt,
   planeBadgeClass,
+  isEstimatedPlane,
   planeLabel,
   prepareBioenergeticChannel,
 } from "./BioenergeticChannelChart";
@@ -80,17 +81,16 @@ export function BioenergeticsContinuousMonitoringGrid({ monitoring, showTech = f
                     className="h-3.5 w-3.5 text-gray-500 transition group-hover:text-lime-300"
                     aria-hidden
                   />
-                  {showTech ? (
-                    <>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
-                      >
-                        {planeLabel(ch.dataPlane)}
-                      </span>
-                      {ch.replacesWithDeviceStream ? (
-                        <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-lime-300/80">Slot stream</span>
-                      ) : null}
-                    </>
+                  {/* L'origine la vede CHIUNQUE, non solo il coach: una curva stimata e una
+                      misurata sono identiche a occhio. Il dettaglio tecnico resta a showTech. */}
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${planeBadgeClass(ch.dataPlane)}`}
+                  >
+                    {isEstimatedPlane(ch.dataPlane) ? t("originEstimate") : t("originMeasured")}
+                    {showTech ? <span className="ml-1 opacity-70">· {planeLabel(ch.dataPlane)}</span> : null}
+                  </span>
+                  {showTech && ch.replacesWithDeviceStream ? (
+                    <span className="font-mono text-[0.55rem] uppercase tracking-[0.16em] text-lime-300/80">Slot stream</span>
                   ) : null}
                 </div>
               </div>

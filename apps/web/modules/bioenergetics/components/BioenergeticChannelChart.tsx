@@ -47,6 +47,21 @@ export const STROKE_BY_CHANNEL_ID: Record<string, string> = {
 
 export const DEFAULT_STROKE = CHART_SIGNAL.glucose;
 
+/**
+ * ORIGINE DEL NUMERO, in una parola sola e per chiunque.
+ *
+ * Le undici curve delle ventiquattro ore si somigliano tutte sullo schermo: quella calcolata
+ * dai dati dell'atleta e quella generata da un modello sono indistinguibili a occhio. Finora
+ * l'unica indicazione stava dietro `showTech`, cioè la vedevano solo coach e amministratore:
+ * l'atleta guardava una curva modellata credendola misurata. Questa etichetta non è dietro
+ * nessun cancello.
+ *
+ * `true` = il numero non è misurato su questa persona, è stimato.
+ */
+export function isEstimatedPlane(plane: BioenergeticMonitoringDataPlane): boolean {
+  return plane === "model_continuous" || plane === "ai_from_inputs";
+}
+
 export function planeLabel(plane: BioenergeticMonitoringDataPlane): string {
   if (plane === "measured_stream") return "Stream";
   if (plane === "sparse_lab_hold") return "Lab hold";
