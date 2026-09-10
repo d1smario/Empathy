@@ -3,6 +3,8 @@
 import type { PlannedWorkout } from "@empathy/domain-training";
 import { BuilderPlannedSessionViz } from "@/components/training/BuilderPlannedSessionViz";
 import { Pro2GymSchedaBlockList } from "@/components/training/Pro2GymSchedaBlockList";
+import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
+import { loadExerciseSetLog, type ExerciseSetLogRow } from "@/lib/training/exercise-set-log";
 import { SessionMultilevelAnalysisStrip } from "@/components/training/SessionMultilevelAnalysisStrip";
 import { SessionBlockIntensityChart } from "@/components/training/SessionBlockIntensityChart";
 import { StructuredWorkoutStepTable } from "@/components/training/StructuredWorkoutStepTable";
@@ -116,6 +118,29 @@ export function CalendarPlannedBuilderDetail({
   const [adaptNavigating, setAdaptNavigating] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [targetDate, setTargetDate] = useState(workout.date);
+
+  /**
+   * Registro dell'esecuzione in palestra. Si carica una volta per (atleta, giorno) e si passa
+   * alla scheda: ogni esercizio ne pesca le proprie righe, senza una query per riquadro.
+   * In scope coach i controlli restano, ma in sola lettura — registra chi si allena.
+   */
+  const [setLog, setSetLog] = useState<ExerciseSetLogRow[]>([]);
+  const [setLogToken, setSetLogToken] = useState(0);
+  useEffect(() => {
+    if (!athleteId) {
+      setSetLog([]);
+      return;
+    }
+    const db = createEmpathyBrowserSupabase();
+    if (!db) return;
+    let alive = true;
+    void loadExerciseSetLog(db, athleteId, workout.date).then((rows) => {
+      if (alive) setSetLog(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [athleteId, workout.date, setLogToken]);
   const [calendarBusy, setCalendarBusy] = useState<"copy" | "move" | null>(null);
   const [calendarActionMsg, setCalendarActionMsg] = useState<string | null>(null);
   const [moveConfirmOpen, setMoveConfirmOpen] = useState(false);
@@ -503,7 +528,21 @@ export function CalendarPlannedBuilderDetail({
             >
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-200">{t("gymProgramLikeBuilder")}</p>
               <div className="mt-4">
-                <Pro2GymSchedaBlockList contract={contract} />
+                <Pro2GymSchedaBlockList
+                  contract={contract}
+                  log={
+                    athleteId
+                      ? {
+                          athleteId,
+                          date: workout.date,
+                          plannedWorkoutId: workout.id ?? null,
+                          rows: setLog,
+                          readOnly: coachControls,
+                          onSaved: () => setSetLogToken((v) => v + 1),
+                        }
+                      : null
+                  }
+                />
               </div>
               {!gymScheda && coachControls ? (
                 <p className="mt-3 text-xs text-amber-200/90">

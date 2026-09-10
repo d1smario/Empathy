@@ -5342,5 +5342,27 @@
     "reshapeHint": "Cambiare la durata di una fase sposta le settimane successive; le fasi già iniziate restano bloccate.",
     "reshapeStarted": "Fase già iniziata: la durata non è più modificabile.",
     "reshapeError": "Modifica durate non riuscita: {message}"
+  },
+  "GymExerciseSetLogger": {
+    "title": "Registra quello che hai fatto",
+    "titleReadOnly": "Registrato dall'atleta",
+    "setLabel": "{n}ª",
+    "repsLabel": "Ripetizioni",
+    "repsPlaceholder": "rip",
+    "repsUnit": "rip",
+    "weightLabel": "Carico in chilogrammi",
+    "weightPlaceholder": "kg",
+    "markDone": "Fatta",
+    "markedDone": "✓ Fatta",
+    "markSkipped": "Saltata",
+    "forget": "annulla",
+    "stateDone": "fatta",
+    "stateSkipped": "saltata",
+    "stateNoAnswer": "non registrata",
+    "notANumber": "Scrivi un numero, o lascia vuoto.",
+    "repsOutOfRange": "Ripetizioni fuori scala: controlla il numero.",
+    "weightOutOfRange": "Carico fuori scala: controlla il numero.",
+    "setOutOfRange": "Numero di serie fuori scala.",
+    "saveFailed": "Non sono riuscito a salvare. Riprova."
   }
 }

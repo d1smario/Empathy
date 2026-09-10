@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import type { Pro2BuilderBlockContract, Pro2BuilderSessionContract } from "@/lib/training/builder/pro2-session-contract";
 import { GymExerciseMediaThumb } from "@/components/training/GymExerciseMediaThumb";
 import { useExerciseItalianLabels } from "@/lib/training/use-exercise-italian-labels";
+import { GymExerciseSetLogger } from "@/components/training/GymExerciseSetLogger";
+import type { ExerciseSetLogRow } from "@/lib/training/exercise-set-log";
 
 function gymRxLine(
   rx: NonNullable<Pro2BuilderBlockContract["gymRx"]>,
@@ -23,9 +25,23 @@ function gymRxLine(
 export function Pro2GymSchedaBlockList({
   contract,
   compact = false,
+  log,
 }: {
   contract: Pro2BuilderSessionContract;
   compact?: boolean;
+  /**
+   * Registro dell'esecuzione. Assente = la scheda si mostra e basta, come prima: gli
+   * elenchi fitti e le anteprime non chiedono a nessuno di registrare niente.
+   */
+  log?: {
+    athleteId: string;
+    date: string;
+    plannedWorkoutId?: string | null;
+    rows: ExerciseSetLogRow[];
+    /** In scope coach/admin si legge soltanto: registra chi si allena. */
+    readOnly?: boolean;
+    onSaved?: () => void;
+  } | null;
 }) {
   const t = useTranslations("Pro2GymSchedaBlockList");
   const blocks = (contract.blocks ?? []).filter((b) => b.gymRx || b.kind === "gym_exercise" || b.kind === "strength_sets");
@@ -93,6 +109,20 @@ export function Pro2GymSchedaBlockList({
                 )}
                 {block.notes && block.gymRx ? (
                   <p className="mt-2 text-[0.65rem] text-gray-500">{block.notes}</p>
+                ) : null}
+                {log && !compact ? (
+                  <GymExerciseSetLogger
+                    athleteId={log.athleteId}
+                    date={log.date}
+                    plannedWorkoutId={log.plannedWorkoutId ?? null}
+                    blockId={block.id || `gym-block-${idx}`}
+                    exerciseName={block.label ?? block.gymRx?.exerciseName ?? `Esercizio ${idx + 1}`}
+                    catalogExerciseId={block.gymRx?.catalogExerciseId ?? null}
+                    prescribedSets={block.gymRx?.sets ?? null}
+                    logged={log.rows}
+                    readOnly={log.readOnly}
+                    onSaved={log.onSaved}
+                  />
                 ) : null}
                 {(() => {
                   // Come si esegue e l'errore tipico: senza, il nome da solo aiuta chi già

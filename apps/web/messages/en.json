@@ -5342,5 +5342,27 @@
     "reshapeHint": "Changing a phase length shifts the following weeks; phases already started stay locked.",
     "reshapeStarted": "Phase already started: its length can no longer be changed.",
     "reshapeError": "Could not change durations: {message}"
+  },
+  "GymExerciseSetLogger": {
+    "title": "Log what you did",
+    "titleReadOnly": "Logged by the athlete",
+    "setLabel": "#{n}",
+    "repsLabel": "Reps",
+    "repsPlaceholder": "reps",
+    "repsUnit": "reps",
+    "weightLabel": "Load in kilograms",
+    "weightPlaceholder": "kg",
+    "markDone": "Done",
+    "markedDone": "✓ Done",
+    "markSkipped": "Skipped",
+    "forget": "undo",
+    "stateDone": "done",
+    "stateSkipped": "skipped",
+    "stateNoAnswer": "not logged",
+    "notANumber": "Enter a number, or leave it empty.",
+    "repsOutOfRange": "Reps out of range: check the number.",
+    "weightOutOfRange": "Load out of range: check the number.",
+    "setOutOfRange": "Set number out of range.",
+    "saveFailed": "Could not save. Try again."
   }
 }
