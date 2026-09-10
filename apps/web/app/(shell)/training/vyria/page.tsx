@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 /**
  * Virya: vista di lungo periodo dello strumento di programmazione. Il coach la
  * raggiunge dalla scheda atleta (tab «Virya» in ScopedTrainingTabs); questa rotta
- * account-level resta viva per lo staff. La gate coach/admin vive nella view
- * (l'atleta viene rimandato al Calendario).
+ * account-level resta viva per lo staff. La difesa coach/admin è nel layout (404 dal
+ * server); il rimando al Calendario dentro la vista resta come cortesia, non come gate.
  */
 export default function TrainingViryaPage() {
   return <TrainingViryaPageView />;
