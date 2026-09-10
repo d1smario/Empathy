@@ -4,6 +4,11 @@ import { computeNutritionDailyEnergyModel } from "@/lib/nutrition/daily-energy-s
 import { computeReduction, type Reduction } from "@/lib/nutrition/reduction-engine";
 import { loadNutritionAthleteProfile } from "@/lib/nutrition/load-nutrition-athlete-profile";
 import { getScheduledTimeFromPlannedRow, parsePro2BuilderSessionFromNotes } from "@/lib/training/builder/pro2-session-notes";
+import {
+  localMinutesFromIso,
+  resolveSkippedPlannedIds,
+  type ExecutedTraceForSkip,
+} from "@/lib/nutrition/skipped-session-detector";
 
 export type ReductionRunResult =
   | { ok: true; reduction: Reduction; skippedCount: number; persisted: "upsert" | "cleared" | "noop" }
@@ -76,7 +81,15 @@ export async function runDailyReduction(
   db: SupabaseClient,
   athleteId: string,
   date: string,
-  opts?: { nowLocalMin?: number },
+  opts?: {
+    nowLocalMin?: number;
+    /**
+     * Consumo attivo misurato dal dispositivo. Iniettabile perché il lettore vero passa da
+     * `server-only` e non si può caricare in un test di modulo; di default si importa a
+     * richiesta, solo quando la prova serve davvero.
+     */
+    loadObservedActiveKcal?: (db: SupabaseClient, athleteId: string, date: string) => Promise<number | null>;
+  },
 ): Promise<ReductionRunResult> {
   const [nutritionProfile, { data: plannedRows }, { data: executedRows }, { data: planRow }] = await Promise.all([
     // Fonte unica profilo nutrizione (timezone e routine_config inclusi): ftp_watts da
@@ -88,7 +101,13 @@ export async function runDailyReduction(
       .select("id, date, type, duration_minutes, tss_target, kcal_target, notes")
       .eq("athlete_id", athleteId)
       .eq("date", date),
-    db.from("executed_workouts").select("planned_workout_id").eq("athlete_id", athleteId).eq("date", date),
+    // Orario e durata, non solo il collegamento: la sincronizzazione Garmin non scrive mai
+    // `planned_workout_id`, quindi da solo quel campo dichiara «saltato» chi si è allenato.
+    db
+      .from("executed_workouts")
+      .select("planned_workout_id, started_at, duration_minutes")
+      .eq("athlete_id", athleteId)
+      .eq("date", date),
     db
       .from("nutrition_plan")
       .select("id, meal(slot, kcal_target)")
@@ -118,21 +137,27 @@ export async function runDailyReduction(
   const tz = typeof p.timezone === "string" ? p.timezone : null;
   const nowMin = opts?.nowLocalMin ?? nowLocalMinutes(tz);
 
-  const executedPlannedIds = new Set(
-    ((executedRows ?? []) as Array<Record<string, unknown>>).map((e) => String(e.planned_workout_id ?? "")).filter(Boolean),
-  );
+  const executed: ExecutedTraceForSkip[] = ((executedRows ?? []) as Array<Record<string, unknown>>).map((e) => ({
+    plannedWorkoutId: e.planned_workout_id != null ? String(e.planned_workout_id) : null,
+    startedAtMin: localMinutesFromIso(e.started_at, tz),
+    durationMin: num(e.duration_minutes),
+  }));
 
-  // Skip = finestra passata (orario + durata + margine) e nessun executed collegato.
-  const skippedIds = new Set<string>();
-  for (const row of planned) {
-    const sched = getScheduledTimeFromPlannedRow(row as unknown as PlannedWorkoutDbRow, routineConfig);
-    const schedMin = hhmmToMin(sched);
-    if (schedMin == null) continue; // senza orario non dichiariamo skip
-    const dur = num(row.duration_minutes) ?? 60;
-    if (schedMin + dur + SKIP_MARGIN_MIN < nowMin && !executedPlannedIds.has(String(row.id ?? ""))) {
-      skippedIds.add(String(row.id ?? ""));
-    }
-  }
+  /**
+   * Skip = finestra passata E nessuna traccia di allenamento riconducibile alla seduta.
+   * Il collegamento resta la prova migliore ma non è più l'unica: vale anche un'esecuzione
+   * non collegata che cade nella finestra. Vedi `skipped-session-detector`.
+   */
+  const { skippedIds } = resolveSkippedPlannedIds({
+    planned: planned.map((row) => ({
+      id: String(row.id ?? ""),
+      scheduledMin: hhmmToMin(getScheduledTimeFromPlannedRow(row as unknown as PlannedWorkoutDbRow, routineConfig)),
+      durationMin: num(row.duration_minutes) ?? 60,
+    })),
+    executed,
+    nowLocalMin: nowMin,
+    marginMin: SKIP_MARGIN_MIN,
+  });
 
   if (skippedIds.size === 0) {
     await clearReduction();
@@ -158,6 +183,35 @@ export async function runDailyReduction(
     plannedTraining: toPlannedTraining(planned.filter((r) => !skippedIds.has(String(r.id ?? "")))),
   });
   const skippedMealKcal = all.totals.mealsKcal - remaining.totals.mealsKcal;
+
+  /**
+   * SECONDA PROVA: quanto ha speso davvero, secondo il dispositivo.
+   *
+   * Il rilevatore sopra guarda le sedute registrate; questa guarda il consumo. Se le calorie
+   * attive misurate coprono già l'energia che il modello attribuisce alle sedute che stiamo
+   * per dichiarare saltate, l'atleta quell'energia l'ha spesa — comunque l'abbia spesa — e
+   * togliergli il cibo sarebbe sbagliato. Confronto fra grandezze omogenee, nessuna soglia
+   * inventata. Senza dato dal dispositivo la prova non si applica e decide il rilevatore.
+   */
+  const skippedTrainingKcal = Math.round(all.totals.dailyKcal - remaining.totals.dailyKcal);
+  if (skippedTrainingKcal > 0) {
+    const readObserved =
+      opts?.loadObservedActiveKcal ??
+      (async (c: SupabaseClient, a: string, d: string) =>
+        (await import("@/lib/nutrition/load-observed-active-kcal")).loadObservedActiveKcal(c, a, d));
+    const observedActiveKcal = await readObserved(db, athleteId, date).catch(() => null);
+    if (observedActiveKcal != null && observedActiveKcal >= skippedTrainingKcal) {
+      await clearReduction();
+      return {
+        ok: true,
+        reduction: { triggered: false, reductionKcal: 0, reason: null },
+        // Zero: alla fine nessuna seduta è dichiarata saltata. I candidati c'erano, il
+        // dispositivo li ha smentiti.
+        skippedCount: 0,
+        persisted: "cleared",
+      };
+    }
+  }
 
   // Capacità dei pasti ancora davanti (dal piano persistito).
   const meals = ((planRow as { meal?: Array<Record<string, unknown>> } | null)?.meal ?? []) as Array<Record<string, unknown>>;

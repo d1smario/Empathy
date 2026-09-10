@@ -64,3 +64,77 @@ test("troppo tardi: skip ma nessun pasto rimane → niente", async () => {
     assert.equal(r.reduction.triggered, false); // cap 0 → niente
   }
 });
+
+/**
+ * I due casi che in produzione hanno tagliato i pasti a un atleta che si era allenato
+ * (16 e 30 agosto 2026): esecuzione registrata da Garmin, quindi SENZA `planned_workout_id`,
+ * perché quel campo lo scrive solo l'import manuale.
+ */
+test("Garmin non collega mai: un'esecuzione nella finestra non è più uno skip", async () => {
+  const db = makeDb({
+    athlete_profiles: PROFILE,
+    physiological_profiles: PHYSIO,
+    planned_workouts: PLANNED,
+    // Seduta prevista alle 06:00; partita alle 06:15 (04:15Z, ora di Roma d'estate).
+    executed_workouts: [{ planned_workout_id: null, started_at: "2026-07-12T04:15:00.000Z", duration_minutes: 95 }],
+    nutrition_plan: PLAN,
+  });
+  const r = await runDailyReduction(db, "a1", "2026-07-12", { nowLocalMin: 600 });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.skippedCount, 0, "l'atleta si era allenato: nessun pasto va tagliato");
+    assert.equal(r.reduction.triggered, false);
+  }
+});
+
+test("attività lontana dalla finestra: lo skip resta, com'è giusto", async () => {
+  const db = makeDb({
+    athlete_profiles: PROFILE,
+    physiological_profiles: PHYSIO,
+    planned_workouts: PLANNED,
+    // Camminata delle 14:00 (12:00Z): non è la seduta delle 06:00.
+    executed_workouts: [{ planned_workout_id: null, started_at: "2026-07-12T12:00:00.000Z", duration_minutes: 30 }],
+    nutrition_plan: PLAN,
+  });
+  const r = await runDailyReduction(db, "a1", "2026-07-12", {
+    nowLocalMin: 20 * 60,
+    loadObservedActiveKcal: async () => null, // nessun dato dal dispositivo
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.skippedCount, 1);
+});
+
+test("il dispositivo smentisce lo skip: consumo misurato ≥ energia della seduta", async () => {
+  const db = makeDb({
+    athlete_profiles: PROFILE,
+    physiological_profiles: PHYSIO,
+    planned_workouts: PLANNED,
+    executed_workouts: [],
+    nutrition_plan: PLAN,
+  });
+  const r = await runDailyReduction(db, "a1", "2026-07-12", {
+    nowLocalMin: 600,
+    loadObservedActiveKcal: async () => 5000, // ha speso più di quanto la seduta valesse
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.reduction.triggered, false, "l'energia l'ha spesa: non si toglie cibo");
+    assert.equal(r.skippedCount, 0);
+  }
+});
+
+test("consumo misurato basso: la riduzione resta", async () => {
+  const db = makeDb({
+    athlete_profiles: PROFILE,
+    physiological_profiles: PHYSIO,
+    planned_workouts: PLANNED,
+    executed_workouts: [],
+    nutrition_plan: PLAN,
+  });
+  const r = await runDailyReduction(db, "a1", "2026-07-12", {
+    nowLocalMin: 600,
+    loadObservedActiveKcal: async () => 50,
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.reduction.triggered, true);
+});
