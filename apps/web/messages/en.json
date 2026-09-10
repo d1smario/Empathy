@@ -4691,7 +4691,9 @@
     "bloodLabel": "Blood",
     "microbiotaLabel": "Microbiota",
     "epigeneticsLabel": "Epigenetics",
-    "totalScoreLabel": "Total score"
+    "totalScoreLabel": "Total score",
+    "computedOn": "Computed on {count} markers from the report",
+    "outOfRange": "{count} outside the reference range"
   },
   "HealthStagingReviewLink": {
     "availableInDedicatedTab": "Available in the dedicated tab (v2)",

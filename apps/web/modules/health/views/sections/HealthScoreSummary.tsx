@@ -6,6 +6,11 @@ export interface HealthGlobalScores {
   microbiota: number | null;
   epigenetica: number | null;
   totale: number | null;
+  /** Su quanti marcatori è stato calcolato. Un punteggio senza il suo denominatore è un'opinione. */
+  markerCount?: number;
+  /** Il marcatore che ha pesato di più verso il basso: spiega il numero invece di lasciarlo lì. */
+  worstField?: string | null;
+  outOfRangeCount?: number;
 }
 
 /** Sintesi unica dello stato di salute (health score globale). */
@@ -20,10 +25,24 @@ export function HealthScoreSummary({ scores }: { scores: HealthGlobalScores }) {
       <h2 className="text-center font-mono text-[0.65rem] font-bold uppercase tracking-[0.2em] text-rose-400">
         {t("title")}
       </h2>
-      {!SHOW_HEALTH_DEMO_FALLBACK_DATA ? (
+      {/*
+        Il denominatore accanto al numero: «su 25 marcatori» dice quanto vale quel 100.
+        Senza referti utilizzabili resta il suggerimento di prima — non un punteggio inventato.
+      */}
+      {scores.markerCount && scores.markerCount > 0 ? (
         <p className="mx-auto mt-3 max-w-lg text-center text-sm text-gray-400">
-          {t("scoresHint")}
+          {t("computedOn", { count: scores.markerCount })}
+          {scores.outOfRangeCount && scores.outOfRangeCount > 0 ? (
+            <>
+              {" · "}
+              <span className="text-amber-300/90">
+                {t("outOfRange", { count: scores.outOfRangeCount })}
+              </span>
+            </>
+          ) : null}
         </p>
+      ) : !SHOW_HEALTH_DEMO_FALLBACK_DATA ? (
+        <p className="mx-auto mt-3 max-w-lg text-center text-sm text-gray-400">{t("scoresHint")}</p>
       ) : null}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {([

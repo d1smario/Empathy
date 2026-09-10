@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { extractScorableMarkers, scoreArea, scoreTotal } from "@/lib/health/health-score";
 import { Activity, HeartPulse, Microscope, Wrench } from "lucide-react";
 import { Pro2ModulePageShell } from "@/components/shell/Pro2ModulePageShell";
 import { moduleEyebrowClass } from "@/core/navigation/module-ui-accent";
@@ -366,20 +367,49 @@ export default function HealthPageView() {
   const oxidativeRadar = useMemo(() => oxidativeStressRadarFromPanel(latestOxidative), [latestOxidative]);
   const endocrineRadar = useMemo(() => endocrineRadarFromPanel(latestHormones), [latestHormones]);
 
+  /**
+   * I quattro punteggi li calcoliamo noi, dagli intervalli di riferimento che il laboratorio
+   * ha stampato accanto a ogni valore (vedi `lib/health/health-score`). Prima si cercava dentro
+   * il referto una chiave col punteggio già fatto: nessun laboratorio la scrive, quindi le
+   * caselle mostravano sempre un trattino.
+   *
+   * Se un referto porta ancora un punteggio già calcolato, quello vince: è un dato dichiarato,
+   * non una nostra stima. Senza marcatori utilizzabili non esce nessun numero.
+   */
   const globalScores = useMemo(() => {
-    const blood = findLatestUsefulPanel((p) => p.type === "blood");
-    const micro = findLatestUsefulPanel((p) => p.type === "microbiota");
-    const epi = findLatestUsefulPanel((p) => p.type === "epigenetics");
-    const pick = (row: HealthPanelTimelineRow | undefined, keys: string[], demoFallback: number): number | null => {
-      const n = readNum((row?.values as Record<string, unknown>) ?? null, keys);
-      if (n != null) return Math.round(Math.min(100, Math.max(0, n)));
-      return SHOW_HEALTH_DEMO_FALLBACK_DATA ? demoFallback : null;
+    const areaFor = (row: HealthPanelTimelineRow | undefined, declaredKeys: string[], demoFallback: number) => {
+      const declared = readNum((row?.values as Record<string, unknown>) ?? null, declaredKeys);
+      if (declared != null) {
+        return { score: Math.round(Math.min(100, Math.max(0, declared))), markerCount: 0, worst: null, outOfRange: [] };
+      }
+      const computed = scoreArea(extractScorableMarkers(row?.values ?? null));
+      if (computed.score != null) return computed;
+      return SHOW_HEALTH_DEMO_FALLBACK_DATA
+        ? { score: demoFallback, markerCount: 0, worst: null, outOfRange: [] }
+        : computed;
     };
+
+    const ematici = areaFor(findLatestUsefulPanel((p) => p.type === "blood"), ["health_score_ematici", "score_ematici"], 92);
+    const microbiota = areaFor(
+      findLatestUsefulPanel((p) => p.type === "microbiota"),
+      ["health_score_microbiota", "score_microbiota", "diversity_score"],
+      88,
+    );
+    const epigenetica = areaFor(
+      findLatestUsefulPanel((p) => p.type === "epigenetics"),
+      ["health_score_epigenetica", "score_epigenetica"],
+      85,
+    );
+
     return {
-      ematici: pick(blood, ["health_score_ematici", "score_ematici"], 92),
-      microbiota: pick(micro, ["health_score_microbiota", "score_microbiota", "diversity_score"], 88),
-      epigenetica: pick(epi, ["health_score_epigenetica", "score_epigenetica"], 85),
-      totale: pick(blood, ["health_score_totale", "score_totale"], 90),
+      ematici: ematici.score,
+      microbiota: microbiota.score,
+      epigenetica: epigenetica.score,
+      totale: scoreTotal([ematici.score, microbiota.score, epigenetica.score]),
+      /** Quanti marcatori hanno prodotto il numero, e quale ha pesato di più verso il basso. */
+      markerCount: ematici.markerCount + microbiota.markerCount + epigenetica.markerCount,
+      worstField: ematici.worst?.field ?? microbiota.worst?.field ?? epigenetica.worst?.field ?? null,
+      outOfRangeCount: ematici.outOfRange.length + microbiota.outOfRange.length + epigenetica.outOfRange.length,
     };
   }, [findLatestUsefulPanel]);
 

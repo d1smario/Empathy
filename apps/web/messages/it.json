@@ -4691,7 +4691,9 @@
     "bloodLabel": "Ematici",
     "microbiotaLabel": "Microbiota",
     "epigeneticsLabel": "Epigenetica",
-    "totalScoreLabel": "Score totale"
+    "totalScoreLabel": "Score totale",
+    "computedOn": "Calcolato su {count} marcatori del referto",
+    "outOfRange": "{count} fuori dall'intervallo di riferimento"
   },
   "HealthStagingReviewLink": {
     "availableInDedicatedTab": "Disponibile nella scheda dedicata (v2)",
