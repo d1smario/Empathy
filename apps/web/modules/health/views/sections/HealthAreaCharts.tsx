@@ -55,20 +55,21 @@ export interface HealthAreaChartsProps {
   hasInflammationPanel: boolean;
   microbiotaRadar: RadarResult;
   hasMicrobiotaPanel: boolean;
-  /**
-   * Solo l'atleta carica i propri referti (HealthPageView: `role === "private"`), e il pulsante
-   * sta nella scheda «Stato di salute». Qui serve per non dire «carica un referto» a chi non ha
-   * nessun modo di farlo: a coach e admin lo stato vuoto spiega invece di chi è il caricamento.
-   */
-  canUpload: boolean;
 }
 
-/** Rimanda alla sezione unica dei valori puntuali invece di ristampare i raw qui. */
-function PointToLatest({ children }: { children: React.ReactNode }) {
+/**
+ * Rimanda alla sezione unica dei valori puntuali invece di ristampare i raw qui.
+ *
+ * `hint` è la seconda riga dei vuoti che chiedono di caricare un referto: il pulsante non sta in
+ * questa scheda ma in «Stato di salute», e un vuoto che ordina un'azione senza dire dove farla si
+ * legge come una schermata rotta. Niente hint dove un referto c'è già (rami «…Mapped»).
+ */
+function PointToLatest({ children, hint }: { children: React.ReactNode; hint?: string | null }) {
   return (
-    <p className="flex h-full min-h-[220px] items-center justify-center px-4 text-center text-sm text-gray-400">
-      {children}
-    </p>
+    <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-1 px-4 text-center">
+      <p className="text-sm text-gray-400">{children}</p>
+      {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
+    </div>
   );
 }
 
@@ -90,7 +91,6 @@ export function HealthAreaCharts({
   hasInflammationPanel,
   microbiotaRadar,
   hasMicrobiotaPanel,
-  canUpload,
 }: HealthAreaChartsProps) {
   const t = useTranslations("HealthAreaCharts");
   return (
@@ -115,7 +115,7 @@ export function HealthAreaCharts({
             </h4>
             <div className="h-[220px] w-full sm:h-[260px]">
               {epigeneticRings.length === 0 ? (
-                <PointToLatest>{canUpload ? t("epigeneticsUploadEmpty") : t("areaEmptyReadOnly")}</PointToLatest>
+                <PointToLatest hint={t("uploadLivesInStatusTab")}>{t("epigeneticsUploadEmpty")}</PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadialBarChart
@@ -156,12 +156,10 @@ export function HealthAreaCharts({
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {epigeneticRadar.rows.length === 0 ? (
-                <PointToLatest>
-                  {canUpload
-                    ? t.rich("epigeneticsRadarEmpty", {
-                        code: (chunks) => <code className="mx-1 text-violet-300">{chunks}</code>,
-                      })
-                    : t("areaEmptyReadOnly")}
+                <PointToLatest hint={t("uploadLivesInStatusTab")}>
+                  {t.rich("epigeneticsRadarEmpty", {
+                    code: (chunks) => <code className="mx-1 text-violet-300">{chunks}</code>,
+                  })}
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -185,12 +183,10 @@ export function HealthAreaCharts({
           </h4>
           <div className="min-h-[260px] w-full">
             {epigeneticTrend.rows.length === 0 ? (
-              <PointToLatest>
-                {canUpload
-                  ? t.rich("epigeneticsTrendEmpty", {
-                      code: (chunks) => <code className="mx-1 text-violet-300">{chunks}</code>,
-                    })
-                  : t("areaEmptyReadOnly")}
+              <PointToLatest hint={t("uploadLivesInStatusTab")}>
+                {t.rich("epigeneticsTrendEmpty", {
+                  code: (chunks) => <code className="mx-1 text-violet-300">{chunks}</code>,
+                })}
               </PointToLatest>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
@@ -241,12 +237,8 @@ export function HealthAreaCharts({
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {endocrineRadar.rows.length === 0 ? (
-                <PointToLatest>
-                  {hasHormonesPanel
-                    ? t("endocrineRadarMapped")
-                    : canUpload
-                      ? t("endocrineRadarNoPanel")
-                      : t("areaEmptyReadOnly")}
+                <PointToLatest hint={hasHormonesPanel ? null : t("uploadLivesInStatusTab")}>
+                  {hasHormonesPanel ? t("endocrineRadarMapped") : t("endocrineRadarNoPanel")}
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -267,12 +259,8 @@ export function HealthAreaCharts({
             </h4>
             <div className="w-full min-w-0" style={{ height: 300 }}>
               {hormonesBar.rows.length === 0 ? (
-                <PointToLatest>
-                  {hasHormonesPanel
-                    ? t("hormonesBarMapped")
-                    : canUpload
-                      ? t("hormonesBarNoData")
-                      : t("areaEmptyReadOnly")}
+                <PointToLatest hint={hasHormonesPanel ? null : t("uploadLivesInStatusTab")}>
+                  {hasHormonesPanel ? t("hormonesBarMapped") : t("hormonesBarNoData")}
                 </PointToLatest>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -301,12 +289,8 @@ export function HealthAreaCharts({
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {oxidativeRadar.rows.length === 0 ? (
-            <PointToLatest>
-              {hasOxidativePanel
-                ? t("oxidativeRadarMapped")
-                : canUpload
-                  ? t("oxidativeRadarNoPanel")
-                  : t("areaEmptyReadOnly")}
+            <PointToLatest hint={hasOxidativePanel ? null : t("uploadLivesInStatusTab")}>
+              {hasOxidativePanel ? t("oxidativeRadarMapped") : t("oxidativeRadarNoPanel")}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -334,12 +318,8 @@ export function HealthAreaCharts({
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {inflammationRadar.rows.length === 0 ? (
-            <PointToLatest>
-              {hasInflammationPanel
-                ? t("inflammationRadarMapped")
-                : canUpload
-                  ? t("inflammationRadarNoPanel")
-                  : t("areaEmptyReadOnly")}
+            <PointToLatest hint={hasInflammationPanel ? null : t("uploadLivesInStatusTab")}>
+              {hasInflammationPanel ? t("inflammationRadarMapped") : t("inflammationRadarNoPanel")}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -367,12 +347,8 @@ export function HealthAreaCharts({
         </p>
         <div className="mx-auto mt-4 w-full min-w-0 max-w-none sm:max-w-lg" style={{ height: 300 }}>
           {microbiotaRadar.rows.length === 0 ? (
-            <PointToLatest>
-              {hasMicrobiotaPanel
-                ? t("microbiotaRadarMapped")
-                : canUpload
-                  ? t("microbiotaRadarNoPanel")
-                  : t("areaEmptyReadOnly")}
+            <PointToLatest hint={hasMicrobiotaPanel ? null : t("uploadLivesInStatusTab")}>
+              {hasMicrobiotaPanel ? t("microbiotaRadarMapped") : t("microbiotaRadarNoPanel")}
             </PointToLatest>
           ) : (
             <ResponsiveContainer width="100%" height="100%">

@@ -549,38 +549,40 @@ export default function HealthPageView() {
 
           {/* CARICA ESAME — spostato in fondo a «Stato di salute» */}
           <div className="space-y-6">
-            {/* Carica esame: solo l'atleta carica i propri referti; al coach/admin resta solo lo storico. */}
-            {role === "private" ? (
-              <>
-                <HealthImportSection
-                  sampleDate={sampleDate}
-                  onSampleDateChange={setSampleDate}
-                  onPickFile={onPickFile}
-                  uploadBusy={uploadBusy}
-                  loadingTimeline={loadingTimeline}
-                  timelineErr={timelineErr}
-                />
-                {toast ? (
-                  <p
-                    className={`rounded-xl border px-4 py-2 text-center text-sm ${
-                      toastTone === "warn"
-                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                    }`}
-                  >
-                    {toast}
-                  </p>
-                ) : null}
-                {/* Via di recupero quando l'upload non estrae nulla: il referto entra a mano. */}
-                <HealthManualEntrySection
-                  athleteId={athleteId}
-                  sampleDate={sampleDate}
-                  onSampleDateChange={setSampleDate}
-                  openSignal={manualEntryOpenSignal}
-                  onSubmitted={onManualEntrySubmitted}
-                />
-              </>
+            {/*
+              Carica esame: lo fa l'atleta sul proprio profilo E il coach per un atleta che segue.
+              Non è una scorciatoia sulla validazione: il referto entra come PROPOSTA e la conferma
+              resta a chi l'ha inserito (`decideHealthStagingConfirmation`), con `created_by` sulla
+              staging run a dire chi è stato. Qui non si decide nulla di sicurezza: il permesso lo
+              stabilisce il server (`canAccessAthleteData`) e sotto la policy `..._insert_scoped`.
+            */}
+            <HealthImportSection
+              sampleDate={sampleDate}
+              onSampleDateChange={setSampleDate}
+              onPickFile={onPickFile}
+              uploadBusy={uploadBusy}
+              loadingTimeline={loadingTimeline}
+              timelineErr={timelineErr}
+            />
+            {toast ? (
+              <p
+                className={`rounded-xl border px-4 py-2 text-center text-sm ${
+                  toastTone === "warn"
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                }`}
+              >
+                {toast}
+              </p>
             ) : null}
+            {/* Via di recupero quando l'upload non estrae nulla: il referto entra a mano. */}
+            <HealthManualEntrySection
+              athleteId={athleteId}
+              sampleDate={sampleDate}
+              onSampleDateChange={setSampleDate}
+              openSignal={manualEntryOpenSignal}
+              onSubmitted={onManualEntrySubmitted}
+            />
 
             {/* TREND NEL TEMPO — in fondo al blocco Carica esame */}
             <section id="health-storico" className="scroll-mt-20 sm:scroll-mt-28">
@@ -618,7 +620,6 @@ export default function HealthPageView() {
             hasInflammationPanel={Boolean(latestInflammation)}
             microbiotaRadar={microbiotaRadar}
             hasMicrobiotaPanel={Boolean(latestMicrobiota)}
-            canUpload={role === "private"}
           />
           {hasMatrici ? (
             <div className="space-y-3">

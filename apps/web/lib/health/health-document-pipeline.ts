@@ -193,6 +193,8 @@ export type HealthImportBlock = {
   size_bytes: number;
   status: HealthDecodeImportStatus;
   uploaded_at: string;
+  /** Chi ha caricato il file: può essere il coach, non solo l'atleta. Chi carica è poi chi conferma. */
+  uploaded_by?: string | null;
   pdf_pages?: number;
   parsed_keys: string[];
   vlm: null | {
@@ -216,6 +218,7 @@ export function buildHealthImportBlock(input: {
   sizeBytes: number;
   decode: HealthDecodeResult;
   uploadedAt?: string;
+  uploadedBy?: string | null;
 }): HealthImportBlock {
   const { filename, mime, sizeBytes, decode } = input;
   const status = decode.importStatus;
@@ -231,6 +234,7 @@ export function buildHealthImportBlock(input: {
     size_bytes: sizeBytes,
     status,
     uploaded_at: input.uploadedAt ?? new Date().toISOString(),
+    uploaded_by: input.uploadedBy ?? null,
     pdf_pages: decode.isPdf ? decode.pdfPages : undefined,
     parsed_keys: Object.keys(decode.parsed),
     vlm:

@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       mime,
       sizeBytes: buffer.length,
       decode,
+      uploadedBy: userId,
     });
     const values = buildPanelValuesPayload({ decode, importBlock });
 
