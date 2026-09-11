@@ -17,6 +17,13 @@ import {
 import type { HealthPanelTypeForParse } from "@/lib/health/lab-text-extractors";
 
 export const runtime = "nodejs";
+/**
+ * Una foto può richiedere decine di secondi fra caricamento dei modelli e lettura. L'OCR ha un
+ * suo limite più basso (`OCR_TIMEOUT_MS`, 40 s) proprio perché questo non venga mai raggiunto:
+ * se scadesse la funzione cadrebbe tutto il caricamento. Deve coincidere con
+ * `UPLOAD_ROUTE_MAX_DURATION_S` — Next vuole un letterale, un test li tiene allineati.
+ */
+export const maxDuration = 60;
 
 const NO_STORE = { "Cache-Control": "no-store" as const };
 

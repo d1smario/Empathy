@@ -34,3 +34,7 @@ node_modules/@empathy/
 .env*.local
 .env.local.bak*
 .env.local.backup*
+
+# Cache dei modelli di Tesseract (OCR referti). I modelli veri, compressi, stanno in
+# apps/web/lib/health/tessdata/*.traineddata.gz e restano tracciati.
+*.traineddata

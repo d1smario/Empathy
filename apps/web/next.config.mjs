@@ -99,6 +99,14 @@ const nextConfig = {
      * di lingua a runtime: impacchettarlo romperebbe la build. Resta esterno come
      * `pdf-parse`, e viene importato solo quando arriva davvero un'immagine.
      */
+    /**
+     * I modelli di lingua dell'OCR si leggono dal filesystem (`lib/health/tessdata`): senza
+     * questa riga il tracciamento della funzione li lascerebbe fuori, e l'OCR tornerebbe a
+     * scaricarli dalla rete a ogni avvio a freddo.
+     */
+    outputFileTracingIncludes: {
+      "/api/health/upload-document": ["./lib/health/tessdata/**/*"],
+    },
   },
   /** Alias URL (V1 / naming): virya → vyria, analyzer → analytics. */
   async redirects() {
