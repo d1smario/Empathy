@@ -4576,6 +4576,7 @@
     "epigeneticsDescDemo": " Demo data until structured values are available.",
     "donutProfile": "Donut profile",
     "epigeneticsUploadEmpty": "Upload an epigenetic report for this profile. The extracted values appear in the «Last uploaded report» section.",
+    "areaEmptyReadOnly": "No report for this area. Reports are uploaded by the athlete from their own profile.",
     "metabolicPathwaysRadar": "Metabolic pathways · radar",
     "epigeneticsRadarEmpty": "No structured epigenetic numeric data — import an <code>epigenetics</code> report.",
     "methylationTrendTitle": "Methylation / detox / repair trend",

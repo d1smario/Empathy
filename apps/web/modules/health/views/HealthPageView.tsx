@@ -618,6 +618,7 @@ export default function HealthPageView() {
             hasInflammationPanel={Boolean(latestInflammation)}
             microbiotaRadar={microbiotaRadar}
             hasMicrobiotaPanel={Boolean(latestMicrobiota)}
+            canUpload={role === "private"}
           />
           {hasMatrici ? (
             <div className="space-y-3">

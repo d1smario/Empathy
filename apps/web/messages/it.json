@@ -4576,6 +4576,7 @@
     "epigeneticsDescDemo": " Dati demo finché mancano valori strutturati.",
     "donutProfile": "Profilo a ciambelle",
     "epigeneticsUploadEmpty": "Carica un referto epigenetico per questo profilo. I valori estratti compaiono nella sezione «Ultimo referto caricato».",
+    "areaEmptyReadOnly": "Nessun referto per quest'area. I referti li carica l'atleta dal suo profilo.",
     "metabolicPathwaysRadar": "Vie metaboliche · radar",
     "epigeneticsRadarEmpty": "Nessun dato numerico epigenetico strutturato — importa un referto <code>epigenetics</code>.",
     "methylationTrendTitle": "Trend metilazione / detox / riparazione",
