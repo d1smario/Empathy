@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useActiveAthlete } from "@/lib/use-active-athlete";
 import { cn } from "@/lib/cn";
@@ -1059,13 +1059,17 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
     [executed, selectedPlanDate],
   );
 
+  // Nella lingua dell'utente e con il giorno prima del mese. Con "en-US" un italiano leggeva
+  // «Thursday, 09/10/2026» — cioè il 9 ottobre — per il 10 settembre.
+  const appLocale = useLocale();
+  const dateLocale = appLocale.toLowerCase().startsWith("en") ? "en-GB" : "it-IT";
   const selectedPlanDateLabel = useMemo(
-    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString("en-US", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }),
-    [selectedPlanDate],
+    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString(dateLocale, { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }),
+    [selectedPlanDate, dateLocale],
   );
   const selectedPlanDateShort = useMemo(
-    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", day: "2-digit", month: "2-digit" }),
-    [selectedPlanDate],
+    () => new Date(`${selectedPlanDate}T00:00:00`).toLocaleDateString(dateLocale, { weekday: "short", day: "2-digit", month: "2-digit" }),
+    [selectedPlanDate, dateLocale],
   );
   const effectiveDayContext = useMemo(
     () =>
@@ -2375,6 +2379,25 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
       persistedPlanProbe.key !== mealPlanProbeKey(athleteId ?? "", selectedPlanDate));
 
   /**
+   * Fra «lettura finita, piano assente» e «generazione partita» c'è almeno un disegno della
+   * pagina: l'effetto che avvia la generazione scatta DOPO. In quel fotogramma i target
+   * tornavano alla stima del profilo, e subito dopo al piano — il «prima un valore per un
+   * attimo, poi un altro». Lo stesso cancello puro dell'effetto, valutato qui, dice che la
+   * generazione sta per partire.
+   */
+  const mealPlanAutoGenerationImminent =
+    Boolean(athleteId) &&
+    shouldAutoGenerateMealPlan({
+      requestReady: Boolean(intelligentMealPlanRequest) && mealPlanGenerationReady,
+      missingRequirementsCount: missingRequiredOnboarding?.length ?? null,
+      probe: persistedPlanProbe,
+      expectedProbeKey: mealPlanProbeKey(athleteId ?? "", selectedPlanDate),
+      hasPlanInMemory: intelligentMealPlan != null,
+      generationLoading: intelligentMealLoading,
+      generationErrored: intelligentMealError != null,
+    });
+
+  /**
    * Generazione come EVENTO, non effetto collaterale dell'apertura (decisione 8 ago).
    * L'auto-generazione scatta SOLO dopo che la lettura read-first ha risposto (probe
    * della coppia atleta/giorno corrente) E non ha trovato payload: prima volta per il
@@ -3486,7 +3509,7 @@ export default function NutritionPageView({ subRoute }: { subRoute: NutritionSub
               selectedPlanDate={selectedPlanDate}
               setSelectedPlanDate={setSelectedPlanDate}
               platformAdminView={platformAdminView}
-              intelligentMealLoading={intelligentMealLoading}
+              intelligentMealLoading={intelligentMealLoading || mealPlanAutoGenerationImminent}
               planReadLoading={mealPlanReadLoading}
               missingRequirements={mealPlanMissingRequirements}
               intelligentMealError={intelligentMealError}

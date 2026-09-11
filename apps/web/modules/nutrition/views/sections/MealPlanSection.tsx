@@ -259,6 +259,10 @@ export function MealPlanSection({
           }}
           targetSource={planDayEnergy.source}
           planReadLoading={planReadLoading}
+          // Definitivi = il piano c'è, oppure si è finito di leggere e NON si sta generando
+          // (allora la stima resta, dichiarata come tale: è uno stato stabile, non un salto).
+          targetsPending={planDayEnergy.source !== "plan" && (planReadLoading || intelligentMealLoading)}
+          planGenerating={intelligentMealLoading}
           served={planDayEnergy.served}
           servedDeltaPct={planDayEnergy.servedDeltaPct}
           servedDiverges={planDayEnergy.servedDiverges}

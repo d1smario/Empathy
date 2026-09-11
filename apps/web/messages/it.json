@@ -2920,7 +2920,6 @@
     "kpiFatHint": "Lipidi totali",
     "servedLabel": "Nel piatto",
     "estimateExplainer": "Il piano di questo giorno non è ancora stato generato: questi numeri sono una stima calcolata dal tuo profilo, non il target di un piano. Appena il piano c'è, al loro posto compare il target su cui è stato costruito.",
-    "estimateWhileReadingPlan": "Sto leggendo il piano di questo giorno: intanto vedi la stima calcolata dal tuo profilo.",
     "consumedSoFar": "Assunto oggi:",
     "remainingOnPlanTarget": "Rimanente sul target del piano:",
     "remainingOnEstimate": "Rimanente sulla stima:",
@@ -2956,7 +2955,9 @@
     "loadingPersistedPlan": "Carico il tuo piano…",
     "preparingTodayPlan": "Preparo il piano di oggi…",
     "missingRequirementsTitle": "Per costruire il tuo piano manca ancora…",
-    "missingRequirementsHint": "Completa questi dati nel profilo: appena ci sono, Empathy prepara il piano."
+    "missingRequirementsHint": "Completa questi dati nel profilo: appena ci sono, Empathy prepara il piano.",
+    "readingPlan": "Sto leggendo il piano di questo giorno…",
+    "preparingPlan": "Sto preparando il piano di questo giorno: i numeri arrivano insieme ai pasti."
   },
   "NutritionMicronutrientGrid": {
     "vitamins": "Vitamine",

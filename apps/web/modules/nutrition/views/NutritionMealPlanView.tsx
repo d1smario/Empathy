@@ -65,6 +65,14 @@ export type NutritionMealPlanDailyTargetsProps = {
    * il mezzo secondo della query: in quella finestra si dice che il piano sta arrivando.
    */
   planReadLoading?: boolean;
+  /**
+   * I numeri definitivi non ci sono ancora: il piano si sta leggendo o si sta generando.
+   * In quella finestra la pagina non mostra la stima del profilo — sarebbe sostituita dopo un
+   * attimo da un numero diverso, ed è proprio quel salto che l'atleta vede.
+   */
+  targetsPending?: boolean;
+  /** Il piano si sta generando adesso (non solo leggendo). */
+  planGenerating?: boolean;
   dateLabel: string;
   /** Assunto del giorno dal registro diario (Diario eliminato 2026-07: vive sul Piano). */
   dayConsumed?: { kcal: number; carbs: number; protein: number; fat: number; count: number } | null;
@@ -88,6 +96,8 @@ export function NutritionMealPlanDailyTargets({
   servedDeltaPct = null,
   servedDiverges = false,
   planReadLoading = false,
+  targetsPending = false,
+  planGenerating = false,
   dateLabel,
   dayConsumed,
   round,
@@ -103,7 +113,7 @@ export function NutritionMealPlanDailyTargets({
   return (
     <div>
       <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-gray-500">
-        {fromPlan ? t("planTargetCaption") : t("estimateCaption")}
+        {fromPlan || targetsPending ? t("planTargetCaption") : t("estimateCaption")}
       </p>
       <NutritionDayKpiStrip
         targets={{
@@ -118,24 +128,28 @@ export function NutritionMealPlanDailyTargets({
             : null
         }
         dateLabel={dateLabel}
+        pending={targetsPending}
         copy={{
           energy: t("kpiEnergy"),
           carbs: t("kpiCarbs"),
           protein: t("kpiProtein"),
           fat: t("kpiFat"),
-          energyHint: fromPlan
-            ? t("planTargetOn", { date: dateLabel })
-            : t("estimateOn", { date: dateLabel }),
+          energyHint:
+            fromPlan || targetsPending
+              ? t("planTargetOn", { date: dateLabel })
+              : t("estimateOn", { date: dateLabel }),
           carbsHint: t("kpiCarbsHint"),
           proteinHint: t("kpiProteinHint"),
           fatHint: t("kpiFatHint"),
           served: t("servedLabel"),
         }}
       />
-      {!fromPlan ? (
+      {targetsPending ? (
         <p className="mt-2 text-xs leading-relaxed text-gray-400">
-          {planReadLoading ? t("estimateWhileReadingPlan") : t("estimateExplainer")}
+          {planGenerating && !planReadLoading ? t("preparingPlan") : t("readingPlan")}
         </p>
+      ) : !fromPlan ? (
+        <p className="mt-2 text-xs leading-relaxed text-gray-400">{t("estimateExplainer")}</p>
       ) : null}
       {/* NESSUNA RIGA CHE SPIEGA LO SCARTO fra target e servito, per decisione esplicita
           del proprietario (8 set). Una frase che giustifica il buco è il modo in cui un

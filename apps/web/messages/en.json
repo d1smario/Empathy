@@ -2920,7 +2920,6 @@
     "kpiFatHint": "Total fat",
     "servedLabel": "On the plate",
     "estimateExplainer": "This day has no plan yet: these numbers are an estimate from your profile, not the target of a plan. As soon as the plan lands, you will see the target it was built on instead.",
-    "estimateWhileReadingPlan": "Reading the plan for this day: meanwhile you see the estimate from your profile.",
     "consumedSoFar": "Consumed today:",
     "remainingOnPlanTarget": "Left on the plan target:",
     "remainingOnEstimate": "Left on the estimate:",
@@ -2956,7 +2955,9 @@
     "loadingPersistedPlan": "Loading your plan…",
     "preparingTodayPlan": "Preparing today's plan…",
     "missingRequirementsTitle": "To build your plan we still need…",
-    "missingRequirementsHint": "Complete these details in your profile: as soon as they are there, Empathy prepares the plan."
+    "missingRequirementsHint": "Complete these details in your profile: as soon as they are there, Empathy prepares the plan.",
+    "readingPlan": "Reading this day's plan…",
+    "preparingPlan": "Preparing this day's plan: the numbers arrive together with the meals."
   },
   "NutritionMicronutrientGrid": {
     "vitamins": "Vitamins",

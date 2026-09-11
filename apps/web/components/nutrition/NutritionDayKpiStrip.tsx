@@ -10,6 +10,7 @@ function KpiCard({
   hint,
   secondary,
   icon: Icon,
+  pending = false,
 }: {
   label: string;
   value: string;
@@ -18,6 +19,8 @@ function KpiCard({
   /** Seconda riga sotto il numero: il servito accanto al target, col suo nome. */
   secondary?: { label: string; value: string; unit: string } | null;
   icon: LucideIcon;
+  /** Il numero non è ancora quello definitivo: al suo posto un segnaposto, non un altro numero. */
+  pending?: boolean;
 }) {
   return (
     <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/[0.12] via-black/60 to-black/85 p-4 shadow-inner">
@@ -31,10 +34,14 @@ function KpiCard({
             <Icon className="h-5 w-5" strokeWidth={2.35} />
           </div>
         </div>
-        <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-amber-50">
-          {value}
-          <span className="ml-1 text-xs font-medium text-gray-500">{unit}</span>
-        </p>
+        {pending ? (
+          <div className="mt-2 h-7 w-24 animate-pulse rounded-md bg-white/10" aria-hidden />
+        ) : (
+          <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-amber-50">
+            {value}
+            <span className="ml-1 text-xs font-medium text-gray-500">{unit}</span>
+          </p>
+        )}
         {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
         {secondary ? (
           <p className="mt-1.5 border-t border-white/10 pt-1.5 text-xs text-gray-400">
@@ -85,20 +92,26 @@ type NutritionDayKpiStripProps = {
    */
   served?: NutritionDayKpiTargets | null;
   copy?: NutritionDayKpiCopy;
+  /**
+   * I numeri non sono ancora quelli definitivi (piano in lettura o in preparazione). Le caselle
+   * restano, i valori no: mostrare una stima per poi sostituirla col piano è il salto che
+   * l'utente vede come «prima un valore, poi un altro».
+   */
+  pending?: boolean;
 };
 
 /**
  * KPI giornalieri principali (stesso linguaggio visivo dei KpiCard del Builder training).
  * Due righe per card e non una: il target e, sotto, quanto c'è nel piatto.
  */
-export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: NutritionDayKpiStripProps) {
+export function NutritionDayKpiStrip({ targets, dateLabel, served, copy, pending = false }: NutritionDayKpiStripProps) {
   const kcal = Math.round(targets.kcal);
   const c = Math.round(targets.carbsG);
   const p = Math.round(targets.proteinG);
   const f = Math.round(targets.fatG);
   const servedLabel = copy?.served ?? "Nel piatto";
   const servedRow = (value: number, unit: string) =>
-    served ? { label: servedLabel, value: `${Math.round(value)}`, unit } : null;
+    served && !pending ? { label: servedLabel, value: `${Math.round(value)}`, unit } : null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -109,6 +122,7 @@ export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: Nutri
         hint={copy?.energyHint ?? (dateLabel ? `Target · ${dateLabel}` : "Budget energetico giornaliero")}
         secondary={servedRow(served?.kcal ?? 0, "kcal")}
         icon={Flame}
+        pending={pending}
       />
       <KpiCard
         label={copy?.carbs ?? "Carboidrati"}
@@ -117,6 +131,7 @@ export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: Nutri
         hint={copy?.carbsHint ?? "CHO totale"}
         secondary={servedRow(served?.carbsG ?? 0, "g")}
         icon={Wheat}
+        pending={pending}
       />
       <KpiCard
         label={copy?.protein ?? "Proteine"}
@@ -125,6 +140,7 @@ export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: Nutri
         hint={copy?.proteinHint ?? "PRO totale"}
         secondary={servedRow(served?.proteinG ?? 0, "g")}
         icon={Drumstick}
+        pending={pending}
       />
       <KpiCard
         label={copy?.fat ?? "Grassi"}
@@ -133,6 +149,7 @@ export function NutritionDayKpiStrip({ targets, dateLabel, served, copy }: Nutri
         hint={copy?.fatHint ?? "Lipidi totali"}
         secondary={servedRow(served?.fatG ?? 0, "g")}
         icon={Droplets}
+        pending={pending}
       />
     </div>
   );
