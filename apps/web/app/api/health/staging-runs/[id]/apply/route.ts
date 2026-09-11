@@ -5,7 +5,9 @@ import {
   requireAuthenticatedTrainingUser,
   supabaseForAthleteTableRead,
 } from "@/lib/auth/athlete-read-context";
-import { decideHealthStagingConfirmation } from "@/lib/auth/health-staging-confirmation-gate";
+import { decideHealthStagingConfirmation, resolveStagingInsertedBy } from "@/lib/auth/health-staging-confirmation-gate";
+import { guardConfirmedPatches } from "@/lib/health/confirmed-patch-guard";
+import { manualPlausibleRangeFor } from "@/lib/health/manual-lab-entry";
 import { persistNormalizedObservations } from "@/lib/health/health-observation-normalizer";
 import { buildAndPersistHealthCausalInteractions } from "@/lib/health/health-causal-interactions";
 import type { HealthPanelTypeForParse } from "@/lib/health/lab-text-extractors";
@@ -83,8 +85,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       confirmedPatches?: unknown;
       reason?: string;
     };
-    const confirmed = normalizeConfirmed(body.confirmedPatches);
-    if (!confirmed.length) {
+    const confirmedRaw = normalizeConfirmed(body.confirmedPatches);
+    if (!confirmedRaw.length) {
       return NextResponse.json(
         { ok: false as const, error: "no_confirmed_patches" },
         { status: 400, headers: NO_STORE },
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const { data: run, error: runErr } = await readDb
       .from("interpretation_staging_runs")
-      .select("id, athlete_id, domain, status, source_refs, candidate_bundle, proposed_structured_patches, confidence")
+      .select("id, athlete_id, domain, status, source_refs, candidate_bundle, proposed_structured_patches, confidence, created_by")
       .eq("id", runId)
       .maybeSingle();
     if (runErr) {
@@ -126,22 +128,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         { status: 500, headers: NO_STORE },
       );
     }
-    const { db, role, isPlatformAdmin, platformCoachStatus, callerAthleteId } =
-      await requireAthleteWriteContext(req, athleteId);
-    // Gate di RUOLO oltre a quello di accesso atleta: `requireAthleteWriteContext` ha già
-    // lanciato 403 se `canAccessAthleteData` nega il target (quindi qui `hasAthleteAccess` è
-    // vero per costruzione), ma quel gate da solo lascia passare l'ATLETA su se stesso — e da
-    // qui in giù si scrive con service role su tabelle che la RLS all'atleta nega. La conferma
-    // dei referti è coach-only, come già dice la UI di review.
-    // `platformCoachStatus` non è decorativo: `role` è scrivibile dall'utente sulla propria riga,
-    // solo `"approved"` prova che la promozione a coach l'ha fatta la piattaforma.
+    const { db, isPlatformAdmin } = await requireAthleteWriteContext(req, athleteId);
+    // `requireAthleteWriteContext` ha già risposto 403 se il chiamante non può toccare questo
+    // atleta; qui resta la regola di prodotto: conferma chi ha inserito i valori, chiunque sia.
+    // Il confronto è per user id (auth.uid), che il chiamante non può scriversi.
     const gate = decideHealthStagingConfirmation({
-      role,
-      isPlatformAdmin,
-      platformCoachStatus,
+      callerUserId: userId,
       hasAthleteAccess: true,
-      callerAthleteId,
-      targetAthleteId: athleteId,
+      isPlatformAdmin,
+      insertedByUserId: resolveStagingInsertedBy(run),
     });
     if (!gate.allowed) {
       return NextResponse.json(
@@ -149,6 +144,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         { status: gate.status, headers: NO_STORE },
       );
     }
+
+    // Da qui si scrive con privilegi di servizio: entra SOLO ciò che era nella proposta, con
+    // valori plausibili e nell'unità proposta. Senza questo, confermare voleva dire poter
+    // aggiungere al referto campi che nessuno aveva proposto.
+    const guarded = guardConfirmedPatches(
+      confirmedRaw,
+      asArray(run.proposed_structured_patches),
+      manualPlausibleRangeFor,
+    );
+    if (!guarded.ok) {
+      return NextResponse.json(
+        { ok: false as const, error: guarded.error, code: guarded.code, field: guarded.field },
+        { status: 400, headers: NO_STORE },
+      );
+    }
+    const confirmed = guarded.patches;
 
     const candidate = asRecord(run.candidate_bundle);
     const panelType = String(candidate.panel_type ?? "");

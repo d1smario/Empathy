@@ -2848,7 +2848,6 @@
     "reviewRejected": "Review rejected.",
     "eyebrow": "Health · Report review",
     "descriptionTech": "Assisted confirmation: the AI proposed the values, you validate them and they become the archive. Nothing enters the archive without your ok.",
-    "descriptionAthlete": "Your reports are under review. Below you'll find the values read: they become part of your archive after validation by the coach.",
     "backToHealth": "Back to Health",
     "availableInDedicatedTab": "Available in the dedicated tab (v2)",
     "labDetected": "Lab detected: {provider}",
@@ -2871,8 +2870,10 @@
     "reject": "Reject",
     "saving": "Saving…",
     "confirm": "Confirm",
-    "awaitingCoachValidation": "These values are awaiting validation by your coach before entering the archive.",
-    "backToHealthArchive": "→ Back to the Health archive"
+    "backToHealthArchive": "→ Back to the Health archive",
+    "descriptionConfirm": "Check the values read from the report: you can correct or exclude them. They enter the archive once you confirm them.",
+    "descriptionOtherInserter": "These values are under review. Whoever entered them confirms them; until then they stay out of the archive.",
+    "awaitingInserterConfirmation": "Waiting for confirmation from whoever entered the values."
   },
   "MealPlanV2PreviewPanel": {
     "headerLabel": "Nutrition V2 · preview (beta)",

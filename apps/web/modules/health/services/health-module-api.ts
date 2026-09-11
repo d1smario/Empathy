@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveStagingInsertedBy } from "@/lib/auth/health-staging-confirmation-gate";
 import { buildSupabaseAuthHeaders } from "@/lib/auth/client-auth";
 import { createEmpathyBrowserSupabase } from "@/lib/supabase/browser";
 import { isMissingRelationError } from "@/lib/supabase/missing-relation-error";
@@ -289,6 +290,8 @@ export type HealthStagingRunDetail = {
   domain: string;
   status: string;
   triggerSource: string | null;
+  /** Chi ha inserito i valori: è l'unico che può confermarli (o un admin, se è ignoto). */
+  insertedByUserId: string | null;
   candidateBundle: Record<string, unknown> | null;
   proposedPatches: Array<Record<string, unknown>>;
   confidence: number | null;
@@ -353,6 +356,7 @@ export async function fetchHealthStagingRunDetail(runId: string): Promise<{
     domain: String(r.domain ?? ""),
     status: String(r.status ?? ""),
     triggerSource: typeof r.trigger_source === "string" ? r.trigger_source : null,
+    insertedByUserId: resolveStagingInsertedBy(r),
     candidateBundle:
       r.candidate_bundle && typeof r.candidate_bundle === "object" && !Array.isArray(r.candidate_bundle)
         ? (r.candidate_bundle as Record<string, unknown>)

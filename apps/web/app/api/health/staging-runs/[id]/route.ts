@@ -7,7 +7,7 @@ import {
   requireAthleteWriteContext,
   supabaseForAthleteTableRead,
 } from "@/lib/auth/athlete-read-context";
-import { decideHealthStagingConfirmation } from "@/lib/auth/health-staging-confirmation-gate";
+import { decideHealthStagingConfirmation, resolveStagingInsertedBy } from "@/lib/auth/health-staging-confirmation-gate";
 import { getHealthUploadsBucket } from "@/lib/health/health-upload-storage";
 import { isMissingRelationError } from "@/lib/supabase/missing-relation-error";
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const { data: run, error: runErr } = await readDb
       .from("interpretation_staging_runs")
       .select(
-        "id, athlete_id, domain, status, trigger_source, source_refs, candidate_bundle, proposed_structured_patches, confidence, created_at, updated_at",
+        "id, athlete_id, domain, status, trigger_source, source_refs, candidate_bundle, proposed_structured_patches, confidence, created_at, updated_at, created_by",
       )
       .eq("id", runId)
       .maybeSingle();
@@ -224,7 +224,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const readDb = supabaseForAthleteTableRead(rlsClient);
     const { data: run, error: runErr } = await readDb
       .from("interpretation_staging_runs")
-      .select("id, athlete_id, domain, status, trigger_source, source_refs, candidate_bundle, proposed_structured_patches, confidence")
+      .select("id, athlete_id, domain, status, trigger_source, source_refs, candidate_bundle, proposed_structured_patches, confidence, created_by")
       .eq("id", runId)
       .maybeSingle();
 
@@ -236,20 +236,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const athleteId = String(run.athlete_id ?? "");
-    const { db, role, isPlatformAdmin, platformCoachStatus, callerAthleteId } =
-      await requireAthleteWriteContext(req, athleteId);
-    // Stesso gate della rotta `/apply`: chiudere una porta sola non serve a nulla, questa PATCH
-    // promuove la run a `committed` (+ audit + manual_actions) scrivendo con service role.
-    // `requireAthleteWriteContext` copre solo l'accesso all'atleta — che l'atleta ha su se stesso.
-    // `platformCoachStatus` non è decorativo: `role` è scrivibile dall'utente sulla propria riga,
-    // solo `"approved"` prova che la promozione a coach l'ha fatta la piattaforma.
+    const { db, isPlatformAdmin } = await requireAthleteWriteContext(req, athleteId);
+    // Stessa regola della rotta `/apply`: questa PATCH chiude la revisione (anche promuovendola a
+    // `committed`, con scrittura di servizio), quindi decide chi ha inserito i valori — per
+    // user id, non per ruolo. I valori che una PATCH promuove sono quelli della proposta
+    // salvata, non arrivano dal client.
     const gate = decideHealthStagingConfirmation({
-      role,
-      isPlatformAdmin,
-      platformCoachStatus,
+      callerUserId: userId,
       hasAthleteAccess: true,
-      callerAthleteId,
-      targetAthleteId: athleteId,
+      isPlatformAdmin,
+      insertedByUserId: resolveStagingInsertedBy(run),
     });
     if (!gate.allowed) {
       return NextResponse.json(

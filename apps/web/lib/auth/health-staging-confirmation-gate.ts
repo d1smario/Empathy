@@ -1,135 +1,99 @@
 /**
- * PRO2 — **Gate di conferma referti** (staging run → archivio clinico).
+ * PRO2 — **Gate di conferma referti** (revisione → archivio).
  *
- * Il contratto di prodotto è coach-only: la UI (`HealthStagingReviewView`) nasconde all'atleta
- * i bottoni Conferma/Rifiuta e gli scrive «in attesa di validazione dal tuo coach». Questo modulo
- * è la stessa regola messa **lato server**, dove conta: le rotte
- * `POST /api/health/staging-runs/[id]/apply` e `PATCH /api/health/staging-runs/[id]` scrivono con
- * service role su tabelle che la RLS all'atleta nega.
+ * REGOLA (decisione di prodotto, 11 settembre 2026): **conferma chi ha inserito i valori,
+ * chiunque sia** — l'atleta che ha caricato il proprio referto, il coach che lo ha caricato per
+ * lui, l'amministratore.
  *
- * Funzione **pura** di proposito: è testabile con `node:test` senza impalcatura Next/Supabase,
- * e non deve mai importare `server-only`. L'unico import ammesso è `lib/platform-coach-status`,
- * a sua volta senza dipendenze, per non avere una seconda definizione di «coach approvato».
+ * Prima (commit 3fe230a) confermava solo un coach approvato. Chiudeva una falla vera — l'atleta
+ * confermava con scrittura privilegiata su tabelle che la RLS gli nega — ma lasciava fuori chi un
+ * coach non ce l'ha: 13 atleti su 41, i cui valori restavano proposte per sempre e al motore non
+ * arrivavano mai.
+ *
+ * Due cose rendono sicura la nuova regola:
+ *  - l'identità si confronta per **user id** (`auth.uid()`), che il chiamante non può scriversi.
+ *    Il ruolo — che l'utente può riscrivere sulla propria riga — qui non entra più;
+ *  - la conferma accetta **solo i campi della proposta originale**, con valori plausibili
+ *    (`lib/health/confirmed-patch-guard`). La scrittura privilegiata resta, ma non può più
+ *    portare nel referto un campo che nessuno aveva proposto.
+ *
+ * Funzione **pura** di proposito: testabile con `node:test`, mai `server-only`.
  */
 
-import { parsePlatformCoachStatus } from "@/lib/platform-coach-status";
-
-/**
- * Ruolo/scope del CALLER (non del target) + esito del gate atleta.
- *
- * ⚠️ **`role` da solo non è un fatto.** La policy `app_user_profiles_update_own` consente
- * l'UPDATE sulla propria riga e il trigger `app_user_profiles_protect_platform_fields`
- * protegge `is_platform_admin` e `platform_coach_status` ma **non** `role`: chiunque può
- * scriversi `role = "coach"`. Il fatto non falsificabile è `platform_coach_status`, che il
- * trigger lascia muovere all'utente solo private→coach con valore `"pending"` e per qualunque
- * altra transizione riscrive col valore vecchio. Quindi qui il ruolo vale **solo** se
- * accompagnato da `platformCoachStatus === "approved"`.
- */
 export type HealthStagingConfirmationCaller = {
-  /** `app_user_profiles.role` del chiamante: "private" | "coach" | … (null se profilo assente). */
-  role: string | null;
-  /** `app_user_profiles.is_platform_admin` del chiamante (il trigger lo blinda su UPDATE). */
+  /** `auth.uid()` del chiamante. */
+  callerUserId: string | null;
+  /** Esito di `canAccessAthleteData` per l'atleta del referto: senza accesso non si conferma. */
+  hasAthleteAccess: boolean;
+  /** `app_user_profiles.is_platform_admin` (il trigger lo blinda). */
   isPlatformAdmin: boolean;
   /**
-   * `app_user_profiles.platform_coach_status` del chiamante: solo `"approved"` è una promozione
-   * fatta dalla piattaforma (service role / platform admin). `"pending"` è auto-dichiarato.
+   * Chi ha inserito i valori: `interpretation_staging_runs.created_by`, con ripiego su
+   * `candidate_bundle.entered_by` per le revisioni create prima che la colonna fosse scritta.
+   * `null` = inserimento storico di cui non si sa l'autore.
    */
-  platformCoachStatus: string | null;
-  /**
-   * Esito di `canAccessAthleteData` **per questo atleta**.
-   *
-   * ⚠️ Non è ridondante con `role`: `role === "coach"` dice che il chiamante è *un* coach,
-   * non che segua *questo* atleta. I due controlli non si sostituiscono a vicenda, servono
-   * entrambi (audit C-gate-ruolo).
-   */
-  hasAthleteAccess: boolean;
-  /** `app_user_profiles.athlete_id` del CHIAMANTE (null se il profilo non ne ha uno). */
-  callerAthleteId: string | null;
-  /** `interpretation_staging_runs.athlete_id`: l'atleta a cui appartiene il referto. */
-  targetAthleteId: string | null;
+  insertedByUserId: string | null;
 };
 
 export type HealthStagingConfirmationDenialCode =
   | "athlete_access_required"
-  | "coach_role_required"
-  | "self_validation_forbidden";
+  | "not_the_inserter"
+  | "inserter_unknown";
 
 export type HealthStagingConfirmationDecision =
   | { allowed: true }
-  | {
-      allowed: false;
-      status: 403;
-      code: HealthStagingConfirmationDenialCode;
-      /** Messaggio utente: dice *cosa serve*, coerente con la copy della review page. */
-      error: string;
-    };
-
-/** Coerente con `HealthStagingReviewView.awaitingCoachValidation`. */
-export const HEALTH_STAGING_COACH_REQUIRED_MESSAGE =
-  "La conferma dei referti spetta al coach: i valori restano in attesa di validazione. " +
-  "Serve un account coach approvato dalla piattaforma e collegato a questo atleta " +
-  "(o un amministratore di piattaforma).";
+  | { allowed: false; status: 403; code: HealthStagingConfirmationDenialCode; error: string };
 
 export const HEALTH_STAGING_ATHLETE_ACCESS_REQUIRED_MESSAGE =
-  "Nessun accesso ai dati di questo atleta: serve un collegamento coach-atleta attivo " +
-  "(o un amministratore di piattaforma).";
+  "Nessun accesso ai dati di questo atleta: la conferma richiede di poter vedere il suo referto.";
 
-export const HEALTH_STAGING_SELF_VALIDATION_MESSAGE =
-  "Un referto non può essere validato dalla persona a cui appartiene: la conferma deve " +
-  "arrivare da un altro account coach approvato (o da un amministratore di piattaforma).";
+export const HEALTH_STAGING_NOT_THE_INSERTER_MESSAGE =
+  "Questi valori li ha inseriti un'altra persona: la conferma spetta a chi li ha inseriti.";
 
-/** UUID dal DB vs UUID da un payload: confronto tollerante a case e spazi, mai a `null`. */
-function sameAthlete(a: string | null | undefined, b: string | null | undefined): boolean {
+export const HEALTH_STAGING_INSERTER_UNKNOWN_MESSAGE =
+  "Di questo referto non si sa chi abbia inserito i valori: può confermarlo solo un " +
+  "amministratore della piattaforma.";
+
+function sameUser(a: string | null | undefined, b: string | null | undefined): boolean {
   const left = typeof a === "string" ? a.trim().toLowerCase() : "";
   const right = typeof b === "string" ? b.trim().toLowerCase() : "";
-  if (!left || !right) return false;
-  return left === right;
+  return left !== "" && left === right;
 }
 
 /**
- * Chi può promuovere un referto ad archivio clinico.
- *
- * **Tre gate in AND**, nell'ordine:
- * 1. `hasAthleteAccess` (`canAccessAthleteData`) — il chiamante può toccare *questo* atleta;
- * 2. **non auto-validazione** — il chiamante non è l'atleta a cui appartiene il referto.
- *    Vale per tutti, coach approvato e platform admin compresi: un coach che è anche atleta di
- *    se stesso (caso reale) non firma il proprio referto, e non esiste un motivo clinico per
- *    cui un admin debba validare il proprio;
- * 3. ruolo — platform admin **oppure** coach **approvato dalla piattaforma**.
- *
- * Nessuno dei tre sostituisce gli altri: senza (1) un coach potrebbe confermare i referti di un
- * atleta che non segue; senza (2) basta essere coach di se stessi per aggirare il gate; senza
- * l'`"approved"` in (3) l'atleta si scrive `role = "coach"` sulla propria riga (il trigger non
- * protegge quel campo) e passa.
+ * Chi ha inserito i valori di una revisione. La colonna vince; il campo nel bundle copre le
+ * revisioni dell'inserimento manuale create prima che la colonna venisse scritta.
+ */
+export function resolveStagingInsertedBy(run: {
+  created_by?: unknown;
+  candidate_bundle?: unknown;
+}): string | null {
+  if (typeof run.created_by === "string" && run.created_by.trim()) return run.created_by.trim();
+  const bundle =
+    run.candidate_bundle && typeof run.candidate_bundle === "object"
+      ? (run.candidate_bundle as Record<string, unknown>)
+      : null;
+  const enteredBy = bundle?.entered_by;
+  return typeof enteredBy === "string" && enteredBy.trim() ? enteredBy.trim() : null;
+}
+
+/**
+ * Tre casi, in quest'ordine:
+ * 1. senza accesso all'atleta non si conferma, nemmeno se si è l'autore (un coach scollegato
+ *    dopo aver caricato il referto ha perso il diritto di scriverci);
+ * 2. autore noto → conferma solo l'autore, qualunque ruolo abbia;
+ * 3. autore ignoto (storico) → solo un amministratore, perché qualcuno deve poterla chiudere.
  */
 export function decideHealthStagingConfirmation(
   caller: HealthStagingConfirmationCaller,
 ): HealthStagingConfirmationDecision {
   if (!caller.hasAthleteAccess) {
-    return {
-      allowed: false,
-      status: 403,
-      code: "athlete_access_required",
-      error: HEALTH_STAGING_ATHLETE_ACCESS_REQUIRED_MESSAGE,
-    };
+    return { allowed: false, status: 403, code: "athlete_access_required", error: HEALTH_STAGING_ATHLETE_ACCESS_REQUIRED_MESSAGE };
   }
-  if (sameAthlete(caller.callerAthleteId, caller.targetAthleteId)) {
-    return {
-      allowed: false,
-      status: 403,
-      code: "self_validation_forbidden",
-      error: HEALTH_STAGING_SELF_VALIDATION_MESSAGE,
-    };
+  if (caller.insertedByUserId) {
+    if (sameUser(caller.callerUserId, caller.insertedByUserId)) return { allowed: true };
+    return { allowed: false, status: 403, code: "not_the_inserter", error: HEALTH_STAGING_NOT_THE_INSERTER_MESSAGE };
   }
-  const isApprovedCoach =
-    caller.role === "coach" && parsePlatformCoachStatus(caller.platformCoachStatus) === "approved";
-  if (caller.isPlatformAdmin || isApprovedCoach) {
-    return { allowed: true };
-  }
-  return {
-    allowed: false,
-    status: 403,
-    code: "coach_role_required",
-    error: HEALTH_STAGING_COACH_REQUIRED_MESSAGE,
-  };
+  if (caller.isPlatformAdmin) return { allowed: true };
+  return { allowed: false, status: 403, code: "inserter_unknown", error: HEALTH_STAGING_INSERTER_UNKNOWN_MESSAGE };
 }

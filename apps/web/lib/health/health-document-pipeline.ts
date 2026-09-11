@@ -285,6 +285,8 @@ export function selectPanelSourceTag(decode: HealthDecodeResult): string {
  * Persist staging run per VLM-proposed: unico writer.
  */
 export async function persistHealthVlmStagingRun(args: {
+  /** Chi ha caricato il referto: sarà lui a confermarne i valori. */
+  insertedByUserId?: string | null;
   db: SupabaseClient;
   athleteId: string;
   panelId: string;
@@ -312,6 +314,7 @@ export async function persistHealthVlmStagingRun(args: {
     .from("interpretation_staging_runs")
     .insert({
       athlete_id: args.athleteId,
+      created_by: args.insertedByUserId ?? null,
       domain: "health",
       status: "pending_validation",
       trigger_source: trigger,
@@ -350,6 +353,8 @@ export type HealthNormalizationSummary = {
  * staging run interpretativo (no patches) se ci sono nuove osservazioni o nodi.
  */
 export async function runHealthDeterministicPostProcess(args: {
+  /** Chi ha caricato il referto: sarà lui a confermarne i valori. */
+  insertedByUserId?: string | null;
   db: SupabaseClient;
   athleteId: string;
   panelId: string;
@@ -408,6 +413,7 @@ export async function runHealthDeterministicPostProcess(args: {
         .from("interpretation_staging_runs")
         .insert({
           athlete_id: args.athleteId,
+          created_by: args.insertedByUserId ?? null,
           domain: "health",
           status: "pending_validation",
           trigger_source: "health_upload",

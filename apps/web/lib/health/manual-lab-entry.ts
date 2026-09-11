@@ -495,6 +495,15 @@ const MARKER_PLAUSIBLE_RANGE = new Map<string, ManualPlausibleRange>([
 ]);
 
 /**
+ * L'intervallo di plausibilità di un marcatore, o `null` se non lo conosciamo — lì dichiararlo
+ * sarebbe inventare. Esportato perché la stessa regola deve valere anche quando un valore viene
+ * corretto in fase di conferma, non solo quando viene digitato.
+ */
+export function manualPlausibleRangeFor(markerKey: string): ManualPlausibleRange | null {
+  return MARKER_PLAUSIBLE_RANGE.get(String(markerKey ?? "").trim().toLowerCase()) ?? null;
+}
+
+/**
  * Unità offerte per un marcatore. Il menù è la lista curata, deduplicata sul token normalizzato
  * (`µg/L`, `ug/l` e ` UG / L ` sono la stessa voce). Un marcatore che una lista non ce l'ha
  * riceve **solo** la sua unità canonica: porta stretta, mai un pool indovinato.

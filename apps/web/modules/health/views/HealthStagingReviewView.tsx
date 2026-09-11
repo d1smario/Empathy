@@ -82,7 +82,7 @@ function confidenceBadge(confidence: number): { level: "high" | "medium" | "low"
 
 export default function HealthStagingReviewView({ runId }: { runId: string }) {
   const t = useTranslations("HealthStagingReviewView");
-  const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId } = useActiveAthlete();
+  const { adminScoped, role, athleteId, platformAdminView, scopeOwnerUserId, userId } = useActiveAthlete();
   // Atleta: role "private" + adminScoped false → showTech false.
   // Coach/admin (showTech true) vedono i dettagli tecnici e i bottoni di validazione.
   const showTech = role === "coach" || adminScoped;
@@ -205,6 +205,16 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
     setToast(t("reviewRejected"));
   }
 
+  /**
+   * Chi può confermare: CHI HA INSERITO I VALORI, chiunque sia — atleta o coach (decisione di
+   * prodotto dell'11 settembre 2026; la stessa regola vive sul server in
+   * `health-staging-confirmation-gate`). Se l'autore non si sa (revisioni storiche) resta
+   * all'amministratore. `showTech` continua a decidere solo i dettagli tecnici.
+   */
+  const insertedBy = run?.insertedByUserId?.trim().toLowerCase() ?? "";
+  const canConfirm =
+    run != null &&
+    (insertedBy !== "" ? insertedBy === (userId ?? "").trim().toLowerCase() : platformAdminView === true);
   const triggerSource = run?.triggerSource ?? null;
   const candidate = run?.candidateBundle ?? null;
   const detectedProvider = candidate ? String(candidate.detected_provider ?? "") || null : null;
@@ -222,7 +232,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
           {showTech ? (
             <span>{t("descriptionTech")}</span>
           ) : (
-            <span>{t("descriptionAthlete")}</span>
+            <span>{canConfirm ? t("descriptionConfirm") : t("descriptionOtherInserter")}</span>
           )}
         </span>
       }
@@ -301,7 +311,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                   ? t("proposedValuesCount", { count: fields.length })
                   : t("readValuesCount", { count: fields.length })}
               </h2>
-              {showTech ? <span className="text-[11px] text-zinc-500">{t("activeCount", { count: enabledCount })}</span> : null}
+              {canConfirm ? <span className="text-[11px] text-zinc-500">{t("activeCount", { count: enabledCount })}</span> : null}
             </div>
 
             <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[600px]">
@@ -312,11 +322,11 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                   <div
                     key={`${f.field}-${i}`}
                     className={`rounded-xl border bg-black/40 p-3 transition ${
-                      showTech && !f.enabled ? "border-zinc-800/60 opacity-60" : "border-white/10"
+                      canConfirm && !f.enabled ? "border-zinc-800/60 opacity-60" : "border-white/10"
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      {showTech ? (
+                      {canConfirm ? (
                         <input
                           type="checkbox"
                           checked={f.enabled}
@@ -346,7 +356,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
                             </span>
                           ) : null}
                         </div>
-                        {showTech ? (
+                        {canConfirm ? (
                           <div className="mt-1.5 flex items-center gap-2">
                             <input
                               type="text"
@@ -384,7 +394,7 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               ) : null}
             </div>
 
-            {showTech ? (
+            {canConfirm ? (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-zinc-500">{t("onlyActiveFieldsWritten")}</span>
                 <div className="flex gap-2">
@@ -421,11 +431,11 @@ export default function HealthStagingReviewView({ runId }: { runId: string }) {
               </div>
             ) : (
               <p className="mt-4 rounded-md border border-white/10 bg-black/40 px-3 py-2 text-[11px] text-zinc-400">
-                {t("awaitingCoachValidation")}
+                {t("awaitingInserterConfirmation")}
               </p>
             )}
 
-            {showTech && toast ? (
+            {(showTech || canConfirm) && toast ? (
               <p
                 className={`mt-3 rounded-md border px-3 py-2 text-xs ${
                   done && !rejected

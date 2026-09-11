@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false as const, error: "missing_file" }, { status: 400, headers: NO_STORE });
     }
 
-    const { db } = await requireAthleteWriteContext(req, athleteId);
+    const { db, userId } = await requireAthleteWriteContext(req, athleteId);
 
     const mime = file.type || "application/octet-stream";
     const filename = file instanceof File ? file.name : "upload.bin";
@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
 
     if (panelId && isProposal && proposedCount > 0) {
       const sr = await persistHealthVlmStagingRun({
+        insertedByUserId: userId,
         db,
         athleteId,
         panelId,
@@ -119,6 +120,7 @@ export async function POST(req: NextRequest) {
 
     if (panelId && !isProposal) {
       const post = await runHealthDeterministicPostProcess({
+        insertedByUserId: userId,
         db,
         athleteId,
         panelId,

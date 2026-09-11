@@ -2848,7 +2848,6 @@
     "reviewRejected": "Review rifiutata.",
     "eyebrow": "Health · Review referto",
     "descriptionTech": "Conferma assistita: l'AI ha proposto i valori, tu li validi e diventano archivio. Niente entra in archivio senza il tuo ok.",
-    "descriptionAthlete": "I tuoi referti sono in revisione. Qui sotto trovi i valori letti: diventano parte del tuo archivio dopo la validazione del coach.",
     "backToHealth": "Torna a Health",
     "availableInDedicatedTab": "Disponibile nella scheda dedicata (v2)",
     "labDetected": "Lab rilevato: {provider}",
@@ -2871,8 +2870,10 @@
     "reject": "Rifiuta",
     "saving": "Salvo…",
     "confirm": "Conferma",
-    "awaitingCoachValidation": "Questi valori sono in attesa di validazione dal tuo coach prima di entrare in archivio.",
-    "backToHealthArchive": "→ Torna all'archivio Health"
+    "backToHealthArchive": "→ Torna all'archivio Health",
+    "descriptionConfirm": "Controlla i valori letti dal referto: puoi correggerli o escluderli. Entrano nell'archivio quando li confermi.",
+    "descriptionOtherInserter": "Questi valori sono in revisione. Li conferma chi li ha inseriti: finché non lo fa, restano fuori dall'archivio.",
+    "awaitingInserterConfirmation": "In attesa della conferma di chi ha inserito i valori."
   },
   "MealPlanV2PreviewPanel": {
     "headerLabel": "Nutrition V2 · anteprima (beta)",

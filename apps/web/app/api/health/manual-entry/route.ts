@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
     /**
      * I numeri stanno DENTRO `values.import` di proposito: `structuredValuesFieldCount` e i reader
      * di Health contano solo le chiavi di primo livello, quindi il pannello resta correttamente
-     * «nessun valore canonico» finché il coach non conferma.
+     * «nessun valore canonico» finché chi li ha inseriti non li conferma.
      */
     const values = {
       import: {
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         uploaded_at: nowIso,
         parsed_keys: [],
         vlm: null,
-        note: "Valori digitati a mano dal referto. Restano una proposta finché il coach non li conferma.",
+        note: "Valori digitati a mano dal referto. Restano una proposta finché chi li ha inseriti non li conferma.",
         manual_entry: {
           entered_at: nowIso,
           entered_by: userId,
@@ -191,6 +191,8 @@ export async function POST(req: NextRequest) {
       .from("interpretation_staging_runs")
       .insert({
         athlete_id: athleteId,
+        // Chi inserisce è chi conferma: senza questa colonna la regola non avrebbe un soggetto.
+        created_by: userId,
         domain: "health",
         status: "pending_validation",
         trigger_source: "health_manual_entry",
@@ -230,7 +232,7 @@ export async function POST(req: NextRequest) {
         message:
           `${entries.length} ${entries.length === 1 ? "valore inserito" : "valori inseriti"} a mano` +
           (convertedCount ? ` (${convertedCount} convertiti nell'unità canonica)` : "") +
-          ". Ora servono la revisione e la conferma del coach.",
+          ". Ora controllali e confermali: entrano nell'archivio solo dopo la tua conferma.",
       },
       { headers: NO_STORE },
     );
