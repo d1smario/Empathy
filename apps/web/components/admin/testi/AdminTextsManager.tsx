@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Eye, Loader2, RefreshCw, RotateCcw, Search, Send, Undo2 } from "lucide-react";
+import { Check, Eye, FileSpreadsheet, FileText, Loader2, RefreshCw, RotateCcw, Search, Send, Undo2 } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 
@@ -240,6 +240,26 @@ export function AdminTextsManager() {
             ) : null}
           </button>
         ))}
+        {/* Esportazione: TUTTI i testi (vetrina e app), in tutte le lingue, con le bozze non
+            pubblicate — non la pagina filtrata qui sotto. Il file lo costruisce il server. */}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <a
+            href="/api/admin/testi/export?format=xlsx"
+            download
+            title="Tutti i testi di vetrina e app, in tutte le lingue, con le bozze non ancora pubblicate. Un foglio per ambito."
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 transition hover:border-emerald-400/40 hover:text-emerald-100"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden /> Esporta Excel
+          </a>
+          <a
+            href="/api/admin/testi/export?format=csv"
+            download
+            title="Tutti i testi in un'unica tabella CSV (UTF-8), con la colonna Ambito."
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 transition hover:border-white/25 hover:text-white"
+          >
+            <FileText className="h-3.5 w-3.5" aria-hidden /> Esporta CSV
+          </a>
+        </div>
       </div>
 
       <p className="text-xs leading-relaxed text-gray-500">

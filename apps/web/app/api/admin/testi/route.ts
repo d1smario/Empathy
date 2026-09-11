@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 
 import { requirePlatformAdminSession } from "@/lib/auth/require-platform-admin";
-import { loadEnabledLocales } from "@/lib/i18n/resolve-request-locale";
 import { loadRawMessages } from "@/lib/i18n/messages-source";
 import { FALLBACK_LOCALE } from "@/lib/i18n/supported-locales";
 import {
-  flattenMessages,
   getMessageAtPath,
   scopeForKey,
   validateOverrideValue,
   type TextScope,
 } from "@/lib/i18n/text-catalog";
 import { invalidatePublishedTextOverrides } from "@/lib/i18n/text-overrides";
+import { loadAdminTextItems } from "@/lib/i18n/admin-text-items";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +19,6 @@ export const runtime = "nodejs";
 const NO_STORE = { "Cache-Control": "no-store" };
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 200;
-
-type OverrideRow = {
-  locale: string;
-  text_key: string;
-  draft_value: string | null;
-  published_value: string | null;
-};
 
 function isScope(v: string | null): v is TextScope {
   return v === "vetrina" || v === "app";
@@ -59,55 +51,14 @@ export async function GET(request: Request) {
     );
   }
 
-  const locales = [...(await loadEnabledLocales())];
-  const rawByLocale = new Map<string, Record<string, unknown>>();
-  for (const loc of locales) rawByLocale.set(loc, await loadRawMessages(loc));
-  const fallbackTree = rawByLocale.get(FALLBACK_LOCALE) ?? (await loadRawMessages(FALLBACK_LOCALE));
-
-  // Le CHIAVI canoniche vengono dal file completo (fallback EN): i file parziali
-  // (tr/de/fr) ne contengono solo un sottoinsieme.
-  const allKeys = flattenMessages(fallbackTree)
-    .map((f) => f.key)
-    .filter((key) => scopeForKey(key) === scope);
-
-  const { data, error } = await admin
-    .from("ui_text_overrides")
-    .select("locale, text_key, draft_value, published_value")
-    .eq("scope", scope);
-  if (error) {
-    return NextResponse.json({ ok: false as const, error: error.message }, { status: 500, headers: NO_STORE });
+  // La fusione JSON del repo + override vive in un posto solo (`admin-text-items`): la usa anche
+  // l'esportazione, e due copie prima o poi divergerebbero.
+  const loaded = await loadAdminTextItems(admin, [scope]);
+  if (!loaded.ok) {
+    return NextResponse.json({ ok: false as const, error: loaded.error }, { status: 500, headers: NO_STORE });
   }
-  const rows = (data ?? []) as OverrideRow[];
-  const byKey = new Map<string, Map<string, OverrideRow>>();
-  for (const r of rows) {
-    if (!byKey.has(r.text_key)) byKey.set(r.text_key, new Map());
-    byKey.get(r.text_key)!.set(r.locale, r);
-  }
-
-  const buildItem = (key: string) => {
-    const perLocale = byKey.get(key);
-    const values: Record<string, {
-      base: string;
-      isFallback: boolean;
-      draft: string | null;
-      published: string | null;
-    }> = {};
-    let hasPending = false;
-    let hasOverride = false;
-    for (const loc of locales) {
-      const own = getMessageAtPath(rawByLocale.get(loc) ?? {}, key);
-      const base = own ?? getMessageAtPath(fallbackTree, key) ?? "";
-      const row = perLocale?.get(loc) ?? null;
-      const draft = row?.draft_value ?? null;
-      const published = row?.published_value ?? null;
-      if (draft !== null && draft !== published) hasPending = true;
-      if (published !== null) hasOverride = true;
-      values[loc] = { base, isFallback: own === undefined, draft, published };
-    }
-    return { key, namespace: key.split(".")[0] ?? "", values, hasPending, hasOverride };
-  };
-
-  let items = allKeys.map(buildItem);
+  const { locales } = loaded;
+  let items = loaded.items;
   if (onlyPending) items = items.filter((i) => i.hasPending);
   if (onlyOverridden) items = items.filter((i) => i.hasOverride);
   if (q) {
